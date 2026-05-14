@@ -2,6 +2,30 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
+  const databaseUrl = process.env.DATABASE_URL || "";
+  let databaseUrlInfo: { host: string | null; port: string | null; hasPgbouncer: boolean } = {
+    host: null,
+    port: null,
+    hasPgbouncer: false,
+  };
+
+  if (databaseUrl) {
+    try {
+      const parsed = new URL(databaseUrl);
+      databaseUrlInfo = {
+        host: parsed.hostname || null,
+        port: parsed.port || null,
+        hasPgbouncer: parsed.searchParams.get("pgbouncer") === "true",
+      };
+    } catch {
+      databaseUrlInfo = {
+        host: "invalid-url",
+        port: null,
+        hasPgbouncer: false,
+      };
+    }
+  }
+
   const env = {
     DATABASE_URL: process.env.DATABASE_URL ? "set" : "MISSING",
     SUPABASE_URL: process.env.SUPABASE_URL ? "set" : "MISSING",
@@ -19,5 +43,5 @@ export async function GET() {
   }
 
   const allOk = database === "ok" && Object.values(env).every((v) => v === "set");
-  return NextResponse.json({ env, database }, { status: allOk ? 200 : 500 });
+  return NextResponse.json({ env, databaseUrlInfo, database }, { status: allOk ? 200 : 500 });
 }
