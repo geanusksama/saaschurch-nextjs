@@ -56,10 +56,10 @@ export default function FollowupDashboard() {
   const pendingContacts = visitors.filter((v) => v.status === 'pending').length;
 
   return (
-    <div className="p-6">
+    <div className="p-6 text-slate-900 dark:text-slate-100">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center"><TrendingUp className="w-6 h-6 text-orange-600" /></div>
+          <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center"><TrendingUp className="w-6 h-6 text-orange-600" /></div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Dashboard de Follow-up</h1>
             <p className="text-slate-600">Acompanhamento de visitantes e novos convertidos</p>
@@ -72,7 +72,7 @@ export default function FollowupDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {stages.map((stage) => (
-          <div key={stage.id} className="bg-white rounded-xl border border-slate-200 p-6">
+          <div key={stage.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
             <p className="text-sm text-slate-600">{stage.name}</p>
             <p className="text-2xl font-bold text-slate-900">{stage.count}</p>
           </div>
@@ -90,7 +90,7 @@ export default function FollowupDashboard() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 mb-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 mb-6">
         <div className="p-6 border-b border-slate-200 flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />

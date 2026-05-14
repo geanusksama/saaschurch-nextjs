@@ -37,7 +37,7 @@ export function PendingActivation() {
       const user = await res.json();
       if (user.profileType && user.profileType !== 'pending') {
         localStorage.setItem('mrm_user', JSON.stringify(user));
-        navigate('/app-ui/dashboard');
+        navigate('/app-ui');
       } else {
         setCheckMsg('Seu perfil ainda está aguardando ativação.');
       }

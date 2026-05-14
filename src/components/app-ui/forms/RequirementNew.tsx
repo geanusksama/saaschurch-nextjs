@@ -87,7 +87,7 @@ export function RequirementNew() {
 
         <div className="flex justify-end gap-3">
           <Link
-            to="/app-ui/dashboard"
+            to="/app-ui"
             className="px-6 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
           >
             Cancelar

@@ -14,11 +14,25 @@ function normalizeNotificationData(data: Record<string, unknown> = {}) {
   };
 }
 
+function fixPossiblyMojibake(value: unknown) {
+  if (typeof value !== "string" || !/[ÃÂâ€�â€“â€”]/.test(value)) return value;
+
+  try {
+    const repaired = Buffer.from(value, "latin1").toString("utf8");
+    return repaired.includes("�") ? value : repaired;
+  } catch {
+    return value;
+  }
+}
+
 function serializeNotification(notification: Record<string, unknown>, user: import("@/lib/auth").AuthUser) {
   const payload = serializeBigInts(notification) as Record<string, unknown>;
   const metadata = normalizeNotificationData((payload.data as Record<string, unknown>) || {});
   return {
     ...payload,
+    title: fixPossiblyMojibake(payload.title),
+    message: fixPossiblyMojibake(payload.message),
+    actionText: fixPossiblyMojibake(payload.actionText),
     iconKey: metadata.iconKey,
     colorKey: metadata.colorKey,
     batchId: metadata.batchId,

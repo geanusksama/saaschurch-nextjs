@@ -137,15 +137,15 @@ function PipelinesView({
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 text-slate-900 dark:text-slate-100">
       <div className="mb-6 flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-            <GitBranch className="w-5 h-5 text-slate-600" />
+          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+            <GitBranch className="w-5 h-5 text-slate-600 dark:text-slate-300" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Pipelines</h1>
-            <p className="text-sm text-slate-500">Gerencie os pipelines do sistema</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Pipelines</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Gerencie os pipelines do sistema</p>
           </div>
         </div>
         <button
@@ -169,21 +169,21 @@ function PipelinesView({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Consultar por Nome"
-          className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
+          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 pl-8 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-slate-400 focus:outline-none"
         />
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-100">
-              <th className="px-5 py-3 text-left text-xs text-slate-400 font-medium">ID</th>
-              <th className="px-5 py-3 text-left text-xs text-slate-400 font-medium">Nome</th>
-              <th className="px-5 py-3 text-left text-xs text-slate-400 font-medium">Status</th>
+            <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800">
+              <th className="px-5 py-3 text-left text-xs text-slate-400 dark:text-slate-500 font-medium">ID</th>
+              <th className="px-5 py-3 text-left text-xs text-slate-400 dark:text-slate-500 font-medium">Nome</th>
+              <th className="px-5 py-3 text-left text-xs text-slate-400 dark:text-slate-500 font-medium">Status</th>
               <th className="px-5 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={4} className="py-10 text-center text-sm text-slate-400">
@@ -192,10 +192,10 @@ function PipelinesView({
               </tr>
             ) : (
               filtered.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-3 text-sm text-slate-400">{p.id}</td>
+                <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                  <td className="px-5 py-3 text-sm text-slate-400 dark:text-slate-500">{p.id}</td>
                   <td
-                    className="px-5 py-3 text-sm text-slate-700 cursor-pointer font-medium hover:text-slate-900"
+                    className="px-5 py-3 text-sm text-slate-700 dark:text-slate-200 cursor-pointer font-medium hover:text-slate-900 dark:hover:text-slate-100"
                     onClick={() => onEdit(p)}
                   >
                     {p.name}
@@ -209,7 +209,7 @@ function PipelinesView({
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => onEdit(p)} title="Editar" className="text-slate-400 hover:text-slate-700">
+                      <button onClick={() => onEdit(p)} title="Editar" className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-100">
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button onClick={() => handleDelete(p.id)} title="Excluir" className="text-red-400 hover:text-red-600">

@@ -51,9 +51,9 @@ export default function DiscipleshipNew() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 text-slate-900 dark:text-slate-100">
       <div className="mb-8 flex items-center gap-4">
-        <Link to="/app-ui/discipleship-tracking" className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50">
+        <Link to="/app-ui/discipleship-tracking" className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800">
           <ArrowLeft className="h-5 w-5 text-slate-600" />
         </Link>
         <div className="flex items-center gap-3">
@@ -69,7 +69,7 @@ export default function DiscipleshipNew() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-6">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6">
             <h3 className="mb-4 font-bold text-slate-900">Dados principais</h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -127,7 +127,7 @@ export default function DiscipleshipNew() {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-xl border border-slate-200 bg-white p-6">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6">
             <h3 className="mb-4 font-bold text-slate-900">Ações</h3>
 
             {errorMessage && (
@@ -151,7 +151,7 @@ export default function DiscipleshipNew() {
             </Link>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-600 dark:text-slate-300">
             <div className="mb-2 flex items-center gap-2 font-semibold text-slate-800">
               <User className="h-4 w-4" />
               Dica

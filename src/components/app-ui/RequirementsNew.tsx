@@ -28,7 +28,7 @@ export function RequirementsNew() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     toast.success('Requerimento enviado com sucesso!');
-    setTimeout(() => navigate('/app-ui/dashboard'), 1500);
+    setTimeout(() => navigate('/app-ui'), 1500);
   };
 
   const handleChange = (field: string, value: string) => {
@@ -296,7 +296,7 @@ export function RequirementsNew() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate('/app-ui/dashboard')}
+            onClick={() => navigate('/app-ui')}
           >
             Cancelar
           </Button>

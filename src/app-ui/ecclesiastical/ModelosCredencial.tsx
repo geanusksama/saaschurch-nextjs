@@ -120,9 +120,9 @@ export default function ModelosCredencial() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between text-slate-900 dark:text-slate-100">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
             <CreditCard className="w-6 h-6 text-purple-600" />
           </div>
           <div>
@@ -140,7 +140,7 @@ export default function ModelosCredencial() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-3">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
             <CreditCard size={20} className="text-blue-600" />
           </div>
@@ -149,7 +149,7 @@ export default function ModelosCredencial() {
             <p className="text-xl font-bold text-slate-800">{models.length}</p>
           </div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-3">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex items-center gap-3">
           <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
             <CheckCircle size={20} className="text-green-600" />
           </div>
@@ -158,7 +158,7 @@ export default function ModelosCredencial() {
             <p className="text-xl font-bold text-slate-800">{active.length}</p>
           </div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-3">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex items-center gap-3">
           <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
             <CreditCard size={20} className="text-slate-400" />
           </div>
@@ -170,7 +170,7 @@ export default function ModelosCredencial() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100">
           <h2 className="font-semibold text-slate-900">Lista de Modelos</h2>
         </div>

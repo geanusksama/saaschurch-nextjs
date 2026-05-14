@@ -33,10 +33,10 @@ export default function PastoralReports() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 text-slate-900 dark:text-slate-100">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
             <BarChart3 className="h-6 w-6 text-emerald-600" />
           </div>
           <div>
@@ -54,7 +54,7 @@ export default function PastoralReports() {
         </button>
       </div>
 
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-700">Data inicial</label>
@@ -74,19 +74,19 @@ export default function PastoralReports() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Carregando relatório pastoral...</div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-400">Carregando relatório pastoral...</div>
       ) : (
         <>
           <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-5">
-            <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs text-slate-500">Visitas</p><p className="text-2xl font-bold text-slate-900">{data?.totals.visits || 0}</p></div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs text-slate-500">Aconselhamentos</p><p className="text-2xl font-bold text-slate-900">{data?.totals.counseling || 0}</p></div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs text-slate-500">Pedidos de oração</p><p className="text-2xl font-bold text-slate-900">{data?.totals.prayers || 0}</p></div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs text-slate-500">Discipulados</p><p className="text-2xl font-bold text-slate-900">{data?.totals.discipleships || 0}</p></div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs text-slate-500">Progresso discipulado</p><p className="text-2xl font-bold text-slate-900">{data?.totals.avgDiscipleshipProgress || 0}%</p></div>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"><p className="text-xs text-slate-500 dark:text-slate-400">Visitas</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{data?.totals.visits || 0}</p></div>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"><p className="text-xs text-slate-500 dark:text-slate-400">Aconselhamentos</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{data?.totals.counseling || 0}</p></div>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"><p className="text-xs text-slate-500 dark:text-slate-400">Pedidos de oração</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{data?.totals.prayers || 0}</p></div>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"><p className="text-xs text-slate-500 dark:text-slate-400">Discipulados</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{data?.totals.discipleships || 0}</p></div>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"><p className="text-xs text-slate-500 dark:text-slate-400">Progresso discipulado</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{data?.totals.avgDiscipleshipProgress || 0}%</p></div>
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
               <div className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-800">Visitas por responsável</div>
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
@@ -109,7 +109,7 @@ export default function PastoralReports() {
               </table>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
               <div className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-800">Pedidos por categoria</div>
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">

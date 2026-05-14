@@ -1,10 +1,14 @@
+"use client";
+
 // SPA wrapper — loaded client-side only via dynamic import
 // This renders the full React Router SPA within Next.js
 
 import { RouterProvider } from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { router } from "./routes";
 import { queryClient } from "../lib/queryClient";
+import { initializeSupabaseAuthStorageSync, supabase } from "../lib/supabaseClient";
 
 // Clean up stale IndexedDB caches from old app versions
 const STALE_IDB_NAMES = ["crm_chat_cache_v1", "crm_pipeline_cache_v1"];
@@ -15,6 +19,43 @@ if (typeof indexedDB !== "undefined") {
 }
 
 export default function AppSPA() {
+  useEffect(() => {
+    const isProtectedPath = (pathname: string) => pathname.startsWith("/app-ui") || pathname === "/pending-activation";
+
+    const redirectToLogin = () => {
+      try {
+        localStorage.removeItem("mrm_token");
+        localStorage.removeItem("mrm_user");
+        localStorage.removeItem("mrm_selected_context");
+        localStorage.removeItem("mrm_active_field_id");
+        localStorage.removeItem("mrm_active_field_name");
+      } catch {
+        // ignore storage errors during forced sign-out
+      }
+
+      if (isProtectedPath(window.location.pathname)) {
+        window.location.replace("/auth/login");
+      }
+    };
+
+    void initializeSupabaseAuthStorageSync().then(async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        redirectToLogin();
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        redirectToLogin();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

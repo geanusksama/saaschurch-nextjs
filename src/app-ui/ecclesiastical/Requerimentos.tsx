@@ -162,6 +162,24 @@ type MemberHit = {
   ecclesiasticalTitle?: string | null;
 };
 type Church = { id: string; name: string; code?: string | null };
+type CampoOption = { id: string; name: string; code?: string | null };
+type RegionalOption = { id: string; name: string; code?: string | null; campoId: string };
+type ChurchOption = {
+  id: string;
+  name: string;
+  code?: string | null;
+  regionalId?: string | null;
+  regional?: {
+    id?: string;
+    name?: string;
+    campoId?: string;
+    campo?: {
+      id?: string;
+      name?: string;
+      code?: string | null;
+    } | null;
+  } | null;
+};
 
 const DOCUMENT_TYPES = [
   "CPF",
@@ -212,16 +230,43 @@ const PAGE_SIZE = 15;
 
 // â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function Requerimentos() {
+  const storedUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("mrm_user") || "{}");
+    } catch {
+      return {};
+    }
+  }, []);
+
   // Services / folders
   const [services, setServices] = useState<KanService[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [activeServiceId, setActiveServiceId] = useState<number | null>(null);
+
+  const activeFieldId = localStorage.getItem("mrm_active_field_id") || storedUser.campoId || "";
+  const normalizedRole = normalizeText(storedUser.roleName || "");
+  const isSecretaryOrTreasurer = normalizedRole.includes("secret") || normalizedRole.includes("tesour");
+  const isAdminOrMaster = ["master", "admin"].includes(storedUser.profileType || "");
+  const hasFixedChurchScope = storedUser.profileType === "church" || isSecretaryOrTreasurer;
+  const canChooseField = isAdminOrMaster;
+  const canChooseRegional = !hasFixedChurchScope;
+  const canChooseChurch = !hasFixedChurchScope;
+  const defaultRegionalFilter = storedUser.regionalId || "";
+  const defaultChurchFilter = hasFixedChurchScope ? (storedUser.churchId || "") : "";
+
+  const [fields, setFields] = useState<CampoOption[]>([]);
+  const [regionais, setRegionais] = useState<RegionalOption[]>([]);
+  const [churches, setChurches] = useState<ChurchOption[]>([]);
+  const [loadingFilters, setLoadingFilters] = useState(true);
 
   // Cards
   const [columns, setColumns] = useState<ColumnWithCards[]>([]);
   const [cardsLoading, setCardsLoading] = useState(false);
 
   // Filters
+  const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
+  const [selectedRegionalId, setSelectedRegionalId] = useState(defaultRegionalFilter);
+  const [selectedChurchId, setSelectedChurchId] = useState(defaultChurchFilter);
   const [q, setQ] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const { start: defaultFrom, end: defaultTo } = getMonthDateRange();
@@ -242,6 +287,49 @@ export default function Requerimentos() {
     setTimeout(() => setToast(null), 4000);
   }
 
+  const filteredRegionais = useMemo(() => {
+    if (!selectedFieldId) return regionais;
+    return regionais.filter((regional) => regional.campoId === selectedFieldId);
+  }, [regionais, selectedFieldId]);
+
+  const filteredChurchOptions = useMemo(() => {
+    const inField = churches.filter((church) => {
+      if (!selectedFieldId) return true;
+      return church.regional?.campoId === selectedFieldId || church.regional?.campo?.id === selectedFieldId;
+    });
+    if (!selectedRegionalId) return inField;
+    return inField.filter((church) => church.regional?.id === selectedRegionalId || church.regionalId === selectedRegionalId);
+  }, [churches, selectedFieldId, selectedRegionalId]);
+
+  async function loadFilters() {
+    setLoadingFilters(true);
+    try {
+      const fieldQuery = selectedFieldId ? `?fieldId=${encodeURIComponent(selectedFieldId)}` : "";
+      const [fieldsResponse, regionaisResponse, churchesResponse] = await Promise.all([
+        authFetch(`${apiBase}/campos`),
+        authFetch(`${apiBase}/regionais${fieldQuery}`),
+        authFetch(`${apiBase}/churches${fieldQuery}`),
+      ]);
+      if (!fieldsResponse.ok || !regionaisResponse.ok || !churchesResponse.ok) {
+        throw new Error("Falha ao carregar filtros de requerimentos.");
+      }
+      const [fieldsData, regionaisData, churchesData] = await Promise.all([
+        fieldsResponse.json(),
+        regionaisResponse.json(),
+        churchesResponse.json(),
+      ]);
+      setFields(Array.isArray(fieldsData) ? fieldsData : []);
+      setRegionais(Array.isArray(regionaisData) ? regionaisData : []);
+      setChurches(Array.isArray(churchesData) ? churchesData : []);
+    } catch {
+      setFields([]);
+      setRegionais([]);
+      setChurches([]);
+    } finally {
+      setLoadingFilters(false);
+    }
+  }
+
   // Load REQUERIMENTO services
   useEffect(() => {
     setServicesLoading(true);
@@ -255,11 +343,18 @@ export default function Requerimentos() {
             (s.serviceGroup || "").toUpperCase() === "REQUERIMENTO",
         );
         setServices(filtered);
-        if (filtered.length) setActiveServiceId(filtered[0].id);
+        setActiveServiceId((current) => {
+          if (current == null) return null;
+          return filtered.some((service) => service.id === current) ? current : null;
+        });
       })
       .catch(() => setServices([]))
       .finally(() => setServicesLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadFilters();
+  }, [selectedFieldId]);
 
   // Derive active stage
   const activeService = useMemo(
@@ -367,14 +462,23 @@ export default function Requerimentos() {
 
   // Filter + paginate
   const filteredCards = useMemo(() => {
-    if (!filterStatus) return allCards;
     const target = filterStatus.toLowerCase();
     const targetLabel = (STATUS_LABELS[target]?.label || target).toLowerCase();
     return allCards.filter((c) => {
+      const churchMeta = churches.find((church) => church.id === c.church?.id);
+      const fieldMatch = !selectedFieldId || churchMeta?.regional?.campoId === selectedFieldId || churchMeta?.regional?.campo?.id === selectedFieldId;
+      const regionalMatch = !selectedRegionalId || churchMeta?.regional?.id === selectedRegionalId || churchMeta?.regionalId === selectedRegionalId;
+      const churchMatch = !selectedChurchId || c.church?.id === selectedChurchId;
+      if (!fieldMatch || !regionalMatch || !churchMatch) return false;
+      if (!filterStatus) return true;
       const eff = effectiveStatusKey(c);
       return eff === target || eff === targetLabel;
     });
-  }, [allCards, filterStatus]);
+  }, [allCards, filterStatus, churches, selectedFieldId, selectedRegionalId, selectedChurchId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q, filterStatus, from, to, activeServiceId, selectedFieldId, selectedRegionalId, selectedChurchId]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE));
   const pageCards = filteredCards.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -409,9 +513,9 @@ export default function Requerimentos() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center justify-between gap-4 flex-wrap text-slate-900 dark:text-slate-100">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
             <FileText className="w-6 h-6 text-indigo-600" />
           </div>
           <div>
@@ -451,7 +555,7 @@ export default function Requerimentos() {
         ].map(({ label, value, icon: Icon, color }) => (
           <div
             key={label}
-            className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex items-center gap-3"
           >
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center bg-${color}-100 flex-shrink-0`}>
               <Icon size={18} className={`text-${color}-600`} />
@@ -465,89 +569,145 @@ export default function Requerimentos() {
       </div>
 
       {/* Filters */}
-      <div className="rounded-xl border border-slate-200 bg-white p-3 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[160px] max-w-sm">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setPage(1); }}
-            placeholder="Buscar por protocolo, membro..."
-            className="w-full border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          />
-          {q && (
-            <button
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              onClick={() => { setQ(""); setPage(1); }}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(170px,1.25fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(115px,0.68fr)_minmax(115px,0.68fr)_minmax(165px,0.95fr)] xl:items-end">
+          <div>
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Busca</label>
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={q}
+                onChange={(e) => { setQ(e.target.value); setPage(1); }}
+                placeholder="Buscar por protocolo, membro, igreja..."
+                className="w-full border border-slate-200 rounded-lg pl-8 pr-8 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              {q && (
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  onClick={() => { setQ(""); setPage(1); }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Campo</label>
+            <select
+              value={selectedFieldId}
+              onChange={(e) => { setSelectedFieldId(e.target.value); setSelectedRegionalId(""); setSelectedChurchId(""); }}
+              disabled={!canChooseField || loadingFilters}
+              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-100 disabled:text-slate-500"
             >
-              <X size={13} />
-            </button>
-          )}
-        </div>
+              <option value="">Todos os campos</option>
+              {fields.map((field) => (
+                <option key={field.id} value={field.id}>{field.code ? `${field.code} - ` : ""}{field.name}</option>
+              ))}
+            </select>
+          </div>
 
-        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="text-sm bg-transparent focus:outline-none w-[110px] [color-scheme:light]"
-          />
-          <span className="text-slate-400 text-sm">→</span>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="text-sm bg-transparent focus:outline-none w-[110px] [color-scheme:light]"
-          />
-        </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Regional</label>
+            <select
+              value={selectedRegionalId}
+              onChange={(e) => { setSelectedRegionalId(e.target.value); setSelectedChurchId(""); }}
+              disabled={!canChooseRegional || loadingFilters}
+              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-100 disabled:text-slate-500"
+            >
+              <option value="">Todas as regionais</option>
+              {filteredRegionais.map((regional) => (
+                <option key={regional.id} value={regional.id}>{regional.code ? `${regional.code} - ` : ""}{regional.name}</option>
+              ))}
+            </select>
+          </div>
 
-        <div className="relative">
-          <select
-            value={filterStatus}
-            onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-            className="appearance-none border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-          >
-            <option value="">Todos os status</option>
-            {Object.entries(STATUS_LABELS).map(([val, { label }]) => (
-              <option key={val} value={val}>{label}</option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
-        </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Igreja</label>
+            <select
+              value={selectedChurchId}
+              onChange={(e) => setSelectedChurchId(e.target.value)}
+              disabled={!canChooseChurch || loadingFilters}
+              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-100 disabled:text-slate-500"
+            >
+              <option value="">Todas as igrejas</option>
+              {filteredChurchOptions.map((church) => (
+                <option key={church.id} value={church.id}>{church.code ? `${church.code} - ` : ""}{church.name}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Service type inline */}
-        <div className="relative">
-          {servicesLoading ? (
-            <Loader2 size={14} className="animate-spin text-slate-400" />
-          ) : (
-            <>
-              <select
-                value={activeServiceId ?? ""}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setActiveServiceId(next ? Number(next) : null);
-                  setPage(1);
-                }}
-                className="appearance-none border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-              >
-                <option value="">Todos os tipos</option>
-                {services.map((svc) => (
-                  <option key={svc.id} value={svc.id}>
-                    {svc.sigla} — {svc.description}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
-            </>
-          )}
-        </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            >
+              <option value="">Todos os status</option>
+              {Object.entries(STATUS_LABELS).map(([val, { label }]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
+          </div>
 
-        <div className="ml-auto text-xs text-slate-400">
-          {filteredCards.length} registro{filteredCards.length !== 1 ? "s" : ""}
+          <div>
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Data inicial</label>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 [color-scheme:light]"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Data final</label>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 [color-scheme:light]"
+            />
+          </div>
+
+          <div className="relative">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Tipo</label>
+            {servicesLoading ? (
+              <div className="flex h-[34px] items-center px-3 text-slate-400">
+                <Loader2 size={14} className="animate-spin text-slate-400" />
+              </div>
+            ) : (
+              <>
+                <select
+                  value={activeServiceId ?? ""}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setActiveServiceId(next ? Number(next) : null);
+                    setPage(1);
+                  }}
+                  className="w-full appearance-none border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+                >
+                  <option value="">Todos os tipos</option>
+                  {services.map((svc) => (
+                    <option key={svc.id} value={svc.id}>
+                      {svc.sigla} — {svc.description}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="pointer-events-none absolute right-2 top-[calc(50%+10px)] -translate-y-1/2 text-slate-400" />
+              </>
+            )}
+          </div>
+
+          <div className="text-xs text-slate-400 xl:col-span-full xl:text-right">
+            {filteredCards.length} registro{filteredCards.length !== 1 ? "s" : ""}
+          </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {cardsLoading ? (
           <div className="flex justify-center py-14">
             <Loader2 size={24} className="animate-spin text-indigo-500" />
@@ -1022,20 +1182,23 @@ function RequerimentoDetalheModal({
                       <select
                         value={attachType}
                         onChange={(e) => setAttachType(e.target.value)}
-                        className="w-full appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 py-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                        className="w-full appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
                       >
-                        {DOCUMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                        {DOCUMENT_TYPES.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
                       </select>
-                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     </div>
+
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={savingFile}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {savingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      Anexar arquivo
+                      {savingFile ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                      {savingFile ? "Enviando..." : "Escolher arquivo"}
                     </button>
                     <input
                       ref={fileInputRef}
@@ -1043,7 +1206,7 @@ function RequerimentoDetalheModal({
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) void handleAddAttachment(file);
+                        if (file) handleAddAttachment(file);
                       }}
                     />
                   </div>
@@ -1364,7 +1527,6 @@ function NovoRequerimentoModal({
       const body: Record<string, unknown> = {
         stageId,
         serviceId: Number(serviceId),
-        churchId,
         memberId: selectedMember.id,
         candidateName: selectedMember.fullName,
         description: observations || null,

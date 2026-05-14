@@ -844,10 +844,10 @@ export function Members() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4 text-slate-900 dark:text-slate-100">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
             <Users className="h-5 w-5 text-blue-600" />
           </div>
           <div>
@@ -857,7 +857,7 @@ export function Members() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50 transition-colors"
+          <button className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             onClick={() => setPrintModalOpen(true)}
           >
             <Download className="h-4 w-4" />
@@ -891,37 +891,37 @@ export function Members() {
       </div>
 
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex items-center justify-between">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 leading-tight">{members.length}</p>}
+            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{members.length}</p>}
           </div>
           <User className="h-5 w-5 text-blue-600" />
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex items-center justify-between">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Ativos</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 leading-tight">{stats.activeMembers}</p>}
+            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{stats.activeMembers}</p>}
           </div>
           <User className="h-5 w-5 text-green-600" />
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex items-center justify-between">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Inativos</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 leading-tight">{stats.inactiveMembers}</p>}
+            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{stats.inactiveMembers}</p>}
           </div>
           <User className="h-5 w-5 text-orange-600" />
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex items-center justify-between">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Igrejas</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 leading-tight">{stats.uniqueChurches}</p>}
+            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{stats.uniqueChurches}</p>}
           </div>
           <MapPin className="h-5 w-5 text-purple-600" />
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.25fr)_repeat(7,minmax(145px,0.8fr))] xl:items-end">
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
@@ -932,7 +932,7 @@ export function Members() {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Buscar por nome, email, telefone, CPF, título ou igreja..."
-                className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 pl-10 pr-4 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>
@@ -947,7 +947,7 @@ export function Members() {
                 setSelectedChurchId('');
               }}
               disabled={!canChooseField || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
             >
               {!hasFixedChurchScope && <option value="">Todos os campos</option>}
               {fields.map((field) => (
@@ -968,7 +968,7 @@ export function Members() {
                 setSelectedChurchId('');
               }}
               disabled={!canChooseRegional || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
             >
               {!hasFixedChurchScope && <option value="">Todas as regionais</option>}
               {filteredRegionais.map((regional) => (
@@ -986,7 +986,7 @@ export function Members() {
               value={selectedChurchId}
               onChange={(event) => setSelectedChurchId(event.target.value)}
               disabled={!canChooseChurch || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
             >
               {!hasFixedChurchScope && <option value="">Todas as igrejas</option>}
               {filteredChurches.map((church) => (
@@ -1003,7 +1003,7 @@ export function Members() {
             <select
               value={selectedTypeFilter}
               onChange={(event) => setSelectedTypeFilter(event.target.value as MemberTypeFilter)}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="ALL">Todos os tipos</option>
               <option value="MEMBRO">Membro</option>
@@ -1017,7 +1017,7 @@ export function Members() {
             <select
               value={selectedTitleFilter}
               onChange={(event) => setSelectedTitleFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               {titleFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -1030,7 +1030,7 @@ export function Members() {
             <select
               value={selectedStatusFilter}
               onChange={(event) => setSelectedStatusFilter(event.target.value as MembershipStatusFilter)}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="ALL">Todas as situações</option>
               <option value="ativo">Ativo</option>
@@ -1045,7 +1045,7 @@ export function Members() {
             <select
               value={selectedMaritalStatusFilter}
               onChange={(event) => setSelectedMaritalStatusFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               {maritalStatusFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -1067,10 +1067,10 @@ export function Members() {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1380px]">
-            <thead className="border-b border-slate-200 bg-slate-50">
+            <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
                   <button type="button" onClick={() => handleSort('fullName')} className="inline-flex items-center gap-2">
@@ -1117,14 +1117,14 @@ export function Members() {
                 <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {isLoadingScreen ? <MembersTableSkeleton /> : paginatedMembers.map((member) => {
                 const normalizedStatus = normalizeMembershipStatus(member.membershipStatus);
                 const displayStatus = member.membershipStatus || 'VISITANTE';
                 const normalizedType = normalizeMemberType(member.memberType);
 
                 return (
-                  <tr key={member.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={member.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                     <td className="px-4 py-4 align-top">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-700 overflow-hidden flex-shrink-0">
@@ -1135,7 +1135,7 @@ export function Members() {
                           )}
                         </div>
                         <div>
-                          <p className="font-semibold uppercase text-slate-900">{member.fullName}</p>
+                          <p className="font-semibold uppercase text-slate-900 dark:text-slate-100">{member.fullName}</p>
                           {member.rol != null && (
                             <p className="text-xs font-semibold text-purple-600">ROL #{member.rol}</p>
                           )}
@@ -1145,11 +1145,11 @@ export function Members() {
                     </td>
                     <td className="px-4 py-4 align-top">
                       <div className="max-w-[260px] space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                           <Phone className="h-4 w-4 shrink-0" />
                           <span className="truncate">{formatPhone(member.mobile || member.phone) || '-'}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                           <Mail className="h-4 w-4 shrink-0" />
                           <span className="truncate">{member.email || '-'}</span>
                         </div>
@@ -1161,21 +1161,21 @@ export function Members() {
                       </span>
                     </td>
                     <td className="px-4 py-4 align-top">
-                      <span className="text-sm font-medium text-slate-700">{getTitleLabel(member)}</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{getTitleLabel(member)}</span>
                     </td>
                     <td className="px-4 py-4 align-top">
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                         <MapPin className="h-4 w-4 shrink-0" />
                         <span>{member.churchName || '-'}</span>
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">{[member.regionalName, member.fieldName].filter(Boolean).join(' • ') || '-'}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{[member.regionalName, member.fieldName].filter(Boolean).join(' • ') || '-'}</p>
                     </td>
                     <td className="px-4 py-4 align-top">
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(normalizedStatus)}`}>
                         {displayStatus}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-sm text-slate-600 align-top">
+                    <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300 align-top">
                       {member.membershipDate ? new Date(member.membershipDate).toLocaleDateString('pt-BR') : '-'}
                     </td>
                     <td className="px-4 py-4 align-top">
@@ -1183,18 +1183,18 @@ export function Members() {
                         <button
                           type="button"
                           onClick={() => openEditor(member.id)}
-                          className="rounded-lg p-2 hover:bg-slate-100 transition-colors"
+                          className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                           title="Editar"
                         >
-                          <Pencil className="h-4 w-4 text-slate-600" />
+                          <Pencil className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                         </button>
 
                         <Link
                           to={`/app-ui/members/${member.id}`}
-                          className="rounded-lg p-2 hover:bg-slate-100 transition-colors"
+                          className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                           title="Detalhes"
                         >
-                          <Eye className="h-4 w-4 text-slate-600" />
+                          <Eye className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                         </Link>
 
                         <button
@@ -1215,23 +1215,23 @@ export function Members() {
         </div>
 
         {!isLoadingScreen && !paginatedMembers.length ? (
-          <div className="px-6 py-10 text-center text-sm text-slate-500">
+          <div className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
             Nenhum membro encontrado para os filtros selecionados.
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-slate-500">
+        <div className="flex flex-col gap-3 border-t border-slate-200 dark:border-slate-700 px-4 py-4 md:flex-row md:items-center md:justify-between">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Exibindo {paginatedMembers.length ? (page - 1) * pageSize + 1 : 0} a {Math.min(page * pageSize, visibleMembers.length)} de {visibleMembers.length} membros
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
+            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
               <span>Linhas por página</span>
               <select
                 value={pageSize}
                 onChange={(event) => setPageSize(Number(event.target.value))}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 {pageSizeOptions.map((option) => (
                   <option key={option} value={option}>
@@ -1246,16 +1246,16 @@ export function Members() {
                 type="button"
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 disabled={page === 1}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
               >
                 Anterior
               </button>
-              <span className="text-sm text-slate-600">Página {page} de {totalPages}</span>
+              <span className="text-sm text-slate-600 dark:text-slate-300">Página {page} de {totalPages}</span>
               <button
                 type="button"
                 onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                 disabled={page === totalPages}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
               >
                 Próxima
               </button>
@@ -1285,15 +1285,15 @@ export function Members() {
       {deleteTarget ? (
         <>
           <div className="fixed inset-0 z-40 bg-slate-900/50" onClick={cancelDelete} />
-          <div className="fixed left-1/2 top-1/2 z-50 w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white shadow-2xl">
+          <div className="fixed left-1/2 top-1/2 z-50 w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-700">
             <div className="p-6">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-slate-900">Excluir membro</h3>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Excluir membro</h3>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     O que deseja fazer com <span className="font-semibold uppercase">{deleteTarget.fullName}</span>?
                   </p>
                   <div className="mt-4 space-y-2">
@@ -1309,12 +1309,12 @@ export function Members() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 rounded-b-xl border-t border-slate-200 bg-slate-50 px-6 py-3">
+            <div className="flex items-center justify-end gap-2 rounded-b-xl border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-6 py-3">
               <button
                 type="button"
                 onClick={cancelDelete}
                 disabled={deleting}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+                className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-60"
               >
                 Cancelar
               </button>

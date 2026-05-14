@@ -84,7 +84,7 @@ export function Login() {
         return;
       }
 
-      navigate('/app-ui/dashboard');
+      navigate('/app-ui');
     } catch (err) {
       localStorage.removeItem('mrm_token');
       localStorage.removeItem('mrm_user');

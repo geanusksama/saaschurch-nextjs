@@ -41,8 +41,6 @@ import { TwoFactorVerify } from "../components/auth/TwoFactorVerify";
 
 // App UI
 import { AppUI } from "../components/app-ui/AppUI";
-import { AppLanding } from "../components/app-ui/AppLanding";
-import { Dashboard } from "../components/app-ui/Dashboard";
 import FieldDashboard from "../app-ui/dashboard/FieldDashboard";
 import RegionalDashboard from "../app-ui/dashboard/RegionalDashboard";
 import { Members } from "../components/app-ui/Members";
@@ -283,8 +281,7 @@ export const router = createBrowserRouter([
     Component: AppUI,
     errorElement: <ErrorBoundary />,
     children: [
-      { index: true, Component: AppLanding },
-      { path: "dashboard", Component: Dashboard },
+      { index: true, Component: Notifications },
       { path: "dashboard/field", Component: FieldDashboard },
       { path: "dashboard/regional", Component: RegionalDashboard },
       { path: "members", Component: Members },
@@ -525,6 +522,7 @@ export const router = createBrowserRouter([
       { path: "wedding-requests", Component: WeddingRequests },
       { path: "dedication-requests", Component: DedicationRequests },
       { path: "credential-models", Component: ModelosCredencial },
+      { path: "secretariat/credential-models", Component: ModelosCredencial },
       { path: "credential-requests", Component: SolicitacoesCredencial },
     ],
   },

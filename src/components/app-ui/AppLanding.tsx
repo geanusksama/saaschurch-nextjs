@@ -3,10 +3,10 @@ import { LayoutDashboard, Users, TrendingUp, DollarSign, Calendar, MessageSquare
 
 const modules = [
   {
-    name: 'Dashboard',
-    description: 'Visão geral com métricas e análises',
+    name: 'Notificações',
+    description: 'Alertas, avisos e pendências importantes',
     icon: LayoutDashboard,
-    path: '/app-ui/dashboard',
+    path: '/app-ui/notifications',
     color: 'from-blue-500 to-cyan-500',
   },
   {

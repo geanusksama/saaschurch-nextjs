@@ -164,11 +164,11 @@ function SearchModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
-        <div className="flex items-center gap-3 p-5 border-b border-slate-100">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center gap-3 p-5 border-b border-slate-100 dark:border-slate-700">
           <ChurchIcon className="w-5 h-5 text-slate-500" />
-          <h2 className="font-semibold text-slate-800 text-base">{title}</h2>
-          <button onClick={onClose} className="ml-auto p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4" /></button>
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100 text-base">{title}</h2>
+          <button onClick={onClose} className="ml-auto p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><X className="w-4 h-4 text-slate-500 dark:text-slate-300" /></button>
         </div>
         <div className="p-4">
           <div className="flex gap-2">
@@ -181,7 +181,7 @@ function SearchModal({
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={handleKey}
                 placeholder={placeholder}
-                className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-9 pr-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 caret-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <button
@@ -191,18 +191,18 @@ function SearchModal({
               <Search className="w-4 h-4" /> Buscar
             </button>
           </div>
-          <p className="text-xs text-slate-400 mt-2">Use ↓ ↑ para navegar &nbsp;&nbsp; Enter para selecionar</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">Use ↓ ↑ para navegar &nbsp;&nbsp; Enter para selecionar</p>
         </div>
-        <div className="border-t border-slate-100 min-h-[120px] max-h-64 overflow-y-auto">
+        <div className="border-t border-slate-100 dark:border-slate-700 min-h-[120px] max-h-64 overflow-y-auto">
           {loading && (
-            <div className="flex items-center justify-center h-24 text-slate-400 text-sm">Buscando...</div>
+            <div className="flex items-center justify-center h-24 text-slate-400 dark:text-slate-500 text-sm">Buscando...</div>
           )}
           {!loading && searched && results.length === 0 && (
-            <div className="flex items-center justify-center h-24 text-slate-400 text-sm">Nenhum resultado encontrado</div>
+            <div className="flex items-center justify-center h-24 text-slate-400 dark:text-slate-500 text-sm">Nenhum resultado encontrado</div>
           )}
           {!loading && !searched && (
-            <div className="flex flex-col items-center justify-center h-24 gap-2 text-slate-400">
-              <Search className="w-8 h-8 text-slate-200" />
+            <div className="flex flex-col items-center justify-center h-24 gap-2 text-slate-400 dark:text-slate-500">
+              <Search className="w-8 h-8 text-slate-200 dark:text-slate-700" />
               <p className="text-sm">Digite o nome ou ID para buscar</p>
             </div>
           )}
@@ -210,10 +210,10 @@ function SearchModal({
             <button
               key={r.id}
               onClick={() => onSelect(r)}
-              className={`w-full text-left px-5 py-3 text-sm border-b border-slate-50 last:border-0 transition-colors ${i === activeIdx ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}
+              className={`w-full text-left px-5 py-3 text-sm border-b border-slate-50 dark:border-slate-700 last:border-0 transition-colors ${i === activeIdx ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}
             >
-              <p className="font-medium text-slate-800">{r.label}</p>
-              {r.sub && <p className="text-xs text-slate-400 mt-0.5">{r.sub}</p>}
+              <p className="font-medium text-slate-800 dark:text-slate-100">{r.label}</p>
+              {r.sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{r.sub}</p>}
             </button>
           ))}
         </div>
@@ -259,28 +259,28 @@ function PJModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-800">Cadastro de pessoa Jurídica</h2>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg border border-slate-200">
-            <X className="w-4 h-4" />
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">Cadastro de pessoa Jurídica</h2>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600">
+            <X className="w-4 h-4 text-slate-500 dark:text-slate-300" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-3">
           <input
             type="text" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)}
             placeholder="Razão Social" required
-            className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 caret-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <input
             type="text" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)}
             placeholder="Nome fantasia"
-            className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 caret-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <div className="flex gap-2">
             <select
               value={docTipo} onChange={e => setDocTipo(e.target.value)}
-              className="px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 w-28"
+              className="px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-28"
             >
               <option value="CNPJ">CNPJ</option>
               <option value="CPF">CPF</option>
@@ -289,13 +289,13 @@ function PJModal({
             <input
               type="text" value={doc} onChange={e => setDoc(e.target.value)}
               placeholder="Documento"
-              className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="flex-1 px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 caret-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="flex gap-2">
             <select
               value={churchId} onChange={e => setChurchId(e.target.value)}
-              className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="flex-1 px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               {churches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>

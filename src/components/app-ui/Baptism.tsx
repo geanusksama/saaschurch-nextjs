@@ -762,10 +762,10 @@ export function Baptism() {
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-6 text-slate-900 dark:text-slate-100">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
             <Droplets className="h-5 w-5 text-blue-600" />
           </div>
           <div>
@@ -825,7 +825,7 @@ export function Baptism() {
         />
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(135px,0.72fr)_minmax(135px,0.72fr)_minmax(150px,0.8fr)_minmax(120px,0.62fr)_minmax(125px,0.62fr)_minmax(125px,0.62fr)] xl:items-end">
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
@@ -951,7 +951,7 @@ export function Baptism() {
         <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
       ) : null}
 
-      <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1380px]">
             <thead className="border-b border-slate-200 bg-slate-50">

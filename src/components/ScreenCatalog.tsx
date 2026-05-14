@@ -51,7 +51,7 @@ const screenCategories = [
     icon: Layout,
     color: 'bg-green-500',
     screens: [
-      { id: 'main-dashboard', name: 'Dashboard Principal', path: '/app-ui/dashboard', status: 'done' },
+      { id: 'main-dashboard', name: 'Tela inicial (Notificações)', path: '/app-ui', status: 'done' },
       { id: 'field-dashboard', name: 'Dashboard de Campo', path: '/app-ui/dashboard/field', status: 'done' },
       { id: 'regional-dashboard', name: 'Dashboard Regional', path: '/app-ui/dashboard/regional', status: 'done' },
       { id: 'church-dashboard', name: 'Dashboard da Igreja', status: 'done' },

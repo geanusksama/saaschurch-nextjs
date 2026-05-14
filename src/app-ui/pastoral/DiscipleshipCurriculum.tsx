@@ -48,7 +48,7 @@ export default function DiscipleshipCurriculum() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 text-slate-900 dark:text-slate-100">
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -71,7 +71,7 @@ export default function DiscipleshipCurriculum() {
       </div>
 
       {showProgramForm && (
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
           <h3 className="mb-3 font-semibold text-slate-900">Criar programa de discipulado</h3>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <input
@@ -152,7 +152,7 @@ export default function DiscipleshipCurriculum() {
             : 0;
 
           return (
-            <div key={program.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div key={program.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
               <button
                 onClick={() => setExpandedStage(isExpanded ? null : program.id)}
                 className="w-full p-6 flex items-center justify-between hover:bg-slate-50 transition-colors"
@@ -266,7 +266,7 @@ export default function DiscipleshipCurriculum() {
         })}
 
         {programs.length === 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">Nenhum programa de discipulado cadastrado.</div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400">Nenhum programa de discipulado cadastrado.</div>
         )}
       </div>
     </div>

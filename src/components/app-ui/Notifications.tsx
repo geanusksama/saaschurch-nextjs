@@ -297,11 +297,11 @@ export function Notifications() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 text-slate-900 dark:text-slate-100">
       <div className="mb-8">
         <div className="mb-2 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
               <Bell className="h-6 w-6 text-purple-600" />
             </div>
             <div>
@@ -316,7 +316,7 @@ export function Notifications() {
             {unreadCount > 0 ? (
               <button
                 onClick={markAllAsRead}
-                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-purple-600 transition-colors hover:bg-purple-50"
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-purple-600 dark:text-purple-300 transition-colors hover:bg-purple-50 dark:hover:bg-purple-900/20"
               >
                 <Check className="h-4 w-4" />
                 Marcar todas como lidas
@@ -326,7 +326,7 @@ export function Notifications() {
             {canCreate ? (
               <button
                 onClick={openCreateModal}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 dark:bg-slate-100 px-4 py-2.5 text-sm font-semibold text-white dark:text-slate-900 transition-colors hover:bg-slate-800 dark:hover:bg-slate-200"
               >
                 <Plus className="h-4 w-4" />
                 Nova notificação
@@ -335,11 +335,11 @@ export function Notifications() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="secondary">Campo: {currentUser.campoName || 'Não vinculado'}</Badge>
             <Badge variant="secondary">Perfil: {currentUser.roleName || currentUser.profileType || 'Usuário'}</Badge>
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-slate-500 dark:text-slate-400">
               {canCreate
                 ? 'Você pode criar, editar e excluir notificações enviadas para o seu campo.'
                 : 'Somente o administrador do campo pode criar notificações. Aqui você acompanha e marca as suas como lidas.'}
@@ -349,7 +349,7 @@ export function Notifications() {
       </div>
 
       {error ? (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
         </div>
       ) : null}
@@ -360,7 +360,7 @@ export function Notifications() {
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             filter === 'all'
               ? 'bg-purple-600 text-white'
-              : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
           Todas ({notificationList.length})
@@ -370,7 +370,7 @@ export function Notifications() {
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             filter === 'unread'
               ? 'bg-purple-600 text-white'
-              : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
           Não lidas ({unreadCount})
@@ -378,7 +378,7 @@ export function Notifications() {
       </div>
 
       {loading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-12 text-center text-sm text-slate-500 dark:text-slate-400">
           <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-slate-300" />
           Carregando notificações...
         </div>
@@ -391,8 +391,8 @@ export function Notifications() {
                 key={notification.id}
                 className={`rounded-xl border p-4 transition-all ${
                   notification.read
-                    ? 'border-slate-200 bg-white'
-                    : 'border-purple-200 bg-purple-50/30'
+                    ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'
+                    : 'border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-950/20'
                 }`}
               >
                 <div className="flex items-start gap-4">
@@ -404,21 +404,21 @@ export function Notifications() {
                     <div className="mb-1 flex items-start justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-slate-900">{notification.title}</h3>
+                          <h3 className="font-semibold text-slate-900 dark:text-slate-100">{notification.title}</h3>
                           {notification.canManage ? <Badge variant="secondary">Campo</Badge> : null}
                         </div>
                         {!notification.read ? <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-purple-600" /> : null}
                       </div>
-                      <span className="text-xs text-slate-500">{formatRelativeTime(notification.createdAt)}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{formatRelativeTime(notification.createdAt)}</span>
                     </div>
 
-                    <p className="mb-3 text-sm text-slate-600">{notification.message || 'Sem descrição adicional.'}</p>
+                    <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">{notification.message || 'Sem descrição adicional.'}</p>
 
                     <div className="flex flex-wrap items-center gap-2">
                       {!notification.read ? (
                         <button
                           onClick={() => markAsRead(notification)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                           <Check className="h-3.5 w-3.5" />
                           Marcar como lida
@@ -428,7 +428,7 @@ export function Notifications() {
                       {notification.canManage ? (
                         <button
                           onClick={() => openEditModal(notification)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                           <Edit3 className="h-3.5 w-3.5" />
                           Editar lote
@@ -450,8 +450,8 @@ export function Notifications() {
           })}
 
           {!filteredNotifications.length ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
-              <Bell className="mx-auto mb-4 h-12 w-12 text-slate-300" />
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-12 text-center">
+              <Bell className="mx-auto mb-4 h-12 w-12 text-slate-300 dark:text-slate-600" />
               <p className="text-slate-600 dark:text-slate-400">Nenhuma notificação encontrada</p>
             </div>
           ) : null}
@@ -459,8 +459,8 @@ export function Notifications() {
       )}
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-3xl border border-slate-200 bg-white p-0">
-          <div className="border-b border-slate-200 px-5 py-4">
+        <DialogContent className="max-w-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0 text-slate-900 dark:text-slate-100">
+          <div className="border-b border-slate-200 dark:border-slate-700 px-5 py-4">
             <DialogHeader>
               <DialogTitle>{form.id ? 'Editar notificação' : 'Nova notificação para o campo'}</DialogTitle>
               <DialogDescription>
@@ -471,62 +471,62 @@ export function Notifications() {
 
           <div className="grid gap-5 px-5 py-5">
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                 Título
                 <input
                   value={form.title}
                   onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-                  className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                  className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
                   placeholder="Ex.: Evento especial no sábado"
                 />
               </label>
 
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                 Tipo interno
                 <input
                   value={form.notificationType}
                   onChange={(event) => setForm((current) => ({ ...current, notificationType: event.target.value }))}
-                  className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                  className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
                   placeholder="announcement"
                 />
               </label>
             </div>
 
-            <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
               Mensagem
               <textarea
                 value={form.message}
                 onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))}
                 rows={4}
-                className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
                 placeholder="Descreva o aviso que será enviado para todo o campo."
               />
             </label>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                 Texto do botão
                 <input
                   value={form.actionText}
                   onChange={(event) => setForm((current) => ({ ...current, actionText: event.target.value }))}
-                  className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                  className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
                   placeholder="Abrir aviso"
                 />
               </label>
 
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                 URL de ação
                 <input
                   value={form.actionUrl}
                   onChange={(event) => setForm((current) => ({ ...current, actionUrl: event.target.value }))}
-                  className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                  className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
                   placeholder="/app-ui/events"
                 />
               </label>
             </div>
 
             <div>
-              <div className="mb-2 text-sm font-medium text-slate-700">Ícone</div>
+              <div className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Ícone</div>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {iconOptions.map((option) => {
                   const Icon = option.icon;
@@ -536,14 +536,14 @@ export function Notifications() {
                       key={option.key}
                       type="button"
                       onClick={() => setForm((current) => ({ ...current, iconKey: option.key }))}
-                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${selected ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${selected ? 'border-slate-900 dark:border-slate-100 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${selected ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${selected ? 'bg-white/15 dark:bg-slate-900/15 text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'}`}>
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
                         <div className="text-sm font-semibold">{option.label}</div>
-                        <div className={`text-xs ${selected ? 'text-slate-200' : 'text-slate-500'}`}>{option.key}</div>
+                        <div className={`text-xs ${selected ? 'text-slate-200 dark:text-slate-700' : 'text-slate-500 dark:text-slate-400'}`}>{option.key}</div>
                       </div>
                     </button>
                   );
@@ -552,7 +552,7 @@ export function Notifications() {
             </div>
 
             <div>
-              <div className="mb-2 text-sm font-medium text-slate-700">Cor</div>
+              <div className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Cor</div>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {colorOptions.map((option) => {
                   const selected = form.colorKey === option.key;
@@ -561,12 +561,12 @@ export function Notifications() {
                       key={option.key}
                       type="button"
                       onClick={() => setForm((current) => ({ ...current, colorKey: option.key }))}
-                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${selected ? 'border-slate-900 ring-2 ring-slate-900/10' : 'border-slate-200 hover:bg-slate-50'}`}
+                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${selected ? 'border-slate-900 dark:border-slate-100 ring-2 ring-slate-900/10 dark:ring-slate-100/10' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
                       <div className={`h-10 w-10 rounded-lg ring-1 ${option.className}`} />
                       <div>
-                        <div className="text-sm font-semibold text-slate-900">{option.label}</div>
-                        <div className="text-xs text-slate-500">{option.key}</div>
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{option.label}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{option.key}</div>
                       </div>
                     </button>
                   );
@@ -575,11 +575,11 @@ export function Notifications() {
             </div>
           </div>
 
-          <DialogFooter className="border-t border-slate-200 px-5 py-4">
+          <DialogFooter className="border-t border-slate-200 dark:border-slate-700 px-5 py-4">
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               Cancelar
             </button>

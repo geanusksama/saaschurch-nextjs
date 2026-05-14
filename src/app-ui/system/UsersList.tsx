@@ -87,11 +87,11 @@ export default function UsersList() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-6 text-slate-900 dark:text-slate-100">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
-            <Users className="w-6 h-6 text-slate-600" />
+          <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+            <Users className="w-6 h-6 text-slate-600 dark:text-slate-300" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Usuários do Sistema</h1>
@@ -105,7 +105,7 @@ export default function UsersList() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center justify-between">
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 rounded-lg text-sm flex items-center justify-between">
           <span>{error}</span>
           <div className="flex items-center gap-3">
             {(error.includes('autenticad') || error.includes('401') || error.includes('403')) && (
@@ -138,14 +138,14 @@ export default function UsersList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-slate-500">Carregando...</div>
+          <div className="flex items-center justify-center py-16 text-slate-500 dark:text-slate-400">Carregando...</div>
         ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center py-16 text-slate-400">Nenhum usuário encontrado.</div>
+          <div className="flex items-center justify-center py-16 text-slate-400 dark:text-slate-500">Nenhum usuário encontrado.</div>
         ) : (
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Usuário</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Email</th>
@@ -157,9 +157,9 @@ export default function UsersList() {
                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {filtered.map((user: any) => (
-                <tr key={user.id} className="hover:bg-slate-50">
+                <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -167,21 +167,21 @@ export default function UsersList() {
                           {user.fullName?.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
                         </span>
                       </div>
-                      <span className="font-medium text-slate-900">{user.fullName}</span>
+                      <span className="font-medium text-slate-900 dark:text-slate-100">{user.fullName}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-slate-600">{user.email}</td>
-                  <td className="px-6 py-4 text-slate-600">{user.phone || '—'}</td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{user.email}</td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{user.phone || '—'}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded text-xs font-semibold ${PROFILE_COLORS[user.profileType] || 'bg-slate-100 text-slate-700'}`}>
                       {PROFILE_LABELS[user.profileType] || user.profileType}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
+                  <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
                     <div className="space-y-1">
                       <div>{user.campo?.name || 'Sem campo'}</div>
-                      <div className="text-xs text-slate-400">{user.regional?.name || 'Sem regional'}</div>
-                      <div className="text-xs text-slate-400">{user.church?.name || 'Sem igreja'}</div>
+                      <div className="text-xs text-slate-400 dark:text-slate-500">{user.regional?.name || 'Sem regional'}</div>
+                      <div className="text-xs text-slate-400 dark:text-slate-500">{user.church?.name || 'Sem igreja'}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -190,7 +190,7 @@ export default function UsersList() {
                         {user.role.name}
                       </span>
                     ) : (
-                      <span className="text-slate-400 text-xs">—</span>
+                      <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
@@ -204,7 +204,7 @@ export default function UsersList() {
                     <div className="flex items-center gap-2">
                       <Link
                         to={`/app-ui/system/users/${user.id}/permissions`}
-                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                         title="Permissões"
                       >
                         <Lock className="w-4 h-4 text-slate-500" />

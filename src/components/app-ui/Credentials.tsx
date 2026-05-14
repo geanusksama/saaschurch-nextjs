@@ -290,9 +290,9 @@ export function Credentials() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between text-slate-900 dark:text-slate-100">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
             <CreditCard className="w-6 h-6 text-green-600" />
           </div>
           <div>
@@ -318,7 +318,7 @@ export function Credentials() {
           { label: 'Aprovadas', value: stats.aprovado, icon: <CheckCircle2 className="h-5 w-5 text-blue-500" /> },
           { label: 'Entregues / Ativas', value: stats.entregue, icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
         ].map(({ label, value, icon }) => (
-          <div key={label} className="bg-white border border-slate-200 rounded-xl p-5 flex items-start gap-4">
+          <div key={label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex items-start gap-4">
             <div className="p-2 rounded-lg bg-slate-50">{icon}</div>
             <div>
               <p className="text-sm text-slate-500">{label}</p>
@@ -329,7 +329,7 @@ export function Credentials() {
       </div>
 
       {/* Filters */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(200px,1.1fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)_minmax(170px,0.9fr)_minmax(120px,0.65fr)_minmax(120px,0.65fr)_minmax(120px,0.65fr)] xl:items-end">
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
@@ -396,7 +396,7 @@ export function Credentials() {
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
       {/* Table */}
-      <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead className="border-b border-slate-200 bg-slate-50">

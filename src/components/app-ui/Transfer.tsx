@@ -648,10 +648,10 @@ export function Transfer() {
   }, [churches, requestForm.destinationChurchId, selectedDestinationChurch]);
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-6 text-slate-900 dark:text-slate-100">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-900/30">
             <ArrowRightLeft className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
@@ -680,7 +680,7 @@ export function Transfer() {
         <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Igrejas</p><p className="text-xl font-bold text-slate-900">{stats.churches}</p></div><Building2 className="h-5 w-5 text-green-600" /></div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(135px,0.72fr)_minmax(135px,0.72fr)_minmax(150px,0.8fr)_minmax(120px,0.62fr)_minmax(125px,0.62fr)_minmax(125px,0.62fr)] xl:items-end">
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
@@ -730,7 +730,7 @@ export function Transfer() {
 
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
 
-      <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1280px]">
             <thead className="border-b border-slate-200 bg-slate-50">
@@ -773,7 +773,7 @@ export function Transfer() {
 
       {requestModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+          <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><h2 className="text-xl font-bold text-slate-900">{editingRequest ? 'Editar Transferencia' : 'Nova Transferencia'}</h2><button onClick={closeRequestModal} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="h-4 w-4" /></button></div>
             <div className="space-y-5 px-6 py-5">
               {modalError ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{modalError}</div> : null}

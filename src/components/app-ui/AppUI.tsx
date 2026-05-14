@@ -57,8 +57,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { MemberEditDrawer } from './MemberEditDrawer';
 import { usePermissions } from '../../lib/usePermissions';
+import { THEME_EVENT_NAME, applyThemeSettings, loadThemeSettings, type ThemeSettings } from '../../lib/themeSettings';
 
 import { apiBase } from '../../lib/apiBase';
+import { supabase } from '../../lib/supabaseClient';
 
 interface ContextSwitcherItem {
   id: string;
@@ -258,6 +260,7 @@ export function AppUI() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [myProfileOpen, setMyProfileOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mrm_theme') === 'dark');
+  const [branding, setBranding] = useState<ThemeSettings>(() => loadThemeSettings());
   const profileRef = useRef<HTMLDivElement>(null);
 
   // ── Mobile detection & sidebar behavior ────────────────────────────
@@ -287,6 +290,30 @@ export function AppUI() {
       localStorage.setItem('mrm_theme', 'light');
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    const current = loadThemeSettings();
+    setBranding(current);
+    applyThemeSettings(current);
+
+    const handleThemeChange = (event: Event) => {
+      const next = (event as CustomEvent<ThemeSettings>).detail;
+      if (next) setBranding(next);
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'mrm_branding') {
+        setBranding(loadThemeSettings());
+      }
+    };
+
+    window.addEventListener(THEME_EVENT_NAME, handleThemeChange as EventListener);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener(THEME_EVENT_NAME, handleThemeChange as EventListener);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -529,7 +556,8 @@ export function AppUI() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut().catch(() => undefined);
     localStorage.removeItem('mrm_token');
     localStorage.removeItem('mrm_user');
     localStorage.removeItem('mrm_selected_context');
@@ -621,7 +649,7 @@ export function AppUI() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+    <div className="app-shell flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
       {/* Mobile backdrop */}
       <AnimatePresence>
         {sidebarOpen && isMobile && (
@@ -648,8 +676,12 @@ export function AppUI() {
             {/* Logo */}
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/50 rounded-xl flex items-center justify-center">
-                  <span className="text-purple-700 dark:text-purple-300 font-bold text-xl">M</span>
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[var(--theme-primary-soft)] ring-1 ring-[var(--theme-primary-border)]">
+                  {branding.logoUrl ? (
+                    <img src={branding.logoUrl} alt="Logo" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="font-bold text-xl text-[var(--theme-primary)]">M</span>
+                  )}
                 </div>
                 <div>
                   <h1 className="font-bold text-slate-900 dark:text-white">MRM</h1>
