@@ -1,0 +1,1897 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Campo {
+  id                 String  @id @default(uuid()) @db.Uuid
+  name               String  @db.VarChar(255)
+  code               String  @unique @db.VarChar(50)
+  description        String? @db.Text
+  logoUrl            String? @map("logo_url") @db.VarChar(500)
+  country            String? @default("Brasil") @db.VarChar(100)
+  accessPasswordHash String? @map("access_password_hash") @db.VarChar(255)
+  domain             String? @db.VarChar(255)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  regionais          Regional[]
+  users              User[]                     @relation("CampoUsers")
+  inboxMessages      InboxMessage[]
+  legacyRegionals    LegacyRegional[]           @relation("LegacyRegionalField")
+  legacyHeadquarters LegacyChurchHeadquarters[] @relation("LegacyHeadquartersField")
+  legacyChurches     LegacyChurch[]             @relation("LegacyChurchField")
+  members            Member[]                   @relation("CampoMembers")
+
+  @@map("campos")
+}
+
+model Regional {
+  id            String  @id @default(uuid()) @db.Uuid
+  campoId       String  @map("campo_id") @db.Uuid
+  name          String  @db.VarChar(255)
+  code          String  @db.VarChar(50)
+  description   String? @db.Text
+  coordinatorId String? @map("coordinator_id") @db.Uuid
+  state         String? @db.VarChar(100)
+  city          String? @db.VarChar(100)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  campo       Campo    @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  coordinator User?    @relation("RegionalCoordinator", fields: [coordinatorId], references: [id])
+  churches    Church[]
+  users       User[]   @relation("RegionalUsers")
+  members     Member[]
+  kanCardsOrigin      KanCard[] @relation("KanCardOriginRegional")
+  kanCardsDestination KanCard[] @relation("KanCardDestinationRegional")
+
+  @@unique([campoId, code])
+  @@map("regionais")
+}
+
+model Church {
+  id             String  @id @default(uuid()) @db.Uuid
+  regionalId     String  @map("regional_id") @db.Uuid
+  name           String  @db.VarChar(255)
+  code           String  @db.VarChar(50)
+  legalName      String? @map("legal_name") @db.VarChar(255)
+  cnpj           String? @unique @db.VarChar(18)
+  leadPastorId   String? @map("lead_pastor_id") @db.Uuid
+  parentChurchId String? @map("parent_church_id") @db.Uuid
+  headquartersId String? @map("headquarters_id") @db.Uuid
+
+  currentLeaderName     String?   @map("current_leader_name") @db.VarChar(255)
+  currentLeaderRole     String?   @map("current_leader_role") @db.VarChar(255)
+  currentLeaderRoleDate DateTime? @map("current_leader_role_date") @db.Date
+  leaderRoll            String?   @map("leader_roll") @db.VarChar(50)
+  entryDate             DateTime? @map("entry_date") @db.Date
+  exitDate              DateTime? @map("exit_date") @db.Date
+  hash                  String?   @db.VarChar(100)
+  plateName             String?   @map("plate_name") @db.VarChar(255)
+  documentType          String?   @map("document_type") @db.VarChar(30)
+  documentNumber        String?   @map("document_number") @db.VarChar(50)
+  hasOwnTemple          Boolean   @default(false) @map("has_own_temple")
+  notes                 String?   @db.Text
+
+  email    String? @db.VarChar(255)
+  phone    String? @db.VarChar(20)
+  whatsapp String? @db.VarChar(20)
+  website  String? @db.VarChar(255)
+
+  addressStreet       String?  @map("address_street") @db.VarChar(255)
+  addressNumber       String?  @map("address_number") @db.VarChar(20)
+  addressComplement   String?  @map("address_complement") @db.VarChar(100)
+  addressNeighborhood String?  @map("address_neighborhood") @db.VarChar(100)
+  addressCity         String?  @map("address_city") @db.VarChar(100)
+  addressState        String?  @map("address_state") @db.VarChar(50)
+  addressZipcode      String?  @map("address_zipcode") @db.VarChar(10)
+  addressCountry      String?  @default("Brasil") @map("address_country") @db.VarChar(100)
+  latitude            Decimal? @db.Decimal(10, 8)
+  longitude           Decimal? @db.Decimal(11, 8)
+
+  logoUrl        String? @map("logo_url") @db.VarChar(500)
+  primaryColor   String? @default("#8b5cf6") @map("primary_color") @db.VarChar(7)
+  secondaryColor String? @default("#3b82f6") @map("secondary_color") @db.VarChar(7)
+
+  timezone String? @default("America/Sao_Paulo") @db.VarChar(50)
+  currency String? @default("BRL") @db.VarChar(3)
+  language String? @default("pt-BR") @db.VarChar(5)
+
+  status    String?   @default("active") @db.VarChar(20)
+  foundedAt DateTime? @map("founded_at") @db.Date
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  regional      Regional                  @relation(fields: [regionalId], references: [id], onDelete: Cascade)
+  leadPastor    User?                     @relation("ChurchLeadPastor", fields: [leadPastorId], references: [id])
+  parentChurch  Church?                   @relation("ChurchParent", fields: [parentChurchId], references: [id])
+  childChurches Church[]                  @relation("ChurchParent")
+  headquarters  LegacyChurchHeadquarters? @relation("ChurchHeadquarters", fields: [headquartersId], references: [id])
+
+  users                  User[]                  @relation("ChurchUsers")
+  roles                  Role[]
+  members                Member[]
+  contacts               ChurchContact[]
+  functionHistory        ChurchFunctionHistory[]
+  leaderHistory          ChurchLeaderHistory[]
+  rentRecords            ChurchRentRecord[]
+  financialAccounts      FinancialAccount[]
+  financialCategories    FinancialCategory[]
+  transactions           Transaction[]
+  offerings              Offering[]
+  baptisms               Baptism[]
+  events                 Event[]
+  leads                  Lead[]
+  discipleshipTracks     DiscipleshipTrack[]
+  ministries             Ministry[]
+  cellGroups             CellGroup[]
+  communicationCampaigns CommunicationCampaign[]
+  communicationTemplates CommunicationTemplate[]
+  messages               Message[]
+  pages                  Page[]
+  blogPosts              BlogPost[]
+  sermons                Sermon[]
+  memberTags             MemberTag[]
+  auditLogs              AuditLog[]
+  settings               Setting[]
+  webhooks               Webhook[]
+
+  kanCards              KanCard[]          @relation("KanCardChurch")
+  kanCardsAsDestination KanCard[]          @relation("KanCardDestination")
+  kanCardsAsRequester   KanCard[]          @relation("KanCardRequester")
+  kanCardsAsRequested   KanCard[]          @relation("KanCardRequested")
+  memberOccurrences     MemberOccurrence[] @relation("MemberOccurrenceChurch")
+  eventHistory          MemberEventHistory[] @relation("MemberEventHistoryChurch")
+  titleHistory          MemberTitleHistory[] @relation("MemberTitleHistoryChurch")
+
+  livroCaixa            LivroCaixa[]
+
+  @@unique([regionalId, code])
+  @@index([headquartersId])
+  @@map("churches")
+}
+
+model ChurchContact {
+  id        String  @id @default(uuid()) @db.Uuid
+  churchId  String  @map("church_id") @db.Uuid
+  type      String  @db.VarChar(50)
+  name      String? @db.VarChar(150)
+  value     String  @db.VarChar(255)
+  notes     String? @db.Text
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  @@index([churchId])
+  @@map("church_contacts")
+}
+
+model ChurchFunctionCatalog {
+  id                  String    @id @default(uuid()) @db.Uuid
+  createdAt           DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  abbreviation        String?   @map("abbreviation") @db.VarChar(255)
+  name                String?   @map("name") @db.VarChar(255)
+  isActive            Boolean?  @map("is_active")
+  number              String?   @map("number") @db.VarChar(255)
+  prerequisiteLevel   BigInt?   @map("prerequisite_level")
+  minimumAge          BigInt?   @map("minimum_age")
+  maximumAge          BigInt?   @map("maximum_age")
+  displayOrder        BigInt?   @map("display_order")
+  requiresMinimumDate Boolean?  @map("requires_minimum_date")
+  isLeaderRole        Boolean?  @map("is_leader_role")
+  isBoardRole         Boolean?  @map("is_board_role")
+  onlyMinister        Boolean?  @map("only_minister")
+  allowMen            Boolean?  @map("allow_men")
+  allowWomen          Boolean?  @map("allow_women")
+  profiles            String?   @map("profiles") @db.VarChar(255)
+  fieldName           String?   @map("field_name") @db.VarChar(255)
+
+  churchFunctionHistory ChurchFunctionHistory[]
+  churchLeaderHistory   ChurchLeaderHistory[]
+
+  @@map("church_function_catalog")
+}
+
+model ChurchFunctionHistory {
+  id         String    @id @default(uuid()) @db.Uuid
+  churchId   String    @map("church_id") @db.Uuid
+  memberId   String    @map("member_id") @db.Uuid
+  functionId String    @map("function_id") @db.Uuid
+  department String?   @db.VarChar(150)
+  startDate  DateTime  @map("start_date") @db.Date
+  endDate    DateTime? @map("end_date") @db.Date
+  notes      String?   @db.Text
+  isActive   Boolean   @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church   Church                @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  member   Member                @relation("ChurchFunctionMember", fields: [memberId], references: [id], onDelete: Cascade)
+  function ChurchFunctionCatalog @relation(fields: [functionId], references: [id], onDelete: Restrict)
+
+  @@index([churchId, functionId])
+  @@index([memberId])
+  @@map("church_function_history")
+}
+
+model ChurchRentRecord {
+  id                  String    @id @default(uuid()) @db.Uuid
+  churchId            String    @map("church_id") @db.Uuid
+  city                String    @db.VarChar(100)
+  address             String    @db.VarChar(255)
+  amount              Decimal   @db.Decimal(12, 2)
+  ownerName           String?   @map("owner_name") @db.VarChar(150)
+  ownerDocumentType   String?   @map("owner_document_type") @db.VarChar(10)
+  ownerDocumentNumber String?   @map("owner_document_number") @db.VarChar(20)
+  paidAt              DateTime  @map("paid_at") @db.Date
+  receiptUrl          String?   @map("receipt_url") @db.VarChar(500)
+  notes               String?   @db.Text
+  isActive            Boolean   @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  @@index([churchId, paidAt])
+  @@map("church_rent_records")
+}
+
+model ChurchLeaderHistory {
+  id                     String    @id @default(uuid()) @db.Uuid
+  churchId               String    @map("church_id") @db.Uuid
+  previousLeaderMemberId String?   @map("previous_leader_member_id") @db.Uuid
+  newLeaderMemberId      String?   @map("new_leader_member_id") @db.Uuid
+  functionId             String?   @map("function_id") @db.Uuid
+  indicatedBy            String    @map("indicated_by") @db.VarChar(255)
+  changeReason           String    @map("change_reason") @db.Text
+  entryDate              DateTime  @map("entry_date") @db.Date
+  previousExitDate       DateTime? @map("previous_exit_date") @db.Date
+  currentCash            Decimal?  @map("current_cash") @db.Decimal(12, 2)
+  averageIncome          Decimal?  @map("average_income") @db.Decimal(12, 2)
+  averageExpense         Decimal?  @map("average_expense") @db.Decimal(12, 2)
+  maxIncome              Decimal?  @map("max_income") @db.Decimal(12, 2)
+  totalMembers           Int?      @map("total_members")
+  totalWorkers           Int?      @map("total_workers")
+  notes                  String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  church               Church                 @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  previousLeaderMember Member?                @relation("ChurchLeaderHistoryPreviousMember", fields: [previousLeaderMemberId], references: [id])
+  newLeaderMember      Member?                @relation("ChurchLeaderHistoryNewMember", fields: [newLeaderMemberId], references: [id])
+  function             ChurchFunctionCatalog? @relation(fields: [functionId], references: [id], onDelete: Restrict)
+
+  @@index([churchId, entryDate])
+  @@map("church_leader_history")
+}
+
+model User {
+  id         String  @id @default(uuid()) @db.Uuid
+  churchId   String? @map("church_id") @db.Uuid
+  campoId    String? @map("campo_id") @db.Uuid
+  regionalId String? @map("regional_id") @db.Uuid
+  email      String  @unique @db.VarChar(255)
+
+  fullName  String  @map("full_name") @db.VarChar(255)
+  systemEmail String? @unique @map("system_email") @db.VarChar(255)
+  avatarUrl String? @map("avatar_url") @db.VarChar(500)
+  phone     String? @db.VarChar(20)
+
+  // profileType: master | admin | campo | church
+  profileType String @default("church") @map("profile_type") @db.VarChar(20)
+
+  roleId      String? @map("role_id") @db.Uuid
+  isAdmin     Boolean @default(false) @map("is_admin")
+  isActive    Boolean @default(true) @map("is_active")
+  permissions Json?   @db.JsonB
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church   Church?   @relation("ChurchUsers", fields: [churchId], references: [id], onDelete: Cascade)
+  campo    Campo?    @relation("CampoUsers", fields: [campoId], references: [id])
+  regional Regional? @relation("RegionalUsers", fields: [regionalId], references: [id])
+  role     Role?     @relation(fields: [roleId], references: [id])
+
+  churchesAsLeadPastor   Church[]   @relation("ChurchLeadPastor")
+  regionaisAsCoordinator Regional[] @relation("RegionalCoordinator")
+
+  members       Member[] @relation("MemberUser")
+  memberCreated Member[] @relation("MemberCreatedBy")
+  memberUpdated Member[] @relation("MemberUpdatedBy")
+
+  eventRegistrationsCheckedIn EventRegistration[] @relation("EventRegistrationCheckinBy")
+  eventAttendanceCreated      EventAttendance[]   @relation("EventAttendanceCreatedBy")
+  eventsOrganized             Event[]             @relation("EventOrganizer")
+
+  leadActivitiesCreated LeadActivity[] @relation("LeadActivityCreatedBy")
+  leadsAssigned         Lead[]         @relation("LeadAssignedTo")
+  leadsCreated          Lead[]         @relation("LeadCreatedBy")
+  leadsUpdated          Lead[]         @relation("LeadUpdatedBy")
+
+  transactionsCreated Transaction[] @relation("TransactionCreatedBy")
+  transactionsUpdated Transaction[] @relation("TransactionUpdatedBy")
+
+  livroCaixaOperado   LivroCaixa[] @relation("LivroCaixaOperador")
+  livroCaixaCreated   LivroCaixa[] @relation("LivroCaixaCreatedBy")
+  livroCaixaUpdated   LivroCaixa[] @relation("LivroCaixaUpdatedBy")
+
+  communicationCampaignsCreated CommunicationCampaign[] @relation("CampaignCreatedBy")
+
+  pagesCreated      Page[]     @relation("PageCreatedBy")
+  pagesUpdated      Page[]     @relation("PageUpdatedBy")
+  blogPostsAuthored BlogPost[] @relation("BlogPostAuthor")
+  blogPostsCreated  BlogPost[] @relation("BlogPostCreatedBy")
+  blogPostsUpdated  BlogPost[] @relation("BlogPostUpdatedBy")
+
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  settingsUpdated Setting[]      @relation("SettingUpdatedBy")
+
+  sentInboxMessages     InboxMessage[]   @relation("SentInboxMessages")
+  receivedInboxMessages InboxRecipient[] @relation("ReceivedInboxMessages")
+
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  churchId    String? @map("church_id") @db.Uuid
+  name        String  @db.VarChar(100)
+  description String? @db.Text
+  color       String? @default("#8b5cf6") @db.VarChar(7)
+  permissions Json?   @db.JsonB
+  isSystem    Boolean @default(false) @map("is_system")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church Church? @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  users  User[]
+
+  @@unique([churchId, name])
+  @@map("roles")
+}
+
+model EcclesiasticalTitle {
+  id                       String    @id @default(uuid()) @db.Uuid
+  name                     String    @unique @db.VarChar(120)
+  abbreviation             String?   @map("abbreviation") @db.VarChar(30)
+  level                    Int       @default(0)
+  grouping                 String?   @map("grouping") @db.VarChar(120)
+  prerequisiteLevel        Int?      @map("prerequisite_level")
+  minimumAge               Int?      @map("minimum_age")
+  maximumAge               Int?      @map("maximum_age")
+  prerequisiteOccurrence   String?   @map("prerequisite_occurrence") @db.Text
+  isActive                 Boolean   @default(true) @map("is_active")
+  isFixed                  Boolean   @default(false) @map("is_fixed")
+  isEcclesiasticalMinister Boolean   @default(false) @map("is_ecclesiastical_minister")
+  allowMen                 Boolean   @default(true) @map("allow_men")
+  allowWomen               Boolean   @default(true) @map("allow_women")
+  profile                  String?   @db.VarChar(120)
+  displayOrder             Int       @default(0) @map("display_order")
+  consecrationTypeKey      String?   @map("consecration_type_key") @db.VarChar(50)
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+  deletedAt                DateTime? @map("deleted_at")
+
+  members Member[]
+
+  @@map("ecclesiastical_titles")
+}
+
+model Member {
+  id                    String  @id @default(uuid()) @db.Uuid
+  churchId              String  @map("church_id") @db.Uuid
+  regionalId            String? @map("regional_id") @db.Uuid
+  campoId               String? @map("campo_id") @db.Uuid
+  userId                String? @map("user_id") @db.Uuid
+  ecclesiasticalTitleId String? @map("ecclesiastical_title_id") @db.Uuid
+  memberType            String? @default("MEMBRO") @map("member_type") @db.VarChar(20)
+  rol                   Int?    @default(autoincrement())
+
+  fullName      String  @map("full_name") @db.VarChar(255)
+  preferredName String? @map("preferred_name") @db.VarChar(100)
+  fantasyName   String? @map("fantasy_name") @db.VarChar(255)
+  photoUrl      String? @map("photo_url") @db.VarChar(500)
+  coverPhotoUrl String? @map("cover_photo_url") @db.Text
+
+  cpf           String?   @unique @db.VarChar(14)
+  cnpj          String?   @db.VarChar(18)
+  rg            String?   @db.VarChar(20)
+  birthDate     DateTime? @map("birth_date") @db.Date
+  gender        String?   @db.VarChar(20)
+  maritalStatus String?   @map("marital_status") @db.VarChar(20)
+
+  email  String? @db.VarChar(255)
+  phone  String? @db.VarChar(20)
+  mobile String? @db.VarChar(20)
+
+  addressStreet       String? @map("address_street") @db.VarChar(255)
+  addressNumber       String? @map("address_number") @db.VarChar(20)
+  addressComplement   String? @map("address_complement") @db.VarChar(100)
+  addressNeighborhood String? @map("address_neighborhood") @db.VarChar(100)
+  addressCity         String? @map("address_city") @db.VarChar(100)
+  addressState        String? @map("address_state") @db.VarChar(50)
+  addressZipcode      String? @map("address_zipcode") @db.VarChar(10)
+
+  membershipStatus    String?   @default("AGUARDANDO ATIVACAO") @map("membership_status") @db.VarChar(30)
+  membershipDate      DateTime? @map("membership_date") @db.Date
+  ecclesiasticalTitle String?   @default("CONGREGADO") @map("ecclesiastical_title") @db.VarChar(120)
+  baptismStatus       String?   @map("baptism_status") @db.VarChar(20)
+  baptismDate         DateTime? @map("baptism_date") @db.Date
+
+  fatherName        String? @map("father_name") @db.VarChar(255)
+  motherName        String? @map("mother_name") @db.VarChar(255)
+  spouseId          String? @map("spouse_id") @db.Uuid
+  spouseName        String? @map("spouse_name") @db.VarChar(255)
+  naturalityCity    String? @map("naturality_city") @db.VarChar(100)
+  naturalityState   String? @map("naturality_state") @db.VarChar(2)
+  nationality       String? @db.VarChar(100)
+  voterRegistration String? @map("voter_registration") @db.VarChar(20)
+  voterZone         String? @map("voter_zone") @db.VarChar(10)
+  voterSection      String? @map("voter_section") @db.VarChar(10)
+
+  occupation String? @db.VarChar(255)
+  company    String? @db.VarChar(255)
+
+  notes                 String? @db.Text
+  emergencyContactName  String? @map("emergency_contact_name") @db.VarChar(255)
+  emergencyContactPhone String? @map("emergency_contact_phone") @db.VarChar(20)
+
+  searchVector Unsupported("tsvector")? @map("search_vector")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  church                 Church               @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  regional               Regional?            @relation(fields: [regionalId], references: [id])
+  campo                  Campo?               @relation("CampoMembers", fields: [campoId], references: [id])
+  user                   User?                @relation("MemberUser", fields: [userId], references: [id])
+  ecclesiasticalTitleRef EcclesiasticalTitle? @relation(fields: [ecclesiasticalTitleId], references: [id])
+  spouse                 Member?              @relation("MemberSpouse", fields: [spouseId], references: [id])
+  spouseOf               Member[]             @relation("MemberSpouse")
+
+  createdByUser User? @relation("MemberCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("MemberUpdatedBy", fields: [updatedBy], references: [id])
+
+  baptisms                   Baptism[]
+  baptismsMinistered         Baptism[]                  @relation("BaptismMinister")
+  familyRelationships        MemberFamilyRelationship[] @relation("MemberFamilyMember")
+  relatedFamilyRelationships MemberFamilyRelationship[] @relation("MemberFamilyRelated")
+
+  memberTagAssignments MemberTagAssignment[]
+  offerings            Offering[]
+  donorTransactions    Transaction[]         @relation("TransactionDonor")
+  livroCaixaEntries    LivroCaixa[]          @relation("LivroCaixaMember")
+  eventAttendance      EventAttendance[]
+  eventRegistrations   EventRegistration[]
+
+  discipleshipEnrollments       DiscipleshipEnrollment[]
+  discipleshipMentorEnrollments DiscipleshipEnrollment[] @relation("DiscipleshipMentor")
+
+  ministryMemberships  MinistryMember[]
+  cellGroupMemberships CellGroupMember[]
+
+  cellGroupsLed         CellGroup[]             @relation("CellGroupLeader")
+  cellGroupsHosted      CellGroup[]             @relation("CellGroupHost")
+  ministriesLed         Ministry[]              @relation("MinistryLeader")
+  churchFunctions       ChurchFunctionHistory[] @relation("ChurchFunctionMember")
+  previousLeaderHistory ChurchLeaderHistory[]   @relation("ChurchLeaderHistoryPreviousMember")
+  newLeaderHistory      ChurchLeaderHistory[]   @relation("ChurchLeaderHistoryNewMember")
+
+  sermonsPreached Sermon[]
+  leadsConverted  Lead[]   @relation("LeadMember")
+
+  kanCards    KanCard[]          @relation("KanCardMember")
+  occurrences MemberOccurrence[] @relation("MemberOccurrenceMember")
+  eventHistory MemberEventHistory[] @relation("MemberEventHistoryMember")
+  titleHistory MemberTitleHistory[] @relation("MemberTitleHistoryMember")
+
+  @@index([churchId])
+  @@index([campoId])
+  @@index([ecclesiasticalTitleId])
+  @@index([memberType])
+  @@index([regionalId])
+  @@index([membershipStatus])
+  @@map("members")
+}
+
+model MemberFamilyRelationship {
+  id               String   @id @default(uuid()) @db.Uuid
+  memberId         String   @map("member_id") @db.Uuid
+  relatedMemberId  String   @map("related_member_id") @db.Uuid
+  relationshipType String   @map("relationship_type") @db.VarChar(30)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  member        Member @relation("MemberFamilyMember", fields: [memberId], references: [id], onDelete: Cascade)
+  relatedMember Member @relation("MemberFamilyRelated", fields: [relatedMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, relatedMemberId, relationshipType])
+  @@map("member_family_relationships")
+}
+
+model Baptism {
+  id                String   @id @default(uuid()) @db.Uuid
+  churchId          String   @map("church_id") @db.Uuid
+  memberId          String   @map("member_id") @db.Uuid
+  baptismDate       DateTime @map("baptism_date") @db.Date
+  location          String?  @db.VarChar(255)
+  ministerId        String?  @map("minister_id") @db.Uuid
+  certificateNumber String?  @unique @map("certificate_number") @db.VarChar(50)
+  certificateUrl    String?  @map("certificate_url") @db.VarChar(500)
+  witnesses         Json?    @db.JsonB
+  notes             String?  @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  church   Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  member   Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  minister Member? @relation("BaptismMinister", fields: [ministerId], references: [id])
+
+  @@map("baptisms")
+}
+
+model MemberTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  churchId  String   @map("church_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  color     String?  @default("#8b5cf6") @db.VarChar(7)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  church      Church                @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  assignments MemberTagAssignment[]
+
+  @@unique([churchId, name])
+  @@map("member_tags")
+}
+
+model MemberTagAssignment {
+  memberId  String   @map("member_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  member Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tag    MemberTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, tagId])
+  @@map("member_tag_assignments")
+}
+
+model FinancialAccount {
+  id             String   @id @default(uuid()) @db.Uuid
+  churchId       String   @map("church_id") @db.Uuid
+  name           String   @db.VarChar(255)
+  accountType    String   @map("account_type") @db.VarChar(30)
+  bankName       String?  @map("bank_name") @db.VarChar(255)
+  bankCode       String?  @map("bank_code") @db.VarChar(10)
+  agency         String?  @db.VarChar(20)
+  accountNumber  String?  @map("account_number") @db.VarChar(30)
+  initialBalance Decimal? @default(0) @map("initial_balance") @db.Decimal(15, 2)
+  currentBalance Decimal? @default(0) @map("current_balance") @db.Decimal(15, 2)
+  isActive       Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church               Church        @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  transactions         Transaction[] @relation("AccountTransactions")
+  transferTransactions Transaction[] @relation("TransferAccount")
+
+  @@map("financial_accounts")
+}
+
+model FinancialCategory {
+  id           String   @id @default(uuid()) @db.Uuid
+  churchId     String   @map("church_id") @db.Uuid
+  parentId     String?  @map("parent_id") @db.Uuid
+  name         String   @db.VarChar(255)
+  type         String   @db.VarChar(20)
+  color        String?  @default("#8b5cf6") @db.VarChar(7)
+  icon         String?  @db.VarChar(50)
+  budgetAmount Decimal? @map("budget_amount") @db.Decimal(15, 2)
+  isActive     Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church       Church              @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  parent       FinancialCategory?  @relation("FinancialCategoryParent", fields: [parentId], references: [id])
+  children     FinancialCategory[] @relation("FinancialCategoryParent")
+  transactions Transaction[]
+
+  @@map("financial_categories")
+}
+
+model Transaction {
+  id                  String    @id @default(uuid()) @db.Uuid
+  churchId            String    @map("church_id") @db.Uuid
+  accountId           String    @map("account_id") @db.Uuid
+  categoryId          String?   @map("category_id") @db.Uuid
+  type                String    @db.VarChar(20)
+  amount              Decimal   @db.Decimal(15, 2)
+  description         String    @db.VarChar(500)
+  notes               String?   @db.Text
+  transactionDate     DateTime  @map("transaction_date") @db.Date
+  dueDate             DateTime? @map("due_date") @db.Date
+  paidAt              DateTime? @map("paid_at")
+  status              String?   @default("pending") @db.VarChar(20)
+  paymentMethod       String?   @map("payment_method") @db.VarChar(30)
+  paymentProofUrl     String?   @map("payment_proof_url") @db.VarChar(500)
+  isRecurring         Boolean   @default(false) @map("is_recurring")
+  recurrencePattern   String?   @map("recurrence_pattern") @db.VarChar(20)
+  recurrenceParentId  String?   @map("recurrence_parent_id") @db.Uuid
+  donorMemberId       String?   @map("donor_member_id") @db.Uuid
+  transferToAccountId String?   @map("transfer_to_account_id") @db.Uuid
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  church             Church             @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  account            FinancialAccount   @relation("AccountTransactions", fields: [accountId], references: [id])
+  category           FinancialCategory? @relation(fields: [categoryId], references: [id])
+  recurrenceParent   Transaction?       @relation("TransactionRecurrence", fields: [recurrenceParentId], references: [id])
+  recurrenceChildren Transaction[]      @relation("TransactionRecurrence")
+  donorMember        Member?            @relation("TransactionDonor", fields: [donorMemberId], references: [id])
+  transferToAccount  FinancialAccount?  @relation("TransferAccount", fields: [transferToAccountId], references: [id])
+
+  createdByUser User? @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("TransactionUpdatedBy", fields: [updatedBy], references: [id])
+
+  offerings Offering[]
+
+  @@map("transactions")
+}
+
+model Offering {
+  id              String   @id @default(uuid()) @db.Uuid
+  churchId        String   @map("church_id") @db.Uuid
+  transactionId   String?  @map("transaction_id") @db.Uuid
+  memberId        String?  @map("member_id") @db.Uuid
+  offeringType    String   @map("offering_type") @db.VarChar(30)
+  amount          Decimal  @db.Decimal(15, 2)
+  offeringDate    DateTime @map("offering_date") @db.Date
+  paymentMethod   String?  @map("payment_method") @db.VarChar(30)
+  referenceNumber String?  @map("reference_number") @db.VarChar(100)
+  notes           String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by") @db.Uuid
+
+  church      Church       @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+  member      Member?      @relation(fields: [memberId], references: [id])
+
+  @@map("offerings")
+}
+
+// ---------------------------------------------------------------------------
+// LIVRO CAIXA — tabela principal de lançamentos financeiros
+// Migrada do legado tblivrao com correção de tipos e relacionamentos.
+// ---------------------------------------------------------------------------
+model LivroCaixa {
+  id             String   @id @default(uuid()) @db.Uuid
+
+  // Igreja que registrou o lançamento (conta-caixa)
+  churchId       String   @map("church_id") @db.Uuid
+
+  // Data do lançamento — DATE nativo, sem texto, para evitar conversão em queries
+  dataLancamento DateTime @map("data_lancamento") @db.Date
+
+  // Referência/competência (ex: "Abril/2025")
+  referencia     String?  @db.VarChar(100)
+
+  // Valor: positivo = receita, negativo = despesa (ou use tipo para distinguir)
+  valor          Decimal  @db.Decimal(15, 2)
+
+  // Tipo: RECEITA | DESPESA | TRANSFERENCIA
+  tipo           String   @db.VarChar(20)
+
+  // Forma de pagamento (PIX, DINHEIRO, etc.)
+  formaPg        String?  @map("forma_pg") @db.VarChar(50)
+
+  // Plano de conta e categoria gerencial
+  planoDeConta   String?  @map("plano_de_conta") @db.VarChar(100)
+  categoria      String?  @db.VarChar(100)
+  centroDeCusto  String?  @map("centro_de_custo") @db.VarChar(100)
+
+  // Documento/numeração
+  numLancamento  String?  @map("num_lancamento") @db.VarChar(50)
+  numDoc         String?  @map("num_doc") @db.VarChar(50)
+  tipoDocumento  String?  @map("tipo_documento") @db.VarChar(50)
+
+  // Identificação do favorecido/pagador
+  // tipo_pessoa: MEMBRO | NAO_MEMBRO | PJ | PF
+  tipoPessoa     String?  @map("tipo_pessoa") @db.VarChar(20)
+  favorecido     String?  @db.VarChar(255)
+
+  // FK para membro (quando o favorecido é um membro cadastrado)
+  memberId       String?  @map("member_id") @db.Uuid
+
+  // ID externo para favorecidos não-membros (PF, PJ, fornecedor etc.)
+  idFavorecidoExterno String? @map("id_favorecido_externo") @db.VarChar(100)
+
+  // Operador que registrou
+  operador       String?  @db.VarChar(255)
+  operadorId     String?  @map("operador_id") @db.Uuid
+  igrejaOperador String?  @map("igreja_operador") @db.VarChar(255)
+
+  // Hierarquia (denormalizados para performance de relatórios)
+  regional       String?  @db.VarChar(100)
+  campo          String?  @db.VarChar(100)
+
+  // Hash de integridade / auditoria
+  hash           String?  @db.VarChar(255)
+
+  // Extras
+  obs            String?  @db.Text
+  foto           String?  @db.VarChar(500)     // URL do comprovante
+  identificador  String?  @db.VarChar(100)
+  contaCaixa     String?  @map("conta_caixa") @db.VarChar(100)
+
+  // Status
+  situacao       Boolean  @default(true)
+  deletadoPor    String?  @map("deletado_por") @db.VarChar(255)
+  deletedAt      DateTime? @map("deleted_at")
+
+  // ID do registro no sistema legado (para rastrear importação)
+  legacyId       BigInt?  @map("legacy_id")
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      String?  @map("created_by") @db.Uuid
+  updatedBy      String?  @map("updated_by") @db.Uuid
+
+  // Relações
+  church         Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  member         Member?  @relation("LivroCaixaMember", fields: [memberId], references: [id])
+  operadorUser   User?    @relation("LivroCaixaOperador", fields: [operadorId], references: [id])
+  createdByUser  User?    @relation("LivroCaixaCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser  User?    @relation("LivroCaixaUpdatedBy", fields: [updatedBy], references: [id])
+
+  // Índices para performance de relatórios (evita full-scan em queries por período/igreja)
+  @@index([churchId, dataLancamento])
+  @@index([memberId])
+  @@index([tipo])
+  @@index([planoDeConta])
+  @@index([categoria])
+  @@index([centroDeCusto])
+  @@index([legacyId])
+  @@index([campo])
+  @@index([regional])
+  @@map("livro_caixa")
+}
+
+model Event {
+  id                   String    @id @default(uuid()) @db.Uuid
+  churchId             String    @map("church_id") @db.Uuid
+  title                String    @db.VarChar(255)
+  description          String?   @db.Text
+  eventType            String?   @map("event_type") @db.VarChar(30)
+  startDatetime        DateTime  @map("start_datetime")
+  endDatetime          DateTime  @map("end_datetime")
+  allDay               Boolean   @default(false) @map("all_day")
+  timezone             String?   @default("America/Sao_Paulo") @db.VarChar(50)
+  locationType         String?   @default("physical") @map("location_type") @db.VarChar(20)
+  locationName         String?   @map("location_name") @db.VarChar(255)
+  locationAddress      String?   @map("location_address") @db.Text
+  locationUrl          String?   @map("location_url") @db.VarChar(500)
+  maxCapacity          Int?      @map("max_capacity")
+  requiresRegistration Boolean   @default(false) @map("requires_registration")
+  registrationDeadline DateTime? @map("registration_deadline")
+  isPaid               Boolean   @default(false) @map("is_paid")
+  ticketPrice          Decimal?  @map("ticket_price") @db.Decimal(10, 2)
+  bannerUrl            String?   @map("banner_url") @db.VarChar(500)
+  color                String?   @default("#8b5cf6") @db.VarChar(7)
+  status               String?   @default("scheduled") @db.VarChar(20)
+  isPublic             Boolean   @default(true) @map("is_public")
+  organizerId          String?   @map("organizer_id") @db.Uuid
+  isRecurring          Boolean   @default(false) @map("is_recurring")
+  recurrencePattern    Json?     @map("recurrence_pattern") @db.JsonB
+  recurrenceParentId   String?   @map("recurrence_parent_id") @db.Uuid
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  church             Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  organizer          User?   @relation("EventOrganizer", fields: [organizerId], references: [id])
+  recurrenceParent   Event?  @relation("EventRecurrence", fields: [recurrenceParentId], references: [id])
+  recurrenceChildren Event[] @relation("EventRecurrence")
+
+  registrations EventRegistration[]
+  attendance    EventAttendance[]
+  sermons       Sermon[]
+
+  @@map("events")
+}
+
+model EventRegistration {
+  id               String    @id @default(uuid()) @db.Uuid
+  eventId          String    @map("event_id") @db.Uuid
+  memberId         String?   @map("member_id") @db.Uuid
+  fullName         String    @map("full_name") @db.VarChar(255)
+  email            String?   @db.VarChar(255)
+  phone            String?   @db.VarChar(20)
+  registrationDate DateTime  @default(now()) @map("registration_date")
+  status           String?   @default("confirmed") @db.VarChar(20)
+  paymentStatus    String?   @map("payment_status") @db.VarChar(20)
+  paymentAmount    Decimal?  @map("payment_amount") @db.Decimal(10, 2)
+  paymentDate      DateTime? @map("payment_date")
+  checkedIn        Boolean   @default(false) @map("checked_in")
+  checkinDatetime  DateTime? @map("checkin_datetime")
+  checkinBy        String?   @map("checkin_by") @db.Uuid
+  additionalData   Json?     @map("additional_data") @db.JsonB
+  notes            String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  event         Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  member        Member? @relation(fields: [memberId], references: [id])
+  checkinByUser User?   @relation("EventRegistrationCheckinBy", fields: [checkinBy], references: [id])
+
+  @@map("event_registrations")
+}
+
+model EventAttendance {
+  id              String   @id @default(uuid()) @db.Uuid
+  eventId         String   @map("event_id") @db.Uuid
+  memberId        String   @map("member_id") @db.Uuid
+  present         Boolean  @default(true)
+  checkinDatetime DateTime @default(now()) @map("checkin_datetime")
+  checkinMethod   String?  @map("checkin_method") @db.VarChar(20)
+  notes           String?  @db.Text
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  event         Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  member        Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  createdByUser User?  @relation("EventAttendanceCreatedBy", fields: [createdBy], references: [id])
+
+  @@unique([eventId, memberId])
+  @@map("event_attendance")
+}
+
+model Lead {
+  id              String                   @id @default(uuid()) @db.Uuid
+  churchId        String                   @map("church_id") @db.Uuid
+  memberId        String?                  @map("member_id") @db.Uuid
+  fullName        String                   @map("full_name") @db.VarChar(255)
+  email           String?                  @db.VarChar(255)
+  phone           String?                  @db.VarChar(20)
+  source          String?                  @db.VarChar(50)
+  sourceDetails   String?                  @map("source_details") @db.Text
+  stage           String?                  @default("new") @db.VarChar(30)
+  temperature     String?                  @default("cold") @db.VarChar(20)
+  assignedTo      String?                  @map("assigned_to") @db.Uuid
+  assignedAt      DateTime?                @map("assigned_at")
+  firstVisitDate  DateTime?                @map("first_visit_date") @db.Date
+  lastContactDate DateTime?                @map("last_contact_date") @db.Date
+  conversionDate  DateTime?                @map("conversion_date") @db.Date
+  interests       Json?                    @db.JsonB
+  notes           String?                  @db.Text
+  searchVector    Unsupported("tsvector")? @map("search_vector")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  church         Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  member         Member? @relation("LeadMember", fields: [memberId], references: [id])
+  assignedToUser User?   @relation("LeadAssignedTo", fields: [assignedTo], references: [id])
+  createdByUser  User?   @relation("LeadCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser  User?   @relation("LeadUpdatedBy", fields: [updatedBy], references: [id])
+
+  activities LeadActivity[]
+
+  @@map("leads")
+}
+
+model LeadActivity {
+  id           String    @id @default(uuid()) @db.Uuid
+  leadId       String    @map("lead_id") @db.Uuid
+  activityType String    @map("activity_type") @db.VarChar(30)
+  subject      String?   @db.VarChar(255)
+  description  String?   @db.Text
+  activityDate DateTime  @default(now()) @map("activity_date")
+  scheduledFor DateTime? @map("scheduled_for")
+  completed    Boolean   @default(false)
+  completedAt  DateTime? @map("completed_at")
+  createdBy    String?   @map("created_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  lead          Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdByUser User? @relation("LeadActivityCreatedBy", fields: [createdBy], references: [id])
+
+  @@map("lead_activities")
+}
+
+model DiscipleshipTrack {
+  id            String  @id @default(uuid()) @db.Uuid
+  churchId      String  @map("church_id") @db.Uuid
+  name          String  @db.VarChar(255)
+  description   String? @db.Text
+  durationWeeks Int?    @map("duration_weeks")
+  isActive      Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church      Church                    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  lessons     DiscipleshipTrackLesson[]
+  enrollments DiscipleshipEnrollment[]
+
+  @@map("discipleship_tracks")
+}
+
+model DiscipleshipTrackLesson {
+  id          String  @id @default(uuid()) @db.Uuid
+  trackId     String  @map("track_id") @db.Uuid
+  title       String  @db.VarChar(255)
+  description String? @db.Text
+  lessonOrder Int     @map("lesson_order")
+  content     String? @db.Text
+  resources   Json?   @db.JsonB
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  track DiscipleshipTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@map("discipleship_track_lessons")
+}
+
+model DiscipleshipEnrollment {
+  id                 String    @id @default(uuid()) @db.Uuid
+  trackId            String    @map("track_id") @db.Uuid
+  memberId           String    @map("member_id") @db.Uuid
+  mentorId           String?   @map("mentor_id") @db.Uuid
+  enrolledAt         DateTime  @map("enrolled_at") @db.Date
+  startedAt          DateTime? @map("started_at") @db.Date
+  completedAt        DateTime? @map("completed_at") @db.Date
+  status             String?   @default("enrolled") @db.VarChar(20)
+  progressPercentage Int       @default(0) @map("progress_percentage")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  track  DiscipleshipTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  member Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  mentor Member?           @relation("DiscipleshipMentor", fields: [mentorId], references: [id])
+
+  @@map("discipleship_enrollments")
+}
+
+model Ministry {
+  id               String  @id @default(uuid()) @db.Uuid
+  churchId         String  @map("church_id") @db.Uuid
+  parentMinistryId String? @map("parent_ministry_id") @db.Uuid
+  name             String  @db.VarChar(255)
+  description      String? @db.Text
+  leaderId         String? @map("leader_id") @db.Uuid
+  email            String? @db.VarChar(255)
+  phone            String? @db.VarChar(20)
+  color            String? @default("#8b5cf6") @db.VarChar(7)
+  icon             String? @db.VarChar(50)
+  isActive         Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church   Church           @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  parent   Ministry?        @relation("MinistryParent", fields: [parentMinistryId], references: [id])
+  children Ministry[]       @relation("MinistryParent")
+  leader   Member?          @relation("MinistryLeader", fields: [leaderId], references: [id])
+  members  MinistryMember[]
+
+  @@map("ministries")
+}
+
+model MinistryMember {
+  id         String    @id @default(uuid()) @db.Uuid
+  ministryId String    @map("ministry_id") @db.Uuid
+  memberId   String    @map("member_id") @db.Uuid
+  role       String?   @db.VarChar(100)
+  joinedAt   DateTime  @map("joined_at") @db.Date
+  leftAt     DateTime? @map("left_at") @db.Date
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  ministry Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  member   Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([ministryId, memberId, isActive])
+  @@map("ministry_members")
+}
+
+model CellGroup {
+  id          String    @id @default(uuid()) @db.Uuid
+  churchId    String    @map("church_id") @db.Uuid
+  name        String    @db.VarChar(255)
+  description String?   @db.Text
+  leaderId    String?   @map("leader_id") @db.Uuid
+  hostId      String?   @map("host_id") @db.Uuid
+  cellType    String?   @map("cell_type") @db.VarChar(30)
+  meetingDay  String?   @map("meeting_day") @db.VarChar(20)
+  meetingTime DateTime? @map("meeting_time") @db.Time(6)
+  address     String?   @db.Text
+  latitude    Decimal?  @db.Decimal(10, 8)
+  longitude   Decimal?  @db.Decimal(11, 8)
+  maxCapacity Int?      @map("max_capacity")
+  color       String?   @db.VarChar(50)
+  photo       String?   @db.Text
+  status      String?   @default("active") @db.VarChar(20)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  leader Member? @relation("CellGroupLeader", fields: [leaderId], references: [id])
+  host   Member? @relation("CellGroupHost", fields: [hostId], references: [id])
+
+  members  CellGroupMember[]
+  meetings CellMeeting[]
+
+  @@map("cell_groups")
+}
+
+model CellGroupMember {
+  id          String    @id @default(uuid()) @db.Uuid
+  cellGroupId String    @map("cell_group_id") @db.Uuid
+  memberId    String    @map("member_id") @db.Uuid
+  role        String?   @default("member") @db.VarChar(50)
+  joinedAt    DateTime  @map("joined_at") @db.Date
+  leftAt      DateTime? @map("left_at") @db.Date
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  cellGroup CellGroup @relation(fields: [cellGroupId], references: [id], onDelete: Cascade)
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([cellGroupId, memberId, isActive])
+  @@map("cell_group_members")
+}
+
+model CellMeeting {
+  id              String   @id @default(uuid()) @db.Uuid
+  cellGroupId     String   @map("cell_group_id") @db.Uuid
+  meetingDate     DateTime @map("meeting_date") @db.Date
+  topic           String?  @db.VarChar(255)
+  notes           String?  @db.Text
+  attendanceCount Int      @default(0) @map("attendance_count")
+  visitorsCount   Int      @default(0) @map("visitors_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+  createdBy       String?  @map("created_by") @db.Uuid
+
+  cellGroup CellGroup @relation(fields: [cellGroupId], references: [id], onDelete: Cascade)
+
+  @@map("cell_meetings")
+}
+
+model CommunicationCampaign {
+  id              String    @id @default(uuid()) @db.Uuid
+  churchId        String    @map("church_id") @db.Uuid
+  name            String    @db.VarChar(255)
+  description     String?   @db.Text
+  campaignType    String    @map("campaign_type") @db.VarChar(30)
+  templateId      String?   @map("template_id") @db.Uuid
+  targetAudience  Json?     @map("target_audience") @db.JsonB
+  status          String?   @default("draft") @db.VarChar(20)
+  scheduledFor    DateTime? @map("scheduled_for")
+  sentAt          DateTime? @map("sent_at")
+  totalRecipients Int       @default(0) @map("total_recipients")
+  sentCount       Int       @default(0) @map("sent_count")
+  deliveredCount  Int       @default(0) @map("delivered_count")
+  openedCount     Int       @default(0) @map("opened_count")
+  clickedCount    Int       @default(0) @map("clicked_count")
+  failedCount     Int       @default(0) @map("failed_count")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  church        Church                 @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  template      CommunicationTemplate? @relation(fields: [templateId], references: [id])
+  createdByUser User?                  @relation("CampaignCreatedBy", fields: [createdBy], references: [id])
+  messages      Message[]
+
+  @@map("communication_campaigns")
+}
+
+model CommunicationTemplate {
+  id                 String  @id @default(uuid()) @db.Uuid
+  churchId           String  @map("church_id") @db.Uuid
+  name               String  @db.VarChar(255)
+  templateType       String  @map("template_type") @db.VarChar(30)
+  category           String? @db.VarChar(50)
+  subject            String? @db.VarChar(255)
+  body               String  @db.Text
+  availableVariables Json?   @map("available_variables") @db.JsonB
+  status             String? @default("active") @db.VarChar(20)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church    Church                  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  campaigns CommunicationCampaign[]
+
+  @@map("communication_templates")
+}
+
+model Message {
+  id             String    @id @default(uuid()) @db.Uuid
+  churchId       String    @map("church_id") @db.Uuid
+  campaignId     String?   @map("campaign_id") @db.Uuid
+  recipientType  String?   @map("recipient_type") @db.VarChar(20)
+  recipientId    String?   @map("recipient_id") @db.Uuid
+  recipientName  String?   @map("recipient_name") @db.VarChar(255)
+  recipientEmail String?   @map("recipient_email") @db.VarChar(255)
+  recipientPhone String?   @map("recipient_phone") @db.VarChar(20)
+  messageType    String    @map("message_type") @db.VarChar(30)
+  subject        String?   @db.VarChar(255)
+  body           String?   @db.Text
+  status         String?   @default("pending") @db.VarChar(20)
+  sentAt         DateTime? @map("sent_at")
+  deliveredAt    DateTime? @map("delivered_at")
+  openedAt       DateTime? @map("opened_at")
+  clickedAt      DateTime? @map("clicked_at")
+  failedAt       DateTime? @map("failed_at")
+  errorMessage   String?   @map("error_message") @db.Text
+  externalId     String?   @map("external_id") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  church   Church                 @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  campaign CommunicationCampaign? @relation(fields: [campaignId], references: [id])
+
+  @@map("messages")
+}
+
+model Page {
+  id               String    @id @default(uuid()) @db.Uuid
+  churchId         String    @map("church_id") @db.Uuid
+  title            String    @db.VarChar(255)
+  slug             String    @db.VarChar(255)
+  content          String?   @db.Text
+  metaTitle        String?   @map("meta_title") @db.VarChar(255)
+  metaDescription  String?   @map("meta_description") @db.Text
+  metaKeywords     String?   @map("meta_keywords") @db.Text
+  featuredImageUrl String?   @map("featured_image_url") @db.VarChar(500)
+  status           String?   @default("draft") @db.VarChar(20)
+  publishedAt      DateTime? @map("published_at")
+  menuOrder        Int       @default(0) @map("menu_order")
+  parentPageId     String?   @map("parent_page_id") @db.Uuid
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  church        Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  parent        Page?  @relation("PageParent", fields: [parentPageId], references: [id])
+  children      Page[] @relation("PageParent")
+  createdByUser User?  @relation("PageCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User?  @relation("PageUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@unique([churchId, slug])
+  @@map("pages")
+}
+
+model BlogPost {
+  id               String    @id @default(uuid()) @db.Uuid
+  churchId         String    @map("church_id") @db.Uuid
+  title            String    @db.VarChar(255)
+  slug             String    @db.VarChar(255)
+  excerpt          String?   @db.Text
+  content          String?   @db.Text
+  authorId         String?   @map("author_id") @db.Uuid
+  category         String?   @db.VarChar(100)
+  tags             Json?     @db.JsonB
+  featuredImageUrl String?   @map("featured_image_url") @db.VarChar(500)
+  metaTitle        String?   @map("meta_title") @db.VarChar(255)
+  metaDescription  String?   @map("meta_description") @db.Text
+  status           String?   @default("draft") @db.VarChar(20)
+  publishedAt      DateTime? @map("published_at")
+  viewsCount       Int       @default(0) @map("views_count")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  church        Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  author        User?  @relation("BlogPostAuthor", fields: [authorId], references: [id])
+  createdByUser User?  @relation("BlogPostCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User?  @relation("BlogPostUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@unique([churchId, slug])
+  @@map("blog_posts")
+}
+
+model Sermon {
+  id                 String    @id @default(uuid()) @db.Uuid
+  churchId           String    @map("church_id") @db.Uuid
+  eventId            String?   @map("event_id") @db.Uuid
+  title              String    @db.VarChar(255)
+  description        String?   @db.Text
+  preacherId         String?   @map("preacher_id") @db.Uuid
+  preacherName       String?   @map("preacher_name") @db.VarChar(255)
+  sermonSeries       String?   @map("sermon_series") @db.VarChar(255)
+  scriptureReference String?   @map("scripture_reference") @db.VarChar(255)
+  videoUrl           String?   @map("video_url") @db.VarChar(500)
+  audioUrl           String?   @map("audio_url") @db.VarChar(500)
+  thumbnailUrl       String?   @map("thumbnail_url") @db.VarChar(500)
+  pdfUrl             String?   @map("pdf_url") @db.VarChar(500)
+  preachedAt         DateTime? @map("preached_at")
+  viewsCount         Int       @default(0) @map("views_count")
+  downloadsCount     Int       @default(0) @map("downloads_count")
+  status             String?   @default("published") @db.VarChar(20)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church   Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  event    Event?  @relation(fields: [eventId], references: [id])
+  preacher Member? @relation(fields: [preacherId], references: [id])
+
+  @@map("sermons")
+}
+
+model Notification {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  notificationType String    @map("notification_type") @db.VarChar(50)
+  title            String    @db.VarChar(255)
+  message          String?   @db.Text
+  actionUrl        String?   @map("action_url") @db.VarChar(500)
+  actionText       String?   @map("action_text") @db.VarChar(100)
+  data             Json?     @db.JsonB
+  read             Boolean   @default(false)
+  readAt           DateTime? @map("read_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  churchId    String?  @map("church_id") @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid
+  action      String   @db.VarChar(50)
+  entityType  String?  @map("entity_type") @db.VarChar(100)
+  entityId    String?  @map("entity_id") @db.Uuid
+  description String?  @db.Text
+  changes     Json?    @db.JsonB
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  church Church? @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Setting {
+  id           String   @id @default(uuid()) @db.Uuid
+  churchId     String?  @map("church_id") @db.Uuid
+  settingKey   String   @map("setting_key") @db.VarChar(100)
+  settingValue String?  @map("setting_value") @db.Text
+  settingType  String?  @default("string") @map("setting_type") @db.VarChar(20)
+  description  String?  @db.Text
+  updatedAt    DateTime @default(now()) @map("updated_at")
+  updatedBy    String?  @map("updated_by") @db.Uuid
+
+  church        Church? @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  updatedByUser User?   @relation("SettingUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@unique([churchId, settingKey])
+  @@map("settings")
+}
+
+model Webhook {
+  id              String    @id @default(uuid()) @db.Uuid
+  churchId        String    @map("church_id") @db.Uuid
+  name            String    @db.VarChar(255)
+  url             String    @db.VarChar(500)
+  events          Json      @db.JsonB
+  secret          String?   @db.VarChar(255)
+  headers         Json?     @db.JsonB
+  isActive        Boolean   @default(true) @map("is_active")
+  lastTriggeredAt DateTime? @map("last_triggered_at")
+  successCount    Int       @default(0) @map("success_count")
+  failureCount    Int       @default(0) @map("failure_count")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church Church       @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  logs   WebhookLog[]
+
+  @@map("webhooks")
+}
+
+model WebhookLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  webhookId    String   @map("webhook_id") @db.Uuid
+  eventType    String   @map("event_type") @db.VarChar(100)
+  payload      Json     @db.JsonB
+  statusCode   Int?     @map("status_code")
+  responseBody String?  @map("response_body") @db.Text
+  success      Boolean?
+  errorMessage String?  @map("error_message") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_logs")
+}
+
+model LegacyField {
+  id           String   @id @default(uuid()) @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  state        String?  @map("state") @db.VarChar(255)
+  fieldName    String?  @map("name") @db.VarChar(255)
+  president    String?  @map("president") @db.VarChar(255)
+  headquarters String?  @map("headquarters_name") @db.VarChar(255)
+  password     String?  @default("") @map("password") @db.VarChar(255)
+
+  @@map("field")
+}
+
+model LegacyRegional {
+  id             String   @id @default(uuid()) @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  fieldId        String?  @map("field_id") @db.Uuid
+  regionalName   String?  @map("name") @db.VarChar(255)
+  headquartersId String?  @map("headquarters_id") @db.Uuid
+  fieldName      String?  @map("field_name") @db.VarChar(255)
+
+  field Campo? @relation("LegacyRegionalField", fields: [fieldId], references: [id])
+
+  @@map("region")
+}
+
+model LegacyChurchHeadquarters {
+  id                   String   @id @default(uuid()) @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  fieldId              String?  @map("field_id") @db.Uuid
+  instagram            String?  @db.VarChar(255)
+  site                 String?  @db.VarChar(255)
+  youtube              String?  @db.VarChar(255)
+  tiktok               String?  @map("tiktok") @db.VarChar(255)
+  facebook             String?  @db.VarChar(255)
+  contact              String?  @map("contact") @db.VarChar(255)
+  email                String?  @db.VarChar(255)
+  whatsapp             String?  @db.VarChar(20)
+  street               String?  @map("street") @db.VarChar(255)
+  number               String?  @map("number") @db.VarChar(255)
+  city                 String?  @map("city") @db.VarChar(255)
+  state                String?  @map("state") @db.VarChar(255)
+  country              String?  @map("country") @db.VarChar(255)
+  neighborhood         String?  @map("neighborhood") @db.VarChar(255)
+  zipcode              String?  @db.VarChar(10)
+  show                 Boolean? @map("show")
+  cnpj                 String?  @db.VarChar(255)
+  paymentTokenOne      String?  @map("payment_token_one") @db.VarChar(255)
+  paymentTokenTwo      String?  @map("payment_token_two") @db.VarChar(255)
+  regionalName         String?  @map("region_name") @db.VarChar(255)
+  fieldName            String?  @map("field_name") @db.VarChar(255)
+  churchName           String?  @map("name") @db.VarChar(255)
+  linkedHeadquartersId String?  @map("linked_headquarters_id") @db.Uuid
+  agendaPdf            String?  @map("agenda_pdf") @db.VarChar(255)
+  pix                  String?  @db.VarChar(255)
+  bank                 String?  @map("bank") @db.VarChar(255)
+  fieldIcons           Json     @default("{}") @map("field_icons")
+
+  field           Campo?   @relation("LegacyHeadquartersField", fields: [fieldId], references: [id])
+  currentChurches Church[] @relation("ChurchHeadquarters")
+  schedules       ChurchSchedule[]
+  accessInfos     ChurchAccessInfo[]
+
+  @@map("headquarters")
+}
+
+model ChurchSchedule {
+  id             String   @id @default(uuid()) @db.Uuid
+  headquartersId String   @map("headquarters_id") @db.Uuid
+  dayOfWeek      String   @map("day_of_week") @db.VarChar(20)
+  name           String   @db.VarChar(255)
+  time           String   @db.VarChar(10)
+  icon           String   @default("Sun") @db.VarChar(30)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  headquarters LegacyChurchHeadquarters @relation(fields: [headquartersId], references: [id], onDelete: Cascade)
+
+  @@map("church_schedule")
+}
+
+model ChurchAccessInfo {
+  id             String   @id @default(uuid()) @db.Uuid
+  headquartersId String   @map("headquarters_id") @db.Uuid
+  type           String   @default("bus") @db.VarChar(20)
+  description    String   @db.VarChar(500)
+  mapUrl         String?  @map("map_url") @db.VarChar(500)
+  icon           String   @default("Bus") @db.VarChar(30)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  headquarters LegacyChurchHeadquarters @relation(fields: [headquartersId], references: [id], onDelete: Cascade)
+
+  @@map("church_access_info")
+}
+
+model LegacyChurchPhoto {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  churchId  String?  @map("church_id") @db.Uuid
+  photoUrl  String?  @map("photo_url") @db.Text
+  fieldName String?  @map("field_name") @db.VarChar(255)
+
+  @@map("church_photo")
+}
+
+model LegacyChurch {
+  id             String   @id @default(uuid()) @db.Uuid
+  churchName     String?  @default("0") @map("name") @db.VarChar(255)
+  fieldId        String?  @map("field_id") @db.Uuid
+  regionalId     String?  @map("region_id") @db.Uuid
+  headquartersId String?  @map("headquarters_id") @db.Uuid
+  hierarchy      String?  @default("0") @map("hierarchy") @db.VarChar(255)
+  documentType   String?  @default("0") @map("document_type") @db.VarChar(255)
+  documentNumber String?  @default("0") @map("document_number") @db.VarChar(255)
+  foundationDate String?  @default("0") @map("foundation_date") @db.VarChar(255)
+  zipcode        String?  @default("0") @map("zipcode") @db.VarChar(255)
+  country        String?  @default("0") @map("country") @db.VarChar(255)
+  state          String?  @default("0") @map("state") @db.VarChar(255)
+  city           String?  @default("0") @map("city") @db.VarChar(255)
+  neighborhood   String?  @default("0") @map("neighborhood") @db.VarChar(255)
+  street         String?  @default("0") @map("street") @db.VarChar(255)
+  regionalName   String?  @default("0") @map("region_name") @db.VarChar(255)
+  hasOwnTemple   Boolean? @default(true) @map("has_own_temple")
+  fieldName      String?  @default("0") @map("field_name") @db.VarChar(255)
+  firebaseId     String?  @default("0") @map("firebase_id") @db.VarChar(255)
+  notes          String?  @default("0") @map("notes") @db.VarChar(255)
+  parentChurch   String?  @default("0") @map("parent_church_name") @db.VarChar(255)
+  isActive       Boolean? @default(true) @map("is_active")
+  code           BigInt?  @default(0) @map("code")
+  plateName      String?  @default("0") @map("plate_name") @db.VarChar(255)
+  leader         String?  @default("0") @map("leader_name") @db.VarChar(255)
+  entry          String?  @default("0") @map("entry_date") @db.VarChar(255)
+  exit           String?  @default("0") @map("exit_date") @db.VarChar(255)
+  leaderRoll     BigInt?  @default(0) @map("leader_roll")
+
+  field Campo? @relation("LegacyChurchField", fields: [fieldId], references: [id])
+
+  @@map("church")
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SECRETARIA — Kanban / Pipeline / Matriz de Processos Eclesiásticos
+// 3 níveis: KanPipeline (Secretaria) → KanStage (Batismo, Transferência, Consagração...)
+//           → KanColumn (Pendente, Aprovado, Cancelado, Transferido...)
+// Catálogo de serviços (KanService) + Matriz de regras (KanMatrixRule).
+// Cards (KanCard) representam processos reais; cada movimento registra ocorrência
+// no histórico do membro (MemberOccurrence).
+// ──────────────────────────────────────────────────────────────────────────────
+
+model KanPipeline {
+  id       Int     @id @default(autoincrement())
+  name     String  @db.VarChar(120)
+  type     String? @db.VarChar(120)
+  hash     String? @db.VarChar(60)
+  campo    String? @db.VarChar(120)
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stages KanStage[]
+
+  @@map("kan_pipelines")
+}
+
+/// Catálogo de serviços eclesiásticos (sigla + descrição). Origem da matriz.
+model KanService {
+  id           Int     @id
+  sigla        String  @db.VarChar(50)
+  description  String  @db.VarChar(255)
+  servico      String? @db.VarChar(120)
+  serviceGroup String? @map("service_group") @db.VarChar(60)
+  usesMatrix   Boolean @default(false) @map("uses_matrix")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stages KanStage[]
+  rules  KanMatrixRule[]
+  cards  KanCard[]
+
+  @@index([sigla])
+  @@map("kan_services")
+}
+
+/// Stage (etapa do pipeline): Batismo, Transferência, Consagração, Requerimento...
+/// Cada stage pertence a um pipeline e está vinculado a um serviço (matriz).
+model KanStage {
+  id          Int     @id @default(autoincrement())
+  pipelineId  Int     @map("pipeline_id")
+  serviceId   Int?    @map("service_id")
+  name        String  @db.VarChar(120)
+  description String? @db.VarChar(255)
+  author      String? @db.VarChar(120)
+  campo       String? @db.VarChar(120)
+  hash        String? @db.VarChar(60)
+  show        Boolean @default(true)
+  isActive    Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  pipeline KanPipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  service  KanService? @relation(fields: [serviceId], references: [id])
+  columns  KanColumn[]
+  cards    KanCard[]
+  matrixRules KanMatrixRule[]
+
+  @@index([pipelineId])
+  @@index([serviceId])
+  @@map("kan_stages")
+}
+
+/// Coluna do kanban dentro do stage: Pendente, Aprovado, Cancelado, Transferido...
+model KanColumn {
+  id          Int     @id @default(autoincrement())
+  stageId     Int     @map("stage_id")
+  name        String  @db.VarChar(120)
+  columnIndex Int     @map("column_index")
+  color       String? @default("blue") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stage KanStage  @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  cards KanCard[]
+
+  @@unique([stageId, columnIndex])
+  @@index([stageId])
+  @@map("kan_columns")
+}
+
+/// Matriz de regras por serviço x coluna (define ações automáticas no movimento do card).
+model KanMatrixRule {
+  id          Int     @id @default(autoincrement())
+  serviceId   Int     @map("service_id")
+  columnIndex Int     @map("column_index")
+  ageMin      Int     @default(0) @map("age_min")
+  ageMax      Int     @default(0) @map("age_max")
+  isActive    Boolean @default(true) @map("is_active")
+
+  changeStatus        Boolean @default(false) @map("change_status")
+  newStatus           String? @map("new_status") @db.VarChar(60)
+  changeTitle         Boolean @default(false) @map("change_title")
+  newTitle            String? @map("new_title") @db.VarChar(60)
+  doesTransfer        Boolean @default(false) @map("does_transfer")
+  insertOccurrence    Boolean @default(true) @map("insert_occurrence")
+  occurrenceName      String? @map("occurrence_name") @db.VarChar(120)
+  message             String? @db.VarChar(255)
+  allowMessage        Boolean @default(false) @map("allow_message")
+  allowDocModel       Boolean @default(false) @map("allow_doc_model")
+  docModel            String? @map("doc_model") @db.VarChar(120)
+  allowAttachments    Boolean @default(false) @map("allow_attachments")
+  requireDocument     Boolean @default(false) @map("require_document")
+  generatesCredential Boolean @default(false) @map("generates_credential")
+  credentialKind      String? @map("credential_kind") @db.VarChar(60)
+  credentialModel     String? @map("credential_model") @db.VarChar(60)
+  credentialValidity  String? @map("credential_validity") @db.VarChar(60)
+  servicoExtra        String? @map("servico_extra") @db.VarChar(60)
+  description         String? @db.VarChar(255)
+  stageId             Int?    @map("stage_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  service KanService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  stage   KanStage?  @relation(fields: [stageId], references: [id])
+
+  @@unique([serviceId, columnIndex])
+  @@index([serviceId])
+  @@index([stageId])
+  @@map("kan_matrix_rules")
+}
+
+/// Card do kanban — instância real de um processo (Batismo de João, Transferência de Maria...).
+model KanCard {
+  id          String @id @default(uuid()) @db.Uuid
+  protocol    String @unique @db.VarChar(60)
+  stageId     Int    @map("stage_id")
+  serviceId   Int    @map("service_id")
+  columnId    Int?   @map("column_id")
+  columnIndex Int    @default(1) @map("column_index")
+
+  // Membro e igrejas principais
+  churchId            String  @map("church_id") @db.Uuid             // Igreja origem
+  memberId            String? @map("member_id") @db.Uuid
+  destinationChurchId String? @map("destination_church_id") @db.Uuid  // Igreja destino (transferência)
+
+  // Regionais (para relatórios e transferências)
+  originRegionalId      String? @map("origin_regional_id") @db.Uuid
+  destinationRegionalId String? @map("destination_regional_id") @db.Uuid
+
+  // Igreja requerente e Igreja requerida (quem pediu / para quem foi pedido)
+  requesterChurchId String? @map("requester_church_id") @db.Uuid
+  requestedChurchId String? @map("requested_church_id") @db.Uuid
+  requesterName     String? @map("requester_name") @db.VarChar(255)
+
+  // Dados do membro no momento do processo
+  candidateName String? @map("candidate_name") @db.VarChar(255)
+  currentTitle  String? @map("current_title") @db.VarChar(60)
+  intendedTitle String? @map("intended_title") @db.VarChar(60)
+
+  // Status e controle de fluxo
+  status      String  @default("pendente") @db.VarChar(60)
+  statusLabel String? @map("status_label") @db.VarChar(120)
+
+  // Textos do processo
+  subject       String? @db.VarChar(255)                // assunto
+  justification String? @db.Text                         // justificativa
+  observations  String? @db.Text                         // obs
+  description   String? @db.Text                         // descricao
+
+  // Aprovação
+  approvedBy String?   @map("approved_by") @db.Uuid
+  approvedAt DateTime? @map("approved_at")
+
+  metadata    Json?   @db.JsonB
+  attachments Json?   @db.JsonB
+
+  openedAt  DateTime  @default(now()) @map("opened_at")
+  closedAt  DateTime? @map("closed_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  stage             KanStage   @relation(fields: [stageId], references: [id])
+  service           KanService @relation(fields: [serviceId], references: [id])
+  column            KanColumn? @relation(fields: [columnId], references: [id])
+  church            Church     @relation("KanCardChurch", fields: [churchId], references: [id], onDelete: Cascade)
+  destinationChurch Church?    @relation("KanCardDestination", fields: [destinationChurchId], references: [id])
+  requesterChurch   Church?    @relation("KanCardRequester", fields: [requesterChurchId], references: [id])
+  requestedChurch   Church?    @relation("KanCardRequested", fields: [requestedChurchId], references: [id])
+  member            Member?    @relation("KanCardMember", fields: [memberId], references: [id])
+  originRegional    Regional?  @relation("KanCardOriginRegional", fields: [originRegionalId], references: [id])
+  destinationRegional Regional? @relation("KanCardDestinationRegional", fields: [destinationRegionalId], references: [id])
+
+  occurrences  MemberOccurrence[]
+  eventHistory MemberEventHistory[] @relation("MemberEventHistoryCard")
+
+  @@index([churchId])
+  @@index([stageId, status])
+  @@index([serviceId])
+  @@index([openedAt])
+  @@map("kan_cards")
+}
+
+/// Histórico/ocorrência do membro: gerado a cada movimento de card guiado pela matriz.
+model MemberOccurrence {
+  id       String  @id @default(uuid()) @db.Uuid
+  memberId String? @map("member_id") @db.Uuid
+  churchId String  @map("church_id") @db.Uuid
+  cardId   String? @map("card_id") @db.Uuid
+
+  name         String  @db.VarChar(160)
+  message      String? @db.VarChar(255)
+  serviceSigla String? @map("service_sigla") @db.VarChar(50)
+  serviceGroup String? @map("service_group") @db.VarChar(60)
+  action       String? @db.VarChar(120)
+  columnIndex  Int?    @map("column_index")
+  memberCity   String? @map("member_city") @db.VarChar(100)
+  memberState  String? @map("member_state") @db.VarChar(50)
+  memberCountry String? @map("member_country") @db.VarChar(100)
+
+  metadata Json? @db.JsonB
+
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  createdBy  String?  @map("created_by") @db.Uuid
+
+  member Member?  @relation("MemberOccurrenceMember", fields: [memberId], references: [id])
+  church Church   @relation("MemberOccurrenceChurch", fields: [churchId], references: [id], onDelete: Cascade)
+  card   KanCard? @relation(fields: [cardId], references: [id])
+
+  @@index([memberId])
+  @@index([churchId, occurredAt])
+  @@map("member_occurrences")
+}
+
+/// Histórico de títulos eclesiásticos do membro: registra cada troca de título.
+model MemberTitleHistory {
+  id            String   @id @default(uuid()) @db.Uuid
+  memberId      String   @map("member_id") @db.Uuid
+  churchId      String   @map("church_id") @db.Uuid
+  cardId        String?  @map("card_id") @db.Uuid
+  previousTitle String?  @map("previous_title") @db.VarChar(120)
+  newTitle      String   @map("new_title") @db.VarChar(120)
+  source        String?  @db.VarChar(60) // "MATRIZ", "MANUAL", etc.
+  serviceGroup  String?  @map("service_group") @db.VarChar(60)
+  serviceName   String?  @map("service_name") @db.VarChar(255)
+  memberCity    String?  @map("member_city") @db.VarChar(100)
+  memberState   String?  @map("member_state") @db.VarChar(50)
+  memberCountry String?  @map("member_country") @db.VarChar(100)
+  notes         String?  @db.Text
+  createdBy     String?  @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  member Member @relation("MemberTitleHistoryMember", fields: [memberId], references: [id], onDelete: Cascade)
+  church Church @relation("MemberTitleHistoryChurch", fields: [churchId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([churchId, createdAt])
+  @@map("member_title_history")
+}
+
+/// Histórico de eventos do membro: gerado a cada ação da matriz de decisão.
+model MemberEventHistory {
+  id           String   @id @default(uuid()) @db.Uuid
+  memberId     String?  @map("member_id") @db.Uuid
+  cardId       String?  @map("card_id") @db.Uuid
+  churchId     String   @map("church_id") @db.Uuid
+  serviceGroup  String?  @map("service_group") @db.VarChar(60)
+  serviceName   String?  @map("service_name") @db.VarChar(255)
+  columnIndex   Int?     @map("column_index")
+  action        String?  @db.VarChar(120)
+  memberCity    String?  @map("member_city") @db.VarChar(100)
+  memberState   String?  @map("member_state") @db.VarChar(50)
+  memberCountry String?  @map("member_country") @db.VarChar(100)
+  notes         String?  @db.Text
+  metadata      Json?    @db.JsonB
+  createdBy     String?  @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  member Member?  @relation("MemberEventHistoryMember", fields: [memberId], references: [id], onDelete: SetNull)
+  card   KanCard? @relation("MemberEventHistoryCard",   fields: [cardId],   references: [id], onDelete: SetNull)
+  church Church   @relation("MemberEventHistoryChurch", fields: [churchId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([churchId, createdAt])
+  @@map("member_event_history")
+}
+
+model InboxMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  subject   String   @db.VarChar(255)
+  body      String   @db.Text
+  senderId  String   @map("sender_id") @db.Uuid
+  campoId   String?  @map("campo_id") @db.Uuid
+  threadId  String?  @map("thread_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sender      User              @relation("SentInboxMessages", fields: [senderId], references: [id])
+  campo       Campo?            @relation(fields: [campoId], references: [id])
+  recipients  InboxRecipient[]
+  attachments InboxAttachment[]
+
+  @@index([threadId])
+  @@map("inbox_messages")
+}
+
+model InboxRecipient {
+  id            String    @id @default(uuid()) @db.Uuid
+  messageId     String    @map("message_id") @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  recipientType String    @default("TO") @map("recipient_type") @db.VarChar(10)
+  isRead        Boolean   @default(false) @map("is_read")
+  isStarred     Boolean   @default(false) @map("is_starred")
+  isDeleted     Boolean   @default(false) @map("is_deleted")
+  isImportant   Boolean   @default(false) @map("is_important")
+  readAt        DateTime? @map("read_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  message InboxMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User         @relation("ReceivedInboxMessages", fields: [userId], references: [id])
+
+  @@map("inbox_recipients")
+}
+
+model InboxAttachment {
+  id        String @id @default(uuid()) @db.Uuid
+  messageId String @map("message_id") @db.Uuid
+  name      String @db.VarChar(255)
+  url       String @db.Text
+  size      Int
+  type      String @db.VarChar(100)
+
+  message InboxMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("inbox_attachments")
+}
+
+/// Programação anual do campo (agenda de eventos do ano)
+model TbEvento {
+  id             String   @id @default(uuid()) @db.Uuid
+  evento         String
+  datareal       DateTime @db.Date
+  dia            Int      @db.SmallInt
+  mes            String
+  ano            Int      @db.SmallInt
+  horario        String?
+  local          String?
+  obs            String?
+  foto           String?
+  preco          Decimal  @default(0) @db.Decimal
+  pago           Boolean  @default(false)
+  tipo           String   @default("gratuito")
+  keypg          String?
+  ministerio     String?
+  mostrar        Boolean  @default(true)
+  reservar       Boolean  @default(false)
+  campo          String?
+  regional       String?
+  igreja         String?
+  campoId        String   @map("campo_id") @db.Uuid
+  headquartersId String?  @map("headquarters_id") @db.Uuid
+  churchId       String?  @map("church_id") @db.Uuid
+  audienceScope  String   @default("headquarters") @map("audience_scope")
+  diaSemana      String?  @map("dia_semana")
+  departamento   String?
+  iconName       String?  @map("icon_name") @db.VarChar(50)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([campoId])
+  @@index([ano, mes])
+  @@map("tbeventos")
+}

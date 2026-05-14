@@ -1,0 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+ALTER TABLE "campos"
+ADD COLUMN IF NOT EXISTS "access_password_hash" VARCHAR(255);
