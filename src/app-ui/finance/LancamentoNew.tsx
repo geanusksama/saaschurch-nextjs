@@ -74,6 +74,84 @@ function CashClosedModal({ message, onClose }: { message: string; onClose: () =>
   );
 }
 
+function SearchableSelect({ 
+  value, 
+  onChange, 
+  options, 
+  placeholder, 
+  className 
+}: { 
+  value: string; 
+  onChange: (val: string) => void; 
+  options: { id: string; label: string }[]; 
+  placeholder: string; 
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter(o => 
+    normalizeText(o.label).includes(normalizeText(search))
+  );
+
+  const selectedOption = options.find(o => o.id === value);
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      <div 
+        onClick={() => { setOpen(!open); setSearch(''); }}
+        className={`flex items-center justify-between cursor-pointer ${className}`}
+      >
+        <span className={`truncate ${selectedOption ? '' : 'text-slate-500 dark:text-slate-400'}`}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <svg className="w-4 h-4 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+      </div>
+      
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl flex flex-col" style={{ maxHeight: '300px' }}>
+          <div className="p-2 border-b border-slate-100 dark:border-slate-700">
+            <input 
+              autoFocus
+              type="text" 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              placeholder="Buscar categoria..." 
+              className="w-full px-2 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400 dark:focus:border-violet-500 text-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="overflow-y-auto flex-1 p-1">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-3 text-sm text-slate-500 text-center">Nenhuma categoria encontrada</div>
+            ) : (
+              filteredOptions.map(o => (
+                <div 
+                  key={o.id} 
+                  onClick={() => { onChange(o.id); setOpen(false); }}
+                  className={`px-3 py-2 text-sm cursor-pointer rounded-md mb-0.5 hover:bg-violet-50 dark:hover:bg-slate-700 dark:text-slate-200 ${value === o.id ? 'bg-violet-50 dark:bg-slate-700 font-semibold text-violet-700 dark:text-violet-300' : 'text-slate-700'}`}
+                >
+                  {o.label}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Modo = 'RECEITA' | 'DESPESA';
@@ -1213,26 +1291,43 @@ export default function LancamentoNew() {
   const accentBar = isReceita ? 'bg-emerald-500' : 'bg-red-500';
 
   async function searchPJ(q: string) {
+    // Busca PJs na tabela members
+    const { data: membersData } = await supabase
+      .from('members')
+      .select('id, full_name, fantasy_name, cnpj, cpf')
+      .eq('member_type', 'PJ')
+      .or(`full_name.ilike.%${q}%,fantasy_name.ilike.%${q}%`)
+      .limit(20);
+
     // Busca em lançamentos anteriores com tipo_pessoa PJ
-    const { data } = await supabase
+    const { data: caixaData } = await supabase
       .from('livro_caixa')
       .select('id, favorecido, id_favorecido_externo')
       .eq('tipo_pessoa', 'PJ')
       .ilike('favorecido', `%${q}%`)
       .not('favorecido', 'is', null)
       .limit(20);
+
     // Deduplicate by name
     const seen = new Set<string>();
-    return (data ?? []).filter((r: any) => {
-      const k = r.favorecido?.toLowerCase() ?? '';
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    }).map((r: any) => ({
-      id: r.id_favorecido_externo ?? r.id,
-      label: r.favorecido ?? '',
-      sub: r.id_favorecido_externo ?? undefined,
-    }));
+    const results: { id: string; label: string; sub?: string }[] = [];
+
+    (membersData ?? []).forEach((m: any) => {
+      const nome = m.fantasy_name || m.full_name;
+      if (nome && !seen.has(nome.toLowerCase())) {
+        seen.add(nome.toLowerCase());
+        results.push({ id: m.cnpj || m.cpf || m.id, label: nome, sub: m.full_name !== nome ? m.full_name : undefined });
+      }
+    });
+
+    (caixaData ?? []).forEach((r: any) => {
+      if (r.favorecido && !seen.has(r.favorecido.toLowerCase())) {
+        seen.add(r.favorecido.toLowerCase());
+        results.push({ id: r.id_favorecido_externo || r.id, label: r.favorecido });
+      }
+    });
+
+    return results;
   }
 
   return (
@@ -1391,11 +1486,13 @@ export default function LancamentoNew() {
               {/* Plano de Contas — linha inteira */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Plano de Contas</label>
-                <select value={planoId} onChange={e => setPlanoId(e.target.value)}
-                  className={`w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${accentRing} bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
-                  <option value="">Selecione a categoria...</option>
-                  {planos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                <SearchableSelect 
+                  value={planoId} 
+                  onChange={setPlanoId}
+                  options={planos.map(p => ({ id: p.id, label: p.nome }))}
+                  placeholder="Selecione a categoria..."
+                  className={`w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${accentRing} bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}
+                />
               </div>
               {/* Documento + Nº Doc lado a lado */}
               <div className="grid grid-cols-2 gap-3">
@@ -1561,7 +1658,25 @@ export default function LancamentoNew() {
       )}
       {showPJModal && (
         <PJModal churches={churches} defaultChurchId={caixaId} defaultChurchName={caixaNome}
-          onConfirm={pj => { setPjNome(pj.nomeFantasia || pj.razaoSocial); setPjDoc(pj.doc); setShowPJModal(false); }}
+          onConfirm={async pj => { 
+            try {
+              const docToSave = pj.doc ? pj.doc.replace(/\D/g, '') : null;
+              await supabase.from('members').insert({
+                church_id: pj.churchId,
+                member_type: 'PJ',
+                full_name: pj.razaoSocial,
+                fantasy_name: pj.nomeFantasia || null,
+                cnpj: pj.docTipo === 'CNPJ' ? docToSave : null,
+                cpf: pj.docTipo === 'CPF' ? docToSave : null,
+                membership_status: 'PJ_ATIVO',
+              });
+            } catch (err) {
+              console.warn("Erro ao salvar PJ", err);
+            }
+            setPjNome(pj.nomeFantasia || pj.razaoSocial); 
+            setPjDoc(pj.doc); 
+            setShowPJModal(false); 
+          }}
           onClose={() => setShowPJModal(false)} />
       )}
       {reciboRow && (
