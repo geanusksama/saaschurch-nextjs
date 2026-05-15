@@ -1647,7 +1647,25 @@ export default function LancamentoNew() {
       )}
       {showPJModal && (
         <PJModal churches={churches} defaultChurchId={caixaId} defaultChurchName={caixaNome}
-          onConfirm={pj => { setPjNome(pj.nomeFantasia || pj.razaoSocial); setPjDoc(pj.doc); setShowPJModal(false); }}
+          onConfirm={async pj => { 
+            try {
+              const docToSave = pj.doc ? pj.doc.replace(/\D/g, '') : null;
+              await supabase.from('members').insert({
+                church_id: pj.churchId,
+                member_type: 'PJ',
+                full_name: pj.razaoSocial,
+                fantasy_name: pj.nomeFantasia || null,
+                cnpj: pj.docTipo === 'CNPJ' ? docToSave : null,
+                cpf: pj.docTipo === 'CPF' ? docToSave : null,
+                membership_status: 'PJ_ATIVO',
+              });
+            } catch (err) {
+              console.warn("Erro ao salvar PJ", err);
+            }
+            setPjNome(pj.nomeFantasia || pj.razaoSocial); 
+            setPjDoc(pj.doc); 
+            setShowPJModal(false); 
+          }}
           onClose={() => setShowPJModal(false)} />
       )}
       {reciboRow && (
