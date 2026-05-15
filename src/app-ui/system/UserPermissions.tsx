@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Shield, ArrowLeft, Check, X, Info, Save, RefreshCw } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import {
@@ -260,8 +260,8 @@ export default function UserPermissions() {
               </thead>
               <tbody>
                 {grouped.map(({ group, items }) => (
-                  <>
-                    <tr key={`group-${group}`} className="bg-slate-50 dark:bg-slate-900/50">
+                  <React.Fragment key={`group-${group}`}>
+                    <tr className="bg-slate-50 dark:bg-slate-900/50">
                       <td
                         colSpan={1 + ACTIONS.length}
                         className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
@@ -286,7 +286,7 @@ export default function UserPermissions() {
                         ))}
                       </tr>
                     ))}
-                  </>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
