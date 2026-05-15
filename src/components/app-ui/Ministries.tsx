@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 
 import { apiBase } from '../../lib/apiBase';
+import { usePermissions } from '../../lib/usePermissions';
 
 type CampoOption = {
   id: string;
@@ -116,12 +117,15 @@ function normalizeRoleName(value: string) {
 export function Ministries() {
   const token = localStorage.getItem('mrm_token');
   const storedUser = readStoredUser();
+  const profileType: string = storedUser.profileType || 'church';
+  const { canCreate, canEdit, canDelete } = usePermissions(profileType);
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
   const normalizedRoleName = normalizeRoleName(storedUser.roleName);
+  const isChurchProfile = profileType === 'church';
   const isSecretaryOrTreasurer = normalizedRoleName.includes('secret') || normalizedRoleName.includes('tesour');
-  const canChooseField = !isSecretaryOrTreasurer;
-  const canChooseRegional = !isSecretaryOrTreasurer;
-  const canChooseChurch = !isSecretaryOrTreasurer;
+  const canChooseField = !isSecretaryOrTreasurer && !isChurchProfile;
+  const canChooseRegional = !isSecretaryOrTreasurer && !isChurchProfile;
+  const canChooseChurch = !isSecretaryOrTreasurer && !isChurchProfile;
 
   const [fields, setFields] = useState<CampoOption[]>([]);
   const [regionais, setRegionais] = useState<RegionalOption[]>([]);
@@ -330,6 +334,11 @@ export function Ministries() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    if ((formState.id && !canEdit('ministries')) || (!formState.id && !canCreate('ministries'))) {
+      setError('Você não tem permissão para salvar ministérios.');
+      return;
+    }
+
     if (!token || !selectedChurchId) {
       setError('Selecione a igreja para cadastrar o ministerio.');
       return;
@@ -384,6 +393,8 @@ export function Ministries() {
   };
 
   const handleEdit = (ministry: MinistryRecord) => {
+    if (!canEdit('ministries')) return;
+
     setFormState({
       id: ministry.id,
       name: ministry.name,
@@ -399,11 +410,14 @@ export function Ministries() {
   };
 
   const handleDelete = (ministryId: string) => {
+    if (!canDelete('ministries')) return;
+
     const target = ministries.find((m) => m.id === ministryId);
     setDeleteTarget({ id: ministryId, name: target?.name || 'este ministério' });
   };
 
   const confirmDelete = async () => {
+    if (!canDelete('ministries')) return;
     if (!token || !deleteTarget) return;
     try {
       setDeleting(true);
@@ -441,17 +455,19 @@ export function Ministries() {
             <p className="text-slate-600 dark:text-slate-400">Gerencie departamentos e equipes ministeriais</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setFormState(initialFormState);
-            setFormOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          Novo Ministério
-        </button>
+        {canCreate('ministries') ? (
+          <button
+            type="button"
+            onClick={() => {
+              setFormState(initialFormState);
+              setFormOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            Novo Ministério
+          </button>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -791,15 +807,21 @@ export function Ministries() {
                   <p className="text-xs text-slate-500 mt-1">{engagement}% engajamento</p>
                 </div>
 
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => handleEdit(ministry)} className="flex-1 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 font-medium flex items-center justify-center gap-2">
-                    <Pencil className="w-4 h-4" />
-                    Editar
-                  </button>
-                  <button type="button" onClick={() => handleDelete(ministry.id)} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                {canEdit('ministries') || canDelete('ministries') ? (
+                  <div className="flex gap-2">
+                    {canEdit('ministries') ? (
+                      <button type="button" onClick={() => handleEdit(ministry)} className="flex-1 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 font-medium flex items-center justify-center gap-2">
+                        <Pencil className="w-4 h-4" />
+                        Editar
+                      </button>
+                    ) : null}
+                    {canDelete('ministries') ? (
+                      <button type="button" onClick={() => handleDelete(ministry.id)} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -846,14 +868,20 @@ export function Ministries() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <button type="button" onClick={() => handleEdit(ministry)} className="rounded-lg border border-purple-200 p-2 text-purple-600 hover:bg-purple-50" title="Editar">
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button type="button" onClick={() => handleDelete(ministry.id)} className="rounded-lg bg-slate-900 p-2 text-white hover:bg-slate-800" title="Excluir">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {canEdit('ministries') || canDelete('ministries') ? (
+                          <div className="flex items-center justify-end gap-2">
+                            {canEdit('ministries') ? (
+                              <button type="button" onClick={() => handleEdit(ministry)} className="rounded-lg border border-purple-200 p-2 text-purple-600 hover:bg-purple-50" title="Editar">
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            ) : null}
+                            {canDelete('ministries') ? (
+                              <button type="button" onClick={() => handleDelete(ministry.id)} className="rounded-lg bg-slate-900 p-2 text-white hover:bg-slate-800" title="Excluir">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </td>
                     </tr>
                   );

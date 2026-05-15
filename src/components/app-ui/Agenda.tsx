@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 // --- Constants ---
 
 import { apiBase as API } from '../../lib/apiBase';
+import { usePermissions } from '../../lib/usePermissions';
 
 const MONTHS_PT = [
   'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
@@ -178,6 +179,15 @@ function downloadCSVTemplate() {
 // --- Main Component ---
 
 export function Agenda() {
+  const storedUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('mrm_user') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const profileType: string = storedUser.profileType || 'church';
+  const { canCreate, canEdit, canDelete } = usePermissions(profileType);
   const now = new Date();
   const [viewMode, setViewMode] = useState<'calendar' | 'ano' | 'list' | 'dia'>('calendar');
   const [calYear, setCalYear] = useState(now.getFullYear());
@@ -282,6 +292,7 @@ export function Agenda() {
   const monthOrder = MONTHS_PT.filter(m => grouped[m]);
 
   function openCreate() {
+    if (!canCreate('events')) return;
     setEditing(null);
     const d = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDay || todayD).padStart(2, '0')}`;
     setForm({ ...EMPTY_FORM, datareal: d });
@@ -289,6 +300,7 @@ export function Agenda() {
     setFormErr(null); setShowModal(true);
   }
   function openEdit(ev: TbEvento) {
+    if (!canEdit('events')) return;
     setEditing(ev);
     setForm({
       evento: ev.evento, datareal: ev.datareal?.slice(0, 10) || '', horario: ev.horario || '',
@@ -302,6 +314,7 @@ export function Agenda() {
     setFormErr(null); setShowModal(true);
   }
   async function handleSave() {
+    if ((editing && !canEdit('events')) || (!editing && !canCreate('events'))) return;
     if (!form.evento.trim()) { setFormErr('Nome do evento e obrigatorio'); return; }
     if (!form.datareal) { setFormErr('Data e obrigatoria'); return; }
     if (!fieldId) { setFormErr('Nenhum campo ativo selecionado'); return; }
@@ -317,6 +330,7 @@ export function Agenda() {
     finally { setSaving(false); }
   }
   async function handleDelete(id: string) {
+    if (!canDelete('events')) return;
     setDeleting(true);
     try { await fetch(`${API}/annual-events/${id}`, { method: 'DELETE', headers: hdrs }); setDelId(null); load(); }
     finally { setDeleting(false); }
@@ -409,10 +423,12 @@ export function Agenda() {
             className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             <Upload className="h-4 w-4" /> Importar CSV
           </button>
-          <button onClick={openCreate}
-            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 active:scale-95 transition-all shadow-md">
-            <Plus className="h-4 w-4" /> Novo Evento
-          </button>
+          {canCreate('events') ? (
+            <button onClick={openCreate}
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 active:scale-95 transition-all shadow-md">
+              <Plus className="h-4 w-4" /> Novo Evento
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -567,10 +583,12 @@ export function Agenda() {
                   {selectedDay} de {MONTHS_LABEL[calMonth]}
                   <span className="ml-2 font-normal text-slate-400">— {selectedEvents.length} evento{selectedEvents.length !== 1 ? 's' : ''}</span>
                 </h3>
-                <button onClick={openCreate}
-                  className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700">
-                  <Plus className="h-3 w-3" /> Novo
-                </button>
+                {canCreate('events') ? (
+                  <button onClick={openCreate}
+                    className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700">
+                    <Plus className="h-3 w-3" /> Novo
+                  </button>
+                ) : null}
               </div>
               {selectedEvents.length === 0 ? (
                 <p className="py-4 text-center text-sm text-slate-400">Nenhum evento nesta data</p>
@@ -587,10 +605,12 @@ export function Agenda() {
                           {ev.ministerio && <p className="flex items-center gap-1"><Tag className="h-3 w-3" />{ev.ministerio}</p>}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <button onClick={() => openEdit(ev)} className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => setDelId(ev.id)} className="rounded p-1 text-slate-400 hover:bg-red-100 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
-                      </div>
+                      {canEdit('events') || canDelete('events') ? (
+                        <div className="flex flex-col gap-1">
+                          {canEdit('events') ? <button onClick={() => openEdit(ev)} className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"><Pencil className="h-3.5 w-3.5" /></button> : null}
+                          {canDelete('events') ? <button onClick={() => setDelId(ev.id)} className="rounded p-1 text-slate-400 hover:bg-red-100 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button> : null}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -635,12 +655,14 @@ export function Agenda() {
                   );
                 })}
               </div>
-              <div className="border-t border-slate-100 p-3 dark:border-slate-800">
-                <button onClick={openCreate}
-                  className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 hover:border-purple-400 hover:text-purple-600 transition-colors dark:border-slate-700 dark:text-slate-400">
-                  <Plus className="h-3 w-3" /> Novo evento
-                </button>
-              </div>
+              {canCreate('events') ? (
+                <div className="border-t border-slate-100 p-3 dark:border-slate-800">
+                  <button onClick={openCreate}
+                    className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 hover:border-purple-400 hover:text-purple-600 transition-colors dark:border-slate-700 dark:text-slate-400">
+                    <Plus className="h-3 w-3" /> Novo evento
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
         </div>
@@ -735,7 +757,7 @@ export function Agenda() {
             <div className="py-16 text-center">
               <CalendarIcon className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-slate-600" />
               <p className="text-slate-500 dark:text-slate-400">{search ? `Nenhum resultado para "${search}"` : `Nenhum evento em ${calYear}.`}</p>
-              <button onClick={openCreate} className="mt-4 text-sm font-medium text-purple-600 hover:underline dark:text-purple-400">Adicionar primeiro evento</button>
+              {canCreate('events') ? <button onClick={openCreate} className="mt-4 text-sm font-medium text-purple-600 hover:underline dark:text-purple-400">Adicionar primeiro evento</button> : null}
             </div>
           )}
           {!loading && monthOrder.map(month => (
@@ -765,10 +787,12 @@ export function Agenda() {
                     </div>
                     {ev.obs && <p className="mt-1 line-clamp-1 text-xs text-slate-400">{ev.obs}</p>}
                   </div>
-                  <div className="flex shrink-0 items-center gap-1 pt-0.5">
-                    <button onClick={() => openEdit(ev)} className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:border-slate-700"><Pencil className="h-4 w-4" /></button>
-                    <button onClick={() => setDelId(ev.id)} className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:border-slate-700"><Trash2 className="h-4 w-4" /></button>
-                  </div>
+                  {canEdit('events') || canDelete('events') ? (
+                    <div className="flex shrink-0 items-center gap-1 pt-0.5">
+                      {canEdit('events') ? <button onClick={() => openEdit(ev)} className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:border-slate-700"><Pencil className="h-4 w-4" /></button> : null}
+                      {canDelete('events') ? <button onClick={() => setDelId(ev.id)} className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:border-slate-700"><Trash2 className="h-4 w-4" /></button> : null}
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -955,16 +979,22 @@ export function Agenda() {
                 <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400">Reserva habilitada</span>
               )}
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
-              <button onClick={() => setDelId(previewEvent.id)}
-                className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-500 hover:border-red-200 hover:text-red-600 dark:border-slate-700">
-                <Trash2 className="h-4 w-4" />
-              </button>
-              <button onClick={() => openEdit(previewEvent)}
-                className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-purple-700">
-                <Pencil className="h-3.5 w-3.5" /> Editar
-              </button>
-            </div>
+            {canEdit('events') || canDelete('events') ? (
+              <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
+                {canDelete('events') ? (
+                  <button onClick={() => setDelId(previewEvent.id)}
+                    className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-500 hover:border-red-200 hover:text-red-600 dark:border-slate-700">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {canEdit('events') ? (
+                  <button onClick={() => openEdit(previewEvent)}
+                    className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-purple-700">
+                    <Pencil className="h-3.5 w-3.5" /> Editar
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       )}

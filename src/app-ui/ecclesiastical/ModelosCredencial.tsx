@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
+import { usePermissions } from "../../lib/usePermissions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CredentialModel {
@@ -55,6 +56,15 @@ const TIPOS = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ModelosCredencial() {
+  const storedUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("mrm_user") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const profileType: string = storedUser.profileType || "church";
+  const { canCreate, canEdit, canDelete } = usePermissions(profileType);
   const [models, setModels] = useState<CredentialModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -84,6 +94,7 @@ export default function ModelosCredencial() {
   useEffect(() => { load(); }, []);
 
   async function handleDelete() {
+    if (!canDelete("credential_models")) return;
     if (!deleteTarget) return;
     setDeleting(true);
     try {
@@ -96,7 +107,8 @@ export default function ModelosCredencial() {
         setDeleteTarget(null);
         load();
       } else {
-        showToast(false, "Erro ao excluir modelo.");
+        const payload = await res.json().catch(() => ({}));
+        showToast(false, payload.error || "Erro ao excluir modelo.");
       }
     } catch {
       showToast(false, "Erro de conexão.");
@@ -130,12 +142,14 @@ export default function ModelosCredencial() {
             <p className="text-slate-500 text-sm">Gerencie os modelos de carteirinha para impressão</p>
           </div>
         </div>
-        <button
-          onClick={() => { setEditing(null); setModalOpen(true); }}
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          <Plus size={16} /> Novo Modelo
-        </button>
+        {canCreate("credential_models") ? (
+          <button
+            onClick={() => { setEditing(null); setModalOpen(true); }}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            <Plus size={16} /> Novo Modelo
+          </button>
+        ) : null}
       </div>
 
       {/* Stats */}
@@ -229,12 +243,16 @@ export default function ModelosCredencial() {
                       <button onClick={() => setPreviewModel(m)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-blue-600" title="Visualizar">
                         <Eye size={15} />
                       </button>
-                      <button onClick={() => { setEditing(m); setModalOpen(true); }} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-purple-600" title="Editar">
-                        <Edit2 size={15} />
-                      </button>
-                      <button onClick={() => setDeleteTarget(m)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-red-600" title="Excluir">
-                        <Trash2 size={15} />
-                      </button>
+                      {canEdit("credential_models") ? (
+                        <button onClick={() => { setEditing(m); setModalOpen(true); }} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-purple-600" title="Editar">
+                          <Edit2 size={15} />
+                        </button>
+                      ) : null}
+                      {canDelete("credential_models") ? (
+                        <button onClick={() => setDeleteTarget(m)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-red-600" title="Excluir">
+                          <Trash2 size={15} />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>

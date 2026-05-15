@@ -239,6 +239,13 @@ function TableLoadingRows({ columns, rows = 6 }: { columns: number; rows?: numbe
 export function Baptism() {
   const storedUser = useMemo(parseStoredUser, []);
   const defaultDateRange = useMemo(() => getMonthDateRange(), []);
+  const dashboardScopeKey = useMemo(() => ({
+    profileType: storedUser.profileType || '',
+    campoId: storedUser.campoId || '',
+    regionalId: storedUser.regionalId || '',
+    churchId: storedUser.churchId || '',
+    roleName: storedUser.roleName || '',
+  }), [storedUser]);
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
   const modalFieldScopeId = activeFieldId || storedUser.campoId || '';
   const normalizedRole = normalizeText(storedUser.roleName || '');
@@ -299,13 +306,15 @@ export function Baptism() {
 
   // ── TanStack Query para o dashboard ──────────────────────────────────────
   const dashboardQuery = useQuery<DashboardPayload>({
-    queryKey: qk.baptism({}),
+    queryKey: qk.baptism(dashboardScopeKey),
     queryFn: async () => {
       const response = await authFetch(`${apiBase}/baptism/dashboard`);
       if (!response.ok) throw new Error('Falha ao carregar painel de batismo.');
       return response.json();
     },
     staleTime: 5 * 60 * 1000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
 
@@ -313,7 +322,7 @@ export function Baptism() {
   const loading = dashboardQuery.isLoading;
 
   // Substituição de loadDashboard — agora invalida o cache para refetch silencioso
-  const loadDashboard = () => qc.invalidateQueries({ queryKey: qk.baptism({}) });
+  const loadDashboard = () => qc.invalidateQueries({ queryKey: qk.baptism(dashboardScopeKey) });
 
   const canManageSchedules = dashboard?.canManageSchedules ?? false;
 
@@ -547,7 +556,9 @@ export function Baptism() {
   }
 
   function openRequestModal(schedule?: BaptismSchedule | null, request?: BaptismQueueItem | null) {
-    const churchId = request?.church?.id || schedule?.churchId || (!canManageSchedules ? storedUser.churchId || '' : '');
+    const churchId = !canManageSchedules && storedUser.churchId
+      ? storedUser.churchId
+      : request?.church?.id || schedule?.churchId || '';
     const defaultSchedule = request?.baptismDate ? null : schedule || latestScheduleForChurch(churchId);
 
     setEditingRequest(request || null);
@@ -674,6 +685,7 @@ export function Baptism() {
 
     setScheduleSubmitting(true);
     try {
+      const wasEditingSchedule = Boolean(editingSchedule);
       const response = await authFetch(`${apiBase}/baptism/schedules${editingSchedule ? `/${editingSchedule.id}` : ''}`, {
         method: editingSchedule ? 'PATCH' : 'POST',
         body: JSON.stringify(scheduleForm),
@@ -682,11 +694,18 @@ export function Baptism() {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error || 'Falha ao salvar data de batismo.');
       }
+      const savedSchedule = await response.json();
+      qc.setQueryData<DashboardPayload>(qk.baptism(dashboardScopeKey), (prev) => {
+        if (!prev) return prev;
+        const nextSchedules = [...prev.schedules.filter((schedule) => schedule.id !== savedSchedule.id), savedSchedule]
+          .sort((left, right) => String(left.scheduledDate || '').localeCompare(String(right.scheduledDate || '')));
+        return { ...prev, schedules: nextSchedules };
+      });
       setEditingSchedule(null);
       setScheduleModalOpen(false);
       setScheduleForm({ ...EMPTY_SCHEDULE_FORM });
-      toast.success(editingSchedule ? 'Data de batismo atualizada.' : 'Data de batismo criada.');
-      await loadDashboard();
+      toast.success(wasEditingSchedule ? 'Data de batismo atualizada.' : 'Data de batismo criada.');
+      void loadDashboard();
     } catch (submitError) {
       setModalError(submitError instanceof Error ? submitError.message : 'Falha ao salvar data.');
     } finally {
@@ -732,7 +751,7 @@ export function Baptism() {
     if (!deleteTarget) return;
 
     // ── Optimistic: remove do cache imediatamente ─────────────────────────
-    const queryKey = qk.baptism({});
+    const queryKey = qk.baptism(dashboardScopeKey);
     const snapshot = qc.getQueryData<DashboardPayload>(queryKey);
     if (snapshot) {
       qc.setQueryData<DashboardPayload>(queryKey, (prev) => {

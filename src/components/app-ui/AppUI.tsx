@@ -540,10 +540,7 @@ export function AppUI() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        if (response.status === 401 || response.status === 403) {
-          throw new Error('Sessao expirada. Faca login novamente.');
-        }
-        throw new Error(payload.error || 'Senha do campo invalida.');
+        throw new Error(payload.error || 'Senha do campo inválida.');
       }
 
       applyContextSelection(fieldPasswordPrompt);
