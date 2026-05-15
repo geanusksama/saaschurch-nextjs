@@ -24,8 +24,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
 
 interface Message {
   id: string;
@@ -96,6 +94,7 @@ export function Inbox() {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   // Member search state
   const [memberSuggestions, setMemberSuggestions] = useState<any[]>([]);
@@ -104,6 +103,12 @@ export function Inbox() {
   useEffect(() => {
     fetchData();
   }, [activeFolder]);
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+    if (editorRef.current.innerHTML === body) return;
+    editorRef.current.innerHTML = body;
+  }, [body, isComposeOpen]);
 
   const fetchData = async () => {
     try {
@@ -169,7 +174,7 @@ export function Inbox() {
     }
     try {
       setIsSearchingMembers(true);
-      const res = await fetch(`${apiBase}/members/search-for-email?search=${encodeURIComponent(term)}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${apiBase}/members/search-for-email?q=${encodeURIComponent(term)}`, { headers: getAuthHeaders() });
       const data = await res.json();
       setMemberSuggestions(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -392,6 +397,23 @@ export function Inbox() {
     setBody(replyHeader);
     setReplyToThreadId(selectedMessage.threadId || selectedMessage.id);
     setIsComposeOpen(true);
+  };
+
+  const syncEditorBody = () => {
+    setBody(editorRef.current?.innerHTML || '');
+  };
+
+  const applyEditorCommand = (command: string, value?: string) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    document.execCommand(command, false, value);
+    syncEditorBody();
+  };
+
+  const insertEditorLink = () => {
+    const url = window.prompt('Informe a URL do link');
+    if (!url) return;
+    applyEditorCommand('createLink', url);
   };
 
   const handleSend = async () => {
@@ -797,7 +819,7 @@ export function Inbox() {
                           <button 
                             key={m.id}
                             onClick={() => {
-                              setTo(m.email);
+                              setTo(m.systemEmail || m.email || '');
                               setMemberSuggestions([]);
                             }}
                             className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 last:border-0"
@@ -807,7 +829,7 @@ export function Inbox() {
                             </div>
                             <div>
                               <p className="text-xs font-bold text-slate-900 dark:text-white">{m.fullName}</p>
-                              <p className="text-[10px] text-slate-500">{m.email}</p>
+                              <p className="text-[10px] text-slate-500">{m.systemEmail || m.email || 'Sem e-mail cadastrado'}</p>
                             </div>
                           </button>
                         ))}
@@ -921,23 +943,32 @@ export function Inbox() {
                   />
                 </div>
                 
-                <div className="flex-1 overflow-y-auto p-4 custom-quill-container">
-                  <ReactQuill 
-                    theme="snow" 
-                    value={body} 
-                    onChange={setBody}
-                    placeholder="Escreva sua mensagem aqui..."
-                    modules={{
-                      toolbar: [
-                        [{ 'header': [1, 2, false] }],
-                        ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-                        [{'list': 'ordered'}, {'list': 'bullet'}],
-                        ['link', 'image', 'video'],
-                        ['clean']
-                      ],
-                    }}
-                    style={{ height: '300px', marginBottom: '50px' }}
-                  />
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950">
+                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-700 px-3 py-2 bg-slate-50 dark:bg-slate-900">
+                      <button type="button" onClick={() => applyEditorCommand('bold')} className="rounded px-2 py-1 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">B</button>
+                      <button type="button" onClick={() => applyEditorCommand('italic')} className="rounded px-2 py-1 text-xs italic text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">I</button>
+                      <button type="button" onClick={() => applyEditorCommand('underline')} className="rounded px-2 py-1 text-xs underline text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">U</button>
+                      <button type="button" onClick={() => applyEditorCommand('insertUnorderedList')} className="rounded px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">Lista</button>
+                      <button type="button" onClick={() => applyEditorCommand('insertOrderedList')} className="rounded px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">Numerada</button>
+                      <button type="button" onClick={insertEditorLink} className="rounded px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">Link</button>
+                      <button type="button" onClick={() => applyEditorCommand('removeFormat')} className="rounded px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">Limpar</button>
+                    </div>
+                    <div className="relative min-h-[300px]">
+                      {!stripHtml(body).trim() && (
+                        <div className="pointer-events-none absolute left-4 top-4 text-sm text-slate-400 dark:text-slate-500">
+                          Escreva sua mensagem aqui...
+                        </div>
+                      )}
+                      <div
+                        ref={editorRef}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onInput={syncEditorBody}
+                        className="min-h-[300px] px-4 py-4 text-sm text-slate-900 outline-none dark:text-slate-100"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {attachments.length > 0 && (

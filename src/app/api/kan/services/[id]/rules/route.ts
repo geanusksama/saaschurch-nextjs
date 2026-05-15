@@ -10,6 +10,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const rules = await prisma.kanMatrixRule.findMany({
       where: { serviceId, isActive: true },
       orderBy: { columnIndex: "asc" },
+      include: {
+        stage: {
+          select: {
+            id: true,
+            name: true,
+            pipelineId: true,
+            pipeline: {
+              select: { id: true, name: true }
+            }
+          }
+        }
+      }
     });
     const colIndices = [...new Set(rules.map((r) => r.columnIndex))];
     if (colIndices.length === 0) return NextResponse.json([]);

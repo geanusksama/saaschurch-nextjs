@@ -11,13 +11,23 @@ async function applyMatrixRule({ card, serviceId, columnIndex, user, extraMessag
     const service = (card.service as Record<string, string> | null) || await prisma.kanService.findUnique({ where: { id: serviceId } });
     const serviceGroup = (service as Record<string, string> | null)?.serviceGroup || (service as Record<string, string> | null)?.sigla || "GERAL";
     const serviceName = (service as Record<string, string> | null)?.description || (service as Record<string, string> | null)?.sigla || "";
-    if (card.memberId && (rule.changeStatus || rule.changeTitle)) {
+    if (card.memberId && (rule.changeStatus || rule.changeTitle || rule.doesTransfer)) {
       const memberData: Record<string, unknown> = {};
       if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = rule.newStatus.toUpperCase();
       if (rule.changeTitle && rule.newTitle) {
         memberData.ecclesiasticalTitle = rule.newTitle;
         const titleRecord = await prisma.ecclesiasticalTitle.findFirst({ where: { name: { equals: rule.newTitle, mode: "insensitive" }, deletedAt: null, isActive: true } });
         memberData.ecclesiasticalTitleId = titleRecord?.id ?? null;
+      }
+      if (rule.doesTransfer && card.destinationChurchId) {
+        const destChurch = await prisma.church.findUnique({
+          where: { id: card.destinationChurchId as string },
+          select: { regionalId: true }
+        });
+        if (destChurch) {
+          memberData.churchId = card.destinationChurchId;
+          memberData.regionalId = destChurch.regionalId ?? null;
+        }
       }
       if (Object.keys(memberData).length > 0) await prisma.member.update({ where: { id: card.memberId as string }, data: memberData });
     }
@@ -29,6 +39,7 @@ async function applyMatrixRule({ card, serviceId, columnIndex, user, extraMessag
           action: rule.occurrenceName || serviceName || "MOVIMENTO",
           notes: extraMessage || rule.message || null,
           metadata: { source: "MATRIX", cardId: card.id },
+          cardId: card.id as string,
           createdBy: user?.id || null,
         },
       }).catch(() => null);

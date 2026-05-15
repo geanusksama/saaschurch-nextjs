@@ -30,6 +30,7 @@ async function applyMatrixRule({ card, serviceId, columnIndex, user, extraMessag
           action: rule.occurrenceName || serviceName || "MOVIMENTO",
           notes: extraMessage || rule.message || null,
           metadata: { source: "MATRIX", cardId: card.id },
+          cardId: card.id as string,
           createdBy: user?.id || null,
         },
       }).catch(() => null);

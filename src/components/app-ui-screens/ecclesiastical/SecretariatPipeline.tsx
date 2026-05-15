@@ -2159,8 +2159,8 @@ function EditCardModal({
         observations: form.observations || null,
         description: form.description || null,
         status: form.status,
+        destinationChurchId: destChurchId || null,
       };
-      if (destChurchId) body.destinationChurchId = destChurchId;
       if (form.columnIndex !== card.columnIndex) body.columnIndex = form.columnIndex;
 
       const res = await authFetch(`${apiBase}/kan/cards/${card.id}`, {
@@ -2436,6 +2436,7 @@ function NewCardModal({
   const [candidateName, setCandidateName] = useState("");
   const [justification, setJustification] = useState("");
   const [churchId, setChurchId] = useState<string>("");
+  const [destChurchId, setDestChurchId] = useState<string>("");
   const [churches, setChurches] = useState<{ id: string; name: string; code: string | null }[]>([]);
   const [members, setMembers] = useState<{ id: string; fullName: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -2484,6 +2485,7 @@ function NewCardModal({
         stageId: stage.id,
         serviceId: stage.serviceId,
         churchId,
+        destinationChurchId: destChurchId || undefined,
         memberId: memberId || undefined,
         candidateName: memberId ? undefined : candidateName,
         justification,
@@ -2504,6 +2506,24 @@ function NewCardModal({
             onChange={(e) => { setChurchId(e.target.value); setMemberId(""); }}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
           >
+            {churches.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.code ? `${c.code} - ` : ""}
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">
+            Igreja de destino (Transferências)
+          </label>
+          <select
+            value={destChurchId}
+            onChange={(e) => setDestChurchId(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="">— Nenhuma —</option>
             {churches.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.code ? `${c.code} - ` : ""}

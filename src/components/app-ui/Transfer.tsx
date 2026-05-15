@@ -200,6 +200,7 @@ export function Transfer() {
   const storedUser = useMemo(parseStoredUser, []);
   const defaultDateRange = useMemo(() => getMonthDateRange(), []);
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
+  const modalFieldScopeId = activeFieldId || storedUser.campoId || '';
   const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
   const canManageTransferStatus = storedUser.profileType === 'master' || storedUser.profileType === 'admin';
   const normalizedRole = normalizeText(storedUser.roleName || '');
@@ -316,10 +317,8 @@ export function Transfer() {
     const params = new URLSearchParams();
     if (churchId) {
       params.set('churchId', churchId);
-    } else if (selectedRegionalId) {
-      params.set('regionalId', selectedRegionalId);
-    } else if (selectedFieldId) {
-      params.set('campoId', selectedFieldId);
+    } else if (modalFieldScopeId) {
+      params.set('campoId', modalFieldScopeId);
     }
     params.set('query', normalizedQuery);
     params.set('limit', '200');
@@ -404,7 +403,7 @@ export function Transfer() {
   }
 
   function openRequestModal(request?: TransferQueueItem | null) {
-    const defaultOriginChurchId = request?.church?.id || selectedChurchId || (!canChooseChurch ? storedUser.churchId || '' : '');
+    const defaultOriginChurchId = request?.church?.id || (!canChooseChurch ? storedUser.churchId || '' : '');
     setEditingRequest(request || null);
     setModalError('');
     setMembers([]);
@@ -472,7 +471,7 @@ export function Transfer() {
     setMemberSearchLoading(true);
     setMemberSearchPerformed(true);
     try {
-      await loadMembers(query, !canChooseChurch ? storedUser.churchId || '' : requestForm.originChurchId || '');
+      await loadMembers(query, !canChooseChurch ? storedUser.churchId || '' : '');
     } finally {
       setMemberSearchLoading(false);
     }
@@ -521,8 +520,7 @@ export function Transfer() {
     try {
       const params = new URLSearchParams();
       params.set('query', query);
-      if (selectedFieldId) params.set('fieldId', selectedFieldId);
-      if (selectedRegionalId) params.set('regionalId', selectedRegionalId);
+      if (modalFieldScopeId) params.set('fieldId', modalFieldScopeId);
 
       const excludeChurchId = requestForm.originChurchId || storedUser.churchId || '';
       if (excludeChurchId) {
@@ -736,7 +734,7 @@ export function Transfer() {
             <thead className="border-b border-slate-200 bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('member')} className="inline-flex items-center gap-2">Membro<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('church')} className="inline-flex items-center gap-2">Igreja Atual<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('church')} className="inline-flex items-center gap-2">Igreja Inicial<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('destinationChurch')} className="inline-flex items-center gap-2">Igreja Destino<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('title')} className="inline-flex items-center gap-2">Titulo Atual<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('status')} className="inline-flex items-center gap-2">Status<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>

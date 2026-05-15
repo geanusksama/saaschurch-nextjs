@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Edit, Info, Pencil, Plus, Search, Star, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { MemberEditDrawer } from "./MemberEdit";
@@ -336,8 +336,8 @@ export function MemberProfile() {
   const memberSince = member?.membershipDate || member?.baptismDate;
 
   const filteredHistory = history.filter((h) => {
-    // Exclude pipeline/kanban card events — they have a card protocol reference
-    if (h.card?.protocol) return false;
+    // Pipeline events are now shown per user request
+    // if (h.card?.protocol) return false;
     if (!histSearch.trim()) return true;
     const q = histSearch.toLowerCase();
     return (

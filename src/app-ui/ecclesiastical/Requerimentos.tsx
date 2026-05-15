@@ -356,72 +356,36 @@ export default function Requerimentos() {
     loadFilters();
   }, [selectedFieldId]);
 
-  // Derive active stage
   const activeService = useMemo(
     () => services.find((s) => s.id === activeServiceId) ?? null,
     [services, activeServiceId],
   );
-  const activeRuleStage = useMemo(
-    () => activeService?.rules?.find((rule) => rule.columnIndex === 1)?.stage ?? null,
-    [activeService],
-  );
-  const activeStageId = useMemo(
-    () => activeRuleStage?.id ?? activeService?.stages?.[0]?.id ?? null,
-    [activeRuleStage, activeService],
-  );
-  const allStageIds = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          services
-            .map((service) => service.rules?.find((rule) => rule.columnIndex === 1)?.stage?.id ?? service.stages?.[0]?.id ?? null)
-            .filter((id): id is number => typeof id === "number"),
-        ),
-      ),
-    [services],
-  );
 
-  // Load cards for selected stage
+  // Load cards using the same dashboard-style source as the other ecclesiastical modules.
   const loadCards = () => {
-    const stageIds = activeServiceId == null ? allStageIds : activeStageId ? [activeStageId] : [];
-    if (!stageIds.length) {
-      setColumns([]);
-      return;
-    }
     setCardsLoading(true);
     const params = new URLSearchParams();
     if (from) params.set("from", from);
-    if (to) params.set("to", to + "T23:59:59");
+    if (to) params.set("to", to);
     if (q) params.set("q", q);
-    Promise.all(
-      stageIds.map((stageId) =>
-        authFetch(`${apiBase}/kan/stages/${stageId}/board?${params}`)
-          .then((r) => r.json())
-          .then((data) => (Array.isArray(data?.columns) ? data.columns : [])),
-      ),
-    )
-      .then((results) => {
-        const mergedColumns = new Map<number, ColumnWithCards>();
+    if (selectedFieldId) params.set("campoId", selectedFieldId);
+    if (selectedRegionalId) params.set("regionalId", selectedRegionalId);
+    if (selectedChurchId) params.set("churchId", selectedChurchId);
+    if (activeServiceId != null) params.set("serviceId", String(activeServiceId));
 
-        results.flat().forEach((column: ColumnWithCards) => {
-          const existing = mergedColumns.get(column.id);
-          if (!existing) {
-            mergedColumns.set(column.id, {
-              ...column,
-              cards: Array.isArray(column.cards) ? [...column.cards] : [],
-            });
-            return;
-          }
-
-          const seenCardIds = new Set(existing.cards.map((card) => card.id));
-          const nextCards = Array.isArray(column.cards)
-            ? column.cards.filter((card) => !seenCardIds.has(card.id))
-            : [];
-
-          existing.cards.push(...nextCards);
-        });
-
-        setColumns(Array.from(mergedColumns.values()));
+    authFetch(`${apiBase}/requirements/dashboard?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const queue = Array.isArray(data?.queue) ? data.queue : [];
+        setColumns([
+          {
+            id: 0,
+            name: "Resultados",
+            columnIndex: 0,
+            color: null,
+            cards: queue,
+          },
+        ]);
       })
       .catch(() => setColumns([]))
       .finally(() => setCardsLoading(false));
@@ -430,7 +394,7 @@ export default function Requerimentos() {
   useEffect(() => {
     setPage(1);
     loadCards();
-  }, [activeStageId, activeServiceId, allStageIds, from, to, q]);
+  }, [activeServiceId, from, to, q, selectedFieldId, selectedRegionalId, selectedChurchId]);
 
   // Flatten cards from all columns
   const allCards = useMemo(
@@ -445,8 +409,8 @@ export default function Requerimentos() {
           })
           .map((card) => ({
             ...card,
-            columnName: col.name,
-            columnColor: col.color,
+            columnName: card.column?.name || col.name,
+            columnColor: card.column?.color || col.color,
           })),
       );
     },

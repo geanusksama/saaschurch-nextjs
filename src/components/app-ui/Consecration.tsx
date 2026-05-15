@@ -257,6 +257,7 @@ export function Consecration() {
   const storedUser = useMemo(parseStoredUser, []);
   const defaultDateRange = useMemo(() => getMonthDateRange(), []);
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
+  const modalFieldScopeId = activeFieldId || storedUser.campoId || '';
   const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
   const normalizedRole = normalizeText(storedUser.roleName || '');
   const isSecretaryOrTreasurer = normalizedRole.includes('secret') || normalizedRole.includes('tesour');
@@ -351,6 +352,11 @@ export function Consecration() {
     return inField.filter((church) => church.regional?.id === selectedRegionalId || church.regionalId === selectedRegionalId);
   }, [churches, selectedFieldId, selectedRegionalId]);
 
+  const modalScopedChurchOptions = useMemo(() => {
+    if (!modalFieldScopeId) return churches;
+    return churches.filter((church) => church.regional?.campoId === modalFieldScopeId || church.regional?.campo?.id === modalFieldScopeId);
+  }, [churches, modalFieldScopeId]);
+
   async function loadTitleOptions() {
     setLoadingTitles(true);
     try {
@@ -414,7 +420,7 @@ export function Consecration() {
     if (churchId) {
       params.set('churchId', churchId);
     } else {
-      const activeCampo = selectedFieldId || storedUser.campoId || '';
+      const activeCampo = modalFieldScopeId;
       if (activeCampo) params.set('campoId', activeCampo);
     }
     params.set('query', normalizedQuery);
@@ -467,11 +473,11 @@ export function Consecration() {
   const currentSchedule = visibleSchedules[0] || null;
 
   const pickerChurches = useMemo(() => {
-    const source = churchPickerTarget === 'request' ? filteredChurchOptions : churches;
+    const source = modalScopedChurchOptions;
     const query = normalizeText(churchSearch);
     if (!query) return source;
     return source.filter((church) => normalizeText(`${church.code || ''} ${church.name} ${church.regional?.name || ''} ${church.addressCity || ''}`).includes(query));
-  }, [churchPickerTarget, filteredChurchOptions, churches, churchSearch]);
+  }, [modalScopedChurchOptions, churches, churchSearch]);
 
   const filteredMembers = useMemo(
     () => members.filter((member) => memberMatchesQuery(member, memberSearch)).slice(0, 30),
@@ -581,7 +587,7 @@ export function Consecration() {
     setChurchSearch('');
     setActiveChurchIndex(-1);
     setScheduleForm({
-      churchId: schedule?.churchId || selectedChurchId || '',
+      churchId: schedule?.churchId || (!canManageSchedules ? storedUser.churchId || '' : ''),
       scheduledDate: toDateInputValue(schedule?.scheduledDate),
       notes: schedule?.notes || '',
     });
@@ -598,7 +604,7 @@ export function Consecration() {
       }
     }
 
-    const churchId = request?.church?.id || schedule?.churchId || selectedChurchId || (!canPickRequestChurch ? storedUser.churchId || '' : '');
+    const churchId = request?.church?.id || schedule?.churchId || (!canPickRequestChurch ? storedUser.churchId || '' : '');
     const defaultSchedule = request?.consecrationDate ? null : schedule || latestScheduleForChurch(churchId);
     const matchedTitle = loadedTitles.find((title) => normalizeText(title.name) === normalizeText(request?.intendedTitle || '')) || null;
 
@@ -670,7 +676,7 @@ export function Consecration() {
     setMemberSearchPerformed(true);
     setActiveMemberIndex(-1);
     try {
-      await loadMembers(requestForm.churchId || (!canPickRequestChurch ? storedUser.churchId || '' : ''), query);
+      await loadMembers(canPickRequestChurch ? undefined : (requestForm.churchId || storedUser.churchId || ''), query);
     } finally {
       setMemberSearchLoading(false);
     }

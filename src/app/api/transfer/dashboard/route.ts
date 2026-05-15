@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
       where: { deletedAt: null, ...kanScopeFilter(user), service: { is: { serviceGroup: "TRANSFERENCIA" } } },
       include: {
         church: { select: { id: true, name: true, code: true } },
+        destinationChurch: { select: { id: true, name: true, code: true } },
         member: { select: { id: true, fullName: true, ecclesiasticalTitle: true, membershipStatus: true } },
         service: { select: { id: true, sigla: true, description: true } },
         column: { select: { id: true, name: true, columnIndex: true, color: true } },

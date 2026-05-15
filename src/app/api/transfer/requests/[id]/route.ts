@@ -7,12 +7,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return withAuth(req, async (user) => {
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
-    const { columnIndex, status, statusLabel, observations } = body;
+    const { columnIndex, status, statusLabel, observations, destinationChurchId } = body;
     const data: Record<string, unknown> = { updatedBy: user.id || null };
     if (columnIndex !== undefined) data.columnIndex = columnIndex;
     if (status !== undefined) data.status = status;
     if (statusLabel !== undefined) data.statusLabel = statusLabel;
     if (observations !== undefined) data.observations = observations;
+    if (destinationChurchId !== undefined) {
+      data.destinationChurchId = destinationChurchId;
+      if (destinationChurchId) {
+        const destChurch = await prisma.church.findUnique({ where: { id: destinationChurchId }, select: { regionalId: true } });
+        if (destChurch && destChurch.regionalId) data.destinationRegionalId = destChurch.regionalId;
+      }
+    }
     const updated = await prisma.kanCard.update({ where: { id }, data });
     return NextResponse.json(serializeBigInts(updated));
   });

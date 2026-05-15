@@ -301,8 +301,8 @@ function ChurchPickerModal({
     if (!search.trim()) { setResults([]); return; }
     setLoading(true);
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    const params = new URLSearchParams({ query: search.trim() });
-    if (userCampoId && !isMasterOrAdmin) params.set('fieldId', userCampoId);
+    const params = new URLSearchParams({ q: search.trim() });
+    if (userCampoId && !isMasterOrAdmin) params.set('campoId', userCampoId);
     try {
       const res = await fetch(`${apiBase}/churches/search?${params}`, { headers });
       if (res.ok) {
