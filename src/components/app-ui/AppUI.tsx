@@ -1676,51 +1676,41 @@ export function AppUI() {
                   </div>
 
                   <div className="space-y-2 text-sm">
-                    {storedUser.churchName && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                        <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Igreja</p>
-                          <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.churchName}</p>
-                        </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                      <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Igreja</p>
+                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.churchName || 'Não vinculada'}</p>
                       </div>
-                    )}
-                    {storedUser.campoName && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                        <Building className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Campo</p>
-                          <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.campoName}</p>
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                      <Building className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Campo</p>
+                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.campoName || 'Não vinculado'}</p>
                       </div>
-                    )}
-                    {storedUser.regionalName && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                        <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Regional</p>
-                          <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.regionalName}</p>
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                      <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Regional</p>
+                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.regionalName || 'Não vinculada'}</p>
                       </div>
-                    )}
-                    {(storedUser.ecclesiasticalTitle || storedUser.title) && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                        <Award className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Título</p>
-                          <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.ecclesiasticalTitle || storedUser.title}</p>
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                      <Award className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Título</p>
+                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.ecclesiasticalTitle || storedUser.title || 'Nenhum'}</p>
                       </div>
-                    )}
-                    {storedUser.rol && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                        <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">ROL</p>
-                          <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.rol}</p>
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                      <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">ROL</p>
+                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.rol || 'Nenhum'}</p>
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   <div className="pt-2">
