@@ -59,6 +59,11 @@ const emptyForm: RoleFormState = {
   isSystem: false,
 };
 
+// Flat list of every possible permission id (e.g. "dashboard.view")
+const ALL_PERMISSION_IDS = permissionCategories.flatMap((cat) =>
+  cat.permissions.map((p) => p.id),
+);
+
 function permissionMapToArray(permissions: RoleRecord['permissions']) {
   if (!permissions || typeof permissions !== 'object') return [];
   return Object.entries(permissions)
@@ -66,8 +71,11 @@ function permissionMapToArray(permissions: RoleRecord['permissions']) {
     .map(([key]) => key);
 }
 
-function permissionArrayToMap(permissions: string[]) {
-  return Object.fromEntries(permissions.map((permission) => [permission, true]));
+// Stores true for checked items AND false for every unchecked item in the catalog,
+// so the permission map is always a complete, explicit true/false record.
+function permissionArrayToMap(checkedPermissions: string[]) {
+  const checked = new Set(checkedPermissions);
+  return Object.fromEntries(ALL_PERMISSION_IDS.map((id) => [id, checked.has(id)]));
 }
 
 export function Roles() {

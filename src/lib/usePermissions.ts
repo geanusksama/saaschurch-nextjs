@@ -50,6 +50,8 @@ function readUserOverrides(): Record<string, boolean> {
   return {};
 }
 
+
+
 /** Returns roleId if the user has a custom role assigned */
 function readUserRoleId(): string | null {
   try {
@@ -157,10 +159,12 @@ export function usePermissions(profileType?: string) {
   const resolve = (key: string, action: string): boolean => {
     const overrideKey = `${key}.${action}`;
     if (overrideKey in userOverrides) return userOverrides[overrideKey];
-    // User has a custom role: role permissions are a whitelist.
-    // Any permission NOT explicitly granted by the role is denied.
-    if (userRoleId) return false;
-    // No custom role → fall back to profile-type catalog defaults
+    // Role whitelist: if the user has a custom role AND permissions are loaded,
+    // any key absent from the map is denied (the role is a whitelist).
+    // Guard: only activate when overrides are non-empty to avoid blocking
+    // the sidebar while permissions are still loading.
+    if (userRoleId && Object.keys(userOverrides).length > 0) return false;
+    // No role, or permissions not yet loaded → profile-type catalog defaults
     const mod = modules.find((m) => m.key === key);
     if (!mod) return true;
     const actionPerms = mod.permissions[action as keyof typeof mod.permissions];
