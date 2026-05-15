@@ -97,6 +97,9 @@ type LancamentoRecente = {
   num_doc: string | null;
   obs?: string | null;
   repetido_mes?: string | null;
+  member_id?: string | null;
+  rol?: number | null;
+  tipo_pessoa?: string | null;
 };
 
 function normalizeText(value: string | null | undefined) {
@@ -394,7 +397,7 @@ function HistoricoPanel({
     const dtFim = new Date(year, month, 0).toISOString().split('T')[0];
     const { data } = await supabase
       .from('livro_caixa')
-      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, forma_pg, tipo_documento, num_doc, obs')
+      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, forma_pg, tipo_documento, num_doc, obs, member_id, rol, tipo_pessoa')
       .eq('church_id', repetirChurchId)
       .eq('tipo', 'RECEITA')
       .gte('data_lancamento', dtIni)
@@ -444,6 +447,9 @@ function HistoricoPanel({
       num_doc: l.num_doc ?? null,
       referencia: mesAtualStr,
       obs: l.obs ?? null,
+      member_id: l.member_id ?? null,
+      rol: l.rol ?? null,
+      tipo_pessoa: l.tipo_pessoa ?? null,
     }).select('id, legacy_id').single();
     if (!error && inserted) {
       setRepetidos(prev => new Set(prev).add(l.id));
@@ -456,7 +462,7 @@ function HistoricoPanel({
         tipo: l.tipo as 'RECEITA' | 'DESPESA',
         valor: l.valor,
         favorecido: l.favorecido,
-        rol: null,
+        rol: l.rol ?? null,
         plano_de_conta: l.plano_de_conta,
         categoria: l.plano_de_conta,
         forma_pg: l.forma_pg ?? null,
@@ -465,7 +471,7 @@ function HistoricoPanel({
         foto: null,
         num_doc: l.num_doc ?? null,
         tipo_documento: l.tipo === 'RECEITA' ? getReceitaTipoDocumentoPadrao(l.plano_de_conta, l.tipo_documento) : (l.tipo_documento ?? null),
-        member_id: null,
+        member_id: l.member_id ?? null,
         operador: null,
         churches: { name: repetirChurchName || '' },
       });
@@ -955,7 +961,7 @@ export default function LancamentoNew() {
   const loadRecentes = useCallback(async () => {
     let query = supabase
       .from('livro_caixa')
-      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, num_doc, church_id')
+      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, num_doc, church_id, member_id, rol, tipo_pessoa')
       .order('created_at', { ascending: false })
       .limit(30);
 
