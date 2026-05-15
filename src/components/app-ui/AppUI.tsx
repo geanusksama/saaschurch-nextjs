@@ -1645,24 +1645,24 @@ export function AppUI() {
             >
               <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl pointer-events-auto overflow-hidden">
                 {/* Header */}
-                <div className="relative bg-gradient-to-r from-purple-600 to-violet-600 px-6 pt-6 pb-16">
+                <div className="relative bg-slate-900 dark:bg-slate-950 px-6 pt-6 pb-16">
                   <button
                     onClick={() => setMyProfileOpen(false)}
-                    className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+                    className="absolute top-4 right-4 p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
                   >
                     <X className="w-4 h-4 text-white" />
                   </button>
                   <h2 className="text-white font-semibold text-lg">Meu Perfil</h2>
-                  <p className="text-purple-200 text-sm">Suas informações pessoais</p>
+                  <p className="text-slate-400 text-sm">Suas informações pessoais</p>
                 </div>
 
                 {/* Avatar */}
-                <div className="flex justify-center -mt-10 px-6">
+                <div className="flex justify-center -mt-10 px-6 relative z-10">
                   <div className="w-20 h-20 bg-white dark:bg-slate-700 rounded-full ring-4 ring-white dark:ring-slate-800 flex items-center justify-center shadow-md">
                     {storedUser.foto ? (
                       <img src={storedUser.foto} alt={displayName} className="w-20 h-20 rounded-full object-cover" />
                     ) : (
-                      <span className="text-purple-700 dark:text-purple-300 font-bold text-2xl">{initials}</span>
+                      <span className="text-slate-700 dark:text-slate-300 font-bold text-2xl">{initials}</span>
                     )}
                   </div>
                 </div>
