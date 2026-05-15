@@ -122,6 +122,36 @@ export default function UserPermissions() {
 
   const groups = PERMISSION_GROUPS;
   const filteredModules = filterGroup ? MODULES.filter((m) => m.group === filterGroup) : MODULES;
+
+  // Returns 'all-allowed' | 'all-blocked' | 'all-default' | 'mixed'
+  const getColumnState = (action: Action): 'all-allowed' | 'all-blocked' | 'all-default' | 'mixed' => {
+    const values = filteredModules.map((m) => perms[`${m.key}.${action}`]);
+    if (values.every((v) => v === true)) return 'all-allowed';
+    if (values.every((v) => v === false)) return 'all-blocked';
+    if (values.every((v) => v === undefined)) return 'all-default';
+    return 'mixed';
+  };
+
+  // Cycles: mixed/default → all-allowed → all-blocked → all-default
+  const toggleColumn = (action: Action) => {
+    const state = getColumnState(action);
+    setPerms((prev) => {
+      const next = { ...prev };
+      if (state === 'all-allowed') {
+        // → all blocked
+        filteredModules.forEach((m) => { next[`${m.key}.${action}`] = false; });
+      } else if (state === 'all-blocked') {
+        // → all default (remove overrides)
+        filteredModules.forEach((m) => { delete next[`${m.key}.${action}`]; });
+      } else {
+        // mixed or all-default → all allowed
+        filteredModules.forEach((m) => { next[`${m.key}.${action}`] = true; });
+      }
+      return next;
+    });
+    setSaved(false);
+  };
+
   const grouped = groups
     .filter((g) => !filterGroup || g === filterGroup)
     .map((g) => ({ group: g, items: filteredModules.filter((m) => m.group === g) }))
@@ -251,11 +281,30 @@ export default function UserPermissions() {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
                   <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 w-56">Módulo</th>
-                  {ACTIONS.map((a) => (
-                    <th key={a.key} className="px-2 py-3 text-center font-semibold text-slate-600 dark:text-slate-400 min-w-[72px] text-xs">
-                      {a.label}
-                    </th>
-                  ))}
+                  {ACTIONS.map((a) => {
+                    const colState = getColumnState(a.key);
+                    return (
+                      <th key={a.key} className="px-2 py-3 text-center font-semibold text-slate-600 dark:text-slate-400 min-w-[72px] text-xs">
+                        <button
+                          onClick={() => toggleColumn(a.key)}
+                          title={`Clique para alternar toda a coluna (estado: ${colState === 'all-allowed' ? 'todos permitidos' : colState === 'all-blocked' ? 'todos bloqueados' : colState === 'all-default' ? 'todos padrão' : 'misto'})`}
+                          className={`inline-flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors cursor-pointer select-none
+                            ${
+                              colState === 'all-allowed'
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : colState === 'all-blocked'
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+                            }`}
+                        >
+                          <span>{a.label}</span>
+                          <span className="text-[9px] font-normal opacity-60">
+                            {colState === 'all-allowed' ? '✓ todos' : colState === 'all-blocked' ? '✕ todos' : colState === 'all-default' ? '● padrão' : '— misto'}
+                          </span>
+                        </button>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>

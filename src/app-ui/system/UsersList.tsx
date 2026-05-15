@@ -24,6 +24,9 @@ export default function UsersList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterPerfil, setFilterPerfil] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterFuncao, setFilterFuncao] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState('');
@@ -118,10 +121,24 @@ export default function UsersList() {
     }
   };
 
-  const filtered = users.filter((u: any) =>
-    u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const allRoles: string[] = Array.from(
+    new Set(users.map((u: any) => u.role?.name).filter(Boolean))
+  ) as string[];
+
+  const filtered = users.filter((u: any) => {
+    const matchSearch =
+      !searchTerm ||
+      u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchPerfil = !filterPerfil || u.profileType === filterPerfil;
+    const matchStatus =
+      !filterStatus ||
+      (filterStatus === 'active' ? u.isActive : !u.isActive);
+    const matchFuncao =
+      !filterFuncao ||
+      (filterFuncao === '__none__' ? !u.role : u.role?.name === filterFuncao);
+    return matchSearch && matchPerfil && matchStatus && matchFuncao;
+  });
 
   return (
     <div className="p-6 text-slate-900 dark:text-slate-100">
@@ -163,15 +180,49 @@ export default function UsersList() {
             Listando usuários somente do campo ativo selecionado.
           </div>
         ) : null}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar usuários..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-          />
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Buscar usuários..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            />
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <select
+              value={filterPerfil}
+              onChange={(e) => setFilterPerfil(e.target.value)}
+              className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="">Todos os perfis</option>
+              {Object.entries(PROFILE_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="">Todos os status</option>
+              <option value="active">Ativo</option>
+              <option value="inactive">Inativo</option>
+            </select>
+            <select
+              value={filterFuncao}
+              onChange={(e) => setFilterFuncao(e.target.value)}
+              className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="">Todas as funções</option>
+              <option value="__none__">Sem função</option>
+              {allRoles.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
