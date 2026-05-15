@@ -753,7 +753,7 @@ export function AppUI() {
                               : 'text-slate-700 dark:text-slate-300'
                           }`}
                         >
-                          <Icon className="h-4.5 w-4.5" />
+                          <Icon className="h-5 w-5" />
                           <div className="min-w-0 flex-1">
                             <p className="truncate">{item.name}</p>
                             <p className="truncate text-[11px] font-medium text-slate-400 dark:text-slate-500">{item.section}</p>
