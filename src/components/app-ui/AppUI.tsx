@@ -1680,21 +1680,21 @@ export function AppUI() {
                       <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
                       <div>
                         <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Igreja</p>
-                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.churchName || 'Não vinculada'}</p>
+                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.church?.name || storedUser.churchName || 'Não vinculada'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                       <Building className="w-4 h-4 text-slate-400 flex-shrink-0" />
                       <div>
                         <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Campo</p>
-                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.campoName || 'Não vinculado'}</p>
+                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.campo?.name || storedUser.campoName || 'Não vinculado'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                       <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
                       <div>
                         <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Regional</p>
-                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.regionalName || 'Não vinculada'}</p>
+                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.regional?.name || storedUser.regionalName || 'Não vinculada'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
