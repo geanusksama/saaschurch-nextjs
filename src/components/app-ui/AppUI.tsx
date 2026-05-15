@@ -1,4 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router';
+import { del } from 'idb-keyval';
 import { 
   LayoutDashboard, 
   Users, 
@@ -555,9 +556,11 @@ export function AppUI() {
     await supabase.auth.signOut().catch(() => undefined);
     localStorage.removeItem('mrm_token');
     localStorage.removeItem('mrm_user');
+    localStorage.removeItem('mrm_permissions');
     localStorage.removeItem('mrm_selected_context');
     localStorage.removeItem('mrm_active_field_id');
     localStorage.removeItem('mrm_active_field_name');
+    await del('secretaria-cache').catch(() => undefined);
     navigate('/auth/login');
   };
 

@@ -57,11 +57,13 @@ export function Login() {
         ...profileData,
       };
 
+      localStorage.removeItem('mrm_permissions');
+      await del('secretaria-cache').catch(() => {});
+
       localStorage.setItem('mrm_token', sessionToken);
       localStorage.setItem('mrm_user', JSON.stringify(resolvedUser));
 
-      // Se é um usuário diferente do último login, limpa o cache do IndexedDB
-      // para não mostrar dados de outra pessoa
+      // Mantém um marcador do último login apenas para diagnóstico futuro.
       const lastUserId = await get<string>('mrm_last_user_id').catch(() => null);
       if (lastUserId && lastUserId !== resolvedUser.id) {
         await del('secretaria-cache').catch(() => {});
@@ -88,6 +90,8 @@ export function Login() {
     } catch (err) {
       localStorage.removeItem('mrm_token');
       localStorage.removeItem('mrm_user');
+      localStorage.removeItem('mrm_permissions');
+      await del('secretaria-cache').catch(() => {});
       setError(err instanceof Error ? err.message : 'Nao foi possivel concluir o login.');
     } finally {
       setLoading(false);
