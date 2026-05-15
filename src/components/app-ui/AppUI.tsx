@@ -742,18 +742,18 @@ export function AppUI() {
                       <div
                         key={`favorite-${item.path}`}
                         className={`group flex items-center gap-2 rounded-xl transition-all text-sm ${
-                          isActive ? 'bg-purple-50 ring-1 ring-purple-200/80 dark:bg-purple-500/10 dark:ring-purple-500/20' : 'hover:bg-white dark:hover:bg-slate-800'
+                          isActive ? 'bg-purple-100 dark:bg-purple-900/40' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <Link
                           to={item.path}
                           className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                             isActive
-                              ? 'text-purple-700 dark:text-purple-200 font-semibold'
+                              ? 'text-purple-700 dark:text-purple-300 font-semibold'
                               : 'text-slate-700 dark:text-slate-300'
                           }`}
                         >
-                          <Icon className="h-5 w-5" />
+                          <Icon className={`h-5 w-5 ${isActive ? 'text-purple-700 dark:text-purple-300' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`} />
                           <div className="min-w-0 flex-1">
                             <p className="truncate">{item.name}</p>
                             <p className="truncate text-[11px] font-medium text-slate-400 dark:text-slate-500">{item.section}</p>

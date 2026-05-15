@@ -6,6 +6,7 @@ import { apiBase } from '../../lib/apiBase';
 import { checkChurchCashStatus } from '../../lib/financeCashStatus';
 import { ReciboModal } from './ReciboModal';
 import type { ReciboRow } from './ReciboModal';
+import { MemberQuickCreateModal } from '../../components/app-ui/MemberQuickCreateModal';
 
 // Ícone de Igreja (cruz)
 function ChurchIcon({ className }: { className?: string }) {
@@ -295,98 +296,6 @@ function SearchModal({
             </button>
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Modal Cadastro PJ ────────────────────────────────────────────────────────
-
-function PJModal({
-  churches,
-  defaultChurchId,
-  defaultChurchName,
-  onConfirm,
-  onClose,
-}: {
-  churches: Church[];
-  defaultChurchId: string;
-  defaultChurchName: string;
-  onConfirm: (pj: { razaoSocial: string; nomeFantasia: string; docTipo: string; doc: string; churchId: string; churchName: string }) => void;
-  onClose: () => void;
-}) {
-  const [razaoSocial, setRazaoSocial] = useState('');
-  const [nomeFantasia, setNomeFantasia] = useState('');
-  const [docTipo, setDocTipo] = useState('CNPJ');
-  const [doc, setDoc] = useState('');
-  const [churchId, setChurchId] = useState(defaultChurchId);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!razaoSocial.trim()) return;
-    const ch = churches.find(c => c.id === churchId);
-    onConfirm({
-      razaoSocial: razaoSocial.trim(),
-      nomeFantasia: nomeFantasia.trim(),
-      docTipo,
-      doc: doc.trim(),
-      churchId,
-      churchName: ch?.name ?? defaultChurchName,
-    });
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-100">Cadastro de pessoa Jurídica</h2>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600">
-            <X className="w-4 h-4 text-slate-500 dark:text-slate-300" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-3">
-          <input
-            type="text" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)}
-            placeholder="Razão Social" required
-            className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 caret-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <input
-            type="text" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)}
-            placeholder="Nome fantasia"
-            className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 caret-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <div className="flex gap-2">
-            <select
-              value={docTipo} onChange={e => setDocTipo(e.target.value)}
-              className="px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-28"
-            >
-              <option value="CNPJ">CNPJ</option>
-              <option value="CPF">CPF</option>
-              <option value="OUTRO">Outro</option>
-            </select>
-            <input
-              type="text" value={doc} onChange={e => setDoc(e.target.value)}
-              placeholder="Documento"
-              className="flex-1 px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 caret-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-          <div className="flex gap-2">
-            <select
-              value={churchId} onChange={e => setChurchId(e.target.value)}
-              className="flex-1 px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              {churches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div className="flex items-center justify-between pt-2">
-            <button
-              type="submit"
-              className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
-            >
-              Incluir
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );
@@ -1153,6 +1062,9 @@ export default function LancamentoNew() {
     } else if (tipoPessoa === 'PJ') {
       favNome = pjNome.trim() || null;
       if (isBlank(favNome)) { setError(isReceita ? 'Informe a pessoa jurídica contribuinte.' : 'Informe a pessoa jurídica beneficiada.'); return; }
+      if (pjDoc && pjDoc.length === 36) {
+        memId = pjDoc;
+      }
     }
 
     const plano = planos.find(p => p.id === planoId);
@@ -1316,7 +1228,7 @@ export default function LancamentoNew() {
       const nome = m.fantasy_name || m.full_name;
       if (nome && !seen.has(nome.toLowerCase())) {
         seen.add(nome.toLowerCase());
-        results.push({ id: m.cnpj || m.cpf || m.id, label: nome, sub: m.full_name !== nome ? m.full_name : undefined });
+        results.push({ id: m.id, label: nome, sub: m.full_name !== nome ? m.full_name : undefined });
       }
     });
 
@@ -1656,29 +1568,18 @@ export default function LancamentoNew() {
           onSelect={item => { setPjNome(item.label); setPjDoc(item.id); setShowPJSearchModal(false); }}
           onClose={() => setShowPJSearchModal(false)} />
       )}
-      {showPJModal && (
-        <PJModal churches={churches} defaultChurchId={caixaId} defaultChurchName={caixaNome}
-          onConfirm={async pj => { 
-            try {
-              const docToSave = pj.doc ? pj.doc.replace(/\D/g, '') : null;
-              await supabase.from('members').insert({
-                church_id: pj.churchId,
-                member_type: 'PJ',
-                full_name: pj.razaoSocial,
-                fantasy_name: pj.nomeFantasia || null,
-                cnpj: pj.docTipo === 'CNPJ' ? docToSave : null,
-                cpf: pj.docTipo === 'CPF' ? docToSave : null,
-                membership_status: 'PJ_ATIVO',
-              });
-            } catch (err) {
-              console.warn("Erro ao salvar PJ", err);
-            }
-            setPjNome(pj.nomeFantasia || pj.razaoSocial); 
-            setPjDoc(pj.doc); 
-            setShowPJModal(false); 
-          }}
-          onClose={() => setShowPJModal(false)} />
-      )}
+      <MemberQuickCreateModal 
+        open={showPJModal}
+        type="PJ"
+        initialChurchId={caixaId}
+        availableChurches={churches.map(c => ({ id: c.id, name: c.name }))}
+        onCreated={created => {
+          setPjNome(created.fantasyName || created.fullName);
+          setPjDoc(created.id);
+          setShowPJModal(false);
+        }}
+        onClose={() => setShowPJModal(false)}
+      />
       {reciboRow && (
         <ReciboModal
           row={reciboRow}
