@@ -95,139 +95,154 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-2xl">M</span>
+    <div className="min-h-screen flex bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
+      {/* Left Panel */}
+      <div className="hidden lg:flex lg:w-1/2 relative bg-slate-950 overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-luminosity"
+          style={{ backgroundImage: `url('https://images.unsplash.com/photo-1438232992991-995b7058bbb3?q=80&w=2073&auto=format&fit=crop')` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent" />
+        
+        <div className="relative z-10 w-full p-12 lg:p-16 flex flex-col justify-between h-full">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-500 rounded text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-emerald-500/20">
+              M
+            </div>
+            <span className="text-white font-extrabold tracking-widest text-sm uppercase">MRM GESTÃO</span>
+          </div>
+
+          {/* Main Content */}
+          <div className="mt-auto mb-16">
+            <h1 className="text-5xl lg:text-6xl font-extrabold text-white mb-6 leading-[1.1] tracking-tight">
+              Sistema<br />Administrativo
+            </h1>
+            <p className="text-slate-300 text-lg max-w-md mb-12 leading-relaxed">
+              Gerencie membros, congregações, financeiro e acompanhe sua igreja em tempo real.
+            </p>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors">
+                <p className="text-white font-extrabold text-2xl mb-1 tracking-tight">+1k</p>
+                <p className="text-slate-400 text-xs font-semibold tracking-wide uppercase">Membros Ativos</p>
+              </div>
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors">
+                <p className="text-white font-extrabold text-2xl mb-1 tracking-tight">R$ 4.2M</p>
+                <p className="text-slate-400 text-xs font-semibold tracking-wide uppercase">Gestão Financeira</p>
+              </div>
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors">
+                <p className="text-white font-extrabold text-2xl mb-1 tracking-tight">100%</p>
+                <p className="text-slate-400 text-xs font-semibold tracking-wide uppercase">Integrado</p>
+              </div>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Bem-vindo ao MRM</h1>
-          <p className="text-purple-200">Entre na sua conta para continuar</p>
-        </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+          {/* Footer */}
+          <p className="text-slate-500 text-xs font-medium">
+            © {new Date().getFullYear()} MRM. Área restrita à liderança.
+          </p>
+        </div>
+      </div>
+
+      {/* Right Panel */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16">
+        <div className="w-full max-w-md">
+          {/* Mobile Logo (visible only on small screens) */}
+          <div className="flex lg:hidden items-center gap-3 mb-10">
+            <div className="w-8 h-8 bg-emerald-500 rounded text-white flex items-center justify-center font-bold text-lg">
+              M
+            </div>
+            <span className="text-slate-900 font-extrabold tracking-widest text-sm uppercase">MRM GESTÃO</span>
+          </div>
+
+          <h2 className="text-3xl lg:text-4xl font-extrabold text-[#0f172a] mb-2 tracking-tight">Bem-vindo de volta</h2>
+          <p className="text-sm text-slate-500 mb-10">Entre com suas credenciais para acessar o painel.</p>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-10">
+            <div className="px-5 py-2 bg-slate-950 text-white text-xs font-bold rounded-full cursor-default tracking-wide shadow-sm shadow-slate-950/20">
+              ENTRAR
+            </div>
+            <Link to="/auth/register" className="px-5 py-2 bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200 text-xs font-bold rounded-full transition-colors tracking-wide">
+              CRIAR CONTA
+            </Link>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Email
+              <label className="block text-[11px] font-bold text-slate-400 mb-2 tracking-widest uppercase">
+                E-mail
               </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                 <input
                   type="email"
-                  placeholder="demo@mrm.com"
+                  placeholder="seu@email.com"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm text-slate-900 placeholder:text-slate-300 transition-all bg-white"
+                  required
                 />
               </div>
             </div>
 
-            {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-[11px] font-bold text-slate-400 mb-2 tracking-widest uppercase">
                 Senha
               </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="demo123"
+                  placeholder="••••••••"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="w-full pl-10 pr-12 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm text-slate-900 placeholder:text-slate-300 transition-all font-medium tracking-wider bg-white"
+                  required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Remember & Forgot */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500"
-                />
-                <span className="text-sm text-slate-600">Lembrar de mim</span>
-              </label>
-              <Link
-                to="/auth/forgot-password"
-                className="text-sm text-purple-600 hover:text-purple-700 font-medium"
-              >
-                Esqueceu a senha?
-              </Link>
-            </div>
+            {error ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 animate-in fade-in slide-in-from-top-1">
+                {error}
+              </div>
+            ) : null}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-4 mt-2 bg-slate-950 text-white rounded-xl hover:bg-black transition-all font-bold text-sm tracking-widest uppercase flex items-center justify-center gap-2 shadow-lg shadow-slate-950/20 hover:shadow-slate-950/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
             >
               {loading ? (
                 <>
-                  <Loader className="w-5 h-5 animate-spin" />
-                  Entrando...
+                  <Loader className="w-4 h-4 animate-spin" />
+                  ENTRANDO...
                 </>
               ) : (
-                'Entrar'
+                'ENTRAR NO PAINEL'
               )}
             </button>
           </form>
 
-          {error ? (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-slate-500">ou</span>
-            </div>
+          <div className="text-center mt-12">
+            <Link
+              to="/public"
+              className="text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              ← Voltar ao site
+            </Link>
           </div>
-
-          {/* Register Link */}
-          <div className="text-center">
-            <p className="text-sm text-slate-600">
-              Não tem uma conta?{' '}
-              <Link
-                to="/auth/register"
-                className="text-purple-600 hover:text-purple-700 font-semibold"
-              >
-                Criar conta
-              </Link>
-            </p>
-          </div>
-        </div>
-
-        {/* Back to website */}
-        <div className="text-center mt-6">
-          <Link
-            to="/public"
-            className="text-sm text-purple-200 hover:text-white"
-          >
-            ← Voltar para o site
-          </Link>
         </div>
       </div>
     </div>

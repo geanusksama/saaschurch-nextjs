@@ -674,17 +674,19 @@ export function AppUI() {
             {/* Logo */}
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[var(--theme-primary-soft)] ring-1 ring-[var(--theme-primary-border)]">
-                  {branding.logoUrl ? (
-                    <img src={branding.logoUrl} alt="Logo" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="font-bold text-xl text-[var(--theme-primary)]">M</span>
-                  )}
-                </div>
-                <div>
-                  <h1 className="font-bold text-slate-900 dark:text-white">MRM</h1>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Gestão Ministerial</p>
-                </div>
+                <Link to="/" onClick={() => isMobile && setSidebarOpen(false)} className="flex items-center gap-3 group">
+                  <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-black ring-1 ring-white/10 group-hover:ring-white/30 transition-all">
+                    {branding.logoUrl ? (
+                      <img src={branding.logoUrl} alt="Logo" className="h-full w-full object-cover" />
+                    ) : (
+                      <img src="/adcampinas.png" alt="Logo" className="h-8 w-8 object-contain" />
+                    )}
+                  </div>
+                  <div>
+                    <h1 className="font-bold text-slate-900 dark:text-white group-hover:text-emerald-500 transition-colors">MRM</h1>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Gestão Ministerial</p>
+                  </div>
+                </Link>
                 {isMobile && (
                   <button
                     onClick={() => setSidebarOpen(false)}
