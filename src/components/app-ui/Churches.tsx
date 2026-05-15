@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import {
   ArrowUpDown,
   Building2,
@@ -943,8 +944,10 @@ export function Churches() {
       await loadBaseData();
       await loadChurchWorkspace(result.id);
       setActiveTab('dados');
+      toast.success(form.id ? 'Igreja atualizada com sucesso.' : 'Igreja criada com sucesso.');
     } catch (saveError) {
       setDetailError(saveError.message || 'Falha ao salvar igreja.');
+      toast.error(saveError.message || 'Falha ao salvar igreja.');
     } finally {
       setSavingChurch(false);
     }
@@ -1431,8 +1434,10 @@ export function Churches() {
       setLeaderChangeForm({ ...initialLeaderChangeForm });
       setSelectedLeaderMemberState(null);
       await loadChurchWorkspace(form.id);
+      toast.success('Dirigente atualizado com sucesso.');
     } catch (leaderError) {
       setDetailError(leaderError.message || 'Falha ao trocar dirigente.');
+      toast.error(leaderError.message || 'Falha ao trocar dirigente.');
     } finally {
       setSavingLeaderChange(false);
     }

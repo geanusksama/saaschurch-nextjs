@@ -1,7 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { serializeBigInts, assertChurchAccess, isRestrictedToOwnChurch } from "@/lib/helpers";
+import { serializeBigInts, assertChurchAccess, isRestrictedToOwnChurch, buildProtocol } from "@/lib/helpers";
+
+async function applyMatrixRule({ card, serviceId, columnIndex, user }: { card: Record<string, unknown>; serviceId: number; columnIndex: number; user: { id?: string; profileType?: string } }) {
+  try {
+    const rule = await prisma.kanMatrixRule.findUnique({ where: { serviceId_columnIndex: { serviceId, columnIndex } } });
+    if (!rule) return;
+    const service = await prisma.kanService.findUnique({ where: { id: serviceId } });
+    const serviceGroup = service?.serviceGroup || service?.sigla || "GERAL";
+    const serviceName = service?.description || service?.sigla || "";
+    if (card.memberId && (rule.changeStatus || rule.changeTitle)) {
+      const memberData: Record<string, unknown> = {};
+      if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = rule.newStatus.toUpperCase();
+      if (rule.changeTitle && rule.newTitle) {
+        memberData.ecclesiasticalTitle = rule.newTitle;
+        const titleRecord = await prisma.ecclesiasticalTitle.findFirst({ where: { name: { equals: rule.newTitle, mode: "insensitive" }, deletedAt: null, isActive: true } });
+        memberData.ecclesiasticalTitleId = titleRecord?.id ?? null;
+      }
+      if (Object.keys(memberData).length > 0) await prisma.member.update({ where: { id: card.memberId as string }, data: memberData });
+    }
+    if (rule.insertOccurrence !== false) {
+      await prisma.memberEventHistory.create({
+        data: {
+          memberId: (card.memberId as string) || null,
+          churchId: card.churchId as string,
+          serviceGroup, serviceName, columnIndex,
+          action: rule.occurrenceName || serviceName || "MOVIMENTO",
+          notes: rule.message || null,
+          metadata: { source: "MATRIX", cardId: card.id },
+          cardId: card.id as string,
+          createdBy: user?.id || null,
+        },
+      }).catch(() => null);
+    }
+  } catch (e) { console.error("applyMatrixRule error:", e); }
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
@@ -114,6 +148,41 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: `${label} já cadastrado para outro membro.` }, { status: 409 });
       }
       throw err;
+    }
+
+    // Try to create KanCard for CAD (Cadastro) and apply matrix rule
+    try {
+      const service = await prisma.kanService.findFirst({ where: { isActive: true, sigla: "CAD" } });
+      if (service && member) {
+        let stage = await prisma.kanStage.findFirst({ where: { serviceId: service.id, isActive: true }, include: { columns: { where: { columnIndex: 1 }, take: 1 } } });
+        if (!stage || !stage.columns?.length) {
+          const rule = await prisma.kanMatrixRule.findFirst({ where: { serviceId: service.id, columnIndex: 1, isActive: true }, select: { stageId: true } });
+          if (rule?.stageId) {
+            stage = await prisma.kanStage.findUnique({ where: { id: rule.stageId }, include: { columns: { where: { columnIndex: 1 }, take: 1 } } });
+          }
+        }
+        if (stage && stage.columns.length > 0) {
+          const firstCol = stage.columns[0];
+          const protocol = buildProtocol(service.sigla);
+          const card = await prisma.kanCard.create({
+            data: {
+              protocol, stageId: stage.id, serviceId: service.id, columnId: firstCol.id, columnIndex: 1, churchId: member.churchId,
+              memberId: member.id, candidateName: member.fullName,
+              currentTitle: member.ecclesiasticalTitle, status: "pendente", statusLabel: firstCol.name,
+              createdBy: user.id || null,
+            }
+          });
+          await applyMatrixRule({ card: card as unknown as Record<string, unknown>, serviceId: service.id, columnIndex: 1, user });
+          
+          // Refresh member data since matrix rule might have changed it
+          member = await prisma.member.findUnique({ 
+            where: { id: member.id }, 
+            include: { ecclesiasticalTitleRef: { select: { id: true, name: true, abbreviation: true, level: true } } } 
+          }) as any;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to create kan card for new member:", e);
     }
 
     return NextResponse.json(serializeBigInts(member), { status: 201 });

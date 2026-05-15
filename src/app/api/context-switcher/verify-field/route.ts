@@ -7,13 +7,14 @@ import { serializeBigInts } from "@/lib/helpers";
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
     const body = await req.json().catch(() => ({}));
-    const { campoId, password } = body;
-    if (!campoId || !password) {
+    const { campoId, fieldId, password } = body;
+    const resolvedCampoId = campoId || fieldId;
+    if (!resolvedCampoId || !password) {
       return NextResponse.json({ error: "campoId e password são obrigatórios." }, { status: 400 });
     }
 
     const campo = await prisma.campo.findFirst({
-      where: { id: campoId, deletedAt: null },
+      where: { id: resolvedCampoId, deletedAt: null },
       select: { id: true, name: true, accessPasswordHash: true },
     });
     if (!campo) return NextResponse.json({ error: "Campo não encontrado." }, { status: 404 });

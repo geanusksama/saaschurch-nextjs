@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle,
@@ -1452,11 +1452,20 @@ function NovoRequerimentoModal({
     () => services.find((s) => s.id === Number(serviceId)) ?? null,
     [services, serviceId],
   );
-  const selectedRuleStage = useMemo(
-    () => selectedService?.rules?.find((rule) => rule.columnIndex === 1)?.stage ?? null,
-    [selectedService],
-  );
+  const selectedRuleStage = useMemo(() => {
+    if (!selectedService) return null;
+    // API returns 'rules' (Prisma relation name on KanService)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rules = (selectedService as any).rules as Array<{ columnIndex: number; stage?: { id: string } | null }> | undefined;
+    if (rules && rules.length > 0) {
+      const rule = rules.find((r) => r.columnIndex === 1) ?? rules[0];
+      if (rule?.stage?.id) return rule.stage;
+    }
+    return null;
+  }, [selectedService]);
   const stageId = selectedRuleStage?.id ?? selectedService?.stages?.[0]?.id ?? null;
+
+
   // â”€â”€ Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1491,6 +1500,7 @@ function NovoRequerimentoModal({
       const body: Record<string, unknown> = {
         stageId,
         serviceId: Number(serviceId),
+        churchId,                              // ← obrigatório para validação de escopo
         memberId: selectedMember.id,
         candidateName: selectedMember.fullName,
         description: observations || null,
@@ -1500,6 +1510,7 @@ function NovoRequerimentoModal({
         method: "POST",
         body: JSON.stringify(body),
       });
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         setError(err?.error || "Erro ao criar requerimento.");

@@ -51,6 +51,9 @@ import {
   LayoutGrid,
   GitBranch,
   FileSpreadsheet,
+  MoreHorizontal,
+  Award,
+  MapPin,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -148,9 +151,6 @@ const appNavigation: NavigationSection[] = [
     section: 'Ministérios',
     items: [
       { name: 'Todos Ministérios', path: '/app-ui/ministries', icon: Users, permKey: 'ministries' },
-      { name: 'Novo Ministério', path: '/app-ui/ministry-new', icon: Plus, permKey: 'ministries' },
-      { name: 'Líderes', path: '/app-ui/ministry-leaders', icon: User, permKey: 'ministries' },
-      { name: 'Escalas', path: '/app-ui/ministry-schedule', icon: Calendar, permKey: 'ministry_teams' },
     ]
   },
   {
@@ -158,16 +158,12 @@ const appNavigation: NavigationSection[] = [
     items: [
       { name: 'Todos os GF', path: '/app-ui/cells', icon: Users, permKey: 'cells', exact: true },
       { name: 'Relatórios de GF', path: '/app-ui/cells/reports', icon: BarChart3, permKey: 'cell_reports' },
-      { name: 'Multiplicação', path: '/app-ui/cell-multiplication', icon: TrendingUp, permKey: 'cells' },
     ]
   },
   {
     section: 'Comunicação',
     items: [
       { name: 'WhatsApp', path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp' },
-      { name: 'E-mail Campanhas', path: '/app-ui/email-campaigns-screen', icon: Mail, permKey: 'email_campaigns' },
-      { name: 'SMS', path: '/app-ui/sms-campaigns', icon: MessageSquare, permKey: 'sms' },
-      { name: 'Mensagem Broadcast', path: '/app-ui/broadcast-message', icon: Radio, permKey: 'email_campaigns' },
     ]
   },
   {
@@ -191,6 +187,7 @@ const appNavigation: NavigationSection[] = [
     items: [
       { name: 'Usuários', path: '/app-ui/system/users', icon: Users, permKey: 'system_users' },
       { name: 'Configurações', path: '/app-ui/system-settings', icon: Settings, permKey: 'system_settings' },
+      { name: 'Senha dos Campos', path: '/app-ui/system/campo-senhas', icon: Lock, permKey: 'system_users' },
     ]
   },
 ];
@@ -221,6 +218,7 @@ export function AppUI() {
   const notificationRef = useRef<HTMLDivElement>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [topSearchQuery, setTopSearchQuery] = useState('');
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState('');
   const [memberEditorId, setMemberEditorId] = useState<string | null>(null);
@@ -1141,6 +1139,7 @@ export function AppUI() {
               />
               <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-400">Ctrl K</span>
             </div>
+            {/* Mais button + Novo Membro */}
             <button
               type="button"
               onClick={() => setQuickAddOpen(true)}
@@ -1148,6 +1147,23 @@ export function AppUI() {
             >
               <LayoutGrid className="h-4 w-4" />
               Mais
+            </button>
+            {/* Novo Membro — visible on sm+ screens */}
+            <Link
+              to="/app-ui/members/new"
+              className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+            >
+              <UserPlus className="h-4 w-4" />
+              Novo Membro
+            </Link>
+            {/* 3-dots mobile button — visible only on xs screens */}
+            <button
+              type="button"
+              onClick={() => setMobileDrawerOpen(true)}
+              className="inline-flex sm:hidden items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700"
+              title="Mais opções"
+            >
+              <MoreHorizontal className="h-5 w-5" />
             </button>
           </div>
 
@@ -1383,6 +1399,203 @@ export function AppUI() {
           </div>
         </header>
 
+      {/* ── Mobile Right Drawer ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {mobileDrawerOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50 sm:hidden"
+              onClick={() => setMobileDrawerOpen(false)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed right-0 top-0 bottom-0 z-50 w-72 bg-white dark:bg-slate-800 shadow-2xl sm:hidden flex flex-col"
+            >
+              {/* Drawer header */}
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 py-4">
+                <h2 className="font-bold text-slate-900 dark:text-white">Ações Rápidas</h2>
+                <button
+                  type="button"
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <X className="h-5 w-5 text-slate-400" />
+                </button>
+              </div>
+
+              {/* Drawer content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {/* Novo Membro — primary CTA */}
+                <Link
+                  to="/app-ui/members/new"
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="flex items-center gap-3 w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-3 text-white font-semibold transition-colors"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20">
+                    <UserPlus className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">Novo Membro</p>
+                    <p className="text-xs text-emerald-100">Cadastrar na secretaria</p>
+                  </div>
+                </Link>
+
+                {/* Atalhos favoritos */}
+                <div className="pt-2">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Atalhos favoritos</p>
+                  {favoriteQuickAccessItems.length > 0 ? (
+                    <div className="space-y-1">
+                      {favoriteQuickAccessItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            onClick={() => setMobileDrawerOpen(false)}
+                            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          >
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700">
+                              <Icon className="h-4 w-4 text-purple-600 dark:text-purple-300" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{item.name}</p>
+                              <p className="text-xs text-slate-400">{item.section}</p>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 px-4 py-4 text-center">
+                      <Star className="mx-auto mb-2 h-6 w-6 text-slate-300" />
+                      <p className="text-sm text-slate-500">Nenhum atalho favoritado.</p>
+                      <p className="mt-0.5 text-xs text-slate-400">Abra o menu lateral e clique na ★</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mais atalhos rápidos */}
+                <div className="pt-1">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Menu completo</p>
+                  <button
+                    type="button"
+                    onClick={() => { setMobileDrawerOpen(false); setQuickAddOpen(true); }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/40">
+                      <LayoutGrid className="h-4 w-4 text-purple-600 dark:text-purple-300" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Mais atalhos</p>
+                      <p className="text-xs text-slate-400">Ver favoritos completos</p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Minha Conta</p>
+
+                  {/* User info */}
+                  <div className="mb-2 flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/50 shrink-0">
+                      <span className="text-purple-700 dark:text-purple-300 font-bold text-sm">{initials}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{displayName}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{displayRole}</p>
+                    </div>
+                  </div>
+
+                  {/* Meu Perfil */}
+                  <button
+                    type="button"
+                    onClick={() => { setMobileDrawerOpen(false); setMyProfileOpen(true); }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/40">
+                      <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Meu Perfil</p>
+                      <p className="text-xs text-slate-400">Ver e editar dados</p>
+                    </div>
+                  </button>
+
+                  {/* Usuários e Permissões */}
+                  <Link
+                    to="/app-ui/system/users"
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                      <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Usuários e Permissões</p>
+                      <p className="text-xs text-slate-400">Gerenciar acessos</p>
+                    </div>
+                  </Link>
+
+                  {/* Configurações */}
+                  <Link
+                    to="/app-ui/system-settings"
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700">
+                      <Settings className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Configurações</p>
+                      <p className="text-xs text-slate-400">Preferências do sistema</p>
+                    </div>
+                  </Link>
+
+                  {/* Modo Escuro */}
+                  <div className="flex items-center gap-3 rounded-xl px-3 py-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                      {darkMode ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{darkMode ? 'Modo Claro' : 'Modo Escuro'}</p>
+                      <p className="text-xs text-slate-400">{darkMode ? 'Mudar para claro' : 'Mudar para escuro'}</p>
+                    </div>
+                    <button
+                      onClick={() => setDarkMode(!darkMode)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${darkMode ? 'bg-purple-600' : 'bg-slate-200'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+
+                  {/* Sair */}
+                  <button
+                    type="button"
+                    onClick={() => { setMobileDrawerOpen(false); handleLogout(); }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/40">
+                      <LogOut className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-red-600 dark:text-red-400">Sair</p>
+                      <p className="text-xs text-slate-400">Encerrar sessão</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
         {/* Content */}
         <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
           {isCurrentPathAllowed ? (
@@ -1478,6 +1691,24 @@ export function AppUI() {
                         <div>
                           <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Campo</p>
                           <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.campoName}</p>
+                        </div>
+                      </div>
+                    )}
+                    {storedUser.regionalName && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                        <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Regional</p>
+                          <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.regionalName}</p>
+                        </div>
+                      </div>
+                    )}
+                    {(storedUser.ecclesiasticalTitle || storedUser.title) && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                        <Award className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Título</p>
+                          <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.ecclesiasticalTitle || storedUser.title}</p>
                         </div>
                       </div>
                     )}

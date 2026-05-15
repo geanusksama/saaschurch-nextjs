@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Save, User, Phone, MapPin, Heart, Users, X, Search, CheckCircle, UserCircle, Droplets, Star, ArrowRight } from 'lucide-react';
+import { Save, User, Phone, MapPin, Heart, Users, X, Search, CheckCircle, UserCircle, Droplets, Star, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -279,6 +279,31 @@ export function MemberRegistration() {
   const [lookingUpCep, setLookingUpCep] = useState(false);
   const [savedMember, setSavedMember] = useState<SavedMemberSummary | null>(null);
   const [cityOptions, setCityOptions] = useState<{ field: 'city' | 'naturalityCity'; options: Array<{ city: string; state: string }> } | null>(null);
+  const [duplicateMember, setDuplicateMember] = useState<{ exists: boolean; type: 'cpf' | 'name'; member: any } | null>(null);
+
+  const handleCheckDuplicate = async () => {
+    if (!formData.cpf && (!formData.firstName || !formData.lastName)) return;
+    try {
+      const qCpf = formData.cpf ? formData.cpf.replace(/[^\d]/g, '') : '';
+      const qName = `${formData.firstName} ${formData.lastName}`.trim();
+      const query = new URLSearchParams();
+      if (qCpf) query.append('cpf', qCpf);
+      if (qName) query.append('name', qName);
+      if (!query.toString()) return;
+
+      const res = await fetch(`${apiBase}/members/check?${query.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.exists) {
+          setDuplicateMember(data);
+        } else {
+          setDuplicateMember(null);
+        }
+      }
+    } catch {}
+  };
 
   const selectedChurch = useMemo(
     () => churches.find((church) => church.id === formData.churchId) || null,
@@ -787,6 +812,7 @@ export function MemberRegistration() {
                 required
                 value={formData.firstName}
                 onChange={(e) => updateFormValue('firstName', e.target.value)}
+                onBlur={handleCheckDuplicate}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="Digite o nome"
               />
@@ -801,6 +827,7 @@ export function MemberRegistration() {
                 required
                 value={formData.lastName}
                 onChange={(e) => updateFormValue('lastName', e.target.value)}
+                onBlur={handleCheckDuplicate}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="Digite o sobrenome"
               />
@@ -843,6 +870,7 @@ export function MemberRegistration() {
                 required
                 value={formData.cpf}
                 onChange={(e) => updateFormValue('cpf', formatCpf(e.target.value))}
+                onBlur={handleCheckDuplicate}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="000.000.000-00"
               />
@@ -1452,7 +1480,70 @@ export function MemberRegistration() {
         </div>
       </form>
 
-      {cityOptions ? (
+      {/* Modal Duplicidade */}
+      {duplicateMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Possível Duplicidade</h3>
+                <p className="text-sm text-slate-500">
+                  {duplicateMember.type === 'cpf' ? 'Este CPF' : 'Este nome'} já consta em nossa base.
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-xl bg-slate-50 p-4 border border-slate-100">
+              <p className="font-semibold text-slate-900">{duplicateMember.member.fullName}</p>
+              {duplicateMember.member.cpf && (
+                <p className="text-sm text-slate-600 mt-1">CPF: {duplicateMember.member.cpf}</p>
+              )}
+              <p className="text-sm text-slate-600 mt-1">
+                Igreja: {duplicateMember.member.church?.code ? `${duplicateMember.member.church.code} - ` : ''}
+                {duplicateMember.member.church?.name}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDuplicateMember(null)}
+                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Voltar e Corrigir
+              </button>
+              {((isMasterOrAdmin) || (storedUser.profileType === 'igreja' && storedUser.churchId === duplicateMember.member.churchId)) ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/app-ui/members/${duplicateMember.member.id}/edit`)}
+                  className="flex-1 rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-700 transition-colors"
+                >
+                  Editar Membro
+                </button>
+              ) : duplicateMember.type === 'name' ? (
+                <button
+                  type="button"
+                  onClick={() => setDuplicateMember(null)}
+                  className="flex-1 rounded-xl bg-amber-500 px-4 py-3 font-semibold text-white hover:bg-amber-600 transition-colors"
+                >
+                  É Homônimo (Continuar)
+                </button>
+              ) : null}
+            </div>
+            {duplicateMember.type === 'cpf' && !isMasterOrAdmin && storedUser.churchId !== duplicateMember.member.churchId && (
+              <p className="mt-4 text-xs text-center text-rose-500 font-medium">
+                Este CPF pertence a um membro de outra congregação. O cadastro não pode prosseguir.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Cidades */}
+      {cityOptions && (
         <>
           <div className="fixed inset-0 z-40 bg-slate-900/50" onClick={() => setCityOptions(null)} />
           <div className="fixed left-1/2 top-1/2 z-50 w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl bg-white shadow-2xl">
@@ -1481,7 +1572,7 @@ export function MemberRegistration() {
             </ul>
           </div>
         </>
-      ) : null}
+      )}
 
       {/* Success modal after member registration */}
       {savedMember ? (

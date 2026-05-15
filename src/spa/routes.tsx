@@ -103,6 +103,7 @@ import UserNew from "../app-ui/system/UserNew";
 import UserEdit from "../app-ui/system/UserEdit";
 import { PermissionsMatrix } from "../app-ui/system/PermissionsMatrix";
 import UserPermissions from "../app-ui/system/UserPermissions";
+import FieldPasswordAdmin from "../app-ui/system/FieldPasswordAdmin";
 import {
   ChurchInfo,
   Branding,
@@ -524,6 +525,7 @@ export const router = createBrowserRouter([
       { path: "credential-models", Component: ModelosCredencial },
       { path: "secretariat/credential-models", Component: ModelosCredencial },
       { path: "credential-requests", Component: SolicitacoesCredencial },
+      { path: "system/campo-senhas", Component: FieldPasswordAdmin },
     ],
   },
 ]);

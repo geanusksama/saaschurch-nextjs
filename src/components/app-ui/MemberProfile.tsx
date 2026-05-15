@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router";
 import { MemberEditDrawer } from "./MemberEdit";
 
 import { apiBase } from '../../lib/apiBase';
+import { supabase } from '../../lib/supabaseClient';
 
 function authFetch(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem("mrm_token");
@@ -303,24 +304,24 @@ export function MemberProfile() {
       }
       const blob = await new Promise<Blob>((res) => canvas.toBlob((b) => res(b!), "image/jpeg", 0.9));
       const croppedFile = new File([blob], "photo.jpg", { type: "image/jpeg" });
-      const token = localStorage.getItem("mrm_token");
-      const form = new FormData();
-      form.append("file", croppedFile);
-      const res = await fetch(`${apiBase}/upload`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: form,
-      });
-      if (!res.ok) throw new Error("Falha no upload");
-      const data = await res.json();
-      const uploaded = data.url as string;
+        
+      const fileName = `${Date.now()}.jpg`;
+      const path = `fotos_membros/${member.id}/${fileName}`;
+      
+      const { error } = await supabase.storage.from('dados').upload(path, croppedFile, { upsert: true, contentType: "image/jpeg" });
+      if (error) throw new Error("Falha no upload: " + error.message);
+      
+      const { data: urlData } = supabase.storage.from('dados').getPublicUrl(path);
+      const uploaded = urlData.publicUrl;
+      
       await authFetch(`${apiBase}/members/${member.id}`, {
         method: "PATCH",
         body: JSON.stringify({ photoUrl: uploaded }),
       });
       setMember((prev) => prev ? { ...prev, photoUrl: uploaded } : prev);
-    } catch {
-      // silently ignore
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao enviar foto: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setUploadingPhoto(false);
       URL.revokeObjectURL(photoPreview.url);
@@ -920,11 +921,15 @@ function OccurrenceModal({
     authFetch(`${apiBase}/kan/services/${serviceId}/rules`)
       .then((r) => r.json())
       .then((data) => {
-        const rules: MatrixRule[] = Array.isArray(data.rules) ? data.rules : [];
+        // API returns array directly (not {rules:[...]})
+        const rules: MatrixRule[] = Array.isArray(data) ? data : [];
         setMatrixRules(rules);
         if (rules.length > 0) {
-          setPipelineName(rules[0].pipelineName || null);
-          setStageName(rules[0].stageName || null);
+          // stage.pipeline.name and stage.name come from the rules endpoint include
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const first = rules[0] as any;
+          setPipelineName(first?.stage?.pipeline?.name || first?.pipelineName || null);
+          setStageName(first?.stage?.name || first?.stageName || null);
         } else {
           setPipelineName(null);
           setStageName(null);
@@ -934,6 +939,7 @@ function OccurrenceModal({
       .catch(() => { setMatrixRules([]); })
       .finally(() => setLoadingRules(false));
   }, [serviceId]);
+
 
   const selectedRule = matrixRules.find((r) => r.columnIndex === selectedColIdx) || null;
 

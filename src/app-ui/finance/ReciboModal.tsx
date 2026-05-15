@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Printer, Download, Camera, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut, RotateCw, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import { apiBase } from '../../lib/apiBase';
 
 export type ReciboRow = {
   id: string;
@@ -320,29 +319,28 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    e.target.value = '';
     try {
       const token = localStorage.getItem('mrm_token');
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch(`${apiBase}/upload/foto-despesa`, {
+
+      const res = await fetch('/api/upload/foto-despesa', {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Erro no upload' }));
-        alert('Erro ao enviar foto: ' + (err.error || res.statusText));
-        setUploading(false);
-        return;
-      }
+
       const result = await res.json();
-      const newUrl = result.url;
+      if (!res.ok) throw new Error(result.error || 'Falha no upload');
+
+      const newUrl = result.url as string;
       await supabase.from('livro_caixa').update({ foto: newUrl }).eq('id', row.id);
       setCurrentFoto(newUrl);
       setIncluirComprovante(true);
       onUpdated?.(row.id, { foto: newUrl });
-    } catch (err: any) {
-      alert('Erro ao enviar foto: ' + (err?.message || 'Erro desconhecido'));
+    } catch (err: unknown) {
+      alert('Erro ao enviar foto: ' + ((err as Error)?.message || 'Erro desconhecido'));
     }
     setUploading(false);
   }

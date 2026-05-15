@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { serializeBigInts, assertChurchAccess, isRestrictedToOwnChurch, buildProtocol } from "@/lib/helpers";
+import { serializeBigInts, assertChurchAccess, buildProtocol } from "@/lib/helpers";
 
 function canSeeAll(user: { profileType?: string }) {
   return user.profileType === "master" || user.profileType === "admin" || user.profileType === "campo";
@@ -13,8 +13,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const situacao = searchParams.get("situacao");
     const churchId = searchParams.get("church_id");
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = supabaseAdmin.from("tbcredencial").select("*").order("created_at", { ascending: false });
@@ -45,7 +43,10 @@ export async function POST(req: NextRequest) {
     const ok = await assertChurchAccess(user, member.churchId, prisma);
     if (!ok) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
 
-    const service = await prisma.kanService.findFirst({ where: { isActive: true, serviceGroup: "CREDENCIAL" } });
+    // Look up by sigla first (SOLCRED), then fall back to serviceGroup CREDENCIAL
+    const service = await prisma.kanService.findFirst({
+      where: { isActive: true, OR: [{ sigla: "SOLCRED" }, { serviceGroup: "CREDENCIAL" }] },
+    });
     if (!service) return NextResponse.json({ error: "credential service not configured" }, { status: 404 });
     const stage = await prisma.kanStage.findFirst({ where: { serviceId: service.id, isActive: true }, include: { columns: { where: { columnIndex: 1 }, take: 1 } } });
     if (!stage) return NextResponse.json({ error: "credential stage not configured" }, { status: 404 });
@@ -68,6 +69,20 @@ export async function POST(req: NextRequest) {
       },
     });
     await supabaseAdmin.from("tbcredencial").update({ kan_card_id: card.id, card_protocol: card.protocol }).eq("id", credData.id);
+
+    // Notification (non-fatal)
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: user.id!, notificationType: "kan_action",
+          title: `Novo registro criado (SOLCRED) \u2014 ${card.protocol}`,
+          message: member.fullName || null,
+          actionUrl: "/admin/secretaria/pipeline", actionText: "Ver",
+          data: { scope: "field", campoId: user.campoId || null, cardId: card.id, action: "created" },
+        },
+      });
+    } catch { /* non-fatal */ }
+
     return NextResponse.json(serializeBigInts({ ok: true, request: credData, card }), { status: 201 });
   });
 }

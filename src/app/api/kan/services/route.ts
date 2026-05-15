@@ -12,7 +12,21 @@ export async function GET(req: NextRequest) {
           where: { isActive: true },
           include: {
             columns: { orderBy: { columnIndex: "asc" } },
-            matrixRules: { where: { isActive: true }, orderBy: { columnIndex: "asc" } },
+          },
+        },
+        // KanService.rules is the correct Prisma relation name (schema line 1558)
+        rules: {
+          where: { isActive: true },
+          orderBy: { columnIndex: "asc" },
+          include: {
+            stage: {
+              select: {
+                id: true,
+                name: true,
+                pipelineId: true,
+                pipeline: { select: { id: true, name: true } },
+              },
+            },
           },
         },
       },

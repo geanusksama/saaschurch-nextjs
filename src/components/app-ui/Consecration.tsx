@@ -52,13 +52,14 @@ type MemberOption = {
 type ConsecrationSchedule = {
   id: string;
   churchId: string;
-  fieldId?: string | null;
+  fieldId?: string | null;           // campo_id — enables field-wide schedule matching
   churchName: string;
   churchCode?: string | null;
   scheduledDate: string;
   notes?: string | null;
   createdAt?: string | null;
 };
+
 
 type ConsecrationTitleOption = {
   id: string;

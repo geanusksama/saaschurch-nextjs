@@ -16,9 +16,10 @@ async function listScopedChurchRows({ user, churchIds = [] as string[], regional
   }
   if (search?.trim()) { conditions.push(`(c.name ILIKE $${nextParam} OR COALESCE(r.name, '') ILIKE $${nextParam})`); params.push(`%${search.trim()}%`); }
   return prisma.$queryRawUnsafe<Array<{ churchId: string; churchName: string; regionalId: string | null; regionalName: string | null }>>(
-    `SELECT c.id::text AS "churchId", c.name AS "churchName", r.id::text AS "regionalId", r.name AS "regionalName" FROM churches c JOIN regionais r ON r.id = c.regional_id WHERE ${conditions.join(" AND ")} ORDER BY r.name ASC, c.name ASC`,
+    `SELECT c.id::text AS "churchId", c.name AS "churchName", r.id::text AS "regionalId", r.name AS "regionalName" FROM churches c LEFT JOIN regionais r ON r.id = c.regional_id WHERE ${conditions.join(" AND ")} ORDER BY COALESCE(r.name, '') ASC, c.name ASC`,
     ...params
   );
+
 }
 
 function normalizeCashStatusRow(row: Record<string, unknown> | null, referenceDate?: string) {

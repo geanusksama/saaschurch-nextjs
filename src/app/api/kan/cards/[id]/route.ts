@@ -47,6 +47,32 @@ async function applyMatrixRule({ card, serviceId, columnIndex, user, extraMessag
   } catch (e) { console.error("applyMatrixRule error:", e); }
 }
 
+async function notifyKanAction({ user, card, action, message }: { user: { id?: string; profileType?: string; campoId?: string }; card: { id: string; protocol?: string | null; churchId?: string | null }; action: string; message?: string | null }) {
+  if (!user?.id) return;
+  try {
+    await prisma.notification.create({
+      data: {
+        userId: user.id,
+        notificationType: "kan_action",
+        title: `${action} — ${card?.protocol || card?.id || ""}`.trim(),
+        message: message || null,
+        actionUrl: "/admin/secretaria/pipeline",
+        actionText: "Ver",
+        data: {
+          scope: "field",
+          campoId: user.campoId || null,
+          createdBy: user.id,
+          cardId: card?.id || null,
+          churchId: card?.churchId || null,
+          action,
+          iconKey: "bell",
+          colorKey: "purple",
+        },
+      },
+    });
+  } catch (e) { console.warn("notifyKanAction failed:", e); }
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
@@ -138,6 +164,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (newColumnIndex && newColumnIndex !== card.columnIndex) {
       await applyMatrixRule({ card: updated as unknown as Record<string, unknown>, serviceId: updated.serviceId, columnIndex: newColumnIndex, user, extraMessage: body.message });
+      // Notify about column move
+      await notifyKanAction({
+        user,
+        card: { id: updated.id, protocol: updated.protocol, churchId: updated.churchId },
+        action: `Movido para "${updated.statusLabel || newColumnIndex}"`,
+        message: updated.member?.fullName || null,
+      });
       const meta = (updated.metadata && typeof updated.metadata === "object") ? updated.metadata as Record<string, unknown> : {};
       if (meta.flowType === "credential" && meta.credentialRequestId) {
         const colName = (updated.statusLabel || "").toLowerCase();
@@ -158,9 +191,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
-    const existing = await prisma.kanCard.findUnique({ where: { id } });
+    const existing = await prisma.kanCard.findUnique({ where: { id }, select: { id: true, protocol: true, churchId: true, memberId: true, candidateName: true } });
     if (!existing) return NextResponse.json({ error: "card not found" }, { status: 404 });
     await prisma.kanCard.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: user.id || null } });
+    // Notify about deletion
+    await notifyKanAction({
+      user,
+      card: { id: existing.id, protocol: existing.protocol, churchId: existing.churchId },
+      action: "Registro excluído",
+      message: existing.candidateName || null,
+    });
     return new NextResponse(null, { status: 204 });
   });
 }

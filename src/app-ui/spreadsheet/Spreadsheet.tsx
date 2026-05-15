@@ -1,7 +1,8 @@
 import React, {
   useState, useRef, useCallback, useEffect, useMemo, useLayoutEffect
 } from 'react';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
+
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
 import {
@@ -1483,24 +1484,105 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
     });
   }, [pushUndo, sel, activeIdx]);
 
-  const exportXLSX = useCallback(() => {
+  const buildStyledWorkbook = useCallback(() => {
     const wb = XLSX.utils.book_new();
     sheets.forEach(sh => {
-      const data: string[][] = [];
-      for (let r = 0; r < TOTAL_ROWS; r++) {
-        let has = false; const row: string[] = [];
-        for (let c = 0; c < TOTAL_COLS; c++) {
-          const k = cellKey(r, c); const v = sh.cells[k]?.value ?? '';
-          if (v) has = true;
-          row.push(v.startsWith('=') ? getCellDisplay(k, sh.cells) : v);
+      const ws: Record<string, unknown> = {};
+      let maxR = 0, maxC = 0;
+
+      Object.entries(sh.cells).forEach(([key, cell]) => {
+        const p = parseRef(key);
+        if (!p || cell.mergeHidden) return;
+        if (p.row > maxR) maxR = p.row;
+        if (p.col > maxC) maxC = p.col;
+
+        const displayVal = cell.value?.startsWith('=')
+          ? getCellDisplay(key, sh.cells)
+          : (cell.value ?? '');
+
+        // Try to parse as number
+        const num = displayVal !== '' ? parseFloat(displayVal.replace(/[^0-9.\-]/g, '')) : NaN;
+        const cellObj: Record<string, unknown> = isNaN(num) || displayVal.trim() === ''
+          ? { t: 's', v: displayVal }
+          : { t: 'n', v: num };
+
+        // Build style
+        const style: Record<string, unknown> = {};
+
+        // Font
+        const font: Record<string, unknown> = {};
+        if (cell.bold) font.bold = true;
+        if (cell.italic) font.italic = true;
+        if (cell.underline) font.underline = true;
+        if (cell.strikethrough) font.strike = true;
+        if (cell.fontSize) font.sz = cell.fontSize;
+        if (cell.fontFamily) font.name = cell.fontFamily;
+        if (cell.textColor) font.color = { rgb: cell.textColor.replace('#', '') };
+        if (Object.keys(font).length > 0) style.font = font;
+
+        // Fill
+        if (cell.bgColor) {
+          style.fill = { fgColor: { rgb: cell.bgColor.replace('#', '') } };
         }
-        if (has) data.push(row); else if (data.length) break;
+
+        // Alignment
+        const align: Record<string, unknown> = {};
+        if (cell.align === 'center') align.horizontal = 'center';
+        else if (cell.align === 'right') align.horizontal = 'right';
+        else if (cell.align === 'left') align.horizontal = 'left';
+        if (cell.wrapText) align.wrapText = true;
+        if (Object.keys(align).length > 0) style.alignment = align;
+
+        // Borders
+        if (cell.borders) {
+          const bStyle = { style: 'thin', color: { rgb: '000000' } };
+          const border: Record<string, unknown> = {};
+          if (cell.borders.top) border.top = bStyle;
+          if (cell.borders.bottom) border.bottom = bStyle;
+          if (cell.borders.left) border.left = bStyle;
+          if (cell.borders.right) border.right = bStyle;
+          if (Object.keys(border).length > 0) style.border = border;
+        }
+
+        if (Object.keys(style).length > 0) cellObj.s = style;
+        ws[key.toUpperCase()] = cellObj;
+      });
+
+      // Sheet range
+      ws['!ref'] = `A1:${colToLetter(maxC)}${maxR + 1}`;
+
+      // Column widths
+      const colWidths: { wch: number }[] = [];
+      for (let c = 0; c <= maxC; c++) {
+        const w = sh.colWidths[c] ?? DEFAULT_COL_WIDTH;
+        colWidths.push({ wch: Math.round(w / 7) }); // px to chars approx
       }
-      if (!data.length) data.push([]);
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), sh.name);
+      ws['!cols'] = colWidths;
+
+      // Merges
+      const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+      Object.entries(sh.cells).forEach(([key, cell]) => {
+        if (!cell.mergeColSpan && !cell.mergeRowSpan) return;
+        const p = parseRef(key);
+        if (!p) return;
+        merges.push({
+          s: { r: p.row, c: p.col },
+          e: { r: p.row + (cell.mergeRowSpan ?? 1) - 1, c: p.col + (cell.mergeColSpan ?? 1) - 1 },
+        });
+      });
+      if (merges.length > 0) ws['!merges'] = merges;
+
+      XLSX.utils.book_append_sheet(wb, ws as XLSX.WorkSheet, sh.name);
     });
-    XLSX.writeFile(wb, 'planilha.xlsx');
+    return wb;
   }, [sheets]);
+
+  const exportXLSX = useCallback(() => {
+    const wb = buildStyledWorkbook();
+    const name = (sheets[activeIdx]?.name || 'planilha').replace(/[^a-zA-Z0-9_\-\u00C0-\u024F ]/g, '').trim();
+    XLSX.writeFile(wb, `${name}.xlsx`);
+  }, [buildStyledWorkbook, sheets, activeIdx]);
+
 
   const exportCSV = useCallback(() => {
     const sh = activeSheet;
@@ -1520,21 +1602,7 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
 
   // ── Save to Supabase Storage ──────────────────────────────────────────────
   const saveToCloud = useCallback(async (filename: string): Promise<{ ok: boolean; url?: string; error?: string }> => {
-    const wb = XLSX.utils.book_new();
-    sheets.forEach(sh => {
-      const data: string[][] = [];
-      for (let r = 0; r < TOTAL_ROWS; r++) {
-        let has = false; const row: string[] = [];
-        for (let c = 0; c < TOTAL_COLS; c++) {
-          const k = cellKey(r, c); const v = sh.cells[k]?.value ?? '';
-          if (v) has = true;
-          row.push(v.startsWith('=') ? getCellDisplay(k, sh.cells) : v);
-        }
-        if (has) data.push(row); else if (data.length) break;
-      }
-      if (!data.length) data.push([]);
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), sh.name);
-    });
+    const wb = buildStyledWorkbook();
     const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const safeName = filename.replace(/[^a-zA-Z0-9_\-\u00C0-\u024F ]/g, '').trim() || 'planilha';
@@ -1543,7 +1611,7 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
     if (error) return { ok: false, error: error.message };
     const { data: urlData } = supabase.storage.from('dados').getPublicUrl(path);
     return { ok: true, url: urlData.publicUrl };
-  }, [sheets]);
+  }, [buildStyledWorkbook]);
 
   const statusStats = useMemo(() => {
     const nums = selKeys.map(k => parseFloat(activeSheet.cells[k]?.value?.replace(/[^0-9.\-]/g, '') || '')).filter(n => !isNaN(n));
