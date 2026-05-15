@@ -96,7 +96,7 @@ export function Roles() {
     try {
       const fieldQuery = selectedFieldId ? `?fieldId=${encodeURIComponent(selectedFieldId)}` : '';
       const [rolesResponse, churchesResponse, camposResponse] = await Promise.all([
-        fetch(`${apiBase}/roles`, { headers }),
+        fetch(`${apiBase}/roles${fieldQuery}`, { headers }),
         fetch(`${apiBase}/churches${fieldQuery}`, { headers }),
         fetch(`${apiBase}/campos`, { headers }),
       ]);
