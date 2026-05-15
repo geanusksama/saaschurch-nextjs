@@ -50,6 +50,13 @@ function readUserOverrides(): Record<string, boolean> {
   return {};
 }
 
+/** Returns roleId if the user has a custom role assigned */
+function readUserRoleId(): string | null {
+  try {
+    return JSON.parse(localStorage.getItem('mrm_user') || '{}').roleId ?? null;
+  } catch { return null; }
+}
+
 async function fetchMatrixFromServer(): Promise<PermissionModule[] | null> {
   try {
     const storedUser = JSON.parse(localStorage.getItem('mrm_user') || '{}');
@@ -80,6 +87,7 @@ export function setGlobalPermissionMatrix(modules: PermissionModule[]) {
 export function usePermissions(profileType?: string) {
   const [modules, setModules] = useState<PermissionModule[]>(getInitialModules);
   const [userOverrides, setUserOverrides] = useState<Record<string, boolean>>(readUserOverrides);
+  const [userRoleId, setUserRoleId] = useState<string | null>(readUserRoleId);
 
   // Subscribe to global changes (e.g., after save in PermissionsMatrix)
   useEffect(() => {
@@ -93,6 +101,7 @@ export function usePermissions(profileType?: string) {
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'mrm_user') {
         setUserOverrides(readUserOverrides());
+        setUserRoleId(readUserRoleId());
       }
     };
     window.addEventListener('storage', onStorage);
@@ -112,8 +121,9 @@ export function usePermissions(profileType?: string) {
         setModules(data);
       }
     });
-    // Also refresh user overrides from localStorage (may have been updated after login)
+    // Also refresh user overrides and roleId from localStorage (may have been updated after login)
     setUserOverrides(readUserOverrides());
+    setUserRoleId(readUserRoleId());
   }, []);
 
   const refreshPermissions = useCallback(async () => {
@@ -147,6 +157,10 @@ export function usePermissions(profileType?: string) {
   const resolve = (key: string, action: string): boolean => {
     const overrideKey = `${key}.${action}`;
     if (overrideKey in userOverrides) return userOverrides[overrideKey];
+    // User has a custom role: role permissions are a whitelist.
+    // Any permission NOT explicitly granted by the role is denied.
+    if (userRoleId) return false;
+    // No custom role → fall back to profile-type catalog defaults
     const mod = modules.find((m) => m.key === key);
     if (!mod) return true;
     const actionPerms = mod.permissions[action as keyof typeof mod.permissions];

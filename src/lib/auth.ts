@@ -141,7 +141,13 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser> {
     campoName: scopedCampo?.name || null,
     roleId: profile?.roleId || null,
     roleName: profile?.role?.name || null,
-    permissions: profile?.permissions || profile?.role?.permissions || null,
+    permissions: (() => {
+      const rolePerm = (profile?.role?.permissions ?? null) as Record<string, boolean> | null;
+      const userPerm = (profile?.permissions ?? null) as Record<string, boolean> | null;
+      if (!rolePerm && !userPerm) return null;
+      // Role permissions are the base (whitelist), user overrides take precedence
+      return { ...(rolePerm ?? {}), ...(userPerm ?? {}) };
+    })(),
     isAdmin: profile?.isAdmin || false,
     parentChurchId: scopedChurch?.parentChurchId || null,
     parentChurch: scopedChurch?.parentChurch || null,
