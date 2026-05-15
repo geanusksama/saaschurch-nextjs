@@ -74,6 +74,84 @@ function CashClosedModal({ message, onClose }: { message: string; onClose: () =>
   );
 }
 
+function SearchableSelect({ 
+  value, 
+  onChange, 
+  options, 
+  placeholder, 
+  className 
+}: { 
+  value: string; 
+  onChange: (val: string) => void; 
+  options: { id: string; label: string }[]; 
+  placeholder: string; 
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter(o => 
+    normalizeText(o.label).includes(normalizeText(search))
+  );
+
+  const selectedOption = options.find(o => o.id === value);
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      <div 
+        onClick={() => { setOpen(!open); setSearch(''); }}
+        className={`flex items-center justify-between cursor-pointer ${className}`}
+      >
+        <span className={`truncate ${selectedOption ? '' : 'text-slate-500 dark:text-slate-400'}`}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <svg className="w-4 h-4 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+      </div>
+      
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl flex flex-col" style={{ maxHeight: '300px' }}>
+          <div className="p-2 border-b border-slate-100 dark:border-slate-700">
+            <input 
+              autoFocus
+              type="text" 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              placeholder="Buscar categoria..." 
+              className="w-full px-2 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400 dark:focus:border-violet-500 text-slate-900 dark:text-slate-100"
+            />
+          </div>
+          <div className="overflow-y-auto flex-1 p-1">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-3 text-sm text-slate-500 text-center">Nenhuma categoria encontrada</div>
+            ) : (
+              filteredOptions.map(o => (
+                <div 
+                  key={o.id} 
+                  onClick={() => { onChange(o.id); setOpen(false); }}
+                  className={`px-3 py-2 text-sm cursor-pointer rounded-md mb-0.5 hover:bg-violet-50 dark:hover:bg-slate-700 dark:text-slate-200 ${value === o.id ? 'bg-violet-50 dark:bg-slate-700 font-semibold text-violet-700 dark:text-violet-300' : 'text-slate-700'}`}
+                >
+                  {o.label}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Modo = 'RECEITA' | 'DESPESA';
@@ -1397,11 +1475,13 @@ export default function LancamentoNew() {
               {/* Plano de Contas — linha inteira */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Plano de Contas</label>
-                <select value={planoId} onChange={e => setPlanoId(e.target.value)}
-                  className={`w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${accentRing} bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
-                  <option value="">Selecione a categoria...</option>
-                  {planos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                <SearchableSelect 
+                  value={planoId} 
+                  onChange={setPlanoId}
+                  options={planos.map(p => ({ id: p.id, label: p.nome }))}
+                  placeholder="Selecione a categoria..."
+                  className={`w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${accentRing} bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}
+                />
               </div>
               {/* Documento + Nº Doc lado a lado */}
               <div className="grid grid-cols-2 gap-3">
