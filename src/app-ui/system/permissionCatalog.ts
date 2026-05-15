@@ -50,9 +50,11 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Secretaria', name: 'Presença',               key: 'attendance',        permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Secretaria', name: 'Aniversariantes',        key: 'birthdays',         permissions: mkPerms(full(), none(), none(), none()) },
   { group: 'Secretaria', name: 'Igrejas',                key: 'churches',          permissions: mkPerms(admin(), admin(), admin(), admin()) },
+  { group: 'Secretaria', name: 'Pipeline (Secretaria)', key: 'crm_pipeline',      permissions: mkPerms(full(), mngr(), mngr(), admin()) },
+  { group: 'Secretaria', name: 'Configurar Pipelines',  key: 'pipeline_config',   permissions: mkPerms(admin(), admin(), admin(), admin()) },
 
   // ── Gestão Pastoral ──────────────────────────────────────────────────────
-  { group: 'Gestão Pastoral', name: 'Gestão Pastoral',       key: 'pastoral_visits',   permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Gestão Pastoral', name: 'Gestão',                key: 'pastoral_visits',   permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Gestão Pastoral', name: 'Discipulado',           key: 'discipleship',       permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Gestão Pastoral', name: 'Relatórios Pastorais',  key: 'pastoral_reports',  permissions: mkPerms(full(), mngr(), mngr(), mngr()) },
   { group: 'Gestão Pastoral', name: 'Aconselhamentos',       key: 'counseling',         permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
@@ -73,15 +75,13 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Comunicação', name: 'SMS',               key: 'sms',             permissions: mkPerms(mngr(), mngr(), none(), none()) },
 
   // ── Eventos ───────────────────────────────────────────────────────────────
-  { group: 'Eventos', name: 'Agenda de Eventos', key: 'events',      permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Eventos', name: 'Agenda',     key: 'events',      permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Eventos', name: 'Pão Diário',        key: 'daily_bread', permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Eventos', name: 'Ingressos',         key: 'tickets',     permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Eventos', name: 'Check-in',          key: 'checkin',     permissions: mkPerms(full(), full(), full(), admin()) },
 
-  // ── CRM / Pipeline ───────────────────────────────────────────────────────
-  { group: 'CRM / Pipeline', name: 'Pipeline de Visitantes', key: 'crm_pipeline',   permissions: mkPerms(full(), full(), full(), admin()) },
-  { group: 'CRM / Pipeline', name: 'Configurar Pipelines',   key: 'pipeline_config', permissions: mkPerms(admin(), admin(), admin(), admin()) },
-  { group: 'CRM / Pipeline', name: 'Contatos / Leads',       key: 'crm_leads',      permissions: mkPerms(full(), full(), full(), admin()) },
+  // ── (Contatos / Leads - futuro CRM) ─────────────────────────────────────
+  { group: 'Secretaria', name: 'Contatos / Leads',      key: 'crm_leads',      permissions: mkPerms(full(), mngr(), mngr(), admin()) },
 
   // ── Finanças ─────────────────────────────────────────────────────────────
   { group: 'Finanças', name: 'Livro Caixa',            key: 'cashbook',        permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, Plus, Search, Trash2, Edit, RefreshCw, Lock } from 'lucide-react';
+import { Users, Plus, Search, Trash2, Edit, RefreshCw, Lock, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router';
 import { AlertDialog, ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 
@@ -27,6 +27,11 @@ export default function UsersList() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState('');
+  const [passwordModal, setPasswordModal] = useState<{ id: string; name: string } | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   const token = localStorage.getItem('mrm_token');
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || '';
@@ -59,6 +64,38 @@ export default function UsersList() {
 
   const handleDelete = (id: string) => {
     setConfirmTarget(id);
+  };
+
+  const openPasswordModal = (user: any) => {
+    setPasswordModal({ id: user.id, name: user.fullName });
+    setNewPassword('');
+    setShowPassword(false);
+    setPasswordError('');
+  };
+
+  const handleResetPassword = async () => {
+    if (!passwordModal) return;
+    if (newPassword.length < 6) {
+      setPasswordError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    setSavingPassword(true);
+    setPasswordError('');
+    try {
+      const res = await fetch(`${apiBase}/users/${passwordModal.id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `Erro ${res.status}`);
+      setPasswordModal(null);
+      setNewPassword('');
+    } catch (err: any) {
+      setPasswordError(err.message || 'Falha ao atualizar senha.');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   const confirmDelete = async () => {
@@ -209,6 +246,13 @@ export default function UsersList() {
                       >
                         <Lock className="w-4 h-4 text-slate-500" />
                       </Link>
+                      <button
+                        onClick={() => openPasswordModal(user)}
+                        className="p-1.5 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded-lg transition-colors"
+                        title="Redefinir senha"
+                      >
+                        <KeyRound className="w-4 h-4 text-yellow-600" />
+                      </button>
                       <Link
                         to={`/app-ui/system/users/${user.id}/edit`}
                         className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors"
@@ -251,6 +295,70 @@ export default function UsersList() {
         variant="warning"
         onClose={() => setAlertMessage('')}
       />
+
+      {/* Modal de redefinição de senha */}
+      {passwordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Redefinir Senha</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{passwordModal.name}</p>
+              </div>
+            </div>
+
+            {passwordError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+                {passwordError}
+              </div>
+            )}
+
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                Nova Senha
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleResetPassword()}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full pr-10 pl-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((p) => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setPasswordModal(null)}
+                disabled={savingPassword}
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleResetPassword}
+                disabled={savingPassword || newPassword.length < 6}
+                className="px-4 py-2 text-sm font-medium text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {savingPassword ? 'Salvando...' : 'Salvar Nova Senha'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
