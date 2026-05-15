@@ -12,13 +12,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const existing = await prisma.role.findFirst({ where: { id, deletedAt: null } });
     if (!existing) return NextResponse.json({ error: "Cargo não encontrado." }, { status: 404 });
     const body = await req.json().catch(() => ({}));
-    const { name, description, permissions } = body;
+    const { name, description, permissions, color, isSystem } = body;
     const updated = await prisma.role.update({
       where: { id },
       data: {
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
         ...(permissions !== undefined && { permissions }),
+        ...(color !== undefined && { color }),
+        ...(isSystem !== undefined && { isSystem: Boolean(isSystem) }),
       },
     });
     return NextResponse.json(serializeBigInts(updated));

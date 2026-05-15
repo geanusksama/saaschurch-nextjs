@@ -5,33 +5,48 @@ import { serializeBigInts } from "@/lib/helpers";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async () => {
-    const services = await prisma.kanService.findMany({
-      where: { isActive: true },
-      include: {
-        stages: {
-          where: { isActive: true },
-          include: {
-            columns: { orderBy: { columnIndex: "asc" } },
+    let services;
+    try {
+      services = await prisma.kanService.findMany({
+        where: { isActive: true },
+        include: {
+          stages: {
+            where: { isActive: true },
+            include: {
+              columns: { orderBy: { columnIndex: "asc" } },
+            },
           },
-        },
-        // KanService.rules is the correct Prisma relation name (schema line 1558)
-        rules: {
-          where: { isActive: true },
-          orderBy: { columnIndex: "asc" },
-          include: {
-            stage: {
-              select: {
-                id: true,
-                name: true,
-                pipelineId: true,
-                pipeline: { select: { id: true, name: true } },
+          rules: {
+            where: { isActive: true },
+            orderBy: { columnIndex: "asc" },
+            include: {
+              stage: {
+                select: {
+                  id: true,
+                  name: true,
+                  pipelineId: true,
+                  pipeline: { select: { id: true, name: true } },
+                },
               },
             },
           },
         },
-      },
-      orderBy: { description: "asc" },
-    });
+        orderBy: { description: "asc" },
+      });
+    } catch {
+      // Fallback: fetch without the stage relation (migration for stage_id may be pending)
+      services = await prisma.kanService.findMany({
+        where: { isActive: true },
+        include: {
+          stages: {
+            where: { isActive: true },
+            include: { columns: { orderBy: { columnIndex: "asc" } } },
+          },
+          rules: { where: { isActive: true }, orderBy: { columnIndex: "asc" } },
+        },
+        orderBy: { description: "asc" },
+      });
+    }
     return NextResponse.json(serializeBigInts(services));
   });
 }

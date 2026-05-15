@@ -8,11 +8,11 @@ export async function GET(req: NextRequest) {
     if (!["master", "admin"].includes(user.profileType)) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
-    const row = await prisma.setting.findFirst({
-      where: { settingKey: "permissions_matrix", churchId: null },
-    });
-    if (!row?.settingValue) return NextResponse.json(null);
     try {
+      const row = await prisma.setting.findFirst({
+        where: { settingKey: "permissions_matrix", churchId: null },
+      });
+      if (!row?.settingValue) return NextResponse.json(null);
       return NextResponse.json(JSON.parse(row.settingValue as string));
     } catch {
       return NextResponse.json(null);

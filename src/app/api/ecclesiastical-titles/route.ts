@@ -6,10 +6,15 @@ import { serializeBigInts } from "@/lib/helpers";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async () => {
-    const titles = await prisma.ecclesiasticalTitle.findMany({
-      where: { deletedAt: null, isActive: true },
-      orderBy: [{ displayOrder: "asc" }, { level: "asc" }, { name: "asc" }],
-    });
-    return NextResponse.json(serializeBigInts(titles));
+    try {
+      const titles = await prisma.ecclesiasticalTitle.findMany({
+        where: { deletedAt: null, isActive: true },
+        orderBy: [{ displayOrder: "asc" }, { level: "asc" }, { name: "asc" }],
+      });
+      return NextResponse.json(serializeBigInts(titles));
+    } catch {
+      // Table or columns may not exist yet (migration pending)
+      return NextResponse.json([]);
+    }
   });
 }

@@ -10,11 +10,16 @@ function isRestrictedToOwnChurch(user: { profileType: string; roleName?: string 
 
 async function getCampoPasswordHashMap(fieldIds: string[]) {
   if (!fieldIds.length) return new Map<string, string | null>();
-  const rows = await prisma.$queryRawUnsafe<{ id: string; access_password_hash: string | null }[]>(
-    `SELECT id::text AS id, access_password_hash FROM campos WHERE deleted_at IS NULL AND id = ANY($1::uuid[])`,
-    fieldIds
-  );
-  return new Map(rows.map((r) => [r.id, r.access_password_hash || null]));
+  try {
+    const rows = await prisma.$queryRawUnsafe<{ id: string; access_password_hash: string | null }[]>(
+      `SELECT id::text AS id, access_password_hash FROM campos WHERE deleted_at IS NULL AND id = ANY($1::uuid[])`,
+      fieldIds
+    );
+    return new Map(rows.map((r) => [r.id, r.access_password_hash || null]));
+  } catch {
+    // Column may not exist yet (migration pending) — return empty map so route doesn't crash
+    return new Map<string, string | null>();
+  }
 }
 
 export async function GET(req: NextRequest) {
