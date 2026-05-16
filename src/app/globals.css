@@ -110,6 +110,28 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ── Custom scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
 .app-shell {
   --theme-soft-bg: color-mix(in srgb, var(--theme-primary) 10%, white);
   --theme-soft-bg-strong: color-mix(in srgb, var(--theme-primary) 16%, white);

@@ -48,14 +48,26 @@ export default function AppSPA() {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session || event === 'SIGNED_OUT') {
         void redirectToLogin();
       }
     });
 
+    // Suppress unhandled AuthApiError from invalid/expired refresh tokens by
+    // catching them at the window level and redirecting to login
+    const handleAuthError = (e: PromiseRejectionEvent) => {
+      const msg: string = e?.reason?.message ?? '';
+      if (msg.toLowerCase().includes('refresh token')) {
+        e.preventDefault();
+        void supabase.auth.signOut().finally(() => redirectToLogin());
+      }
+    };
+    window.addEventListener('unhandledrejection', handleAuthError);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('unhandledrejection', handleAuthError);
     };
   }, []);
 

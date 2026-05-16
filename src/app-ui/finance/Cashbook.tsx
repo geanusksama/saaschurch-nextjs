@@ -319,13 +319,21 @@ function ChurchPickerModal({
         const data = await res.json();
         setResults(Array.isArray(data) ? data.slice(0, 60) : []);
       } else {
-        // fallback: busca local com supabase se endpoint não existir
+        // fallback: busca local com supabase se endpoint não estiver disponível
         const { data } = await (await import('../../lib/supabaseClient')).supabase
           .from('churches')
-          .select('id, name, code:slug, addressCity:address_city, addressState:address_state')
+          .select('id, name, code, address_city, address_state')
           .ilike('name', `%${search.trim()}%`)
           .limit(40);
-        setResults(data ?? []);
+        setResults(
+          (data ?? []).map((row: Record<string, unknown>) => ({
+            id: row.id as string,
+            name: row.name as string,
+            code: row.code as string | null,
+            addressCity: (row.address_city ?? null) as string | null,
+            addressState: (row.address_state ?? null) as string | null,
+          }))
+        );
       }
     } catch {
       setResults([]);
@@ -1206,29 +1214,31 @@ export default function Cashbook() {
                       {row.num_doc && <p className="text-[9px] text-slate-400">DOC: {row.num_doc}</p>}
                     </td>
                     <td className="px-4 py-3 max-w-[160px]">
-                      <p className="text-[11px] text-slate-700 truncate font-medium">{(row.churches as any)?.name ?? '—'}</p>
+                      <p className="text-[11px] text-slate-700 dark:text-slate-200 truncate font-medium">{(row.churches as any)?.name ?? '—'}</p>
                     </td>
                     <td className="px-4 py-3 max-w-[220px]">
-                      <p className="text-[12px] font-semibold text-slate-800 truncate">{row.favorecido || '—'}</p>
-                      {row.obs && <p className="text-[11px] text-slate-400 truncate">{row.obs}</p>}
+                      <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-100 truncate">{row.favorecido || '—'}</p>
+                      {row.obs && <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{row.obs}</p>}
                       {row.forma_pg && <p className="text-[9px] text-slate-400">{row.forma_pg}</p>}
                     </td>
                     <td className="px-4 py-3 max-w-[180px]">
-                      <p className="text-[11px] text-slate-600 truncate">{row.plano_de_conta || row.categoria || '—'}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">{row.plano_de_conta || row.categoria || '—'}</p>
                       {row.referencia && <p className="text-[9px] text-slate-400 truncate">{row.referencia}</p>}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <span className={`font-semibold text-[11px] px-2 py-0.5 rounded ${
                         row.tipo === 'RECEITA'
-                          ? 'text-green-700 bg-green-50'
-                          : 'text-red-500 bg-red-50'
+                          ? 'text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-900/40'
+                          : 'text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-900/40'
                       }`}>
                         R$ {fmt(Number(row.valor))}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide ${
-                        row.tipo === 'RECEITA' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                        row.tipo === 'RECEITA'
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                          : 'bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300'
                       }`}>
                         {row.tipo}
                       </span>

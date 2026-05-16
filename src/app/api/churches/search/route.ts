@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         { code: { contains: q, mode: "insensitive" } },
         { legalName: { contains: q, mode: "insensitive" } },
         { addressCity: { contains: q, mode: "insensitive" } },
-        { regional: { is: { name: { contains: q, mode: "insensitive" } } } },
+        { regional: { name: { contains: q, mode: "insensitive" } } },
       ];
     }
     if (user.profileType === "church" && user.churchId) {

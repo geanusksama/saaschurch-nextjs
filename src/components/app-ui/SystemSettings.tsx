@@ -123,7 +123,13 @@ const settingsSections = [
   },
 ];
 
+function readStoredUser() {
+  try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
+}
+
 export function SystemSettings() {
+  const profileType: string = typeof window !== 'undefined' ? (readStoredUser().profileType || '') : '';
+  const isMaster = profileType === 'master';
   return (
     <div className="p-6 text-slate-900 dark:text-slate-100">
       <div className="mb-8">
@@ -174,8 +180,8 @@ export function SystemSettings() {
         })}
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-12 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 rounded-xl p-8 border border-purple-100 dark:border-slate-700">
+      {/* Quick Actions — visible to master only */}
+      {isMaster && <div className="mt-12 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 rounded-xl p-8 border border-purple-100 dark:border-slate-700">
         <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-6">Ações Rápidas</h3>
         <div className="grid md:grid-cols-4 gap-4">
           <Link 
@@ -201,7 +207,7 @@ export function SystemSettings() {
             <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Gerar API Key</p>
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
