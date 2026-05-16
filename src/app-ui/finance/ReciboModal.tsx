@@ -311,6 +311,9 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   const valorNum = Number(row.valor);
   const dataFmt = new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR');
   const docNum = row.legacy_id || row.num_doc || row.id;
+  const shortDoc = String(docNum).length > 12
+    ? `${String(docNum).slice(0, 8)}…${String(docNum).slice(-4)}`
+    : String(docNum);
   const isReceita = row.tipo === 'RECEITA';
   const userRaw = typeof window !== 'undefined' ? localStorage.getItem('mrm_user') : null;
   const userName = row.operador || (userRaw ? (JSON.parse(userRaw).fullName || JSON.parse(userRaw).email || 'Sistema') : 'Sistema');
@@ -364,7 +367,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <div className="text-center flex-1">
               <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Operação</p>
-              <p className="text-2xl font-bold text-slate-900">{docNum}</p>
+              <p className="text-[10px] text-slate-400 font-mono">{shortDoc}</p>
             </div>
             <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg ml-2">
               <X className="w-4 h-4 text-slate-500" />
@@ -424,7 +427,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
             </div>
 
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400">
-              <span>Doc: {docNum}</span>
+              <span>Doc: {shortDoc}</span>
               <span>Op: {userName}</span>
             </div>
 
