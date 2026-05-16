@@ -11,13 +11,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const ok = await assertChurchAccess(user, existing.churchId, prisma);
     if (!ok) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     const body = await req.json().catch(() => ({}));
-    if (body.isPrimary) {
+    const { id: _id, churchId: _cid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...safeData } = body;
+    if (safeData.isPrimary) {
       await prisma.churchContact.updateMany({
-        where: { churchId: existing.churchId, type: body.type || existing.type, deletedAt: null },
+        where: { churchId: existing.churchId, type: safeData.type || existing.type, deletedAt: null },
         data: { isPrimary: false },
       });
     }
-    const updated = await prisma.churchContact.update({ where: { id }, data: body });
+    const updated = await prisma.churchContact.update({ where: { id }, data: safeData });
     return NextResponse.json(serializeBigInts(updated));
   });
 }

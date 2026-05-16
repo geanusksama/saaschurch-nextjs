@@ -135,7 +135,7 @@ function RibbonGroup({
   return (
     <div className={`flex flex-col items-center min-w-fit ${className}`.trim()}>
       <div className={`flex w-full items-end gap-1 px-1 ${bodyClassName}`.trim()}>{children}</div>
-      <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-slate-400 whitespace-nowrap">{label}</div>
+      <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-slate-600 whitespace-nowrap">{label}</div>
     </div>
   );
 }
@@ -157,8 +157,8 @@ function RibbonField({
 }) {
   return (
     <div className={`flex flex-col gap-1 px-1 py-1 ${className}`.trim()}>
-      <div className="flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-slate-400">
-        {icon ? <span className="text-slate-400">{icon}</span> : null}
+      <div className="flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-slate-600">
+        {icon ? <span className="text-slate-500">{icon}</span> : null}
         <span>{label}</span>
       </div>
       {children}
@@ -242,8 +242,8 @@ function SummaryPanel({
 
   return (
     <div className={`rounded-md border px-3 py-2 ${toneClass}`}>
-      <div className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {icon ? <span className="text-slate-400">{icon}</span> : null}
+      <div className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+        {icon ? <span className="text-slate-600">{icon}</span> : null}
         <span>{label}</span>
       </div>
       <div className="mt-1 text-sm font-semibold leading-none text-slate-800">{value}</div>
@@ -253,7 +253,17 @@ function SummaryPanel({
 
 // ─── types ───────────────────────────────────────────────────────────────────
 type Row = ReciboRow;
-type SortKey = 'data_lancamento' | 'valor' | 'tipo' | 'favorecido' | 'church';
+type SortKey = 'data_lancamento' | 'valor' | 'tipo' | 'favorecido' | 'church' | 'plano_tipo';
+
+function planoPriority(r: Row): number {
+  const p = (r.plano_de_conta || r.categoria || '').toLowerCase();
+  if (r.tipo === 'RECEITA') {
+    if (p.includes('dizimo') || p.includes('d\u00edizimo') || p.includes('d\u00edzimo')) return 0;
+    if (p.includes('oferta')) return 1;
+    return 2;
+  }
+  return 3; // DESPESA
+}
 type SortDir = 'asc' | 'desc';
 
 type ChurchOption = {
@@ -758,8 +768,8 @@ export default function Cashbook() {
 
   // Table state
   const [filterType, setFilterType] = useState<'all' | 'RECEITA' | 'DESPESA'>('all');
-  const [sortKey, setSortKey]       = useState<SortKey>('data_lancamento');
-  const [sortDir, setSortDir]       = useState<SortDir>('desc');
+  const [sortKey, setSortKey]       = useState<SortKey>('plano_tipo');
+  const [sortDir, setSortDir]       = useState<SortDir>('asc');
   const [page, setPage]             = useState(1);
   const [pageSize, setPageSize]     = useState(100);
   const [editRow, setEditRow]       = useState<Row | null>(null);
@@ -819,6 +829,11 @@ export default function Cashbook() {
 
   const sorted = useMemo(() => {
     return [...typeFiltered].sort((a, b) => {
+      if (sortKey === 'plano_tipo') {
+        const pa = planoPriority(a), pb = planoPriority(b);
+        if (pa !== pb) return pa - pb;
+        return b.data_lancamento.localeCompare(a.data_lancamento);
+      }
       let av: string | number = '', bv: string | number = '';
       if (sortKey === 'data_lancamento') { av = a.data_lancamento; bv = b.data_lancamento; }
       else if (sortKey === 'valor') { av = Number(a.valor); bv = Number(b.valor); }
@@ -957,7 +972,7 @@ export default function Cashbook() {
                 label="Imprimir"
                 onClick={() => { if (searched && rows.length > 0) setShowRelatorio(true); }}
                 disabled={!searched || rows.length === 0}
-                className="min-w-0 w-full md:w-auto"
+                className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
               />
               <RibbonButton
                 size="lg"
@@ -965,13 +980,13 @@ export default function Cashbook() {
                 icon={
                   <span className="relative flex items-center justify-center">
                     <FileSpreadsheet className="h-4 w-4" />
-                    <span className="absolute -bottom-1 -right-1 rounded-[2px] bg-emerald-600 px-[2px] text-[6px] font-bold leading-none text-white">XLS</span>
+                    <span className="absolute -bottom-1 -right-1 rounded-[2px] bg-emerald-500 px-[2px] text-[6px] font-bold leading-none text-white">XLS</span>
                   </span>
                 }
                 label="Exportar"
                 onClick={() => exportToExcel(sorted, dataInicio, dataFim)}
                 disabled={!searched || sorted.length === 0}
-                className="min-w-0 w-full md:w-auto"
+                className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
               />
             </RibbonGroup>
 
@@ -983,15 +998,15 @@ export default function Cashbook() {
               bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-auto md:gap-1 md:px-1"
             >
               <Link to="/app-ui/finance/income/new" className="w-full shrink-0 md:w-auto">
-                <span className="flex min-h-[52px] min-w-[44px] w-full flex-col items-center justify-center gap-0.5 rounded border border-transparent px-2 py-1 text-xs text-emerald-600 transition-colors hover:bg-emerald-50 md:w-auto">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  <span className="mt-0.5 max-w-[60px] text-center text-[10px] leading-tight font-medium">Nova Receita</span>
+                <span className="flex min-h-[52px] min-w-[80px] w-full flex-col items-center justify-center gap-0.5 rounded px-3 py-1 text-xs text-white bg-[#059669] hover:bg-[#047857] shadow-sm transition-colors md:w-auto">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="mt-0.5 text-center text-[10px] leading-tight font-semibold">Nova Receita</span>
                 </span>
               </Link>
               <Link to="/app-ui/finance/expense/new" className="w-full shrink-0 md:w-auto">
-                <span className="flex min-h-[52px] min-w-[44px] w-full flex-col items-center justify-center gap-0.5 rounded border border-transparent px-2 py-1 text-xs text-red-500 transition-colors hover:bg-red-50 md:w-auto">
-                  <TrendingDown className="h-3.5 w-3.5" />
-                  <span className="mt-0.5 max-w-[60px] text-center text-[10px] leading-tight font-medium">Nova Despesa</span>
+                <span className="flex min-h-[52px] min-w-[80px] w-full flex-col items-center justify-center gap-0.5 rounded px-3 py-1 text-xs text-white bg-red-600 hover:bg-red-700 shadow-sm transition-colors md:w-auto">
+                  <TrendingDown className="h-4 w-4" />
+                  <span className="mt-0.5 text-center text-[10px] leading-tight font-semibold">Nova Despesa</span>
                 </span>
               </Link>
             </RibbonGroup>

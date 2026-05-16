@@ -46,14 +46,14 @@ function renderMonthLabel(month: number) {
 
 function statusBadgeClass(month: FinanceCashStatusMonth) {
   if (month.status === 'OPEN') {
-    return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200';
+    return 'bg-[#dcfce7] text-[#166534] ring-1 ring-[#86efac]';
   }
 
   if (month.allowUntil) {
-    return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200';
+    return 'bg-[#fef3c7] text-[#92400e] ring-1 ring-[#fcd34d]';
   }
 
-  return 'bg-rose-50 text-rose-600 ring-1 ring-rose-200';
+  return 'bg-[#fee2e2] text-[#991b1b] ring-1 ring-[#fca5a5]';
 }
 
 function formatMonthStatus(month: FinanceCashStatusMonth) {
@@ -223,17 +223,17 @@ function RibbonActionButton({
   onClick: () => void;
 }) {
   const toneClass = tone === 'green'
-    ? 'text-emerald-600 hover:bg-emerald-50'
+    ? 'bg-[#dcfce7] text-[#166534] border-[#86efac] hover:bg-[#bbf7d0]'
     : tone === 'red'
-      ? 'text-rose-600 hover:bg-rose-50'
-      : 'text-amber-700 hover:bg-amber-50';
+      ? 'bg-[#fee2e2] text-[#991b1b] border-[#fca5a5] hover:bg-[#fecaca]'
+      : 'bg-[#fef3c7] text-[#92400e] border-[#fcd34d] hover:bg-[#fde68a]';
 
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex h-[52px] w-[52px] shrink-0 flex-col items-center justify-center gap-0.5 rounded border border-transparent px-1 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+      className={`flex h-[60px] min-w-[72px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
     >
       <span className="flex items-center justify-center">{icon}</span>
       <span className="mt-0.5 max-w-[60px] text-center text-[10px] leading-tight font-medium">{label}</span>
@@ -539,7 +539,7 @@ export function FinanceCashFlow() {
                     onClick={() => setSelectedMonths((current) => current.includes(month.value)
                       ? current.filter((item) => item !== month.value)
                       : [...current, month.value].sort((left, right) => left - right))}
-                    className={`inline-flex min-w-[50px] items-center justify-center rounded border px-1.5 py-1.5 text-[11px] font-semibold transition ${selected ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-100' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
+                    className={`inline-flex min-w-[50px] items-center justify-center rounded border px-1.5 py-1.5 text-[11px] font-semibold transition ${selected ? 'border-[#93c5fd] bg-[#dbeafe] text-[#1e3a8a] ring-1 ring-[#bfdbfe]' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                   >
                     {month.label}
                   </button>
@@ -560,7 +560,7 @@ export function FinanceCashFlow() {
       )}
 
       {notice && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-[#86efac] bg-[#dcfce7] px-4 py-3 text-sm text-[#166534]">
           <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
           {notice}
         </div>
@@ -587,16 +587,16 @@ export function FinanceCashFlow() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-sm">
+            <table className="w-full min-w-[1350px] text-sm">
               <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Igreja</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Regional</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Igreja</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Regional</th>
                   {selectedMonths.map((month) => (
-                    <th key={month} className="px-4 py-3 text-left text-xs font-semibold text-slate-500">{renderMonthLabel(month)} / {year}</th>
+                    <th key={month} className="px-4 py-3 text-left text-xs font-semibold text-slate-700">{renderMonthLabel(month)} / {year}</th>
                   ))}
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500">Resumo</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500">Ações</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-700">Resumo</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-700">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -620,9 +620,9 @@ export function FinanceCashFlow() {
                       ))}
                       <td className="px-4 py-3 align-top text-center">
                         <div className="inline-flex flex-wrap items-center justify-center gap-1 text-[11px] font-semibold">
-                          <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700 ring-1 ring-emerald-200">Abertos {openMonths}</span>
-                          <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700 ring-1 ring-amber-200">Temporários {temporaryMonths}</span>
-                          <span className="rounded-full bg-rose-50 px-2 py-1 text-rose-600 ring-1 ring-rose-200">Fechados {closedMonths}</span>
+                          <span className="rounded-full bg-[#dcfce7] px-2 py-1 text-[#166534] ring-1 ring-[#86efac]">Abertos {openMonths}</span>
+                          <span className="rounded-full bg-[#fef3c7] px-2 py-1 text-[#92400e] ring-1 ring-[#fcd34d]">Temporários {temporaryMonths}</span>
+                          <span className="rounded-full bg-[#fee2e2] px-2 py-1 text-[#991b1b] ring-1 ring-[#fca5a5]">Fechados {closedMonths}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 align-top">
@@ -631,7 +631,7 @@ export function FinanceCashFlow() {
                             type="button"
                             onClick={() => void runUpdate('open', [row.churchId])}
                             disabled={saving}
-                            className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 disabled:opacity-60"
+                            className="rounded-lg bg-[#dcfce7] px-3 py-1.5 text-xs font-semibold text-[#166534] ring-1 ring-[#86efac] hover:bg-[#bbf7d0] disabled:opacity-60"
                           >
                             Abrir
                           </button>
@@ -639,7 +639,7 @@ export function FinanceCashFlow() {
                             type="button"
                             onClick={() => void runUpdate('close', [row.churchId])}
                             disabled={saving}
-                            className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 ring-1 ring-rose-200 hover:bg-rose-100 disabled:opacity-60"
+                            className="rounded-lg bg-[#fee2e2] px-3 py-1.5 text-xs font-semibold text-[#991b1b] ring-1 ring-[#fca5a5] hover:bg-[#fecaca] disabled:opacity-60"
                           >
                             Fechar
                           </button>
@@ -649,7 +649,7 @@ export function FinanceCashFlow() {
                               setActiveChurch(row);
                               setModalAllowUntil(row.months.find((month) => month.allowUntil)?.allowUntil || bulkAllowUntil);
                             }}
-                            className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100"
+                            className="rounded-lg bg-[#dbeafe] px-3 py-1.5 text-xs font-semibold text-[#1e3a8a] ring-1 ring-[#bfdbfe] hover:bg-[#bfdbfe]"
                           >
                             Gerenciar
                           </button>

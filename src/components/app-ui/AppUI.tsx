@@ -55,13 +55,17 @@ import {
   MoreHorizontal,
   Award,
   MapPin,
+  Palette,
+  Camera,
+  RotateCcw,
+  Check,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { MemberEditDrawer } from './MemberEditDrawer';
 import { usePermissions } from '../../lib/usePermissions';
-import { THEME_EVENT_NAME, applyThemeSettings, loadThemeSettings, type ThemeSettings } from '../../lib/themeSettings';
+import { THEME_EVENT_NAME, applyThemeSettings, loadThemeSettings, saveThemeSettings, getRadiusPresetOptions, DEFAULT_THEME_SETTINGS, type ThemeSettings } from '../../lib/themeSettings';
 
 import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
@@ -258,6 +262,27 @@ export function AppUI() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [myProfileOpen, setMyProfileOpen] = useState(false);
+  const [themeEditorOpen, setThemeEditorOpen] = useState(false);
+  const [userFoto, setUserFoto] = useState<string | null>(() => storedUser.foto || null);
+  const profilePhotoRef = useRef<HTMLInputElement>(null);
+
+  function handleProfilePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { alert('Imagem deve ter no máximo 3MB'); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target?.result as string;
+      setUserFoto(dataUrl);
+      try {
+        const user = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+        user.foto = dataUrl;
+        localStorage.setItem('mrm_user', JSON.stringify(user));
+      } catch { /* noop */ }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mrm_theme') === 'dark');
   const [branding, setBranding] = useState<ThemeSettings>(() => loadThemeSettings());
   const profileRef = useRef<HTMLDivElement>(null);
@@ -1277,8 +1302,11 @@ export function AppUI() {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-2 pl-2 pr-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
-                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center">
-                  <span className="text-purple-700 dark:text-purple-300 text-xs font-bold">{initials}</span>
+                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center overflow-hidden">
+                  {userFoto
+                    ? <img src={userFoto} alt={displayName} className="w-8 h-8 rounded-full object-cover" />
+                    : <span className="text-purple-700 dark:text-purple-300 text-xs font-bold">{initials}</span>
+                  }
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">{displayName.split(' ')[0]}</p>
@@ -1300,8 +1328,11 @@ export function AppUI() {
                     {/* Header */}
                     <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center">
-                          <span className="text-purple-700 dark:text-purple-300 font-bold text-lg">{initials}</span>
+                        <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center overflow-hidden">
+                          {userFoto
+                            ? <img src={userFoto} alt={displayName} className="w-12 h-12 rounded-full object-cover" />
+                            : <span className="text-purple-700 dark:text-purple-300 font-bold text-lg">{initials}</span>
+                          }
                         </div>
                         <div>
                           <p className="font-semibold text-slate-900 dark:text-white">{displayName}</p>
@@ -1357,6 +1388,21 @@ export function AppUI() {
                         </div>
                         <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => { setProfileOpen(false); setThemeEditorOpen(true); }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                      >
+                        <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900/40 rounded-lg flex items-center justify-center">
+                          <Palette className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">Tema Global</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Personalizar cores</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
 
                       {/* Dark mode row */}
                       <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg">
@@ -1658,14 +1704,24 @@ export function AppUI() {
                   <p className="text-slate-400 text-sm">Suas informações pessoais</p>
                 </div>
 
-                {/* Avatar */}
                 <div className="flex justify-center -mt-10 px-6 relative z-10">
-                  <div className="w-20 h-20 bg-white dark:bg-slate-700 rounded-full ring-4 ring-white dark:ring-slate-800 flex items-center justify-center shadow-md">
-                    {storedUser.foto ? (
-                      <img src={storedUser.foto} alt={displayName} className="w-20 h-20 rounded-full object-cover" />
-                    ) : (
-                      <span className="text-slate-700 dark:text-slate-300 font-bold text-2xl">{initials}</span>
-                    )}
+                  <div className="relative">
+                    <div className="w-20 h-20 bg-white dark:bg-slate-700 rounded-full ring-4 ring-white dark:ring-slate-800 flex items-center justify-center shadow-md overflow-hidden">
+                      {userFoto ? (
+                        <img src={userFoto} alt={displayName} className="w-20 h-20 rounded-full object-cover" />
+                      ) : (
+                        <span className="text-slate-700 dark:text-slate-300 font-bold text-2xl">{initials}</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => profilePhotoRef.current?.click()}
+                      className="absolute bottom-0 right-0 w-7 h-7 bg-white dark:bg-slate-700 border-2 border-white dark:border-slate-800 rounded-full flex items-center justify-center shadow hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                      title="Alterar foto"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                    </button>
+                    <input ref={profilePhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleProfilePhotoUpload} />
                   </div>
                 </div>
 
@@ -1731,6 +1787,208 @@ export function AppUI() {
           </>
         )}
       </AnimatePresence>
+
+      {/* ── Modal: Tema Global ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {themeEditorOpen && (
+          <ThemeEditorModal
+            onClose={() => setThemeEditorOpen(false)}
+            currentBranding={branding}
+            onBrandingChange={(next) => {
+              setBranding(next);
+              applyThemeSettings(next);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function ThemeEditorModal({
+  onClose,
+  currentBranding,
+  onBrandingChange,
+}: {
+  onClose: () => void;
+  currentBranding: ThemeSettings;
+  onBrandingChange: (next: ThemeSettings) => void;
+}) {
+  const savedRef = useRef<ThemeSettings>(currentBranding);
+  const [data, setData] = useState<ThemeSettings>(currentBranding);
+  const [primaryText, setPrimaryText] = useState(currentBranding.primaryColor);
+  const [secondaryText, setSecondaryText] = useState(currentBranding.secondaryColor);
+  const [saved, setSaved] = useState(false);
+  const radiusOptions = getRadiusPresetOptions();
+
+  useEffect(() => { setPrimaryText(data.primaryColor); }, [data.primaryColor]);
+  useEffect(() => { setSecondaryText(data.secondaryColor); }, [data.secondaryColor]);
+  useEffect(() => {
+    onBrandingChange(data);
+    return () => onBrandingChange(savedRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  function handlePrimary(v: string) {
+    setPrimaryText(v);
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) setData(d => ({ ...d, primaryColor: v }));
+  }
+
+  function handleSecondary(v: string) {
+    setSecondaryText(v);
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) setData(d => ({ ...d, secondaryColor: v }));
+  }
+
+  function handleSave() {
+    saveThemeSettings(data);
+    savedRef.current = data;
+    applyThemeSettings(data);
+    onBrandingChange(data);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  function handleReset() {
+    const next = { ...DEFAULT_THEME_SETTINGS, logoUrl: data.logoUrl };
+    setData(next);
+    setPrimaryText(next.primaryColor);
+    setSecondaryText(next.secondaryColor);
+  }
+
+  const inputCls = 'flex-1 px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-sm';
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        transition={{ duration: 0.18 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+      >
+        <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl pointer-events-auto overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2">
+              <Palette className="w-5 h-5 text-violet-500" />
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">Tema Global</h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <X className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
+
+          <div className="px-5 py-4 space-y-4">
+            {/* Primary color */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Cor predominante</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={data.primaryColor}
+                  onChange={e => { setData(d => ({ ...d, primaryColor: e.target.value })); setPrimaryText(e.target.value); }}
+                  className="h-9 w-12 cursor-pointer rounded-lg border border-slate-200 dark:border-slate-700 shrink-0"
+                />
+                <input type="text" value={primaryText} maxLength={7} onChange={e => handlePrimary(e.target.value)} className={inputCls} placeholder="#334155" />
+              </div>
+            </div>
+
+            {/* Secondary color */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Cor de apoio</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={data.secondaryColor}
+                  onChange={e => { setData(d => ({ ...d, secondaryColor: e.target.value })); setSecondaryText(e.target.value); }}
+                  className="h-9 w-12 cursor-pointer rounded-lg border border-slate-200 dark:border-slate-700 shrink-0"
+                />
+                <input type="text" value={secondaryText} maxLength={7} onChange={e => handleSecondary(e.target.value)} className={inputCls} placeholder="#7b8fb3" />
+              </div>
+            </div>
+
+            {/* Radius */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Curvatura</label>
+              <div className="grid grid-cols-3 gap-2">
+                {radiusOptions.map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setData(d => ({ ...d, radius: option.value }))}
+                    className={`rounded-lg border px-2 py-2 text-left text-xs transition-all ${data.radius === option.value ? 'border-violet-400 bg-violet-50 font-semibold text-violet-700' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-3 flex items-center gap-2">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs font-semibold text-white shadow-sm shrink-0"
+                style={{ backgroundColor: data.primaryColor, borderRadius: `${data.radius}px` }}
+              >
+                Primário
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs font-semibold text-white shadow-sm shrink-0"
+                style={{ backgroundColor: data.secondaryColor, borderRadius: `${data.radius}px` }}
+              >
+                Apoio
+              </button>
+              <div className="flex gap-1 ml-auto">
+                {[data.primaryColor, data.secondaryColor].map((c, i) => (
+                  <div key={i} className="w-5 h-5 rounded-full shadow-sm" style={{ backgroundColor: c }} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Restaurar
+            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition hover:opacity-90"
+                style={{ backgroundColor: data.primaryColor }}
+              >
+                {saved ? <Check className="w-3.5 h-3.5" /> : null}
+                {saved ? 'Salvo!' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </>
   );
 }

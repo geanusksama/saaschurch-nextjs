@@ -1196,11 +1196,11 @@ export default function LancamentoNew() {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const isReceita = modo === 'RECEITA';
-  const accentBg = isReceita ? 'bg-emerald-600' : 'bg-red-600';
-  const accentHover = isReceita ? 'hover:bg-emerald-700' : 'hover:bg-red-700';
-  const accentRing = isReceita ? 'focus:ring-emerald-500' : 'focus:ring-red-500';
-  const accentBorder = isReceita ? 'border-emerald-500' : 'border-red-500';
-  const accentBar = isReceita ? 'bg-emerald-500' : 'bg-red-500';
+  const accentBg = isReceita ? 'bg-[#059669]' : 'bg-red-600';
+  const accentHover = isReceita ? 'hover:bg-[#047857]' : 'hover:bg-red-700';
+  const accentRing = isReceita ? 'focus:ring-[#10b981]' : 'focus:ring-red-500';
+  const accentBorder = isReceita ? 'border-[#10b981]' : 'border-red-500';
+  const accentBar = isReceita ? 'bg-[#10b981]' : 'bg-red-500';
 
   async function searchPJ(q: string) {
     // Busca PJs na tabela members
@@ -1253,8 +1253,8 @@ export default function LancamentoNew() {
           <Link to="/app-ui/finance/cashbook" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg flex-shrink-0">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </Link>
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${isReceita ? 'bg-emerald-100' : 'bg-red-100'}`}>
-            <span className={`font-bold text-base ${isReceita ? 'text-emerald-600' : 'text-red-600'}`}>{isReceita ? '+' : '−'}</span>
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${isReceita ? 'bg-[#d1fae5]' : 'bg-red-100'}`}>
+            <span className={`font-bold text-base ${isReceita ? 'text-[#059669]' : 'text-red-600'}`}>{isReceita ? '+' : '−'}</span>
           </div>
           <div className="min-w-0">
             <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{isReceita ? 'Inserir Receita' : 'Inserir Despesa'}</h1>
@@ -1262,7 +1262,7 @@ export default function LancamentoNew() {
           </div>
           <div className="ml-auto flex flex-col sm:flex-row flex-shrink-0 gap-1">
             <button type="button" onClick={() => setModo('RECEITA')}
-              className={`px-3 py-1.5 rounded-lg sm:rounded-l-lg sm:rounded-r-none text-xs font-bold border transition-colors ${isReceita ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'}`}>
+              className={`px-3 py-1.5 rounded-lg sm:rounded-l-lg sm:rounded-r-none text-xs font-bold border transition-colors ${isReceita ? 'bg-[#059669] text-white border-[#10b981]' : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'}`}>
               RECEITA (F2)
             </button>
             <button type="button" onClick={() => setModo('DESPESA')}
@@ -1297,7 +1297,7 @@ export default function LancamentoNew() {
                   {caixaNome || 'Selecione uma igreja'}
                 </button>
               </div>
-              {caixaId && <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex-shrink-0">ATIVA</span>}
+              {caixaId && <span className="text-[10px] font-bold bg-[#d1fae5] text-[#047857] px-2 py-0.5 rounded-full flex-shrink-0">ATIVA</span>}
 
               {/* Toggle transferir */}
               <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
