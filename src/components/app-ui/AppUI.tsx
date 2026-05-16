@@ -1166,11 +1166,11 @@ export function AppUI() {
               />
               <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-400">Ctrl K</span>
             </div>
-            {/* Mais button + Novo Membro */}
+            {/* Mais button + Novo Membro — hidden on mobile (available in 3-dots drawer) */}
             <button
               type="button"
               onClick={() => setQuickAddOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+              className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
             >
               <LayoutGrid className="h-4 w-4" />
               Mais
@@ -1196,17 +1196,17 @@ export function AppUI() {
 
           {/* Actions — ml-auto garante alinhamento à direita */}
           <div className="ml-auto flex items-center gap-2">
-            {/* Dark mode toggle */}
+            {/* Dark mode toggle — hidden on mobile (available in 3-dots drawer) */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              className="hidden sm:inline-flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors items-center justify-center"
               title={darkMode ? 'Modo claro' : 'Modo escuro'}
             >
               {darkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-slate-600" />}
             </button>
 
-            {/* Notifications button */}
-            <div className="relative" ref={notificationRef}>
+            {/* Notifications button — hidden on mobile (available in 3-dots drawer) */}
+            <div className="relative hidden sm:block" ref={notificationRef}>
               <button 
                 onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
                 className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -1296,8 +1296,8 @@ export function AppUI() {
               </AnimatePresence>
             </div>
 
-            {/* Profile button */}
-            <div className="relative" ref={profileRef}>
+            {/* Profile button — hidden on mobile (available in 3-dots drawer) */}
+            <div className="relative hidden sm:block" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-2 pl-2 pr-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"

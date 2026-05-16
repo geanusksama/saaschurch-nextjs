@@ -766,6 +766,9 @@ export default function Cashbook() {
   const [selectedRow, setSelectedRow] = useState<Row | null>(null);
   const [showRelatorio, setShowRelatorio] = useState(false);
 
+  // Summary accordion (mobile only – collapsed by default)
+  const [summaryOpen, setSummaryOpen] = useState(false);
+
   // Table state
   const [filterType, setFilterType] = useState<'all' | 'RECEITA' | 'DESPESA'>('all');
   const [sortKey, setSortKey]       = useState<SortKey>('plano_tipo');
@@ -1012,60 +1015,79 @@ export default function Cashbook() {
             </RibbonGroup>
           </div>
 
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5 2xl:grid-cols-10">
-            <SummaryPanel
-              label="Líquido"
-              value={`R$ ${fmt(liquido)}`}
-              icon={<TrendingDown className="h-3 w-3" />}
-              tone={liquido >= 0 ? 'positive' : 'negative'}
-            />
-            <SummaryPanel
-              label="Receitas"
-              value={`R$ ${fmt(totalReceita)}`}
-              icon={<TrendingUp className="h-3 w-3" />}
-              tone="positive"
-            />
-            <SummaryPanel
-              label="Despesas"
-              value={`R$ ${fmt(totalDespesa)}`}
-              icon={<TrendingDown className="h-3 w-3" />}
-              tone="negative"
-            />
-            <SummaryPanel
-              label="Movimentos"
-              value={`${rows.length}`}
-              icon={<DollarSign className="h-3 w-3" />}
-            />
-            <SummaryPanel
-              label="Total dízimos"
-              value={`R$ ${fmt(totalDizimos)}`}
-              tone="neutral"
-            />
-            <SummaryPanel
-              label="Total ofertas"
-              value={`R$ ${fmt(totalOfertas)}`}
-              tone="neutral"
-            />
-            <SummaryPanel
-              label="Qtd. receitas"
-              value={`${qtdReceitas}`}
-              tone="neutral"
-            />
-            <SummaryPanel
-              label="Qtd. despesas"
-              value={`${qtdDespesas}`}
-              tone="neutral"
-            />
-            <SummaryPanel
-              label="Qtd. dízimos"
-              value={`${qtdDizimos}`}
-              tone="neutral"
-            />
-            <SummaryPanel
-              label="Qtd. ofertas"
-              value={`${qtdOfertas}`}
-              tone="neutral"
-            />
+          {/* ── Summary accordion (mobile: collapsible / desktop: always visible) ── */}
+          <div className="mt-3">
+            {/* Toggle button – visible only on mobile */}
+            <button
+              type="button"
+              onClick={() => setSummaryOpen(o => !o)}
+              className="md:hidden w-full flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              {summaryOpen ? (
+                <><ChevronUp className="h-3.5 w-3.5" /><span>Ocultar resumo</span></>
+              ) : (
+                <><ChevronDown className="h-3.5 w-3.5" /><span>Ver resumo</span></>
+              )}
+            </button>
+
+            {/* Grid – always visible on md+, toggled on mobile */}
+            <div className={`grid gap-2 sm:grid-cols-2 xl:grid-cols-5 2xl:grid-cols-10 ${
+              summaryOpen ? 'mt-2' : 'hidden'
+            } md:grid md:mt-2`}>
+              <SummaryPanel
+                label="Líquido"
+                value={`R$ ${fmt(liquido)}`}
+                icon={<TrendingDown className="h-3 w-3" />}
+                tone={liquido >= 0 ? 'positive' : 'negative'}
+              />
+              <SummaryPanel
+                label="Receitas"
+                value={`R$ ${fmt(totalReceita)}`}
+                icon={<TrendingUp className="h-3 w-3" />}
+                tone="positive"
+              />
+              <SummaryPanel
+                label="Despesas"
+                value={`R$ ${fmt(totalDespesa)}`}
+                icon={<TrendingDown className="h-3 w-3" />}
+                tone="negative"
+              />
+              <SummaryPanel
+                label="Movimentos"
+                value={`${rows.length}`}
+                icon={<DollarSign className="h-3 w-3" />}
+              />
+              <SummaryPanel
+                label="Total dízimos"
+                value={`R$ ${fmt(totalDizimos)}`}
+                tone="neutral"
+              />
+              <SummaryPanel
+                label="Total ofertas"
+                value={`R$ ${fmt(totalOfertas)}`}
+                tone="neutral"
+              />
+              <SummaryPanel
+                label="Qtd. receitas"
+                value={`${qtdReceitas}`}
+                tone="neutral"
+              />
+              <SummaryPanel
+                label="Qtd. despesas"
+                value={`${qtdDespesas}`}
+                tone="neutral"
+              />
+              <SummaryPanel
+                label="Qtd. dízimos"
+                value={`${qtdDizimos}`}
+                tone="neutral"
+              />
+              <SummaryPanel
+                label="Qtd. ofertas"
+                value={`${qtdOfertas}`}
+                tone="neutral"
+              />
+            </div>
           </div>
 
           {error ? (
