@@ -7,6 +7,12 @@ export function serializeBigInts(value: unknown): unknown {
   if (typeof value === "bigint") return Number(value);
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map(serializeBigInts);
+  // Prisma Decimal (decimal.js) — converte para número antes de serializar
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (value !== null && typeof value === "object" && typeof (value as any).toNumber === "function") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (value as any).toNumber();
+  }
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, serializeBigInts(v)])

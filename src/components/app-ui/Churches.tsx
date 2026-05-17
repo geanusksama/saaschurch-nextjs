@@ -905,30 +905,30 @@ export function Churches() {
 
       const payload = {
         regionalId: form.regionalId,
-        currentLeaderName: form.currentLeaderName || undefined,
-        leaderRoll: form.leaderRoll || undefined,
-        hash: form.hash || undefined,
-        parentChurchId: form.parentChurchId || undefined,
-        headquartersId: form.headquartersId || undefined,
-        entryDate: form.entryDate || undefined,
-        exitDate: form.exitDate || undefined,
+        currentLeaderName: form.currentLeaderName || null,
+        leaderRoll: form.leaderRoll || null,
+        hash: form.hash || null,
+        parentChurchId: form.parentChurchId || null,
+        headquartersId: form.headquartersId || null,
+        entryDate: form.entryDate || null,
+        exitDate: form.exitDate || null,
         code: form.code.trim(),
         name: form.name.trim(),
         legalName: form.name.trim(),
-        plateName: form.plateName || undefined,
-        documentType: form.documentType || undefined,
-        documentNumber: form.documentNumber || undefined,
-        foundedAt: form.foundedAt || undefined,
-        addressZipcode: form.addressZipcode || undefined,
-        addressCity: form.addressCity || undefined,
-        addressState: form.addressState || undefined,
-        addressNeighborhood: form.addressNeighborhood || undefined,
-        addressStreet: form.addressStreet || undefined,
-        addressComplement: form.addressComplement || undefined,
-        latitude: form.latitude ? Number(form.latitude) : undefined,
-        longitude: form.longitude ? Number(form.longitude) : undefined,
+        plateName: form.plateName || null,
+        documentType: form.documentType || 'CNPJ',
+        documentNumber: form.documentNumber || null,
+        foundedAt: form.foundedAt || null,
+        addressZipcode: form.addressZipcode || null,
+        addressCity: form.addressCity || null,
+        addressState: form.addressState || null,
+        addressNeighborhood: form.addressNeighborhood || null,
+        addressStreet: form.addressStreet || null,
+        addressComplement: form.addressComplement || null,
+        latitude: form.latitude ? Number(form.latitude) : null,
+        longitude: form.longitude ? Number(form.longitude) : null,
         hasOwnTemple: form.hasOwnTemple,
-        notes: form.notes || undefined,
+        notes: form.notes || null,
         status: form.status,
       };
 
@@ -2817,6 +2817,15 @@ export function Churches() {
             </div>
           </div>
           <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+            {selectedLocationPreview ? (
+              <button
+                type="button"
+                onClick={() => applyLocationCandidate(selectedLocationPreview)}
+                className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                Aplicar localização
+              </button>
+            ) : null}
             <button type="button" onClick={() => setLocationHelperOpen(false)} className={secondaryButtonClass}>Fechar</button>
           </DialogFooter>
         </DialogContent>

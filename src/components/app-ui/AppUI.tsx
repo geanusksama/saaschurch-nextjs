@@ -200,6 +200,17 @@ const appNavigation: NavigationSection[] = [
 export function AppUI() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Guard: redireciona usuários com perfil pendente antes de renderizar qualquer coisa
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+      if (user.profileType === 'pending') {
+        navigate('/pending-activation', { replace: true });
+      }
+    } catch { /* ignore */ }
+  }, [navigate]);
+
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [churchSwitcherOpen, setChurchSwitcherOpen] = useState(false);

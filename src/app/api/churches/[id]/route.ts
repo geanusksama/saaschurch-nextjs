@@ -26,19 +26,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
     const { id } = await params;
-    const body = await req.json().catch(() => ({}));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
+    }
+
     const { currentLeaderRoleDate, entryDate, exitDate, foundedAt, ...rest } = body;
-    const church = await prisma.church.update({
-      where: { id },
-      data: {
-        ...rest,
-        currentLeaderRoleDate: currentLeaderRoleDate ? new Date(currentLeaderRoleDate) : undefined,
-        entryDate: entryDate ? new Date(entryDate) : undefined,
-        exitDate: exitDate ? new Date(exitDate) : undefined,
-        foundedAt: foundedAt ? new Date(foundedAt) : undefined,
-      },
-    });
-    return NextResponse.json(serializeBigInts(church));
+
+    const toDateOrNull = (v: unknown) => (v ? new Date(v as string) : null);
+    const toDateOrUndefined = (v: unknown) => (v === undefined ? undefined : toDateOrNull(v));
+
+    try {
+      const church = await prisma.church.update({
+        where: { id },
+        data: {
+          ...rest,
+          currentLeaderRoleDate: toDateOrUndefined(currentLeaderRoleDate),
+          entryDate: toDateOrNull(entryDate),
+          exitDate: toDateOrNull(exitDate),
+          foundedAt: toDateOrNull(foundedAt),
+        },
+      });
+      return NextResponse.json(serializeBigInts(church));
+    } catch (e) {
+      console.error("[PATCH /churches/:id]", e);
+      return NextResponse.json({ error: "Erro ao atualizar os dados da igreja." }, { status: 500 });
+    }
   });
 }
 
