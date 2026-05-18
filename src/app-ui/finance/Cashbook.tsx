@@ -3,7 +3,7 @@ import {
   DollarSign, Plus, Search, Download, Printer, Eye, AlertCircle,
   TrendingDown, TrendingUp, Building2, X, ChevronUp, ChevronDown,
   ChevronsUpDown, ChevronLeft, ChevronRight, MapPin, Users,
-  Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet
+  Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet, CalendarDays
 } from 'lucide-react';
 import { Link } from 'react-router';
 import * as XLSX from 'xlsx';
@@ -759,13 +759,13 @@ function ConsultarLancamentoModal({
   onResults,
 }: {
   onClose: () => void;
-  onResults: (rows: Row[]) => void;
+  onResults: (rows: Row[], dataInicio: string, dataFim: string) => void;
 }) {
   const storedUser      = readStoredUser();
   const profileType     = (storedUser.profileType || 'church') as string;
   const isChurchProfile = profileType === 'church';
 
-  type SearchBy = 'rol' | 'nome' | 'igreja';
+  type SearchBy = 'rol' | 'nome';
 
   const [searchBy, setSearchBy]     = useState<SearchBy>('nome');
   const [termo, setTermo]           = useState('');
@@ -776,23 +776,59 @@ function ConsultarLancamentoModal({
   const [error, setError]           = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Filtros por regional e igreja
+  const [regionais, setRegionais]                 = useState<{ id: string; name: string }[]>([]);
+  const [igrejas, setIgrejas]                     = useState<{ id: string; name: string }[]>([]);
+  const [selectedRegionalId, setSelectedRegionalId] = useState('');
+  const [selectedChurchId, setSelectedChurchId]   = useState('');
+  const [loadingRegionais, setLoadingRegionais]   = useState(false);
+  const [loadingIgrejas, setLoadingIgrejas]       = useState(false);
+
   useEffect(() => { inputRef.current?.focus(); }, []);
 
+  // Carrega regionais ao abrir o modal (somente se não for perfil igreja)
+  useEffect(() => {
+    if (isChurchProfile) return;
+    setLoadingRegionais(true);
+    supabase
+      .from('regionais')
+      .select('id, name')
+      .order('name')
+      .then(({ data }) => {
+        setRegionais((data ?? []) as { id: string; name: string }[]);
+        setLoadingRegionais(false);
+      });
+  }, [isChurchProfile]);
+
+  // Carrega igrejas ao selecionar uma regional
+  useEffect(() => {
+    if (!selectedRegionalId) { setIgrejas([]); setSelectedChurchId(''); return; }
+    setLoadingIgrejas(true);
+    setSelectedChurchId('');
+    supabase
+      .from('churches')
+      .select('id, name')
+      .eq('regional_id', selectedRegionalId)
+      .order('name')
+      .then(({ data }) => {
+        setIgrejas((data ?? []) as { id: string; name: string }[]);
+        setLoadingIgrejas(false);
+      });
+  }, [selectedRegionalId]);
+
   const placeholders: Record<SearchBy, string> = {
-    rol:    'Digite o número do ROL do membro...',
-    nome:   'Digite o nome do favorecido ou contribuinte...',
-    igreja: 'Digite o nome da igreja...',
+    rol:  'Digite o número do ROL do membro...',
+    nome: 'Digite o nome do membro ou favorecido...',
   };
 
   const radioLabels: { value: SearchBy; label: string }[] = [
-    { value: 'rol',    label: 'ROL' },
-    { value: 'nome',   label: 'Nome' },
-    { value: 'igreja', label: 'Igreja' },
+    { value: 'rol',  label: 'ROL' },
+    { value: 'nome', label: 'Nome' },
   ];
 
   async function handleBuscar() {
     setError('');
-    if (!termo.trim()) { setError('Digite um valor para buscar.'); return; }
+    if (!termo.trim() && !selectedChurchId && !selectedRegionalId) { setError('Digite um valor, selecione uma regional ou uma igreja para buscar.'); return; }
     if (dataFim < dataInicio) { setError('A data final deve ser maior ou igual à data inicial.'); return; }
     setLoading(true);
     try {
@@ -811,25 +847,47 @@ function ConsultarLancamentoModal({
 
       const term = termo.trim();
 
-      if (searchBy === 'rol') {
-        // id_favorecido_externo stores the ROL/external identifier of the contributor
-        query = query.ilike('id_favorecido_externo', `%${term}%`);
-      } else if (searchBy === 'nome') {
-        query = query.ilike('favorecido', `%${term}%`);
-      } else {
-        // Igreja: filter via embedded PostgREST relation — single query, no pre-fetch
-        query = query.filter('churches.name', 'ilike', `%${term}%`);
+      if (term) {
+        if (searchBy === 'rol') {
+          // id_favorecido_externo stores the ROL/external identifier of the contributor
+          query = query.ilike('id_favorecido_externo', `%${term}%`);
+        } else {
+          query = query.ilike('favorecido', `%${term}%`);
+        }
       }
 
-      // Scope restriction — church profile sees only own church_id
-      if (isChurchProfile && storedUser.churchId) {
+      // Filtro por igreja específica tem maior precedência
+      if (selectedChurchId) {
+        query = query.eq('church_id', selectedChurchId);
+      } else if (selectedRegionalId) {
+        // Filtra por todas as igrejas da regional selecionada
+        // igrejas já foi carregado pelo useEffect ao selecionar a regional
+        if (igrejas.length > 0) {
+          query = query.in('church_id', igrejas.map(c => c.id));
+        } else {
+          // fallback: busca as igrejas da regional diretamente
+          const { data: churchData } = await supabase
+            .from('churches')
+            .select('id')
+            .eq('regional_id', selectedRegionalId);
+          const ids = (churchData ?? []).map((c: { id: string }) => c.id);
+          if (ids.length > 0) {
+            query = query.in('church_id', ids);
+          } else {
+            setLoading(false);
+            onResults([], dataInicio, dataFim);
+            return;
+          }
+        }
+      } else if (isChurchProfile && storedUser.churchId) {
+        // Scope restriction — church profile sees only own church_id
         query = query.eq('church_id', storedUser.churchId);
       }
 
       const { data, error: err } = await query;
       setLoading(false);
       if (err) { setError('Erro ao consultar: ' + err.message); return; }
-      onResults((data as unknown as Row[]) || []);
+      onResults((data as unknown as Row[]) || [], dataInicio, dataFim);
     } catch {
       setLoading(false);
       setError('Erro inesperado ao consultar.');
@@ -864,13 +922,43 @@ function ConsultarLancamentoModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Data Inicial</label>
-              <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
-                className="w-full h-9 px-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-white" />
+              <div className="relative">
+                <input
+                  id="modal-data-inicio"
+                  type="date"
+                  value={dataInicio}
+                  onChange={e => setDataInicio(e.target.value)}
+                  className="w-full h-9 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-white [color-scheme:dark]"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => (document.getElementById('modal-data-inicio') as HTMLInputElement)?.showPicker?.()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 pointer-events-auto"
+                >
+                  <CalendarDays className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Data Final</label>
-              <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
-                className="w-full h-9 px-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-white" />
+              <div className="relative">
+                <input
+                  id="modal-data-fim"
+                  type="date"
+                  value={dataFim}
+                  onChange={e => setDataFim(e.target.value)}
+                  className="w-full h-9 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-white [color-scheme:dark]"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => (document.getElementById('modal-data-fim') as HTMLInputElement)?.showPicker?.()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 pointer-events-auto"
+                >
+                  <CalendarDays className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -927,6 +1015,42 @@ function ConsultarLancamentoModal({
               />
             </div>
           </div>
+
+          {/* Filtros: Regional e Igreja */}
+          {!isChurchProfile && (
+            <div className="space-y-2.5">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Regional</label>
+                <select
+                  value={selectedRegionalId}
+                  onChange={e => setSelectedRegionalId(e.target.value)}
+                  disabled={loadingRegionais}
+                  className="w-full h-9 px-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-white bg-white"
+                >
+                  <option value="">Todas as regionais</option>
+                  {regionais.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              {selectedRegionalId && (
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Igreja</label>
+                  <select
+                    value={selectedChurchId}
+                    onChange={e => setSelectedChurchId(e.target.value)}
+                    disabled={loadingIgrejas}
+                    className="w-full h-9 px-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-white bg-white"
+                  >
+                    <option value="">Todas as igrejas da regional</option>
+                    {igrejas.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Aviso nível Igreja */}
           {isChurchProfile && storedUser.churchName && (
@@ -1505,8 +1629,10 @@ export default function Cashbook() {
       {showSearchModal && (
         <ConsultarLancamentoModal
           onClose={() => setShowSearchModal(false)}
-          onResults={result => {
+          onResults={(result, di, df) => {
             setRows(result);
+            setDataInicio(di);
+            setDataFim(df);
             setSearched(true);
             setPage(1);
             setFilterType('all');
