@@ -753,6 +753,215 @@ function EditDrawer({
   );
 }
 
+// ─── Consultar Lançamento Modal ───────────────────────────────────────────────
+function ConsultarLancamentoModal({
+  onClose,
+  onResults,
+}: {
+  onClose: () => void;
+  onResults: (rows: Row[]) => void;
+}) {
+  const storedUser      = readStoredUser();
+  const profileType     = (storedUser.profileType || 'church') as string;
+  const isChurchProfile = profileType === 'church';
+
+  type SearchBy = 'rol' | 'nome' | 'igreja';
+
+  const [searchBy, setSearchBy]     = useState<SearchBy>('nome');
+  const [termo, setTermo]           = useState('');
+  const [tipo, setTipo]             = useState<'all' | 'RECEITA' | 'DESPESA'>('all');
+  const [dataInicio, setDataInicio] = useState(firstDayOfMonth());
+  const [dataFim, setDataFim]       = useState(lastDayOfMonth());
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const placeholders: Record<SearchBy, string> = {
+    rol:    'Digite o número do ROL do membro...',
+    nome:   'Digite o nome do favorecido ou contribuinte...',
+    igreja: 'Digite o nome da igreja...',
+  };
+
+  const radioLabels: { value: SearchBy; label: string }[] = [
+    { value: 'rol',    label: 'ROL' },
+    { value: 'nome',   label: 'Nome' },
+    { value: 'igreja', label: 'Igreja' },
+  ];
+
+  async function handleBuscar() {
+    setError('');
+    if (!termo.trim()) { setError('Digite um valor para buscar.'); return; }
+    if (dataFim < dataInicio) { setError('A data final deve ser maior ou igual à data inicial.'); return; }
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('livro_caixa')
+        .select(`id, data_lancamento, tipo, valor, favorecido, plano_de_conta,
+                 categoria, forma_pg, referencia, obs, foto, legacy_id,
+                 num_doc, tipo_documento, member_id, church_id, operador,
+                 id_favorecido_externo, churches(name)`)
+        .gte('data_lancamento', dataInicio)
+        .lte('data_lancamento', dataFim)
+        .order('data_lancamento', { ascending: false })
+        .limit(5000);
+
+      if (tipo !== 'all') query = query.eq('tipo', tipo);
+
+      const term = termo.trim();
+
+      if (searchBy === 'rol') {
+        // id_favorecido_externo stores the ROL/external identifier of the contributor
+        query = query.ilike('id_favorecido_externo', `%${term}%`);
+      } else if (searchBy === 'nome') {
+        query = query.ilike('favorecido', `%${term}%`);
+      } else {
+        // Igreja: filter via embedded PostgREST relation — single query, no pre-fetch
+        query = query.filter('churches.name', 'ilike', `%${term}%`);
+      }
+
+      // Scope restriction — church profile sees only own church_id
+      if (isChurchProfile && storedUser.churchId) {
+        query = query.eq('church_id', storedUser.churchId);
+      }
+
+      const { data, error: err } = await query;
+      setLoading(false);
+      if (err) { setError('Erro ao consultar: ' + err.message); return; }
+      onResults((data as unknown as Row[]) || []);
+    } catch {
+      setLoading(false);
+      setError('Erro inesperado ao consultar.');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <Search className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-slate-900 dark:text-white text-sm leading-tight">Consultar Lançamento</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">Selecione o critério e digite para buscar</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <X className="h-4 w-4 text-slate-400" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-4">
+
+          {/* Período */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Data Inicial</label>
+              <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+                className="w-full h-9 px-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Data Final</label>
+              <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+                className="w-full h-9 px-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-white" />
+            </div>
+          </div>
+
+          {/* Tipo */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Tipo</label>
+            <div className="flex gap-1.5">
+              {([
+                { v: 'all',     l: 'Todos',   a: 'bg-slate-800 border-slate-800 text-white' },
+                { v: 'RECEITA', l: 'Receita', a: 'bg-emerald-500 border-emerald-500 text-white' },
+                { v: 'DESPESA', l: 'Despesa', a: 'bg-rose-500 border-rose-500 text-white' },
+              ] as const).map(opt => (
+                <button key={opt.v} type="button" onClick={() => setTipo(opt.v)}
+                  className={`flex-1 py-2 rounded-lg border text-xs font-semibold transition-colors ${
+                    tipo === opt.v ? opt.a : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Radio: onde buscar */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Buscar por</label>
+            <div className="flex gap-2">
+              {radioLabels.map(r => (
+                <label key={r.value}
+                  className={`flex flex-1 items-center justify-center gap-1.5 py-2 rounded-lg border cursor-pointer text-xs font-semibold transition-colors select-none ${
+                    searchBy === r.value
+                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-white dark:text-slate-900 dark:border-white'
+                      : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}>
+                  <input type="radio" name="searchBy" value={r.value} checked={searchBy === r.value}
+                    onChange={() => { setSearchBy(r.value); setTermo(''); setTimeout(() => inputRef.current?.focus(), 50); }}
+                    className="sr-only" />
+                  {r.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Campo único */}
+          <div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={termo}
+                onChange={e => setTermo(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void handleBuscar(); }}
+                placeholder={placeholders[searchBy]}
+                className="w-full h-10 pl-9 pr-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-white placeholder:text-slate-400"
+              />
+            </div>
+          </div>
+
+          {/* Aviso nível Igreja */}
+          {isChurchProfile && storedUser.churchName && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-500">
+              <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <span>Restrito à sua igreja: <strong className="text-slate-700 dark:text-slate-200">{storedUser.churchName}</strong></span>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+              <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-5 py-4 border-t border-slate-100 dark:border-slate-800">
+          <button onClick={onClose}
+            className="flex-1 h-10 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={() => { void handleBuscar(); }} disabled={loading}
+            className="flex-1 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:bg-slate-700 dark:hover:bg-slate-100 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">
+            {loading
+              ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Buscando...</span></>
+              : <><Search className="w-4 h-4" /><span>Buscar</span></>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Cashbook ────────────────────────────────────────────────────────────
 export default function Cashbook() {
   const storedUser = readStoredUser();
@@ -773,6 +982,7 @@ export default function Cashbook() {
   const [error, setError]           = useState('');
   const [selectedRow, setSelectedRow] = useState<Row | null>(null);
   const [showRelatorio, setShowRelatorio] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
 
   // Summary accordion (mobile only – collapsed by default)
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -896,9 +1106,13 @@ export default function Cashbook() {
 
         <div className="border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 px-3 py-3 sm:px-4">
           <div className="flex flex-wrap items-stretch gap-x-2 gap-y-3 md:items-center md:overflow-x-auto">
-            <RibbonGroup label="Escopo" className="flex-1">
+            <RibbonGroup
+              label="Escopo"
+              className="w-full md:flex-1"
+              bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-full md:items-center md:gap-1 md:px-1"
+            >
               {canChooseChurch ? (
-                <RibbonField label="Igreja" icon={<Building2 className="h-3 w-3" />} className="flex-1 min-w-[260px] w-full">
+                <RibbonField label="Igreja" icon={<Building2 className="h-3 w-3" />} className="col-span-2 flex-1 min-w-[260px] w-full">
                   <button
                     type="button"
                     onClick={() => setChurchPickerOpen(true)}
@@ -906,7 +1120,7 @@ export default function Cashbook() {
                   >
                     <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                     <span className={`truncate ${selectedChurch ? 'font-medium text-slate-800' : 'text-slate-500'}`}>
-                      {selectedChurch ? selectedChurch.name : 'Todas as igrejas'}
+                      {selectedChurch ? selectedChurch.name : 'Consultar por Igreja'}
                     </span>
                     {selectedChurch ? (
                       <span
@@ -928,24 +1142,34 @@ export default function Cashbook() {
                   </button>
                 </RibbonField>
               ) : null}
-              <RibbonButton
-                size="lg"
-                title="Consultar lançamentos"
-                icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                label={loading ? 'Consultando' : 'Consultar'}
-                onClick={() => { void buscar(); }}
-                disabled={loading}
-                tone="blue"
-              />
 
               {isChurchProfile && selectedChurch ? (
-                <RibbonField label="Igreja" icon={<Building2 className="h-3 w-3" />} className="min-w-[220px]">
+                <RibbonField label="Igreja" icon={<Building2 className="h-3 w-3" />} className="col-span-2 min-w-[220px]">
                   <div className="flex h-8 items-center gap-2 rounded border border-slate-200 bg-white px-2 text-xs text-slate-700">
                     <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                     <span className="truncate font-medium">{selectedChurch.name}</span>
                   </div>
                 </RibbonField>
               ) : null}
+
+              <RibbonButton
+                size="lg"
+                title="Consultar lançamentos por igreja e período"
+                icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                label={loading ? 'Consultando' : 'Consultar Livro Caixa'}
+                onClick={() => { void buscar(); }}
+                disabled={loading}
+                tone="blue"
+                className="w-full md:w-auto"
+              />
+              <RibbonButton
+                size="lg"
+                title="Consultar lançamento por categoria, nome, ROL ou igreja"
+                icon={<Filter className="h-4 w-4" />}
+                label="Consultar Lançamento"
+                onClick={() => setShowSearchModal(true)}
+                className="w-full md:w-auto bg-blue-700 text-white hover:!bg-blue-800 shadow-md"
+              />
             </RibbonGroup>
 
             <RibbonDivider />
@@ -1278,6 +1502,19 @@ export default function Cashbook() {
       </div>
 
       {/* ── Modals ── */}
+      {showSearchModal && (
+        <ConsultarLancamentoModal
+          onClose={() => setShowSearchModal(false)}
+          onResults={result => {
+            setRows(result);
+            setSearched(true);
+            setPage(1);
+            setFilterType('all');
+            setShowSearchModal(false);
+          }}
+        />
+      )}
+
       {showRelatorio && (
         <RelatorioModal
           rows={rows}
