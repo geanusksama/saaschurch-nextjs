@@ -29,6 +29,7 @@ model Campo {
   legacyHeadquarters LegacyChurchHeadquarters[] @relation("LegacyHeadquartersField")
   legacyChurches     LegacyChurch[]             @relation("LegacyChurchField")
   members            Member[]                   @relation("CampoMembers")
+  dailyBreadEntries  AppDailyBreadEntry[]       @relation("CampoDailyBread")
 
   @@map("campos")
 }
@@ -1894,4 +1895,356 @@ model TbEvento {
   @@index([campoId])
   @@index([ano, mes])
   @@map("tbeventos")
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// APP MÓVEL — Módulo de eventos com ingressos, pão diário e cadastros
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Departamentos organizadores de eventos do app
+model EventDepartment {
+  id          String   @id @default(uuid()) @db.Uuid
+  churchId    String   @map("church_id") @db.Uuid
+  nome        String   @db.VarChar(150)
+  descricao   String?  @db.Text
+  icone       String?  @db.VarChar(255)
+  cor         String?  @db.VarChar(50)
+  imagem      String?  @db.VarChar(500)
+  slug        String?  @db.VarChar(150)
+  ordem       Int      @default(0)
+  ativo       Boolean  @default(true)
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  appEvents AppEvent[]
+
+  @@index([churchId])
+  @@map("event_departments")
+}
+
+/// Eventos com sistema de ingressos do app móvel
+model AppEvent {
+  id                   String   @id @default(uuid()) @db.Uuid
+  churchId             String   @map("church_id") @db.Uuid
+  headquartersId       String?  @map("headquarters_id") @db.Uuid
+  departmentId         String?  @map("department_id") @db.Uuid
+  nome                 String   @db.VarChar(255)
+  descricao            String?  @db.Text
+  categoria            String?  @db.VarChar(100)
+  /// LIVRE | COM_ASSENTO
+  tipoEvento           String   @default("LIVRE") @map("tipo_evento") @db.VarChar(20)
+  dataInicio           DateTime @map("data_inicio") @db.Timestamptz(6)
+  dataFim              DateTime @map("data_fim") @db.Timestamptz(6)
+  local                String?  @db.VarChar(255)
+  localEndereco        String?  @map("local_endereco") @db.Text
+  latitude             Decimal? @db.Decimal(10, 8)
+  longitude            Decimal? @db.Decimal(11, 8)
+  capacidadeTotal      Int?     @map("capacidade_total")
+  quantidadeDisponivel Int?     @map("quantidade_disponivel")
+  preco                Decimal  @default(0) @db.Decimal(10, 2)
+  gratuito             Boolean  @default(true)
+  imagemUrl            String?  @map("imagem_url") @db.VarChar(500)
+  bannerUrl            String?  @map("banner_url") @db.VarChar(500)
+  /// RASCUNHO | PUBLICADO | ENCERRADO | CANCELADO
+  status               String   @default("RASCUNHO") @db.VarChar(20)
+  permiteTransferencia Boolean  @default(false) @map("permite_transferencia")
+  permiteCancelamento  Boolean  @default(false) @map("permite_cancelamento")
+  permiteReembolso     Boolean  @default(false) @map("permite_reembolso")
+  limitePorUsuario     Int?     @map("limite_por_usuario")
+  createdBy            String?  @map("created_by") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt            DateTime? @map("deleted_at")
+
+  department  EventDepartment? @relation(fields: [departmentId], references: [id])
+
+  sectors       EventSector[]
+  orders        EventOrder[]
+  carts         EventCart[]
+  qrcodes       EventQRCode[]
+  notifications EventNotification[]
+  refunds       EventRefund[]
+
+  @@index([churchId, status])
+  @@index([departmentId])
+  @@map("app_events")
+}
+
+/// Setores de um evento com assento
+model EventSector {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  nome      String   @db.Text
+  preco     Decimal  @default(0) @db.Decimal(10, 2)
+  quantidade Int     @default(0)
+  corHex    String?  @map("cor_hex") @db.VarChar(7)
+  ordem     Int      @default(0) @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event AppEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rows  EventRow[]
+  seats EventSeat[]
+  carts EventCart[]
+  orderItems EventOrderItem[]
+
+  @@index([eventId])
+  @@map("event_sectors")
+}
+
+/// Fileiras de assentos num setor
+model EventRow {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  sectorId  String   @map("sector_id") @db.Uuid
+  nome      String   @db.Text
+  ordem     Int      @default(0) @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  sector EventSector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  seats  EventSeat[]
+
+  @@index([sectorId])
+  @@map("event_rows")
+}
+
+/// Assento individual
+model EventSeat {
+  id             String    @id @default(uuid()) @db.Uuid
+  eventId        String    @map("event_id") @db.Uuid
+  sectorId       String    @map("sector_id") @db.Uuid
+  rowId          String?   @map("row_id") @db.Uuid
+  numero         Int       @db.SmallInt
+  /// LIVRE | RESERVADO | OCUPADO | BLOQUEADO
+  status         String    @default("LIVRE") @db.VarChar(20)
+  reservadoPor   String?   @map("reservado_por") @db.Uuid
+  reservadoEm    DateTime? @map("reservado_em") @db.Timestamptz(6)
+  reservaExpira  DateTime? @map("reserva_expira") @db.Timestamptz(6)
+  orderItemId    String?   @map("order_item_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  sector EventSector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  row    EventRow?   @relation(fields: [rowId], references: [id])
+  carts  EventCart[]
+  orderItems EventOrderItem[]
+  qrcodes    EventQRCode[]
+
+  @@unique([eventId, sectorId, rowId, numero])
+  @@index([eventId, status])
+  @@map("event_seats")
+}
+
+/// Carrinho de compra com TTL de 5 minutos
+model EventCart {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  seatId    String?  @map("seat_id") @db.Uuid
+  sectorId  String?  @map("sector_id") @db.Uuid
+  qty       Int      @default(1) @db.SmallInt
+  unitPrice Decimal  @map("unit_price") @db.Decimal(10, 2)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event  AppEvent     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seat   EventSeat?   @relation(fields: [seatId], references: [id])
+  sector EventSector? @relation(fields: [sectorId], references: [id])
+
+  @@index([userId, eventId])
+  @@index([expiresAt])
+  @@map("event_cart")
+}
+
+/// Pedido de ingresso
+model EventOrder {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  eventId       String    @map("event_id") @db.Uuid
+  /// Formato: PED-XXXXXXXX
+  numeroPedido  String    @unique @map("numero_pedido") @db.Text
+  buyerName     String?   @map("buyer_name") @db.Text
+  buyerEmail    String?   @map("buyer_email") @db.Text
+  buyerPhone    String?   @map("buyer_phone") @db.Text
+  subtotal      Decimal   @db.Decimal(10, 2)
+  desconto      Decimal   @default(0) @db.Decimal(10, 2)
+  total         Decimal   @db.Decimal(10, 2)
+  /// free | pix | credit_card | debit_card
+  paymentMethod String?   @map("payment_method") @db.Text
+  paymentRef    String?   @map("payment_ref") @db.Text
+  /// AGUARDANDO_PAGAMENTO | PAGO | CANCELADO | REEMBOLSADO | EXPIRADO
+  status        String    @default("AGUARDANDO_PAGAMENTO") @db.VarChar(30)
+  notas         String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cancelledAt   DateTime? @map("cancelled_at") @db.Timestamptz(6)
+
+  event   AppEvent         @relation(fields: [eventId], references: [id])
+  items   EventOrderItem[]
+  qrcodes EventQRCode[]
+  refunds EventRefund[]
+  notifications EventNotification[]
+
+  @@index([userId, status])
+  @@index([eventId, status])
+  @@map("event_orders")
+}
+
+/// Item de um pedido (1 ingresso ou 1 setor)
+model EventOrderItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  seatId    String?  @map("seat_id") @db.Uuid
+  sectorId  String?  @map("sector_id") @db.Uuid
+  qty       Int      @default(1) @db.SmallInt
+  unitPrice Decimal  @map("unit_price") @db.Decimal(10, 2)
+  subtotal  Decimal  @db.Decimal(10, 2)
+  /// ATIVO | CANCELADO | REEMBOLSADO
+  status    String   @default("ATIVO") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order   EventOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  seat    EventSeat?   @relation(fields: [seatId], references: [id])
+  sector  EventSector? @relation(fields: [sectorId], references: [id])
+  qrcodes EventQRCode[]
+
+  @@index([orderId])
+  @@map("event_order_items")
+}
+
+/// QR Code de ingresso gerado após pagamento confirmado
+model EventQRCode {
+  id          String    @id @default(uuid()) @db.Uuid
+  orderId     String    @map("order_id") @db.Uuid
+  orderItemId String?   @map("order_item_id") @db.Uuid
+  eventId     String    @map("event_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  seatId      String?   @map("seat_id") @db.Uuid
+  ticketCode  String    @unique @map("ticket_code") @db.Text
+  qrData      String?   @map("qr_data") @db.Text
+  isUsed      Boolean   @default(false) @map("is_used")
+  usedAt      DateTime? @map("used_at") @db.Timestamptz(6)
+  checkedInBy String?   @map("checked_in_by") @db.Uuid
+  isCancelled Boolean   @default(false) @map("is_cancelled")
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order     EventOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem EventOrderItem? @relation(fields: [orderItemId], references: [id])
+  event     AppEvent        @relation(fields: [eventId], references: [id])
+  seat      EventSeat?      @relation(fields: [seatId], references: [id])
+
+  @@index([eventId, isUsed])
+  @@map("event_qrcodes")
+}
+
+/// Fila de solicitações de reembolso
+model EventRefund {
+  id              String    @id @default(uuid()) @db.Uuid
+  orderId         String    @map("order_id") @db.Uuid
+  eventId         String    @map("event_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  motivo          String?   @db.Text
+  valorSolicitado Decimal   @map("valor_solicitado") @db.Decimal(10, 2)
+  /// SOLICITADO | APROVADO | NEGADO | PROCESSADO
+  status          String    @default("SOLICITADO") @db.VarChar(20)
+  notasAdmin      String?   @map("notas_admin") @db.Text
+  processedBy     String?   @map("processed_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  processedAt     DateTime? @map("processed_at") @db.Timestamptz(6)
+
+  order EventOrder @relation(fields: [orderId], references: [id])
+  event AppEvent   @relation(fields: [eventId], references: [id])
+
+  @@index([status])
+  @@map("event_refunds")
+}
+
+/// Notificações relacionadas a eventos/ingressos
+model EventNotification {
+  id           String    @id @default(uuid()) @db.Uuid
+  eventId      String    @map("event_id") @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  orderId      String?   @map("order_id") @db.Uuid
+  qrcodeId     String?   @map("qrcode_id") @db.Uuid
+  /// ticket_confirmed | event_reminder | transfer_request | event_cancelled
+  tipo         String    @db.Text
+  titulo       String    @db.Text
+  mensagem     String?   @db.Text
+  aceita       Boolean?
+  respondidaEm DateTime? @map("respondida_em") @db.Timestamptz(6)
+  lida         Boolean   @default(false)
+  lidaEm       DateTime? @map("lida_em") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event AppEvent    @relation(fields: [eventId], references: [id])
+  order EventOrder? @relation(fields: [orderId], references: [id])
+
+  @@index([userId, lida])
+  @@index([eventId])
+  @@map("event_notifications")
+}
+
+/// Pão Diário — devocionais publicados no app
+model AppDailyBreadEntry {
+  id               String   @id @default(uuid()) @db.Uuid
+  campoId          String   @map("campo_id") @db.Uuid
+  titulo           String   @db.VarChar(255)
+  resumo           String?  @db.Text
+  texto            String?  @db.Text
+  versiculo        String?  @db.Text
+  referenciaBiblica String? @map("referencia_biblica") @db.VarChar(255)
+  audioUrl         String?  @map("audio_url") @db.VarChar(500)
+  icone            String?  @db.VarChar(50)
+  corAccent        String?  @map("cor_accent") @db.VarChar(7)
+  dataPublicacao   DateTime @map("data_publicacao") @db.Date
+  active           Boolean  @default(true)
+  isFeatured       Boolean  @default(false) @map("is_featured")
+  createdBy        String?  @map("created_by") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  campo Campo @relation("CampoDailyBread", fields: [campoId], references: [id])
+  likes AppDailyBreadLike[]
+
+  @@index([campoId, dataPublicacao])
+  @@map("app_daily_bread_entries")
+}
+
+/// Curtidas no Pão Diário
+model AppDailyBreadLike {
+  id        String   @id @default(uuid()) @db.Uuid
+  entryId   String   @map("entry_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  entry AppDailyBreadEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, userId])
+  @@map("app_daily_bread_likes")
+}
+
+/// Cadastros realizados pelo app móvel (pré-cadastro de membros)
+model AppCadastro {
+  id             String    @id @default(uuid()) @db.Uuid
+  /// ID do usuário autenticado no app (auth.users)
+  userId         String?   @map("user_id") @db.Uuid
+  headquartersId String?   @map("headquarters_id") @db.Uuid
+  nome           String    @db.VarChar(255)
+  email          String?   @db.VarChar(255)
+  telefone       String?   @db.VarChar(20)
+  cpf            String?   @db.VarChar(14)
+  dataNascimento DateTime? @map("data_nascimento") @db.Date
+  /// PENDENTE | APROVADO | REJEITADO | VINCULADO
+  status         String    @default("PENDENTE") @db.VarChar(30)
+  /// FK para member (após vinculação)
+  memberId       String?   @map("member_id") @db.Uuid
+  observacoes    String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([headquartersId])
+  @@map("app_cadastros")
 }

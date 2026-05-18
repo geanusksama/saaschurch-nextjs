@@ -60,9 +60,19 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Comunicação', name: 'E-mail Campanhas', key: 'email_campaigns', permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
   { group: 'Comunicação', name: 'SMS', key: 'sms', permissions: mkPerms(mngr(), mngr(), none(), none()) },
 
-  { group: 'Eventos', name: 'Agenda de Eventos', key: 'events', permissions: mkPerms(full(), full(), full(), admin()) },
-  { group: 'Eventos', name: 'Ingressos', key: 'tickets', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
-  { group: 'Eventos', name: 'Check-in', key: 'checkin', permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Eventos', name: 'Agenda de Eventos', key: 'events',      permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Eventos', name: 'Pão Diário',        key: 'daily_bread', permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Eventos', name: 'Ingressos',         key: 'tickets',     permissions: mkPerms(full(), mngr(), mngr(), admin()) },
+  { group: 'Eventos', name: 'Check-in',          key: 'checkin',     permissions: mkPerms(full(), full(), full(), admin()) },
+
+  { group: 'App Móvel', name: 'Dashboard App',         key: 'app_dashboard',     permissions: mkPerms(full(),  none(),  none(),  none()) },
+  { group: 'App Móvel', name: 'Eventos com Ingressos',  key: 'app_events',        permissions: mkPerms(full(),  mngr(),  mngr(),  admin()) },
+  { group: 'App Móvel', name: 'Pedidos de Ingressos',   key: 'app_orders',        permissions: mkPerms(full(),  none(),  mngr(),  admin()) },
+  { group: 'App Móvel', name: 'Check-in QR Code',       key: 'app_checkin',       permissions: mkPerms(full(),  none(),  full(),  admin()) },
+  { group: 'App Móvel', name: 'Reembolsos',              key: 'app_refunds',       permissions: mkPerms(full(),  none(),  mngr(),  admin()) },
+  { group: 'App Móvel', name: 'Programação da Sede',    key: 'app_hq_schedule',   permissions: mkPerms(full(),  mngr(),  mngr(),  admin()) },
+  { group: 'App Móvel', name: 'Como Chegar (Acesso)',   key: 'app_hq_access',     permissions: mkPerms(full(),  mngr(),  mngr(),  admin()) },
+  { group: 'App Móvel', name: 'Cadastros no App',       key: 'app_registrations', permissions: mkPerms(full(),  none(),  mngr(),  admin()) },
 
   { group: 'CRM / Pipeline', name: 'Pipeline de Visitantes', key: 'crm_pipeline', permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'CRM / Pipeline', name: 'Contatos / Leads', key: 'crm_leads', permissions: mkPerms(full(), full(), full(), admin()) },

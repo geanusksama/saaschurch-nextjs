@@ -161,6 +161,18 @@ import ServicesMatrix from "../app-ui/ecclesiastical/ServicesMatrix";
 import PipelinesAdmin from "../app-ui/ecclesiastical/PipelinesAdmin";
 import Requerimentos from "../app-ui/ecclesiastical/Requerimentos";
 import TicketPurchase from "../app-ui/events/TicketPurchase";
+import AppDashboard from "../app-ui/app/AppDashboard";
+import AppEvents from "../app-ui/app/AppEvents";
+import AppEventNew  from "../app-ui/app/AppEventNew";
+import AppEventView from "../app-ui/app/AppEventView";
+import AppEventEdit from "../app-ui/app/AppEventEdit";
+import AppEventOrders from "../app-ui/app/AppEventOrders";
+import AppEventCheckin from "../app-ui/app/AppEventCheckin";
+import AppEventRefunds from "../app-ui/app/AppEventRefunds";
+import AppRegistrations from "../app-ui/app/AppRegistrations";
+import AppHQSchedule from "../app-ui/app/AppHQSchedule";
+import AppHQAccess from "../app-ui/app/AppHQAccess";
+import AppDailyBread from "../app-ui/app/AppDailyBread";
 import Spreadsheet from "../app-ui/spreadsheet/Spreadsheet";
 import {
   CRMNew,
@@ -526,6 +538,18 @@ export const router = createBrowserRouter([
       { path: "secretariat/credential-models", Component: ModelosCredencial },
       { path: "credential-requests", Component: SolicitacoesCredencial },
       { path: "system/campo-senhas", Component: FieldPasswordAdmin },
+      { path: "app/dashboard",          Component: AppDashboard },
+      { path: "app/events",             Component: AppEvents },
+      { path: "app/events/new",         Component: AppEventNew },
+      { path: "app/events/:id",         Component: AppEventView },
+      { path: "app/events/:id/edit",    Component: AppEventEdit },
+      { path: "app/orders",             Component: AppEventOrders },
+      { path: "app/checkin",      Component: AppEventCheckin },
+      { path: "app/refunds",      Component: AppEventRefunds },
+      { path: "app/daily-bread",   Component: AppDailyBread },
+      { path: "app/hq-schedule",  Component: AppHQSchedule },
+      { path: "app/hq-access",    Component: AppHQAccess },
+      { path: "app/registrations",Component: AppRegistrations },
     ],
   },
 ]);

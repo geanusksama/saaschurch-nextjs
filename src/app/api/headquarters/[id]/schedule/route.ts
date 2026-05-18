@@ -30,21 +30,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: NextRequest, { params: _params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     if (user.profileType !== "master" && user.profileType !== "admin" && user.profileType !== "campo") {
       return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
     }
-    const { id } = await params;
     const body = await req.json().catch(() => ({}));
-    const { dayOfWeek, name, time, icon, order } = body;
+    const { id: scheduleId, dayOfWeek, name, time, icon, order } = body;
+    if (!scheduleId) return NextResponse.json({ error: "id do item é obrigatório." }, { status: 400 });
     const data: Record<string, unknown> = {};
     if (dayOfWeek !== undefined) data.dayOfWeek = dayOfWeek;
     if (name !== undefined) data.name = name;
     if (time !== undefined) data.time = time;
     if (icon !== undefined) data.icon = icon;
     if (order !== undefined) data.order = Number(order);
-    const updated = await prisma.churchSchedule.update({ where: { id }, data });
+    const updated = await prisma.churchSchedule.update({ where: { id: scheduleId }, data });
     return NextResponse.json(serializeBigInts(updated));
   });
 }

@@ -59,6 +59,10 @@ import {
   Camera,
   RotateCcw,
   Check,
+  Smartphone,
+  QrCode,
+  ShoppingCart,
+  RefreshCcw,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -176,6 +180,21 @@ const appNavigation: NavigationSection[] = [
     items: [
       { name: 'Agenda',     path: '/app-ui/events',       icon: Calendar, permKey: 'events' },
       { name: 'Pão Diário', path: '/app-ui/daily-bread',  icon: BookOpen, permKey: 'daily_bread' },
+    ]
+  },
+  {
+    section: 'App Móvel',
+    items: [
+      { name: 'Dashboard App',         path: '/app-ui/app/dashboard',     icon: Smartphone,   permKey: 'app_dashboard' },
+      { name: 'Eventos com Ingressos',  path: '/app-ui/app/events',        icon: Ticket,       permKey: 'app_events' },
+      { name: 'Pedidos',                path: '/app-ui/app/orders',        icon: ShoppingCart, permKey: 'app_orders' },
+      { name: 'Check-in QR Code',       path: '/app-ui/app/checkin',       icon: QrCode,       permKey: 'app_checkin' },
+      { name: 'Reembolsos',             path: '/app-ui/app/refunds',       icon: RefreshCcw,   permKey: 'app_refunds' },
+      { name: 'Pão Diário',             path: '/app-ui/app/daily-bread',   icon: Sun,          permKey: 'daily_bread' },
+      { name: 'Programação',            path: '/app-ui/app/hq-schedule',   icon: Calendar,     permKey: 'app_hq_schedule' },
+      { name: 'Como Chegar',            path: '/app-ui/app/hq-access',     icon: MapPin,       permKey: 'app_hq_access' },
+      { name: 'Ministérios',            path: '/app-ui/ministries',        icon: Heart,        permKey: 'ministries' },
+      { name: 'Cadastros no App',       path: '/app-ui/app/registrations', icon: UserPlus,     permKey: 'app_registrations' },
     ]
   },
   {
