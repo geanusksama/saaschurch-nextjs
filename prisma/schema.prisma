@@ -31,6 +31,8 @@ model Campo {
   members            Member[]                   @relation("CampoMembers")
   dailyBreadEntries  AppDailyBreadEntry[]       @relation("CampoDailyBread")
   events             Event[]                    @relation("EventCampo")
+  appMembrosAuth     AppMembrosAuth[]           @relation("CampoAppAuth")
+  appCadastros       AppCadastroNew[]           @relation("CampoAppCadastro")
 
   @@map("campos")
 }
@@ -516,6 +518,8 @@ model Member {
   occurrences MemberOccurrence[] @relation("MemberOccurrenceMember")
   eventHistory MemberEventHistory[] @relation("MemberEventHistoryMember")
   titleHistory MemberTitleHistory[] @relation("MemberTitleHistoryMember")
+  appAuth      AppMembrosAuth[]     @relation("MemberAppAuth")
+  appCadastros AppCadastroNew[]     @relation("MemberAppCadastro")
 
   @@index([churchId])
   @@index([campoId])
@@ -1961,6 +1965,8 @@ model AppEvent {
   permiteCancelamento  Boolean  @default(false) @map("permite_cancelamento")
   permiteReembolso     Boolean  @default(false) @map("permite_reembolso")
   limitePorUsuario     Int?     @map("limite_por_usuario")
+  /// Aparece em destaque no topo do app (banner grande)
+  isFeatured           Boolean  @default(false) @map("is_featured")
   createdBy            String?  @map("created_by") @db.Uuid
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1975,6 +1981,12 @@ model AppEvent {
   refunds       EventRefund[]
   notifications EventNotification[]
   participants  EventParticipant[]
+  buildings     AppEventBuilding[]
+  halls         AppEventHall[]
+  seatGroups    AppSeatGroup[]
+  appSeats      AppSeat[]
+  appOrders     AppOrder[]  @relation("AppEventAppOrders")
+  flutterOrders Order[]     @relation("AppEventFlutterOrders")
 
   @@index([churchId, status])
   @@index([departmentId])
@@ -1997,6 +2009,7 @@ model EventSector {
   seats EventSeat[]
   carts EventCart[]
   orderItems EventOrderItem[]
+  flutterOrderItems OrderItem[] @relation("EventSectorFlutterOrderItems")
 
   @@index([eventId])
   @@map("event_sectors")
@@ -2037,6 +2050,7 @@ model EventSeat {
   row    EventRow?   @relation(fields: [rowId], references: [id])
   carts  EventCart[]
   orderItems EventOrderItem[]
+  flutterOrderItems OrderItem[] @relation("EventSeatFlutterOrderItems")
   qrcodes    EventQRCode[]
 
   @@unique([eventId, sectorId, rowId, numero])
@@ -2094,6 +2108,7 @@ model EventOrder {
   qrcodes       EventQRCode[]
   refunds       EventRefund[]
   notifications EventNotification[]
+  transfers     EventTicketTransfer[]
 
   @@index([userId, status])
   @@index([eventId, status])
@@ -2219,27 +2234,30 @@ model EventNotification {
 
 /// Pão Diário — devocionais publicados no app
 model AppDailyBreadEntry {
-  id               String   @id @default(uuid()) @db.Uuid
-  campoId          String   @map("campo_id") @db.Uuid
-  titulo           String   @db.VarChar(255)
-  resumo           String?  @db.Text
-  texto            String?  @db.Text
-  versiculo        String?  @db.Text
-  referenciaBiblica String? @map("referencia_biblica") @db.VarChar(255)
-  audioUrl         String?  @map("audio_url") @db.VarChar(500)
-  icone            String?  @db.VarChar(50)
-  corAccent        String?  @map("cor_accent") @db.VarChar(7)
-  dataPublicacao   DateTime @map("data_publicacao") @db.Date
-  active           Boolean  @default(true)
-  isFeatured       Boolean  @default(false) @map("is_featured")
-  createdBy        String?  @map("created_by") @db.Uuid
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String   @id @default(uuid()) @db.Uuid
+  campoId              String   @map("campo_id") @db.Uuid
+  headquartersId       String?  @map("headquarters_id") @db.Uuid
+  churchId             String?  @map("church_id") @db.Uuid
+  audienceScope        String   @default("headquarters") @map("audience_scope") @db.Text
+  title                String   @db.Text
+  summary              String   @db.Text
+  bodyText             String   @map("body_text") @db.Text
+  bibleReference       String   @map("bible_reference") @db.Text
+  audioUrl             String?  @map("audio_url") @db.Text
+  audioDurationSeconds Int      @default(0) @map("audio_duration_seconds")
+  accentHex            String   @default("#1A1A2E") @map("accent_hex") @db.Text
+  iconName             String   @default("BookOpen") @map("icon_name") @db.Text
+  isFeatured           Boolean  @default(false) @map("is_featured")
+  active               Boolean  @default(true)
+  publishedAt          DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
+  createdBy            String?  @map("created_by") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   campo Campo @relation("CampoDailyBread", fields: [campoId], references: [id])
   likes AppDailyBreadLike[]
 
-  @@index([campoId, dataPublicacao])
+  @@index([campoId, publishedAt])
   @@map("app_daily_bread_entries")
 }
 
@@ -2256,26 +2274,312 @@ model AppDailyBreadLike {
   @@map("app_daily_bread_likes")
 }
 
-/// Cadastros realizados pelo app móvel (pré-cadastro de membros)
-model AppCadastro {
-  id             String    @id @default(uuid()) @db.Uuid
-  /// ID do usuário autenticado no app (auth.users)
-  userId         String?   @map("user_id") @db.Uuid
-  headquartersId String?   @map("headquarters_id") @db.Uuid
-  nome           String    @db.VarChar(255)
-  email          String?   @db.VarChar(255)
-  telefone       String?   @db.VarChar(20)
-  cpf            String?   @db.VarChar(14)
-  dataNascimento DateTime? @map("data_nascimento") @db.Date
-  /// PENDENTE | APROVADO | REJEITADO | VINCULADO
-  status         String    @default("PENDENTE") @db.VarChar(30)
-  /// FK para member (após vinculação)
-  memberId       String?   @map("member_id") @db.Uuid
-  observacoes    String?   @db.Text
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+/// Cadastros realizados pelo app móvel — estrutura atual do banco
+model AppCadastroNew {
+  id         String   @id @default(uuid()) @db.Uuid
+  authUserId String?  @map("auth_user_id") @db.Uuid
+  email      String   @db.Text
+  campoId    String?  @map("campo_id") @db.Uuid
+  campoName  String   @default("") @map("campo_name") @db.Text
+  isMember   Boolean  @default(false) @map("is_member")
+  memberId   String?  @map("member_id") @db.Uuid
+  status     String   @default("pendente") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  member Member? @relation("MemberAppCadastro", fields: [memberId], references: [id])
+  campo  Campo?  @relation("CampoAppCadastro", fields: [campoId], references: [id])
+
+  @@index([campoId])
   @@index([status])
-  @@index([headquartersId])
   @@map("app_cadastros")
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// APP AUTH — Autenticação do app móvel
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Vínculo entre usuário autenticado no app e membro cadastrado no MRM
+model AppMembrosAuth {
+  id          String   @id @default(uuid()) @db.Uuid
+  authUserId  String   @unique @map("auth_user_id") @db.Uuid
+  memberId    String?  @map("member_id") @db.Uuid
+  campoId     String?  @map("campo_id") @db.Uuid
+  campoName   String   @default("") @map("campo_name") @db.Text
+  ultimoLogin DateTime @default(now()) @map("ultimo_login") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  member Member? @relation("MemberAppAuth", fields: [memberId], references: [id])
+  campo  Campo?  @relation("CampoAppAuth", fields: [campoId], references: [id])
+
+  @@index([memberId])
+  @@index([campoId])
+  @@map("app_membros_auth")
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// FLUTTER ORDERS — Tabelas nativas do app (sincronizadas via trigger)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Pedido original do app Flutter (sincronizado com event_orders via trigger)
+model Order {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  eventId         String?   @map("event_id") @db.Uuid
+  orderNumber     String    @unique @map("order_number") @db.Text
+  buyerName       String?   @map("buyer_name") @db.Text
+  buyerEmail      String?   @map("buyer_email") @db.Text
+  buyerPhone      String?   @map("buyer_phone") @db.Text
+  total           Decimal?  @default(0) @db.Decimal(10, 2)
+  paymentMethod   String?   @default("pix") @map("payment_method") @db.Text
+  paymentRef      String?   @map("payment_ref") @db.Text
+  paymentAttempts Int       @default(0) @map("payment_attempts")
+  status          String    @default("PENDING_PAYMENT") @db.Text
+  notes           String?   @db.Text
+  refundReason    String?   @map("refund_reason") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  items         OrderItem[]
+  qrcodes       OrderQRCode[]
+  statusHistory OrderStatusHistory[]
+  event         AppEvent? @relation("AppEventFlutterOrders", fields: [eventId], references: [id])
+
+  @@index([userId, status])
+  @@map("orders")
+}
+
+/// Item de pedido Flutter
+model OrderItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  orderId     String    @map("order_id") @db.Uuid
+  eventId     String?   @map("event_id") @db.Uuid
+  seatId      String?   @map("seat_id") @db.Uuid
+  sectorId    String?   @map("sector_id") @db.Uuid
+  qty         Int       @default(1)
+  unitPrice   Decimal   @default(0) @map("unit_price") @db.Decimal(10, 2)
+  subtotal    Decimal   @default(0) @db.Decimal(10, 2)
+  seatLabel   String?   @map("seat_label") @db.Text
+  status      String    @default("ATIVO") @db.Text
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
+
+  order   Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  qrcodes OrderQRCode[]
+  seat    EventSeat?   @relation("EventSeatFlutterOrderItems", fields: [seatId], references: [id])
+  sector  EventSector? @relation("EventSectorFlutterOrderItems", fields: [sectorId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+/// QR Code do pedido Flutter
+model OrderQRCode {
+  id          String    @id @default(uuid()) @db.Uuid
+  orderId     String    @map("order_id") @db.Uuid
+  orderItemId String?   @map("order_item_id") @db.Uuid
+  eventId     String?   @map("event_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  seatId      String?   @map("seat_id") @db.Uuid
+  ticketCode  String    @unique @map("ticket_code") @db.Text
+  qrPayload   String?   @map("qr_payload") @db.Text
+  isUsed      Boolean   @default(false) @map("is_used")
+  isCancelled Boolean   @default(false) @map("is_cancelled")
+  issuedAt    DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  usedAt      DateTime? @map("used_at") @db.Timestamptz(6)
+
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem OrderItem? @relation(fields: [orderItemId], references: [id])
+
+  @@index([orderId])
+  @@map("order_qrcodes")
+}
+
+/// Histórico de status do pedido Flutter
+model OrderStatusHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  oldStatus String?  @map("old_status") @db.Text
+  newStatus String   @map("new_status") @db.Text
+  reason    String?  @db.Text
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// APP EVENTS — Nova arquitetura de eventos com blocos/salões/assentos
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Bloco/edifício de um evento com assentos
+model AppEventBuilding {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  nome      String   @default("Bloco Principal") @db.Text
+  descricao String   @default("") @db.Text
+  ordem     Int      @default(0) @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event AppEvent      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  halls AppEventHall[]
+
+  @@index([eventId])
+  @@map("app_event_buildings")
+}
+
+/// Salão dentro de um bloco de evento
+model AppEventHall {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @map("event_id") @db.Uuid
+  buildingId  String?  @map("building_id") @db.Uuid
+  nome        String   @default("Salão Principal") @db.Text
+  andar       Int      @default(1) @db.SmallInt
+  numRows     Int      @default(8) @map("num_rows") @db.SmallInt
+  seatsPerRow Int      @default(12) @map("seats_per_row") @db.SmallInt
+  ordem       Int      @default(0) @db.SmallInt
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event    AppEvent          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  building AppEventBuilding? @relation(fields: [buildingId], references: [id])
+  seats    AppSeat[]
+
+  @@index([eventId])
+  @@map("app_event_halls")
+}
+
+/// Grupo/setor de assentos
+model AppSeatGroup {
+  id            String   @id @default(uuid()) @db.Uuid
+  eventId       String   @map("event_id") @db.Uuid
+  hallId        String?  @map("hall_id") @db.Uuid
+  nome          String   @db.Text
+  tipo          String   @default("setor") @db.Text
+  corHex        String   @default("#3B82F6") @map("cor_hex") @db.VarChar(7)
+  precoEspecial Decimal? @map("preco_especial") @db.Decimal(10, 2)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event AppEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seats AppSeat[]
+
+  @@index([eventId])
+  @@map("app_seat_groups")
+}
+
+/// Assento individual (nova arquitetura)
+model AppSeat {
+  id          String    @id @default(uuid()) @db.Uuid
+  eventId     String    @map("event_id") @db.Uuid
+  hallId      String?   @map("hall_id") @db.Uuid
+  groupId     String?   @map("group_id") @db.Uuid
+  rowLabel    String    @map("row_label") @db.Char(1)
+  seatNumber  Int       @map("seat_number") @db.SmallInt
+  price       Decimal   @default(0) @db.Decimal(10, 2)
+  status      String    @default("available") @db.Text
+  reservedBy  String?   @map("reserved_by") @db.Uuid
+  reservedAt  DateTime? @map("reserved_at") @db.Timestamptz(6)
+  orderItemId String?   @map("order_item_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event AppEvent      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  hall  AppEventHall? @relation(fields: [hallId], references: [id])
+  group AppSeatGroup? @relation(fields: [groupId], references: [id])
+
+  @@index([eventId, status])
+  @@map("app_seats")
+}
+
+/// Pedido do novo sistema (app Flutter com enum tipado)
+model AppOrder {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  eventId       String    @map("event_id") @db.Uuid
+  buyerName     String    @default("") @map("buyer_name") @db.Text
+  buyerEmail    String    @default("") @map("buyer_email") @db.Text
+  buyerPhone    String    @default("") @map("buyer_phone") @db.Text
+  subtotal      Decimal   @default(0) @db.Decimal(10, 2)
+  discount      Decimal   @default(0) @db.Decimal(10, 2)
+  total         Decimal   @default(0) @db.Decimal(10, 2)
+  paymentMethod String    @default("free") @map("payment_method") @db.Text
+  paymentRef    String?   @map("payment_ref") @db.Text
+  status        String    @default("pending") @db.Text
+  notes         String    @default("") @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cancelledAt   DateTime? @map("cancelled_at") @db.Timestamptz(6)
+
+  event   AppEvent       @relation("AppEventAppOrders", fields: [eventId], references: [id])
+  items   AppOrderItem[]
+  tickets AppTicket[]
+
+  @@index([userId, status])
+  @@map("app_orders")
+}
+
+/// Item de pedido do novo sistema
+model AppOrderItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  orderId      String   @map("order_id") @db.Uuid
+  eventId      String   @map("event_id") @db.Uuid
+  seatId       String?  @map("seat_id") @db.Uuid
+  rowLabel     String?  @map("row_label") @db.Char(1)
+  seatNumber   Int?     @map("seat_number") @db.SmallInt
+  hallName     String   @default("") @map("hall_name") @db.Text
+  buildingName String   @default("") @map("building_name") @db.Text
+  unitPrice    Decimal  @default(0) @map("unit_price") @db.Decimal(10, 2)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order   AppOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tickets AppTicket[]
+
+  @@index([orderId])
+  @@map("app_order_items")
+}
+
+/// Ticket/ingresso digital (novo sistema)
+model AppTicket {
+  id          String    @id @default(uuid()) @db.Uuid
+  orderItemId String    @map("order_item_id") @db.Uuid
+  orderId     String    @map("order_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  eventId     String    @map("event_id") @db.Uuid
+  ticketCode  String    @unique @map("ticket_code") @db.Text
+  qrPayload   String?   @map("qr_payload") @db.Text
+  isUsed      Boolean   @default(false) @map("is_used")
+  usedAt      DateTime? @map("used_at") @db.Timestamptz(6)
+  checkedInBy String?   @map("checked_in_by") @db.Uuid
+  issuedAt    DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
+
+  orderItem AppOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  order     AppOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("app_tickets")
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// TRANSFER DE INGRESSOS
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Histórico de transferências / presentear ingressos
+model EventTicketTransfer {
+  id              String   @id @default(uuid()) @db.Uuid
+  orderId         String   @map("order_id") @db.Uuid
+  fromName        String   @map("from_name") @db.Text
+  fromMemberId    String?  @map("from_member_id") @db.Uuid
+  toName          String   @map("to_name") @db.Text
+  toMemberId      String?  @map("to_member_id") @db.Uuid
+  transferredBy   String?  @map("transferred_by") @db.Text
+  transferredById String?  @map("transferred_by_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order EventOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("event_ticket_transfer")
 }

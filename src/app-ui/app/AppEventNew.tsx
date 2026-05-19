@@ -89,6 +89,9 @@ export default function AppEventNew() {
   const [permiteCancelamento, setPermiteCancelamento]   = useState(false);
   const [permiteReembolso, setPermiteReembolso]         = useState(false);
 
+  // Destaque
+  const [isFeatured, setIsFeatured] = useState(false);
+
   // Ministério
   const [ministryId, setMinistryId] = useState('');
 
@@ -184,6 +187,7 @@ export default function AppEventNew() {
           preco:                 gratuito ? 0 : parseFloat(preco) || 0,
           gratuito,
           status,
+          is_featured:           isFeatured,
           permite_transferencia: permiteTransferencia,
           permite_cancelamento:  permiteCancelamento,
           permite_reembolso:     permiteReembolso,
@@ -510,6 +514,17 @@ export default function AppEventNew() {
                 <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input type="checkbox" checked={gratuito} onChange={e => setGratuito(e.target.checked)} className="w-4 h-4 accent-purple-600" />
                   Evento gratuito (R$ 0)
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isFeatured}
+                    onChange={e => setIsFeatured(e.target.checked)}
+                    className="w-4 h-4 accent-amber-500"
+                  />
+                  <span className={`font-medium ${isFeatured ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                    ⭐ Em destaque <span className="font-normal text-xs text-slate-400">(banner grande no app)</span>
+                  </span>
                 </label>
                 {[
                   { key: 'tr', label: 'Permite transferência', val: permiteTransferencia, set: setPermiteTransferencia },

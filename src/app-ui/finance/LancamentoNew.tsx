@@ -979,11 +979,18 @@ export default function LancamentoNew() {
 
   // ── Search functions ──────────────────────────────────────────────────────
   async function searchMember(q: string) {
-    const { data } = await supabase
+    const trimmed = q.trim();
+    const isRol = /^\d+$/.test(trimmed);
+    let query = supabase
       .from('members')
       .select('id, full_name, rol, church_id, churches(name)')
-      .ilike('full_name', `%${q}%`)
       .limit(20);
+    if (isRol) {
+      query = query.eq('rol', parseInt(trimmed, 10));
+    } else {
+      query = query.ilike('full_name', `%${trimmed}%`);
+    }
+    const { data } = await query;
     return (data ?? []).map((m: any) => ({
       id: m.id,
       label: m.full_name,
@@ -1023,6 +1030,16 @@ export default function LancamentoNew() {
     setDataLancamento(new Date().toISOString().split('T')[0]);
     const d = new Date();
     setReferencia(`${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`);
+    setObs('');
+    setFotoFile(null);
+    setFotoPreview('');
+    setError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  // Limpa apenas valor e observação após salvar, mantendo favorecido/igreja/campos de configuração
+  function limparAposSalvar() {
+    setValor('');
     setObs('');
     setFotoFile(null);
     setFotoPreview('');
@@ -1583,7 +1600,7 @@ export default function LancamentoNew() {
       {reciboRow && (
         <ReciboModal
           row={reciboRow}
-          onClose={() => { setReciboRow(null); setSuccess(true); setTimeout(() => { setSuccess(false); limpar(); }, 500); }}
+          onClose={() => { setReciboRow(null); setSuccess(true); setTimeout(() => { setSuccess(false); limparAposSalvar(); }, 500); }}
           onUpdated={(id, changes) => setReciboRow(prev => prev ? { ...prev, ...changes } : prev)}
         />
       )}

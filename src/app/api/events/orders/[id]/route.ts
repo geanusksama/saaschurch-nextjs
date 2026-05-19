@@ -14,6 +14,7 @@ export async function GET(
   return withAuth(req, async () => {
     const { id } = await params;
 
+    // ── Tenta primeiro na tabela event_orders (MRM/legado) ─────────────────
     const order = await prisma.eventOrder.findUnique({
       where: { id },
       include: {
@@ -55,48 +56,117 @@ export async function GET(
       },
     });
 
-    if (!order) {
+    if (order) {
+      // ── Pedido encontrado em event_orders ─────────────────────────────────
+      const timeline: { time: string; label: string; detail?: string | null }[] = [];
+      timeline.push({ time: order.createdAt.toISOString(), label: "Pedido criado", detail: order.numeroPedido });
+
+      for (const n of order.notifications) {
+        timeline.push({ time: n.createdAt.toISOString(), label: n.titulo, detail: n.mensagem });
+      }
+      for (const r of order.refunds) {
+        const refLabel = r.status === "SOLICITADO" ? "Reembolso solicitado"
+          : r.status === "APROVADO" ? "Reembolso aprovado"
+          : r.status === "NEGADO"   ? "Reembolso negado"
+          : "Reembolso processado";
+        timeline.push({ time: r.createdAt.toISOString(), label: refLabel, detail: r.motivo ?? r.notasAdmin });
+      }
+      for (const qr of order.qrcodes) {
+        timeline.push({ time: qr.createdAt.toISOString(), label: "QRCode gerado", detail: qr.ticketCode });
+        if (qr.usedAt) timeline.push({ time: qr.usedAt.toISOString(), label: "Check-in realizado", detail: qr.ticketCode });
+      }
+      if (order.cancelledAt) {
+        timeline.push({ time: order.cancelledAt.toISOString(), label: "Pedido cancelado", detail: order.notas });
+      }
+      timeline.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+      return NextResponse.json(serializeBigInts({ ...order, timeline }));
+    }
+
+    // ── Fallback: tenta na tabela `orders` (Flutter app) ───────────────────
+    const flutterOrder = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        event: {
+          select: {
+            id: true, nome: true, dataInicio: true, dataFim: true,
+            local: true, churchId: true, imagemUrl: true, tipoEvento: true,
+            gratuito: true, preco: true, descricao: true, localEndereco: true,
+            bannerUrl: true,
+            participants: {
+              select: { id: true, nome: true, papel: true, fotoUrl: true, ordem: true },
+              orderBy: { ordem: "asc" },
+            },
+            sectors: {
+              orderBy: { ordem: "asc" as const },
+              select: { id: true, nome: true, preco: true, corHex: true, quantidade: true },
+            },
+          },
+        },
+        items: {
+          include: {
+            seat:   { select: { numero: true, status: true, row: { select: { nome: true } } } },
+            sector: { select: { nome: true, preco: true, corHex: true } },
+          },
+        },
+        qrcodes: {
+          select: { id: true, ticketCode: true, qrPayload: true, isUsed: true, usedAt: true, isCancelled: true, issuedAt: true },
+          orderBy: { issuedAt: "asc" },
+        },
+      },
+    });
+
+    if (!flutterOrder) {
       return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
     }
 
-    // ── Montar timeline ────────────────────────────────────────────────────────
-    const timeline: { time: string; label: string; detail?: string | null }[] = [];
-
-    timeline.push({ time: order.createdAt.toISOString(), label: "Pedido criado", detail: order.numeroPedido });
-
-    const statusLabel: Record<string, string> = {
-      AGUARDANDO_PAGAMENTO:  "Aguardando pagamento",
-      EXPIRADO:              "Pedido expirado",
-      PAGO:                  "Pagamento aprovado",
-      SOLICITANDO_REEMBOLSO: "Reembolso solicitado",
-      REEMBOLSADO:           "Reembolso aprovado",
-      CANCELADO:             "Pedido cancelado",
+    // Normaliza para o mesmo shape esperado pelo frontend
+    const FLUTTER_STATUS_LABEL: Record<string, string> = {
+      PENDING_PAYMENT: "AGUARDANDO_PAGAMENTO",
+      PAID: "PAGO",
+      CANCELLED: "CANCELADO",
+      EXPIRED: "EXPIRADO",
     };
 
-    for (const n of order.notifications) {
-      timeline.push({ time: n.createdAt.toISOString(), label: n.titulo, detail: n.mensagem });
-    }
+    const normalized = {
+      ...flutterOrder,
+      numeroPedido: flutterOrder.orderNumber,
+      subtotal:     flutterOrder.total,
+      desconto:     0,
+      notas:        flutterOrder.notes,
+      cancelledAt:  null,
+      status:       FLUTTER_STATUS_LABEL[flutterOrder.status] ?? flutterOrder.status,
+      refunds:      [],
+      notifications: [],
+      // Normaliza qrcodes para o shape do MRM
+      qrcodes: flutterOrder.qrcodes.map(q => ({
+        id:          q.id,
+        ticketCode:  q.ticketCode,
+        qrData:      q.qrPayload,
+        isUsed:      q.isUsed,
+        usedAt:      q.usedAt,
+        isCancelled: q.isCancelled,
+        createdAt:   q.issuedAt,
+      })),
+      // Normaliza items
+      items: flutterOrder.items.map(item => ({
+        ...item,
+        sectorNome: item.sector?.nome ?? null,
+        rowNome:    item.seat?.row?.nome ?? null,
+        seatNumero: item.seat?.numero ?? null,
+      })),
+      _flutterSource: true,
+    };
 
-    for (const r of order.refunds) {
-      const refLabel = r.status === "SOLICITADO" ? "Reembolso solicitado"
-        : r.status === "APROVADO" ? "Reembolso aprovado"
-        : r.status === "NEGADO"   ? "Reembolso negado"
-        : "Reembolso processado";
-      timeline.push({ time: r.createdAt.toISOString(), label: refLabel, detail: r.motivo ?? r.notasAdmin });
-    }
-
-    for (const qr of order.qrcodes) {
-      timeline.push({ time: qr.createdAt.toISOString(), label: "QRCode gerado", detail: qr.ticketCode });
+    const timeline: { time: string; label: string; detail?: string | null }[] = [];
+    timeline.push({ time: flutterOrder.createdAt.toISOString(), label: "Pedido criado", detail: flutterOrder.orderNumber });
+    for (const qr of flutterOrder.qrcodes) {
+      timeline.push({ time: qr.issuedAt.toISOString(), label: "QRCode gerado", detail: qr.ticketCode });
       if (qr.usedAt) timeline.push({ time: qr.usedAt.toISOString(), label: "Check-in realizado", detail: qr.ticketCode });
     }
-
-    if (order.cancelledAt) {
-      timeline.push({ time: order.cancelledAt.toISOString(), label: statusLabel["CANCELADO"], detail: order.notas });
-    }
-
     timeline.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 
-    return NextResponse.json(serializeBigInts({ ...order, timeline }));
+    return NextResponse.json(serializeBigInts({ ...normalized, timeline }));
   });
 }
 
@@ -112,42 +182,80 @@ export async function DELETE(
   return withAuth(req, async () => {
     const { id } = await params;
 
-    const order = await prisma.eventOrder.findUnique({
+    // Verifica primeiro em event_orders (legado/MRM)
+    const mrmOrder = await prisma.eventOrder.findUnique({
       where: { id },
       select: { id: true, numeroPedido: true },
     });
 
-    if (!order) {
+    if (mrmOrder) {
+      // ── Deletar pedido MRM (event_orders) ──────────────────────────────────
+      await prisma.$transaction(async (tx) => {
+        const items = await tx.eventOrderItem.findMany({
+          where: { orderId: id },
+          select: { seatId: true },
+        });
+        const seatIds = items.map(i => i.seatId).filter(Boolean) as string[];
+
+        await tx.eventNotification.deleteMany({ where: { orderId: id } });
+        await tx.eventRefund.deleteMany({ where: { orderId: id } });
+        await tx.eventQRCode.deleteMany({ where: { orderId: id } });
+        await tx.eventOrderItem.deleteMany({ where: { orderId: id } });
+
+        if (seatIds.length > 0) {
+          await tx.eventSeat.updateMany({
+            where: { id: { in: seatIds } },
+            data: { status: "LIVRE", reservadoPor: null, reservadoEm: null, reservaExpira: null, orderItemId: null },
+          });
+        }
+
+        await tx.eventOrder.delete({ where: { id } });
+      });
+
+      // Remove também o registro espelhado em `orders` se existir
+      if (mrmOrder.numeroPedido) {
+        await prisma.$executeRawUnsafe(
+          `DELETE FROM orders WHERE order_number = $1`,
+          mrmOrder.numeroPedido,
+        ).catch(() => null);
+      }
+
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── Fallback: tenta na tabela `orders` (Flutter) ───────────────────────
+    const flutterOrder = await prisma.order.findUnique({
+      where: { id },
+      select: { id: true, orderNumber: true },
+    });
+
+    if (!flutterOrder) {
       return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
     }
 
-    // Excluir em transação: filhos primeiro, depois o pedido.
-    // QR codes ligados a items precisam sair antes dos items.
     await prisma.$transaction(async (tx) => {
-      // 1. Notificações
-      await tx.eventNotification.deleteMany({ where: { orderId: id } });
+      // Descobre assentos via order_items
+      const items = await tx.orderItem.findMany({
+        where: { orderId: id },
+        select: { seatId: true },
+      });
+      const seatIds = items.map(i => i.seatId).filter(Boolean) as string[];
 
-      // 2. Reembolsos
-      await tx.eventRefund.deleteMany({ where: { orderId: id } });
+      // Deleta filhos em cascata (order_qrcodes, order_status_history, order_items)
+      await tx.orderQRCode.deleteMany({ where: { orderId: id } });
+      await tx.orderStatusHistory.deleteMany({ where: { orderId: id } });
+      await tx.orderItem.deleteMany({ where: { orderId: id } });
 
-      // 3. QR codes (podem estar ligados ao pedido ou a items)
-      await tx.eventQRCode.deleteMany({ where: { orderId: id } });
+      // Libera assentos
+      if (seatIds.length > 0) {
+        await tx.eventSeat.updateMany({
+          where: { id: { in: seatIds } },
+          data: { status: "LIVRE", reservadoPor: null, reservadoEm: null, reservaExpira: null, orderItemId: null },
+        });
+      }
 
-      // 4. Items
-      await tx.eventOrderItem.deleteMany({ where: { orderId: id } });
-
-      // 5. O pedido em si
-      await tx.eventOrder.delete({ where: { id } });
+      await tx.order.delete({ where: { id } });
     });
-
-    // Tentar também remover da tabela `orders` (Flutter) pelo numero_pedido.
-    // Ignorar se não existir ou se o campo for nulo.
-    if (order.numeroPedido) {
-      await prisma.$executeRawUnsafe(
-        `DELETE FROM orders WHERE order_number = $1`,
-        order.numeroPedido,
-      ).catch(() => {/* tabela pode não existir ou não ter esse registro */});
-    }
 
     return NextResponse.json({ ok: true });
   });

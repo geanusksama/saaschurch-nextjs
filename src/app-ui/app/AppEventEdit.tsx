@@ -75,6 +75,7 @@ export default function AppEventEdit() {
   const [permiteTransferencia, setPermiteTransferencia] = useState(false);
   const [permiteCancelamento, setPermiteCancelamento]   = useState(false);
   const [permiteReembolso, setPermiteReembolso]         = useState(false);
+  const [isFeatured, setIsFeatured]                     = useState(false);
   const [ministryId, setMinistryId]   = useState('');
   const [status, setStatus]           = useState('RASCUNHO');
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -154,6 +155,7 @@ export default function AppEventEdit() {
     setPermiteTransferencia(event.permite_transferencia ?? false);
     setPermiteCancelamento(event.permite_cancelamento ?? false);
     setPermiteReembolso(event.permite_reembolso ?? false);
+    setIsFeatured(event.is_featured ?? false);
     setMinistryId(event.department_id ?? '');
     setStatus(event.status ?? 'RASCUNHO');
     setReady(true);
@@ -222,6 +224,7 @@ export default function AppEventEdit() {
           permite_transferencia: permiteTransferencia,
           permite_cancelamento:  permiteCancelamento,
           permite_reembolso:     permiteReembolso,
+          is_featured:           isFeatured,
           department_id:         ministryId || null,
           limite_por_usuario:    limiteUsuario ? parseInt(limiteUsuario) : null,
         })
@@ -510,6 +513,12 @@ export default function AppEventEdit() {
                     {label}
                   </label>
                 ))}
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={isFeatured} onChange={e => setIsFeatured(e.target.checked)} className="w-4 h-4 accent-amber-500" />
+                  <span className={`font-medium ${isFeatured ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                    ⭐ Em destaque <span className="font-normal text-xs text-slate-400">(banner grande no app)</span>
+                  </span>
+                </label>
               </div>
               {!gratuito && (
                 <div className="grid sm:grid-cols-2 gap-4">

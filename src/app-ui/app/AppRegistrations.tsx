@@ -1,17 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Search, CheckCircle2, XCircle, Clock, Eye } from 'lucide-react';
+import { UserPlus, Search, CheckCircle2, XCircle, Clock, Eye, Users } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
 
-function getStoredUser() {
-  try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
-}
-
-function getHQContext() {
-  const token = localStorage.getItem('mrm_token') ?? '';
-  const user = getStoredUser();
-  const activeFieldId = localStorage.getItem('mrm_active_field_id') || user.campoId || '';
-  return { token, activeFieldId };
+function getContext() {
+  try {
+    const user = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+    const fieldId = localStorage.getItem('mrm_active_field_id') || user.campoId || '';
+    const token = localStorage.getItem('mrm_token') ?? '';
+    return { fieldId, token };
+  } catch { return { fieldId: '', token: '' }; }
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -22,8 +20,16 @@ const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.
 };
 
 type Cadastro = {
-  id: string; nome: string; email?: string; telefone?: string; cpf?: string;
-  status: string; created_at: string; observacoes?: string;
+  id: string;
+  user_id: string | null;
+  nome: string;
+  email: string;
+  headquarters_id: string | null;
+  is_member: boolean;
+  member_id: string | null;
+  status: string;
+  created_at: string;
+  observacoes: string | null;
 };
 
 export default function AppRegistrations() {
@@ -34,17 +40,16 @@ export default function AppRegistrations() {
   const [nota, setNota] = useState('');
   const [hqId, setHqId] = useState<string | null>(null);
 
-  // Carrega o headquarters_id da sede do campo atual
   const loadHqId = useCallback(async () => {
-    const { token, activeFieldId } = getHQContext();
-    if (!activeFieldId) return;
+    const { fieldId, token } = getContext();
+    if (!fieldId) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/api/headquarters?fieldId=${activeFieldId}`, { headers });
+      const res = await fetch(`/api/headquarters?fieldId=${fieldId}`, { headers });
       if (!res.ok) return;
       const list = await res.json();
       if (list.length) setHqId(list[0].id);
-    } catch { /* sem contexto HQ */ }
+    } catch { /* sem HQ */ }
   }, []);
 
   useEffect(() => { loadHqId(); }, [loadHqId]);
@@ -54,9 +59,12 @@ export default function AppRegistrations() {
     queryFn: async () => {
       let query = supabase
         .from('app_cadastros')
-        .select('id, nome, email, telefone, cpf, status, created_at, observacoes')
+        .select('id, user_id, nome, email, headquarters_id, is_member, member_id, status, created_at, observacoes')
         .order('created_at', { ascending: false });
-      if (hqId) query = query.eq('headquarters_id', hqId);
+      if (hqId) {
+        // Mostra registros do campo + registros sem HQ (backfill antigo)
+        query = query.or(`headquarters_id.eq.${hqId},headquarters_id.is.null`);
+      }
       const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as Cadastro[];
@@ -65,7 +73,9 @@ export default function AppRegistrations() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, status, observacoes }: { id: string; status: string; observacoes?: string }) => {
-      const { error } = await supabase.from('app_cadastros').update({ status, observacoes: observacoes || null }).eq('id', id);
+      const { error } = await supabase.from('app_cadastros')
+        .update({ status, ...(observacoes !== undefined ? { observacoes } : {}) })
+        .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -77,17 +87,11 @@ export default function AppRegistrations() {
 
   const filtered = cadastros.filter(c => {
     const matchSearch = !search ||
-      c.nome.toLowerCase().includes(search.toLowerCase()) ||
-      (c.email ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.cpf ?? '').includes(search);
+      (c.nome ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.email ?? '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = !statusFilter || c.status === statusFilter;
     return matchSearch && matchStatus;
   });
-
-  const openDetail = (c: Cadastro) => {
-    setSelected(c);
-    setNota(c.observacoes ?? '');
-  };
 
   const pending = cadastros.filter(c => c.status === 'PENDENTE').length;
 
@@ -99,7 +103,7 @@ export default function AppRegistrations() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Cadastros no App</h1>
-          <p className="text-slate-500 dark:text-slate-400">Membros que se cadastraram pelo app móvel</p>
+          <p className="text-slate-500 dark:text-slate-400">Usuários que se cadastraram pelo app móvel</p>
         </div>
       </div>
 
@@ -113,7 +117,7 @@ export default function AppRegistrations() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nome, email ou CPF..."
+            placeholder="Buscar por nome ou email..."
             className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
           />
         </div>
@@ -129,8 +133,9 @@ export default function AppRegistrations() {
         <div className="text-center py-16 text-slate-400">Carregando cadastros...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
-          <UserPlus className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 dark:text-slate-400">Nenhum cadastro encontrado</p>
+          <p className="text-xs text-slate-400 mt-1">Os usuários que se cadastrarem pelo app aparecerão aqui</p>
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
@@ -138,8 +143,8 @@ export default function AppRegistrations() {
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Nome</th>
-                <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Email / Telefone</th>
-                <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">CPF</th>
+                <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Email</th>
+                <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Membro</th>
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Status</th>
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Data</th>
                 <th className="px-4 py-3"></th>
@@ -148,20 +153,25 @@ export default function AppRegistrations() {
             <tbody>
               {filtered.map(c => {
                 const s = STATUS_LABELS[c.status] ?? { label: c.status, color: 'bg-slate-100 text-slate-600', icon: Clock };
+                const SIcon = s.icon;
                 return (
                   <tr key={c.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{c.nome}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{c.nome || '—'}</td>
+                    <td className="px-4 py-3 text-slate-500">{c.email}</td>
                     <td className="px-4 py-3">
-                      {c.email && <p className="text-slate-700 dark:text-slate-300">{c.email}</p>}
-                      {c.telefone && <p className="text-xs text-slate-500">{c.telefone}</p>}
+                      {c.is_member
+                        ? <span className="text-xs text-green-600 font-medium">Sim</span>
+                        : <span className="text-xs text-slate-400">Não</span>}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{c.cpf ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}>
+                        <SIcon className="w-3 h-3" />
+                        {s.label}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => openDetail(c)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500" title="Ver e aprovar">
+                      <button onClick={() => { setSelected(c); setNota(c.observacoes ?? ''); }} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500" title="Ver detalhes">
                         <Eye className="w-4 h-4" />
                       </button>
                     </td>
@@ -178,29 +188,29 @@ export default function AppRegistrations() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Detalhes do Cadastro</h2>
             <dl className="text-sm space-y-2">
-              {[
-                ['Nome', selected.nome],
-                ['Email', selected.email ?? '—'],
-                ['Telefone', selected.telefone ?? '—'],
-                ['CPF', selected.cpf ?? '—'],
-                ['Status atual', STATUS_LABELS[selected.status]?.label ?? selected.status],
+              {([
+                ['Nome', selected.nome || '—'],
+                ['Email', selected.email],
+                ['Membro de igreja', selected.is_member ? 'Sim' : 'Não'],
+                ['Status', STATUS_LABELS[selected.status]?.label ?? selected.status],
                 ['Data de cadastro', new Date(selected.created_at).toLocaleString('pt-BR')],
-              ].map(([k, v]) => (
-                <div key={String(k)} className="flex justify-between">
-                  <dt className="text-slate-500">{k}</dt>
-                  <dd className="text-slate-900 dark:text-white">{v}</dd>
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-4">
+                  <dt className="text-slate-500 shrink-0">{k}</dt>
+                  <dd className="text-slate-900 dark:text-white text-right">{v}</dd>
                 </div>
               ))}
             </dl>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notas do Admin</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Observações</label>
               <textarea value={nota} onChange={e => setNota(e.target.value)} rows={2}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Notas do administrador..."
               />
             </div>
             <div className="flex gap-2 flex-wrap">
               <button onClick={() => { setSelected(null); setNota(''); }} className="flex-1 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50">
-                Cancelar
+                Fechar
               </button>
               {selected.status === 'PENDENTE' && (
                 <>

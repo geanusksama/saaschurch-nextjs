@@ -135,7 +135,7 @@ function fmtBRL(v: number) {
 // ── Stats Row ─────────────────────────────────────────────────────────────────
 
 function StatsRow() {
-  const { data: stats } = useQuery({ queryKey: ["orders-stats"], queryFn: fetchStats, refetchInterval: 30_000 });
+  const { data: stats } = useQuery({ queryKey: ["orders-stats"], queryFn: fetchStats });
 
   const items = [
     { label: "Pendentes",    value: stats?.pendingCount   ?? "–", icon: <Clock         className="w-4 h-4 text-amber-500" />,   color: "text-amber-600"   },
@@ -236,11 +236,15 @@ function OrderCard({
           <span className="text-sm font-bold text-slate-900 dark:text-white">{fmtBRL(order.total)}</span>
         </div>
 
-        {/* Seat labels (max 3) */}
-        {order.items.some(i => i.seat) && (() => {
+        {/* Seat labels (max 3) — mostra setor/sala + assento */}
+        {order.items.some(i => i.seat || i.sector) && (() => {
           const labels = order.items
             .filter(i => i.seat)
-            .map(i => `${i.seat!.row?.nome ?? ""}${i.seat!.numero}`)
+            .map(i => {
+              const assentoLabel = `${i.seat!.row?.nome ?? ""}${i.seat!.numero}`;
+              const sectorLabel  = i.sector?.nome ? `${i.sector.nome}/` : "";
+              return `${sectorLabel}${assentoLabel}`;
+            })
             .slice(0, 3);
           const extra = order.items.filter(i => i.seat).length - 3;
           return (
@@ -393,10 +397,9 @@ export default function PedidosKanban() {
   const [dateTo,   setDateTo]   = useState(initRange.to);
   const qc = useQueryClient();
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["orders-kanban", search, eventId, dateFrom, dateTo],
     queryFn: () => fetchKanban(search, eventId, dateFrom, dateTo),
-    refetchInterval: 60_000,
   });
 
   const moveMut = useMutation({
@@ -473,10 +476,10 @@ export default function PedidosKanban() {
           </button>
           <button
             onClick={() => refetch()}
-            disabled={isLoading}
+            disabled={isFetching}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> Atualizar
+            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} /> Atualizar
           </button>
         </div>
       </div>
