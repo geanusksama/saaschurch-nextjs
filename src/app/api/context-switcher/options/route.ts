@@ -49,21 +49,33 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const [fields, regionals, churches] = await Promise.all([
-      prisma.campo.findMany({ where: fieldWhere, orderBy: { name: "asc" } }),
-      prisma.regional.findMany({
-        where: regionalWhere,
-        include: { campo: { select: { id: true, name: true, code: true } } },
-        orderBy: [{ campo: { name: "asc" } }, { name: "asc" }],
-      }),
-      prisma.church.findMany({
-        where: churchWhere,
-        include: {
-          regional: { include: { campo: { select: { id: true, name: true, code: true } } } },
-        },
-        orderBy: [{ regional: { campo: { name: "asc" } } }, { regional: { name: "asc" } }, { name: "asc" }],
-      }),
-    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let fields: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let regionals: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let churches: any[] = [];
+
+    try {
+      [fields, regionals, churches] = await Promise.all([
+        prisma.campo.findMany({ where: fieldWhere, orderBy: { name: "asc" } }),
+        prisma.regional.findMany({
+          where: regionalWhere,
+          include: { campo: { select: { id: true, name: true, code: true } } },
+          orderBy: [{ campo: { name: "asc" } }, { name: "asc" }],
+        }),
+        prisma.church.findMany({
+          where: churchWhere,
+          include: {
+            regional: { include: { campo: { select: { id: true, name: true, code: true } } } },
+          },
+          orderBy: [{ name: "asc" }],
+        }),
+      ]);
+    } catch (queryError) {
+      console.error("[context-switcher/options] Prisma query error:", queryError);
+      return NextResponse.json({ error: "Erro ao consultar dados de contexto." }, { status: 500 });
+    }
 
     const campoPasswordHashMap = await getCampoPasswordHashMap(fields.map((f) => f.id));
 
