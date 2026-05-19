@@ -302,7 +302,7 @@ export default function SecretariatPipeline() {
   }, []);
   const canFilterCampo = me?.profileType === "master";
   const canFilterChurch = me?.profileType === "master" || me?.profileType === "admin" || me?.profileType === "campo";
-  const canMoveCards = me?.profileType === "master" || me?.profileType === "admin";
+  const canMoveCards = me?.profileType === "master" || me?.profileType === "admin" || me?.profileType === "campo";
   const [filterCampoId, setFilterCampoId] = useState<string>("");
   const hasFixedChurchScope = me?.profileType === "church" || (() => {
     const role = String(me?.roleName || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();

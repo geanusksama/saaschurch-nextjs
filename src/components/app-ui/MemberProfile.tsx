@@ -330,7 +330,7 @@ export function MemberProfile() {
   }
 
   const storedUser = (() => { try { return JSON.parse(localStorage.getItem("mrm_user") || "{}"); } catch { return {}; } })();
-  const canManageHistory = storedUser.profileType === "master" || storedUser.profileType === "admin";
+  const canManageHistory = storedUser.profileType === "master" || storedUser.profileType === "admin" || storedUser.profileType === "campo";
 
   const maxDay = Math.max(...attendanceByDay, 1);
   const maxPeriod = Math.max(...Object.values(attendanceByPeriod), 1);
