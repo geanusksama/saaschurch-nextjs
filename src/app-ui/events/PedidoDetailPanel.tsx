@@ -381,7 +381,8 @@ export function PedidoDetailPanel({
   onStatusChange?: () => void;
 }) {
   const [activeTab, setActiveTab]       = useState<"info" | "items" | "timeline" | "qrcodes">("info");
-  const [refundNotes, setRefundNotes]   = useState("");
+  const [refundMotivo, setRefundMotivo] = useState("");
+  const [denyMode, setDenyMode]           = useState(false);
   const [showRefundForm, setShowRefundForm] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showDeleteZone, setShowDeleteZone] = useState(false);
@@ -466,14 +467,14 @@ export function PedidoDetailPanel({
     mutationFn: async (action: "approve" | "deny") => {
       const r = await fetch(`/api/events/orders/${orderId}/refund`, {
         method: "PATCH", headers: authH({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ action, notes: refundNotes }),
+        body: JSON.stringify({ action, motivo: refundMotivo.trim() }),
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
       return r.json();
     },
     onSuccess: (_, action) => {
       toast.success(action === "approve" ? "Reembolso aprovado!" : "Reembolso negado.");
-      invalidate(); setShowRefundForm(false);
+      invalidate(); setShowRefundForm(false); setDenyMode(false); setRefundMotivo("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -651,20 +652,32 @@ export function PedidoDetailPanel({
                       ))}
                       {!showRefundForm ? (
                         <button onClick={() => setShowRefundForm(true)} className="mt-3 text-xs text-orange-700 dark:text-orange-400 underline">Processar reembolso</button>
-                      ) : (
+                      ) : denyMode ? (
                         <div className="mt-3 space-y-2">
-                          <textarea value={refundNotes} onChange={e => setRefundNotes(e.target.value)} placeholder="Observações (opcional)" rows={2}
-                            className="w-full text-xs px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                          <p className="text-xs font-medium text-red-700 dark:text-red-400">Informe o motivo da negação:</p>
+                          <textarea value={refundMotivo} onChange={e => setRefundMotivo(e.target.value)} placeholder="Motivo obrigatório..." rows={3} autoFocus
+                            className="w-full text-xs px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-red-400" />
                           <div className="flex gap-2">
-                            <button onClick={() => refundMut.mutate("approve")} disabled={isProcessing}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-                              <CheckCheck className="w-3.5 h-3.5" /> Aprovar
+                            <button onClick={() => { setDenyMode(false); setRefundMotivo(""); }}
+                              className="flex-1 py-2 text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-200 dark:hover:bg-slate-600">
+                              Voltar
                             </button>
-                            <button onClick={() => refundMut.mutate("deny")} disabled={isProcessing}
+                            <button onClick={() => refundMut.mutate("deny")} disabled={isProcessing || !refundMotivo.trim()}
                               className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-                              <Ban className="w-3.5 h-3.5" /> Negar
+                              {isProcessing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />} Confirmar negação
                             </button>
                           </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 flex gap-2">
+                          <button onClick={() => refundMut.mutate("approve")} disabled={isProcessing}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
+                            {isProcessing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />} ✅ Aprovar Reembolso
+                          </button>
+                          <button onClick={() => setDenyMode(true)} disabled={isProcessing}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
+                            <Ban className="w-3.5 h-3.5" /> ❌ Negar Reembolso
+                          </button>
                         </div>
                       )}
                     </section>

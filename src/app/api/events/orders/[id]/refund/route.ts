@@ -2,12 +2,15 @@
  * PATCH /api/events/orders/[id]/refund
  * Aprova ou nega uma solicitação de reembolso.
  *
- * Body: { action: "approve" | "deny", notes?: string }
+ * Body: { action: "approve" | "deny", motivo?: string }
+ *
+ * Chama as RPCs do banco:
+ *   fn_aprovar_reembolso(order_id, admin_id)
+ *   fn_negar_reembolso(order_id, motivo, admin_id)
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { serializeBigInts } from "@/lib/helpers";
 
 export async function PATCH(
   req: NextRequest,
@@ -15,54 +18,77 @@ export async function PATCH(
 ) {
   return withAuth(req, async (user) => {
     const { id } = await params;
-    const { action, notes } = await req.json().catch(() => ({}));
+    const { action, motivo } = await req.json().catch(() => ({}));
 
     if (!["approve", "deny"].includes(action)) {
       return NextResponse.json({ error: "action deve ser 'approve' ou 'deny'" }, { status: 400 });
     }
 
-    const order = await prisma.eventOrder.findUnique({
-      where: { id },
-      include: { refunds: { where: { status: "SOLICITADO" }, orderBy: { createdAt: "desc" }, take: 1 } },
-    });
-    if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
-    if (order.status !== "SOLICITANDO_REEMBOLSO") {
-      return NextResponse.json({ error: "Pedido não está com solicitação de reembolso ativa." }, { status: 422 });
+    // Valida existência e status em ambas as tabelas (MRM e Flutter)
+    const mrmOrder = await prisma.eventOrder.findUnique({ where: { id }, select: { status: true } });
+    if (mrmOrder) {
+      if (mrmOrder.status !== "SOLICITANDO_REEMBOLSO") {
+        return NextResponse.json({ error: "Pedido não está com solicitação de reembolso ativa." }, { status: 422 });
+      }
+    } else {
+      const flutterOrder = await prisma.order.findUnique({ where: { id }, select: { status: true } });
+      if (!flutterOrder) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+      if (!["REFUND_REQUESTED", "REQUESTING_REFUND"].includes(flutterOrder.status)) {
+        return NextResponse.json({ error: "Pedido não está com solicitação de reembolso ativa." }, { status: 422 });
+      }
     }
 
+    const adminId = user.id ?? null;
     const newOrderStatus = action === "approve" ? "REEMBOLSADO" : "PAGO";
-    const refundStatus   = action === "approve" ? "APROVADO"    : "NEGADO";
 
-    await prisma.eventOrder.update({
-      where: { id },
-      data: { status: newOrderStatus, updatedAt: new Date() },
-    });
+    if (action === "approve") {
+      try {
+        await prisma.$executeRawUnsafe(`SELECT fn_aprovar_reembolso($1::uuid, $2::uuid)`, id, adminId);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[refund] fn_aprovar_reembolso error:", msg);
+        return NextResponse.json({ error: msg }, { status: 500 });
+      }
 
-    // Atualizar registro de reembolso na tabela event_refunds
-    const activeRefund = order.refunds[0];
-    if (activeRefund) {
-      await prisma.eventRefund.update({
-        where: { id: activeRefund.id },
-        data: {
-          status:      refundStatus,
-          notasAdmin:  notes ?? null,
-          processedBy: user.id ?? null,
-          processedAt: new Date(),
-        },
-      });
+      // Cancela QR Codes MRM e libera assentos (event_seats) de pedidos MRM
+      await prisma.eventQRCode.updateMany({
+        where: { orderId: id, isCancelled: false },
+        data: { isCancelled: true, cancelledAt: new Date() },
+      }).catch(() => null);
+
+      const items = await prisma.eventOrderItem.findMany({
+        where: { orderId: id },
+        select: { seatId: true },
+      }).catch(() => []);
+      const seatIds = items.map((i: { seatId: string | null }) => i.seatId).filter(Boolean) as string[];
+      if (seatIds.length > 0) {
+        await prisma.eventSeat.updateMany({
+          where: { id: { in: seatIds } },
+          data: { status: "LIVRE", reservadoPor: null, reservadoEm: null, reservaExpira: null, orderItemId: null },
+        }).catch(() => null);
+      }
+    } else {
+      if (!motivo?.trim()) {
+        return NextResponse.json({ error: "Informe o motivo da negação." }, { status: 400 });
+      }
+      try {
+        await prisma.$executeRawUnsafe(`SELECT fn_negar_reembolso($1::uuid, $2::text, $3::uuid)`, id, motivo.trim(), adminId);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[refund] fn_negar_reembolso error:", msg);
+        return NextResponse.json({ error: msg }, { status: 500 });
+      }
     }
 
-    // Notificação
-    await prisma.eventNotification.create({
-      data: {
-        eventId:  order.eventId,
-        userId:   order.userId,
-        orderId:  order.id,
-        tipo:     action === "approve" ? "refund_approved" : "refund_denied",
-        titulo:   action === "approve" ? "Reembolso aprovado" : "Reembolso negado",
-        mensagem: notes ?? (action === "approve" ? "Seu reembolso foi aprovado." : "Sua solicitação de reembolso foi negada."),
-      },
-    }).catch(() => null);
+    // Para pedidos MRM (só em event_orders, sem linha em orders):
+    // o RPC opera na tabela orders do Flutter — o sync trigger não atualizaria event_orders.
+    // Garantir status correto via Prisma diretamente.
+    if (mrmOrder) {
+      await prisma.eventOrder.update({
+        where: { id },
+        data: { status: newOrderStatus, updatedAt: new Date() },
+      }).catch(() => null);
+    }
 
     return NextResponse.json({ status: newOrderStatus });
   });

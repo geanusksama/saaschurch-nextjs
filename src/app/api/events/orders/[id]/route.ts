@@ -122,10 +122,13 @@ export async function GET(
 
     // Normaliza para o mesmo shape esperado pelo frontend
     const FLUTTER_STATUS_LABEL: Record<string, string> = {
-      PENDING_PAYMENT: "AGUARDANDO_PAGAMENTO",
-      PAID: "PAGO",
-      CANCELLED: "CANCELADO",
-      EXPIRED: "EXPIRADO",
+      PENDING_PAYMENT:  "AGUARDANDO_PAGAMENTO",
+      PAID:             "PAGO",
+      CANCELLED:        "CANCELADO",
+      EXPIRED:          "EXPIRADO",
+      REFUND_REQUESTED:  "SOLICITANDO_REEMBOLSO",
+      REQUESTING_REFUND: "SOLICITANDO_REEMBOLSO",
+      REFUNDED:          "REEMBOLSADO",
     };
 
     const normalized = {
