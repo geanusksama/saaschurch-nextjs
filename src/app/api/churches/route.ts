@@ -28,8 +28,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      await prisma.church.findMany({
+    try {
+      const churches = await prisma.church.findMany({
         where: {
           deletedAt: null,
           ...(scopedFieldId ? { regional: { campoId: scopedFieldId } } : {}),
@@ -43,9 +43,13 @@ export async function GET(req: NextRequest) {
           },
           headquarters: { select: { id: true, churchName: true, regionalName: true, fieldId: true, fieldName: true } },
         },
-        orderBy: [{ regional: { campo: { name: "asc" } } }, { regional: { name: "asc" } }, { name: "asc" }],
-      })
-    );
+        orderBy: [{ name: "asc" }],
+      });
+      return NextResponse.json(churches);
+    } catch (e) {
+      console.error("[GET /api/churches]", e);
+      return NextResponse.json({ error: "Erro ao carregar igrejas." }, { status: 500 });
+    }
   });
 }
 
