@@ -47,8 +47,9 @@ type OrderDetail = {
     id: string; nome: string; dataInicio: string; dataFim?: string;
     local: string | null; localEndereco?: string | null;
     churchId: string; imagemUrl?: string | null; bannerUrl?: string | null;
-    tipoEvento?: string; descricao?: string | null;
+    tipoEvento?: string; descricao?: string | null; preco?: number;
     participants?: { id: string; nome: string; papel: string | null; fotoUrl: string | null; ordem: number }[];
+    sectors?: { id: string; nome: string; preco: number; corHex: string | null; quantidade: number }[];
   } | null;
   items: OrderItem[];
   qrcodes: QRCode[];
@@ -743,26 +744,66 @@ export function PedidoDetailPanel({
                       )}
                     </>
                   ) : (
-                    <section className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 text-center space-y-2">
-                      <Ticket className="w-8 h-8 text-amber-400 mx-auto" />
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Detalhes de assentos não disponíveis</p>
-                      <p className="text-xs text-amber-600 dark:text-amber-400">
-                        Pedido realizado pelo app.{order.status === "PAGO" && " Gere o QR Code para o comprador apresentar na entrada."}
-                      </p>
-                      {order.status === "PAGO" && activeQRs.length === 0 && (
-                        <button onClick={() => qrMut.mutate()} disabled={qrMut.isPending}
-                          className="mt-1 px-4 py-2 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 mx-auto">
-                          {qrMut.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <QrCode className="w-3.5 h-3.5" />}
-                          Gerar QR Code
-                        </button>
-                      )}
-                      {activeQRs.length > 0 && (
-                        <button onClick={() => setActiveTab("qrcodes")}
-                          className="mt-1 px-4 py-2 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-1.5 mx-auto">
-                          <QrCode className="w-3.5 h-3.5" /> Ver QR Codes ({activeQRs.length})
-                        </button>
-                      )}
-                    </section>
+                    /* Pedido sem itens (veio do app Flutter via trigger) */
+                    order.event?.tipoEvento === "COM_ASSENTO" && order.event?.sectors?.length ? (
+                      /* Evento com mapa de assentos — mostrar setores */
+                      <section>
+                        <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                          <Armchair className="w-3.5 h-3.5" /> Mapa de setores
+                          {(() => {
+                            const eventPreco = Number(order.event?.preco ?? 0);
+                            const qty = eventPreco > 0 ? Math.max(1, Math.round(Number(order.subtotal) / eventPreco)) : 1;
+                            return <span className="normal-case font-normal text-slate-400">· {qty} assento{qty !== 1 ? "s" : ""}</span>;
+                          })()}
+                        </h3>
+                        <div className="space-y-2">
+                          {order.event.sectors.map((sector) => (
+                            <div key={sector.id} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
+                              <div className="w-3 h-8 rounded-full shrink-0"
+                                style={{ backgroundColor: sector.corHex ?? "#8b5cf6" }} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-slate-900 dark:text-white">{sector.nome}</p>
+                                <p className="text-xs text-slate-500">{sector.quantidade} lugares · {fmt(sector.preco)} / assento</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {order.status === "PAGO" && activeQRs.length === 0 && (
+                          <button onClick={() => qrMut.mutate()} disabled={qrMut.isPending}
+                            className="mt-3 w-full px-4 py-2 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 justify-center">
+                            {qrMut.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <QrCode className="w-3.5 h-3.5" />}
+                            Gerar QR Codes
+                          </button>
+                        )}
+                        {activeQRs.length > 0 && (
+                          <button onClick={() => setActiveTab("qrcodes")}
+                            className="mt-3 w-full px-4 py-2 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-1.5 justify-center">
+                            <QrCode className="w-3.5 h-3.5" /> Ver QR Codes ({activeQRs.length})
+                          </button>
+                        )}
+                      </section>
+                    ) : (
+                      <section className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 text-center space-y-2">
+                        <Ticket className="w-8 h-8 text-amber-400 mx-auto" />
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Detalhes de assentos não disponíveis</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          Pedido realizado pelo app.{order.status === "PAGO" && " Gere o QR Code para o comprador apresentar na entrada."}
+                        </p>
+                        {order.status === "PAGO" && activeQRs.length === 0 && (
+                          <button onClick={() => qrMut.mutate()} disabled={qrMut.isPending}
+                            className="mt-1 px-4 py-2 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 mx-auto">
+                            {qrMut.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <QrCode className="w-3.5 h-3.5" />}
+                            Gerar QR Code
+                          </button>
+                        )}
+                        {activeQRs.length > 0 && (
+                          <button onClick={() => setActiveTab("qrcodes")}
+                            className="mt-1 px-4 py-2 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-1.5 mx-auto">
+                            <QrCode className="w-3.5 h-3.5" /> Ver QR Codes ({activeQRs.length})
+                          </button>
+                        )}
+                      </section>
+                    )
                   )}
 
                   {/* Data e método de compra */}

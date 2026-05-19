@@ -27,6 +27,10 @@ export async function GET(
               select: { id: true, nome: true, papel: true, fotoUrl: true, ordem: true },
               orderBy: { ordem: "asc" },
             },
+            sectors: {
+              orderBy: { ordem: "asc" as const },
+              select: { id: true, nome: true, preco: true, corHex: true, quantidade: true },
+            },
           },
         },
         items: {

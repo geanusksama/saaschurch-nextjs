@@ -24,7 +24,10 @@ export async function POST(
 
     const order = await prisma.eventOrder.findUnique({
       where: { id },
-      include: { items: { where: { status: "ATIVO" } } },
+      include: {
+        items: { where: { status: "ATIVO" } },
+        event: { select: { preco: true, tipoEvento: true } },
+      },
     });
     if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
     if (order.status !== "PAGO") {
@@ -65,21 +68,27 @@ export async function POST(
       }
     } else {
       // Sem itens registrados (pedido vindo do app sem event_order_items)
-      // Gera 1 QR Code geral para o pedido
-      const ticketCode = generateTicketCode(order.eventId, 1);
-      const qrData = JSON.stringify({ tc: ticketCode, ev: order.eventId, oi: order.id, ui: order.userId });
-      await prisma.eventQRCode.create({
-        data: {
-          orderId:     order.id,
-          eventId:     order.eventId,
-          userId:      order.userId,
-          ticketCode,
-          qrData,
-          isUsed:      false,
-          isCancelled: false,
-        },
-      });
-      created.push(ticketCode);
+      // Estimar quantidade de assentos: subtotal / preco_por_assento
+      const eventPreco = Number(order.event?.preco ?? 0);
+      const subtotal = Number(order.subtotal);
+      const qty = eventPreco > 0 ? Math.max(1, Math.round(subtotal / eventPreco)) : 1;
+
+      for (let i = 1; i <= qty; i++) {
+        const ticketCode = generateTicketCode(order.eventId, i);
+        const qrData = JSON.stringify({ tc: ticketCode, ev: order.eventId, oi: order.id, ui: order.userId, seat: i });
+        await prisma.eventQRCode.create({
+          data: {
+            orderId:     order.id,
+            eventId:     order.eventId,
+            userId:      order.userId,
+            ticketCode,
+            qrData,
+            isUsed:      false,
+            isCancelled: false,
+          },
+        });
+        created.push(ticketCode);
+      }
     }
 
     // Notificação de confirmação
