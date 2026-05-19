@@ -86,30 +86,31 @@ CREATE TABLE IF NOT EXISTS event_participants (
 );
 CREATE INDEX IF NOT EXISTS idx_event_participants_event ON event_participants(event_id);
 
--- 6. PEDIDOS (event_orders) — garante colunas do schema atual
-ALTER TABLE event_orders
-  ADD COLUMN IF NOT EXISTS numero_pedido  TEXT,
-  ADD COLUMN IF NOT EXISTS buyer_name     TEXT,
-  ADD COLUMN IF NOT EXISTS buyer_email    TEXT,
-  ADD COLUMN IF NOT EXISTS buyer_phone    TEXT,
-  ADD COLUMN IF NOT EXISTS subtotal       DECIMAL(10,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS desconto       DECIMAL(10,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS total          DECIMAL(10,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS payment_method TEXT,
-  ADD COLUMN IF NOT EXISTS payment_ref    TEXT,
-  ADD COLUMN IF NOT EXISTS notas          TEXT,
-  ADD COLUMN IF NOT EXISTS cancelled_at   TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS updated_at     TIMESTAMPTZ DEFAULT NOW();
-
--- Garante UNIQUE em numero_pedido se a coluna foi criada agora
+-- 6. PEDIDOS (event_orders) — garante colunas do schema atual (só altera se a tabela já existir)
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conrelid = 'event_orders'::regclass
-      AND conname = 'event_orders_numero_pedido_key'
-  ) THEN
-    ALTER TABLE event_orders ADD CONSTRAINT event_orders_numero_pedido_key UNIQUE (numero_pedido);
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'event_orders') THEN
+    ALTER TABLE event_orders
+      ADD COLUMN IF NOT EXISTS numero_pedido  TEXT,
+      ADD COLUMN IF NOT EXISTS buyer_name     TEXT,
+      ADD COLUMN IF NOT EXISTS buyer_email    TEXT,
+      ADD COLUMN IF NOT EXISTS buyer_phone    TEXT,
+      ADD COLUMN IF NOT EXISTS subtotal       DECIMAL(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS desconto       DECIMAL(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS total          DECIMAL(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS payment_method TEXT,
+      ADD COLUMN IF NOT EXISTS payment_ref    TEXT,
+      ADD COLUMN IF NOT EXISTS notas          TEXT,
+      ADD COLUMN IF NOT EXISTS cancelled_at   TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS updated_at     TIMESTAMPTZ DEFAULT NOW();
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = 'event_orders'::regclass
+        AND conname = 'event_orders_numero_pedido_key'
+    ) THEN
+      ALTER TABLE event_orders ADD CONSTRAINT event_orders_numero_pedido_key UNIQUE (numero_pedido);
+    END IF;
   END IF;
 END $$;
 
@@ -128,15 +129,20 @@ CREATE TABLE IF NOT EXISTS event_order_items (
 );
 CREATE INDEX IF NOT EXISTS idx_event_order_items_order ON event_order_items(order_id);
 
--- 8. QRCODES (event_qrcodes) — garante colunas extras
-ALTER TABLE event_qrcodes
-  ADD COLUMN IF NOT EXISTS order_item_id UUID,
-  ADD COLUMN IF NOT EXISTS seat_id       UUID  REFERENCES event_seats(id),
-  ADD COLUMN IF NOT EXISTS user_id       UUID,
-  ADD COLUMN IF NOT EXISTS qr_data       TEXT,
-  ADD COLUMN IF NOT EXISTS is_cancelled  BOOLEAN     DEFAULT false,
-  ADD COLUMN IF NOT EXISTS cancelled_at  TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS checked_in_by UUID;
+-- 8. QRCODES (event_qrcodes) — garante colunas extras (só altera se a tabela já existir)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'event_qrcodes') THEN
+    ALTER TABLE event_qrcodes
+      ADD COLUMN IF NOT EXISTS order_item_id UUID,
+      ADD COLUMN IF NOT EXISTS seat_id       UUID  REFERENCES event_seats(id),
+      ADD COLUMN IF NOT EXISTS user_id       UUID,
+      ADD COLUMN IF NOT EXISTS qr_data       TEXT,
+      ADD COLUMN IF NOT EXISTS is_cancelled  BOOLEAN     DEFAULT false,
+      ADD COLUMN IF NOT EXISTS cancelled_at  TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS checked_in_by UUID;
+  END IF;
+END $$;
 
 -- 9. DEPARTAMENTOS DE EVENTOS (event_departments)
 CREATE TABLE IF NOT EXISTS event_departments (

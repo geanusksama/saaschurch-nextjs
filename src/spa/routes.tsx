@@ -167,6 +167,7 @@ import AppEventNew  from "../app-ui/app/AppEventNew";
 import AppEventView from "../app-ui/app/AppEventView";
 import AppEventEdit from "../app-ui/app/AppEventEdit";
 import AppEventOrders from "../app-ui/app/AppEventOrders";
+import PedidosKanban from "../app-ui/events/PedidosKanban";
 import AppEventCheckin from "../app-ui/app/AppEventCheckin";
 import AppEventRefunds from "../app-ui/app/AppEventRefunds";
 import AppRegistrations from "../app-ui/app/AppRegistrations";
@@ -543,7 +544,7 @@ export const router = createBrowserRouter([
       { path: "app/events/new",         Component: AppEventNew },
       { path: "app/events/:id",         Component: AppEventView },
       { path: "app/events/:id/edit",    Component: AppEventEdit },
-      { path: "app/orders",             Component: AppEventOrders },
+      { path: "app/orders",             Component: PedidosKanban },
       { path: "app/checkin",      Component: AppEventCheckin },
       { path: "app/refunds",      Component: AppEventRefunds },
       { path: "app/daily-bread",   Component: AppDailyBread },

@@ -30,6 +30,7 @@ model Campo {
   legacyChurches     LegacyChurch[]             @relation("LegacyChurchField")
   members            Member[]                   @relation("CampoMembers")
   dailyBreadEntries  AppDailyBreadEntry[]       @relation("CampoDailyBread")
+  events             Event[]                    @relation("EventCampo")
 
   @@map("campos")
 }
@@ -55,6 +56,7 @@ model Regional {
   members     Member[]
   kanCardsOrigin      KanCard[] @relation("KanCardOriginRegional")
   kanCardsDestination KanCard[] @relation("KanCardDestinationRegional")
+  events              Event[]   @relation("EventRegional")
 
   @@unique([campoId, code])
   @@map("regionais")
@@ -800,6 +802,8 @@ model LivroCaixa {
 model Event {
   id                   String    @id @default(uuid()) @db.Uuid
   churchId             String    @map("church_id") @db.Uuid
+  regionalId           String?   @map("regional_id") @db.Uuid
+  campoId              String?   @map("campo_id") @db.Uuid
   title                String    @db.VarChar(255)
   description          String?   @db.Text
   eventType            String?   @map("event_type") @db.VarChar(30)
@@ -831,7 +835,9 @@ model Event {
   updatedBy String?   @map("updated_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
 
-  church             Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  church             Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  regional           Regional? @relation("EventRegional", fields: [regionalId], references: [id])
+  campo              Campo?    @relation("EventCampo", fields: [campoId], references: [id])
   organizer          User?   @relation("EventOrganizer", fields: [organizerId], references: [id])
   recurrenceParent   Event?  @relation("EventRecurrence", fields: [recurrenceParentId], references: [id])
   recurrenceChildren Event[] @relation("EventRecurrence")
@@ -840,6 +846,9 @@ model Event {
   attendance    EventAttendance[]
   sermons       Sermon[]
 
+  @@index([churchId])
+  @@index([regionalId])
+  @@index([campoId])
   @@map("events")
 }
 
@@ -1963,8 +1972,9 @@ model AppEvent {
   orders        EventOrder[]
   carts         EventCart[]
   qrcodes       EventQRCode[]
-  notifications EventNotification[]
   refunds       EventRefund[]
+  notifications EventNotification[]
+  participants  EventParticipant[]
 
   @@index([churchId, status])
   @@index([departmentId])
@@ -2055,33 +2065,34 @@ model EventCart {
   @@map("event_cart")
 }
 
-/// Pedido de ingresso
+/// Pedido de ingresso — tabela criada pelo APP (orders)
 model EventOrder {
-  id            String    @id @default(uuid()) @db.Uuid
-  userId        String    @map("user_id") @db.Uuid
-  eventId       String    @map("event_id") @db.Uuid
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  eventId         String    @map("event_id") @db.Uuid
   /// Formato: PED-XXXXXXXX
-  numeroPedido  String    @unique @map("numero_pedido") @db.Text
-  buyerName     String?   @map("buyer_name") @db.Text
-  buyerEmail    String?   @map("buyer_email") @db.Text
-  buyerPhone    String?   @map("buyer_phone") @db.Text
-  subtotal      Decimal   @db.Decimal(10, 2)
-  desconto      Decimal   @default(0) @db.Decimal(10, 2)
-  total         Decimal   @db.Decimal(10, 2)
-  /// free | pix | credit_card | debit_card
-  paymentMethod String?   @map("payment_method") @db.Text
-  paymentRef    String?   @map("payment_ref") @db.Text
-  /// AGUARDANDO_PAGAMENTO | PAGO | CANCELADO | REEMBOLSADO | EXPIRADO
-  status        String    @default("AGUARDANDO_PAGAMENTO") @db.VarChar(30)
-  notas         String?   @db.Text
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  cancelledAt   DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  numeroPedido    String?   @unique @map("numero_pedido") @db.Text
+  buyerName       String?   @map("buyer_name") @db.Text
+  buyerEmail      String?   @map("buyer_email") @db.Text
+  buyerPhone      String?   @map("buyer_phone") @db.Text
+  subtotal        Decimal   @default(0) @db.Decimal(10, 2)
+  desconto        Decimal   @default(0) @db.Decimal(10, 2)
+  total           Decimal   @default(0) @db.Decimal(10, 2)
+  /// free | pix | credit_card | debit_card | boleto
+  paymentMethod   String?   @default("pix") @map("payment_method") @db.Text
+  paymentRef      String?   @map("payment_ref") @db.Text
+  paymentAttempts Int       @default(0) @map("payment_attempts")
+  /// AGUARDANDO_PAGAMENTO | PAGO | CANCELADO | REEMBOLSADO | EXPIRADO | SOLICITANDO_REEMBOLSO
+  status          String    @default("AGUARDANDO_PAGAMENTO") @db.Text
+  notas           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cancelledAt     DateTime? @map("cancelled_at") @db.Timestamptz(6)
 
-  event   AppEvent         @relation(fields: [eventId], references: [id])
-  items   EventOrderItem[]
-  qrcodes EventQRCode[]
-  refunds EventRefund[]
+  event         AppEvent              @relation(fields: [eventId], references: [id])
+  items         EventOrderItem[]
+  qrcodes       EventQRCode[]
+  refunds       EventRefund[]
   notifications EventNotification[]
 
   @@index([userId, status])
@@ -2091,17 +2102,21 @@ model EventOrder {
 
 /// Item de um pedido (1 ingresso ou 1 setor)
 model EventOrderItem {
-  id        String   @id @default(uuid()) @db.Uuid
-  orderId   String   @map("order_id") @db.Uuid
-  eventId   String   @map("event_id") @db.Uuid
-  seatId    String?  @map("seat_id") @db.Uuid
-  sectorId  String?  @map("sector_id") @db.Uuid
-  qty       Int      @default(1) @db.SmallInt
-  unitPrice Decimal  @map("unit_price") @db.Decimal(10, 2)
-  subtotal  Decimal  @db.Decimal(10, 2)
+  id          String    @id @default(uuid()) @db.Uuid
+  orderId     String    @map("order_id") @db.Uuid
+  eventId     String    @map("event_id") @db.Uuid
+  seatId      String?   @map("seat_id") @db.Uuid
+  sectorId    String?   @map("sector_id") @db.Uuid
+  qty         Int       @default(1) @db.SmallInt
+  unitPrice   Decimal   @default(0) @map("unit_price") @db.Decimal(10, 2)
+  subtotal    Decimal   @default(0) @db.Decimal(10, 2)
   /// ATIVO | CANCELADO | REEMBOLSADO
-  status    String   @default("ATIVO") @db.VarChar(20)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  status      String    @default("ATIVO") @db.Text
+  /// Snapshot desnormalizado gravado pelo app Flutter
+  sectorNome  String?   @map("sector_nome") @db.Text
+  rowNome     String?   @map("row_nome") @db.Text
+  seatNumero  Int?      @map("seat_numero")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   order   EventOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   seat    EventSeat?   @relation(fields: [seatId], references: [id])
@@ -2110,6 +2125,22 @@ model EventOrderItem {
 
   @@index([orderId])
   @@map("event_order_items")
+}
+
+/// Participantes/artistas de um evento (cantores, pregadores, convidados)
+model EventParticipant {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  nome      String   @db.VarChar(255)
+  papel     String?  @db.VarChar(100)
+  fotoUrl   String?  @map("foto_url") @db.Text
+  ordem     Int      @default(0) @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event AppEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_participants")
 }
 
 /// QR Code de ingresso gerado após pagamento confirmado
@@ -2123,9 +2154,9 @@ model EventQRCode {
   ticketCode  String    @unique @map("ticket_code") @db.Text
   qrData      String?   @map("qr_data") @db.Text
   isUsed      Boolean   @default(false) @map("is_used")
+  isCancelled Boolean   @default(false) @map("is_cancelled")
   usedAt      DateTime? @map("used_at") @db.Timestamptz(6)
   checkedInBy String?   @map("checked_in_by") @db.Uuid
-  isCancelled Boolean   @default(false) @map("is_cancelled")
   cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -2138,21 +2169,21 @@ model EventQRCode {
   @@map("event_qrcodes")
 }
 
-/// Fila de solicitações de reembolso
+/// Solicitações de reembolso de pedido
 model EventRefund {
-  id              String    @id @default(uuid()) @db.Uuid
-  orderId         String    @map("order_id") @db.Uuid
-  eventId         String    @map("event_id") @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  motivo          String?   @db.Text
-  valorSolicitado Decimal   @map("valor_solicitado") @db.Decimal(10, 2)
+  id               String    @id @default(uuid()) @db.Uuid
+  orderId          String    @map("order_id") @db.Uuid
+  eventId          String    @map("event_id") @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  motivo           String?   @db.Text
+  valorSolicitado  Decimal   @default(0) @map("valor_solicitado") @db.Decimal(10, 2)
   /// SOLICITADO | APROVADO | NEGADO | PROCESSADO
-  status          String    @default("SOLICITADO") @db.VarChar(20)
-  notasAdmin      String?   @map("notas_admin") @db.Text
-  processedBy     String?   @map("processed_by") @db.Uuid
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  processedAt     DateTime? @map("processed_at") @db.Timestamptz(6)
+  status           String    @default("SOLICITADO") @db.Text
+  notasAdmin       String?   @map("notas_admin") @db.Text
+  processedBy      String?   @map("processed_by") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  processedAt      DateTime? @map("processed_at") @db.Timestamptz(6)
 
   order EventOrder @relation(fields: [orderId], references: [id])
   event AppEvent   @relation(fields: [eventId], references: [id])
@@ -2161,7 +2192,7 @@ model EventRefund {
   @@map("event_refunds")
 }
 
-/// Notificações relacionadas a eventos/ingressos
+/// Notificações push/in-app de eventos
 model EventNotification {
   id           String    @id @default(uuid()) @db.Uuid
   eventId      String    @map("event_id") @db.Uuid
@@ -2178,7 +2209,7 @@ model EventNotification {
   lidaEm       DateTime? @map("lida_em") @db.Timestamptz(6)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  event AppEvent    @relation(fields: [eventId], references: [id])
+  event AppEvent   @relation(fields: [eventId], references: [id])
   order EventOrder? @relation(fields: [orderId], references: [id])
 
   @@index([userId, lida])
