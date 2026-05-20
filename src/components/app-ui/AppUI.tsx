@@ -595,7 +595,7 @@ export function AppUI() {
         const notifications = await response.json();
         if (Array.isArray(notifications)) {
           setNotificationsList(notifications);
-          setNotificationCount(notifications.filter((item: any) => !item.read).length);
+          setNotificationCount(notifications.filter((item: any) => !item.read && !item.archived).length);
         } else {
           setNotificationsList([]);
           setNotificationCount(0);

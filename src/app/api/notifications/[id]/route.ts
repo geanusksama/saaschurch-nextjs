@@ -58,12 +58,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const userId = (user.profile as Record<string, unknown>)?.id as string | undefined;
     if (!userId) return NextResponse.json({ error: "Perfil do usuário não encontrado." }, { status: 401 });
 
-    const current = await prisma.notification.findFirst({ where: { id, userId } });
+    // master/admin may operate on any notification; others only on their own
+    const isSuperUser = user.profileType === "master" || user.profileType === "campo" || user.profileType === "admin";
+    const current = await prisma.notification.findFirst({
+      where: isSuperUser ? { id } : { id, userId },
+    });
     if (!current) return NextResponse.json({ error: "Notificação não encontrada." }, { status: 404 });
 
     const metadata = normalizeNotificationData((current.data as Record<string, unknown>) || {});
     const body = await req.json().catch(() => ({}));
-    const { read, title, message, notificationType, actionUrl, actionText, iconKey, colorKey } = body;
+    const { read, archived, title, message, notificationType, actionUrl, actionText, iconKey, colorKey } = body;
+
+    // Archive (soft-hide from user's view only)
+    if (archived !== undefined && !title && !message && !notificationType && !actionUrl && !actionText && !iconKey && !colorKey && read === undefined) {
+      const updated = await prisma.notification.update({
+        where: { id },
+        data: { archived: Boolean(archived), archivedAt: archived ? new Date() : null },
+      });
+      return NextResponse.json(serializeNotification(updated as unknown as Record<string, unknown>, user));
+    }
+
     const wantsContentUpdate = [title, message, notificationType, actionUrl, actionText, iconKey, colorKey].some((v) => v !== undefined);
 
     if (wantsContentUpdate) {
@@ -102,7 +116,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const userId = (user.profile as Record<string, unknown>)?.id as string | undefined;
     if (!userId) return NextResponse.json({ error: "Perfil do usuário não encontrado." }, { status: 401 });
 
-    const current = await prisma.notification.findFirst({ where: { id, userId } });
+    const isSuperUser2 = user.profileType === "master" || user.profileType === "campo" || user.profileType === "admin";
+    const current = await prisma.notification.findFirst({
+      where: isSuperUser2 ? { id } : { id, userId },
+    });
     if (!current) return NextResponse.json({ error: "Notificação não encontrada." }, { status: 404 });
 
     const metadata = normalizeNotificationData((current.data as Record<string, unknown>) || {});

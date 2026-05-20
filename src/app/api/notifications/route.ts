@@ -100,38 +100,93 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const notifications = await prisma.notification.findMany({
-      where: where as Parameters<typeof prisma.notification.findMany>[0]["where"],
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    });
+    // Filter out archived notifications (only show user's own view)
+    let notifications: Awaited<ReturnType<typeof prisma.notification.findMany>>;
+    try {
+      notifications = await prisma.notification.findMany({
+        where: { ...(where as Parameters<typeof prisma.notification.findMany>[0]["where"]), archived: false },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      });
+    } catch {
+      // Fallback: archived column may not exist yet (pending migration)
+      notifications = await prisma.notification.findMany({
+        where: where as Parameters<typeof prisma.notification.findMany>[0]["where"],
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      });
+    }
 
     return NextResponse.json(notifications.map((n) => serializeNotification(n as unknown as Record<string, unknown>, user)));
   });
 }
 
+async function listChurchRecipientIds(churchId: string) {
+  if (!churchId) return [];
+  const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+    `SELECT DISTINCT u.id::text AS id FROM users u WHERE u.deleted_at IS NULL AND u.is_active = TRUE AND u.church_id = $1::uuid`,
+    churchId
+  );
+  return rows.map((r) => r.id).filter(Boolean);
+}
+
+function canCreateNotification(user: import("@/lib/auth").AuthUser) {
+  return (
+    user.profileType === "master" ||
+    user.profileType === "campo" ||
+    isFieldAdmin(user)
+  );
+}
+
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
-    if (!isFieldAdmin(user)) {
-      return NextResponse.json({ error: "Apenas o administrador do campo pode criar notificações." }, { status: 403 });
+    if (!canCreateNotification(user)) {
+      return NextResponse.json({ error: "Apenas administradores podem criar notificações." }, { status: 403 });
     }
     const body = await req.json().catch(() => ({}));
-    const { title, message, notificationType, iconKey, colorKey, actionUrl, actionText } = body;
+    const { title, message, notificationType, iconKey, colorKey, actionUrl, actionText, imageUrl, fileUrl, fileName, scope, churchId } = body;
     if (!title || !notificationType) {
       return NextResponse.json({ error: "title e notificationType são obrigatórios." }, { status: 400 });
     }
-    const recipientIds = await listFieldRecipientIds(user.campoId!);
+
+    const resolvedScope: string = scope || "field"; // "field" | "church"
+    // master pode passar campoId no body; outros usam o próprio campoId
+    const effectiveCampoId: string | undefined = (body as Record<string, unknown>).campoId as string || user.campoId || undefined;
+    let recipientIds: string[];
+
+    if (resolvedScope === "church" && churchId) {
+      recipientIds = await listChurchRecipientIds(churchId);
+    } else if (effectiveCampoId) {
+      recipientIds = await listFieldRecipientIds(effectiveCampoId);
+    } else {
+      // sem campo definido: envia só para o próprio criador
+      recipientIds = [(user.profile as Record<string, unknown>).id as string];
+    }
+
     const profile = user.profile as Record<string, unknown>;
     const finalRecipientIds = recipientIds.length ? recipientIds : [profile.id as string];
     const batchId = crypto.randomUUID();
     const metadata = {
-      batchId, scope: "field", iconKey: iconKey || "bell", colorKey: colorKey || "purple",
-      campoId: user.campoId, createdBy: profile.id,
+      batchId,
+      scope: resolvedScope,
+      iconKey: iconKey || "bell",
+      colorKey: colorKey || "purple",
+      campoId: effectiveCampoId || null,
+      churchId: resolvedScope === "church" ? (churchId || null) : null,
+      createdBy: profile.id,
     };
     await prisma.notification.createMany({
       data: finalRecipientIds.map((uid) => ({
-        userId: uid, notificationType, title, message: message || null,
-        actionUrl: actionUrl || null, actionText: actionText || null, data: metadata,
+        userId: uid,
+        notificationType,
+        title,
+        message: message || null,
+        actionUrl: actionUrl || null,
+        actionText: actionText || null,
+        imageUrl: imageUrl || null,
+        fileUrl: fileUrl || null,
+        fileName: fileName || null,
+        data: metadata,
       })),
     });
     const created = await prisma.notification.findFirst({
