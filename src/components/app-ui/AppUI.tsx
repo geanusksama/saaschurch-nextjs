@@ -138,12 +138,15 @@ const appNavigation: NavigationSection[] = [
       { name: 'Configurar Pipelines',   path: '/app-ui/secretariat/pipelines',          icon: GitBranch,   permKey: 'pipeline_config' },
       { name: 'Igrejas',                path: '/app-ui/churches',                       icon: Building,    permKey: 'churches' },
       { name: 'Lista de Membros',       path: '/app-ui/members',                        icon: Users,       permKey: 'members' },
+      { name: 'Importação de Membros',  path: '/app-ui/members/import',                 icon: UserPlus,    permKey: 'member_import' },
       { name: 'Batismo',                path: '/app-ui/baptism',                        icon: CheckSquare, permKey: 'baptism' },
       { name: 'Consagração',            path: '/app-ui/consecration',                   icon: Gift,        permKey: 'consecration' },
       { name: 'Transferência',          path: '/app-ui/transfer',                       icon: UserCheck,   permKey: 'transfer' },
       { name: 'Credenciais',            path: '/app-ui/credentials',                    icon: Shield,      permKey: 'credentials' },
       { name: 'Modelos de Credencial',  path: '/app-ui/secretariat/credential-models',  icon: CreditCard,  permKey: 'credential_models' },
       { name: 'Requerimentos',          path: '/app-ui/requirements',                   icon: FileText,    permKey: 'requirements' },
+      { name: 'Presença',               path: '/app-ui/attendance',                     icon: Clipboard,   permKey: 'attendance' },
+      { name: 'Contatos / Leads',       path: '/app-ui/contacts',                       icon: Contact,     permKey: 'crm_leads' },
       { name: 'Relatórios',             path: '/app-ui/reports',                        icon: BarChart3,   permKey: 'reports' },
       { name: 'Aniversariantes',        path: '/app-ui/birthdays',                      icon: Cake,        permKey: 'birthdays' },
     ]
@@ -151,15 +154,19 @@ const appNavigation: NavigationSection[] = [
   {
     section: 'Gestão Pastoral',
     items: [
-      { name: 'Gestão',               path: '/app-ui/pastoral-kanban',        icon: LayoutGrid, permKey: 'pastoral_visits' },
-      { name: 'Discipulado',          path: '/app-ui/discipleship-tracking',  icon: BookOpen,   permKey: 'discipleship' },
-      { name: 'Relatórios Pastorais', path: '/app-ui/pastoral-reports',       icon: BarChart3,  permKey: 'pastoral_reports' },
+      { name: 'Gestão',               path: '/app-ui/pastoral-kanban',        icon: LayoutGrid,    permKey: 'pastoral_visits' },
+      { name: 'Discipulado',          path: '/app-ui/discipleship-tracking',  icon: BookOpen,      permKey: 'discipleship' },
+      { name: 'Aconselhamentos',      path: '/app-ui/counseling-list',        icon: MessageSquare, permKey: 'counseling' },
+      { name: 'Pedidos de Oração',    path: '/app-ui/prayer-wall',            icon: Heart,         permKey: 'prayer_requests' },
+      { name: 'Follow-up',            path: '/app-ui/followup-dashboard',     icon: Target,        permKey: 'followup' },
+      { name: 'Relatórios Pastorais', path: '/app-ui/pastoral-reports',       icon: BarChart3,     permKey: 'pastoral_reports' },
     ]
   },
   {
     section: 'Ministérios',
     items: [
-      { name: 'Todos Ministérios', path: '/app-ui/ministries', icon: Users, permKey: 'ministries' },
+      { name: 'Todos Ministérios', path: '/app-ui/ministries',       icon: Users,  permKey: 'ministries',     exact: true },
+      { name: 'Equipes / Escalas', path: '/app-ui/ministry-teams',   icon: Award,  permKey: 'ministry_teams' },
     ]
   },
   {
@@ -172,14 +179,19 @@ const appNavigation: NavigationSection[] = [
   {
     section: 'Comunicação',
     items: [
-      { name: 'WhatsApp', path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp' },
+      { name: 'WhatsApp',          path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp' },
+      { name: 'E-mail Campanhas',  path: '/app-ui/email-campaigns-screen',       icon: Mail,          permKey: 'email_campaigns' },
+      { name: 'SMS',               path: '/app-ui/sms-campaigns',                icon: MessageSquare, permKey: 'sms' },
+      { name: 'Broadcast',         path: '/app-ui/broadcast-message',            icon: Radio,         permKey: 'email_campaigns' },
     ]
   },
   {
     section: 'Eventos',
     items: [
-      { name: 'Agenda',     path: '/app-ui/events',       icon: Calendar, permKey: 'events' },
-      { name: 'Pão Diário', path: '/app-ui/daily-bread',  icon: BookOpen, permKey: 'daily_bread' },
+      { name: 'Agenda',     path: '/app-ui/events',          icon: Calendar,    permKey: 'events',       exact: true },
+      { name: 'Pão Diário', path: '/app-ui/daily-bread',     icon: BookOpen,    permKey: 'daily_bread' },
+      { name: 'Ingressos',  path: '/app-ui/ticket-purchase', icon: Ticket,      permKey: 'tickets' },
+      { name: 'Check-in',   path: '/app-ui/checkin',         icon: CheckSquare, permKey: 'checkin',     exact: true },
     ]
   },
   {
@@ -200,18 +212,23 @@ const appNavigation: NavigationSection[] = [
   {
     section: 'Finanças',
     items: [
-      { name: 'Livro Caixa',  path: '/app-ui/finance/cashbook',        icon: BookOpen,       permKey: 'cashbook' },
-      { name: 'Lançamento',   path: '/app-ui/finance/lancamento/new',  icon: TrendingUp,     permKey: 'finance_entries' },
-      { name: 'Fluxo de Caixa', path: '/app-ui/finance/cash-flow',     icon: Wallet,         permKey: 'cash_flow' },
-      { name: 'Planilhas',    path: '/app-ui/crm/spreadsheet',         icon: FileSpreadsheet, permKey: 'spreadsheets' },
+      { name: 'Tesouraria',       path: '/app-ui/finance',                icon: DollarSign,      permKey: 'finance',         exact: true },
+      { name: 'Livro Caixa',      path: '/app-ui/finance/cashbook',       icon: BookOpen,        permKey: 'cashbook' },
+      { name: 'Lançamento',       path: '/app-ui/finance/lancamento/new', icon: TrendingUp,      permKey: 'finance_entries' },
+      { name: 'Fluxo de Caixa',   path: '/app-ui/finance/cash-flow',      icon: Wallet,          permKey: 'cash_flow' },
+      { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },
+      { name: 'Rel. Financeiros', path: '/app-ui/financial-reports',      icon: BarChart3,       permKey: 'finance_reports' },
     ]
   },
   {
     section: 'Sistema',
     items: [
-      { name: 'Usuários',         path: '/app-ui/system/users',        icon: Users,    permKey: 'system_users' },
-      { name: 'Configurações',    path: '/app-ui/system-settings',     icon: Settings, permKey: 'system_settings' },
-      { name: 'Senha dos Campos', path: '/app-ui/system/campo-senhas', icon: Lock,     permKey: 'campo_passwords' },
+      { name: 'Usuários',              path: '/app-ui/system/users',        icon: Users,    permKey: 'system_users' },
+      { name: 'Funções e Permissões',  path: '/app-ui/system/permissions',  icon: Shield,   permKey: 'system_roles' },
+      { name: 'Configurações',         path: '/app-ui/system-settings',     icon: Settings, permKey: 'system_settings' },
+      { name: 'Senha dos Campos',      path: '/app-ui/system/campo-senhas', icon: Lock,     permKey: 'campo_passwords' },
+      { name: 'Log de Auditoria',      path: '/app-ui/system/audit-log',    icon: FileText, permKey: 'audit_log' },
+      { name: 'Integrações',           path: '/app-ui/system/integrations', icon: Plug,     permKey: 'integrations' },
     ]
   },
 ];
