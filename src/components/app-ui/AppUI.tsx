@@ -1856,7 +1856,8 @@ export function AppUI() {
                   </div>
 
                   <div className="pt-2">
-                    {/* Alterar Senha */}
+                    {/* Alterar Senha — apenas campo, admin e master */}
+                    {storedUser.profileType !== 'church' && (
                     <button
                       type="button"
                       onClick={() => { setShowPwSection((v) => !v); setPwError(''); setPwSuccess(''); }}
@@ -1865,8 +1866,9 @@ export function AppUI() {
                       <span className="flex items-center gap-2"><Lock className="w-4 h-4 text-slate-400" />Alterar senha</span>
                       <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showPwSection ? 'rotate-180' : ''}`} />
                     </button>
+                    )}
 
-                    {showPwSection && (
+                    {storedUser.profileType !== 'church' && showPwSection && (
                       <form onSubmit={handleChangePassword} className="mb-2 p-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/40 space-y-2">
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase tracking-wide font-medium mb-1">Senha atual</label>
