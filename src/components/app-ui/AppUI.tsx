@@ -311,6 +311,15 @@ export function AppUI() {
   const [myProfileOpen, setMyProfileOpen] = useState(false);
   const [themeEditorOpen, setThemeEditorOpen] = useState(false);
   const [userFoto, setUserFoto] = useState<string | null>(() => storedUser.foto || null);
+
+  // ── Alterar senha ────────────────────────────────────────────────────
+  const [showPwSection, setShowPwSection] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
   const profilePhotoRef = useRef<HTMLInputElement>(null);
 
   function handleProfilePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -330,6 +339,34 @@ export function AppUI() {
     reader.readAsDataURL(file);
     e.target.value = '';
   }
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError('');
+    setPwSuccess('');
+    if (!pwNew.trim() || !pwCurrent.trim()) { setPwError('Preencha todos os campos.'); return; }
+    if (pwNew.length < 6) { setPwError('A nova senha deve ter pelo menos 6 caracteres.'); return; }
+    if (pwNew !== pwConfirm) { setPwError('As senhas não coincidem.'); return; }
+    setPwLoading(true);
+    // Re-authenticate with current password to verify it
+    const email = storedUser.email as string;
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: pwCurrent });
+    if (signInError) {
+      setPwError('Senha atual incorreta.');
+      setPwLoading(false);
+      return;
+    }
+    const { error: updateError } = await supabase.auth.updateUser({ password: pwNew });
+    if (updateError) {
+      setPwError(updateError.message);
+      setPwLoading(false);
+      return;
+    }
+    setPwSuccess('Senha alterada com sucesso!');
+    setPwCurrent(''); setPwNew(''); setPwConfirm('');
+    setPwLoading(false);
+    setTimeout(() => { setPwSuccess(''); setShowPwSection(false); }, 2000);
+  }
+
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mrm_theme') === 'dark');
   const [branding, setBranding] = useState<ThemeSettings>(() => loadThemeSettings());
   const profileRef = useRef<HTMLDivElement>(null);
@@ -1819,14 +1856,64 @@ export function AppUI() {
                   </div>
 
                   <div className="pt-2">
-                    <Link
-                      to="/app-ui/system/users"
-                      onClick={() => setMyProfileOpen(false)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-colors"
+                    {/* Alterar Senha */}
+                    <button
+                      type="button"
+                      onClick={() => { setShowPwSection((v) => !v); setPwError(''); setPwSuccess(''); }}
+                      className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors mb-2"
                     >
-                      <Settings className="w-4 h-4" />
-                      Gerenciar Usuários e Permissões
-                    </Link>
+                      <span className="flex items-center gap-2"><Lock className="w-4 h-4 text-slate-400" />Alterar senha</span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showPwSection ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showPwSection && (
+                      <form onSubmit={handleChangePassword} className="mb-2 p-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/40 space-y-2">
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase tracking-wide font-medium mb-1">Senha atual</label>
+                          <input
+                            type="password"
+                            value={pwCurrent}
+                            onChange={(e) => setPwCurrent(e.target.value)}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            placeholder="••••••••"
+                            autoComplete="current-password"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase tracking-wide font-medium mb-1">Nova senha</label>
+                          <input
+                            type="password"
+                            value={pwNew}
+                            onChange={(e) => setPwNew(e.target.value)}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            placeholder="Mínimo 6 caracteres"
+                            autoComplete="new-password"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase tracking-wide font-medium mb-1">Confirmar nova senha</label>
+                          <input
+                            type="password"
+                            value={pwConfirm}
+                            onChange={(e) => setPwConfirm(e.target.value)}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            placeholder="Repita a nova senha"
+                            autoComplete="new-password"
+                          />
+                        </div>
+                        {pwError && <p className="text-xs text-red-500 font-medium">{pwError}</p>}
+                        {pwSuccess && <p className="text-xs text-emerald-600 font-medium">{pwSuccess}</p>}
+                        <button
+                          type="submit"
+                          disabled={pwLoading}
+                          className="w-full py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold transition-colors"
+                        >
+                          {pwLoading ? 'Salvando...' : 'Alterar senha'}
+                        </button>
+                      </form>
+                    )}
+
+
                   </div>
                 </div>
               </div>
