@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, ArrowLeft, Check, X, Info, Save, RefreshCw } from 'lucide-react';
+import { Shield, ArrowLeft, Check, X, Info, Save, RefreshCw, Copy, Clipboard } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import {
   DEFAULT_PERMISSION_MODULES,
@@ -43,6 +43,12 @@ export default function UserPermissions() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [filterGroup, setFilterGroup] = useState('');
+  const [clipboard, setClipboard] = useState<PermMap | null>(() => {
+    try {
+      const raw = localStorage.getItem('mrm_perms_clipboard');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
 
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -117,6 +123,17 @@ export default function UserPermissions() {
 
   const resetAll = () => {
     setPerms({});
+    setSaved(false);
+  };
+
+  const handleCopy = () => {
+    try { localStorage.setItem('mrm_perms_clipboard', JSON.stringify(perms)); } catch { /* ignore */ }
+    setClipboard({ ...perms });
+  };
+
+  const handlePaste = () => {
+    if (!clipboard) return;
+    setPerms({ ...clipboard });
     setSaved(false);
   };
 
@@ -222,6 +239,23 @@ export default function UserPermissions() {
           {saved && (
             <span className="text-sm text-green-600 dark:text-green-400 font-medium">Salvo!</span>
           )}
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            title="Copiar configuração de permissões deste usuário"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            Copiar
+          </button>
+          <button
+            onClick={handlePaste}
+            disabled={!clipboard}
+            className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title={clipboard ? `Colar permissões copiadas (${Object.keys(clipboard).length} sobrescritas)` : 'Nenhuma permissão copiada'}
+          >
+            <Clipboard className="w-3.5 h-3.5" />
+            Colar
+          </button>
           <button
             onClick={resetAll}
             className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
