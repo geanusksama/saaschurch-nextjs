@@ -76,28 +76,21 @@ export async function GET(req: NextRequest) {
     const userId = (user.profile as Record<string, unknown>)?.id as string | undefined;
     if (!userId) return NextResponse.json([]);
 
-    const isSecret = roleClassOf(user) === "secretary";
-    const isTesour = roleClassOf(user) === "treasurer";
-    const isAtSede = isAtHeadquartersChurch(user);
-    const seesAllInCampo =
-      user.profileType === "master" || user.profileType === "admin" ||
-      ((user.profileType === "campo" || user.profileType === "church") && isAtSede && !isSecret && !isTesour);
+    // Filtro de campo: todos os usuários com campoId veem broadcasts do seu campo
+    const campoFilter = user.campoId ? {
+      AND: [
+        { data: { path: ["scope"], equals: "field" } },
+        { data: { path: ["campoId"], equals: user.campoId } },
+      ],
+    } : null;
 
     let where: Record<string, unknown> = {};
     if (user.profileType === "master") {
-      where = {};
-    } else if (seesAllInCampo) {
-      const campoFilter = {
-        AND: [
-          { data: { path: ["scope"], equals: "field" } },
-          { data: { path: ["campoId"], equals: user.campoId } },
-        ],
-      };
+      where = {}; // master vê tudo; deduplicação por batchId aplicada abaixo
+    } else if (campoFilter) {
       where = { OR: [{ userId }, campoFilter] };
     } else {
-      where = {
-        OR: [{ userId }, { data: { path: ["createdBy"], equals: userId } }],
-      };
+      where = { userId };
     }
 
     // Filter out archived notifications (only show user's own view)
@@ -117,7 +110,26 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(notifications.map((n) => serializeNotification(n as unknown as Record<string, unknown>, user)));
+    // Deduplicar por batchId — broadcasts criam apenas 1 registro, mas registros antigos podem ter duplicatas
+    const batchSeen = new Map<string, (typeof notifications)[0]>();
+    const deduped: (typeof notifications)[0][] = [];
+    for (const n of notifications) {
+      const meta = normalizeNotificationData((n.data as Record<string, unknown>) || {});
+      const bId = meta.batchId as string | null;
+      if (!bId) { deduped.push(n); continue; }
+      const existing = batchSeen.get(bId);
+      if (!existing) {
+        batchSeen.set(bId, n);
+        deduped.push(n);
+      } else if ((n as unknown as Record<string, unknown>).userId === userId && (existing as unknown as Record<string, unknown>).userId !== userId) {
+        // Preferir o registro próprio do usuário (tem estado de leitura/arquivo preciso)
+        const idx = deduped.indexOf(existing);
+        if (idx !== -1) deduped[idx] = n;
+        batchSeen.set(bId, n);
+      }
+    }
+
+    return NextResponse.json(deduped.map((n) => serializeNotification(n as unknown as Record<string, unknown>, user)));
   });
 }
 
@@ -152,19 +164,8 @@ export async function POST(req: NextRequest) {
     const resolvedScope: string = scope || "field"; // "field" | "church"
     // master pode passar campoId no body; outros usam o próprio campoId
     const effectiveCampoId: string | undefined = (body as Record<string, unknown>).campoId as string || user.campoId || undefined;
-    let recipientIds: string[];
-
-    if (resolvedScope === "church" && churchId) {
-      recipientIds = await listChurchRecipientIds(churchId);
-    } else if (effectiveCampoId) {
-      recipientIds = await listFieldRecipientIds(effectiveCampoId);
-    } else {
-      // sem campo definido: envia só para o próprio criador
-      recipientIds = [(user.profile as Record<string, unknown>).id as string];
-    }
 
     const profile = user.profile as Record<string, unknown>;
-    const finalRecipientIds = recipientIds.length ? recipientIds : [profile.id as string];
     const batchId = crypto.randomUUID();
     const metadata = {
       batchId,
@@ -175,9 +176,10 @@ export async function POST(req: NextRequest) {
       churchId: resolvedScope === "church" ? (churchId || null) : null,
       createdBy: profile.id,
     };
-    await prisma.notification.createMany({
-      data: finalRecipientIds.map((uid) => ({
-        userId: uid,
+    // Cria apenas 1 registro por broadcast — a visibilidade é aplicada no GET via filtro de campo/scope
+    const created = await prisma.notification.create({
+      data: {
+        userId: profile.id as string,
         notificationType,
         title,
         message: message || null,
@@ -187,12 +189,8 @@ export async function POST(req: NextRequest) {
         fileUrl: fileUrl || null,
         fileName: fileName || null,
         data: metadata,
-      })),
+      },
     });
-    const created = await prisma.notification.findFirst({
-      where: { userId: profile.id as string, title, notificationType, data: { path: ["batchId"], equals: batchId } },
-      orderBy: { createdAt: "desc" },
-    });
-    return NextResponse.json(created ? serializeNotification(created as unknown as Record<string, unknown>, user) : { batchId, title, notificationType }, { status: 201 });
+    return NextResponse.json(serializeNotification(created as unknown as Record<string, unknown>, user), { status: 201 });
   });
 }

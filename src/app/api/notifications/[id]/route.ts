@@ -71,6 +71,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Archive (soft-hide from user's view only)
     if (archived !== undefined && !title && !message && !notificationType && !actionUrl && !actionText && !iconKey && !colorKey && read === undefined) {
+      // Se for broadcast de campo, arquiva todos os registros do lote (antigos duplicados incluídos)
+      if (isFieldAdmin(user) && metadata.scope === "field" && metadata.campoId === user.campoId && metadata.batchId) {
+        const notificationIds = await listFieldNotificationIds(user.campoId!, metadata.batchId as string);
+        if (notificationIds.length) {
+          await prisma.notification.updateMany({
+            where: { id: { in: notificationIds } },
+            data: { archived: Boolean(archived), archivedAt: archived ? new Date() : null },
+          });
+          const updated = await prisma.notification.findFirst({ where: { id } });
+          return NextResponse.json(serializeNotification((updated || current) as unknown as Record<string, unknown>, user));
+        }
+      }
       const updated = await prisma.notification.update({
         where: { id },
         data: { archived: Boolean(archived), archivedAt: archived ? new Date() : null },
