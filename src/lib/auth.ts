@@ -89,7 +89,8 @@ async function ensureUserProfile(authUser: { id: string; email?: string; user_me
   let profile = await loadUserProfileByEmail(authUser.email);
   if (profile) return profile;
 
-  const initialProfileType = metadata.profile_type || "pending";
+  // Always create with "pending" regardless of metadata — admin must activate
+  const initialProfileType = "pending";
   await prisma.user.create({
     data: {
       email: authUser.email,

@@ -237,11 +237,17 @@ export function AppUI() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Guard: redireciona usuários com perfil pendente antes de renderizar qualquer coisa
+  // Guard: redireciona visitantes não autenticados e perfis pendentes/inválidos
   useEffect(() => {
+    const token = localStorage.getItem('mrm_token');
+    if (!token) {
+      navigate('/login', { replace: true });
+      return;
+    }
     try {
       const user = JSON.parse(localStorage.getItem('mrm_user') || '{}');
-      if (user.profileType === 'pending') {
+      const VALID_PROFILES = ['master', 'admin', 'campo', 'church'];
+      if (!user.profileType || user.profileType === 'pending' || !VALID_PROFILES.includes(user.profileType)) {
         navigate('/pending-activation', { replace: true });
       }
     } catch { /* ignore */ }

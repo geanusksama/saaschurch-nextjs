@@ -1,7 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withAuth } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  return withAuth(req, async (user) => {
+    if (user.profileType !== "master") {
+      return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
+    }
+    return healthCheck();
+  });
+}
+
+async function healthCheck() {
   const databaseUrl = process.env.DATABASE_URL || "";
   let databaseUrlInfo: { host: string | null; port: string | null; hasPgbouncer: boolean } = {
     host: null,
