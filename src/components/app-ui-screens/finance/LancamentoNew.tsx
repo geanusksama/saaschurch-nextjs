@@ -935,6 +935,7 @@ export default function LancamentoNew() {
     : typeof userObj?.church?.name === 'string'
       ? userObj.church.name
       : '';
+  const isChurchUser = userObj?.profileType === 'church';
   const [caixaId, setCaixaId] = useState<string>(profileChurchId);
   const [caixaNome, setCaixaNome] = useState<string>(profileChurchName);
   const [transferir, setTransferir] = useState(false);
@@ -1386,22 +1387,30 @@ export default function LancamentoNew() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">CAIXA DE ORIGEM</p>
-                <button type="button" onClick={() => setShowCaixaModal(true)}
-                  className="font-bold text-slate-800 dark:text-slate-100 text-sm hover:text-indigo-600 transition-colors truncate text-left w-full">
-                  {caixaNome || 'Selecione uma igreja'}
-                </button>
+                {isChurchUser ? (
+                  <p className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">
+                    {caixaNome || 'Igreja não definida'}
+                  </p>
+                ) : (
+                  <button type="button" onClick={() => setShowCaixaModal(true)}
+                    className="font-bold text-slate-800 dark:text-slate-100 text-sm hover:text-indigo-600 transition-colors truncate text-left w-full">
+                    {caixaNome || 'Selecione uma igreja'}
+                  </button>
+                )}
               </div>
               {caixaId && <span className="text-[10px] font-bold bg-[#d1fae5] text-[#047857] px-2 py-0.5 rounded-full flex-shrink-0">ATIVA</span>}
 
-              {/* Toggle transferir */}
-              <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-                <span className="text-xs text-slate-400 hidden sm:block">Outra igreja</span>
-                <div onClick={() => setTransferir(v => !v)} className="cursor-pointer">
-                  <div className={`w-10 h-5 rounded-full relative transition-colors ${transferir ? 'bg-indigo-600' : 'bg-slate-300'}`}>
-                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${transferir ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              {/* Toggle transferir — oculto para perfil church */}
+              {!isChurchUser && (
+                <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+                  <span className="text-xs text-slate-400 hidden sm:block">Outra igreja</span>
+                  <div onClick={() => setTransferir(v => !v)} className="cursor-pointer">
+                    <div className={`w-10 h-5 rounded-full relative transition-colors ${transferir ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                      <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${transferir ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
