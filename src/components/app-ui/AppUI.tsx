@@ -696,10 +696,9 @@ export function AppUI() {
 
   const profileType: string = storedUser.profileType || 'church';
   const { canView } = usePermissions(profileType);
-  const FINANCE_KEYS = ['finance', 'cashbook', 'finance_entries', 'cash_flow', 'spreadsheets', 'finance_reports'];
   const canViewItem = (pt: string, permKey?: string) => {
     if (!permKey) return true;
-    if (pt === 'church' && FINANCE_KEYS.includes(permKey)) return false;
+    if (pt === 'church' && permKey === 'finance') return false;
     return canView(permKey);
   };
 
