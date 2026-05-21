@@ -103,11 +103,21 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(full(), mngr(), none(), none()) },
 
   // ── Sistema ───────────────────────────────────────────────────────────────
-  { group: 'Sistema', name: 'Usuários',          key: 'system_users',    permissions: mkPerms(mngr(), mngr(), none(), none()) },
-  { group: 'Sistema', name: 'Senha dos Campos',  key: 'campo_passwords', permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Sistema', name: 'Usuários',          key: 'system_users',    permissions: mkPerms(mngr(), mngr(), mngr(), none()) },
   {
     group: 'Sistema',
-    name: 'Funções e Permissões',
+    name: 'Senha dos Campos',
+    key: 'campo_passwords',
+    permissions: mkPerms(
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+    ),
+  },
+  {
+    group: 'Sistema',
+    name: 'Funções',
     key: 'system_roles',
     permissions: mkPerms(
       { master: true, admin: false, campo: false, church: false },
@@ -116,12 +126,98 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
       { master: true, admin: false, campo: false, church: false },
     ),
   },
-  { group: 'Sistema', name: 'Configurações', key: 'system_settings', permissions: mkPerms(admin(), admin(), none(), none()) },
-  { group: 'Sistema', name: 'Log de Auditoria', key: 'audit_log',    permissions: mkPerms(admin(), admin(), none(), none()) },
+  {
+    group: 'Sistema',
+    name: 'Permissões (Matriz)',
+    key: 'system_permissions',
+    permissions: mkPerms(
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+    ),
+  },
+  { group: 'Sistema', name: 'Configurações (página)', key: 'system_settings', permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Sistema', name: 'Log de Auditoria',        key: 'audit_log',      permissions: mkPerms(admin(), admin(), none(), none()) },
   {
     group: 'Sistema',
     name: 'Integrações / API',
     key: 'integrations',
+    permissions: mkPerms(
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+    ),
+  },
+
+  // ── Configurações (cards da página de Configurações do Sistema) ───────────
+  // Geral
+  { group: 'Configurações', name: 'Informações da Igreja',      key: 'settings_church_info',     permissions: mkPerms(admin(), none(), admin(), none()) },
+  { group: 'Configurações', name: 'Marca e Aparência',           key: 'settings_branding',         permissions: mkPerms(admin(), none(), admin(), none()) },
+  { group: 'Configurações', name: 'Localização e Idioma',        key: 'settings_localization',     permissions: mkPerms(admin(), none(), admin(), none()) },
+  // Segurança
+  { group: 'Configurações', name: 'Configurações de Segurança',  key: 'settings_security',         permissions: mkPerms(admin(), none(), admin(), none()) },
+  {
+    group: 'Configurações',
+    name: 'Chaves de API',
+    key: 'settings_api_keys',
+    permissions: mkPerms(
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+    ),
+  },
+  // Notificações
+  { group: 'Configurações', name: 'Preferências de Notificação', key: 'settings_notifications',   permissions: mkPerms(admin(), none(), admin(), none()) },
+  { group: 'Configurações', name: 'Templates de Notificação',    key: 'settings_templates',        permissions: mkPerms(admin(), admin(), admin(), admin()) },
+  // Comunicação (configs)
+  { group: 'Configurações', name: 'Configurações de Email',      key: 'settings_email_config',     permissions: mkPerms(admin(), none(), admin(), none()) },
+  { group: 'Configurações', name: 'WhatsApp Business Config',    key: 'settings_whatsapp_config',  permissions: mkPerms(admin(), none(), admin(), none()) },
+  { group: 'Configurações', name: 'SMS Config',                  key: 'settings_sms_config',       permissions: mkPerms(admin(), none(), admin(), none()) },
+  // Integrações (configs)
+  {
+    group: 'Configurações',
+    name: 'Webhooks',
+    key: 'settings_webhooks',
+    permissions: mkPerms(
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+    ),
+  },
+  {
+    group: 'Configurações',
+    name: 'API (docs e acesso)',
+    key: 'settings_api',
+    permissions: mkPerms(
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+    ),
+  },
+  // Dados
+  { group: 'Configurações', name: 'Importação de Dados',         key: 'settings_import',           permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Exportação de Dados',         key: 'settings_export',           permissions: mkPerms(admin(), admin(), none(), none()) },
+  {
+    group: 'Configurações',
+    name: 'Backup',
+    key: 'settings_backup',
+    permissions: mkPerms(
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+    ),
+  },
+  // Documentação Técnica
+  {
+    group: 'Configurações',
+    name: 'Documentação Técnica',
+    key: 'settings_docs',
     permissions: mkPerms(
       { master: true, admin: false, campo: false, church: false },
       { master: true, admin: false, campo: false, church: false },

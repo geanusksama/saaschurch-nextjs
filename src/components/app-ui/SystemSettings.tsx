@@ -40,16 +40,34 @@ import {
   Code
 } from 'lucide-react';
 import { Link } from 'react-router';
+import { usePermissions } from '../../lib/usePermissions';
 
-const settingsSections = [
+type SettingsItem = {
+  id: string;
+  name: string;
+  description: string;
+  path: string;
+  badge?: string;
+  external?: boolean;
+  permKey: string;
+};
+
+type SettingsSection = {
+  category: string;
+  icon: any;
+  color: string;
+  items: SettingsItem[];
+};
+
+const settingsSections: SettingsSection[] = [
   {
     category: 'Geral',
     icon: Settings,
     color: 'bg-purple-500',
     items: [
-      { id: 'church-info', name: 'Informações da Igreja', description: 'Nome, endereço e contatos', path: '/app-ui/system/church-info' },
-      { id: 'branding', name: 'Marca e Aparência', description: 'Logo, cores e temas', path: '/app-ui/system/branding' },
-      { id: 'localization', name: 'Localização e Idioma', description: 'Fuso horário e moeda', path: '/app-ui/system/localization' },
+      { id: 'church-info',   name: 'Informações da Igreja', description: 'Nome, endereço e contatos',       path: '/app-ui/system/church-info',  permKey: 'settings_church_info' },
+      { id: 'branding',      name: 'Marca e Aparência',      description: 'Logo, cores e temas',             path: '/app-ui/system/branding',     permKey: 'settings_branding' },
+      { id: 'localization',  name: 'Localização e Idioma',   description: 'Fuso horário e moeda',            path: '/app-ui/system/localization', permKey: 'settings_localization' },
     ]
   },
   {
@@ -57,9 +75,9 @@ const settingsSections = [
     icon: Users,
     color: 'bg-blue-500',
     items: [
-      { id: 'users', name: 'Usuários', description: 'Gerenciar contas de usuário', path: '/app-ui/system/users', badge: '45' },
-      { id: 'roles', name: 'Funções', description: 'Criar e editar funções', path: '/app-ui/system/roles', badge: '8' },
-      { id: 'permissions', name: 'Permissões', description: 'Matriz de permissões', path: '/app-ui/system/permissions' },
+      { id: 'users',       name: 'Usuários',    description: 'Gerenciar contas de usuário', path: '/app-ui/system/users',       badge: '45', permKey: 'system_users' },
+      { id: 'roles',       name: 'Funções',     description: 'Criar e editar funções',      path: '/app-ui/system/roles',       badge: '8',  permKey: 'system_roles' },
+      { id: 'permissions', name: 'Permissões',  description: 'Matriz de permissões',        path: '/app-ui/system/permissions',              permKey: 'system_permissions' },
     ]
   },
   {
@@ -67,9 +85,9 @@ const settingsSections = [
     icon: Shield,
     color: 'bg-green-500',
     items: [
-      { id: 'security', name: 'Configurações de Segurança', description: '2FA e políticas de senha', path: '/app-ui/system/security' },
-      { id: 'audit-log', name: 'Log de Auditoria', description: 'Histórico de ações', path: '/app-ui/system/audit-log' },
-      { id: 'api-keys', name: 'Chaves de API', description: 'Gerenciar tokens de API', path: '/app-ui/system/api-keys' },
+      { id: 'security',  name: 'Configurações de Segurança', description: '2FA e políticas de senha',  path: '/app-ui/system/security',   permKey: 'settings_security' },
+      { id: 'audit-log', name: 'Log de Auditoria',           description: 'Histórico de ações',        path: '/app-ui/system/audit-log',  permKey: 'audit_log' },
+      { id: 'api-keys',  name: 'Chaves de API',              description: 'Gerenciar tokens de API',   path: '/app-ui/system/api-keys',   permKey: 'settings_api_keys' },
     ]
   },
   {
@@ -77,8 +95,8 @@ const settingsSections = [
     icon: Bell,
     color: 'bg-orange-500',
     items: [
-      { id: 'notifications', name: 'Preferências de Notificação', description: 'Configurar alertas', path: '/app-ui/system/notifications' },
-      { id: 'templates', name: 'Templates de Notificação', description: 'Emails e SMS', path: '/app-ui/system/templates' },
+      { id: 'notifications', name: 'Preferências de Notificação', description: 'Configurar alertas', path: '/app-ui/system/notifications', permKey: 'settings_notifications' },
+      { id: 'templates',     name: 'Templates de Notificação',    description: 'Emails e SMS',       path: '/app-ui/system/templates',     permKey: 'settings_templates' },
     ]
   },
   {
@@ -86,9 +104,9 @@ const settingsSections = [
     icon: Mail,
     color: 'bg-cyan-500',
     items: [
-      { id: 'email', name: 'Configurações de Email', description: 'SMTP e remetentes', path: '/app-ui/system/email' },
-      { id: 'whatsapp', name: 'WhatsApp Business', description: 'API e integração', path: '/app-ui/system/whatsapp' },
-      { id: 'sms', name: 'SMS', description: 'Provedor e créditos', path: '/app-ui/system/sms' },
+      { id: 'email',     name: 'Configurações de Email', description: 'SMTP e remetentes',  path: '/app-ui/system/email',     permKey: 'settings_email_config' },
+      { id: 'whatsapp',  name: 'WhatsApp Business',      description: 'API e integração',   path: '/app-ui/system/whatsapp',  permKey: 'settings_whatsapp_config' },
+      { id: 'sms',       name: 'SMS',                    description: 'Provedor e créditos', path: '/app-ui/system/sms',      permKey: 'settings_sms_config' },
     ]
   },
   {
@@ -96,9 +114,9 @@ const settingsSections = [
     icon: Webhook,
     color: 'bg-pink-500',
     items: [
-      { id: 'integrations', name: 'Integrações', description: 'Conectar apps externos', path: '/app-ui/system/integrations' },
-      { id: 'webhooks', name: 'Webhooks', description: 'Eventos e callbacks', path: '/app-ui/system/webhooks' },
-      { id: 'api', name: 'API', description: 'Documentação e acesso', path: '/app-ui/system/api' },
+      { id: 'integrations', name: 'Integrações', description: 'Conectar apps externos',   path: '/app-ui/system/integrations', permKey: 'integrations' },
+      { id: 'webhooks',     name: 'Webhooks',    description: 'Eventos e callbacks',       path: '/app-ui/system/webhooks',     permKey: 'settings_webhooks' },
+      { id: 'api',          name: 'API',         description: 'Documentação e acesso',     path: '/app-ui/system/api',          permKey: 'settings_api' },
     ]
   },
   {
@@ -106,9 +124,9 @@ const settingsSections = [
     icon: Database,
     color: 'bg-violet-500',
     items: [
-      { id: 'import', name: 'Importação', description: 'Importar dados em massa', path: '/app-ui/system/import' },
-      { id: 'export', name: 'Exportação', description: 'Exportar dados', path: '/app-ui/system/export' },
-      { id: 'backup', name: 'Backup', description: 'Backup e restauração', path: '/app-ui/system/backup' },
+      { id: 'import',  name: 'Importação', description: 'Importar dados em massa', path: '/app-ui/system/import',  permKey: 'settings_import' },
+      { id: 'export',  name: 'Exportação', description: 'Exportar dados',          path: '/app-ui/system/export',  permKey: 'settings_export' },
+      { id: 'backup',  name: 'Backup',     description: 'Backup e restauração',    path: '/app-ui/system/backup',  permKey: 'settings_backup' },
     ]
   },
   {
@@ -116,9 +134,9 @@ const settingsSections = [
     icon: BookOpen,
     color: 'bg-indigo-500',
     items: [
-      { id: 'architecture', name: 'Arquitetura do Sistema', description: 'Visão geral e módulos', path: '/documentation', external: true },
-      { id: 'design-system', name: 'MRM Design System', description: 'Componentes e tokens de design', path: '/design-system', external: true },
-      { id: 'screen-catalog', name: 'Catálogo de Telas', description: '200+ telas documentadas', path: '/documentation/screen-catalog-complete', external: true },
+      { id: 'architecture',  name: 'Arquitetura do Sistema', description: 'Visão geral e módulos',          path: '/documentation',                        external: true, permKey: 'settings_docs' },
+      { id: 'design-system', name: 'MRM Design System',      description: 'Componentes e tokens de design', path: '/design-system',                        external: true, permKey: 'settings_docs' },
+      { id: 'screen-catalog',name: 'Catálogo de Telas',      description: '200+ telas documentadas',        path: '/documentation/screen-catalog-complete', external: true, permKey: 'settings_docs' },
     ]
   },
 ];
@@ -128,8 +146,14 @@ function readStoredUser() {
 }
 
 export function SystemSettings() {
-  const profileType: string = typeof window !== 'undefined' ? (readStoredUser().profileType || '') : '';
+  const storedUser = readStoredUser();
+  const profileType: string = storedUser.profileType || '';
   const isMaster = profileType === 'master';
+  const { canView } = usePermissions(profileType);
+
+  const visibleSections = settingsSections
+    .map((section) => ({ ...section, items: section.items.filter((item) => canView(item.permKey)) }))
+    .filter((section) => section.items.length > 0);
   return (
     <div className="p-6 text-slate-900 dark:text-slate-100">
       <div className="mb-8">
@@ -145,7 +169,7 @@ export function SystemSettings() {
       </div>
 
       <div className="space-y-8">
-        {settingsSections.map((section) => {
+        {visibleSections.map((section) => {
           const Icon = section.icon;
           return (
             <div key={section.category}>

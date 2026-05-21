@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Shield, ArrowLeft, Check, X, Info, Save, RefreshCw, Copy, Clipboard } from 'lucide-react';
 import { Link, useParams } from 'react-router';
+import { toast } from 'sonner';
 import {
   DEFAULT_PERMISSION_MODULES,
   PERMISSION_GROUPS,
@@ -129,12 +130,20 @@ export default function UserPermissions() {
   const handleCopy = () => {
     try { localStorage.setItem('mrm_perms_clipboard', JSON.stringify(perms)); } catch { /* ignore */ }
     setClipboard({ ...perms });
+    const count = Object.keys(perms).length;
+    toast.success(`Permissões copiadas!`, {
+      description: count > 0 ? `${count} sobrescrita(s) copiada(s)` : 'Nenhuma sobrescrita (padrões do perfil)',
+    });
   };
 
   const handlePaste = () => {
     if (!clipboard) return;
     setPerms({ ...clipboard });
     setSaved(false);
+    const count = Object.keys(clipboard).length;
+    toast.success(`Permissões coladas!`, {
+      description: count > 0 ? `${count} sobrescrita(s) aplicada(s)` : 'Sobrescritas limpas (padrões do perfil)',
+    });
   };
 
   const groups = PERMISSION_GROUPS;

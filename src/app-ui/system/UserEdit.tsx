@@ -68,6 +68,8 @@ export default function UserEdit() {
   });
 
   const token = localStorage.getItem('mrm_token');
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; } })();
+  const isMaster = currentUser.profileType === 'master';
 
   useEffect(() => {
     const load = async () => {
@@ -207,13 +209,16 @@ export default function UserEdit() {
         body: JSON.stringify({
           fullName: form.fullName,
           phone: form.phone || null,
-          profileType: form.profileType,
           campoId: form.campoId || null,
           regionalId: form.regionalId || null,
           churchId: form.churchId || null,
-          roleId: form.roleId || null,
-          isAdmin: form.isAdmin,
           isActive: form.isActive,
+          // only master may change profile type, role and admin flag
+          ...(isMaster ? {
+            profileType: form.profileType,
+            roleId: form.roleId || null,
+            isAdmin: form.isAdmin,
+          } : {}),
         }),
       });
       if (!res.ok) {
@@ -395,7 +400,8 @@ export default function UserEdit() {
                   <select
                     value={form.roleId}
                     onChange={(e) => set('roleId', e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    disabled={!isMaster}
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="">Selecione uma funcao</option>
                     {filteredRoles.map((role) => (
@@ -493,12 +499,17 @@ export default function UserEdit() {
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="w-4 h-4 text-slate-400" />
                 <h2 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Perfil de Acesso</h2>
+                {!isMaster && (
+                  <span className="ml-auto text-xs text-slate-400 dark:text-slate-500 italic">somente master pode alterar</span>
+                )}
               </div>
-              <div className="space-y-2">
+              <div className={`space-y-2 ${!isMaster ? 'pointer-events-none opacity-60' : ''}`}>
                 {PROFILE_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
-                    className={`flex items-center gap-3 p-3.5 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`flex items-center gap-3 p-3.5 rounded-lg border-2 transition-all ${
+                      isMaster ? 'cursor-pointer' : 'cursor-not-allowed'
+                    } ${
                       form.profileType === opt.value
                         ? opt.activeClass
                         : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
@@ -509,7 +520,8 @@ export default function UserEdit() {
                       name="profileType"
                       value={opt.value}
                       checked={form.profileType === opt.value}
-                      onChange={() => set('profileType', opt.value)}
+                      onChange={() => isMaster && set('profileType', opt.value)}
+                      disabled={!isMaster}
                       className="accent-purple-600 w-4 h-4"
                     />
                     <div className="flex-1 min-w-0">
@@ -521,11 +533,12 @@ export default function UserEdit() {
               </div>
 
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <label className="flex items-center gap-3 cursor-pointer">
+                <label className={`flex items-center gap-3 ${isMaster ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                   <input
                     type="checkbox"
                     checked={form.isAdmin}
-                    onChange={(e) => set('isAdmin', e.target.checked)}
+                    onChange={(e) => isMaster && set('isAdmin', e.target.checked)}
+                    disabled={!isMaster}
                     className="w-4 h-4 accent-purple-600"
                   />
                   <div>

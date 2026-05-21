@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Users, Plus, Search, Trash2, Edit, RefreshCw, Lock, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Users, Plus, Search, Trash2, Edit, RefreshCw, Lock, KeyRound, Eye, EyeOff, ClipboardPaste } from 'lucide-react';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
 import { AlertDialog, ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 
 import { apiBase } from '../../lib/apiBase';
+
+type PermMap = Record<string, boolean>;
 
 const PROFILE_LABELS: Record<string, string> = {
   master: 'Master',
@@ -30,6 +33,14 @@ export default function UsersList() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState('');
+  const [clipboard, setClipboard] = useState<PermMap | null>(() => {
+    try {
+      const raw = localStorage.getItem('mrm_perms_clipboard');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+  const [bulkPasteConfirm, setBulkPasteConfirm] = useState(false);
+  const [bulkPasting, setBulkPasting] = useState(false);
   const [passwordModal, setPasswordModal] = useState<{ id: string; name: string } | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -38,6 +49,23 @@ export default function UsersList() {
 
   const token = localStorage.getItem('mrm_token');
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || '';
+
+  // Role-group isolation helpers
+  const currentMrmUser = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; } })();
+  const currentProfileType: string = currentMrmUser.profileType || '';
+  // auth/me may return role as nested object (Prisma) or flat roleName field
+  const currentRoleName: string = currentMrmUser.roleName || currentMrmUser.role?.name || '';
+  const isMasterOrAdmin = ['master', 'admin'].includes(currentProfileType);
+
+  const getRoleGroup = (name: string): string | null => {
+    const lower = name.toLowerCase();
+    if (lower.includes('sec')) return 'sec';
+    if (lower.includes('tes')) return 'tes';
+    return null;
+  };
+
+  // Only master/admin bypass group isolation
+  const currentGroup = isMasterOrAdmin ? null : getRoleGroup(currentRoleName);
 
   const load = async () => {
     setLoading(true);
@@ -121,6 +149,37 @@ export default function UsersList() {
     }
   };
 
+  const handleBulkPaste = async () => {
+    if (!clipboard) return;
+    setBulkPasting(true);
+    const ids = (filtered as any[]).map((u) => u.id);
+    let success = 0;
+    let fail = 0;
+    await Promise.all(
+      ids.map(async (id: string) => {
+        try {
+          const res = await fetch(`${apiBase}/users/${id}/permissions`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ permissions: clipboard }),
+          });
+          if (res.ok) success++;
+          else fail++;
+        } catch { fail++; }
+      })
+    );
+    setBulkPasting(false);
+    setBulkPasteConfirm(false);
+    if (fail === 0) {
+      toast.success(`Permissões aplicadas para ${success} usuário(s)!`);
+    } else {
+      toast.warning(`${success} aplicado(s) com sucesso, ${fail} com falha.`);
+    }
+  };
+
   const allRoles: string[] = Array.from(
     new Set(users.map((u: any) => u.role?.name).filter(Boolean))
   ) as string[];
@@ -137,7 +196,12 @@ export default function UsersList() {
     const matchFuncao =
       !filterFuncao ||
       (filterFuncao === '__none__' ? !u.role : u.role?.name === filterFuncao);
-    return matchSearch && matchPerfil && matchStatus && matchFuncao;
+    // Users below admin cannot see master accounts
+    const matchMasterVisibility = isMasterOrAdmin || u.profileType !== 'master';
+    // Role-group isolation: if current user belongs to a group (sec/tes),
+    // only show users from the same group
+    const matchGroup = !currentGroup || getRoleGroup(u.role?.name || '') === currentGroup;
+    return matchSearch && matchPerfil && matchStatus && matchFuncao && matchMasterVisibility && matchGroup;
   });
 
   return (
@@ -191,7 +255,7 @@ export default function UsersList() {
               className="w-full pl-11 pr-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
             />
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <select
               value={filterPerfil}
               onChange={(e) => setFilterPerfil(e.target.value)}
@@ -222,6 +286,16 @@ export default function UsersList() {
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
+            {clipboard && (
+              <button
+                onClick={() => setBulkPasteConfirm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                title={`Colar ${Object.keys(clipboard).length} sobrescrita(s) para todos os usuários com os filtros ativos`}
+              >
+                <ClipboardPaste className="w-4 h-4" />
+                Colar para filtrados
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -327,6 +401,18 @@ export default function UsersList() {
           </table>
         )}
       </div>
+
+      <ConfirmDialog
+        open={bulkPasteConfirm}
+        title="Colar permissões em massa"
+        message={`Isso vai sobrescrever as permissões de ${filtered.length} usuário(s) exibido(s) com os filtros atuais (${Object.keys(clipboard ?? {}).length} sobrescrita(s) copiadas). Deseja continuar?`}
+        confirmLabel={bulkPasting ? 'Aplicando...' : `Aplicar para ${filtered.length} usuário(s)`}
+        cancelLabel="Cancelar"
+        variant="warning"
+        loading={bulkPasting}
+        onConfirm={handleBulkPaste}
+        onCancel={() => (bulkPasting ? undefined : setBulkPasteConfirm(false))}
+      />
 
       <ConfirmDialog
         open={Boolean(confirmTarget)}
