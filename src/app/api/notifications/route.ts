@@ -87,6 +87,10 @@ export async function GET(req: NextRequest) {
     let where: Record<string, unknown> = {};
     if (user.profileType === "master") {
       where = {}; // master vê tudo; deduplicação por batchId aplicada abaixo
+    } else if (user.profileType === "church") {
+      // Perfil church vê apenas broadcasts manuais do campo (scope=field)
+      // Não recebe notificações de sistema (pipeline, SOLCRED, etc.)
+      where = campoFilter ?? { AND: [{ data: { path: ["scope"], equals: "field" } }] };
     } else if (campoFilter) {
       where = { OR: [{ userId }, campoFilter] };
     } else {
