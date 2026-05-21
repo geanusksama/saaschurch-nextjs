@@ -892,11 +892,10 @@ export function MemberRegistration() {
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Email *
+                Email
               </label>
               <input
                 type="email"
-                required
                 value={formData.email}
                 onChange={(e) => updateFormValue('email', e.target.value)}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -906,11 +905,10 @@ export function MemberRegistration() {
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Telefone *
+                Telefone
               </label>
               <input
                 type="tel"
-                required
                 value={formData.phone}
                 onChange={(e) => updateFormValue('phone', formatPhone(e.target.value))}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -920,11 +918,10 @@ export function MemberRegistration() {
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Celular *
+                Celular
               </label>
               <input
                 type="tel"
-                required
                 value={formData.mobile}
                 onChange={(e) => updateFormValue('mobile', formatPhone(e.target.value))}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1095,11 +1092,10 @@ export function MemberRegistration() {
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Conjuge {formData.maritalStatus === 'CASADO' ? '*' : ''}
+                Conjuge
               </label>
               <input
                 type="text"
-                required={formData.maritalStatus === 'CASADO'}
                 value={formData.spouseName}
                 onChange={(e) => updateFormValue('spouseName', e.target.value)}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1367,11 +1363,10 @@ export function MemberRegistration() {
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Titulo de Eleitor *
+                Titulo de Eleitor
               </label>
               <input
                 type="text"
-                required
                 value={formData.voterRegistration}
                 onChange={(e) => updateFormValue('voterRegistration', e.target.value)}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1381,11 +1376,10 @@ export function MemberRegistration() {
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Zona *
+                Zona
               </label>
               <input
                 type="text"
-                required
                 value={formData.voterZone}
                 onChange={(e) => updateFormValue('voterZone', e.target.value)}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1395,11 +1389,10 @@ export function MemberRegistration() {
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Secao *
+                Secao
               </label>
               <input
                 type="text"
-                required
                 value={formData.voterSection}
                 onChange={(e) => updateFormValue('voterSection', e.target.value)}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1409,10 +1402,9 @@ export function MemberRegistration() {
 
             <div className="md:col-span-2 xl:col-span-3">
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Observacoes *
+                Observacoes
               </label>
               <textarea
-                required
                 rows={4}
                 value={formData.notes}
                 onChange={(e) => updateFormValue('notes', e.target.value)}
@@ -1580,15 +1572,22 @@ export function MemberRegistration() {
           <div className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm" />
           <div className="fixed left-1/2 top-1/2 z-50 w-[92%] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white shadow-2xl">
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5">
+            <div className="bg-purple-600 px-6 py-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
                   <CheckCircle className="h-6 w-6 text-white" />
                 </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-indigo-200">Membro cadastrado</p>
+                <div className="flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-purple-200">Membro cadastrado</p>
                   <h3 className="text-lg font-bold text-white">Cadastro realizado com sucesso!</h3>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setSavedMember(null)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
