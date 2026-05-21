@@ -698,7 +698,6 @@ export function AppUI() {
   const { canView } = usePermissions(profileType);
   const canViewItem = (pt: string, permKey?: string) => {
     if (!permKey) return true;
-    if (pt === 'church' && permKey === 'finance') return false;
     return canView(permKey);
   };
 
@@ -713,9 +712,13 @@ export function AppUI() {
   const firstAllowedPath = visibleNavigation[0]?.items[0]?.path || '/app-ui';
 
   // Verifica se a rota atual é permitida (RENDER-TIME — segurança real)
+  // Itens com exact:true só casam se o pathname for idêntico, evitando que
+  // rotas filhas (ex: /finance/cashbook) sejam bloqueadas pelo item pai (/finance).
   const allNavItems = appNavigation.flatMap((s) => s.items);
-  const currentNavItem = allNavItems.find(
-    (item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/'),
+  const currentNavItem = allNavItems.find((item) =>
+    item.exact
+      ? location.pathname === item.path
+      : location.pathname === item.path || location.pathname.startsWith(item.path + '/'),
   );
   const isCurrentPathAllowed =
     !currentNavItem?.permKey || canViewItem(profileType, currentNavItem.permKey);

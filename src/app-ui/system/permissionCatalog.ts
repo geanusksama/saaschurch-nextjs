@@ -94,12 +94,13 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Secretaria', name: 'Contatos / Leads',      key: 'crm_leads',      permissions: mkPerms(full(), mngr(), mngr(), admin()) },
 
   // ── Finanças ─────────────────────────────────────────────────────────────
-  { group: 'Finanças', name: 'Livro Caixa',            key: 'cashbook',        permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
-  { group: 'Finanças', name: 'Lançamentos',             key: 'finance_entries', permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
-  { group: 'Finanças', name: 'Fluxo de Caixa',         key: 'cash_flow',       permissions: mkPerms(mngr(), mngr(), none(), none()) },
-  { group: 'Finanças', name: 'Planilhas',               key: 'spreadsheets',    permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  // Tesouraria (geral) fica bloqueada para church também via canViewItem em AppUI.tsx
+  { group: 'Finanças', name: 'Livro Caixa',            key: 'cashbook',        permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Finanças', name: 'Lançamentos',             key: 'finance_entries', permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Finanças', name: 'Fluxo de Caixa',         key: 'cash_flow',       permissions: mkPerms(full(), mngr(), none(), none()) },
+  { group: 'Finanças', name: 'Planilhas',               key: 'spreadsheets',    permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Finanças', name: 'Tesouraria (geral)',      key: 'finance',         permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
-  { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(full(), mngr(), none(), none()) },
 
   // ── Sistema ───────────────────────────────────────────────────────────────
   { group: 'Sistema', name: 'Usuários',          key: 'system_users',    permissions: mkPerms(mngr(), mngr(), none(), none()) },

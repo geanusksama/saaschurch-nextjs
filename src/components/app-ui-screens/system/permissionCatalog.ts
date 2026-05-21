@@ -78,8 +78,8 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'CRM / Pipeline', name: 'Contatos / Leads', key: 'crm_leads', permissions: mkPerms(full(), full(), full(), admin()) },
 
   { group: 'Finanças', name: 'Tesouraria', key: 'finance', permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
-  { group: 'Finanças', name: 'Lançamentos', key: 'finance_entries', permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
-  { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Finanças', name: 'Lançamentos', key: 'finance_entries', permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(full(), mngr(), none(), none()) },
 
   { group: 'Sistema', name: 'Usuários', key: 'system_users', permissions: mkPerms(mngr(), mngr(), none(), none()) },
   {

@@ -36,6 +36,15 @@ function readLocalStorage(): PermissionModule[] | null {
 }
 
 function getInitialModules(): PermissionModule[] {
+  // Perfis que não têm acesso ao endpoint /permissions/matrix (church, campo)
+  // nunca devem usar um cache salvo — ele pode estar desatualizado de uma sessão
+  // de admin anterior. Sempre partem do DEFAULT_PERMISSION_MODULES atualizado.
+  try {
+    const profileType = JSON.parse(localStorage.getItem('mrm_user') || '{}').profileType;
+    if (profileType && !['master', 'admin'].includes(profileType)) {
+      return [...DEFAULT_PERMISSION_MODULES];
+    }
+  } catch { /* ignore */ }
   return _moduleCache ?? readLocalStorage() ?? DEFAULT_PERMISSION_MODULES;
 }
 
@@ -59,13 +68,15 @@ function readUserRoleId(): string | null {
   } catch { return null; }
 }
 
-async function fetchMatrixFromServer(): Promise<PermissionModule[] | null> {
+// Retorna PermissionModule[] se ok, 'forbidden' se 403, null em outros erros
+async function fetchMatrixFromServer(): Promise<PermissionModule[] | 'forbidden' | null> {
   try {
     const storedUser = JSON.parse(localStorage.getItem('mrm_user') || '{}');
     const token: string | null = storedUser?.token ?? localStorage.getItem('mrm_token') ?? null;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`${API_BASE}/permissions/matrix`, { headers });
+    if (res.status === 403) return 'forbidden';
     if (!res.ok) return null;
     const data = await res.json();
     if (Array.isArray(data)) return data as PermissionModule[];
@@ -116,11 +127,17 @@ export function usePermissions(profileType?: string) {
 
   // Fetch from server on mount
   useEffect(() => {
-    fetchMatrixFromServer().then((data) => {
-      if (data) {
-        _moduleCache = data;
-        try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch { /* ignore */ }
-        setModules(data);
+    fetchMatrixFromServer().then((result) => {
+      if (result === 'forbidden') {
+        // Perfil sem acesso ao endpoint (ex: church). Descarta cache antigo e usa
+        // DEFAULT_PERMISSION_MODULES para que a versão atualizada do catalog seja aplicada.
+        _moduleCache = null;
+        try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
+        setModules([...DEFAULT_PERMISSION_MODULES]);
+      } else if (result) {
+        _moduleCache = result;
+        try { localStorage.setItem(LS_KEY, JSON.stringify(result)); } catch { /* ignore */ }
+        setModules(result);
       }
     });
     // Also refresh user overrides and roleId from localStorage (may have been updated after login)
@@ -129,10 +146,14 @@ export function usePermissions(profileType?: string) {
   }, []);
 
   const refreshPermissions = useCallback(async () => {
-    const data = await fetchMatrixFromServer();
-    if (data) {
-      setGlobalPermissionMatrix(data);
-      setModules(data);
+    const result = await fetchMatrixFromServer();
+    if (result === 'forbidden') {
+      _moduleCache = null;
+      try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
+      setModules([...DEFAULT_PERMISSION_MODULES]);
+    } else if (result) {
+      setGlobalPermissionMatrix(result);
+      setModules(result);
     }
     setUserOverrides(readUserOverrides());
   }, []);
