@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
 
 function getManagedCampoId(user: import("@/lib/auth").AuthUser) {
-  if (user.profileType === "admin" && user.campoId) return user.campoId;
+  if ((user.profileType === "admin" || user.profileType === "campo") && user.campoId) return user.campoId;
   return null;
 }
 
@@ -23,7 +23,7 @@ const userInclude = {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin"].includes(user.profileType)) {
+    if (!["master", "admin", "campo"].includes(user.profileType)) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
     const { id } = await params;
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin"].includes(user.profileType)) {
+    if (!["master", "admin", "campo"].includes(user.profileType)) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
     const { id } = await params;
@@ -89,7 +89,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin"].includes(user.profileType)) {
+    if (!["master", "admin", "campo"].includes(user.profileType)) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
     const { id } = await params;

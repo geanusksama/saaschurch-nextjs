@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin"].includes(user.profileType)) {
+    if (!["master", "admin", "campo"].includes(user.profileType)) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
 
@@ -23,8 +23,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
     if (!targetUser) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
 
-    // Admin can only reset users within their own campo
-    if (user.profileType === "admin" && user.campoId && targetUser.campoId !== user.campoId) {
+    // Admin/campo can only reset users within their own campo
+    if (["admin", "campo"].includes(user.profileType) && user.campoId && targetUser.campoId !== user.campoId) {
       return NextResponse.json({ error: "Sem acesso a usuários de outro campo." }, { status: 403 });
     }
 

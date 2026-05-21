@@ -102,8 +102,8 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(mngr(), mngr(), none(), none()) },
 
   // ── Sistema ───────────────────────────────────────────────────────────────
-  { group: 'Sistema', name: 'Usuários',          key: 'system_users',    permissions: mkPerms(admin(), admin(), none(), none()) },
-  { group: 'Sistema', name: 'Senha dos Campos',  key: 'campo_passwords', permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Sistema', name: 'Usuários',          key: 'system_users',    permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Sistema', name: 'Senha dos Campos',  key: 'campo_passwords', permissions: mkPerms(mngr(), mngr(), none(), none()) },
   {
     group: 'Sistema',
     name: 'Funções e Permissões',

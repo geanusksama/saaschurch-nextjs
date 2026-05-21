@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
 
 function getManagedCampoId(user: import("@/lib/auth").AuthUser) {
-  if (user.profileType === "admin" && user.campoId) return user.campoId;
+  if ((user.profileType === "admin" || user.profileType === "campo") && user.campoId) return user.campoId;
   return null;
 }
 
@@ -54,7 +54,7 @@ const userInclude = {
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin"].includes(user.profileType)) {
+    if (!["master", "admin", "campo"].includes(user.profileType)) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
     const { searchParams } = new URL(req.url);
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin"].includes(user.profileType)) {
+    if (!["master", "admin", "campo"].includes(user.profileType)) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
     const body = await req.json().catch(() => ({}));
