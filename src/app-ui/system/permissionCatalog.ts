@@ -102,6 +102,24 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Finanças', name: 'Tesouraria (geral)',      key: 'finance',         permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
   { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(full(), mngr(), none(), none()) },
 
+  // ── Gestão EBD ───────────────────────────────────────────────────────────
+  { group: 'Gestão EBD', name: 'Dashboard EBD',          key: 'ebd_dashboard',    permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  { group: 'Gestão EBD', name: 'Cadastros EBD',           key: 'ebd_cadastros',    permissions: mkPerms(mngr(), mngr(), mngr(), none()) },
+  { group: 'Gestão EBD', name: 'Estoque EBD',             key: 'ebd_estoque',      permissions: mkPerms(mngr(), mngr(), mngr(), none()) },
+  { group: 'Gestão EBD', name: 'Separação / Entrega',     key: 'ebd_entrega',      permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  { group: 'Gestão EBD', name: 'Financeiro EBD',          key: 'ebd_financeiro',   permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  { group: 'Gestão EBD', name: 'Negociações / Acordos',   key: 'ebd_negociacoes',  permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  { group: 'Gestão EBD', name: 'Histórico EBD',           key: 'ebd_historico',    permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  { group: 'Gestão EBD', name: 'Relatórios EBD',          key: 'ebd_relatorios',   permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+
+  // ── Pagamentos / Stripe ───────────────────────────────────────────────────
+  { group: 'Pagamentos', name: 'Dashboard Pagamentos',    key: 'stripe_dashboard',      permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Pagamentos', name: 'Transações',               key: 'stripe_transacoes',     permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Pagamentos', name: 'Assinaturas',              key: 'stripe_assinaturas',    permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Pagamentos', name: 'Reembolsos',               key: 'stripe_reembolsos',     permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Pagamentos', name: 'Config. Stripe',           key: 'stripe_config',         permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Pagamentos', name: 'Meus Pagamentos (App)',    key: 'stripe_meus_pagamentos', permissions: mkPerms(full(), full(), full(), full()) },
+
   // ── Sistema ───────────────────────────────────────────────────────────────
   { group: 'Sistema', name: 'Usuários',          key: 'system_users',    permissions: mkPerms(mngr(), mngr(), mngr(), none()) },
   {

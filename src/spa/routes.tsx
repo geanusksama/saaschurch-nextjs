@@ -161,6 +161,19 @@ import ServicesMatrix from "../app-ui/ecclesiastical/ServicesMatrix";
 import PipelinesAdmin from "../app-ui/ecclesiastical/PipelinesAdmin";
 import Requerimentos from "../app-ui/ecclesiastical/Requerimentos";
 import TicketPurchase from "../app-ui/events/TicketPurchase";
+// EBD
+import EbdDashboard from "../app-ui/ebd/EbdDashboard";
+import EbdCadastros from "../app-ui/ebd/EbdCadastros";
+import EbdEstoque from "../app-ui/ebd/EbdEstoque";
+import EbdEntrega from "../app-ui/ebd/EbdEntrega";
+import EbdFinanceiro from "../app-ui/ebd/EbdFinanceiro";
+import EbdHistorico from "../app-ui/ebd/EbdHistorico";
+import EbdRelatorios from "../app-ui/ebd/EbdRelatorios";
+// Stripe / Pagamentos
+import StripeAdmin from "../app-ui/stripe/StripeAdmin";
+import MeusPagamentos from "../app-ui/stripe/MeusPagamentos";
+
+
 import AppDashboard from "../app-ui/app/AppDashboard";
 import AppEvents from "../app-ui/app/AppEvents";
 import AppEventNew  from "../app-ui/app/AppEventNew";
@@ -539,6 +552,21 @@ export const router = createBrowserRouter([
       { path: "secretariat/credential-models", Component: ModelosCredencial },
       { path: "credential-requests", Component: SolicitacoesCredencial },
       { path: "system/campo-senhas", Component: FieldPasswordAdmin },
+      { path: "ebd",              Component: EbdDashboard },
+      { path: "ebd/cadastros",   Component: EbdCadastros },
+      { path: "ebd/estoque",     Component: EbdEstoque },
+      { path: "ebd/entrega",     Component: EbdEntrega },
+      { path: "ebd/financeiro",  Component: EbdFinanceiro },
+      { path: "ebd/historico",   Component: EbdHistorico },
+      { path: "ebd/relatorios",  Component: EbdRelatorios },
+
+      { path: "stripe",              Component: StripeAdmin },
+      { path: "stripe/transacoes",   Component: StripeAdmin },
+      { path: "stripe/assinaturas",  Component: StripeAdmin },
+      { path: "stripe/reembolsos",   Component: StripeAdmin },
+      { path: "stripe/config",       Component: StripeAdmin },
+      { path: "stripe/meus",         Component: MeusPagamentos },
+
       { path: "app/dashboard",          Component: AppDashboard },
       { path: "app/events",             Component: AppEvents },
       { path: "app/events/new",         Component: AppEventNew },

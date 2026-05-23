@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "PowerShell(psql --version 2>&1)",
-      "PowerShell(node --version 2>&1)"
+      "PowerShell(node --version 2>&1)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

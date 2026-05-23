@@ -33,6 +33,20 @@ model Campo {
   events             Event[]                    @relation("EventCampo")
   appMembrosAuth     AppMembrosAuth[]           @relation("CampoAppAuth")
   appCadastros       AppCadastroNew[]           @relation("CampoAppCadastro")
+  ebdTrimestres      EbdTrimestre[]             @relation("CampoEbdTrimestres")
+  ebdCategorias      EbdCategoria[]             @relation("CampoEbdCategorias")
+  ebdProdutos        EbdProduto[]               @relation("CampoEbdProdutos")
+  ebdEstoque         EbdEstoque[]               @relation("CampoEbdEstoque")
+  ebdMovimentos      EbdEstoqueMovimento[]      @relation("CampoEbdMovimentos")
+  ebdEntradas        EbdEntrada[]               @relation("CampoEbdEntradas")
+  ebdEntregas        EbdEntrega[]               @relation("CampoEbdEntregas")
+  ebdFinanceiro      EbdFinanceiro[]            @relation("CampoEbdFinanceiro")
+  ebdFinMovimentos   EbdFinanceiroMovimento[]   @relation("CampoEbdFinMovimentos")
+  ebdHistorico       EbdHistorico[]             @relation("CampoEbdHistorico")
+  ebdNegociacoes     EbdNegociacao[]            @relation("CampoEbdNegociacoes")
+  stripeConfig       StripeConfig?              @relation("CampoStripeConfig")
+  stripePayments     StripePayment[]            @relation("CampoStripePayments")
+  stripeSubscriptions StripeSubscription[]      @relation("CampoStripeSubscriptions")
 
   @@map("campos")
 }
@@ -162,6 +176,12 @@ model Church {
   titleHistory          MemberTitleHistory[] @relation("MemberTitleHistoryChurch")
 
   livroCaixa            LivroCaixa[]
+  ebdEntregas           EbdEntrega[]           @relation("ChurchEbdEntregas")
+  ebdFinanceiro         EbdFinanceiro[]        @relation("ChurchEbdFinanceiro")
+  ebdHistorico          EbdHistorico[]         @relation("ChurchEbdHistorico")
+  ebdNegociacoes        EbdNegociacao[]        @relation("ChurchEbdNegociacoes")
+  stripePayments        StripePayment[]        @relation("ChurchStripePayments")
+  stripeSubscriptions   StripeSubscription[]   @relation("ChurchStripeSubscriptions")
 
   @@unique([regionalId, code])
   @@index([headquartersId])
@@ -521,6 +541,8 @@ model Member {
   titleHistory MemberTitleHistory[] @relation("MemberTitleHistoryMember")
   appAuth      AppMembrosAuth[]     @relation("MemberAppAuth")
   appCadastros AppCadastroNew[]     @relation("MemberAppCadastro")
+  ebdEntregasResponsavel    EbdEntrega[]             @relation("EbdEntregaResponsavel")
+  ebdFinMovResponsavel      EbdFinanceiroMovimento[] @relation("EbdFinMovResponsavel")
 
   @@index([churchId])
   @@index([campoId])
@@ -2604,4 +2626,474 @@ model EventTicketTransfer {
 
   @@index([orderId])
   @@map("event_ticket_transfer")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EBD — Escola Bíblica Dominical
+// ─────────────────────────────────────────────────────────────────────────────
+
+model EbdTrimestre {
+  id        String   @id @default(uuid()) @db.Uuid
+  campoId   String   @map("campo_id") @db.Uuid
+  nome      String   @db.VarChar(100)
+  ano       Int
+  dataInicio DateTime @map("data_inicio") @db.Date
+  dataFim    DateTime @map("data_fim") @db.Date
+  ativo      Boolean  @default(true)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  campo     Campo         @relation("CampoEbdTrimestres", fields: [campoId], references: [id], onDelete: Cascade)
+  produtos  EbdProduto[]
+  entregas  EbdEntrega[]  @relation("TrimestreEntregas")
+  financeiro EbdFinanceiro[] @relation("TrimestreFinanceiro")
+
+  @@index([campoId])
+  @@map("ebd_trimestres")
+}
+
+model EbdCategoria {
+  id        String   @id @default(uuid()) @db.Uuid
+  campoId   String   @map("campo_id") @db.Uuid
+  nome      String   @db.VarChar(100)
+  descricao String?  @db.Text
+  ordem     Int      @default(0)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  campo    Campo        @relation("CampoEbdCategorias", fields: [campoId], references: [id], onDelete: Cascade)
+  produtos EbdProduto[]
+
+  @@index([campoId])
+  @@map("ebd_categorias")
+}
+
+model EbdProduto {
+  id           String  @id @default(uuid()) @db.Uuid
+  campoId      String  @map("campo_id") @db.Uuid
+  categoriaId  String  @map("categoria_id") @db.Uuid
+  trimestreId  String? @map("trimestre_id") @db.Uuid
+  codigo       String? @db.VarChar(50)
+  nome         String  @db.VarChar(255)
+  tipo         String  @db.VarChar(30)   // Revista | Livro | Material | Apoio
+  tema         String? @db.VarChar(255)
+  descricao    String? @db.Text
+  unidade      String  @default("un") @db.VarChar(20)
+  precoCusto   Decimal @default(0) @map("preco_custo") @db.Decimal(10, 2)
+  precoVenda   Decimal @default(0) @map("preco_venda") @db.Decimal(10, 2)
+  ativo        Boolean @default(true)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  campo         Campo           @relation("CampoEbdProdutos", fields: [campoId], references: [id], onDelete: Cascade)
+  categoria     EbdCategoria    @relation(fields: [categoriaId], references: [id])
+  trimestre     EbdTrimestre?   @relation(fields: [trimestreId], references: [id])
+  estoqueItens  EbdEstoque[]
+  entregaItens  EbdEntregaItem[]
+  entradaItens  EbdEntradaItem[]
+  movimentos    EbdEstoqueMovimento[]
+
+  @@index([campoId])
+  @@index([categoriaId])
+  @@map("ebd_produtos")
+}
+
+model EbdEstoque {
+  id        String  @id @default(uuid()) @db.Uuid
+  campoId   String  @map("campo_id") @db.Uuid
+  produtoId String  @map("produto_id") @db.Uuid
+  quantidade Int    @default(0)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  campo   Campo      @relation("CampoEbdEstoque", fields: [campoId], references: [id], onDelete: Cascade)
+  produto EbdProduto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@unique([campoId, produtoId])
+  @@index([campoId])
+  @@map("ebd_estoque")
+}
+
+model EbdEstoqueMovimento {
+  id         String   @id @default(uuid()) @db.Uuid
+  campoId    String   @map("campo_id") @db.Uuid
+  produtoId  String   @map("produto_id") @db.Uuid
+  tipo       String   @db.VarChar(20)   // entrada | saida | ajuste
+  quantidade Int
+  valorUnit  Decimal  @default(0) @map("valor_unit") @db.Decimal(10, 2)
+  referencia String?  @db.VarChar(255)  // NF, entrega_id, etc.
+  referenciaId String? @map("referencia_id") @db.Uuid
+  observacao String?  @db.Text
+  fornecedor String?  @db.VarChar(255)
+  numNf      String?  @map("num_nf") @db.VarChar(100)
+  dataMovimento DateTime @map("data_movimento") @db.Date
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  createdBy String?   @map("created_by") @db.Uuid
+
+  campo   Campo      @relation("CampoEbdMovimentos", fields: [campoId], references: [id], onDelete: Cascade)
+  produto EbdProduto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@index([campoId])
+  @@index([produtoId])
+  @@map("ebd_estoque_movimentos")
+}
+
+model EbdEntrada {
+  id         String   @id @default(uuid()) @db.Uuid
+  campoId    String   @map("campo_id") @db.Uuid
+  fornecedor String?  @db.VarChar(255)
+  numNf      String?  @map("num_nf") @db.VarChar(100)
+  dataEntrada DateTime @map("data_entrada") @db.Date
+  valorTotal  Decimal  @default(0) @map("valor_total") @db.Decimal(10, 2)
+  observacao  String?  @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  campo  Campo            @relation("CampoEbdEntradas", fields: [campoId], references: [id], onDelete: Cascade)
+  itens  EbdEntradaItem[]
+
+  @@index([campoId])
+  @@map("ebd_entradas")
+}
+
+model EbdEntradaItem {
+  id         String  @id @default(uuid()) @db.Uuid
+  entradaId  String  @map("entrada_id") @db.Uuid
+  produtoId  String  @map("produto_id") @db.Uuid
+  quantidade Int
+  valorUnit  Decimal @map("valor_unit") @db.Decimal(10, 2)
+  valorTotal Decimal @map("valor_total") @db.Decimal(10, 2)
+
+  entrada  EbdEntrada @relation(fields: [entradaId], references: [id], onDelete: Cascade)
+  produto  EbdProduto @relation(fields: [produtoId], references: [id])
+
+  @@index([entradaId])
+  @@map("ebd_entrada_itens")
+}
+
+model EbdEntrega {
+  id            String   @id @default(uuid()) @db.Uuid
+  campoId       String   @map("campo_id") @db.Uuid
+  churchId      String   @map("church_id") @db.Uuid
+  trimestreId   String?  @map("trimestre_id") @db.Uuid
+  numeroDoc     String?  @map("numero_doc") @db.VarChar(50)
+  dataEntrega   DateTime @map("data_entrega") @db.Date
+  status        String   @default("separando") @db.VarChar(20)  // separando | separado | entregue | cancelado
+  responsavelId String?  @map("responsavel_id") @db.Uuid
+  valorTotal    Decimal  @default(0) @map("valor_total") @db.Decimal(10, 2)
+  saldoAnterior Decimal  @default(0) @map("saldo_anterior") @db.Decimal(10, 2)
+  novoSaldo     Decimal  @default(0) @map("novo_saldo") @db.Decimal(10, 2)
+  observacao    String?  @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  campo       Campo            @relation("CampoEbdEntregas", fields: [campoId], references: [id], onDelete: Cascade)
+  church      Church           @relation("ChurchEbdEntregas", fields: [churchId], references: [id])
+  trimestre   EbdTrimestre?    @relation("TrimestreEntregas", fields: [trimestreId], references: [id])
+  responsavel Member?          @relation("EbdEntregaResponsavel", fields: [responsavelId], references: [id])
+  itens       EbdEntregaItem[]
+  financeiro  EbdFinanceiro[]
+
+  @@index([campoId])
+  @@index([churchId])
+  @@map("ebd_entregas")
+}
+
+model EbdEntregaItem {
+  id         String  @id @default(uuid()) @db.Uuid
+  entregaId  String  @map("entrega_id") @db.Uuid
+  produtoId  String  @map("produto_id") @db.Uuid
+  quantidade Int
+  valorUnit  Decimal @map("valor_unit") @db.Decimal(10, 2)
+  valorTotal Decimal @map("valor_total") @db.Decimal(10, 2)
+
+  entrega  EbdEntrega @relation(fields: [entregaId], references: [id], onDelete: Cascade)
+  produto  EbdProduto @relation(fields: [produtoId], references: [id])
+
+  @@index([entregaId])
+  @@map("ebd_entrega_itens")
+}
+
+model EbdFinanceiro {
+  id          String  @id @default(uuid()) @db.Uuid
+  campoId     String  @map("campo_id") @db.Uuid
+  churchId    String  @map("church_id") @db.Uuid
+  trimestreId String? @map("trimestre_id") @db.Uuid
+  entregaId   String? @map("entrega_id") @db.Uuid
+  saldo       Decimal @default(0) @db.Decimal(10, 2)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  campo     Campo          @relation("CampoEbdFinanceiro", fields: [campoId], references: [id], onDelete: Cascade)
+  church    Church         @relation("ChurchEbdFinanceiro", fields: [churchId], references: [id])
+  trimestre EbdTrimestre?  @relation("TrimestreFinanceiro", fields: [trimestreId], references: [id])
+  entrega   EbdEntrega?    @relation(fields: [entregaId], references: [id])
+  movimentos EbdFinanceiroMovimento[]
+
+  @@unique([campoId, churchId, trimestreId])
+  @@index([campoId])
+  @@index([churchId])
+  @@map("ebd_financeiro")
+}
+
+model EbdFinanceiroMovimento {
+  id           String   @id @default(uuid()) @db.Uuid
+  financeiroId String   @map("financeiro_id") @db.Uuid
+  campoId      String   @map("campo_id") @db.Uuid
+  tipo         String   @db.VarChar(30)  // debito | pagamento | credito | desconto | correcao | transferencia | outros
+  valor        Decimal  @db.Decimal(10, 2)
+  saldoAntes   Decimal  @map("saldo_antes") @db.Decimal(10, 2)
+  saldoDepois  Decimal  @map("saldo_depois") @db.Decimal(10, 2)
+  data         DateTime @db.Date
+  descricao    String?  @db.VarChar(500)
+  responsavelId String? @map("responsavel_id") @db.Uuid
+  observacao   String?  @db.Text
+  referenciaId String?  @map("referencia_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by") @db.Uuid
+
+  financeiro   EbdFinanceiro @relation(fields: [financeiroId], references: [id], onDelete: Cascade)
+  campo        Campo         @relation("CampoEbdFinMovimentos", fields: [campoId], references: [id], onDelete: Cascade)
+  responsavel  Member?       @relation("EbdFinMovResponsavel", fields: [responsavelId], references: [id])
+
+  @@index([financeiroId])
+  @@index([campoId])
+  @@map("ebd_financeiro_movimentos")
+}
+
+model EbdHistorico {
+  id         String   @id @default(uuid()) @db.Uuid
+  campoId    String   @map("campo_id") @db.Uuid
+  churchId   String?  @map("church_id") @db.Uuid
+  tipo       String   @db.VarChar(30)  // entrada_estoque | retirada | entrega | pagamento | ajuste | cancelamento
+  titulo     String   @db.VarChar(255)
+  descricao  String?  @db.Text
+  valor      Decimal? @db.Decimal(10, 2)
+  referenciaId String? @map("referencia_id") @db.Uuid
+  data       DateTime @db.Date
+
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by") @db.Uuid
+
+  campo  Campo   @relation("CampoEbdHistorico", fields: [campoId], references: [id], onDelete: Cascade)
+  church Church? @relation("ChurchEbdHistorico", fields: [churchId], references: [id])
+
+  @@index([campoId])
+  @@index([churchId])
+  @@map("ebd_historico")
+}
+
+model EbdNegociacao {
+  id              String    @id @default(uuid()) @db.Uuid
+  campoId         String    @map("campo_id") @db.Uuid
+  churchId        String    @map("church_id") @db.Uuid
+  titulo          String    @db.VarChar(255)
+  descricao       String?   @db.Text
+  valorTotal      Decimal   @map("valor_total") @db.Decimal(10, 2)
+  numParcelas     Int       @default(1) @map("num_parcelas")
+  dataInicio      DateTime  @map("data_inicio") @db.Date
+  dataVencimento  DateTime? @map("data_vencimento") @db.Date
+  status          String    @default("aberta") @db.VarChar(20)
+  observacao      String?   @db.Text
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String?   @map("created_by") @db.Uuid
+  deletedAt       DateTime? @map("deleted_at")
+
+  campo    Campo   @relation("CampoEbdNegociacoes", fields: [campoId], references: [id], onDelete: Cascade)
+  church   Church  @relation("ChurchEbdNegociacoes", fields: [churchId], references: [id])
+  parcelas EbdNegociacaoParcela[]
+
+  @@index([campoId])
+  @@index([churchId])
+  @@map("ebd_negociacoes")
+}
+
+model EbdNegociacaoParcela {
+  id             String    @id @default(uuid()) @db.Uuid
+  negociacaoId   String    @map("negociacao_id") @db.Uuid
+  numParcela     Int       @map("num_parcela")
+  valor          Decimal   @db.Decimal(10, 2)
+  dataVencimento DateTime  @map("data_vencimento") @db.Date
+  dataPagamento  DateTime? @map("data_pagamento") @db.Date
+  status         String    @default("pendente") @db.VarChar(20)
+  observacao     String?   @db.Text
+
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  negociacao     EbdNegociacao @relation(fields: [negociacaoId], references: [id], onDelete: Cascade)
+
+  @@index([negociacaoId])
+  @@map("ebd_negociacao_parcelas")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STRIPE — Integração de Pagamentos
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Configuração Stripe por campo (multi-tenant). Cada campo tem suas próprias chaves.
+model StripeConfig {
+  id               String  @id @default(uuid()) @db.Uuid
+  campoId          String  @unique @map("campo_id") @db.Uuid
+  publishableKey   String  @map("publishable_key") @db.VarChar(255)
+  secretKeyEnc     String  @map("secret_key_enc") @db.Text        // criptografado AES-256
+  webhookSecretEnc String? @map("webhook_secret_enc") @db.Text    // criptografado AES-256
+  accountId        String? @map("account_id") @db.VarChar(100)    // Stripe Connect account ID
+  ativo            Boolean @default(false)
+  modoProd         Boolean @default(false) @map("modo_prod")      // false = test mode
+  pixEnabled       Boolean @default(true)  @map("pix_enabled")
+  cardEnabled      Boolean @default(true)  @map("card_enabled")
+  currency         String  @default("brl") @db.VarChar(3)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  campo         Campo              @relation("CampoStripeConfig", fields: [campoId], references: [id], onDelete: Cascade)
+  payments      StripePayment[]
+  subscriptions StripeSubscription[]
+
+  @@map("stripe_configs")
+}
+
+/// Registro de cada pagamento processado via Stripe
+model StripePayment {
+  id                String   @id @default(uuid()) @db.Uuid
+  configId          String   @map("config_id") @db.Uuid
+  campoId           String   @map("campo_id") @db.Uuid
+  churchId          String?  @map("church_id") @db.Uuid
+  userId            String?  @map("user_id") @db.Uuid          // AppMembrosAuth.authUserId ou User.id
+  memberId          String?  @map("member_id") @db.Uuid
+  orderId           String?  @map("order_id") @db.Uuid         // EventOrder.id ou Order.id
+  stripePaymentIntentId String? @map("stripe_payment_intent_id") @db.VarChar(100)
+  stripeSessionId   String?  @map("stripe_session_id") @db.VarChar(100)
+  stripeCustomerId  String?  @map("stripe_customer_id") @db.VarChar(100)
+  stripeChargeId    String?  @map("stripe_charge_id") @db.VarChar(100)
+  valor             Decimal  @db.Decimal(10, 2)
+  valorRefunded     Decimal  @default(0) @map("valor_refunded") @db.Decimal(10, 2)
+  moeda             String   @default("brl") @db.VarChar(3)
+  metodo            String   @db.VarChar(30)    // pix | credit_card | debit_card | link | free
+  tipo              String   @db.VarChar(30)    // ingresso | produto | dizimo | oferta | doacao | assinatura
+  status            String   @default("pendente") @db.VarChar(30) // pendente | aprovado | falhou | reembolsado | parcialmente_reembolsado | expirado
+  descricao         String?  @db.VarChar(500)
+  pixQrCode         String?  @map("pix_qr_code") @db.Text
+  pixExpira         DateTime? @map("pix_expira")
+  receiptUrl        String?  @map("receipt_url") @db.VarChar(500)
+  metadata          Json?    @db.JsonB
+  paidAt            DateTime? @map("paid_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  config        StripeConfig     @relation(fields: [configId], references: [id])
+  campo         Campo            @relation("CampoStripePayments", fields: [campoId], references: [id], onDelete: Cascade)
+  church        Church?          @relation("ChurchStripePayments", fields: [churchId], references: [id])
+  refunds       StripeRefund[]
+  webhookLogs   StripeWebhookLog[]
+
+  @@index([campoId])
+  @@index([churchId])
+  @@index([userId])
+  @@index([stripePaymentIntentId])
+  @@index([stripeSessionId])
+  @@map("stripe_payments")
+}
+
+/// Assinaturas recorrentes Stripe
+model StripeSubscription {
+  id                   String   @id @default(uuid()) @db.Uuid
+  configId             String   @map("config_id") @db.Uuid
+  campoId              String   @map("campo_id") @db.Uuid
+  churchId             String?  @map("church_id") @db.Uuid
+  userId               String?  @map("user_id") @db.Uuid
+  memberId             String?  @map("member_id") @db.Uuid
+  stripeSubscriptionId String   @unique @map("stripe_subscription_id") @db.VarChar(100)
+  stripeCustomerId     String?  @map("stripe_customer_id") @db.VarChar(100)
+  stripePriceId        String?  @map("stripe_price_id") @db.VarChar(100)
+  stripeProductId      String?  @map("stripe_product_id") @db.VarChar(100)
+  tipo                 String?  @db.VarChar(30)
+  valor                Decimal? @db.Decimal(10, 2)
+  moeda                String   @default("brl") @db.VarChar(3)
+  frequencia           String?  @db.VarChar(20)
+  status               String   @default("ativa") @db.VarChar(20)
+  proximaCobranca      DateTime? @map("proxima_cobranca")
+  canceladaEm          DateTime? @map("cancelada_em")
+  pausadaEm            DateTime? @map("pausada_em")
+  descricao            String?  @db.VarChar(255)
+  metadata             Json?    @db.JsonB
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  config  StripeConfig @relation(fields: [configId], references: [id])
+  campo   Campo        @relation("CampoStripeSubscriptions", fields: [campoId], references: [id], onDelete: Cascade)
+  church  Church?      @relation("ChurchStripeSubscriptions", fields: [churchId], references: [id])
+
+  @@index([campoId])
+  @@index([userId])
+  @@index([stripeSubscriptionId])
+  @@map("stripe_subscriptions")
+}
+
+/// Reembolsos processados via Stripe
+model StripeRefund {
+  id              String   @id @default(uuid()) @db.Uuid
+  paymentId       String   @map("payment_id") @db.Uuid
+  stripeRefundId  String?  @map("stripe_refund_id") @db.VarChar(100)
+  valor           Decimal  @db.Decimal(10, 2)
+  moeda           String   @default("brl") @db.VarChar(3)
+  motivo          String?  @db.Text
+  status          String   @default("solicitado") @db.VarChar(20) // solicitado | processado | rejeitado
+  stripeStatus    String?  @map("stripe_status") @db.VarChar(20)
+  solicitadoPor   String?  @map("solicitado_por") @db.Uuid
+  aprovadoPor     String?  @map("aprovado_por") @db.Uuid
+  motivoRejeicao  String?  @map("motivo_rejeicao") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  payment StripePayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("stripe_refunds")
+}
+
+/// Log de todos os webhooks recebidos do Stripe
+model StripeWebhookLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  campoId      String?  @map("campo_id") @db.Uuid
+  paymentId    String?  @map("payment_id") @db.Uuid
+  stripeEventId String  @unique @map("stripe_event_id") @db.VarChar(100)
+  eventType    String   @map("event_type") @db.VarChar(100)
+  payload      Json     @db.JsonB
+  processado   Boolean  @default(false)
+  erro         String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  payment StripePayment? @relation(fields: [paymentId], references: [id])
+
+  @@index([campoId])
+  @@index([stripeEventId])
+  @@map("stripe_webhook_logs")
 }

@@ -1,5 +1,6 @@
-import { Plug, Check, Settings, ExternalLink, Plus, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { Plug, Settings, Plus, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 
 interface Integration {
   id: string;
@@ -9,18 +10,41 @@ interface Integration {
   icon: string;
   isConnected: boolean;
   isPremium: boolean;
+  configPath?: string;   // rota para configurar quando desconectado
+  settingsPath?: string; // rota para gerenciar quando conectado
+}
+
+function getCampoId(): string {
+  try {
+    const u = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+    return u.campoId || u.campo_id || '';
+  } catch { return ''; }
 }
 
 export function Integrations() {
+  const navigate = useNavigate();
+  const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const campoId = getCampoId();
+    if (!campoId) return;
+    fetch(`/api/stripe/config?campoId=${campoId}`)
+      .then(r => r.json())
+      .then(data => setStripeConnected(!!data?.ativo))
+      .catch(() => setStripeConnected(false));
+  }, []);
+
   const [integrations, setIntegrations] = useState<Integration[]>([
     {
       id: 'stripe',
       name: 'Stripe',
-      description: 'Processamento de pagamentos e doações online',
+      description: 'Processamento de pagamentos, doações e assinaturas',
       category: 'Financeiro',
       icon: '💳',
-      isConnected: true,
-      isPremium: false
+      isConnected: false, // atualizado pelo useEffect abaixo
+      isPremium: false,
+      configPath: '/app-ui/stripe/config',
+      settingsPath: '/app-ui/stripe',
     },
     {
       id: 'google-calendar',
@@ -123,6 +147,14 @@ export function Integrations() {
     },
   ]);
 
+  // Sincroniza status real do Stripe assim que a API responde
+  useEffect(() => {
+    if (stripeConnected === null) return;
+    setIntegrations(prev =>
+      prev.map(i => i.id === 'stripe' ? { ...i, isConnected: stripeConnected } : i)
+    );
+  }, [stripeConnected]);
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const categories = [
@@ -141,14 +173,20 @@ export function Integrations() {
 
   const connectedCount = integrations.filter(i => i.isConnected).length;
 
-  const toggleConnection = (id: string) => {
-    setIntegrations(prev =>
-      prev.map(integration =>
-        integration.id === id
-          ? { ...integration, isConnected: !integration.isConnected }
-          : integration
-      )
-    );
+  const handleConnect = (integration: Integration) => {
+    if (integration.configPath) {
+      navigate(integration.configPath);
+    } else {
+      setIntegrations(prev =>
+        prev.map(i => i.id === integration.id ? { ...i, isConnected: true } : i)
+      );
+    }
+  };
+
+  const handleSettings = (integration: Integration) => {
+    if (integration.settingsPath) {
+      navigate(integration.settingsPath);
+    }
   };
 
   return (
@@ -232,19 +270,25 @@ export function Integrations() {
 
               {integration.isConnected ? (
                 <div className="flex gap-2">
-                  <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                  <button
+                    onClick={() => handleSettings(integration)}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    title="Gerenciar"
+                  >
                     <Settings className="w-4 h-4 text-slate-600" />
                   </button>
-                  <button
-                    onClick={() => toggleConnection(integration.id)}
-                    className="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm"
-                  >
-                    Desconectar
-                  </button>
+                  {!integration.settingsPath && (
+                    <button
+                      onClick={() => setIntegrations(prev => prev.map(i => i.id === integration.id ? { ...i, isConnected: false } : i))}
+                      className="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm"
+                    >
+                      Desconectar
+                    </button>
+                  )}
                 </div>
               ) : (
                 <button
-                  onClick={() => toggleConnection(integration.id)}
+                  onClick={() => handleConnect(integration)}
                   className="px-4 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
                 >
                   Conectar

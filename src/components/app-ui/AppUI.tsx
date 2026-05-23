@@ -202,6 +202,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Pedidos',                path: '/app-ui/app/orders',        icon: ShoppingCart, permKey: 'app_orders' },
       { name: 'Check-in QR Code',       path: '/app-ui/app/checkin',       icon: QrCode,       permKey: 'app_checkin' },
       { name: 'Reembolsos',             path: '/app-ui/app/refunds',       icon: RefreshCcw,   permKey: 'app_refunds' },
+      { name: 'Meus Pagamentos',        path: '/app-ui/stripe/meus',       icon: CreditCard,   permKey: 'stripe_meus_pagamentos' },
       { name: 'Pão Diário',             path: '/app-ui/app/daily-bread',   icon: Sun,          permKey: 'daily_bread' },
       { name: 'Programação',            path: '/app-ui/app/hq-schedule',   icon: Calendar,     permKey: 'app_hq_schedule' },
       { name: 'Como Chegar',            path: '/app-ui/app/hq-access',     icon: MapPin,       permKey: 'app_hq_access' },
@@ -218,6 +219,18 @@ const appNavigation: NavigationSection[] = [
       { name: 'Fluxo de Caixa',   path: '/app-ui/finance/cash-flow',      icon: Wallet,          permKey: 'cash_flow' },
       { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },
       { name: 'Rel. Financeiros', path: '/app-ui/financial-reports',      icon: BarChart3,       permKey: 'finance_reports' },
+    ]
+  },
+  {
+    section: 'Gestão EBD',
+    items: [
+      { name: 'Dashboard',         path: '/app-ui/ebd',                  icon: BookOpen,    permKey: 'ebd_dashboard', exact: true },
+      { name: 'Cadastros',         path: '/app-ui/ebd/cadastros',        icon: FileText,    permKey: 'ebd_cadastros' },
+      { name: 'Estoque',           path: '/app-ui/ebd/estoque',          icon: LayoutGrid,  permKey: 'ebd_estoque' },
+      { name: 'Separação/Entrega', path: '/app-ui/ebd/entrega',          icon: Clipboard,   permKey: 'ebd_entrega' },
+      { name: 'Financeiro EBD',    path: '/app-ui/ebd/financeiro',       icon: DollarSign,  permKey: 'ebd_financeiro' },
+      { name: 'Histórico',         path: '/app-ui/ebd/historico',        icon: List,        permKey: 'ebd_historico' },
+      { name: 'Relatórios',        path: '/app-ui/ebd/relatorios',       icon: BarChart3,   permKey: 'ebd_relatorios' },
     ]
   },
   {
