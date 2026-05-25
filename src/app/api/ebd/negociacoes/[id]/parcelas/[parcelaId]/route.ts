@@ -3,20 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { resolveScopedFieldId, serializeBigInts } from "@/lib/helpers";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string; parcelaId: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; parcelaId: string }> }) {
   return withAuth(req, async (user) => {
+    const { id, parcelaId } = await params;
     const body = await req.json().catch(() => ({}));
     const { campoId: reqCampoId, status, dataPagamento, observacao } = body;
     const campoId = resolveScopedFieldId(user, reqCampoId);
     if (!campoId) return NextResponse.json({ error: "campoId obrigatório" }, { status: 400 });
 
     const negociacao = await prisma.ebdNegociacao.findFirst({
-      where: { id: params.id, campoId, deletedAt: null },
+      where: { id, campoId, deletedAt: null },
       include: { parcelas: { orderBy: { numParcela: "asc" } } },
     });
     if (!negociacao) return NextResponse.json({ error: "Negociação não encontrada" }, { status: 404 });
 
-    const parcela = negociacao.parcelas.find((p) => p.id === params.parcelaId);
+    const parcela = negociacao.parcelas.find((p) => p.id === parcelaId);
     if (!parcela) return NextResponse.json({ error: "Parcela não encontrada" }, { status: 404 });
 
     const novoPago = status === "pago" || (!!dataPagamento && !status);
@@ -24,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const updated = await prisma.$transaction(async (tx) => {
       const p = await tx.ebdNegociacaoParcela.update({
-        where: { id: params.parcelaId },
+        where: { id: parcelaId },
         data: {
           status: status || (dataPagamento ? "pago" : parcela.status),
           dataPagamento: dataPagamento ? new Date(dataPagamento) : parcela.dataPagamento,
@@ -108,10 +109,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
 
       // Fecha negociação se todas as parcelas foram pagas
-      const allParcelas = await tx.ebdNegociacaoParcela.findMany({ where: { negociacaoId: params.id } });
-      const todasPagas = allParcelas.every((p) => p.id === params.parcelaId ? novoPago : p.status === "pago");
+      const allParcelas = await tx.ebdNegociacaoParcela.findMany({ where: { negociacaoId: id } });
+      const todasPagas = allParcelas.every((p) => p.id === parcelaId ? novoPago : p.status === "pago");
       if (todasPagas) {
-        await tx.ebdNegociacao.update({ where: { id: params.id }, data: { status: "fechada" } });
+        await tx.ebdNegociacao.update({ where: { id }, data: { status: "fechada" } });
       }
 
       return p;

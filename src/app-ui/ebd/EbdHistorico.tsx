@@ -20,6 +20,13 @@ const TIPO_CONFIG: Record<string, { label: string; color: string; dot: string }>
 
 function fmt(v: number) { return Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function useCampoId() { try { return JSON.parse(localStorage.getItem("mrm_user") || "{}").campoId as string; } catch { return ""; } }
+function currentMonthRange() {
+  const now = new Date();
+  return {
+    from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10),
+    to:   new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10),
+  };
+}
 
 export default function EbdHistorico() {
   const campoId = useCampoId();
@@ -27,17 +34,23 @@ export default function EbdHistorico() {
   const [search, setSearch] = useState("");
   const [filterTipo, setFilterTipo] = useState("");
   const [loading, setLoading] = useState(true);
+  const { from: defaultFrom, to: defaultTo } = currentMonthRange();
+  const [dateFrom, setDateFrom] = useState(defaultFrom);
+  const [dateTo, setDateTo] = useState(defaultTo);
 
   const fetchData = async () => {
     if (!campoId) return;
     setLoading(true);
-    const url = `${apiBase}/ebd/historico?campoId=${campoId}${filterTipo ? `&tipo=${filterTipo}` : ""}`;
-    const data = await authFetch<unknown>(url).catch(() => []);
+    const params = new URLSearchParams({ campoId });
+    if (filterTipo) params.set("tipo", filterTipo);
+    if (dateFrom) params.set("from", dateFrom);
+    if (dateTo) params.set("to", dateTo);
+    const data = await authFetch<unknown>(`${apiBase}/ebd/historico?${params}`).catch(() => []);
     setItems(Array.isArray(data) ? data : []);
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [campoId, filterTipo]);
+  useEffect(() => { fetchData(); }, [campoId, filterTipo, dateFrom, dateTo]);
 
   // Agrupar por data
   const grouped: Record<string, HistoricoItem[]> = {};
@@ -68,6 +81,10 @@ export default function EbdHistorico() {
           <option value="">Todos os eventos</option>
           {Object.entries(TIPO_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
+        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
       </div>
 
       {/* Timeline */}

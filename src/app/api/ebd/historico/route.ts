@@ -9,13 +9,21 @@ export async function GET(req: NextRequest) {
     if (!campoId) return NextResponse.json({ error: "campoId obrigatório" }, { status: 400 });
     const churchId = req.nextUrl.searchParams.get("churchId");
     const tipo = req.nextUrl.searchParams.get("tipo");
-    const take = Math.min(Number(req.nextUrl.searchParams.get("take") || 100), 200);
+    const from = req.nextUrl.searchParams.get("from");
+    const to = req.nextUrl.searchParams.get("to");
+    const take = Math.min(Number(req.nextUrl.searchParams.get("take") || 200), 500);
 
     const rows = await prisma.ebdHistorico.findMany({
       where: {
         campoId,
         ...(churchId && { churchId }),
         ...(tipo && { tipo }),
+        ...((from || to) && {
+          data: {
+            ...(from && { gte: new Date(from) }),
+            ...(to && { lte: new Date(to + "T23:59:59Z") }),
+          },
+        }),
       },
       include: {
         church: { select: { id: true, name: true } },

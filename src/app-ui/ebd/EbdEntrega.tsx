@@ -19,6 +19,12 @@ interface Entrega {
 
 function fmt(v: number) { return Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function useCampoId() { try { return JSON.parse(localStorage.getItem("mrm_user") || "{}").campoId as string; } catch { return ""; } }
+function currentMonthRange() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const to   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  return { from, to };
+}
 
 const STATUS_CFG: Record<string, { label: string; color: string; icon: React.FC<{ className?: string }> }> = {
   separando: { label: "Separando", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Clock },
@@ -38,6 +44,9 @@ export default function EbdEntrega() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const { from: defaultFrom, to: defaultTo } = currentMonthRange();
+  const [dateFrom, setDateFrom] = useState(defaultFrom);
+  const [dateTo, setDateTo] = useState(defaultTo);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -154,6 +163,9 @@ export default function EbdEntrega() {
   const filtered = entregas.filter((e) => {
     if (filterStatus && e.status !== filterStatus) return false;
     if (search && !e.church.name.toLowerCase().includes(search.toLowerCase()) && !e.numeroDoc.toLowerCase().includes(search.toLowerCase())) return false;
+    const d = e.dataEntrega.slice(0, 10);
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > dateTo) return false;
     return true;
   });
 
@@ -197,6 +209,10 @@ export default function EbdEntrega() {
               <option value="">Todos os status</option>
               {Object.entries(STATUS_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
           </div>
 
           <div className="space-y-3">

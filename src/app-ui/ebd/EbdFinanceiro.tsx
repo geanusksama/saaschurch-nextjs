@@ -60,6 +60,12 @@ const PARC_STATUS: Record<string, { label: string; cls: string }> = {
 function fmt(v: number) { return Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function useCampoId() { try { return JSON.parse(localStorage.getItem("mrm_user") || "{}").campoId as string; } catch { return ""; } }
 function useProfileType() { try { return (JSON.parse(localStorage.getItem("mrm_user") || "{}").profileType as string) || "church"; } catch { return "church"; } }
+function currentMonthRange() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const to   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  return { from, to };
+}
 
 type Tab = "contas" | "negociacoes";
 
@@ -72,6 +78,9 @@ export default function EbdFinanceiro() {
   const [trimestres, setTrimestres] = useState<Trimestre[]>([]);
   const [negociacoes, setNegociacoes] = useState<Negociacao[]>([]);
   const [search, setSearch] = useState("");
+  const { from: defaultFrom, to: defaultTo } = currentMonthRange();
+  const [dateFrom, setDateFrom] = useState(defaultFrom);
+  const [dateTo, setDateTo] = useState(defaultTo);
   const [filterTri, setFilterTri] = useState("");
   const [filterSit, setFilterSit] = useState("");
   const [filterNegStatus, setFilterNegStatus] = useState("");
@@ -232,6 +241,16 @@ export default function EbdFinanceiro() {
     if (search && !r.church.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterSit === "pendente" && Number(r.saldo) <= 0) return false;
     if (filterSit === "quitado" && Number(r.saldo) > 0) return false;
+    // Filtro de data: mantém a linha se tiver algum movimento dentro do intervalo
+    if (dateFrom || dateTo) {
+      const hasMovInRange = r.movimentos.some((m) => {
+        const d = m.data.slice(0, 10);
+        if (dateFrom && d < dateFrom) return false;
+        if (dateTo && d > dateTo) return false;
+        return true;
+      });
+      if (!hasMovInRange && r.movimentos.length > 0) return false;
+    }
     return true;
   });
 
@@ -325,6 +344,10 @@ export default function EbdFinanceiro() {
               <option value="pendente">Com saldo devedor</option>
               <option value="quitado">Quitado</option>
             </select>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
           </>
         )}
         {tab === "negociacoes" && (

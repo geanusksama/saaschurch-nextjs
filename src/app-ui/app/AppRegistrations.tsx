@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Search, CheckCircle2, XCircle, Clock, Eye, Users, Link2, Trash2 } from 'lucide-react';
+import { UserPlus, Search, CheckCircle2, XCircle, Clock, Eye, Users, Link2, Trash2, CheckSquare } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -47,9 +47,12 @@ export default function AppRegistrations() {
   const [memberResults, setMemberResults] = useState<MemberResult[]>([]);
   const [linkedMember, setLinkedMember] = useState<MemberResult | null>(null);
   const [memberSearching, setMemberSearching] = useState(false);
-  const [cpfChecked, setCpfChecked] = useState(false); // true após buscar CPF (encontrado ou não)
 
-  // Apenas aguarda hydration do localStorage
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkConfirmDelete, setBulkConfirmDelete] = useState(false);
+
   useEffect(() => { setReady(true); }, []);
 
   const { data: cadastros = [], isLoading } = useQuery({
@@ -114,10 +117,7 @@ export default function AppRegistrations() {
 
   async function searchMemberByCpf(cpfInput: string) {
     const cpf = cpfInput.replace(/\D/g, '');
-    if (cpf.length < 11) {
-      setMemberResults([]);
-      return;
-    }
+    if (cpf.length < 11) { setMemberResults([]); return; }
     setMemberSearching(true);
     try {
       const { data } = await supabase
@@ -125,7 +125,6 @@ export default function AppRegistrations() {
         .select('id, full_name, rol, cpf, churches(name)')
         .eq('cpf', cpf)
         .limit(1);
-      setCpfChecked(true);
       if (data && data.length > 0) {
         const m = data[0] as any;
         const result: MemberResult = {
@@ -134,7 +133,7 @@ export default function AppRegistrations() {
           sub: [m.rol ? `ROL ${m.rol}` : '', Array.isArray(m.churches) ? m.churches[0]?.name : m.churches?.name].filter(Boolean).join(' - '),
         };
         setMemberResults([result]);
-        setLinkedMember(result); // auto-seleciona: CPF encontrado → mostra box de vinculação
+        setLinkedMember(result);
       } else {
         setMemberResults([]);
         setLinkedMember(null);
@@ -150,16 +149,54 @@ export default function AppRegistrations() {
     setLinkedMember(null);
     setMemberSearch('');
     setMemberResults([]);
-    setCpfChecked(false);
     setConfirmDelete(false);
   }
 
+  // Bulk action helpers
+  function toggleAll(checked: boolean) {
+    setSelectedIds(checked ? new Set(filtered.map(c => c.id)) : new Set());
+  }
+  function toggleOne(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function bulkAction(action: 'approve' | 'reject' | 'delete') {
+    if (!selectedIds.size) return;
+    setBulkLoading(true);
+    setBulkConfirmDelete(false);
+    try {
+      const token = getToken();
+      const ids = Array.from(selectedIds);
+      if (action === 'delete') {
+        await Promise.all(ids.map(id =>
+          fetch(`/api/app-registrations/${id}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          })
+        ));
+      } else {
+        const status = action === 'approve' ? 'APROVADO' : 'REJEITADO';
+        await Promise.all(ids.map(id =>
+          fetch(`/api/app-registrations/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ status }),
+          })
+        ));
+      }
+      queryClient.invalidateQueries({ queryKey: ['app-cadastros'] });
+      setSelectedIds(new Set());
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   const camposOptions = Array.from(
-    new Set(
-      cadastros
-        .map(c => c.campo_name_resolved || c.campo_name || '')
-        .filter(Boolean)
-    )
+    new Set(cadastros.map(c => c.campo_name_resolved || c.campo_name || '').filter(Boolean))
   ).sort();
 
   const filtered = cadastros.filter(c => {
@@ -173,6 +210,8 @@ export default function AppRegistrations() {
   });
 
   const pending = cadastros.filter(c => c.status === 'PENDENTE').length;
+  const allFilteredSelected = filtered.length > 0 && filtered.every(c => selectedIds.has(c.id));
+  const someSelected = selectedIds.size > 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -214,6 +253,59 @@ export default function AppRegistrations() {
         </select>
       </div>
 
+      {/* Barra de ações em massa */}
+      {someSelected && (
+        <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 flex-wrap">
+          <span className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+            <CheckSquare className="w-4 h-4" />
+            {selectedIds.size} selecionado(s)
+          </span>
+          <div className="flex gap-2 ml-auto flex-wrap">
+            <button
+              onClick={() => bulkAction('approve')}
+              disabled={bulkLoading}
+              className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+            >
+              {bulkLoading ? '...' : 'Aprovar todos'}
+            </button>
+            <button
+              onClick={() => bulkAction('reject')}
+              disabled={bulkLoading}
+              className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+            >
+              {bulkLoading ? '...' : 'Rejeitar todos'}
+            </button>
+            {bulkConfirmDelete ? (
+              <>
+                <span className="text-xs text-red-600 font-medium self-center">Confirmar exclusão?</span>
+                <button onClick={() => setBulkConfirmDelete(false)} className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">Cancelar</button>
+                <button
+                  onClick={() => bulkAction('delete')}
+                  disabled={bulkLoading}
+                  className="px-3 py-1.5 bg-red-700 text-white rounded-lg text-sm font-medium hover:bg-red-800 disabled:opacity-50"
+                >
+                  {bulkLoading ? '...' : 'Excluir'}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setBulkConfirmDelete(true)}
+                disabled={bulkLoading}
+                className="px-3 py-1.5 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50"
+              >
+                Excluir todos
+              </button>
+            )}
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              Limpar seleção
+            </button>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="text-center py-16 text-slate-400">Carregando cadastros...</div>
       ) : filtered.length === 0 ? (
@@ -227,6 +319,14 @@ export default function AppRegistrations() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={e => toggleAll(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Nome</th>
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Email</th>
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Campo</th>
@@ -240,8 +340,17 @@ export default function AppRegistrations() {
               {filtered.map(c => {
                 const s = STATUS_LABELS[c.status] ?? { label: c.status, color: 'bg-slate-100 text-slate-600', icon: Clock };
                 const SIcon = s.icon;
+                const isChecked = selectedIds.has(c.id);
                 return (
-                  <tr key={c.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                  <tr key={c.id} className={`border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${isChecked ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleOne(c.id)}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{c.nome || '—'}</td>
                     <td className="px-4 py-3 text-slate-500">{c.email}</td>
                     <td className="px-4 py-3 text-slate-500 text-xs">
@@ -305,11 +414,11 @@ export default function AppRegistrations() {
               />
             </div>
 
-            {/* CPF obrigatório para TODOS os cadastros PENDENTE antes de aprovar/vincular */}
+            {/* Vinculação de membro (opcional) */}
             {selected.status === 'PENDENTE' && (
               <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-2 bg-slate-50 dark:bg-slate-900/30">
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                  <Link2 className="w-3.5 h-3.5" /> Verificar CPF na lista de membros
+                  <Link2 className="w-3.5 h-3.5" /> Vincular a membro existente (opcional)
                 </p>
                 {selected.is_member && (
                   <p className="text-xs text-blue-600 dark:text-blue-400">
@@ -324,7 +433,7 @@ export default function AppRegistrations() {
                       <p className="text-xs text-slate-500">{linkedMember.sub}</p>
                     </div>
                     <button
-                      onClick={() => { setLinkedMember(null); setMemberSearch(''); setMemberResults([]); setCpfChecked(false); }}
+                      onClick={() => { setLinkedMember(null); setMemberSearch(''); setMemberResults([]); }}
                       className="text-xs text-red-500 hover:text-red-700 ml-2"
                     >
                       Trocar
@@ -335,7 +444,7 @@ export default function AppRegistrations() {
                     <input
                       type="text"
                       value={memberSearch}
-                      onChange={e => { setMemberSearch(e.target.value); if (cpfChecked) setCpfChecked(false); }}
+                      onChange={e => setMemberSearch(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && searchMemberByCpf(memberSearch)}
                       placeholder="000.000.000-00"
                       maxLength={14}
@@ -350,16 +459,9 @@ export default function AppRegistrations() {
                     </button>
                   </div>
                 )}
-                {!linkedMember && cpfChecked && memberResults.length === 0 && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                    CPF não encontrado na lista de membros — será aprovado sem vínculo de membro.
-                  </p>
-                )}
-                {!linkedMember && !cpfChecked && (
-                  <p className="text-xs text-slate-400">
-                    Pesquise o CPF antes de aprovar.
-                  </p>
-                )}
+                <p className="text-xs text-slate-400">
+                  Pesquise o CPF para vincular ao cadastro de membro, ou aprove diretamente sem vínculo.
+                </p>
               </div>
             )}
 
@@ -383,59 +485,56 @@ export default function AppRegistrations() {
                 </>
               ) : (
                 <>
-              <button
-                onClick={() => { setSelected(null); setNota(''); setLinkedMember(null); setMemberSearch(''); setMemberResults([]); setCpfChecked(false); setConfirmDelete(false); }}
-                className="flex-1 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50"
-              >
-                Fechar
-              </button>
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="p-2 border border-red-300 dark:border-red-800 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                title="Excluir cadastro e usuário"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              {selected.status === 'PENDENTE' && (
-                <>
                   <button
-                    onClick={() => updateMutation.mutate({ id: selected.id, status: 'REJEITADO', observacoes: nota })}
-                    disabled={updateMutation.isPending}
-                    className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                    onClick={() => { setSelected(null); setNota(''); setLinkedMember(null); setMemberSearch(''); setMemberResults([]); setConfirmDelete(false); }}
+                    className="flex-1 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50"
                   >
-                    Rejeitar
+                    Fechar
                   </button>
-                  {linkedMember ? (
-                    /* CPF encontrado → vincular como membro */
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="p-2 border border-red-300 dark:border-red-800 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    title="Excluir cadastro e usuário"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  {selected.status === 'PENDENTE' && (
+                    <>
+                      <button
+                        onClick={() => updateMutation.mutate({ id: selected.id, status: 'REJEITADO', observacoes: nota })}
+                        disabled={updateMutation.isPending}
+                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                      >
+                        Rejeitar
+                      </button>
+                      {linkedMember ? (
+                        <button
+                          onClick={() => updateMutation.mutate({ id: selected.id, status: 'VINCULADO', observacoes: nota, member_id: linkedMember.id })}
+                          disabled={updateMutation.isPending}
+                          className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          Vincular Membro
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => updateMutation.mutate({ id: selected.id, status: 'APROVADO', observacoes: nota })}
+                          disabled={updateMutation.isPending}
+                          className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                        >
+                          Aprovar
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {selected.status === 'APROVADO' && (
                     <button
-                      onClick={() => updateMutation.mutate({ id: selected.id, status: 'VINCULADO', observacoes: nota, member_id: linkedMember.id })}
+                      onClick={() => updateMutation.mutate({ id: selected.id, status: 'VINCULADO', observacoes: nota })}
                       disabled={updateMutation.isPending}
                       className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                     >
-                      Vincular Membro
-                    </button>
-                  ) : (
-                    /* CPF não encontrado (ou não verificado) → aprovar sem vínculo */
-                    <button
-                      onClick={() => updateMutation.mutate({ id: selected.id, status: 'APROVADO', observacoes: nota })}
-                      disabled={updateMutation.isPending || !cpfChecked}
-                      title={!cpfChecked ? 'Pesquise o CPF antes de aprovar' : ''}
-                      className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Aprovar
+                      Marcar como Vinculado
                     </button>
                   )}
-                </>
-              )}
-              {selected.status === 'APROVADO' && (
-                <button
-                  onClick={() => updateMutation.mutate({ id: selected.id, status: 'VINCULADO', observacoes: nota })}
-                  disabled={updateMutation.isPending}
-                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-                >
-                  Marcar como Vinculado
-                </button>
-              )}
                 </>
               )}
             </div>

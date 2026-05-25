@@ -8,12 +8,15 @@ export async function GET(req: NextRequest) {
     const campoId = resolveScopedFieldId(user, req.nextUrl.searchParams.get("campoId") || undefined);
     if (!campoId) return NextResponse.json({ error: "campoId obrigatório" }, { status: 400 });
 
-    const [
-      estoque,
-      finRows,
-      entregasRecentes,
-      entradasRecentes,
-    ] = await Promise.all([
+    const from = req.nextUrl.searchParams.get("from");
+    const to   = req.nextUrl.searchParams.get("to");
+
+    const dateFilter = (from || to) ? {
+      gte: from ? new Date(from) : undefined,
+      lte: to   ? new Date(to + "T23:59:59Z") : undefined,
+    } : undefined;
+
+    const [estoque, finRows, entregasRecentes, entradasRecentes, pagamentosMovimentos] = await Promise.all([
       prisma.ebdEstoque.findMany({
         where: { campoId },
         include: { produto: { include: { categoria: { select: { id: true, nome: true } } } } },
@@ -23,44 +26,68 @@ export async function GET(req: NextRequest) {
         include: { church: { select: { id: true, name: true } } },
       }),
       prisma.ebdEntrega.findMany({
-        where: { campoId, deletedAt: null },
+        where: {
+          campoId, deletedAt: null,
+          ...(dateFilter && { dataEntrega: dateFilter }),
+        },
         include: {
           church: { select: { id: true, name: true } },
-          itens: true,
+          itens: { include: { produto: { include: { categoria: { select: { nome: true } } } } } },
         },
         orderBy: { dataEntrega: "desc" },
-        take: 5,
+        take: 10,
       }),
       prisma.ebdEntrada.findMany({
-        where: { campoId, deletedAt: null },
+        where: {
+          campoId, deletedAt: null,
+          ...(dateFilter && { dataEntrada: dateFilter }),
+        },
+        include: { itens: { include: { produto: { select: { nome: true } } } } },
         orderBy: { dataEntrada: "desc" },
-        take: 5,
+        take: 10,
+      }),
+      prisma.ebdFinanceiroMovimento.findMany({
+        where: {
+          campoId,
+          tipo: "pagamento",
+          ...(dateFilter && { data: dateFilter }),
+        },
+        select: { valor: true, data: true, financeiroId: true },
       }),
     ]);
 
-    const totalDistribuido = await prisma.ebdEntregaItem.aggregate({
-      where: { entrega: { campoId, deletedAt: null } },
-      _sum: { quantidade: true },
-    });
+    // Total distribuído no período
+    const totalDistribuido = entregasRecentes.reduce(
+      (s, e) => s + e.itens.reduce((si, i) => si + i.quantidade, 0), 0
+    );
+
+    // Distribuição por categoria no período
+    const distPorCategoria: Record<string, number> = {};
+    for (const e of entregasRecentes) {
+      for (const item of e.itens) {
+        const cat = item.produto.categoria.nome;
+        distPorCategoria[cat] = (distPorCategoria[cat] || 0) + item.quantidade;
+      }
+    }
 
     const totalPendente = finRows.reduce((s, r) => s + Math.max(0, Number(r.saldo)), 0);
     const igrejesInadimplentes = finRows.filter((r) => Number(r.saldo) > 0).length;
     const estoquesBaixos = estoque.filter((e) => e.quantidade <= 10).length;
+    const totalRecebidoPeriodo = pagamentosMovimentos.reduce((s, m) => s + Number(m.valor), 0);
 
-    // Distribuição por categoria
-    const distPorCategoria: Record<string, number> = {};
-    const itensEntregues = await prisma.ebdEntregaItem.findMany({
-      where: { entrega: { campoId, deletedAt: null } },
-      include: { produto: { include: { categoria: { select: { nome: true } } } } },
-    });
-    for (const item of itensEntregues) {
-      const cat = item.produto.categoria.nome;
-      distPorCategoria[cat] = (distPorCategoria[cat] || 0) + item.quantidade;
-    }
+    // Total compras no período
+    const totalCompras = entradasRecentes.reduce((s, e) => s + Number(e.valorTotal), 0);
+
+    // Top inadimplentes (máx 5)
+    const topInadimplentes = [...finRows]
+      .filter((r) => Number(r.saldo) > 0)
+      .sort((a, b) => Number(b.saldo) - Number(a.saldo))
+      .slice(0, 5)
+      .map((r) => ({ churchName: r.church.name, saldo: Number(r.saldo) }));
 
     return NextResponse.json(serializeBigInts({
       cards: {
-        totalDistribuido: totalDistribuido._sum.quantidade ?? 0,
+        totalDistribuido,
         totalPendente,
         igrejesInadimplentes,
         estoquesBaixos,
@@ -69,14 +96,19 @@ export async function GET(req: NextRequest) {
       },
       distribuicaoPorCategoria: Object.entries(distPorCategoria).map(([nome, qtd]) => ({ nome, qtd })),
       financeiroResumo: {
-        recebido: finRows.reduce((s, r) => {
-          const movsPag = 0; // calculado nos movimentos — simplificado aqui
-          return s + movsPag;
-        }, 0),
+        recebidoPeriodo: totalRecebidoPeriodo,
         pendente: totalPendente,
+        comprasPeriodo: totalCompras,
       },
-      entregasRecentes,
-      entradasRecentes,
+      topInadimplentes,
+      entregasRecentes: entregasRecentes.map((e) => ({
+        id: e.id, numeroDoc: e.numeroDoc, dataEntrega: e.dataEntrega,
+        status: e.status, valorTotal: e.valorTotal, church: e.church,
+      })),
+      entradasRecentes: entradasRecentes.map((e) => ({
+        id: e.id, numNf: e.numNf, dataEntrada: e.dataEntrada,
+        valorTotal: e.valorTotal, fornecedor: e.fornecedor,
+      })),
       estoque: estoque.map((e) => ({
         produto: e.produto.nome,
         categoria: e.produto.categoria.nome,
