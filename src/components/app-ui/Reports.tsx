@@ -3411,6 +3411,7 @@ export function Reports() {
   const [requirementsReportNameDialogOpen, setRequirementsReportNameDialogOpen] = useState(false);
   const [requirementsRawData, setRequirementsRawData] = useState<RequirementsPreviewRow[]>([]);
   const [requirementsLoading, setRequirementsLoading] = useState(false);
+  const [requirementsSearchTrigger, setRequirementsSearchTrigger] = useState(0);
   const [expandedRequirementsCardIds, setExpandedRequirementsCardIds] = useState<Set<string>>(new Set());
   const [requirementsReportBuilder, setRequirementsReportBuilder] = useState<RequirementsReportBuilderState>(() => {
     const { from: reqFrom, to: reqTo } = getCurrentMonthRange();
@@ -3636,7 +3637,7 @@ export function Reports() {
       .catch(() => setRequirementsRawData([]))
       .finally(() => setRequirementsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeReportModal]);
+  }, [activeReportModal, requirementsSearchTrigger]);
 
   // Load credential report data when modal opens
   useEffect(() => {
@@ -10284,6 +10285,19 @@ export function Reports() {
                             }))}
                           />
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setRequirementsSearchTrigger((n) => n + 1)}
+                          disabled={requirementsLoading}
+                          className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                          {requirementsLoading ? (
+                            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                          )}
+                          {requirementsLoading ? 'Buscando...' : 'Buscar'}
+                        </button>
                       </div>
                     </div>
 

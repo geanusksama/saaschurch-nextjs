@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../lib/queryClient';
-import { ArrowUpDown, AlertTriangle, CheckCircle, CheckCircle2, Clock3, CreditCard, Eye, Loader2, Pencil, Plus, Printer, Search, Trash2, UserRound, X, XCircle } from 'lucide-react';
+import { ArrowUpDown, AlertTriangle, CheckCircle, CheckCircle2, Clock3, CreditCard, Eye, FileSpreadsheet, Loader2, Pencil, Plus, Printer, Search, Trash2, UserRound, X, XCircle } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
 import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
+import * as XLSX from 'xlsx';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type CampoOption = { id: string; name: string; code?: string | null };
@@ -37,6 +38,40 @@ interface Member {
   nome?: string;
   fullName?: string;
   church?: { code?: string | null; name?: string | null } | null;
+}
+
+interface ReportRow {
+  id: number;
+  nome?: string | null;
+  tipo?: string | null;
+  numero?: string | null;
+  situacao?: string | null;
+  obs?: string | null;
+  dataemissao?: string | null;
+  datavalidade?: string | null;
+  dataaprovacao?: string | null;
+  aprovadopor?: string | null;
+  igrejasolicitante?: string | null;
+  card_protocol?: string | null;
+  church_id?: string | null;
+  created_at?: string | null;
+  modelo?: string | null;
+  churchName?: string | null;
+  regionalName?: string | null;
+  fieldName?: string | null;
+  modelLargura?: number | null;
+  modelAltura?: number | null;
+  modelLargurapg?: number | null;
+  modelAlturapg?: number | null;
+  modelLinhaporpg?: number | null;
+  modelColunaporpg?: number | null;
+  modelValidademeses?: number | null;
+  member?: {
+    cpf?: string; rg?: string; birthDate?: string; naturalityCity?: string;
+    naturalityState?: string; maritalStatus?: string; fatherName?: string;
+    motherName?: string; spouseName?: string; ecclesiasticalTitle?: string;
+    memberType?: string; rol?: string; photoUrl?: string;
+  } | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -278,6 +313,112 @@ export function Credentials() {
     setSortDirection(key === 'nome' || key === 'tipo' || key === 'igrejasolicitante' ? 'asc' : 'desc');
   }
 
+  const [exportingExcel, setExportingExcel] = useState(false);
+
+  async function exportToExcel() {
+    setExportingExcel(true);
+    try {
+      // Busca dados enriquecidos (com membro + modelo) do endpoint de relatório
+      const params = new URLSearchParams();
+      if (dateFrom) params.set('from', dateFrom);
+      if (dateTo) params.set('to', dateTo);
+      if (selectedStatus) params.set('situacao', selectedStatus);
+      if (selectedChurchId) params.set('church_id', selectedChurchId);
+      if (selectedRegionalId) params.set('regional_id', selectedRegionalId);
+      if (selectedFieldId) params.set('campo_id', selectedFieldId);
+      const res = await authFetch(`${apiBase}/credential-requests/report?${params}`);
+      const allData: ReportRow[] = res.ok ? await res.json() : [];
+
+      // Aplica os mesmos filtros visíveis
+      const churchMap = new Map(churches.map((c) => [c.id, c]));
+      const filtered = allData.filter((r) => {
+        if (!dateInRange(r.created_at, dateFrom, dateTo)) return false;
+        if (selectedStatus && r.situacao !== selectedStatus) return false;
+        if (selectedChurchId && r.church_id !== selectedChurchId) return false;
+        if (selectedRegionalId && !selectedChurchId) {
+          const ch = churchMap.get(r.church_id || '');
+          if (!ch) return false;
+          const rId = (ch as { regional?: { id?: string }; regionalId?: string }).regional?.id || (ch as { regionalId?: string }).regionalId;
+          if (rId !== selectedRegionalId) return false;
+        }
+        if (selectedFieldId && !selectedRegionalId && !selectedChurchId) {
+          const ch = churchMap.get(r.church_id || '');
+          if (!ch) return false;
+          const cId = (ch as { regional?: { campoId?: string; campo?: { id?: string } } }).regional?.campoId || (ch as { regional?: { campo?: { id?: string } } }).regional?.campo?.id;
+          if (cId !== selectedFieldId) return false;
+        }
+        if (searchTerm) {
+          const q = normalizeText(searchTerm);
+          const parts = [r.nome, r.numero, r.tipo, r.igrejasolicitante, r.situacao, r.card_protocol];
+          if (!parts.some((v) => normalizeText(v || '').includes(q))) return false;
+        }
+        return true;
+      });
+
+      const fmtD = (v?: string | null) => v ? new Date(v).toLocaleDateString('pt-BR') : '';
+
+      const headers = [
+        'Membro', 'Tipo', 'Número', 'Igreja', 'Regional', 'Campo',
+        'Status', 'Emissão', 'Validade', 'Solicitado em', 'Protocolo',
+        // Dados extras da credencial
+        'Modelo', 'Observação', 'Data aprovação', 'Aprovado por',
+        // Dados pessoais do membro
+        'CPF', 'RG', 'Nascimento', 'Naturalidade', 'Estado civil',
+        'Pai', 'Mãe', 'Cônjuge', 'Título eclesiástico', 'Tipo membro', 'ROL', 'Foto (link)',
+        // Medidas do modelo
+        'Largura (mm)', 'Altura (mm)', 'Larg. página (mm)', 'Alt. página (mm)',
+        'Linhas/pág.', 'Colunas/pág.', 'Validade modelo (meses)',
+      ];
+
+      const dataRows = filtered.map((r) => [
+        r.nome || '', r.tipo || '', r.numero || '',
+        r.churchName || r.igrejasolicitante || '',
+        r.regionalName || '',
+        r.fieldName || '',
+        r.situacao || '',
+        fmtD(r.dataemissao || r.created_at),
+        fmtD(r.datavalidade),
+        fmtD(r.created_at),
+        r.card_protocol || r.numero || '',
+        // Extras credencial
+        r.modelo || '',
+        r.obs || '',
+        fmtD(r.dataaprovacao),
+        r.aprovadopor || '',
+        // Membro
+        r.member?.cpf || '',
+        r.member?.rg || '',
+        fmtD(r.member?.birthDate),
+        [r.member?.naturalityCity, r.member?.naturalityState].filter(Boolean).join(' - '),
+        r.member?.maritalStatus || '',
+        r.member?.fatherName || '',
+        r.member?.motherName || '',
+        r.member?.spouseName || '',
+        r.member?.ecclesiasticalTitle || '',
+        r.member?.memberType || '',
+        r.member?.rol || '',
+        r.member?.photoUrl || '',
+        // Modelo
+        r.modelLargura ?? '',
+        r.modelAltura ?? '',
+        r.modelLargurapg ?? '',
+        r.modelAlturapg ?? '',
+        r.modelLinhaporpg ?? '',
+        r.modelColunaporpg ?? '',
+        r.modelValidademeses ?? '',
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Credenciais');
+      XLSX.writeFile(wb, `credenciais_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch {
+      // silencioso — botão volta ao normal
+    } finally {
+      setExportingExcel(false);
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Toast */}
@@ -301,6 +442,11 @@ export function Credentials() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button onClick={exportToExcel} disabled={exportingExcel}
+            className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+            {exportingExcel ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} className="text-green-600" />}
+            {exportingExcel ? 'Gerando...' : 'Excel'}
+          </button>
           <button onClick={() => setPrintModalOpen(true)} className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm">
             <Printer size={16} /> Imprimir
           </button>

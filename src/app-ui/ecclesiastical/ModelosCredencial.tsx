@@ -70,6 +70,7 @@ export default function ModelosCredencial() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CredentialModel | null>(null);
   const [previewModel, setPreviewModel] = useState<CredentialModel | null>(null);
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CredentialModel | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -308,7 +309,12 @@ export default function ModelosCredencial() {
                 <p className="text-xs font-medium text-slate-600 mb-2">Frente</p>
                 <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50 flex items-center justify-center" style={{ aspectRatio: "85.6/53.98" }}>
                   {previewModel.frente ? (
-                    <img src={previewModel.frente} alt="frente" className="w-full h-full object-contain" />
+                    <img
+                      src={previewModel.frente}
+                      alt="frente"
+                      className="w-full h-full object-contain cursor-zoom-in"
+                      onClick={() => setZoomUrl(previewModel.frente!)}
+                    />
                   ) : (
                     <div className="flex flex-col items-center text-slate-400 py-8"><Image size={32} /><span className="text-xs mt-1">Sem imagem</span></div>
                   )}
@@ -318,7 +324,12 @@ export default function ModelosCredencial() {
                 <p className="text-xs font-medium text-slate-600 mb-2">Verso</p>
                 <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50 flex items-center justify-center" style={{ aspectRatio: "85.6/53.98" }}>
                   {previewModel.verso ? (
-                    <img src={previewModel.verso} alt="verso" className="w-full h-full object-contain" />
+                    <img
+                      src={previewModel.verso}
+                      alt="verso"
+                      className="w-full h-full object-contain cursor-zoom-in"
+                      onClick={() => setZoomUrl(previewModel.verso!)}
+                    />
                   ) : (
                     <div className="flex flex-col items-center text-slate-400 py-8"><Image size={32} /><span className="text-xs mt-1">Sem imagem</span></div>
                   )}
@@ -331,6 +342,27 @@ export default function ModelosCredencial() {
               <div className="bg-slate-50 rounded-lg p-3"><p className="text-slate-500">Grid</p><p className="font-semibold">{previewModel.linhaporpg ?? "–"} × {previewModel.colunaporpg ?? "–"}</p></div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── ZOOM LIGHTBOX ───────────────────────────────────────────────────── */}
+      {zoomUrl && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
+          onClick={() => setZoomUrl(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/70 hover:text-white bg-black/40 rounded-full p-2"
+            onClick={() => setZoomUrl(null)}
+          >
+            <X size={22} />
+          </button>
+          <img
+            src={zoomUrl}
+            alt="zoom"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
