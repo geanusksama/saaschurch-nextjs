@@ -110,7 +110,11 @@ type MatrixRule = {
   columnName?: string | null;
   changeStatus: boolean; newStatus?: string | null;
   changeTitle: boolean; newTitle?: string | null;
+  doesTransfer: boolean;
+  insertOccurrence: boolean;
 };
+
+type ChurchOption = { id: string; name: string; code?: string | null };
 
 type OccurrenceForm = {
   serviceId: string;
@@ -907,16 +911,24 @@ function OccurrenceModal({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [savedActions, setSavedActions] = useState<string[] | null>(null);
+  const [targetChurchId, setTargetChurchId] = useState("");
+  const [churchSearch, setChurchSearch] = useState("");
+  const [churches, setChurches] = useState<ChurchOption[]>([]);
+  const [churchDropOpen, setChurchDropOpen] = useState(false);
 
   useEffect(() => {
     authFetch(`${apiBase}/kan/services`)
       .then((r) => r.json())
       .then((data) => setServices(Array.isArray(data) ? data : []))
       .catch(() => {});
+    authFetch(`${apiBase}/churches`)
+      .then((r) => r.json())
+      .then((data) => setChurches(Array.isArray(data) ? data : []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!serviceId) { setMatrixRules([]); setPipelineName(null); setStageName(null); setSelectedColIdx(null); return; }
+    if (!serviceId) { setMatrixRules([]); setPipelineName(null); setStageName(null); setSelectedColIdx(null); setTargetChurchId(""); setChurchSearch(""); return; }
     setLoadingRules(true);
     authFetch(`${apiBase}/kan/services/${serviceId}/rules`)
       .then((r) => r.json())
@@ -946,10 +958,12 @@ function OccurrenceModal({
   async function handleSave() {
     if (!serviceId) { setErr("Selecione um serviço."); return; }
     if (matrixRules.length > 0 && selectedColIdx === null) { setErr("Selecione uma posição da matriz."); return; }
+    if (selectedRule?.doesTransfer && !targetChurchId) { setErr("Selecione a igreja de destino para realizar a transferência."); return; }
     setSaving(true); setErr("");
     try {
       const body: Record<string, unknown> = { serviceId: Number(serviceId), date, notes };
       if (selectedColIdx !== null) body.columnIndex = selectedColIdx;
+      if (targetChurchId) body.targetChurchId = targetChurchId;
       const res = await authFetch(`${apiBase}/members/${memberId}/occurrences`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -1069,7 +1083,7 @@ function OccurrenceModal({
                         <button
                           key={rule.id}
                           type="button"
-                          onClick={() => { setSelectedColIdx(isSelected ? null : rule.columnIndex); setErr(""); }}
+                          onClick={() => { setSelectedColIdx(isSelected ? null : rule.columnIndex); setErr(""); setTargetChurchId(""); setChurchSearch(""); setChurchDropOpen(false); }}
                           className={`text-left w-full rounded-xl border-2 px-4 py-3 transition-all ${
                             isSelected
                               ? "border-blue-500 bg-blue-50"
@@ -1118,6 +1132,67 @@ function OccurrenceModal({
                     </div>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Destination church — only when selected rule requires transfer */}
+          {selectedRule?.doesTransfer && (
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">
+                Igreja de Destino <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Buscar pelo nome da igreja..."
+                  value={churchSearch}
+                  onChange={(e) => {
+                    setChurchSearch(e.target.value);
+                    setTargetChurchId("");
+                    setChurchDropOpen(true);
+                  }}
+                  onFocus={() => setChurchDropOpen(true)}
+                  className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+                {targetChurchId && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-orange-500 text-xs font-semibold">✓</span>
+                )}
+                {churchDropOpen && churchSearch.length >= 2 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {churches
+                      .filter((c) =>
+                        c.name.toLowerCase().includes(churchSearch.toLowerCase()) ||
+                        (c.code || "").toLowerCase().includes(churchSearch.toLowerCase())
+                      )
+                      .slice(0, 20)
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-orange-50 border-b border-slate-100 last:border-0"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setTargetChurchId(c.id);
+                            setChurchSearch(c.code ? `${c.code} — ${c.name}` : c.name);
+                            setChurchDropOpen(false);
+                          }}
+                        >
+                          {c.code ? <span className="font-medium text-slate-700">{c.code} — </span> : null}
+                          {c.name}
+                        </button>
+                      ))}
+                    {churches.filter((c) =>
+                      c.name.toLowerCase().includes(churchSearch.toLowerCase()) ||
+                      (c.code || "").toLowerCase().includes(churchSearch.toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-3 py-2 text-xs text-slate-400">Nenhuma igreja encontrada.</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {targetChurchId && (
+                <p className="text-xs text-orange-600 mt-1">✓ Igreja de destino selecionada. O membro será transferido ao executar.</p>
               )}
             </div>
           )}

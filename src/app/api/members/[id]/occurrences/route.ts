@@ -12,7 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!ok) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const { action, notes, serviceGroup, serviceName, metadata, serviceId, columnIndex, date } = body;
+    const { action, notes, serviceGroup, serviceName, metadata, serviceId, columnIndex, date, targetChurchId } = body;
 
     // ── Mode 1: direct occurrence (legacy) ──────────────────────────────────
     if (!serviceId) {
@@ -80,6 +80,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           appliedActions.push(`Título alterado → ${rule.newTitle}`);
         }
 
+        // Execute transfer
+        if (rule.doesTransfer && targetChurchId) {
+          const destChurch = await prisma.church.findUnique({
+            where: { id: targetChurchId },
+            select: { id: true, name: true, regionalId: true },
+          });
+          if (destChurch) {
+            memberUpdate.churchId = destChurch.id;
+            memberUpdate.regionalId = destChurch.regionalId ?? null;
+            appliedActions.push(`Transferido para ${destChurch.name}`);
+          }
+        }
+
         if (Object.keys(memberUpdate).length > 0) {
           await prisma.member.update({ where: { id }, data: memberUpdate });
         }
@@ -98,6 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               notes: notes || rule.message || null,
               metadata: { source: "OCORRENCIA_RAPIDA", serviceId: svcId, columnIndex: colIdx, date: date || null },
               createdBy: user.id || null,
+              ...(rule.doesTransfer && targetChurchId ? { destinationChurchId: targetChurchId } : {}),
             },
           });
           appliedActions.push(`Ocorrência registrada: ${occurrenceLabel}`);
