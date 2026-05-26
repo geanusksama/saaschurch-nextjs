@@ -64,6 +64,7 @@ import {
   ShoppingCart,
   RefreshCcw,
   Video,
+  Rss,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -211,6 +212,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Cadastros no App',       path: '/app-ui/app/registrations', icon: UserPlus,     permKey: 'app_registrations' },
       { name: 'Mídia / Pregações',       path: '/app-ui/app/media',         icon: Video,        permKey: 'app_media' },
       { name: 'Notificações App',        path: '/app-ui/app/notifications', icon: Bell,         permKey: 'app_notifications' },
+      { name: 'Feed do App',             path: '/app-ui/app/feed',          icon: Rss,          permKey: 'app_feed' },
     ]
   },
   {

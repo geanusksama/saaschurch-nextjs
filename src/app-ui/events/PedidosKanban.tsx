@@ -361,7 +361,7 @@ function KanbanCol({
 
   return (
     <div
-      className={`flex flex-col h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm border-t-4 ${COL_BORDER[col.color] ?? "border-t-slate-300"} transition-all ${isDragOver ? "ring-2 ring-blue-400 scale-[1.01]" : ""}`}
+      className={`flex flex-col flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm border-t-4 ${COL_BORDER[col.color] ?? "border-t-slate-300"} transition-all ${isDragOver ? "ring-2 ring-blue-400 scale-[1.01]" : ""}`}
       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={() => setIsDragOver(false)}
       onDrop={(e) => { e.preventDefault(); setIsDragOver(false); if (dragRef.current) onDrop(dragRef.current, col.columnIndex); }}
@@ -569,19 +569,20 @@ export default function PedidosKanban() {
             ))}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+          <div className="flex-1 min-h-0 flex gap-3 overflow-x-auto overflow-y-hidden">
             {cols.map((col) => (
-              <KanbanCol
-                key={col.columnIndex}
-                col={col}
-                limit={getLimit(col.columnIndex)}
-                onLoadMore={() => loadMore(col.columnIndex)}
-                onDrop={handleDrop}
-                onOpen={setSelectedOrder}
-                onResend={(o) => resendMut.mutate(o.id)}
-                onCancel={(o) => cancelMut.mutate({ id: o.id })}
-                onGenerateQR={(o) => qrMut.mutate(o.id)}
-              />
+              <div key={col.columnIndex} className="flex-1 min-w-[240px] min-h-0 flex flex-col">
+                <KanbanCol
+                  col={col}
+                  limit={getLimit(col.columnIndex)}
+                  onLoadMore={() => loadMore(col.columnIndex)}
+                  onDrop={handleDrop}
+                  onOpen={setSelectedOrder}
+                  onResend={(o) => resendMut.mutate(o.id)}
+                  onCancel={(o) => cancelMut.mutate({ id: o.id })}
+                  onGenerateQR={(o) => qrMut.mutate(o.id)}
+                />
+              </div>
             ))}
           </div>
         )
