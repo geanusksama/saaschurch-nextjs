@@ -1,10 +1,9 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Rss, Plus, Pencil, Trash2, Search, X, RefreshCw,
   Eye, EyeOff, Heart, MessageCircle, Image, Video,
-  Music, MapPin, CheckCircle, Clock, ChevronDown,
-  BadgeCheck, Send,
+  Music, MapPin, BadgeCheck, Send, Upload, Loader2,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
@@ -215,6 +214,10 @@ export default function FeedManager() {
   const [form, setForm]       = useState<FormState>(EMPTY_FORM);
   const [previewPost, setPreviewPost] = useState<FeedPost | null>(null);
   const [commentsPost, setCommentsPost] = useState<FeedPost | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') : null;
 
   const showForm = isNew || editing !== null;
 
@@ -296,7 +299,33 @@ export default function FeedManager() {
     setEditing(p); setIsNew(false);
   }
 
-  function closeForm() { setIsNew(false); setEditing(null); }
+  function closeForm() { setIsNew(false); setEditing(null); setUploadError(''); }
+
+  async function handleMediaFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setUploadingMedia(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload/feed-media', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `Erro ${res.status}`);
+      const mediaType: MediaType = file.type.startsWith('video') ? 'video'
+        : file.type.startsWith('audio') ? 'audio' : 'image';
+      setForm(p => ({ ...p, media_url: json.url, media_type: mediaType }));
+    } catch (err: unknown) {
+      setUploadError((err as Error).message || 'Erro ao enviar arquivo');
+    } finally {
+      setUploadingMedia(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
 
   function setField<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm(p => ({ ...p, [k]: v }));
@@ -470,7 +499,9 @@ export default function FeedManager() {
               {/* Mídia */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Mídia (opcional)</label>
-                <div className="flex gap-2 mb-2">
+
+                {/* Tipo de mídia */}
+                <div className="flex gap-2 mb-3">
                   {(['image', 'video', 'audio'] as MediaType[]).map(mt => {
                     const cfg = MEDIA_CFG[mt];
                     const Icon = cfg.icon;
@@ -485,10 +516,61 @@ export default function FeedManager() {
                     );
                   })}
                 </div>
+
                 {form.media_type && (
-                  <input value={form.media_url ?? ''} onChange={e => setField('media_url', e.target.value || null)}
-                    placeholder={form.media_type === 'image' ? 'URL da imagem...' : form.media_type === 'video' ? 'URL do vídeo...' : 'URL do áudio...'}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <div className="space-y-2">
+                    {/* Upload de arquivo */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={form.media_type === 'image' ? 'image/*' : form.media_type === 'video' ? 'video/*' : 'audio/*'}
+                      onChange={handleMediaFileChange}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingMedia}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-sm rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-500 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors disabled:opacity-50"
+                    >
+                      {uploadingMedia
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
+                        : <><Upload className="w-4 h-4" /> Escolher arquivo para upload</>}
+                    </button>
+
+                    {/* Divisor */}
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-slate-600" />
+                      ou cole uma URL
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-slate-600" />
+                    </div>
+
+                    {/* URL manual */}
+                    <input
+                      value={form.media_url ?? ''}
+                      onChange={e => setField('media_url', e.target.value || null)}
+                      placeholder={form.media_type === 'image' ? 'URL da imagem...' : form.media_type === 'video' ? 'URL do vídeo...' : 'URL do áudio...'}
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+
+                    {/* Preview da imagem após upload */}
+                    {form.media_type === 'image' && form.media_url && (
+                      <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600">
+                        <img src={form.media_url} alt="" className="w-full max-h-48 object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => { setField('media_url', null); setField('media_type', null); }}
+                          className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white hover:bg-black/70"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {uploadError && (
+                      <p className="text-xs text-red-500">{uploadError}</p>
+                    )}
+                  </div>
                 )}
               </div>
 
