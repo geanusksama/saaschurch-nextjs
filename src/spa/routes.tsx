@@ -187,6 +187,8 @@ import AppRegistrations from "../app-ui/app/AppRegistrations";
 import AppHQSchedule from "../app-ui/app/AppHQSchedule";
 import AppHQAccess from "../app-ui/app/AppHQAccess";
 import AppDailyBread from "../app-ui/app/AppDailyBread";
+import AppMediaManager from "../app-ui/app/media/AppMediaManager";
+import AppNotificationManager from "../app-ui/app/AppNotificationManager";
 import Spreadsheet from "../app-ui/spreadsheet/Spreadsheet";
 import {
   CRMNew,
@@ -579,6 +581,8 @@ export const router = createBrowserRouter([
       { path: "app/hq-schedule",  Component: AppHQSchedule },
       { path: "app/hq-access",    Component: AppHQAccess },
       { path: "app/registrations",Component: AppRegistrations },
+      { path: "app/media",        Component: AppMediaManager },
+      { path: "app/notifications", Component: AppNotificationManager },
     ],
   },
 ]);

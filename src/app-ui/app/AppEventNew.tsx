@@ -61,6 +61,7 @@ export default function AppEventNew() {
   const fileRef = useRef<HTMLInputElement>(null);
   const user = getStoredUser();
   const churchId: string | undefined = user.churchId;
+  const campoId: string | undefined = user.campoId;
 
   // Aparência
   const [icon, setIcon]         = useState('ticket');
@@ -172,6 +173,7 @@ export default function AppEventNew() {
         .from('app_events')
         .insert({
           church_id:             churchId,
+          campo_id:              campoId || null,
           title:                 nome.trim(),
           nome:                  nome.trim(),
           descricao:             descricao || null,

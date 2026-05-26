@@ -44,6 +44,7 @@ model Campo {
   ebdFinMovimentos   EbdFinanceiroMovimento[]   @relation("CampoEbdFinMovimentos")
   ebdHistorico       EbdHistorico[]             @relation("CampoEbdHistorico")
   ebdNegociacoes     EbdNegociacao[]            @relation("CampoEbdNegociacoes")
+  appEvents          AppEvent[]                 @relation("CampoAppEvents")
   stripeConfig       StripeConfig?              @relation("CampoStripeConfig")
   stripePayments     StripePayment[]            @relation("CampoStripePayments")
   stripeSubscriptions StripeSubscription[]      @relation("CampoStripeSubscriptions")
@@ -1985,6 +1986,7 @@ model AppEvent {
   id                   String   @id @default(uuid()) @db.Uuid
   churchId             String   @map("church_id") @db.Uuid
   headquartersId       String?  @map("headquarters_id") @db.Uuid
+  campoId              String?  @map("campo_id") @db.Uuid
   departmentId         String?  @map("department_id") @db.Uuid
   nome                 String   @db.VarChar(255)
   descricao            String?  @db.Text
@@ -2005,6 +2007,10 @@ model AppEvent {
   bannerUrl            String?  @map("banner_url") @db.VarChar(500)
   /// RASCUNHO | PUBLICADO | ENCERRADO | CANCELADO
   status               String   @default("RASCUNHO") @db.VarChar(20)
+  /// Visível no app (equivale a status=PUBLICADO mas consultável diretamente)
+  isActive             Boolean  @default(true) @map("is_active")
+  /// Visível sem login (público)
+  isPublic             Boolean  @default(true) @map("is_public")
   permiteTransferencia Boolean  @default(false) @map("permite_transferencia")
   permiteCancelamento  Boolean  @default(false) @map("permite_cancelamento")
   permiteReembolso     Boolean  @default(false) @map("permite_reembolso")
@@ -2017,6 +2023,7 @@ model AppEvent {
   deletedAt            DateTime? @map("deleted_at")
 
   department  EventDepartment? @relation(fields: [departmentId], references: [id])
+  campo       Campo?           @relation("CampoAppEvents", fields: [campoId], references: [id])
 
   sectors       EventSector[]
   orders        EventOrder[]
@@ -2034,6 +2041,7 @@ model AppEvent {
 
   @@index([churchId, status])
   @@index([departmentId])
+  @@index([campoId, status])
   @@map("app_events")
 }
 

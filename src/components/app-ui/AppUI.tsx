@@ -63,6 +63,7 @@ import {
   QrCode,
   ShoppingCart,
   RefreshCcw,
+  Video,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -208,6 +209,8 @@ const appNavigation: NavigationSection[] = [
       { name: 'Como Chegar',            path: '/app-ui/app/hq-access',     icon: MapPin,       permKey: 'app_hq_access' },
       { name: 'Ministérios',            path: '/app-ui/ministries',        icon: Heart,        permKey: 'ministries' },
       { name: 'Cadastros no App',       path: '/app-ui/app/registrations', icon: UserPlus,     permKey: 'app_registrations' },
+      { name: 'Mídia / Pregações',       path: '/app-ui/app/media',         icon: Video,        permKey: 'app_media' },
+      { name: 'Notificações App',        path: '/app-ui/app/notifications', icon: Bell,         permKey: 'app_notifications' },
     ]
   },
   {

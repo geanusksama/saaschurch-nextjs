@@ -4,7 +4,7 @@
  * MRM NÃO cria pedidos. Apenas consulta, acompanha, move e executa ações.
  */
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ShoppingCart, Search, RefreshCw, LayoutGrid, List,
@@ -319,10 +319,15 @@ function OrderCard({
 
 // ── Kanban Column ─────────────────────────────────────────────────────────────
 
+const INIT_LIMIT = 30;
+const LOAD_MORE  = 10;
+
 function KanbanCol({
-  col, onDrop, onOpen, onResend, onCancel, onGenerateQR,
+  col, limit, onLoadMore, onDrop, onOpen, onResend, onCancel, onGenerateQR,
 }: {
   col: KanbanColumn;
+  limit: number;
+  onLoadMore: () => void;
   onDrop: (order: Order, colIdx: number) => void;
   onOpen: (order: Order) => void;
   onResend: (order: Order) => void;
@@ -330,7 +335,22 @@ function KanbanCol({
   onGenerateQR: (order: Order) => void;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
-  const dragRef = useRef<Order | null>(null);
+  const dragRef  = useRef<Order | null>(null);
+  const sentinel = useRef<HTMLDivElement>(null);
+
+  const visibleOrders = col.orders.slice(0, limit);
+  const hasMore       = col.orders.length > limit;
+
+  // IntersectionObserver — fires onLoadMore when sentinel enters viewport
+  useEffect(() => {
+    if (!sentinel.current) return;
+    const obs = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting && hasMore) onLoadMore(); },
+      { threshold: 0.1 },
+    );
+    obs.observe(sentinel.current);
+    return () => obs.disconnect();
+  }, [hasMore, onLoadMore]);
 
   const handleDragStart = (e: React.DragEvent, order: Order) => {
     dragRef.current = order;
@@ -347,20 +367,20 @@ function KanbanCol({
       onDrop={(e) => { e.preventDefault(); setIsDragOver(false); if (dragRef.current) onDrop(dragRef.current, col.columnIndex); }}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
         <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{col.name}</span>
         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badgeCls}`}>{col.orders.length}</span>
       </div>
 
-      {/* Cards */}
-      <div className="flex-1 min-h-0 p-3 space-y-2.5 overflow-y-auto">
+      {/* Cards — scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2.5">
         {col.orders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-slate-400 dark:text-slate-600">
             <ShoppingCart className="w-7 h-7 mb-2 opacity-30" />
             <p className="text-xs">Sem dados</p>
           </div>
         )}
-        {col.orders.map((order) => (
+        {visibleOrders.map((order) => (
           <OrderCard
             key={order.id}
             order={order}
@@ -372,10 +392,21 @@ function KanbanCol({
             onGenerateQR={onGenerateQR}
           />
         ))}
+
+        {/* Sentinel / load-more indicator */}
+        <div ref={sentinel} className="h-px" />
+        {hasMore && (
+          <div className="flex items-center justify-center py-2">
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 animate-pulse">
+              Carregando mais…
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 function currentMonthRange() {
@@ -395,12 +426,23 @@ export default function PedidosKanban() {
   const initRange = currentMonthRange();
   const [dateFrom, setDateFrom] = useState(initRange.from);
   const [dateTo,   setDateTo]   = useState(initRange.to);
+  // Per-column display limit (colIdx → n visible cards)
+  const [colLimits, setColLimits] = useState<Record<number, number>>({});
   const qc = useQueryClient();
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["orders-kanban", search, eventId, dateFrom, dateTo],
     queryFn: () => fetchKanban(search, eventId, dateFrom, dateTo),
   });
+
+  // Reset limits when data changes (new filter / refresh)
+  useEffect(() => { setColLimits({}); }, [data]);
+
+  const getLimit = (colIdx: number) => colLimits[colIdx] ?? INIT_LIMIT;
+
+  const loadMore = useCallback((colIdx: number) => {
+    setColLimits((prev) => ({ ...prev, [colIdx]: (prev[colIdx] ?? INIT_LIMIT) + LOAD_MORE }));
+  }, []);
 
   const moveMut = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => moveStatus(id, status),
@@ -530,7 +572,10 @@ export default function PedidosKanban() {
           <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
             {cols.map((col) => (
               <KanbanCol
-                key={col.columnIndex} col={col}
+                key={col.columnIndex}
+                col={col}
+                limit={getLimit(col.columnIndex)}
+                onLoadMore={() => loadMore(col.columnIndex)}
                 onDrop={handleDrop}
                 onOpen={setSelectedOrder}
                 onResend={(o) => resendMut.mutate(o.id)}
