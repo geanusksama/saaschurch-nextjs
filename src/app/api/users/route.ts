@@ -107,17 +107,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Não é permitido criar usuários em outro campo." }, { status: 403 });
     }
 
-    const newUser = await prisma.user.create({
-      data: {
-        fullName, email, phone, profileType: profileType || "church",
-        churchId: nextChurchId || undefined,
-        regionalId: nextRegionalId || undefined,
-        campoId: nextCampoId || undefined,
-        roleId: roleId || undefined,
-        isAdmin: isAdmin ?? false,
-      },
-      include: userInclude,
-    });
+    let newUser;
+    try {
+      newUser = await prisma.user.create({
+        data: {
+          fullName, email, phone, profileType: profileType || "church",
+          churchId: nextChurchId || undefined,
+          regionalId: nextRegionalId || undefined,
+          campoId: nextCampoId || undefined,
+          roleId: roleId || undefined,
+          isAdmin: isAdmin ?? false,
+        },
+        include: userInclude,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // P2002 = unique constraint violation
+      if (msg.includes("P2002") || msg.includes("Unique constraint") || msg.includes("unique constraint")) {
+        return NextResponse.json({ error: "Email já cadastrado." }, { status: 409 });
+      }
+      console.error("[POST /api/users] prisma.user.create error:", msg);
+      return NextResponse.json({ error: "Erro ao criar usuário: " + msg }, { status: 500 });
+    }
     return NextResponse.json(serializeBigInts(newUser), { status: 201 });
   });
 }

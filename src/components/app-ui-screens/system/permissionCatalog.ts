@@ -73,6 +73,9 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'App Móvel', name: 'Programação da Sede',    key: 'app_hq_schedule',   permissions: mkPerms(full(),  mngr(),  mngr(),  admin()) },
   { group: 'App Móvel', name: 'Como Chegar (Acesso)',   key: 'app_hq_access',     permissions: mkPerms(full(),  mngr(),  mngr(),  admin()) },
   { group: 'App Móvel', name: 'Cadastros no App',       key: 'app_registrations', permissions: mkPerms(full(),  none(),  mngr(),  admin()) },
+  { group: 'App Móvel', name: 'Mídia / Pregações',     key: 'app_media',          permissions: mkPerms(full(),  mngr(),  mngr(),  admin()) },
+  { group: 'App Móvel', name: 'Notificações App',      key: 'app_notifications',  permissions: mkPerms(full(),  mngr(),  mngr(),  admin()) },
+  { group: 'App Móvel', name: 'Feed do App',           key: 'app_feed',           permissions: mkPerms(full(),  mngr(),  mngr(),  admin()) },
 
   { group: 'CRM / Pipeline', name: 'Pipeline de Visitantes', key: 'crm_pipeline', permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'CRM / Pipeline', name: 'Contatos / Leads', key: 'crm_leads', permissions: mkPerms(full(), full(), full(), admin()) },

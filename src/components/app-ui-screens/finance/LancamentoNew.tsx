@@ -1273,7 +1273,17 @@ export default function LancamentoNew() {
     }).select('id, legacy_id').single();
     setSaving(false);
 
-    if (err) { setError('Erro ao salvar: ' + err.message); return; }
+    if (err) {
+      const msg = err.message || '';
+      if (msg.includes('livro_caixa_member_id_fkey')) {
+        setError('O membro selecionado não foi encontrado no cadastro. Verifique se o membro está ativo e tente novamente.');
+      } else if (msg.includes('foreign key') || msg.includes('violates')) {
+        setError('Referência inválida: um dos campos selecionados não existe no sistema. Verifique os dados e tente novamente.');
+      } else {
+        setError('Erro ao salvar lançamento: ' + msg);
+      }
+      return;
+    }
 
     // Abre recibo automaticamente
     setReciboRow({

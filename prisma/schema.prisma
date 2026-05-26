@@ -327,6 +327,8 @@ model User {
   // profileType: master | admin | campo | church
   profileType String @default("church") @map("profile_type") @db.VarChar(20)
 
+  passwordHash String? @map("password_hash") @db.VarChar(255)
+
   roleId      String? @map("role_id") @db.Uuid
   isAdmin     Boolean @default(false) @map("is_admin")
   isActive    Boolean @default(true) @map("is_active")
