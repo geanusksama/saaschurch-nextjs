@@ -418,6 +418,8 @@ function HistoricoPanel({
       return;
     }
 
+    const operadorRepetir: string | null = userObjPanel?.fullName || userObjPanel?.email || null;
+
     setRepeatError('');
     const { data: inserted, error } = await supabase.from('livro_caixa').insert({
       church_id: targetChurchId || null,
@@ -431,6 +433,7 @@ function HistoricoPanel({
       num_doc: l.num_doc ?? null,
       referencia: mesAtualStr,
       obs: l.obs ?? null,
+      operador: operadorRepetir,
     }).select('id, legacy_id').single();
     if (!error && inserted) {
       setRepetidos(prev => new Set(prev).add(l.id));
@@ -453,7 +456,7 @@ function HistoricoPanel({
         num_doc: l.num_doc ?? null,
         tipo_documento: l.tipo === 'RECEITA' ? getReceitaTipoDocumentoPadrao(l.plano_de_conta, l.tipo_documento) : (l.tipo_documento ?? null),
         member_id: null,
-        operador: null,
+        operador: operadorRepetir,
         churches: { name: repetirChurchName || '' },
       });
     }
@@ -839,6 +842,7 @@ export default function LancamentoNew() {
       ? userObj.church.name
       : '';
   const isChurchUser = userObj?.profileType === 'church';
+  const operadorNome: string | null = userObj?.fullName || userObj?.email || null;
   const [caixaId, setCaixaId] = useState<string>(profileChurchId);
   const [caixaNome, setCaixaNome] = useState<string>(profileChurchName);
   const [transferir, setTransferir] = useState(false);
@@ -1174,6 +1178,7 @@ export default function LancamentoNew() {
       obs: obsTrimmed || null,
       foto: fotoUrl,
       id_favorecido_externo: tipoPessoa === 'PJ' && pjDoc ? pjDoc : null,
+      operador: operadorNome,
     }).select('id, legacy_id').single();
     setSaving(false);
 
@@ -1207,6 +1212,7 @@ export default function LancamentoNew() {
       num_doc: numDocTrimmed || null,
       tipo_documento: tipoDoc?.nome ?? null,
       member_id: memId,
+      operador: operadorNome,
       churches: { name: caixaNome },
     });
     loadRecentes();
