@@ -498,8 +498,8 @@ function Pagination({
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
         {pages.map((p, i) => p === '...'
-          ? <span key={i} className="px-1">…</span>
-          : <button key={p} onClick={() => onPage(p as number)}
+          ? <span key={`dots-${i}`} className="px-1">…</span>
+          : <button key={`page-${p}`} onClick={() => onPage(p as number)}
               className={`px-2.5 py-1 rounded font-medium transition-all ${
                 page === p
                   ? 'bg-violet-500 text-white shadow-md shadow-violet-200 ring-2 ring-violet-300'

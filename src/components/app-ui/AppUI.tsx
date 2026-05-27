@@ -218,7 +218,6 @@ const appNavigation: NavigationSection[] = [
   {
     section: 'Finanças',
     items: [
-      { name: 'Tesouraria',       path: '/app-ui/finance',                icon: DollarSign,      permKey: 'finance',         exact: true },
       { name: 'Livro Caixa',      path: '/app-ui/finance/cashbook',       icon: BookOpen,        permKey: 'cashbook' },
       { name: 'Lançamento',       path: '/app-ui/finance/lancamento/new', icon: TrendingUp,      permKey: 'finance_entries' },
       { name: 'Fluxo de Caixa',   path: '/app-ui/finance/cash-flow',      icon: Wallet,          permKey: 'cash_flow' },

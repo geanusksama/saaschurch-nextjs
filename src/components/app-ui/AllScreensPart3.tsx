@@ -1,5 +1,6 @@
 import { Users, Shield, Settings, Building2, Palette, Link2, Webhook, Key, Bell, Mail, MessageSquare, Database, Clock, Archive, Target, DollarSign, Calendar, BookOpen, Award, Heart, CheckSquare, MapPin, Smartphone } from 'lucide-react';
 import { ScreenTemplate } from './AllScreens';
+import FinancialReportsDashboard from '../../app-ui/finance/FinancialReportsDashboard';
 
 // System & Settings
 export function UserNew() {
@@ -162,5 +163,5 @@ export function BankReconciliation() {
 }
 
 export function FinancialReports() {
-  return <ScreenTemplate title="Relatórios Financeiros" description="Relatórios contábeis" icon={Archive} gradientFrom="from-slate-700" gradientTo="to-slate-900" features={['DRE', 'Balanço', 'Fluxo', 'Customizado']} />;
+  return <FinancialReportsDashboard />;
 }
