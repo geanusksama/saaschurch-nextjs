@@ -93,6 +93,18 @@ type MemberRecord = {
   fieldName?: string;
   photoUrl?: string | null;
   rol?: number | null;
+  fatherName?: string | null;
+  motherName?: string | null;
+  spouseName?: string | null;
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressNeighborhood?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  addressZipcode?: string | null;
+  birthDate?: string | null;
+  baptismDate?: string | null;
+  naturalityCity?: string | null;
 };
 
 type SortKey = 'fullName' | 'memberType' | 'contact' | 'churchName' | 'membershipStatus' | 'membershipDate' | 'ecclesiasticalTitle';
@@ -1342,6 +1354,7 @@ export function Members() {
       <PrintModal
         open={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
+        showGroupBy
         sortOptions={[
           { value: 'fullName', label: 'Nome' },
           { value: 'memberType', label: 'Tipo' },
@@ -1352,40 +1365,81 @@ export function Members() {
         ]}
         columnOptions={[
           { value: 'fullName', label: 'Nome' },
+          { value: 'rol', label: 'Rol' },
           { value: 'memberType', label: 'Tipo' },
-          { value: 'phone', label: 'Telefone' },
-          { value: 'title', label: 'Título' },
+          { value: 'title', label: 'Título Eclesiástico' },
           { value: 'churchName', label: 'Igreja' },
+          { value: 'regionalName', label: 'Regional' },
           { value: 'membershipStatus', label: 'Situação' },
-          { value: 'membershipDate', label: 'Desde' },
+          { value: 'membershipDate', label: 'Membro desde' },
+          { value: 'phone', label: 'Telefone', defaultChecked: false },
+          { value: 'email', label: 'E-mail', defaultChecked: false },
+          { value: 'cpf', label: 'CPF', defaultChecked: false },
+          { value: 'maritalStatus', label: 'Est. Civil', defaultChecked: false },
+          { value: 'spouseName', label: 'Cônjuge', defaultChecked: false },
+          { value: 'fatherName', label: 'Pai', defaultChecked: false },
+          { value: 'motherName', label: 'Mãe', defaultChecked: false },
+          { value: 'birthDate', label: 'Nascimento', defaultChecked: false },
+          { value: 'addressStreet', label: 'Endereço', defaultChecked: false },
+          { value: 'addressCity', label: 'Cidade', defaultChecked: false },
+          { value: 'addressState', label: 'UF', defaultChecked: false },
+          { value: 'addressZipcode', label: 'CEP', defaultChecked: false },
         ]}
         defaultSort="fullName"
-        onPrint={(orientation, sortBy, selectedColumns) => {
+        onPrint={(orientation, sortBy, selectedColumns, groupByChurch) => {
           const sorted = [...visibleMembers].sort((a, b) =>
             String(a[sortBy as keyof typeof a] ?? '').localeCompare(String(b[sortBy as keyof typeof b] ?? ''), 'pt-BR')
           );
           const allCols = [
             { label: 'Nome', key: 'fullName' },
+            { label: 'Rol', key: 'rol', width: '45px' },
             { label: 'Tipo', key: 'memberType', width: '55px' },
-            { label: 'Telefone', key: 'phone', width: '100px' },
-            { label: 'Título', key: 'title', width: '110px' },
+            { label: 'Título Eclesiástico', key: 'title', width: '110px' },
             { label: 'Igreja', key: 'churchName' },
+            { label: 'Regional', key: 'regionalName', width: '100px' },
             { label: 'Situação', key: 'membershipStatus', width: '70px' },
-            { label: 'Desde', key: 'membershipDate', width: '75px' },
+            { label: 'Membro desde', key: 'membershipDate', width: '75px' },
+            { label: 'Telefone', key: 'phone', width: '100px' },
+            { label: 'E-mail', key: 'email' },
+            { label: 'CPF', key: 'cpf', width: '90px' },
+            { label: 'Est. Civil', key: 'maritalStatus', width: '70px' },
+            { label: 'Cônjuge', key: 'spouseName' },
+            { label: 'Pai', key: 'fatherName' },
+            { label: 'Mãe', key: 'motherName' },
+            { label: 'Nascimento', key: 'birthDate', width: '75px' },
+            { label: 'Endereço', key: 'addressStreet' },
+            { label: 'Cidade', key: 'addressCity', width: '90px' },
+            { label: 'UF', key: 'addressState', width: '30px' },
+            { label: 'CEP', key: 'addressZipcode', width: '65px' },
           ];
+          const rows = sorted.map((m) => ({
+            fullName: m.fullName,
+            rol: m.rol != null ? String(m.rol) : '—',
+            memberType: m.memberType || '—',
+            title: m.ecclesiasticalTitleRef?.name || m.ecclesiasticalTitle || '—',
+            churchName: m.churchName || '—',
+            regionalName: m.regionalName || m.regional?.name || m.church?.regional?.name || '—',
+            membershipStatus: m.membershipStatus || '—',
+            membershipDate: m.membershipDate ? new Date(m.membershipDate).toLocaleDateString('pt-BR') : '—',
+            phone: m.mobile || m.phone || '—',
+            email: m.email || '—',
+            cpf: m.cpf ? formatCpf(m.cpf) : '—',
+            maritalStatus: m.maritalStatus || '—',
+            spouseName: m.spouseName || '—',
+            fatherName: m.fatherName || '—',
+            motherName: m.motherName || '—',
+            birthDate: m.birthDate ? new Date(m.birthDate).toLocaleDateString('pt-BR') : '—',
+            addressStreet: [m.addressStreet, m.addressNumber, m.addressNeighborhood].filter(Boolean).join(', ') || '—',
+            addressCity: m.addressCity || '—',
+            addressState: m.addressState || '—',
+            addressZipcode: m.addressZipcode || '—',
+          }));
           printReport({
             title: 'Lista de Membros',
             orientation,
             columns: allCols.filter((c) => selectedColumns.includes(c.key)),
-            rows: sorted.map((m) => ({
-              fullName: m.fullName,
-              memberType: m.memberType || '—',
-              phone: m.mobile || m.phone || '—',
-              title: m.ecclesiasticalTitleRef?.name || m.ecclesiasticalTitle || '—',
-              churchName: m.churchName || '—',
-              membershipStatus: m.membershipStatus || '—',
-              membershipDate: m.membershipDate ? new Date(m.membershipDate).toLocaleDateString('pt-BR') : '—',
-            })),
+            rows,
+            ...(groupByChurch ? { groupByKey: 'churchName', groupByLabel: 'Igreja' } : {}),
           });
         }}
       />

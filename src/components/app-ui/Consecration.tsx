@@ -163,13 +163,13 @@ function getDateOnly(value?: string | null) {
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return 'Nao definido';
+  if (!value) return 'Não definido';
   const dateOnly = getDateOnly(value);
   if (dateOnly) {
     const [year, month, day] = dateOnly.split('-');
     return `${day}/${month}/${year}`;
   }
-  return 'Nao definido';
+  return 'Não definido';
 }
 
 function toDateInputValue(value?: string | null) {
@@ -192,8 +192,8 @@ function getDaysUntilLabel(value?: string | null) {
   if (days === 0) return 'Acontece hoje';
   if (days === 1) return 'Falta 1 dia';
   if (days > 1) return `Faltam ${days} dias`;
-  if (days === -1) return 'Data vencida ha 1 dia';
-  return `Data vencida ha ${Math.abs(days)} dias`;
+  if (days === -1) return 'Data vencida há 1 dia';
+  return `Data vencida há ${Math.abs(days)} dias`;
 }
 
 function parseStoredUser() {
@@ -342,6 +342,7 @@ export function Consecration() {
 
   const canManageSchedules = dashboard?.canManageSchedules ?? canChooseChurch;
   const canPickRequestChurch = canChooseChurch;
+  const canCreateRequest = !hasFixedChurchScope;
   const selectedTitleOption = useMemo(
     () => titleOptions.find((title) => title.id === requestForm.titleId) || null,
     [titleOptions, requestForm.titleId],
@@ -372,7 +373,7 @@ export function Consecration() {
     try {
       const response = await authFetch(`${apiBase}/consecration/title-options`);
       if (!response.ok) {
-        throw new Error('Falha ao carregar titulos de consagracao.');
+        throw new Error('Falha ao carregar títulos de consagração.');
       }
       const data = await response.json();
       const rows = Array.isArray(data) ? data : [];
@@ -397,7 +398,7 @@ export function Consecration() {
       ]);
 
       if (!fieldsResponse.ok || !regionaisResponse.ok || !churchesResponse.ok) {
-        throw new Error('Falha ao carregar filtros de consagracao.');
+        throw new Error('Falha ao carregar filtros de consagração.');
       }
 
       const [fieldsData, regionaisData, churchesData] = await Promise.all([
@@ -610,7 +611,7 @@ export function Consecration() {
       try {
         loadedTitles = await loadTitleOptions();
       } catch (loadError) {
-        toast.error(loadError instanceof Error ? loadError.message : 'Falha ao carregar titulos.');
+        toast.error(loadError instanceof Error ? loadError.message : 'Falha ao carregar títulos.');
       }
     }
 
@@ -737,7 +738,7 @@ export function Consecration() {
   async function submitSchedule() {
     setModalError('');
     if (!scheduleForm.churchId || !scheduleForm.scheduledDate) {
-      setModalError('Igreja e data sao obrigatorias.');
+      setModalError('Igreja e data são obrigatórias.');
       return;
     }
 
@@ -750,7 +751,7 @@ export function Consecration() {
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Falha ao salvar data de consagracao.');
+        throw new Error(payload.error || 'Falha ao salvar data de consagração.');
       }
       const savedSchedule = await response.json();
       qc.setQueryData<DashboardPayload>(qk.consecration(dashboardScopeKey), (prev) => {
@@ -762,7 +763,7 @@ export function Consecration() {
       setEditingSchedule(null);
       setScheduleModalOpen(false);
       setScheduleForm({ ...EMPTY_SCHEDULE_FORM });
-      toast.success(wasEditingSchedule ? 'Data de consagracao atualizada.' : 'Data de consagracao criada.');
+      toast.success(wasEditingSchedule ? 'Data de consagração atualizada.' : 'Data de consagração criada.');
       void loadDashboard();
     } catch (submitError) {
       setModalError(submitError instanceof Error ? submitError.message : 'Falha ao salvar data.');
@@ -778,11 +779,11 @@ export function Consecration() {
       return;
     }
     if (!requestForm.titleId) {
-      setModalError('Selecione o titulo eclesiastico.');
+      setModalError('Selecione o título eclesiástico.');
       return;
     }
-    if (!requestForm.consecrationDate) {
-      setModalError('Defina primeiro a agenda de consagracao para esta igreja.');
+    if (!requestForm.consecrationDate && !isAdminOrMaster) {
+      setModalError('Defina primeiro a agenda de consagração para esta igreja.');
       return;
     }
 
@@ -799,14 +800,14 @@ export function Consecration() {
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Falha ao salvar a consagracao.');
+        throw new Error(payload.error || 'Falha ao salvar a consagração.');
       }
 
       setEditingRequest(null);
       setSelectedMember(null);
       setRequestModalOpen(false);
       setRequestForm({ ...EMPTY_REQUEST_FORM });
-      toast.success(editingRequest ? 'Registro de consagracao atualizado.' : 'Processo de consagracao iniciado.');
+      toast.success(editingRequest ? 'Registro de consagração atualizado.' : 'Processo de consagração iniciado.');
       await loadDashboard();
     } catch (submitError) {
       setModalError(submitError instanceof Error ? submitError.message : 'Falha ao salvar o registro.');
@@ -842,7 +843,7 @@ export function Consecration() {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error || 'Falha ao excluir registro.');
       }
-      toast.success(deleteTarget.kind === 'schedule' ? 'Agendamento excluido.' : 'Registro de consagracao excluido.');
+      toast.success(deleteTarget.kind === 'schedule' ? 'Agendamento excluído.' : 'Registro de consagração excluído.');
       // Refetch silencioso em background para sincronizar stats
       void qc.invalidateQueries({ queryKey });
     } catch (deleteError) {
@@ -862,30 +863,20 @@ export function Consecration() {
             <Gift className="h-5 w-5 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Consagracao</h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Gerencie separacoes, consagracoes e o historico ministerial</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Consagração</h1>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Gerencie separações, consagrações e o histórico ministerial</p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => toast.info('Exportacao sera ligada no mesmo padrao dos demais servicos.')}
+            onClick={() => toast.info('Exportação será habilitada no mesmo padrão dos demais serviços.')}
             className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
           >
             <Download className="h-4 w-4" />
             Exportar
           </button>
-          {canManageSchedules ? (
-            <button
-              type="button"
-              onClick={() => openScheduleModal(currentSchedule)}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
-            >
-              <Calendar className="h-4 w-4" />
-              Agendar Consagracao
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={() => setPrintModalOpen(true)}
@@ -894,20 +885,22 @@ export function Consecration() {
             <Printer className="h-4 w-4" />
             Imprimir
           </button>
-          <button
-            type="button"
-            onClick={() => void openRequestModal(currentSchedule)}
-            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700"
-          >
-            <Plus className="h-4 w-4" />
-            Nova Consagracao
-          </button>
+          {canCreateRequest ? (
+            <button
+              type="button"
+              onClick={() => void openRequestModal(currentSchedule)}
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700"
+            >
+              <Plus className="h-4 w-4" />
+              Nova Consagração
+            </button>
+          ) : null}
         </div>
       </div>
 
       <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total" value={stats.total} icon={<Gift className="h-5 w-5 text-purple-600" />} />
-        <StatCard label="Este Mes" value={stats.thisMonth} icon={<Calendar className="h-5 w-5 text-blue-600" />} />
+        <StatCard label="Este Mês" value={stats.thisMonth} icon={<Calendar className="h-5 w-5 text-blue-600" />} />
         <StatCard label="Pendentes" value={stats.pending} icon={<Clock3 className="h-5 w-5 text-amber-600" />} />
         <NextConsecrationCard
           schedule={currentSchedule}
@@ -928,7 +921,7 @@ export function Consecration() {
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Buscar por membro, protocolo, igreja, servico ou observacao..."
+                placeholder="Buscar por membro, protocolo, igreja, serviço ou observação..."
                 className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
@@ -1065,14 +1058,14 @@ export function Consecration() {
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
                   <button type="button" onClick={() => handleSort('service')} className="inline-flex items-center gap-2">
-                    Servico
+                    Serviço
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Titulo Atual</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Título Atual</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
                   <button type="button" onClick={() => handleSort('title')} className="inline-flex items-center gap-2">
-                    Titulo Pretendido
+                    Título Pretendido
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
@@ -1084,7 +1077,7 @@ export function Consecration() {
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
                   <button type="button" onClick={() => handleSort('consecrationDate')} className="inline-flex items-center gap-2">
-                    Data da Consagracao
+                    Data da Consagração
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
@@ -1094,7 +1087,7 @@ export function Consecration() {
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Observacoes</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Observações</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900">Acoes</th>
               </tr>
             </thead>
@@ -1110,7 +1103,7 @@ export function Consecration() {
                           {(item.member?.fullName || 'MB').split(' ').map((part) => part[0]).slice(0, 2).join('')}
                         </div>
                         <div>
-                          <p className="font-semibold uppercase text-slate-900">{item.member?.fullName || 'Membro nao vinculado'}</p>
+                          <p className="font-semibold uppercase text-slate-900">{item.member?.fullName || 'Membro não vinculado'}</p>
                           <p className="text-xs font-semibold text-purple-600">{item.protocol}</p>
                         </div>
                       </div>
@@ -1119,9 +1112,9 @@ export function Consecration() {
                       <p>{item.church?.code ? `${item.church.code} - ` : ''}{item.church?.name || '-'}</p>
                       <p className="mt-1 text-xs text-slate-500">{[churchMeta?.regional?.name, churchMeta?.regional?.campo?.name].filter(Boolean).join(' • ') || '-'}</p>
                     </td>
-                    <td className="px-4 py-4 align-top text-sm text-slate-700">{item.service?.description || 'Consagracao'}</td>
+                    <td className="px-4 py-4 align-top text-sm text-slate-700">{item.service?.description || 'Consagração'}</td>
                     <td className="px-4 py-4 align-top text-sm text-slate-700">{item.currentTitle || 'Nao informado'}</td>
-                    <td className="px-4 py-4 align-top text-sm font-semibold text-slate-900">{item.intendedTitle || 'Nao definido'}</td>
+                    <td className="px-4 py-4 align-top text-sm font-semibold text-slate-900">{item.intendedTitle || 'Não definido'}</td>
                     <td className="px-4 py-4 align-top">
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.columnIndex)}`}>
                         {item.statusLabel}
@@ -1133,24 +1126,26 @@ export function Consecration() {
                       <div className="max-w-[260px] whitespace-pre-wrap break-words">{item.notes || '-'}</div>
                     </td>
                     <td className="px-4 py-4 align-top">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => void openRequestModal(item.nextConsecration || currentSchedule, item)}
-                          className="rounded-lg p-2 transition-colors hover:bg-slate-100"
-                          title="Editar"
-                        >
-                          <Pencil className="h-4 w-4 text-slate-600" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget({ kind: 'request', id: item.id, label: item.member?.fullName || item.protocol })}
-                          className="rounded-lg p-2 transition-colors hover:bg-rose-50"
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4 text-rose-600" />
-                        </button>
-                      </div>
+                      {canCreateRequest ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => void openRequestModal(item.nextConsecration || currentSchedule, item)}
+                            className="rounded-lg p-2 transition-colors hover:bg-slate-100"
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4 text-slate-600" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget({ kind: 'request', id: item.id, label: item.member?.fullName || item.protocol })}
+                            className="rounded-lg p-2 transition-colors hover:bg-rose-50"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4 text-rose-600" />
+                          </button>
+                        </div>
+                      ) : null}
                     </td>
                   </tr>
                 );
@@ -1160,7 +1155,7 @@ export function Consecration() {
         </div>
 
         {!loading && !paginatedRows.length ? (
-          <div className="px-6 py-10 text-center text-sm text-slate-500">Nenhum registro de consagracao encontrado para os filtros selecionados.</div>
+          <div className="px-6 py-10 text-center text-sm text-slate-500">Nenhum registro de consagração encontrado para os filtros selecionados.</div>
         ) : null}
 
         <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between">
@@ -1204,7 +1199,7 @@ export function Consecration() {
       </div>
 
       {requestModalOpen ? (
-        <ModalShell title={editingRequest ? 'Editar Consagracao' : 'Iniciar Consagracao'} onClose={() => {
+        <ModalShell title={editingRequest ? 'Editar Consagração' : 'Iniciar Consagração'} onClose={() => {
           setEditingRequest(null);
           setSelectedMember(null);
           setMembers([]);
@@ -1212,7 +1207,7 @@ export function Consecration() {
           setMemberSearchPerformed(false);
           setRequestModalOpen(false);
         }}>
-          <p className="mb-4 text-sm text-slate-500">Selecione o membro, o titulo final desejado e confirme a agenda da consagracao.</p>
+          <p className="mb-4 text-sm text-slate-500">Selecione o membro, o título final desejado e confirme a agenda da consagração.</p>
 
           <div className="mb-4">
             <label className="mb-2 block text-sm font-medium text-slate-700">Igreja</label>
@@ -1251,14 +1246,14 @@ export function Consecration() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Titulo Eclesiastico</label>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Título Eclesiástico</label>
               <select
                 value={requestForm.titleId}
                 onChange={(event) => setRequestForm((current) => ({ ...current, titleId: event.target.value }))}
                 disabled={loadingTitles}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100"
               >
-                <option value="">Selecione o titulo</option>
+                <option value="">Selecione o título</option>
                 {titleOptions.map((title) => (
                   <option key={title.id} value={title.id}>{title.name}</option>
                 ))}
@@ -1268,30 +1263,37 @@ export function Consecration() {
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Servico vinculado ao kanban</label>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Serviço vinculado ao kanban</label>
               <input
                 type="text"
-                value={selectedTitleOption?.serviceDescription || 'Sem servico configurado'}
+                value={selectedTitleOption?.serviceDescription || 'Sem serviço configurado'}
                 readOnly
                 className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Data da Consagracao</label>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Data da Consagração</label>
               <input
                 type="date"
                 value={requestForm.consecrationDate}
-                readOnly
-                disabled
+                readOnly={!isAdminOrMaster}
+                disabled={!isAdminOrMaster}
+                onChange={(event) => {
+                  if (isAdminOrMaster) {
+                    setRequestForm((current) => ({ ...current, consecrationDate: event.target.value }));
+                  }
+                }}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100"
               />
-              <p className="mt-1 text-xs text-slate-500">A data vem da agenda de consagracao definida pela sede.</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {isAdminOrMaster ? 'Admin/master pode definir a data manualmente.' : 'A data vem da agenda de consagração definida pela sede.'}
+              </p>
             </div>
           </div>
 
           <div className="mt-4">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Observacoes</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Observações</label>
             <textarea
               rows={4}
               value={requestForm.notes}
@@ -1301,7 +1303,7 @@ export function Consecration() {
           </div>
 
           {selectedMember?.ecclesiasticalTitle ? (
-            <p className="mt-3 text-xs text-slate-500">Titulo atual do membro: {selectedMember.ecclesiasticalTitle}</p>
+            <p className="mt-3 text-xs text-slate-500">Título atual do membro: {selectedMember.ecclesiasticalTitle}</p>
           ) : null}
           {modalError ? <p className="mt-3 text-sm text-rose-600">{modalError}</p> : null}
 
@@ -1330,7 +1332,7 @@ export function Consecration() {
       ) : null}
 
       {scheduleModalOpen ? (
-        <ModalShell title={editingSchedule ? 'Editar Consagracao' : 'Agendar Consagracao'} onClose={() => {
+        <ModalShell title={editingSchedule ? 'Editar Consagração' : 'Agendar Consagração'} onClose={() => {
           setEditingSchedule(null);
           setScheduleModalOpen(false);
         }}>
@@ -1360,7 +1362,7 @@ export function Consecration() {
           </div>
 
           <div className="mt-4">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Observacoes</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Observações</label>
             <textarea
               rows={3}
               value={scheduleForm.notes}
@@ -1493,7 +1495,7 @@ export function Consecration() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title={deleteTarget?.kind === 'schedule' ? 'Excluir agendamento de consagracao' : 'Excluir registro de consagracao'}
+        title={deleteTarget?.kind === 'schedule' ? 'Excluir agendamento de consagração' : 'Excluir registro de consagração'}
         message={deleteTarget ? `Confirma a exclusao de ${deleteTarget.label}?` : ''}
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
@@ -1512,10 +1514,10 @@ export function Consecration() {
         sortOptions={[
           { value: 'member', label: 'Membro' },
           { value: 'church', label: 'Igreja' },
-          { value: 'service', label: 'Servico' },
-          { value: 'intendedTitle', label: 'Titulo Pretendido' },
+          { value: 'service', label: 'Serviço' },
+          { value: 'intendedTitle', label: 'Título Pretendido' },
           { value: 'status', label: 'Status' },
-          { value: 'consecrationDate', label: 'Data Consagracao' },
+          { value: 'consecrationDate', label: 'Data Consagração' },
           { value: 'openedAt', label: 'Aberto em' },
         ]}
         columnOptions={[
@@ -1621,7 +1623,7 @@ function NextConsecrationCard({
             </div>
           </div>
           {canManageSchedules ? (
-            <button onClick={onCreate} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+            <button onClick={onCreate} className="rounded-2xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-700">
               Agendar
             </button>
           ) : null}

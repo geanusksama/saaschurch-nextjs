@@ -84,11 +84,22 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Cards ──────────────────────────────────────────────────────────────
+    // Pre-fetch all active service IDs that match consecration criteria (mirrors resolveConsecrationSetup)
+    const allActiveServices = await prisma.kanService.findMany({
+      where: { isActive: true },
+      select: { id: true, sigla: true, description: true, serviceGroup: true },
+    });
+    const consecrationServiceIds = allActiveServices
+      .filter((s) => isConsecrationService(s))
+      .map((s) => s.id);
+
     const cards = await prisma.kanCard.findMany({
       where: {
         deletedAt: null,
         ...kanScopeFilter(user),
-        service: { is: { OR: [{ serviceGroup: "CONSAGRACAO" }, { serviceGroup: null }] } },
+        ...(consecrationServiceIds.length > 0
+          ? { serviceId: { in: consecrationServiceIds } }
+          : { service: { is: { OR: [{ serviceGroup: "CONSAGRACAO" }, { serviceGroup: null }] } } }),
       },
       include: {
         church: {
@@ -104,7 +115,6 @@ export async function GET(req: NextRequest) {
       orderBy: { openedAt: "desc" },
     });
 
-    // Filter to consecration-only services after fetch (covers null serviceGroup)
     const consecCards = cards.filter((c) => isConsecrationService(c.service));
 
     const queue = consecCards.map((card) => {

@@ -12,19 +12,38 @@ export interface PrintReportOptions {
   orientation: PrintOrientation;
   columns: PrintColumn[];
   rows: Record<string, string | null | undefined>[];
+  groupByKey?: string;
+  groupByLabel?: string;
 }
 
 export function printReport(opts: PrintReportOptions) {
-  const { title, subtitle, orientation, columns, rows } = opts;
+  const { title, subtitle, orientation, columns, rows, groupByKey, groupByLabel } = opts;
   const printDate = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 
   const thead = columns.map((c) => `<th${c.width ? ` style="width:${c.width}"` : ''}>${c.label}</th>`).join('');
 
-  const tbody = rows.map((row) =>
-    `<tr>${columns.map((c) => `<td>${row[c.key] ?? '—'}</td>`).join('')}</tr>`
-  ).join('');
+  let tbody = '';
+  if (groupByKey) {
+    const groups = new Map<string, Record<string, string | null | undefined>[]>();
+    for (const row of rows) {
+      const key = String(row[groupByKey] ?? '—');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(row);
+    }
+    const sortedGroups = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
+    for (const [groupName, groupRows] of sortedGroups) {
+      tbody += `<tr><td colspan="${columns.length}" class="group-header">${groupByLabel ? `${groupByLabel}: ` : ''}${groupName} <span class="group-count">(${groupRows.length})</span></td></tr>`;
+      tbody += groupRows.map((row) =>
+        `<tr>${columns.map((c) => `<td>${row[c.key] ?? '—'}</td>`).join('')}</tr>`
+      ).join('');
+    }
+  } else {
+    tbody = rows.map((row) =>
+      `<tr>${columns.map((c) => `<td>${row[c.key] ?? '—'}</td>`).join('')}</tr>`
+    ).join('');
+  }
 
   const printFrame = document.createElement('iframe');
   printFrame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
@@ -47,6 +66,8 @@ export function printReport(opts: PrintReportOptions) {
     th,td{border:.5px solid #dde1e7;padding:3px 4px;text-align:left;vertical-align:top}
     th{background:#f3f4f6;font-weight:700;text-transform:uppercase;font-size:7.5px;letter-spacing:.06em;white-space:nowrap}
     tr:nth-child(even) td{background:#f9fafb}
+    .group-header{background:#e8e8f0!important;font-weight:700;font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:#374151;padding:4px 6px;border-top:1px solid #c7c7d4}
+    .group-count{font-weight:400;color:#6b7280}
     .foot{font-size:8px;color:#666;margin-top:6px}
     @page{size:A4 ${orientation};margin:8mm}
   </style>

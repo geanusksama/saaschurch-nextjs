@@ -16,18 +16,20 @@ export interface ColumnOption {
 interface PrintModalProps {
   open: boolean;
   onClose: () => void;
-  onPrint: (orientation: PrintOrientation, sortBy: string, selectedColumns: string[]) => void;
+  onPrint: (orientation: PrintOrientation, sortBy: string, selectedColumns: string[], groupByChurch?: boolean) => void;
   sortOptions: SortOption[];
   columnOptions: ColumnOption[];
   defaultSort?: string;
+  showGroupBy?: boolean;
 }
 
-export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions, defaultSort }: PrintModalProps) {
+export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions, defaultSort, showGroupBy }: PrintModalProps) {
   const [orientation, setOrientation] = useState<PrintOrientation>('portrait');
   const [sortBy, setSortBy] = useState(defaultSort || sortOptions[0]?.value || '');
   const [selectedCols, setSelectedCols] = useState<Set<string>>(
     () => new Set(columnOptions.filter((c) => c.defaultChecked !== false).map((c) => c.value))
   );
+  const [groupByChurch, setGroupByChurch] = useState(false);
 
   if (!open) return null;
 
@@ -145,6 +147,28 @@ export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions,
               ))}
             </div>
           </div>
+
+          {/* Group by church */}
+          {showGroupBy ? (
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                Agrupamento
+              </label>
+              <label className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-all ${
+                groupByChurch
+                  ? 'border-purple-400 bg-purple-50 text-purple-800 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-700'
+                  : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={groupByChurch}
+                  onChange={(e) => setGroupByChurch(e.target.checked)}
+                  className="accent-purple-600 w-3.5 h-3.5"
+                />
+                Agrupar por Regional / Igreja
+              </label>
+            </div>
+          ) : null}
         </div>
 
         {/* Footer */}
@@ -156,7 +180,7 @@ export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions,
             Cancelar
           </button>
           <button
-            onClick={() => { onPrint(orientation, sortBy, [...selectedCols]); onClose(); }}
+            onClick={() => { onPrint(orientation, sortBy, [...selectedCols], showGroupBy ? groupByChurch : undefined); onClose(); }}
             className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 transition-colors"
           >
             <Printer className="w-4 h-4" />

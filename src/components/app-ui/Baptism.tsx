@@ -808,16 +808,6 @@ export function Baptism() {
             <Download className="h-4 w-4" />
             Exportar
           </button>
-          {canManageSchedules ? (
-            <button
-              type="button"
-              onClick={() => openScheduleModal(currentSchedule)}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
-            >
-              <Calendar className="h-4 w-4" />
-              Agendar Batismo
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={() => setPrintModalOpen(true)}
@@ -1517,7 +1507,7 @@ function NextScheduleCard({
             </div>
           </div>
           {canManageSchedules ? (
-            <button onClick={onCreate} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+            <button onClick={onCreate} className="rounded-2xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700">
               Agendar
             </button>
           ) : null}
