@@ -320,8 +320,7 @@ function getMemberTitleFilterValue(member: MemberRecord) {
     return EMPTY_TITLE_FILTER;
   }
 
-  const title = member.ecclesiasticalTitleRef?.name || member.ecclesiasticalTitle || '';
-  return normalizeText(title) || EMPTY_TITLE_FILTER;
+  return member.ecclesiasticalTitleRef?.id || member.ecclesiasticalTitleId || EMPTY_TITLE_FILTER;
 }
 
 function getInitials(fullName: string) {
@@ -379,6 +378,14 @@ function MembersTableSkeleton() {
   );
 }
 
+type MembersQueryData = {
+  members: MemberRecord[];
+  total: number;
+  activeCount: number;
+  inactiveCount: number;
+  churchCount: number;
+};
+
 export function Members() {
   const token = localStorage.getItem('mrm_token');
   const storedUser = readStoredUser();
@@ -417,6 +424,10 @@ export function Members() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [serverTotal, setServerTotal] = useState(0);
+  const [serverActiveCount, setServerActiveCount] = useState(0);
+  const [serverInactiveCount, setServerInactiveCount] = useState(0);
+  const [serverChurchCount, setServerChurchCount] = useState(0);
   const [error, setError] = useState('');
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const isLoadingScreen = loadingFilters || loadingMembers;
@@ -455,7 +466,7 @@ export function Members() {
 
   const titleFilterOptions = useMemo(() => {
     const options = titles.map((title) => ({
-      value: normalizeText(title.name),
+      value: title.id,
       label: title.name,
     }));
 
@@ -466,65 +477,18 @@ export function Members() {
     ];
   }, [titles]);
 
-  const maritalStatusFilterOptions = useMemo(() => {
-    const uniqueStatuses = Array.from(
-      new Set(members.map((member) => normalizeMaritalStatus(member.maritalStatus)).filter(Boolean)),
-    );
-
-    return [
-      { value: 'ALL', label: 'Todos os estados civis' },
-      ...uniqueStatuses.map((status) => ({
-        value: status,
-        label: getMaritalStatusLabel(status),
-      })),
-    ];
-  }, [members]);
+  const maritalStatusFilterOptions = useMemo(() => [
+    { value: 'ALL', label: 'Todos os estados civis' },
+    { value: 'casado', label: 'Casado' },
+    { value: 'solteiro', label: 'Solteiro' },
+    { value: 'viuvo', label: 'Viúvo' },
+    { value: 'divorciado', label: 'Divorciado' },
+    { value: EMPTY_MARITAL_STATUS_FILTER, label: 'Não informado' },
+  ], []);
 
   const visibleMembers = useMemo(() => {
-    const normalizedSearch = normalizeText(searchTerm);
-    const typeFiltered = selectedTypeFilter === 'ALL'
-      ? members
-      : members.filter((member) => normalizeMemberType(member.memberType) === selectedTypeFilter);
-
-    const titleFiltered = selectedTitleFilter === 'ALL'
-      ? typeFiltered
-      : typeFiltered.filter((member) => getMemberTitleFilterValue(member) === selectedTitleFilter);
-
-    const statusFiltered = selectedStatusFilter === 'ALL'
-      ? titleFiltered
-      : titleFiltered.filter((member) => normalizeMembershipStatus(member.membershipStatus) === selectedStatusFilter);
-
-    const maritalStatusFiltered = selectedMaritalStatusFilter === 'ALL'
-      ? statusFiltered
-      : statusFiltered.filter((member) => normalizeMaritalStatus(member.maritalStatus) === selectedMaritalStatusFilter);
-
-    const filtered = !normalizedSearch
-      ? maritalStatusFiltered
-      : maritalStatusFiltered.filter((member) => {
-          const haystack = [
-            member.fullName,
-            member.memberType,
-            member.email,
-            member.phone,
-            member.mobile,
-            member.cpf,
-            member.cnpj,
-            member.churchName,
-            member.regionalName,
-            member.fieldName,
-            member.membershipStatus,
-            member.maritalStatus,
-            member.ecclesiasticalTitleRef?.name,
-            member.ecclesiasticalTitle,
-            member.rol != null ? String(member.rol) : null,
-          ]
-            .filter(Boolean)
-            .join(' ');
-
-          return normalizeText(haystack).includes(normalizedSearch);
-        });
-
-    return [...filtered].sort((left, right) => {
+    // All filtering is handled server-side; client only sorts the current page
+    return [...members].sort((left, right) => {
       const leftValue = (() => {
         if (sortKey === 'memberType') {
           return normalizeMemberType(left.memberType);
@@ -572,22 +536,18 @@ export function Members() {
       const comparison = String(leftValue).localeCompare(String(rightValue), 'pt-BR');
       return sortDirection === 'asc' ? comparison : comparison * -1;
     });
-  }, [members, searchTerm, selectedMaritalStatusFilter, selectedStatusFilter, selectedTitleFilter, selectedTypeFilter, sortDirection, sortKey]);
+  }, [members, sortDirection, sortKey]);
 
-  const paginatedMembers = useMemo(() => {
-    const startIndex = (page - 1) * pageSize;
-    return visibleMembers.slice(startIndex, startIndex + pageSize);
-  }, [page, pageSize, visibleMembers]);
+  // API already paginates; visibleMembers is the sorted current page
+  const paginatedMembers = visibleMembers;
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(visibleMembers.length / pageSize)), [pageSize, visibleMembers.length]);
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(serverTotal / pageSize)), [pageSize, serverTotal]);
 
-  const stats = useMemo(() => {
-    const activeMembers = visibleMembers.filter((member) => normalizeMembershipStatus(member.membershipStatus) === 'ativo').length;
-    const inactiveMembers = visibleMembers.filter((member) => normalizeMembershipStatus(member.membershipStatus) === 'inativo').length;
-    const uniqueChurches = new Set(visibleMembers.map((member) => member.churchId).filter(Boolean)).size;
-
-    return { activeMembers, inactiveMembers, uniqueChurches };
-  }, [visibleMembers]);
+  const stats = useMemo(() => ({
+    activeMembers: serverActiveCount,
+    inactiveMembers: serverInactiveCount,
+    uniqueChurches: serverChurchCount,
+  }), [serverActiveCount, serverInactiveCount, serverChurchCount]);
 
   useEffect(() => {
     setPage(1);
@@ -687,9 +647,13 @@ export function Members() {
     q: debouncedSearch || undefined,
     page,
     pageSize,
-  }), [selectedChurchId, selectedRegionalId, selectedFieldId, debouncedSearch, page, pageSize]);
+    memberType: selectedTypeFilter !== 'ALL' ? selectedTypeFilter : undefined,
+    status: selectedStatusFilter !== 'ALL' ? selectedStatusFilter : undefined,
+    maritalStatus: selectedMaritalStatusFilter !== 'ALL' ? selectedMaritalStatusFilter : undefined,
+    titleId: selectedTitleFilter !== 'ALL' ? selectedTitleFilter : undefined,
+  }), [selectedChurchId, selectedRegionalId, selectedFieldId, debouncedSearch, page, pageSize, selectedTypeFilter, selectedStatusFilter, selectedMaritalStatusFilter, selectedTitleFilter]);
 
-  const membersQuery = useQuery({
+  const membersQuery = useQuery<MembersQueryData>({
     queryKey: qk.members(memberQueryFilters),
     queryFn: async () => {
       if (!token) throw new Error('Sessão expirada.');
@@ -700,8 +664,7 @@ export function Members() {
       const res = await fetch(`${apiBase}/members?${params.toString()}`, { headers: buildAuthHeaders(token) });
       if (!res.ok) throw new Error('Falha ao carregar membros.');
       const data = await res.json();
-      const rows = Array.isArray(data) ? data : (data.data ?? []);
-      return rows.map((member: MemberRecord) => ({
+      const rows: MemberRecord[] = (Array.isArray(data) ? data : (data.data ?? [])).map((member: MemberRecord) => ({
         ...member,
         ecclesiasticalTitleId: member.ecclesiasticalTitleRef?.id || member.ecclesiasticalTitleId || '',
         churchName: member.church?.name || '',
@@ -709,16 +672,27 @@ export function Members() {
         regionalName: member.church?.regional?.name || member.regional?.name || '',
         fieldName: member.church?.regional?.campo?.name || '',
       }));
+      return {
+        members: rows,
+        total: data.total ?? rows.length,
+        activeCount: data.activeCount ?? 0,
+        inactiveCount: data.inactiveCount ?? 0,
+        churchCount: data.churchCount ?? 0,
+      };
     },
     enabled: !!token && !loadingFilters,
     placeholderData: (prev) => prev,
     staleTime: 5 * 60 * 1000,
   });
 
-  // Sync query result back to local state (keeps rest of component working unchanged)
+  // Sync query result back to local state
   useEffect(() => {
     if (membersQuery.data) {
-      setMembers(membersQuery.data as MemberRecord[]);
+      setMembers(membersQuery.data.members);
+      setServerTotal(membersQuery.data.total);
+      setServerActiveCount(membersQuery.data.activeCount);
+      setServerInactiveCount(membersQuery.data.inactiveCount);
+      setServerChurchCount(membersQuery.data.churchCount);
       setLoadingMembers(false);
     } else if (membersQuery.isLoading) {
       setLoadingMembers(true);
@@ -735,8 +709,8 @@ export function Members() {
 
   // Helper: update the current members cache key optimistically
   const patchMembersCache = useCallback((updater: (rows: MemberRecord[]) => MemberRecord[]) => {
-    qc.setQueryData<MemberRecord[]>(qk.members(memberQueryFilters), (old) =>
-      old ? updater(old) : old
+    qc.setQueryData<MembersQueryData>(qk.members(memberQueryFilters), (old) =>
+      old ? { ...old, members: updater(old.members) } : old
     );
   }, [qc, memberQueryFilters]);
 
@@ -820,7 +794,7 @@ export function Members() {
     if (!token || !deleteTarget) return;
 
     // 1. Snapshot para rollback se o request falhar
-    const snapshot = qc.getQueryData<MemberRecord[]>(qk.members(memberQueryFilters));
+    const snapshot = qc.getQueryData<MembersQueryData>(qk.members(memberQueryFilters));
 
     // 2. Remove da tela ANTES da resposta do servidor (optimistic)
     patchMembersCache((rows) => rows.filter((member) => member.id !== deleteTarget.id));
@@ -906,7 +880,7 @@ export function Members() {
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{members.length}</p>}
+            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{serverTotal}</p>}
           </div>
           <User className="h-5 w-5 text-blue-600" />
         </div>
@@ -1234,7 +1208,7 @@ export function Members() {
 
         <div className="flex flex-col gap-3 border-t border-slate-200 dark:border-slate-700 px-4 py-4 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Exibindo {paginatedMembers.length ? (page - 1) * pageSize + 1 : 0} a {Math.min(page * pageSize, visibleMembers.length)} de {visibleMembers.length} membros
+            Exibindo {paginatedMembers.length ? (page - 1) * pageSize + 1 : 0} a {(page - 1) * pageSize + paginatedMembers.length} de {serverTotal} membros
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
