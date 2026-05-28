@@ -51,6 +51,10 @@ function groupByPlano(rows: Row[]) {
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(r);
     }
+    // Default ordering within each group: date descending (most recent first)
+    for (const groupRows of map.values()) {
+      groupRows.sort((a, b) => b.data_lancamento.localeCompare(a.data_lancamento));
+    }
     return map;
   }
 

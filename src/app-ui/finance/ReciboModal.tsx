@@ -132,6 +132,7 @@ export function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: s
   <hr>
   <p class="info">Número do Documento: ${docNum}</p>
   <p class="info">Referência: ${row.referencia || ''} | <span class="tipo-${row.tipo.toLowerCase()}">${row.tipo}</span></p>
+  ${row.obs ? `<p class="info" style="margin-top:4px;padding:4px 6px;background:#f8f9fa;border-left:3px solid #999;"><strong>Obs:</strong> ${row.obs}</p>` : ''}
   <hr>
   <table>
     <thead>

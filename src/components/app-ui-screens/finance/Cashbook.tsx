@@ -834,7 +834,8 @@ export default function Cashbook() {
     return [...typeFiltered].sort((a, b) => {
       if (sortKey === 'plano_tipo') {
         const pa = planoPriority(a), pb = planoPriority(b);
-        if (pa !== pb) return pa - pb;
+        if (pa !== pb) return sortDir === 'asc' ? pa - pb : pb - pa;
+        // Within same group: always most recent first
         return b.data_lancamento.localeCompare(a.data_lancamento);
       }
       let av: string | number = '', bv: string | number = '';
