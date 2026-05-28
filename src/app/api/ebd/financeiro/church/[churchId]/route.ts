@@ -3,14 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { resolveScopedFieldId, serializeBigInts } from "@/lib/helpers";
 
-export async function GET(req: NextRequest, { params }: { params: { churchId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ churchId: string }> }) {
   return withAuth(req, async (user) => {
+    const { churchId } = await params;
     const campoId = resolveScopedFieldId(user, req.nextUrl.searchParams.get("campoId") || undefined);
     if (!campoId) return NextResponse.json({ error: "campoId obrigatório" }, { status: 400 });
 
     const [rows, negociacoes] = await Promise.all([
       prisma.ebdFinanceiro.findMany({
-        where: { campoId, churchId: params.churchId },
+        where: { campoId, churchId },
         include: {
           trimestre: { select: { id: true, nome: true, ano: true, dataFim: true } },
           movimentos: { orderBy: { data: "asc" } },
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: { churchId: st
         orderBy: { createdAt: "asc" },
       }),
       prisma.ebdNegociacao.findMany({
-        where: { campoId, churchId: params.churchId, deletedAt: null },
+        where: { campoId, churchId, deletedAt: null },
         include: { parcelas: { orderBy: { numParcela: "asc" } } },
         orderBy: { createdAt: "desc" },
       }),

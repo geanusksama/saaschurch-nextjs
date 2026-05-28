@@ -11,10 +11,10 @@ import { getStripeForCampo } from "@/lib/stripeEncrypt";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   return withAuth(req, async (user) => {
-    const { sessionId } = params;
+    const { sessionId } = await params;
     if (!sessionId) {
       return NextResponse.json({ error: "sessionId obrigatório" }, { status: 400 });
     }
