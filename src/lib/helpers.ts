@@ -86,7 +86,7 @@ export function kanScopeFilter(user: AuthUser) {
 
 export function buildProtocol(sigla: string) {
   const year = new Date().getFullYear();
-  const prefix = Math.random().toString(36).substring(2, 5).toUpperCase();
+  const prefix = crypto.randomUUID().replace(/-/g, '').substring(0, 5).toUpperCase();
   return `${prefix}-${sigla}-${year}`;
 }
 

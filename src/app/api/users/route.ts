@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
+
+const CreateUserSchema = z.object({
+  fullName: z.string().min(1, "fullName é obrigatório").max(255),
+  email: z.string().email("Email inválido"),
+  phone: z.string().max(50).optional().nullable(),
+  profileType: z.string().optional(),
+  churchId: z.string().uuid("churchId deve ser UUID").optional().nullable(),
+  regionalId: z.string().uuid("regionalId deve ser UUID").optional().nullable(),
+  campoId: z.string().uuid("campoId deve ser UUID").optional().nullable(),
+  roleId: z.string().uuid("roleId deve ser UUID").optional().nullable(),
+  isAdmin: z.boolean().optional(),
+});
 
 function getManagedCampoId(user: import("@/lib/auth").AuthUser) {
   if ((user.profileType === "admin" || user.profileType === "campo") && user.campoId) return user.campoId;
@@ -10,12 +23,10 @@ function getManagedCampoId(user: import("@/lib/auth").AuthUser) {
 
 function buildManagedUsersWhere(user: import("@/lib/auth").AuthUser, query: Record<string, string> = {}) {
   const { search, profileType, churchId, campoId, regionalId, isActive } = query;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: Record<string, any> = { deletedAt: null };
+  const where: Record<string, unknown> = { deletedAt: null };
   const managedCampoId = getManagedCampoId(user);
   const effectiveCampoId = managedCampoId || campoId || null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const andClauses: any[] = [];
+  const andClauses: unknown[] = [];
 
   if (search) {
     andClauses.push({ OR: [
@@ -30,7 +41,7 @@ function buildManagedUsersWhere(user: import("@/lib/auth").AuthUser, query: Reco
   if (isActive !== undefined) where.isActive = isActive === "true";
 
   if (effectiveCampoId) {
-    const fieldClauses = [
+    const fieldClauses: unknown[] = [
       { campoId: effectiveCampoId },
       { regional: { is: { campoId: effectiveCampoId } } },
       { church: { is: { regional: { is: { campoId: effectiveCampoId } } } } },
@@ -60,11 +71,16 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const query = Object.fromEntries(searchParams.entries());
     const where = buildManagedUsersWhere(user, query);
+
+    const limit = Math.min(500, Math.max(1, parseInt(searchParams.get("limit") || "200")));
+
     const users = await prisma.user.findMany({
       where: where as Parameters<typeof prisma.user.findMany>[0]["where"],
       include: userInclude,
       orderBy: { fullName: "asc" },
+      take: limit,
     });
+
     return NextResponse.json(serializeBigInts(users));
   });
 }
@@ -74,9 +90,17 @@ export async function POST(req: NextRequest) {
     if (!["master", "admin", "campo"].includes(user.profileType)) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
+
     const body = await req.json().catch(() => ({}));
-    const { fullName, email, phone, profileType, churchId, regionalId, campoId, roleId, isAdmin } = body;
-    if (!fullName || !email) return NextResponse.json({ error: "fullName e email são obrigatórios." }, { status: 400 });
+    const parsed = CreateUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Dados inválidos.", details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const { fullName, email, phone, profileType, churchId, regionalId, campoId, roleId, isAdmin } = parsed.data;
 
     const existing = await prisma.user.findFirst({ where: { email } });
     if (existing) return NextResponse.json({ error: "Email já cadastrado." }, { status: 409 });
@@ -111,7 +135,8 @@ export async function POST(req: NextRequest) {
     try {
       newUser = await prisma.user.create({
         data: {
-          fullName, email, phone, profileType: profileType || "church",
+          fullName, email, phone,
+          profileType: profileType || "church",
           churchId: nextChurchId || undefined,
           regionalId: nextRegionalId || undefined,
           campoId: nextCampoId || undefined,
@@ -122,12 +147,11 @@ export async function POST(req: NextRequest) {
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      // P2002 = unique constraint violation
       if (msg.includes("P2002") || msg.includes("Unique constraint") || msg.includes("unique constraint")) {
         return NextResponse.json({ error: "Email já cadastrado." }, { status: 409 });
       }
-      console.error("[POST /api/users] prisma.user.create error:", msg);
-      return NextResponse.json({ error: "Erro ao criar usuário: " + msg }, { status: 500 });
+      console.error("[POST /api/users] user.create failed");
+      return NextResponse.json({ error: "Erro ao criar usuário." }, { status: 500 });
     }
     return NextResponse.json(serializeBigInts(newUser), { status: 201 });
   });

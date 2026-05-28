@@ -160,24 +160,8 @@ export function usePermissions(profileType?: string) {
 
   const pt = (profileType ?? 'church') as ProfileKey;
 
-  // master always has full access
-  if (profileType === 'master') {
-    return {
-      canView:   () => true,
-      canCreate: () => true,
-      canEdit:   () => true,
-      canDelete: () => true,
-      refreshPermissions,
-    };
-  }
-
-  /**
-   * Resolve a single action for a module:
-   * 1. If user has an explicit override (true/false) → use it
-   * 2. Otherwise use the matrix value for the profileType
-   * 3. If module not in matrix → allow (don't break unknown items)
-   */
-  const resolve = (key: string, action: string): boolean => {
+  // Memoized resolve — stable reference avoids unnecessary re-renders in consumers
+  const resolve = useCallback((key: string, action: string): boolean => {
     const overrideKey = `${key}.${action}`;
     if (overrideKey in userOverrides) return userOverrides[overrideKey];
     // Role whitelist: if the user has a custom role AND permissions are loaded,
@@ -191,13 +175,24 @@ export function usePermissions(profileType?: string) {
     const actionPerms = mod.permissions[action as keyof typeof mod.permissions];
     if (!actionPerms) return false;
     return (actionPerms as Record<string, boolean>)[pt] ?? false;
-  };
+  }, [modules, userOverrides, userRoleId, pt]);
 
-  return {
-    canView:   (key: string) => resolve(key, 'view'),
-    canCreate: (key: string) => resolve(key, 'create'),
-    canEdit:   (key: string) => resolve(key, 'edit'),
-    canDelete: (key: string) => resolve(key, 'delete'),
-    refreshPermissions,
-  };
+  // Memoize each action helper — stable references avoid unnecessary re-renders in consumers
+  const canView   = useCallback((key: string) => resolve(key, 'view'),   [resolve]);
+  const canCreate = useCallback((key: string) => resolve(key, 'create'), [resolve]);
+  const canEdit   = useCallback((key: string) => resolve(key, 'edit'),   [resolve]);
+  const canDelete = useCallback((key: string) => resolve(key, 'delete'), [resolve]);
+
+  // master always has full access — checked after all hooks to respect Rules of Hooks
+  if (profileType === 'master') {
+    return {
+      canView:   () => true,
+      canCreate: () => true,
+      canEdit:   () => true,
+      canDelete: () => true,
+      refreshPermissions,
+    };
+  }
+
+  return { canView, canCreate, canEdit, canDelete, refreshPermissions };
 }

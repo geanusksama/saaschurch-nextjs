@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess } from "@/lib/helpers";
 
+const uuidSchema = z.string().uuid();
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
+    if (!uuidSchema.safeParse(id).success) return NextResponse.json({ error: "ID inválido." }, { status: 400 });
     const member = await prisma.member.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -30,6 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
+    if (!uuidSchema.safeParse(id).success) return NextResponse.json({ error: "ID inválido." }, { status: 400 });
     const existing = await prisma.member.findFirst({ where: { id, deletedAt: null } });
     if (!existing) return NextResponse.json({ error: "member not found" }, { status: 404 });
     const ok = await assertChurchAccess(user, existing.churchId, prisma);
@@ -86,6 +91,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
+    if (!uuidSchema.safeParse(id).success) return NextResponse.json({ error: "ID inválido." }, { status: 400 });
     const existing = await prisma.member.findFirst({ where: { id, deletedAt: null } });
     if (!existing) return NextResponse.json({ error: "member not found" }, { status: 404 });
     const ok = await assertChurchAccess(user, existing.churchId, prisma);

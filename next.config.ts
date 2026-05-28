@@ -7,10 +7,7 @@ const nextConfig: NextConfig = {
   },
   // Use Turbopack (Next.js 16 default) — no webpack plugin needed
   turbopack: {},
-  // Pre-existing TypeScript errors in copied component files — skip to allow build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+
 };
 
 export default nextConfig;

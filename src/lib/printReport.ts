@@ -1,7 +1,9 @@
 export type PrintOrientation = 'portrait' | 'landscape';
 
 export interface PrintColumn {
-  label: string;
+  /** Texto exibido no cabeçalho — aceita `label` ou `header` como alias */
+  label?: string;
+  header?: string;
   key: string;
   width?: string;
 }
@@ -22,7 +24,7 @@ export function printReport(opts: PrintReportOptions) {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 
-  const thead = columns.map((c) => `<th${c.width ? ` style="width:${c.width}"` : ''}>${c.label}</th>`).join('');
+  const thead = columns.map((c) => `<th${c.width ? ` style="width:${c.width}"` : ''}>${c.label ?? c.header ?? ''}</th>`).join('');
 
   let tbody = '';
   if (groupByKey) {

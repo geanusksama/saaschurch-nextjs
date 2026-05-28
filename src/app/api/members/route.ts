@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { isRestrictedToOwnChurch } from "@/lib/helpers";
 
 function serializeBigInts(obj: unknown): unknown {
   return JSON.parse(JSON.stringify(obj, (_, v) => (typeof v === "bigint" ? v.toString() : v)));
-}
-
-function isRestrictedToOwnChurch(user: { profileType: string; roleName?: string | null }) {
-  if (user.profileType === "church") return true;
-  const name = String(user.roleName || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  return name.includes("secret") || name.includes("tesour");
 }
 
 export async function GET(req: NextRequest) {
@@ -17,8 +12,7 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const { churchId, regionalId, campoId, churchIds, query, search, limit } = Object.fromEntries(url.searchParams);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const churchWhere: any = { deletedAt: null };
+    const churchWhere: Record<string, unknown> = { deletedAt: null };
     if (churchId) {
       churchWhere.id = churchId;
     } else if (churchIds) {
@@ -39,12 +33,11 @@ export async function GET(req: NextRequest) {
 
     const normalizedQuery = String(query || search || "").trim();
     const parsedLimit = Number(limit);
-    const parsedRol = Number(normalizedQuery);
-    const isRolQuery = normalizedQuery !== "" && Number.isInteger(parsedRol);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let nameFilter: any = {};
+    let nameFilter: Record<string, unknown> = {};
     if (normalizedQuery) {
+      const parsedRol = Number(normalizedQuery);
+      const isRolQuery = normalizedQuery !== "" && Number.isInteger(parsedRol);
       if (isRolQuery) {
         nameFilter = { rol: parsedRol };
       } else {
@@ -69,6 +62,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const effectiveLimit = Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, 500)
+      : 100;
+
     const members = await prisma.member.findMany({
       where: { deletedAt: null, church: churchWhere, ...nameFilter },
       include: {
@@ -82,7 +79,7 @@ export async function GET(req: NextRequest) {
         ecclesiasticalTitleRef: { select: { id: true, name: true, abbreviation: true, level: true } },
       },
       orderBy: { fullName: "asc" },
-      ...(Number.isFinite(parsedLimit) && parsedLimit > 0 ? { take: Math.min(parsedLimit, 500) } : {}),
+      take: effectiveLimit,
     });
 
     for (const member of members) {

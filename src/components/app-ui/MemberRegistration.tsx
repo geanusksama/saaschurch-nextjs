@@ -259,9 +259,10 @@ export function MemberRegistration() {
   const storedUser = readStoredUser();
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
   const activeFieldName = localStorage.getItem('mrm_active_field_name') || storedUser.campoName || '';
-  // Somente master/admin podem trocar Campo, Regional e Igreja
+  // master/admin podem trocar Campo; campo+ podem trocar Regional e Igreja dentro do seu campo
   const isMasterOrAdmin = storedUser.profileType === 'master' || storedUser.profileType === 'admin';
-  const canChooseChurch = isMasterOrAdmin;
+  const isCampoOrAbove = isMasterOrAdmin || storedUser.profileType === 'campo';
+  const canChooseChurch = isCampoOrAbove;
   const canChooseField = isMasterOrAdmin;
   const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
   const [formData, setFormData] = useState<FormState>(initialFormData);
