@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "AD Campinas",
@@ -13,7 +10,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} h-full antialiased`}>
+    <html lang="pt-BR" suppressHydrationWarning className="h-full antialiased">
       <head>
         {/* Apply dark class before first paint to avoid flash */}
         <script

@@ -100,7 +100,7 @@ async function ensureUserProfile(authUser: { id: string; email?: string; user_me
       churchId: metadata.church_id || null,
       campoId: metadata.campo_id || null,
       roleId: metadata.role_id || null,
-      isAdmin: initialProfileType === "master" || initialProfileType === "admin",
+      isAdmin: (initialProfileType as any) === "master" || (initialProfileType as any) === "admin",
     },
   }).catch(() => null);
 

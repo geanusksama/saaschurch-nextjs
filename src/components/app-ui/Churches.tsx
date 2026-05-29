@@ -165,14 +165,14 @@ const pageSizeOptions = [10, 25, 50, 100];
 const detailPageSizeOptions = [5, 10, 20, 50];
 const departmentSuggestions = ['Dirigência', 'Pastoral', 'Jovens', 'Adolescentes', 'CIBE', 'Infantil', 'Louvor', 'Intercessão'];
 
-function normalizeText(value) {
+function normalizeText(value: any) {
   return String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 }
 
-function sortRows(rows, sortConfig) {
+function sortRows(rows: any, sortConfig: any) {
   const sorted = [...rows];
   sorted.sort((left, right) => {
     const leftValue = left[sortConfig.key] ?? '';
@@ -188,7 +188,7 @@ function sortRows(rows, sortConfig) {
   return sorted;
 }
 
-function sortCollection(rows, sortConfig, accessorMap = {}) {
+function sortCollection(rows: any, sortConfig: any, accessorMap: any = {}) {
   const sorted = [...rows];
   sorted.sort((left, right) => {
     const accessor = accessorMap[sortConfig.key];
@@ -213,7 +213,7 @@ function sortCollection(rows, sortConfig, accessorMap = {}) {
   return sorted;
 }
 
-function isDateWithinRange(value, from, to) {
+function isDateWithinRange(value: any, from: any, to: any) {
   const current = toDateInputValue(value);
   if (!current) return !from && !to;
   if (from && current < from) return false;
@@ -221,39 +221,39 @@ function isDateWithinRange(value, from, to) {
   return true;
 }
 
-function paginateRows(rows, page, pageSize) {
+function paginateRows(rows: any, page: any, pageSize: any) {
   const start = (page - 1) * pageSize;
   return rows.slice(start, start + pageSize);
 }
 
-function formatDateLabel(value) {
+function formatDateLabel(value: any) {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString('pt-BR');
 }
 
-function formatCurrency(value) {
+function formatCurrency(value: any) {
   if (value === null || value === undefined || value === '') return '-';
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return '-';
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parsed);
 }
 
-function parseCurrencyInput(value) {
+function parseCurrencyInput(value: any) {
   if (value === null || value === undefined) return null;
   const digits = String(value).replace(/\D/g, '');
   if (!digits) return null;
   return Number(digits) / 100;
 }
 
-function formatCurrencyInput(value) {
+function formatCurrencyInput(value: any) {
   const parsed = parseCurrencyInput(value);
   if (parsed === null) return '';
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parsed);
 }
 
-function memberMatchesQuery(member, query) {
+function memberMatchesQuery(member: any, query: any) {
   const normalizedQuery = normalizeText(query).trim();
   if (!normalizedQuery) return true;
   if (/^\d+$/.test(normalizedQuery)) return String(member.rol || '') === normalizedQuery;
@@ -262,7 +262,7 @@ function memberMatchesQuery(member, query) {
   return terms.every((term) => parts.some((part) => part.startsWith(term)));
 }
 
-function buildGoogleMapsEmbedUrl(form) {
+function buildGoogleMapsEmbedUrl(form: any) {
   const hasCoordinates = form.latitude && form.longitude;
   if (hasCoordinates) {
     return `https://www.google.com/maps?q=${encodeURIComponent(`${form.latitude},${form.longitude}`)}&z=16&output=embed`;
@@ -276,7 +276,7 @@ function buildGoogleMapsEmbedUrl(form) {
   return address ? `https://www.google.com/maps?q=${encodeURIComponent(address)}&z=15&output=embed` : '';
 }
 
-function buildGoogleMapsLink(form) {
+function buildGoogleMapsLink(form: any) {
   const hasCoordinates = form.latitude && form.longitude;
   if (hasCoordinates) {
     return `https://www.google.com/maps?q=${encodeURIComponent(`${form.latitude},${form.longitude}`)}`;
@@ -290,17 +290,17 @@ function buildGoogleMapsLink(form) {
   return address ? `https://www.google.com/maps?q=${encodeURIComponent(address)}` : '';
 }
 
-function normalizeZipcode(value) {
+function normalizeZipcode(value: any) {
   return String(value || '').replace(/\D/g, '').slice(0, 8);
 }
 
-function formatZipcode(value) {
+function formatZipcode(value: any) {
   const digits = normalizeZipcode(value);
   if (digits.length <= 5) return digits;
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
-function buildAddressSearchLabel(source) {
+function buildAddressSearchLabel(source: any) {
   return [
     source?.addressStreet,
     source?.addressNeighborhood,
@@ -314,7 +314,7 @@ function buildAddressSearchLabel(source) {
     .trim();
 }
 
-function buildLocationPreviewUrl(locationSearch, preview, form) {
+function buildLocationPreviewUrl(locationSearch: any, preview: any, form: any) {
   if (preview?.lat && preview?.lon) {
     return `https://www.google.com/maps?q=${encodeURIComponent(`${preview.lat},${preview.lon}`)}&z=16&output=embed`;
   }
@@ -326,7 +326,7 @@ function buildLocationPreviewUrl(locationSearch, preview, form) {
   return buildGoogleMapsEmbedUrl(form);
 }
 
-function toDateInputValue(value) {
+function toDateInputValue(value: any) {
   if (!value) {
     return '';
   }
@@ -352,7 +352,7 @@ function getStoredFieldContext() {
   return null;
 }
 
-function SwitchField({ checked, onChange, label, alignEnd = false }) {
+function SwitchField({ checked, onChange, label, alignEnd = false }: { checked: any; onChange: any; label: any; alignEnd?: boolean }) {
   return (
     <label className={`flex items-center gap-3 ${alignEnd ? 'justify-end' : ''}`}>
       <button
@@ -370,7 +370,7 @@ function SwitchField({ checked, onChange, label, alignEnd = false }) {
   );
 }
 
-function SectionCard({ title, description, actions, children }) {
+function SectionCard({ title, description, actions, children }: { title: any; description: any; actions: any; children: any }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
       <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between dark:border-slate-800">
@@ -397,17 +397,17 @@ export function Churches() {
   const selectedFieldId = selectedFieldContext?.id || localStorage.getItem('mrm_active_field_id') || '';
   const selectedFieldName = selectedFieldContext?.name || localStorage.getItem('mrm_active_field_name') || '';
 
-  const [churches, setChurches] = useState([]);
-  const [campos, setCampos] = useState([]);
-  const [regionais, setRegionais] = useState([]);
-  const [headquarters, setHeadquarters] = useState([]);
-  const [functionCatalog, setFunctionCatalog] = useState([]);
-  const [churchMembers, setChurchMembers] = useState([]);
-  const [churchContacts, setChurchContacts] = useState([]);
-  const [churchFunctions, setChurchFunctions] = useState([]);
-  const [leaderHistory, setLeaderHistory] = useState([]);
-  const [churchPhotos, setChurchPhotos] = useState([]);
-  const [rentRecords, setRentRecords] = useState([]);
+  const [churches, setChurches] = useState<any[]>([]);
+  const [campos, setCampos] = useState<any[]>([]);
+  const [regionais, setRegionais] = useState<any[]>([]);
+  const [headquarters, setHeadquarters] = useState<any[]>([]);
+  const [functionCatalog, setFunctionCatalog] = useState<any[]>([]);
+  const [churchMembers, setChurchMembers] = useState<any[]>([]);
+  const [churchContacts, setChurchContacts] = useState<any[]>([]);
+  const [churchFunctions, setChurchFunctions] = useState<any[]>([]);
+  const [leaderHistory, setLeaderHistory] = useState<any[]>([]);
+  const [churchPhotos, setChurchPhotos] = useState<any[]>([]);
+  const [rentRecords, setRentRecords] = useState<any[]>([]);
   const [filters, setFilters] = useState(() => ({ ...initialFilters, campoId: selectedFieldId }));
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [visibleColumns, setVisibleColumns] = useState(defaultVisibleColumns);
@@ -469,17 +469,17 @@ export function Churches() {
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSearchPerformed, setMemberSearchPerformed] = useState(false);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
-  const [memberSearchResults, setMemberSearchResults] = useState([]);
+  const [memberSearchResults, setMemberSearchResults] = useState<any[]>([]);
   const [activeMemberIndex, setActiveMemberIndex] = useState(0);
-  const [selectedLeaderMemberState, setSelectedLeaderMemberState] = useState(null);
-  const [selectedFunctionMemberState, setSelectedFunctionMemberState] = useState(null);
+  const [selectedLeaderMemberState, setSelectedLeaderMemberState] = useState<any>(null);
+  const [selectedFunctionMemberState, setSelectedFunctionMemberState] = useState<any>(null);
   const [zipcodeLookupLoading, setZipcodeLookupLoading] = useState(false);
   const [locationHelperOpen, setLocationHelperOpen] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
-  const [locationSearchResults, setLocationSearchResults] = useState([]);
+  const [locationSearchResults, setLocationSearchResults] = useState<any[]>([]);
   const [locationSearchLoading, setLocationSearchLoading] = useState(false);
-  const [selectedLocationPreview, setSelectedLocationPreview] = useState(null);
-  const memberOptionRefs = useRef([]);
+  const [selectedLocationPreview, setSelectedLocationPreview] = useState<any>(null);
+  const memberOptionRefs = useRef<any[]>([]);
 
   const createInitialChurchForm = () => ({
     ...initialChurchForm,
@@ -487,9 +487,9 @@ export function Churches() {
     headquartersId: headquarters[0]?.id || '',
   });
 
-  const fetchJson = async (path, options = {}, config = {}) => {
+  const fetchJson = async (path: any, options: any = {}, config: any = {}) => {
     const { requiresAuth = false, allowUnauthorized = false } = config;
-    const headers = {
+    const headers: Record<string, string> = {
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       ...(options.headers || {}),
       ...(requiresAuth && token ? { Authorization: `Bearer ${token}` } : {}),
@@ -549,7 +549,7 @@ export function Churches() {
       setRegionais(regionaisData);
       setHeadquarters(headquartersData || []);
       setFunctionCatalog(functionCatalogData || []);
-    } catch (loadError) {
+    } catch (loadError: any) {
       setError(loadError.message || 'Falha ao carregar a base de igrejas.');
     } finally {
       setLoading(false);
@@ -616,7 +616,7 @@ export function Churches() {
       setChurchMembers(membersData);
       setChurchPhotos(photosData || []);
       setRentRecords(rentData || []);
-    } catch (workspaceError) {
+    } catch (workspaceError: any) {
       setDetailError(workspaceError.message || 'Falha ao carregar os dados da igreja.');
     } finally {
       setDetailLoading(false);
@@ -672,7 +672,7 @@ export function Churches() {
         .filter(Boolean)
         .join(', ');
       setLocationSearch(nextSearch);
-    } catch (zipcodeError) {
+    } catch (zipcodeError: any) {
       setDetailError(zipcodeError.message || 'Falha ao consultar CEP.');
     } finally {
       setZipcodeLookupLoading(false);
@@ -718,7 +718,7 @@ export function Churches() {
       if (!results.length) {
         setDetailError('Nenhum endereço encontrado para essa busca.');
       }
-    } catch (locationError) {
+    } catch (locationError: any) {
       setLocationSearchResults([]);
       setSelectedLocationPreview(null);
       setDetailError(locationError.message || 'Falha ao localizar endereço.');
@@ -945,7 +945,7 @@ export function Churches() {
       await loadChurchWorkspace(result.id);
       setActiveTab('dados');
       toast.success(form.id ? 'Igreja atualizada com sucesso.' : 'Igreja criada com sucesso.');
-    } catch (saveError) {
+    } catch (saveError: any) {
       setDetailError(saveError.message || 'Falha ao salvar igreja.');
       toast.error(saveError.message || 'Falha ao salvar igreja.');
     } finally {
@@ -962,7 +962,7 @@ export function Churches() {
           setError('');
           await fetchJson(`/churches/${church.id}`, { method: 'DELETE' }, { requiresAuth: true });
           await loadBaseData();
-        } catch (deleteError) {
+        } catch (deleteError: any) {
           setError(deleteError.message || 'Falha ao excluir igreja.');
         }
       },
@@ -1009,7 +1009,7 @@ export function Churches() {
       setContactModalOpen(false);
       setContactForm({ ...initialContactForm });
       await loadChurchWorkspace(form.id);
-    } catch (contactError) {
+    } catch (contactError: any) {
       setDetailError(contactError.message || 'Falha ao salvar contato.');
     } finally {
       setSavingContact(false);
@@ -1024,7 +1024,7 @@ export function Churches() {
         try {
           await fetchJson(`/church-contacts/${contact.id}`, { method: 'DELETE' }, { requiresAuth: true });
           await loadChurchWorkspace(form.id);
-        } catch (contactError) {
+        } catch (contactError: any) {
           setDetailError(contactError.message || 'Falha ao excluir contato.');
         }
       },
@@ -1080,7 +1080,7 @@ export function Churches() {
       setFunctionModalOpen(false);
       setFunctionForm({ ...initialFunctionForm });
       await loadChurchWorkspace(form.id);
-    } catch (functionError) {
+    } catch (functionError: any) {
       setDetailError(functionError.message || 'Falha ao salvar a funcao.');
     } finally {
       setSavingFunction(false);
@@ -1095,7 +1095,7 @@ export function Churches() {
         try {
           await fetchJson(`/church-function-history/${item.id}`, { method: 'DELETE' }, { requiresAuth: true });
           await loadChurchWorkspace(form.id);
-        } catch (functionError) {
+        } catch (functionError: any) {
           setDetailError(functionError.message || 'Falha ao excluir função.');
         }
       },
@@ -1158,7 +1158,7 @@ export function Churches() {
       setRentModalOpen(false);
       setRentForm(initialRentForm);
       await loadChurchWorkspace(form.id);
-    } catch (rentError) {
+    } catch (rentError: any) {
       setDetailError(rentError.message || 'Falha ao salvar aluguel.');
     } finally {
       setSavingRent(false);
@@ -1173,7 +1173,7 @@ export function Churches() {
         try {
           await fetchJson(`/church-rent-records/${item.id}`, { method: 'DELETE' }, { requiresAuth: true });
           await loadChurchWorkspace(form.id);
-        } catch (rentError) {
+        } catch (rentError: any) {
           setDetailError(rentError.message || 'Falha ao excluir aluguel.');
         }
       },
@@ -1221,7 +1221,7 @@ export function Churches() {
       );
 
       await loadChurchWorkspace(form.id);
-    } catch (photoError) {
+    } catch (photoError: any) {
       setDetailError(photoError.message || 'Falha ao enviar imagens.');
     } finally {
       setUploadingPhotos(false);
@@ -1236,7 +1236,7 @@ export function Churches() {
         try {
           await fetchJson(`/church-photos/${photo.id}`, { method: 'DELETE' }, { requiresAuth: true });
           await loadChurchWorkspace(form.id);
-        } catch (photoError) {
+        } catch (photoError: any) {
           setDetailError(photoError.message || 'Falha ao excluir imagem.');
         }
       },

@@ -46,7 +46,7 @@ export async function getStripeForCampo(campoId: string) {
   if (!config) throw new Error("Configuração Stripe não encontrada ou inativa para este campo");
   const secretKey = decryptKey(config.secretKeyEnc);
   const Stripe = (await import("stripe")).default;
-  return { stripe: new Stripe(secretKey, { apiVersion: "2025-04-30.basil" }), config };
+  return { stripe: new Stripe(secretKey, { apiVersion: "2026-04-22.dahlia" as any }), config };
 }
 
 export function maskKey(key: string): string {

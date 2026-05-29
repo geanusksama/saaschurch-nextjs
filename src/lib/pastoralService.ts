@@ -211,7 +211,7 @@ export async function listPrayerRequests(params: {
   const { data, error } = await query;
   if (error) throw error;
 
-  return (data || []) as PrayerRequestRow[];
+  return (data || []) as unknown as PrayerRequestRow[];
 }
 
 export async function getPrayerWallSummary(churchId: string) {
@@ -403,7 +403,7 @@ export async function listPastoralVisits(params: {
     throw error;
   }
 
-  return (data || []) as PastoralVisitRow[];
+  return (data || []) as unknown as PastoralVisitRow[];
 }
 
 export async function getPastoralVisitById(visitId: string) {
@@ -414,7 +414,7 @@ export async function getPastoralVisitById(visitId: string) {
     .single();
 
   if (error) throw error;
-  return data as PastoralVisitRow;
+  return data as unknown as PastoralVisitRow;
 }
 
 export async function listVisitParticipants(visitId: string) {
@@ -430,7 +430,7 @@ export async function listVisitParticipants(visitId: string) {
     throw error;
   }
 
-  return (data || []) as PastoralVisitParticipantRow[];
+  return (data || []) as unknown as PastoralVisitParticipantRow[];
 }
 
 export async function listVisitPrayerPoints(visitId: string) {
@@ -575,7 +575,7 @@ export async function listCounselings(params: {
     throw error;
   }
 
-  return (data || []) as PastoralCounselingRow[];
+  return (data || []) as unknown as PastoralCounselingRow[];
 }
 
 export async function createCounseling(input: {
@@ -726,7 +726,7 @@ export async function listDiscipleships(params: {
     throw error;
   }
 
-  return (data || []) as DiscipleshipRow[];
+  return (data || []) as unknown as DiscipleshipRow[];
 }
 
 export async function createDiscipleship(input: {

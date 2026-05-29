@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
     const q = (sp.get("q") ?? sp.get("query") ?? sp.get("search") ?? "").trim();
 
     const page = Math.max(1, Number(sp.get("page")) || 1);
-    const pageSize = Math.min(Math.max(1, Number(sp.get("pageSize")) || 20), 500);
+    const pageSize = Math.min(Math.max(1, Number(sp.get("pageSize")) || 20), 5000);
     const memberTypeParam = sp.get("memberType") ?? "ALL";
     const statusParam = sp.get("status") ?? "ALL";
     const maritalStatusParam = sp.get("maritalStatus") ?? "ALL";
