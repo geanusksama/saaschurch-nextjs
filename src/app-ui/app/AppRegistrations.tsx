@@ -55,7 +55,7 @@ export default function AppRegistrations() {
 
   useEffect(() => { setReady(true); }, []);
 
-  const { data: cadastros = [], isLoading } = useQuery({
+  const { data: cadastros = [], isLoading, isError } = useQuery({
     queryKey: ['app-cadastros'],
     enabled: ready,
     queryFn: async () => {
@@ -63,7 +63,7 @@ export default function AppRegistrations() {
       const res = await fetch('/api/app-registrations', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!res.ok) throw new Error('Erro ao carregar cadastros');
+      if (!res.ok) throw new Error(`Erro ao carregar cadastros (${res.status})`);
       return res.json() as Promise<Cadastro[]>;
     },
   });
@@ -103,9 +103,12 @@ export default function AppRegistrations() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Erro ao atualizar cadastro');
+      return status;
     },
-    onSuccess: () => {
+    onSuccess: (newStatus) => {
       queryClient.invalidateQueries({ queryKey: ['app-cadastros'] });
+      // Muda o filtro para o novo status para o usuário ver onde o registro foi parar
+      setStatusFilter(newStatus ?? '');
       setSelected(null);
       setNota('');
       setLinkedMember(null);
@@ -190,6 +193,10 @@ export default function AppRegistrations() {
       }
       queryClient.invalidateQueries({ queryKey: ['app-cadastros'] });
       setSelectedIds(new Set());
+      // Muda filtro para mostrar os registros que acabaram de ser processados
+      if (action === 'approve') setStatusFilter('APROVADO');
+      else if (action === 'reject') setStatusFilter('REJEITADO');
+      else setStatusFilter('');
     } finally {
       setBulkLoading(false);
     }
@@ -308,11 +315,29 @@ export default function AppRegistrations() {
 
       {isLoading ? (
         <div className="text-center py-16 text-slate-400">Carregando cadastros...</div>
+      ) : isError ? (
+        <div className="text-center py-16">
+          <XCircle className="w-12 h-12 text-red-300 mx-auto mb-3" />
+          <p className="text-red-500 dark:text-red-400 font-medium">Erro ao carregar cadastros</p>
+          <p className="text-xs text-slate-400 mt-1">Verifique sua conexão ou tente recarregar a página</p>
+          <button
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['app-cadastros'] })}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+          >
+            Tentar novamente
+          </button>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 dark:text-slate-400">Nenhum cadastro encontrado</p>
-          <p className="text-xs text-slate-400 mt-1">Os usuários que se cadastrarem pelo app aparecerão aqui</p>
+          {statusFilter ? (
+            <button onClick={() => setStatusFilter('')} className="mt-2 text-xs text-blue-500 hover:underline">
+              Mostrar todos os status
+            </button>
+          ) : (
+            <p className="text-xs text-slate-400 mt-1">Os usuários que se cadastrarem pelo app aparecerão aqui</p>
+          )}
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
