@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { AlertTriangle, ArrowUpDown, Building2, Download, Eye, Mail, MapPin, Pencil, Phone, Plus, Printer, Trash2, User, UserRound, Users, Search } from 'lucide-react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { AlertTriangle, ArrowUpDown, Building2, ChevronDown, Download, Eye, Mail, MapPin, Pencil, Phone, Plus, Trash2, User, UserRound, Users, Search } from 'lucide-react';
 import { Link } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MemberEditDrawer } from './MemberEditDrawer';
@@ -227,7 +227,7 @@ function getMemberTypeBadgeClass(memberType?: string | null) {
   return 'bg-violet-100 text-violet-700';
 }
 
-function buildAuthHeaders(token: string | null) {
+function buildAuthHeaders(token: string | null): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -378,6 +378,107 @@ function MembersTableSkeleton() {
   );
 }
 
+// null  = todos selecionados (sem filtro)
+// string[] = seleção explícita (vazio = nenhum marcado, aguardando seleção)
+function MultiSelectDropdown({
+  options,
+  value,
+  onChange,
+  allLabel,
+  disabled,
+}: {
+  options: { value: string; label: string }[];
+  value: string[] | null;
+  onChange: (v: string[] | null) => void;
+  allLabel: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  // null = modo "todos"; [] = nenhum marcado; [ids] = seleção parcial
+  const isAll = value === null;
+  const selected = value ?? [];
+
+  const displayLabel = isAll
+    ? allLabel
+    : selected.length === 0
+    ? 'Nenhum selecionado'
+    : selected.length === 1
+    ? (options.find((o) => o.value === selected[0])?.label ?? '1 selecionado')
+    : `${selected.length} selecionados`;
+
+  const handleTodos = () => {
+    if (isAll) {
+      onChange([]); // desmarcar todos → entra no modo seleção vazia
+    } else {
+      onChange(null); // marcar todos → volta ao modo "todos"
+    }
+  };
+
+  const toggle = (val: string) => {
+    if (isAll) {
+      // clicar em item individual quando "todos" está ativo = desmarcar só esse
+      onChange(options.filter((o) => o.value !== val).map((o) => o.value));
+      return;
+    }
+    const next = selected.includes(val)
+      ? selected.filter((v) => v !== val)
+      : [...selected, val];
+    // se todos foram marcados individualmente → volta para modo "todos"
+    onChange(next.length === options.length ? null : next);
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((p) => !p)}
+        className="w-full flex items-center justify-between gap-1 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-950 text-left text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
+      >
+        <span className="truncate">{displayLabel}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full min-w-[200px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl">
+          <div className="max-h-64 overflow-y-auto py-1">
+            <label className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm font-semibold border-b border-slate-100 dark:border-slate-700">
+              <input
+                type="checkbox"
+                checked={isAll}
+                onChange={handleTodos}
+                className="h-4 w-4 rounded border-slate-300 accent-purple-600"
+              />
+              {allLabel}
+            </label>
+            {options.map((option) => (
+              <label key={option.value} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={isAll || selected.includes(option.value)}
+                  onChange={() => toggle(option.value)}
+                  className="h-4 w-4 rounded border-slate-300 accent-purple-600"
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type MembersQueryData = {
   members: MemberRecord[];
   total: number;
@@ -411,9 +512,9 @@ export function Members() {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 350);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<MemberTypeFilter>('MEMBRO');
-  const [selectedTitleFilter, setSelectedTitleFilter] = useState('ALL');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<MembershipStatusFilter>('ALL');
-  const [selectedMaritalStatusFilter, setSelectedMaritalStatusFilter] = useState('ALL');
+  const [selectedTitleFilters, setSelectedTitleFilters] = useState<string[] | null>(null);
+  const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[] | null>(null);
+  const [selectedMaritalStatusFilters, setSelectedMaritalStatusFilters] = useState<string[] | null>(null);
   const [loadingFilters, setLoadingFilters] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [editorMemberId, setEditorMemberId] = useState<string | null>(null);
@@ -551,7 +652,7 @@ export function Members() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, selectedFieldId, selectedRegionalId, selectedChurchId, selectedTypeFilter, selectedTitleFilter, selectedStatusFilter, selectedMaritalStatusFilter, pageSize]);
+  }, [searchTerm, selectedFieldId, selectedRegionalId, selectedChurchId, selectedTypeFilter, selectedTitleFilters, selectedStatusFilters, selectedMaritalStatusFilters, pageSize]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -637,7 +738,8 @@ export function Members() {
     };
 
     loadFilters();
-  }, [token, selectedFieldId, canChooseField, canChooseRegional, canChooseChurch, activeFieldId, hasFixedChurchScope, selectedRegionalId, selectedChurchId, storedUser.regionalId, storedUser.churchId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, selectedFieldId, hasFixedChurchScope, activeFieldId]);
 
   // ── TanStack Query — members ─────────────────────────────────────────────
   const memberQueryFilters = useMemo(() => ({
@@ -648,10 +750,10 @@ export function Members() {
     page,
     pageSize,
     memberType: selectedTypeFilter !== 'ALL' ? selectedTypeFilter : undefined,
-    status: selectedStatusFilter !== 'ALL' ? selectedStatusFilter : undefined,
-    maritalStatus: selectedMaritalStatusFilter !== 'ALL' ? selectedMaritalStatusFilter : undefined,
-    titleId: selectedTitleFilter !== 'ALL' ? selectedTitleFilter : undefined,
-  }), [selectedChurchId, selectedRegionalId, selectedFieldId, debouncedSearch, page, pageSize, selectedTypeFilter, selectedStatusFilter, selectedMaritalStatusFilter, selectedTitleFilter]);
+    status: selectedStatusFilters !== null && selectedStatusFilters.length > 0 ? selectedStatusFilters.join(',') : undefined,
+    maritalStatus: selectedMaritalStatusFilters !== null && selectedMaritalStatusFilters.length > 0 ? selectedMaritalStatusFilters.join(',') : undefined,
+    titleId: selectedTitleFilters !== null && selectedTitleFilters.length > 0 ? selectedTitleFilters.join(',') : undefined,
+  }), [selectedChurchId, selectedRegionalId, selectedFieldId, debouncedSearch, page, pageSize, selectedTypeFilter, selectedStatusFilters, selectedMaritalStatusFilters, selectedTitleFilters]);
 
   const membersQuery = useQuery<MembersQueryData>({
     queryKey: qk.members(memberQueryFilters),
@@ -704,6 +806,35 @@ export function Members() {
   }, [membersQuery.data, membersQuery.isLoading, membersQuery.error]);
 
   // ── Legacy loadMembers useEffect (removed — replaced by TanStack Query above) ─
+
+  const handleExportExcel = useCallback(async () => {
+    const XLSX = await import('xlsx');
+    const rows = visibleMembers.map((m) => ({
+      'Nome': m.fullName,
+      'ROL': m.rol ?? '',
+      'Tipo': getMemberTypeLabel(m.memberType),
+      'Título Eclesiástico': getTitleLabel(m),
+      'Igreja': m.churchName || '',
+      'Regional': m.regionalName || '',
+      'Campo': m.fieldName || '',
+      'Situação': m.membershipStatus || '',
+      'Membro desde': m.membershipDate ? new Date(m.membershipDate).toLocaleDateString('pt-BR') : '',
+      'Telefone': formatPhone(m.mobile || m.phone) || '',
+      'Email': m.email || '',
+      'CPF': formatCpf(m.cpf) || '',
+      'Estado Civil': m.maritalStatus || '',
+      'Cônjuge': m.spouseName || '',
+      'Nascimento': m.birthDate ? new Date(m.birthDate).toLocaleDateString('pt-BR') : '',
+      'Endereço': [m.addressStreet, m.addressNumber, m.addressNeighborhood].filter(Boolean).join(', '),
+      'Cidade': m.addressCity || '',
+      'UF': m.addressState || '',
+      'CEP': m.addressZipcode || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Membros');
+    XLSX.writeFile(wb, `membros_${new Date().toISOString().split('T')[0]}.xlsx`);
+  }, [visibleMembers]);
 
   const qc = useQueryClient();
 
@@ -843,11 +974,20 @@ export function Members() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          <button
+            className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             onClick={() => setPrintModalOpen(true)}
           >
             <Download className="h-4 w-4" />
             Imprimir
+          </button>
+          <button
+            className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700 hover:bg-green-100 transition-colors"
+            onClick={handleExportExcel}
+            disabled={!visibleMembers.length}
+          >
+            <Download className="h-4 w-4" />
+            Exportar Excel
           </button>
 
           <button
@@ -1000,43 +1140,37 @@ export function Members() {
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Título eclesiástico</label>
-            <select
-              value={selectedTitleFilter}
-              onChange={(event) => setSelectedTitleFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              {titleFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
+            <MultiSelectDropdown
+              options={titleFilterOptions.filter((o) => o.value !== 'ALL')}
+              value={selectedTitleFilters}
+              onChange={setSelectedTitleFilters}
+              allLabel="Todos os títulos"
+            />
           </div>
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Situação</label>
-            <select
-              value={selectedStatusFilter}
-              onChange={(event) => setSelectedStatusFilter(event.target.value as MembershipStatusFilter)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="ALL">Todas as situações</option>
-              <option value="ativo">Ativo</option>
-              <option value="inativo">Inativo</option>
-              <option value="aguardando">Aguardando ativação</option>
-              <option value="visitante">Visitante</option>
-            </select>
+            <MultiSelectDropdown
+              options={[
+                { value: 'ativo', label: 'Ativo' },
+                { value: 'inativo', label: 'Inativo' },
+                { value: 'aguardando', label: 'Aguardando ativação' },
+                { value: 'visitante', label: 'Visitante' },
+              ]}
+              value={selectedStatusFilters}
+              onChange={setSelectedStatusFilters}
+              allLabel="Todas as situações"
+            />
           </div>
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Estado civil</label>
-            <select
-              value={selectedMaritalStatusFilter}
-              onChange={(event) => setSelectedMaritalStatusFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              {maritalStatusFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
+            <MultiSelectDropdown
+              options={maritalStatusFilterOptions.filter((o) => o.value !== 'ALL')}
+              value={selectedMaritalStatusFilters}
+              onChange={setSelectedMaritalStatusFilters}
+              allLabel="Todos os estados civis"
+            />
           </div>
         </div>
       </div>

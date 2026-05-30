@@ -67,9 +67,13 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, Number(sp.get("page")) || 1);
     const pageSize = Math.min(Math.max(1, Number(sp.get("pageSize")) || 20), 5000);
     const memberTypeParam = sp.get("memberType") ?? "ALL";
-    const statusParam = sp.get("status") ?? "ALL";
-    const maritalStatusParam = sp.get("maritalStatus") ?? "ALL";
-    const titleId = sp.get("titleId") ?? "ALL";
+    const statusParam = sp.get("status") ?? "";
+    const maritalStatusParam = sp.get("maritalStatus") ?? "";
+    const titleIdParam = sp.get("titleId") ?? "";
+
+    const statusParams = statusParam ? statusParam.split(",").filter(Boolean) : [];
+    const maritalStatusParams = maritalStatusParam ? maritalStatusParam.split(",").filter(Boolean) : [];
+    const titleIds = titleIdParam ? titleIdParam.split(",").filter(Boolean) : [];
 
     // Church scope filter
     const churchWhere: Record<string, unknown> = { deletedAt: null };
@@ -132,42 +136,65 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Membership status filter
-    if (statusParam && statusParam !== "ALL") {
-      if (statusParam === "aguardando") {
-        filterConditions.push({ membershipStatus: { contains: "aguard", mode: "insensitive" } });
-      } else if (statusParam === "inativo") {
-        filterConditions.push(inactiveFilter);
-      } else if (statusParam === "visitante") {
-        filterConditions.push({
+    // Membership status filter (supports comma-separated multiple values)
+    if (statusParams.length > 0) {
+      const buildStatusCond = (s: string): object => {
+        if (s === "aguardando") return { membershipStatus: { contains: "aguard", mode: "insensitive" } };
+        if (s === "inativo") return inactiveFilter;
+        if (s === "visitante") return { OR: [{ membershipStatus: null }, { membershipStatus: "" }, { membershipStatus: { contains: "visit", mode: "insensitive" } }] };
+        return activeFilter;
+      };
+      filterConditions.push(statusParams.length === 1
+        ? buildStatusCond(statusParams[0])
+        : { OR: statusParams.map(buildStatusCond) }
+      );
+    }
+
+    // Marital status filter (supports comma-separated multiple values)
+    if (maritalStatusParams.length > 0) {
+      const kwMap: Record<string, string> = { casado: "cas", solteiro: "solt", viuvo: "viuv", divorciado: "divorc" };
+      const maritalConds = maritalStatusParams.map((s): object => {
+        if (s === "__NONE__") return { OR: [{ maritalStatus: null }, { maritalStatus: "" }] };
+        const kw = kwMap[s];
+        return kw ? { maritalStatus: { contains: kw, mode: "insensitive" } } : { id: { not: "" } };
+      });
+      filterConditions.push(maritalConds.length === 1 ? maritalConds[0] : { OR: maritalConds });
+    }
+
+    // Title filter (supports comma-separated multiple IDs)
+    // Matches by FK (ecclesiasticalTitleId) OR by string field (ecclesiasticalTitle)
+    // because many members only have the string field populated without the FK.
+    if (titleIds.length > 0) {
+      const hasNone = titleIds.includes("__NONE__");
+      const realIds = titleIds.filter((id) => id !== "__NONE__");
+      const orConds: object[] = [];
+
+      if (hasNone) {
+        orConds.push({
           OR: [
-            { membershipStatus: null },
-            { membershipStatus: "" },
-            { membershipStatus: { contains: "visit", mode: "insensitive" } },
+            { ecclesiasticalTitleId: null, ecclesiasticalTitle: null },
+            { ecclesiasticalTitleId: null, ecclesiasticalTitle: "" },
           ],
         });
-      } else if (statusParam === "ativo") {
-        filterConditions.push(activeFilter);
       }
-    }
 
-    // Marital status filter
-    if (maritalStatusParam && maritalStatusParam !== "ALL") {
-      if (maritalStatusParam === "__NONE__") {
-        filterConditions.push({ OR: [{ maritalStatus: null }, { maritalStatus: "" }] });
-      } else {
-        const kwMap: Record<string, string> = { casado: "cas", solteiro: "solt", viuvo: "viuv", divorciado: "divorc" };
-        const kw = kwMap[maritalStatusParam];
-        if (kw) filterConditions.push({ maritalStatus: { contains: kw, mode: "insensitive" } });
+      if (realIds.length > 0) {
+        // Fetch names so we can also match the plain-text field
+        const titleRecords = await prisma.ecclesiasticalTitle.findMany({
+          where: { id: { in: realIds } },
+          select: { name: true },
+        });
+        const names = titleRecords.map((t) => t.name);
+
+        orConds.push({ ecclesiasticalTitleId: { in: realIds } });
+        for (const name of names) {
+          orConds.push({ ecclesiasticalTitle: { equals: name, mode: "insensitive" } });
+        }
       }
-    }
 
-    // Title filter
-    if (titleId && titleId !== "ALL") {
-      filterConditions.push(titleId === "__NONE__"
-        ? { ecclesiasticalTitleId: null }
-        : { ecclesiasticalTitleId: titleId }
-      );
+      if (orConds.length > 0) {
+        filterConditions.push(orConds.length === 1 ? orConds[0] : { OR: orConds });
+      }
     }
 
     // Combine all filters
