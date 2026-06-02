@@ -5,7 +5,7 @@ import { serializeBigInts } from "@/lib/helpers";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    if (user.profileType !== "master" && user.profileType !== "admin") {
+    if (!["master", "admin", "campo", "regional"].includes(user.profileType || "")) {
       return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
     }
     const { id } = await params;
@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    if (user.profileType !== "master" && user.profileType !== "admin") {
+    if (!["master", "admin", "campo", "regional"].includes(user.profileType || "")) {
       return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
     }
     const { id } = await params;

@@ -5,7 +5,7 @@ import { serializeBigInts } from "@/lib/helpers";
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
-    if (user.profileType !== "master" && user.profileType !== "admin") {
+    if (!["master", "admin", "campo", "regional"].includes(user.profileType || "")) {
       return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
     }
     const body = await req.json().catch(() => ({}));

@@ -36,7 +36,7 @@ function buildScheduleScope(user: {
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
-    const canManageSchedules = user.profileType === "master" || user.profileType === "admin";
+    const canManageSchedules = ["master", "admin", "campo", "regional"].includes(user.profileType || "");
     const scope = buildScheduleScope(user);
 
     // Raw query for baptism schedules

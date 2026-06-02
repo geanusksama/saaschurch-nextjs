@@ -4,8 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Campo {
@@ -45,6 +46,7 @@ model Campo {
   ebdHistorico       EbdHistorico[]             @relation("CampoEbdHistorico")
   ebdNegociacoes     EbdNegociacao[]            @relation("CampoEbdNegociacoes")
   appEvents          AppEvent[]                 @relation("CampoAppEvents")
+  ministries         Ministry[]                 @relation("CampoMinistries")
   stripeConfig       StripeConfig?              @relation("CampoStripeConfig")
   stripePayments     StripePayment[]            @relation("CampoStripePayments")
   stripeSubscriptions StripeSubscription[]      @relation("CampoStripeSubscriptions")
@@ -1045,6 +1047,7 @@ model DiscipleshipEnrollment {
 model Ministry {
   id               String  @id @default(uuid()) @db.Uuid
   churchId         String  @map("church_id") @db.Uuid
+  campoId          String? @map("campo_id") @db.Uuid
   parentMinistryId String? @map("parent_ministry_id") @db.Uuid
   name             String  @db.VarChar(255)
   description      String? @db.Text
@@ -1060,11 +1063,13 @@ model Ministry {
   deletedAt DateTime? @map("deleted_at")
 
   church   Church           @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  campo    Campo?           @relation("CampoMinistries", fields: [campoId], references: [id])
   parent   Ministry?        @relation("MinistryParent", fields: [parentMinistryId], references: [id])
   children Ministry[]       @relation("MinistryParent")
   leader   Member?          @relation("MinistryLeader", fields: [leaderId], references: [id])
   members  MinistryMember[]
 
+  @@index([campoId])
   @@map("ministries")
 }
 

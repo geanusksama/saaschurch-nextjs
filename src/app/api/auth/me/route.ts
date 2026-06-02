@@ -10,7 +10,17 @@ function serializeBigInts(obj: unknown): unknown {
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
     if (user.profile) {
-      return NextResponse.json(serializeBigInts(user.profile));
+      return NextResponse.json(serializeBigInts({
+        ...(user.profile as Record<string, any>),
+        campoId: user.campoId,
+        campoName: user.campoName,
+        regionalId: user.regionalId,
+        regionalName: user.regionalName,
+        churchId: user.churchId,
+        churchName: user.churchName,
+        roleId: user.roleId,
+        roleName: user.roleName,
+      }));
     }
     return NextResponse.json(serializeBigInts({
       id: user.id,
