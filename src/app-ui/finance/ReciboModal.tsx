@@ -307,6 +307,8 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   const [showObs, setShowObs] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const valorNum = Number(row.valor);
@@ -344,19 +346,24 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
       setIncluirComprovante(true);
       onUpdated?.(row.id, { foto: newUrl });
     } catch (err: unknown) {
-      alert('Erro ao enviar foto: ' + ((err as Error)?.message || 'Erro desconhecido'));
+      setUploadError('Erro ao enviar foto: ' + ((err as Error)?.message || 'Erro desconhecido'));
     }
     setUploading(false);
   }
 
   async function handleFotoDelete() {
-    if (!confirm('Remover comprovante anexado?')) return;
     setDeleting(true);
-    await supabase.from('livro_caixa').update({ foto: null }).eq('id', row.id);
-    setCurrentFoto(null);
-    setIncluirComprovante(false);
-    onUpdated?.(row.id, { foto: null });
-    setDeleting(false);
+    try {
+      await supabase.from('livro_caixa').update({ foto: null }).eq('id', row.id);
+      setCurrentFoto(null);
+      setIncluirComprovante(false);
+      onUpdated?.(row.id, { foto: null });
+    } catch (err: unknown) {
+      setUploadError('Erro ao remover comprovante: ' + ((err as Error)?.message || 'Erro desconhecido'));
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   }
 
   return (
@@ -443,7 +450,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
                   <button onClick={() => setShowViewer(true)} className="text-xs text-blue-600 hover:underline">
                     (Ver Imagem)
                   </button>
-                  <button onClick={handleFotoDelete} disabled={deleting} className="text-xs text-red-500 hover:underline disabled:opacity-50">
+                  <button onClick={() => setShowDeleteConfirm(true)} disabled={deleting} className="text-xs text-red-500 hover:underline disabled:opacity-50">
                     {deleting ? '...' : '(Deletar)'}
                   </button>
                 </div>
@@ -549,6 +556,51 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
           docNum={docNum || ''}
           onClose={() => setShowViewer(false)}
         />
+      )}
+
+      {/* Confirmar remoção de comprovante */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => !deleting && setShowDeleteConfirm(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-xs p-6">
+            <h3 className="text-base font-semibold text-slate-900 mb-2">Remover comprovante?</h3>
+            <p className="text-sm text-slate-500 mb-5">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleFotoDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {deleting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                {deleting ? 'Removendo...' : 'Remover'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Erro de upload/delete */}
+      {uploadError && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setUploadError(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-xs p-6">
+            <h3 className="text-base font-semibold text-slate-900 mb-2">Erro</h3>
+            <p className="text-sm text-slate-600 mb-5">{uploadError}</p>
+            <button
+              onClick={() => setUploadError(null)}
+              className="w-full px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold"
+            >
+              OK
+            </button>
+          </div>
+        </div>
       )}
     </>
   );
