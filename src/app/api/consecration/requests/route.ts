@@ -189,8 +189,13 @@ async function applyMatrixRule({
     // Update member status / title
     if (card.memberId && (rule.changeStatus || rule.changeTitle)) {
       const memberUpdate: Record<string, unknown> = {};
+      let prevMember: { ecclesiasticalTitle: string | null; addressCity: string | null; addressState: string | null; nationality: string | null } | null = null;
       if (rule.changeStatus && rule.newStatus) memberUpdate.membershipStatus = rule.newStatus.toUpperCase();
       if (rule.changeTitle && rule.newTitle) {
+        prevMember = await prisma.member.findUnique({
+          where: { id: card.memberId as string },
+          select: { ecclesiasticalTitle: true, addressCity: true, addressState: true, nationality: true },
+        });
         memberUpdate.ecclesiasticalTitle = rule.newTitle;
         const titleRecord = await prisma.ecclesiasticalTitle.findFirst({
           where: { name: { equals: rule.newTitle, mode: "insensitive" }, deletedAt: null, isActive: true },
@@ -199,6 +204,25 @@ async function applyMatrixRule({
       }
       if (Object.keys(memberUpdate).length > 0) {
         await prisma.member.update({ where: { id: card.memberId as string }, data: memberUpdate });
+      }
+      if (rule.changeTitle && rule.newTitle) {
+        await prisma.memberTitleHistory.create({
+          data: {
+            memberId: card.memberId as string,
+            churchId: card.churchId as string,
+            cardId: card.id ? card.id as string : null,
+            previousTitle: prevMember?.ecclesiasticalTitle ?? null,
+            newTitle: rule.newTitle,
+            source: "MATRIZ",
+            serviceGroup,
+            serviceName,
+            memberCity: prevMember?.addressCity ?? null,
+            memberState: prevMember?.addressState ?? null,
+            memberCountry: prevMember?.nationality ?? null,
+            notes: rule.message ?? null,
+            createdBy: user?.id ?? null,
+          },
+        }).catch(() => null);
       }
     }
 

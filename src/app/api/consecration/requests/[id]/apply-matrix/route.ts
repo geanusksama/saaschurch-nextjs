@@ -38,11 +38,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Member update
     if (card.memberId && (rule.changeStatus || rule.changeTitle)) {
       const memberUpdate: Record<string, unknown> = {};
+      let prevMember: { ecclesiasticalTitle: string | null; addressCity: string | null; addressState: string | null; nationality: string | null } | null = null;
       if (rule.changeStatus && rule.newStatus) {
         memberUpdate.membershipStatus = rule.newStatus.toUpperCase();
         applied.push(`Status → ${rule.newStatus}`);
       }
       if (rule.changeTitle && rule.newTitle) {
+        prevMember = await prisma.member.findUnique({
+          where: { id: card.memberId },
+          select: { ecclesiasticalTitle: true, addressCity: true, addressState: true, nationality: true },
+        });
         memberUpdate.ecclesiasticalTitle = rule.newTitle;
         const titleRecord = await prisma.ecclesiasticalTitle.findFirst({
           where: { name: { equals: rule.newTitle, mode: "insensitive" }, deletedAt: null, isActive: true },
@@ -52,6 +57,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
       if (Object.keys(memberUpdate).length > 0) {
         await prisma.member.update({ where: { id: card.memberId }, data: memberUpdate });
+      }
+      if (rule.changeTitle && rule.newTitle) {
+        // Check if a title history record already exists for this card to avoid duplicates
+        const existing = await prisma.memberTitleHistory.findFirst({
+          where: { memberId: card.memberId, cardId: card.id },
+        });
+        if (!existing) {
+          await prisma.memberTitleHistory.create({
+            data: {
+              memberId: card.memberId,
+              churchId: card.churchId,
+              cardId: card.id,
+              previousTitle: prevMember?.ecclesiasticalTitle ?? null,
+              newTitle: rule.newTitle,
+              source: "MATRIZ_BACKFILL",
+              serviceGroup,
+              serviceName,
+              memberCity: prevMember?.addressCity ?? null,
+              memberState: prevMember?.addressState ?? null,
+              memberCountry: prevMember?.nationality ?? null,
+              notes: rule.message ?? null,
+              createdBy: user.id ?? null,
+            },
+          });
+          applied.push(`Histórico de título registrado: ${rule.newTitle}`);
+        } else {
+          applied.push(`Histórico de título já existia (cardId: ${card.id})`);
+        }
       }
     }
 

@@ -12,13 +12,34 @@ async function applyMatrixRule({ card, serviceId, columnIndex, user }: { card: R
     const serviceName = service?.description || service?.sigla || "";
     if (card.memberId && (rule.changeStatus || rule.changeTitle)) {
       const memberData: Record<string, unknown> = {};
+      let prevMember: { ecclesiasticalTitle: string | null; addressCity: string | null; addressState: string | null; nationality: string | null } | null = null;
       if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = rule.newStatus.toUpperCase();
       if (rule.changeTitle && rule.newTitle) {
+        prevMember = await prisma.member.findUnique({ where: { id: card.memberId as string }, select: { ecclesiasticalTitle: true, addressCity: true, addressState: true, nationality: true } });
         memberData.ecclesiasticalTitle = rule.newTitle;
         const titleRecord = await prisma.ecclesiasticalTitle.findFirst({ where: { name: { equals: rule.newTitle, mode: "insensitive" }, deletedAt: null, isActive: true } });
         memberData.ecclesiasticalTitleId = titleRecord?.id ?? null;
       }
       if (Object.keys(memberData).length > 0) await prisma.member.update({ where: { id: card.memberId as string }, data: memberData });
+      if (rule.changeTitle && rule.newTitle) {
+        await prisma.memberTitleHistory.create({
+          data: {
+            memberId: card.memberId as string,
+            churchId: card.churchId as string,
+            cardId: card.id ? card.id as string : null,
+            previousTitle: prevMember?.ecclesiasticalTitle ?? null,
+            newTitle: rule.newTitle,
+            source: "MATRIZ",
+            serviceGroup,
+            serviceName,
+            memberCity: prevMember?.addressCity ?? null,
+            memberState: prevMember?.addressState ?? null,
+            memberCountry: prevMember?.nationality ?? null,
+            notes: rule.message ?? null,
+            createdBy: user?.id ?? null,
+          },
+        }).catch(() => null);
+      }
     }
     if (rule.insertOccurrence !== false) {
       await prisma.memberEventHistory.create({
