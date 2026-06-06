@@ -864,7 +864,19 @@ function ConsultarLancamentoModal({
           }
           query = query.in('member_id', memberIds);
         } else {
-          query = query.ilike('favorecido', `%${term}%`);
+          // Nome: busca membros pelo nome primeiro, filtra por member_id
+          // com fallback para ilike em favorecido (não-membros / lançamentos avulsos)
+          const { data: memberData } = await supabase
+            .from('members')
+            .select('id')
+            .ilike('full_name', `%${term}%`);
+          const memberIds = (memberData ?? []).map((m: { id: string }) => m.id);
+          if (memberIds.length > 0) {
+            const memberIdList = memberIds.join(',');
+            query = (query as any).or(`member_id.in.(${memberIdList}),favorecido.ilike.%${term}%`);
+          } else {
+            query = query.ilike('favorecido', `%${term}%`);
+          }
         }
       }
 

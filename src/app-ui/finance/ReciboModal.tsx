@@ -94,10 +94,19 @@ export function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: s
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recibo ${docNum}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color:#000; padding:20px; max-width:580px; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color:#000; padding:16px; max-width:640px; margin:0 auto; }
+    @media (max-width: 600px) {
+      body { font-size: 15px; padding: 12px; }
+      .title { font-size: 28px !important; }
+      th, td { font-size: 12px !important; padding: 6px 8px !important; }
+      .t-row { font-size: 14px !important; }
+      .t-big { font-size: 16px !important; }
+      .btn-print, .btn-close { font-size: 15px !important; padding: 12px 20px !important; }
+    }
     .org { font-size:9px; color:#555; margin-bottom:2px; }
     .church { font-size:11px; color:#333; margin-bottom:10px; }
     .title { font-size:24px; font-weight:bold; letter-spacing:1px; margin-bottom:2px; }
