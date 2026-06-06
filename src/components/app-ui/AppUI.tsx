@@ -74,7 +74,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { MemberEditDrawer } from './MemberEditDrawer';
-import { QuickWidgets } from './QuickWidgets';
+import { QuickWidgets, StickyNotesPanel } from './QuickWidgets';
 import { usePermissions } from '../../lib/usePermissions';
 import { THEME_EVENT_NAME, applyThemeSettings, loadThemeSettings, saveThemeSettings, getRadiusPresetOptions, DEFAULT_THEME_SETTINGS, type ThemeSettings } from '../../lib/themeSettings';
 
@@ -338,6 +338,7 @@ export function AppUI() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [myProfileOpen, setMyProfileOpen] = useState(false);
   const [themeEditorOpen, setThemeEditorOpen] = useState(false);
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [userFoto, setUserFoto] = useState<string | null>(() => storedUser.foto || null);
 
   // ── Alterar senha ────────────────────────────────────────────────────
@@ -1149,6 +1150,12 @@ export function AppUI() {
         onEditMember={(memberId) => setMemberEditorId(memberId)}
       />
 
+      <AnimatePresence>
+        {showNotesPanel && (
+          <StickyNotesPanel onClose={() => setShowNotesPanel(false)} />
+        )}
+      </AnimatePresence>
+
       <MemberEditDrawer
         memberId={memberEditorId}
         open={!!memberEditorId}
@@ -1204,6 +1211,8 @@ export function AppUI() {
                       : undefined
                   }
                   campoId={explicitActiveFieldId || storedUser.campoId}
+                  notesOpen={showNotesPanel}
+                  onToggleNotes={() => setShowNotesPanel(v => !v)}
                 />
 
                 <div className="max-h-[60vh] overflow-y-auto p-4">

@@ -75,6 +75,8 @@ type WidgetId = 'birthdays' | 'bible' | 'campaigns' | 'holidays' | 'events' | 'n
 export interface QuickWidgetsProps {
   churchId?: string;
   campoId?: string;
+  notesOpen?: boolean;
+  onToggleNotes?: () => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -735,34 +737,49 @@ function AgendaModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Bloco de Notas Modal ─────────────────────────────────────────────────────
+// ─── Sticky Notes Panel (floating, persistent) ───────────────────────────────
 
-function NotesModal({ onClose }: { onClose: () => void }) {
+export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
   const [notes, setNotes] = useState<StickyNoteItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addError, setAddError] = useState<string | null>(null);
   const saveTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     setLoading(true);
     authFetch('/api/user-sticky-notes')
-      .then(r => r.ok ? r.json() : [])
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(data => setNotes(Array.isArray(data) ? data : []))
-      .catch(() => {}).finally(() => setLoading(false));
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   async function addNote() {
+    setAddError(null);
     const color = NOTE_COLORS[notes.length % NOTE_COLORS.length].bg;
-    const r = await fetch('/api/user-sticky-notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ content: '', color, position: notes.length }),
-    });
-    if (r.ok) { const note = await r.json(); setNotes(prev => [...prev, note]); }
+    try {
+      const r = await fetch('/api/user-sticky-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ content: '', color, position: notes.length }),
+      });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${r.status}`);
+      }
+      const note = await r.json();
+      setNotes(prev => [...prev, note]);
+    } catch (e) {
+      setAddError(e instanceof Error ? e.message : 'Erro ao criar nota');
+    }
   }
 
   async function deleteNote(id: string) {
-    await fetch(`/api/user-sticky-notes/${id}`, { method: 'DELETE', headers: authHeaders() });
     setNotes(prev => prev.filter(n => n.id !== id));
+    await fetch(`/api/user-sticky-notes/${id}`, { method: 'DELETE', headers: authHeaders() }).catch(() => {});
   }
 
   function updateContent(id: string, content: string) {
@@ -787,46 +804,68 @@ function NotesModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <ModalShell title="Bloco de Notas" icon={StickyNote} iconColor="bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-300" onClose={onClose}>
-      {loading ? <LoadingState /> : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">{notes.length} nota{notes.length !== 1 ? 's' : ''}</p>
-            <button type="button" onClick={addNote}
-              className="flex items-center gap-1.5 rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-semibold text-yellow-900 transition hover:bg-yellow-300">
-              <Plus className="h-3.5 w-3.5" /> Nova nota
-            </button>
-          </div>
-          {notes.length === 0 && <EmptyState message="Nenhuma nota. Clique em 'Nova nota' para começar." />}
-          <div className="space-y-3">
-            {notes.map(note => (
-              <div key={note.id} className="overflow-hidden rounded-xl shadow-sm" style={{ background: note.color }}>
-                <div className="flex items-center gap-1.5 px-3 py-2">
-                  {NOTE_COLORS.map(c => (
-                    <button key={c.bg} type="button" onClick={() => changeColor(note.id, c.bg)}
-                      className={`h-4 w-4 rounded-full border-2 transition-transform hover:scale-110 ${note.color === c.bg ? 'border-slate-600 scale-110' : 'border-transparent'}`}
-                      style={{ background: c.bg }} title={c.label} />
-                  ))}
-                  <button type="button" onClick={() => deleteNote(note.id)} title="Excluir nota"
-                    className="ml-auto rounded p-0.5 text-slate-500 hover:text-red-500">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <div className="px-3 pb-3">
-                  <RichEditor value={note.content} onChange={(v) => updateContent(note.id, v)} placeholder="Escreva aqui..." minHeight={80} />
-                </div>
-              </div>
-            ))}
-          </div>
+    <motion.div
+      initial={{ opacity: 0, x: 40, scale: 0.97 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 40, scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+      className="fixed right-4 top-20 z-[70] flex w-80 flex-col overflow-hidden rounded-2xl border border-yellow-200 bg-white shadow-2xl dark:border-yellow-800/40 dark:bg-slate-800"
+      style={{ maxHeight: 'calc(100vh - 6rem)' }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 border-b border-yellow-100 bg-yellow-50 px-4 py-3 dark:border-yellow-900/30 dark:bg-yellow-900/20">
+        <StickyNote className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+        <span className="flex-1 text-sm font-bold text-yellow-900 dark:text-yellow-200">Bloco de Notas</span>
+        <span className="text-xs text-yellow-600 dark:text-yellow-400">{notes.length} nota{notes.length !== 1 ? 's' : ''}</span>
+        <button type="button" onClick={addNote}
+          className="flex items-center gap-1 rounded-lg bg-yellow-400 px-2.5 py-1 text-xs font-semibold text-yellow-900 transition hover:bg-yellow-300">
+          <Plus className="h-3 w-3" /> Nova
+        </button>
+        <button type="button" onClick={onClose} className="rounded-lg p-1 text-yellow-700 hover:bg-yellow-100 dark:text-yellow-300 dark:hover:bg-yellow-900/40">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {addError && (
+        <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-600 dark:bg-red-900/20 dark:text-red-300">
+          ⚠ {addError}
         </div>
       )}
-    </ModalShell>
+
+      {/* Notes list */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        {loading ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-yellow-400" /></div>
+        ) : notes.length === 0 ? (
+          <p className="py-8 text-center text-xs text-slate-400">Clique em "Nova" para criar um post-it.</p>
+        ) : (
+          notes.map(note => (
+            <div key={note.id} className="overflow-hidden rounded-xl shadow-sm" style={{ background: note.color }}>
+              <div className="flex items-center gap-1.5 px-2.5 py-2">
+                {NOTE_COLORS.map(c => (
+                  <button key={c.bg} type="button" onClick={() => changeColor(note.id, c.bg)}
+                    className={`h-3.5 w-3.5 rounded-full border-2 transition-transform hover:scale-110 ${note.color === c.bg ? 'border-slate-600 scale-125' : 'border-transparent'}`}
+                    style={{ background: c.bg }} title={c.label} />
+                ))}
+                <button type="button" onClick={() => deleteNote(note.id)} title="Excluir"
+                  className="ml-auto rounded p-0.5 text-slate-500 hover:text-red-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="px-2.5 pb-2.5">
+                <RichEditor value={note.content} onChange={(v) => updateContent(note.id, v)} placeholder="Escreva aqui..." minHeight={60} />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </motion.div>
   );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
+export function QuickWidgets({ churchId, campoId, notesOpen, onToggleNotes }: QuickWidgetsProps) {
   const currentMonth = new Date().getMonth() + 1;
   const campaigns = CAMPAIGNS_BY_MONTH[currentMonth] || [];
 
@@ -968,12 +1007,13 @@ export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
       <div className="grid grid-cols-3 gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700 sm:flex sm:flex-wrap sm:gap-2">
         {widgets.map((w) => {
           const Icon = w.icon;
+          const isNotesActive = w.id === 'notes' && notesOpen;
           return (
             <button
               key={w.id}
               type="button"
-              onClick={() => openWidgetModal(w.id)}
-              className={`relative flex flex-col items-center gap-1.5 rounded-xl p-2.5 ring-1 transition-all sm:min-w-[68px] ${w.btnClass}`}
+              onClick={() => w.id === 'notes' ? onToggleNotes?.() : openWidgetModal(w.id)}
+              className={`relative flex flex-col items-center gap-1.5 rounded-xl p-2.5 ring-1 transition-all sm:min-w-[68px] ${isNotesActive ? 'ring-2 ring-yellow-400 bg-yellow-100 dark:bg-yellow-900/40 dark:ring-yellow-500' : w.btnClass}`}
             >
               {w.badge !== null && w.badge !== undefined && w.badge > 0 && (
                 <span className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${w.badgeColor}`}>
@@ -1007,7 +1047,6 @@ export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
                 {openWidget === 'newMembers' && <NewMembersModal loading={newMembersLoading} data={newMembers} onClose={() => setOpenWidget(null)} />}
                 {openWidget === 'calculator' && <CalculatorModal onClose={() => setOpenWidget(null)} />}
                 {openWidget === 'agenda' && <AgendaModal onClose={() => setOpenWidget(null)} />}
-                {openWidget === 'notes' && <NotesModal onClose={() => setOpenWidget(null)} />}
               </div>
             </motion.div>
           </>
