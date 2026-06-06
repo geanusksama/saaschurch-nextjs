@@ -74,6 +74,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { MemberEditDrawer } from './MemberEditDrawer';
+import { QuickWidgets } from './QuickWidgets';
 import { usePermissions } from '../../lib/usePermissions';
 import { THEME_EVENT_NAME, applyThemeSettings, loadThemeSettings, saveThemeSettings, getRadiusPresetOptions, DEFAULT_THEME_SETTINGS, type ThemeSettings } from '../../lib/themeSettings';
 
@@ -1195,6 +1196,11 @@ export function AppUI() {
                     <X className="h-5 w-5 text-slate-400" />
                   </button>
                 </div>
+
+                <QuickWidgets
+                  churchId={storedUser.churchId}
+                  campoId={storedUser.campoId || explicitActiveFieldId}
+                />
 
                 <div className="max-h-[60vh] overflow-y-auto p-4">
                   {favoriteQuickAccessItems.length === 0 ? (

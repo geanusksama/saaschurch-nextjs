@@ -71,6 +71,9 @@ export async function GET(req: NextRequest) {
     const maritalStatusParam = sp.get("maritalStatus") ?? "";
     const titleIdParam = sp.get("titleId") ?? "";
 
+    const createdFrom = sp.get("createdFrom") ?? undefined;
+    const createdTo = sp.get("createdTo") ?? undefined;
+
     const statusParams = statusParam ? statusParam.split(",").filter(Boolean) : [];
     const maritalStatusParams = maritalStatusParam ? maritalStatusParam.split(",").filter(Boolean) : [];
     const titleIds = titleIdParam ? titleIdParam.split(",").filter(Boolean) : [];
@@ -197,6 +200,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Creation date filter (for "new members" widget)
+    if (createdFrom || createdTo) {
+      const dateFilter: Record<string, Date> = {};
+      if (createdFrom) dateFilter.gte = new Date(createdFrom);
+      if (createdTo) dateFilter.lte = new Date(createdTo);
+      filterConditions.push({ createdAt: dateFilter });
+    }
+
     // Combine all filters
     const where: Record<string, unknown> = { deletedAt: null, church: churchWhere };
     if (filterConditions.length > 0) where.AND = filterConditions;
@@ -221,8 +232,12 @@ export async function GET(req: NextRequest) {
     // Paginated path: returns { data, total, activeCount, inactiveCount, churchCount }
     const skip = (page - 1) * pageSize;
 
+    const memberOrderBy = createdFrom || createdTo
+      ? [{ createdAt: "desc" as const }, { fullName: "asc" as const }]
+      : [{ fullName: "asc" as const }];
+
     const [members, total, activeCount, inactiveCount, churchGroups] = await Promise.all([
-      prisma.member.findMany({ where: w, include: memberInclude, orderBy: { fullName: "asc" }, skip, take: pageSize }),
+      prisma.member.findMany({ where: w, include: memberInclude, orderBy: memberOrderBy, skip, take: pageSize }),
       prisma.member.count({ where: w }),
       prisma.member.count({ where: { AND: [w, activeFilter] } as never }),
       prisma.member.count({ where: { AND: [w, inactiveFilter] } as never }),
