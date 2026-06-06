@@ -3,6 +3,20 @@ import { X, Printer, Download, Camera, Image as ImageIcon, MessageSquare, ZoomIn
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
 
+const getImageUrl = (photoUrl?: string) => {
+  if (!photoUrl) return '';
+  const url = photoUrl.toLowerCase();
+  // Se for HEIC, WebP, GIF, TIFF, ou qualquer formato não-padrão do navegador, converte
+  if (!url.includes('.jpg') && !url.includes('.jpeg') && !url.includes('.png') && !url.includes('.gif')) {
+    return `${apiBase}/upload/convert-image/${encodeURIComponent(photoUrl)}`;
+  }
+  // Se for GIF animado de um formato desconhecido, também converte
+  if (url.includes('.heic') || url.includes('.webp') || url.includes('.tiff') || url.includes('.bmp')) {
+    return `${apiBase}/upload/convert-image/${encodeURIComponent(photoUrl)}`;
+  }
+  return photoUrl;
+};
+
 export type ReciboRow = {
   id: string;
   legacy_id: number | null;
@@ -172,16 +186,18 @@ export function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: s
 </body>
 </html>`;
 
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-  document.body.appendChild(iframe);
-  const doc = iframe.contentDocument || iframe.contentWindow?.document;
-  if (!doc) { document.body.removeChild(iframe); return; }
-  doc.open();
-  doc.write(html);
-  doc.close();
-  iframe.contentWindow?.addEventListener('afterprint', () => document.body.removeChild(iframe));
-  setTimeout(() => iframe.contentWindow?.print(), 500);
+  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  if (!printWindow) return;
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.addEventListener('afterprint', () => printWindow.close());
+  setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+    // fallback: fecha a janela após 2 min caso afterprint não dispare (mobile)
+    setTimeout(() => { try { printWindow.close(); } catch { /* ignorar */ } }, 120000);
+  }, 500);
 }
 
 // ─── Comprovante Viewer ─────────────────────────────────────────────────────
@@ -249,7 +265,7 @@ function ComprovanteViewer({ src, docNum, onClose }: { src: string; docNum: stri
             <button onClick={() => setScale(s => Math.min(10, +(s + 0.2).toFixed(2)))} className="p-1.5 rounded hover:bg-white/10 text-white" title="Ampliar"><ZoomIn className="w-4 h-4" /></button>
             <button onClick={resetView} className="p-1.5 rounded hover:bg-white/10 text-white" title="Resetar view"><RotateCw className="w-4 h-4" /></button>
             <button onClick={() => setRotation(r => (r + 90) % 360)} className="p-1.5 rounded hover:bg-white/10 text-white text-sm font-bold px-2" title="Girar">↻</button>
-            <a href={src} download className="p-1.5 rounded hover:bg-white/10 text-white" title="Download"><Download className="w-4 h-4" /></a>
+            <a href={getImageUrl(src)} download className="p-1.5 rounded hover:bg-white/10 text-white" title="Download"><Download className="w-4 h-4" /></a>
             <button onClick={onClose} className="p-1.5 rounded hover:bg-white/10 text-white ml-1" title="Fechar"><X className="w-4 h-4" /></button>
           </div>
         </div>
@@ -277,7 +293,7 @@ function ComprovanteViewer({ src, docNum, onClose }: { src: string; docNum: stri
             }}
           >
             <img
-              src={src}
+              src={getImageUrl(src)}
               alt="Comprovante"
               draggable={false}
               style={{
@@ -308,6 +324,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   const [showObs, setShowObs] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const valorNum = Number(row.valor);
@@ -352,13 +369,19 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   }
 
   async function handleFotoDelete() {
-    if (!confirm('Remover comprovante anexado?')) return;
     setDeleting(true);
-    await supabase.from('livro_caixa').update({ foto: null }).eq('id', row.id);
-    setCurrentFoto(null);
-    setIncluirComprovante(false);
-    onUpdated?.(row.id, { foto: null });
-    setDeleting(false);
+    try {
+      await supabase.from('livro_caixa').update({ foto: null }).eq('id', row.id);
+      setCurrentFoto(null);
+      setIncluirComprovante(false);
+      onUpdated?.(row.id, { foto: null });
+    } catch (err: any) {
+      console.error('Erro ao deletar foto:', err);
+      alert('Erro ao remover comprovante');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   }
 
   return (
@@ -445,7 +468,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
                   <button onClick={() => setShowViewer(true)} className="text-xs text-blue-600 hover:underline">
                     (Ver Imagem)
                   </button>
-                  <button onClick={handleFotoDelete} disabled={deleting} className="text-xs text-red-500 hover:underline disabled:opacity-50">
+                  <button onClick={() => setShowDeleteConfirm(true)} disabled={deleting} className="text-xs text-red-500 hover:underline disabled:opacity-50">
                     {deleting ? '...' : '(Deletar)'}
                   </button>
                 </div>
@@ -551,6 +574,32 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
           docNum={docNum || ''}
           onClose={() => setShowViewer(false)}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-semibold text-slate-950 mb-2">Remover comprovante?</h3>
+            <p className="text-sm text-slate-600 mb-6">Você tem certeza que deseja remover este comprovante anexado?</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium"
+                disabled={deleting}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleFotoDelete}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50"
+                disabled={deleting}
+              >
+                {deleting ? 'Removendo...' : 'Remover'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

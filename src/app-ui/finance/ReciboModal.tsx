@@ -171,16 +171,18 @@ export function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: s
 </body>
 </html>`;
 
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-  document.body.appendChild(iframe);
-  const doc = iframe.contentDocument || iframe.contentWindow?.document;
-  if (!doc) { document.body.removeChild(iframe); return; }
-  doc.open();
-  doc.write(html);
-  doc.close();
-  iframe.contentWindow?.addEventListener('afterprint', () => document.body.removeChild(iframe));
-  setTimeout(() => iframe.contentWindow?.print(), 500);
+  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  if (!printWindow) return;
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.addEventListener('afterprint', () => printWindow.close());
+  setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+    // fallback: fecha a janela após 2 min caso afterprint não dispare (mobile)
+    setTimeout(() => { try { printWindow.close(); } catch { /* ignorar */ } }, 120000);
+  }, 500);
 }
 
 // ─── Comprovante Viewer ─────────────────────────────────────────────────────
