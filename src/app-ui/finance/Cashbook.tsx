@@ -849,8 +849,20 @@ function ConsultarLancamentoModal({
 
       if (term) {
         if (searchBy === 'rol') {
-          // id_favorecido_externo stores the ROL/external identifier of the contributor
-          query = query.ilike('id_favorecido_externo', `%${term}%`);
+          // ROL is stored in the members table — fetch matching member IDs first
+          const rolNum = parseInt(term, 10);
+          if (isNaN(rolNum)) { setLoading(false); setError('ROL deve ser um número.'); return; }
+          const { data: memberData } = await supabase
+            .from('members')
+            .select('id')
+            .eq('rol', rolNum);
+          const memberIds = (memberData ?? []).map((m: { id: string }) => m.id);
+          if (memberIds.length === 0) {
+            setLoading(false);
+            onResults([], dataInicio, dataFim);
+            return;
+          }
+          query = query.in('member_id', memberIds);
         } else {
           query = query.ilike('favorecido', `%${term}%`);
         }

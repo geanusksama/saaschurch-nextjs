@@ -117,14 +117,22 @@ export function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: s
     .comp-section { margin-top:12px; page-break-inside: avoid; }
     .comp-title { font-size:11px; font-weight:bold; text-transform:uppercase; margin-bottom:6px; }
     .comp-img { max-width:100%; max-height:160mm; object-fit:contain; border:1px solid #ddd; display:block; }
+    .action-bar { position:sticky; top:0; z-index:100; display:flex; gap:8px; justify-content:center; padding:8px 12px; background:#fff; border-bottom:2px solid #e2e8f0; margin-bottom:12px; }
+    .btn-print { background:#1e293b; color:#fff; border:none; border-radius:8px; padding:10px 24px; font-size:13px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; }
+    .btn-close { background:#f1f5f9; color:#475569; border:none; border-radius:8px; padding:10px 18px; font-size:13px; font-weight:bold; cursor:pointer; }
     @media print {
       body { padding:5mm; }
       @page { margin:8mm; size: A4 portrait; }
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .action-bar { display:none !important; }
     }
   </style>
 </head>
 <body>
+  <div class="action-bar">
+    <button class="btn-print" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
+    <button class="btn-close" onclick="window.close()">&#10005; Fechar</button>
+  </div>
   <p class="org">ADCampinas</p>
   <p class="church">${churchName}</p>
   <p class="title">RECIBO</p>
@@ -171,18 +179,16 @@ export function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: s
 </body>
 </html>`;
 
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window);
   const printWindow = window.open('', '_blank', 'width=800,height=600');
   if (!printWindow) return;
   printWindow.document.open();
   printWindow.document.write(html);
   printWindow.document.close();
-  printWindow.addEventListener('afterprint', () => printWindow.close());
-  setTimeout(() => {
-    printWindow.focus();
-    printWindow.print();
-    // fallback: fecha a janela após 2 min caso afterprint não dispare (mobile)
-    setTimeout(() => { try { printWindow.close(); } catch { /* ignorar */ } }, 120000);
-  }, 500);
+  if (!isMobile) {
+    printWindow.addEventListener('afterprint', () => printWindow.close());
+    setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
+  }
 }
 
 // ─── Comprovante Viewer ─────────────────────────────────────────────────────
