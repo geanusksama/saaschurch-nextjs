@@ -514,6 +514,21 @@ function NewMembersModal({ loading, data, onClose }: {
   );
 }
 
+// ─── Auth helper ─────────────────────────────────────────────────────────────
+
+function authHeaders(): Record<string, string> {
+  try {
+    const token = localStorage.getItem('mrm_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
+async function authFetch(url: string): Promise<Response> {
+  return fetch(url, { headers: authHeaders() });
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
@@ -547,7 +562,7 @@ export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
     if (churchId) scopeParams.set('churchId', churchId);
     else if (campoId) scopeParams.set('campoId', campoId);
 
-    fetch(`/api/members/birthdays?${scopeParams}&month=${currentMonth}`)
+    authFetch(`/api/members/birthdays?${scopeParams}&month=${currentMonth}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => data && setTodayBirthdayCount(data.stats?.today ?? 0))
       .catch(() => {});
@@ -557,7 +572,7 @@ export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
     const memberParams = new URLSearchParams(scopeParams);
     memberParams.set('createdFrom', startOfMonth);
     memberParams.set('pageSize', '1');
-    fetch(`/api/members?${memberParams}`)
+    authFetch(`/api/members?${memberParams}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => data && setNewMembersCount(data.total ?? 0))
       .catch(() => {});
@@ -565,7 +580,7 @@ export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
     const eventParams = new URLSearchParams();
     if (campoId) eventParams.set('campoId', campoId);
     eventParams.set('year', String(now.getFullYear()));
-    fetch(`/api/annual-events?${eventParams}`)
+    authFetch(`/api/annual-events?${eventParams}`)
       .then(r => r.ok ? r.json() : null)
       .then((data: ChurchEvent[]) => {
         if (!data) return;
@@ -585,8 +600,9 @@ export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
     if (id === 'birthdays' && !birthdays) {
       setBirthdaysLoading(true);
       try {
-        const data = await fetch(`/api/members/birthdays?${scopeParams}&month=${currentMonth}`).then(r => r.json());
-        const members: BirthdayMember[] = data.members || [];
+        const r = await authFetch(`/api/members/birthdays?${scopeParams}&month=${currentMonth}`);
+        const data = r.ok ? await r.json() : null;
+        const members: BirthdayMember[] = data?.members || [];
         setBirthdays({ today: members.filter(m => m.today), week: members.filter(m => !m.today && m.daysUntil <= 6) });
       } catch { /* silent */ } finally {
         setBirthdaysLoading(false);
@@ -621,7 +637,8 @@ export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
         const params = new URLSearchParams();
         if (campoId) params.set('campoId', campoId);
         params.set('year', String(new Date().getFullYear()));
-        const data: ChurchEvent[] = await fetch(`/api/annual-events?${params}`).then(r => r.json());
+        const r = await authFetch(`/api/annual-events?${params}`);
+        const data: ChurchEvent[] = r.ok ? await r.json() : [];
         const today = new Date().toISOString().split('T')[0];
         setEvents(Array.isArray(data) ? data.filter(e => e.datareal >= today) : []);
       } catch { /* silent */ } finally {
@@ -637,8 +654,9 @@ export function QuickWidgets({ churchId, campoId }: QuickWidgetsProps) {
         const params = new URLSearchParams(scopeParams);
         params.set('createdFrom', startOfMonth);
         params.set('pageSize', '50');
-        const data = await fetch(`/api/members?${params}`).then(r => r.json());
-        setNewMembers(Array.isArray(data.data) ? data.data : []);
+        const r = await authFetch(`/api/members?${params}`);
+        const data = r.ok ? await r.json() : null;
+        setNewMembers(Array.isArray(data?.data) ? data.data : []);
       } catch { /* silent */ } finally {
         setNewMembersLoading(false);
       }

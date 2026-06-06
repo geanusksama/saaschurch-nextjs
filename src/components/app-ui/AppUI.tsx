@@ -1198,8 +1198,12 @@ export function AppUI() {
                 </div>
 
                 <QuickWidgets
-                  churchId={storedUser.churchId}
-                  campoId={storedUser.campoId || explicitActiveFieldId}
+                  churchId={
+                    storedUser.profileType === 'church'
+                      ? storedUser.churchId
+                      : undefined
+                  }
+                  campoId={explicitActiveFieldId || storedUser.campoId}
                 />
 
                 <div className="max-h-[60vh] overflow-y-auto p-4">
