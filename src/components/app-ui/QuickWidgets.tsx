@@ -3,6 +3,7 @@ import {
   Cake, BookOpen, Heart, Calendar, CalendarDays, UserPlus,
   X, MessageCircle, Loader2, MapPin, Clock, Phone,
   Calculator, StickyNote, BookMarked, ChevronLeft, ChevronRight,
+  ChevronUp, ChevronDown,
   Plus, Bold, Italic, Underline, List, ListOrdered,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -791,6 +792,7 @@ function FloatingNote({ note, index, onDelete, onUpdate, onColorChange }: Floati
   });
 
   const [dragging, setDragging] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [savedAck, setSavedAck] = useState(false);
   const posRef = useRef(pos);
   const dragOrigin = useRef({ mx: 0, my: 0, ox: 0, oy: 0 });
@@ -846,9 +848,15 @@ function FloatingNote({ note, index, onDelete, onUpdate, onColorChange }: Floati
           ))}
         </div>
         <div className="ml-auto flex items-center gap-1" onMouseDown={e => e.stopPropagation()}>
-          <button type="button" onClick={handleConcluir}
-            className="rounded px-2 py-0.5 text-[10px] font-bold text-slate-700 transition hover:bg-black/10">
-            {savedAck ? '✓ Salvo!' : 'Concluir'}
+          {!collapsed && (
+            <button type="button" onClick={handleConcluir}
+              className="rounded px-2 py-0.5 text-[10px] font-bold text-slate-700 transition hover:bg-black/10">
+              {savedAck ? '✓ Salvo!' : 'Concluir'}
+            </button>
+          )}
+          <button type="button" onClick={() => setCollapsed(v => !v)} title={collapsed ? 'Expandir' : 'Recolher'}
+            className="rounded p-0.5 text-slate-600 transition hover:bg-black/10">
+            {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
           </button>
           <button type="button" onClick={() => onDelete(note.id)} title="Excluir nota"
             className="rounded p-0.5 text-slate-500 hover:text-red-600">
@@ -856,10 +864,12 @@ function FloatingNote({ note, index, onDelete, onUpdate, onColorChange }: Floati
           </button>
         </div>
       </div>
-      {/* Editor */}
-      <div style={{ background: note.color }} className="px-2.5 pb-2.5" onMouseDown={e => e.stopPropagation()}>
-        <RichEditor key={note.id} value={note.content} onChange={(v) => onUpdate(note.id, v)} placeholder="Escreva aqui..." minHeight={80} />
-      </div>
+      {/* Editor — hidden when collapsed */}
+      {!collapsed && (
+        <div style={{ background: note.color }} className="px-2.5 pb-2.5" onMouseDown={e => e.stopPropagation()}>
+          <RichEditor key={note.id} value={note.content} onChange={(v) => onUpdate(note.id, v)} placeholder="Escreva aqui..." minHeight={80} />
+        </div>
+      )}
     </div>
   );
 }
@@ -959,7 +969,7 @@ export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
         )}
       </motion.div>
 
-      {/* Floating note cards — each positioned independently */}
+      {/* Floating note cards */}
       {!loading && notes.map((note, index) => (
         <FloatingNote
           key={note.id}
