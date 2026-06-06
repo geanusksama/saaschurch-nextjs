@@ -768,24 +768,115 @@ function AgendaModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Sticky Notes Panel (floating, persistent) ───────────────────────────────
+// ─── Floating Note Card ───────────────────────────────────────────────────────
+
+interface FloatingNoteProps {
+  note: StickyNoteItem;
+  index: number;
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, content: string) => void;
+  onColorChange: (id: string, color: string) => void;
+}
+
+function FloatingNote({ note, index, onDelete, onUpdate, onColorChange }: FloatingNoteProps) {
+  const posKey = `mrm_note_pos_${note.id}`;
+
+  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
+    try {
+      const saved = localStorage.getItem(posKey);
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    const col = index % 4;
+    return { x: Math.max(20, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 300 - col * 24), y: 90 + (index % 6) * 28 };
+  });
+
+  const [dragging, setDragging] = useState(false);
+  const [savedAck, setSavedAck] = useState(false);
+  const posRef = useRef(pos);
+  const dragOrigin = useRef({ mx: 0, my: 0, ox: 0, oy: 0 });
+
+  useEffect(() => { posRef.current = pos; }, [pos]);
+
+  function onHeaderMouseDown(e: React.MouseEvent) {
+    e.preventDefault();
+    setDragging(true);
+    dragOrigin.current = { mx: e.clientX, my: e.clientY, ox: pos.x, oy: pos.y };
+  }
+
+  useEffect(() => {
+    if (!dragging) return;
+    function onMove(e: MouseEvent) {
+      const x = dragOrigin.current.ox + e.clientX - dragOrigin.current.mx;
+      const y = dragOrigin.current.oy + e.clientY - dragOrigin.current.my;
+      const clamped = { x: Math.max(0, x), y: Math.max(0, y) };
+      setPos(clamped);
+      posRef.current = clamped;
+    }
+    function onUp() {
+      setDragging(false);
+      try { localStorage.setItem(posKey, JSON.stringify(posRef.current)); } catch { /* ignore */ }
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [dragging, posKey]);
+
+  function handleConcluir() {
+    setSavedAck(true);
+    setTimeout(() => setSavedAck(false), 2000);
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', left: pos.x, top: pos.y, width: 272, zIndex: dragging ? 85 : 72, userSelect: dragging ? 'none' : undefined }}
+      className="overflow-hidden rounded-xl shadow-xl ring-1 ring-black/10"
+    >
+      {/* Drag handle header */}
+      <div
+        onMouseDown={onHeaderMouseDown}
+        style={{ background: note.color, cursor: dragging ? 'grabbing' : 'grab' }}
+        className="flex items-center gap-1.5 px-2.5 py-2"
+      >
+        {/* color swatches */}
+        <div className="flex gap-1" onMouseDown={e => e.stopPropagation()}>
+          {NOTE_COLORS.map(c => (
+            <button key={c.bg} type="button" onClick={() => onColorChange(note.id, c.bg)}
+              className={`h-3 w-3 rounded-full border-2 transition-transform hover:scale-125 ${note.color === c.bg ? 'scale-125 border-slate-700' : 'border-transparent'}`}
+              style={{ background: c.bg }} title={c.label} />
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-1" onMouseDown={e => e.stopPropagation()}>
+          <button type="button" onClick={handleConcluir}
+            className="rounded px-2 py-0.5 text-[10px] font-bold text-slate-700 transition hover:bg-black/10">
+            {savedAck ? '✓ Salvo!' : 'Concluir'}
+          </button>
+          <button type="button" onClick={() => onDelete(note.id)} title="Excluir nota"
+            className="rounded p-0.5 text-slate-500 hover:text-red-600">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+      {/* Editor */}
+      <div style={{ background: note.color }} className="px-2.5 pb-2.5" onMouseDown={e => e.stopPropagation()}>
+        <RichEditor key={note.id} value={note.content} onChange={(v) => onUpdate(note.id, v)} placeholder="Escreva aqui..." minHeight={80} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Sticky Notes Panel (tray + floating cards) ───────────────────────────────
 
 export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
   const [notes, setNotes] = useState<StickyNoteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [addError, setAddError] = useState<string | null>(null);
   const [newColor, setNewColor] = useState(NOTE_COLORS[0].bg);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const saveTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     setLoading(true);
     authFetch('/api/user-sticky-notes')
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(data => setNotes(Array.isArray(data) ? data : []))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -799,10 +890,7 @@ export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ content: '', color: newColor, position: notes.length }),
       });
-      if (!r.ok) {
-        const body = await r.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${r.status}`);
-      }
+      if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error || `HTTP ${r.status}`); }
       const note = await r.json();
       setNotes(prev => [...prev, note]);
     } catch (e) {
@@ -836,118 +924,53 @@ export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
     }).catch(() => {});
   }
 
-  function onDragStart(e: React.DragEvent, id: string) {
-    setDragId(id);
-    e.dataTransfer.effectAllowed = 'move';
-  }
-
-  function onDragOver(e: React.DragEvent, id: string) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (id !== dragOverId) setDragOverId(id);
-  }
-
-  function onDrop(targetId: string) {
-    if (!dragId || dragId === targetId) { setDragId(null); setDragOverId(null); return; }
-    const fromIdx = notes.findIndex(n => n.id === dragId);
-    const toIdx = notes.findIndex(n => n.id === targetId);
-    const reordered = [...notes];
-    const [moved] = reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, moved);
-    const updated = reordered.map((n, i) => ({ ...n, position: i }));
-    setNotes(updated);
-    setDragId(null);
-    setDragOverId(null);
-    updated.forEach((n, i) => {
-      fetch(`/api/user-sticky-notes/${n.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ position: i }),
-      }).catch(() => {});
-    });
-  }
-
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 40, scale: 0.97 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 40, scale: 0.97 }}
-      transition={{ type: 'spring', stiffness: 340, damping: 30 }}
-      className="fixed right-4 top-20 z-[70] flex w-80 flex-col overflow-hidden rounded-2xl border border-yellow-200 bg-white shadow-2xl dark:border-yellow-800/40 dark:bg-slate-800"
-      style={{ maxHeight: 'calc(100vh - 6rem)' }}
-    >
-      {/* Header */}
-      <div className="flex items-center gap-2 border-b border-yellow-100 bg-yellow-50 px-3 py-2.5 dark:border-yellow-900/30 dark:bg-yellow-900/20">
-        <StickyNote className="h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
-        <span className="flex-1 text-sm font-bold text-yellow-900 dark:text-yellow-200">Post-its</span>
-        <span className="text-xs text-yellow-600 dark:text-yellow-400">{notes.length}</span>
-        <button type="button" onClick={onClose} className="rounded-lg p-1 text-yellow-700 hover:bg-yellow-100 dark:text-yellow-300 dark:hover:bg-yellow-900/40">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* New note bar */}
-      <div className="flex items-center gap-2 border-b border-yellow-100 px-3 py-2 dark:border-yellow-900/30">
-        <span className="text-[10px] text-slate-500">Cor:</span>
-        <div className="flex gap-1">
+    <>
+      {/* Compact tray — fixed top-right */}
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -12 }}
+        className="fixed right-4 top-16 z-[75] flex items-center gap-2 rounded-2xl border border-yellow-200 bg-yellow-50 px-3 py-2 shadow-lg dark:border-yellow-800/40 dark:bg-slate-800"
+      >
+        <StickyNote className="h-4 w-4 shrink-0 text-yellow-600" />
+        <span className="text-xs font-bold text-yellow-900 dark:text-yellow-200">Post-its</span>
+        <span className="text-[10px] text-yellow-600">{loading ? '…' : notes.length}</span>
+        <div className="mx-1 flex gap-1">
           {NOTE_COLORS.map(c => (
             <button key={c.bg} type="button" onClick={() => setNewColor(c.bg)}
-              className={`h-4 w-4 rounded-full border-2 transition-transform hover:scale-110 ${newColor === c.bg ? 'scale-125 border-slate-600' : 'border-transparent'}`}
+              className={`h-3.5 w-3.5 rounded-full border-2 transition-transform hover:scale-125 ${newColor === c.bg ? 'scale-125 border-slate-600' : 'border-transparent'}`}
               style={{ background: c.bg }} title={c.label} />
           ))}
         </div>
         <button type="button" onClick={addNote}
-          className="ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 transition hover:opacity-80"
+          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold text-slate-800 shadow-sm transition hover:opacity-80"
           style={{ background: newColor }}>
-          <Plus className="h-3 w-3" /> Nova nota
+          <Plus className="h-3 w-3" /> Nova
         </button>
-      </div>
-
-      {addError && (
-        <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-600 dark:bg-red-900/20 dark:text-red-300">
-          ⚠ {addError}
-        </div>
-      )}
-
-      {/* Notes list */}
-      <div className="flex-1 space-y-2.5 overflow-y-auto p-3">
-        {loading ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-yellow-400" /></div>
-        ) : notes.length === 0 ? (
-          <p className="py-8 text-center text-xs text-slate-400">Escolha uma cor e clique em "Nova nota".</p>
-        ) : (
-          notes.map(note => (
-            <div
-              key={note.id}
-              draggable
-              onDragStart={(e) => onDragStart(e, note.id)}
-              onDragOver={(e) => onDragOver(e, note.id)}
-              onDrop={() => onDrop(note.id)}
-              onDragEnd={() => { setDragId(null); setDragOverId(null); }}
-              className={`overflow-hidden rounded-xl shadow-sm transition-all ${dragOverId === note.id && dragId !== note.id ? 'scale-[1.02] ring-2 ring-yellow-400' : ''} ${dragId === note.id ? 'opacity-50' : ''}`}
-              style={{ background: note.color }}
-            >
-              <div className="flex cursor-grab items-center gap-1.5 px-2.5 py-1.5 active:cursor-grabbing">
-                <div className="flex gap-1">
-                  {NOTE_COLORS.map(c => (
-                    <button key={c.bg} type="button" onClick={() => changeColor(note.id, c.bg)}
-                      className={`h-3 w-3 rounded-full border-2 transition-transform hover:scale-110 ${note.color === c.bg ? 'scale-125 border-slate-600' : 'border-transparent'}`}
-                      style={{ background: c.bg }} title={c.label} />
-                  ))}
-                </div>
-                <button type="button" onClick={() => deleteNote(note.id)} title="Excluir"
-                  className="ml-auto rounded p-0.5 text-slate-500 hover:text-red-600">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="px-2.5 pb-2.5" onMouseDown={e => e.stopPropagation()}>
-                <RichEditor key={note.id} value={note.content} onChange={(v) => updateContent(note.id, v)} placeholder="Escreva aqui..." minHeight={60} />
-              </div>
-            </div>
-          ))
+        <button type="button" onClick={onClose}
+          className="rounded-lg p-1 text-yellow-700 hover:bg-yellow-200 dark:text-yellow-300">
+          <X className="h-4 w-4" />
+        </button>
+        {addError && (
+          <span className="absolute left-0 top-full mt-1 w-full rounded-lg bg-red-50 px-3 py-1.5 text-[10px] text-red-600 shadow">
+            ⚠ {addError}
+          </span>
         )}
-      </div>
-    </motion.div>
+      </motion.div>
+
+      {/* Floating note cards — each positioned independently */}
+      {!loading && notes.map((note, index) => (
+        <FloatingNote
+          key={note.id}
+          note={note}
+          index={index}
+          onDelete={deleteNote}
+          onUpdate={updateContent}
+          onColorChange={changeColor}
+        />
+      ))}
+    </>
   );
 }
 
