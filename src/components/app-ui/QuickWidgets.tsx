@@ -256,8 +256,8 @@ function RichEditor({ value, onChange, placeholder, minHeight = 120 }: {
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const exec = (cmd: string, val?: string) => {
-    document.execCommand(cmd, false, val);
     ref.current?.focus();
+    document.execCommand(cmd, false, val);
     onChange(ref.current?.innerHTML || '');
   };
 
@@ -643,8 +643,10 @@ function AgendaModal({ onClose }: { onClose: () => void }) {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [noteContent, setNoteContent] = useState('');
+  const [noteLoading, setNoteLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [datesWithNotes, setDatesWithNotes] = useState<Set<string>>(new Set());
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
@@ -658,28 +660,43 @@ function AgendaModal({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     if (!selectedDate) return;
+    setNoteLoading(true);
     setNoteContent('');
     setSaved(false);
+    setSaveError(null);
     authFetch(`/api/user-notes?date=${selectedDate}`)
       .then(r => r.ok ? r.json() : { content: '' })
       .then(d => setNoteContent(d.content || ''))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setNoteLoading(false));
   }, [selectedDate]);
 
   function handleContentChange(content: string) {
     setNoteContent(content);
     setSaved(false);
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => {
-      if (!selectedDate) return;
-      setSaving(true);
-      fetch('/api/user-notes', {
+    saveTimeout.current = setTimeout(() => saveNote(content), 1500);
+  }
+
+  async function saveNote(content?: string) {
+    if (!selectedDate) return;
+    const body = content ?? noteContent;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const r = await fetch('/api/user-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ date: selectedDate, content }),
-      }).then(() => { setSaved(true); setDatesWithNotes(prev => new Set([...prev, selectedDate])); })
-        .catch(() => {}).finally(() => setSaving(false));
-    }, 1200);
+        body: JSON.stringify({ date: selectedDate, content: body }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      setSaved(true);
+      setDatesWithNotes(prev => new Set([...prev, selectedDate]));
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Erro ao salvar');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function prevMonth() { const d = new Date(viewYear, viewMonth - 1); setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); }
@@ -721,13 +738,27 @@ function AgendaModal({ onClose }: { onClose: () => void }) {
         {/* Note editor */}
         {selectedDate ? (
           <div className="border-t border-slate-200 pt-3 dark:border-slate-700">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 capitalize">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="min-w-0 flex-1 text-xs font-semibold capitalize text-slate-600 dark:text-slate-300">
                 {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
-              <p className="text-xs text-slate-400">{saving ? 'Salvando...' : saved ? '✓ Salvo' : ''}</p>
+              <div className="flex shrink-0 items-center gap-2">
+                {saveError && <span className="text-[10px] text-red-500">{saveError}</span>}
+                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />}
+                {saved && !saving && <span className="text-[10px] text-green-500">✓ Salvo</span>}
+                <button type="button" onClick={() => saveNote()}
+                  disabled={saving}
+                  className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50">
+                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                  Salvar
+                </button>
+              </div>
             </div>
-            <RichEditor value={noteContent} onChange={handleContentChange} placeholder="Escreva sua nota para este dia..." minHeight={100} />
+            {noteLoading ? (
+              <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-indigo-400" /></div>
+            ) : (
+              <RichEditor key={selectedDate} value={noteContent} onChange={handleContentChange} placeholder="Escreva sua nota para este dia..." minHeight={100} />
+            )}
           </div>
         ) : (
           <p className="py-3 text-center text-xs text-slate-400">Selecione um dia para escrever uma nota.</p>
@@ -743,6 +774,9 @@ export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
   const [notes, setNotes] = useState<StickyNoteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [addError, setAddError] = useState<string | null>(null);
+  const [newColor, setNewColor] = useState(NOTE_COLORS[0].bg);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const saveTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
@@ -759,12 +793,11 @@ export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
 
   async function addNote() {
     setAddError(null);
-    const color = NOTE_COLORS[notes.length % NOTE_COLORS.length].bg;
     try {
       const r = await fetch('/api/user-sticky-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ content: '', color, position: notes.length }),
+        body: JSON.stringify({ content: '', color: newColor, position: notes.length }),
       });
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
@@ -803,6 +836,37 @@ export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
     }).catch(() => {});
   }
 
+  function onDragStart(e: React.DragEvent, id: string) {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (id !== dragOverId) setDragOverId(id);
+  }
+
+  function onDrop(targetId: string) {
+    if (!dragId || dragId === targetId) { setDragId(null); setDragOverId(null); return; }
+    const fromIdx = notes.findIndex(n => n.id === dragId);
+    const toIdx = notes.findIndex(n => n.id === targetId);
+    const reordered = [...notes];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    const updated = reordered.map((n, i) => ({ ...n, position: i }));
+    setNotes(updated);
+    setDragId(null);
+    setDragOverId(null);
+    updated.forEach((n, i) => {
+      fetch(`/api/user-sticky-notes/${n.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ position: i }),
+      }).catch(() => {});
+    });
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 40, scale: 0.97 }}
@@ -813,16 +877,29 @@ export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
       style={{ maxHeight: 'calc(100vh - 6rem)' }}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-yellow-100 bg-yellow-50 px-4 py-3 dark:border-yellow-900/30 dark:bg-yellow-900/20">
-        <StickyNote className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-        <span className="flex-1 text-sm font-bold text-yellow-900 dark:text-yellow-200">Bloco de Notas</span>
-        <span className="text-xs text-yellow-600 dark:text-yellow-400">{notes.length} nota{notes.length !== 1 ? 's' : ''}</span>
-        <button type="button" onClick={addNote}
-          className="flex items-center gap-1 rounded-lg bg-yellow-400 px-2.5 py-1 text-xs font-semibold text-yellow-900 transition hover:bg-yellow-300">
-          <Plus className="h-3 w-3" /> Nova
-        </button>
+      <div className="flex items-center gap-2 border-b border-yellow-100 bg-yellow-50 px-3 py-2.5 dark:border-yellow-900/30 dark:bg-yellow-900/20">
+        <StickyNote className="h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+        <span className="flex-1 text-sm font-bold text-yellow-900 dark:text-yellow-200">Post-its</span>
+        <span className="text-xs text-yellow-600 dark:text-yellow-400">{notes.length}</span>
         <button type="button" onClick={onClose} className="rounded-lg p-1 text-yellow-700 hover:bg-yellow-100 dark:text-yellow-300 dark:hover:bg-yellow-900/40">
           <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* New note bar */}
+      <div className="flex items-center gap-2 border-b border-yellow-100 px-3 py-2 dark:border-yellow-900/30">
+        <span className="text-[10px] text-slate-500">Cor:</span>
+        <div className="flex gap-1">
+          {NOTE_COLORS.map(c => (
+            <button key={c.bg} type="button" onClick={() => setNewColor(c.bg)}
+              className={`h-4 w-4 rounded-full border-2 transition-transform hover:scale-110 ${newColor === c.bg ? 'scale-125 border-slate-600' : 'border-transparent'}`}
+              style={{ background: c.bg }} title={c.label} />
+          ))}
+        </div>
+        <button type="button" onClick={addNote}
+          className="ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 transition hover:opacity-80"
+          style={{ background: newColor }}>
+          <Plus className="h-3 w-3" /> Nova nota
         </button>
       </div>
 
@@ -833,27 +910,38 @@ export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
       )}
 
       {/* Notes list */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 space-y-2.5 overflow-y-auto p-3">
         {loading ? (
           <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-yellow-400" /></div>
         ) : notes.length === 0 ? (
-          <p className="py-8 text-center text-xs text-slate-400">Clique em "Nova" para criar um post-it.</p>
+          <p className="py-8 text-center text-xs text-slate-400">Escolha uma cor e clique em "Nova nota".</p>
         ) : (
           notes.map(note => (
-            <div key={note.id} className="overflow-hidden rounded-xl shadow-sm" style={{ background: note.color }}>
-              <div className="flex items-center gap-1.5 px-2.5 py-2">
-                {NOTE_COLORS.map(c => (
-                  <button key={c.bg} type="button" onClick={() => changeColor(note.id, c.bg)}
-                    className={`h-3.5 w-3.5 rounded-full border-2 transition-transform hover:scale-110 ${note.color === c.bg ? 'border-slate-600 scale-125' : 'border-transparent'}`}
-                    style={{ background: c.bg }} title={c.label} />
-                ))}
+            <div
+              key={note.id}
+              draggable
+              onDragStart={(e) => onDragStart(e, note.id)}
+              onDragOver={(e) => onDragOver(e, note.id)}
+              onDrop={() => onDrop(note.id)}
+              onDragEnd={() => { setDragId(null); setDragOverId(null); }}
+              className={`overflow-hidden rounded-xl shadow-sm transition-all ${dragOverId === note.id && dragId !== note.id ? 'scale-[1.02] ring-2 ring-yellow-400' : ''} ${dragId === note.id ? 'opacity-50' : ''}`}
+              style={{ background: note.color }}
+            >
+              <div className="flex cursor-grab items-center gap-1.5 px-2.5 py-1.5 active:cursor-grabbing">
+                <div className="flex gap-1">
+                  {NOTE_COLORS.map(c => (
+                    <button key={c.bg} type="button" onClick={() => changeColor(note.id, c.bg)}
+                      className={`h-3 w-3 rounded-full border-2 transition-transform hover:scale-110 ${note.color === c.bg ? 'scale-125 border-slate-600' : 'border-transparent'}`}
+                      style={{ background: c.bg }} title={c.label} />
+                  ))}
+                </div>
                 <button type="button" onClick={() => deleteNote(note.id)} title="Excluir"
                   className="ml-auto rounded p-0.5 text-slate-500 hover:text-red-600">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="px-2.5 pb-2.5">
-                <RichEditor value={note.content} onChange={(v) => updateContent(note.id, v)} placeholder="Escreva aqui..." minHeight={60} />
+              <div className="px-2.5 pb-2.5" onMouseDown={e => e.stopPropagation()}>
+                <RichEditor key={note.id} value={note.content} onChange={(v) => updateContent(note.id, v)} placeholder="Escreva aqui..." minHeight={60} />
               </div>
             </div>
           ))
