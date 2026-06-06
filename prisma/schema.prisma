@@ -384,6 +384,9 @@ model User {
   sentInboxMessages     InboxMessage[]   @relation("SentInboxMessages")
   receivedInboxMessages InboxRecipient[] @relation("ReceivedInboxMessages")
 
+  userNotes       UserNote[]       @relation("UserNotes")
+  userStickyNotes UserStickyNote[] @relation("UserStickyNotes")
+
   @@map("users")
 }
 
@@ -3111,4 +3114,34 @@ model StripeWebhookLog {
   @@index([campoId])
   @@index([stripeEventId])
   @@map("stripe_webhook_logs")
+}
+
+/// Notas pessoais da agenda por data (um por usuário por dia)
+model UserNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  date      String   @map("date") @db.VarChar(10)
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation("UserNotes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("user_notes")
+}
+
+/// Post-its coloridos do bloco de notas pessoal
+model UserStickyNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  content   String   @db.Text
+  color     String   @default("#fef08a") @db.VarChar(20)
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation("UserStickyNotes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sticky_notes")
 }
