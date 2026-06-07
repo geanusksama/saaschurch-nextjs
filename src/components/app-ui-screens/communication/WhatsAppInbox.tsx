@@ -9,7 +9,7 @@ import {
   CheckCheck, Check, Clock, X, Plus, RefreshCw,
   Image as ImageIcon, Video, FileText, Mic, StopCircle,
   ChevronDown, Loader2, Volume2, Download, Trash2, Smartphone,
-  ImageOff,
+  ImageOff, Smile, Reply, Forward,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWhatsAppConversations } from '@/hooks/useWhatsAppConversations'
@@ -18,6 +18,8 @@ import { useWhatsAppInstances } from '@/hooks/useWhatsAppInstances'
 import type { WhatsAppConversation, WhatsAppMessage } from '@/types/whatsapp'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 
 function formatTime(iso?: string | null) {
   if (!iso) return ''
@@ -40,12 +42,9 @@ function StatusIcon({ status, outbound }: { status: string; outbound?: boolean }
 }
 
 const AVATAR_COLORS = [
-  'from-blue-500 to-blue-600',
-  'from-violet-500 to-purple-600',
-  'from-emerald-500 to-teal-600',
-  'from-rose-500 to-pink-600',
-  'from-amber-500 to-orange-600',
-  'from-cyan-500 to-sky-600',
+  'from-blue-500 to-blue-600', 'from-violet-500 to-purple-600',
+  'from-emerald-500 to-teal-600', 'from-rose-500 to-pink-600',
+  'from-amber-500 to-orange-600', 'from-cyan-500 to-sky-600',
 ]
 function avatarColor(str: string) {
   let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) & 0xffff
@@ -62,36 +61,105 @@ function getInitials(name?: string | null, phone?: string) {
 
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 
-function MessageBubble({ msg, onDelete }: { msg: WhatsAppMessage; onDelete: (id: string) => void }) {
-  const [hover, setHover]       = useState(false)
-  const [imgError, setImgError] = useState(false)
+function MessageBubble({ msg, token, onDelete, onReply, onForward, onReact }: {
+  msg: WhatsAppMessage
+  token: string
+  onDelete: (id: string) => void
+  onReply: (msg: WhatsAppMessage) => void
+  onForward: (msg: WhatsAppMessage) => void
+  onReact: (id: string, emoji: string) => void
+}) {
+  const [hover, setHover]           = useState(false)
+  const [showEmojis, setShowEmojis] = useState(false)
+  const [imgError, setImgError]     = useState(false)
+
   const isOut     = msg.direction === 'outbound'
   const isDeleted = msg.status === 'deleted'
+  const hasMedia  = !!msg.media_url && ['image', 'video', 'document', 'audio'].includes(msg.type ?? '')
+
+  const meta      = (msg.metadata as Record<string, unknown>) ?? {}
+  const reactions = meta.reactions as Record<string, number> | undefined
+  const replyContent = meta.reply_to_content as string | undefined
+  const replySender  = meta.reply_to_sender as string | undefined
 
   const bubbleCls = isOut
     ? 'bg-blue-600 text-white rounded-br-none'
     : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-bl-none border border-slate-200 dark:border-slate-600'
   const timeClr = isOut ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500'
 
+  const handleDownload = () => {
+    if (!msg.media_url) return
+    const a = document.createElement('a')
+    a.href = msg.media_url; a.download = msg.content ?? 'arquivo'; a.click()
+  }
+
   return (
     <div
-      className={`flex ${isOut ? 'justify-end' : 'justify-start'} mb-1 px-2`}
+      className={`flex ${isOut ? 'justify-end' : 'justify-start'} mb-2 px-2`}
       onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      onMouseLeave={() => { setHover(false); setShowEmojis(false) }}
     >
-      <div className="flex items-end gap-1">
-        {isOut && hover && !isDeleted && (
-          <button onClick={() => onDelete(msg.id)} title="Excluir"
-            className="p-1 rounded-full bg-white dark:bg-slate-700 shadow text-red-400 hover:text-red-600 flex-shrink-0 mb-1">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+      <div className={`flex flex-col ${isOut ? 'items-end' : 'items-start'} max-w-[72%]`}>
+
+        {/* Hover action bar */}
+        {hover && !isDeleted && (
+          <div className={`flex items-center gap-0.5 mb-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-full shadow-md px-1.5 py-1 z-10`}>
+            {showEmojis ? (
+              <>
+                {REACTIONS.map(e => (
+                  <button key={e} onClick={() => { onReact(msg.id, e); setShowEmojis(false) }}
+                    className="text-base hover:scale-125 transition-transform px-0.5">
+                    {e}
+                  </button>
+                ))}
+                <button onClick={() => setShowEmojis(false)} className="ml-1 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setShowEmojis(true)} title="Reagir"
+                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400">
+                  <Smile className="w-4 h-4" />
+                </button>
+                <button onClick={() => onReply(msg)} title="Responder"
+                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400">
+                  <Reply className="w-4 h-4" />
+                </button>
+                <button onClick={() => onForward(msg)} title="Encaminhar"
+                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400">
+                  <Forward className="w-4 h-4" />
+                </button>
+                {hasMedia && (
+                  <button onClick={handleDownload} title="Baixar"
+                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400">
+                    <Download className="w-4 h-4" />
+                  </button>
+                )}
+                <div className="w-px h-3 bg-slate-200 dark:bg-slate-600 mx-0.5" />
+                <button onClick={() => onDelete(msg.id)} title="Excluir"
+                  className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-400">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
         )}
 
-        <div className={`max-w-[72%] min-w-[80px] px-3 py-2 rounded-2xl shadow-sm ${bubbleCls}`}>
+        {/* Bubble */}
+        <div className={`min-w-[80px] px-3 py-2 rounded-2xl shadow-sm ${bubbleCls}`}>
           {isDeleted ? (
             <p className="text-sm italic opacity-60">Mensagem excluída</p>
           ) : (
             <>
+              {/* Quote de resposta */}
+              {replyContent && (
+                <div className={`border-l-2 ${isOut ? 'border-blue-300 bg-blue-700/30' : 'border-blue-500 bg-slate-100 dark:bg-slate-600'} rounded pl-2 pr-1 py-1 mb-2`}>
+                  {replySender && <p className="text-[10px] font-semibold text-blue-400 mb-0.5">{replySender}</p>}
+                  <p className="text-xs opacity-80 line-clamp-2">{replyContent}</p>
+                </div>
+              )}
+
               {msg.type === 'image' && msg.media_url && !imgError && (
                 <a href={msg.media_url} target="_blank" rel="noreferrer">
                   <img src={msg.media_url} alt="imagem"
@@ -124,8 +192,11 @@ function MessageBubble({ msg, onDelete }: { msg: WhatsAppMessage; onDelete: (id:
               {msg.type === 'sticker' && msg.media_url && (
                 <img src={msg.media_url} alt="sticker" className="w-28 h-28 object-contain" />
               )}
-              {msg.type !== 'document' && msg.content && (
+              {(!msg.type || msg.type === 'text' || msg.type === 'link') && msg.content && (
                 <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+              )}
+              {(msg.type === 'image' || msg.type === 'video') && msg.media_url && msg.content && (
+                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed mt-1 opacity-90">{msg.content}</p>
               )}
             </>
           )}
@@ -135,11 +206,16 @@ function MessageBubble({ msg, onDelete }: { msg: WhatsAppMessage; onDelete: (id:
           </div>
         </div>
 
-        {!isOut && hover && !isDeleted && (
-          <button onClick={() => onDelete(msg.id)} title="Excluir"
-            className="p-1 rounded-full bg-white dark:bg-slate-700 shadow text-red-400 hover:text-red-600 flex-shrink-0 mb-1">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+        {/* Reactions display */}
+        {reactions && Object.keys(reactions).length > 0 && (
+          <div className="flex gap-1 mt-1 flex-wrap">
+            {Object.entries(reactions).map(([emoji, count]) => (
+              <button key={emoji} onClick={() => onReact(msg.id, emoji)}
+                className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full px-1.5 py-0.5 text-xs shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600">
+                {emoji}{count > 1 ? ` ${count}` : ''}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -158,9 +234,7 @@ function ConversationItem({ conv, active, onClick }: {
   return (
     <button onClick={onClick}
       className={`w-full px-4 py-3 flex items-center gap-3 transition-colors border-b border-slate-100 dark:border-slate-700 text-left ${
-        active
-          ? 'bg-blue-50 dark:bg-slate-700 border-l-4 border-l-blue-500'
-          : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+        active ? 'bg-blue-50 dark:bg-slate-700 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
       }`}
     >
       <div className={`w-11 h-11 bg-gradient-to-br ${grad} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>
@@ -200,8 +274,7 @@ function useAudioRecorder() {
       const mr = new MediaRecorder(stream, { mimeType: mime })
       chunksRef.current = []
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-      mr.start(200)
-      mediaRef.current = mr
+      mr.start(200); mediaRef.current = mr
       setRecording(true); setDuration(0)
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000)
     } catch { toast.error('Permissão de microfone negada.') }
@@ -239,10 +312,7 @@ type StatusFilter = 'open' | 'closed' | 'all'
 type AttachType   = 'image' | 'video' | 'document' | 'audio'
 
 export default function WhatsAppInbox() {
-  const {
-    conversations, isLoading: convLoading, refetch,
-    markAsRead, closeConversation, reopenConversation, createConversation,
-  } = useWhatsAppConversations()
+  const { conversations, isLoading: convLoading, refetch, markAsRead, closeConversation, reopenConversation, createConversation } = useWhatsAppConversations()
   const { instances } = useWhatsAppInstances()
 
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null)
@@ -261,6 +331,11 @@ export default function WhatsAppInbox() {
   const [showAttach, setShowAttach]       = useState(false)
   const [uploading, setUploading]         = useState(false)
   const [showConvMenu, setShowConvMenu]   = useState(false)
+
+  // Reply & Forward state
+  const [replyTo, setReplyTo]             = useState<WhatsAppMessage | null>(null)
+  const [forwardMsg, setForwardMsg]       = useState<WhatsAppMessage | null>(null)
+  const [showForwardModal, setShowForwardModal] = useState(false)
 
   const imgRef = useRef<HTMLInputElement>(null)
   const vidRef = useRef<HTMLInputElement>(null)
@@ -282,8 +357,7 @@ export default function WhatsAppInbox() {
   }, [text])
 
   const handleSelectConv = (conv: WhatsAppConversation) => {
-    setSelectedConvId(conv.id)
-    setShowConvMenu(false)
+    setSelectedConvId(conv.id); setShowConvMenu(false); setReplyTo(null)
     if ((conv.unread_count ?? 0) > 0) markAsRead(conv.id)
   }
 
@@ -291,8 +365,15 @@ export default function WhatsAppInbox() {
     const content = text.trim()
     if (!content || sending) return
     setSending(true); setText('')
-    try { await sendMessage(content) }
-    catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao enviar'); setText(content) }
+    try {
+      const extras = replyTo ? {
+        replyToId: replyTo.id,
+        replyToContent: replyTo.content ?? `[${replyTo.type}]`,
+        replyToSender: replyTo.direction === 'inbound' ? (selectedConv?.contact_name ?? selectedConv?.phone ?? '') : 'Você',
+      } : undefined
+      await sendMessage(content, 'text', extras)
+      setReplyTo(null)
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao enviar'); setText(content) }
     finally { setSending(false) }
   }
 
@@ -305,74 +386,67 @@ export default function WhatsAppInbox() {
     setUploading(true)
     try {
       const fd = new FormData(); fd.append('file', file)
-      const r = await fetch('/api/whatsapp/upload', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      })
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}))
-        throw new Error(err.error ?? 'Falha no upload')
-      }
+      const r = await fetch('/api/whatsapp/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
+      if (!r.ok) { const err = await r.json().catch(() => ({})); throw new Error(err.error ?? 'Falha no upload') }
       const { url, fileName } = await r.json()
       await sendMessage(fileName ?? file.name, type, { mediaUrl: url, fileName })
       toast.success('Arquivo enviado!')
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha ao enviar arquivo')
-    } finally {
-      setUploading(false)
-    }
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao enviar arquivo') }
+    finally { setUploading(false) }
   }
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>, type: AttachType) => {
-    const file = e.target.files?.[0]
-    if (file) uploadAndSend(file, type)
-    e.target.value = ''
+    const file = e.target.files?.[0]; if (file) uploadAndSend(file, type); e.target.value = ''
   }
+  const pickFile = (ref: React.RefObject<HTMLInputElement | null>) => { setShowAttach(false); setTimeout(() => ref.current?.click(), 10) }
 
-  const pickFile = (ref: React.RefObject<HTMLInputElement | null>) => {
-    setShowAttach(false)
-    setTimeout(() => ref.current?.click(), 10)
-  }
-
-  const handleStopRecording = async () => {
-    const file = await stopRec()
-    if (file) await uploadAndSend(file, 'audio')
-  }
+  const handleStopRecording = async () => { const file = await stopRec(); if (file) await uploadAndSend(file, 'audio') }
 
   const handleDeleteMessage = async (msgId: string) => {
-    const res = await fetch(`/api/whatsapp/messages/${msgId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const res = await fetch(`/api/whatsapp/messages/${msgId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) { toast.error('Não foi possível excluir.'); return }
     toast.success('Mensagem excluída.')
   }
 
+  const handleReact = async (msgId: string, emoji: string) => {
+    await fetch(`/api/whatsapp/messages/${msgId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reaction: emoji }),
+    }).catch(() => null)
+  }
+
+  const handleForwardTo = async (targetConvId: string) => {
+    if (!forwardMsg) return
+    setShowForwardModal(false)
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: targetConvId,
+          content: forwardMsg.content ?? `[${forwardMsg.type}]`,
+          type: forwardMsg.type ?? 'text',
+          mediaUrl: forwardMsg.media_url,
+        }),
+      })
+      if (!res.ok) throw new Error('Falha')
+      toast.success('Mensagem encaminhada!')
+    } catch { toast.error('Falha ao encaminhar.') }
+  }
+
   const handleDeleteConversation = async () => {
-    if (!selectedConvId) return
-    setShowConvMenu(false)
-    const res = await fetch(`/api/whatsapp/conversations/${selectedConvId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    if (!selectedConvId) return; setShowConvMenu(false)
+    const res = await fetch(`/api/whatsapp/conversations/${selectedConvId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) { toast.error('Não foi possível excluir a conversa.'); return }
-    setSelectedConvId(null)
-    toast.success('Conversa excluída.')
+    setSelectedConvId(null); toast.success('Conversa excluída.')
   }
 
   const handleNewConversation = async () => {
-    if (!newPhone || !newInstanceId) return
-    setCreatingConv(true)
+    if (!newPhone || !newInstanceId) return; setCreatingConv(true)
     try {
-      const conv = await createConversation({
-        instance_id: newInstanceId,
-        phone: newPhone.replace(/\D/g, ''),
-        contact_name: newName || undefined,
-      })
-      setSelectedConvId(conv.id)
-      setShowNewConv(false); setNewPhone(''); setNewName('')
-      setStatusFilter('open')
+      const conv = await createConversation({ instance_id: newInstanceId, phone: newPhone.replace(/\D/g, ''), contact_name: newName || undefined })
+      setSelectedConvId(conv.id); setShowNewConv(false); setNewPhone(''); setNewName(''); setStatusFilter('open')
       toast.success('Conversa criada!')
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro ao criar conversa') }
     finally { setCreatingConv(false) }
@@ -390,10 +464,7 @@ export default function WhatsAppInbox() {
   const unread   = conversations.filter(c => (c.unread_count ?? 0) > 0).length
   const isClosed = selectedConv?.status === 'closed'
 
-  const convInstance = selectedConv
-    ? (selectedConv.instance ?? instances.find(i => i.id === selectedConv.instance_id))
-    : null
-
+  const convInstance = selectedConv ? (selectedConv.instance ?? instances.find(i => i.id === selectedConv.instance_id)) : null
   const convName = selectedConv ? (selectedConv.contact_name ?? selectedConv.phone) : ''
   const convGrad = selectedConv ? avatarColor(convName) : 'from-blue-500 to-blue-600'
 
@@ -401,12 +472,40 @@ export default function WhatsAppInbox() {
     <div className="flex flex-col" style={{ height: 'calc(100vh - 4rem)', padding: '1rem' }}>
 
       {/* Hidden file inputs */}
-      <input ref={imgRef} type="file" accept="image/*"                                         className="hidden" onChange={e => handleFileChange(e, 'image')} />
-      <input ref={vidRef} type="file" accept="video/*"                                         className="hidden" onChange={e => handleFileChange(e, 'video')} />
+      <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={e => handleFileChange(e, 'image')} />
+      <input ref={vidRef} type="file" accept="video/*" className="hidden" onChange={e => handleFileChange(e, 'video')} />
       <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip" className="hidden" onChange={e => handleFileChange(e, 'document')} />
-      <input ref={audRef} type="file" accept="audio/*"                                         className="hidden" onChange={e => handleFileChange(e, 'audio')} />
+      <input ref={audRef} type="file" accept="audio/*" className="hidden" onChange={e => handleFileChange(e, 'audio')} />
 
-      {/* Modal nova conversa */}
+      {/* Forward modal */}
+      {showForwardModal && forwardMsg && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowForwardModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="font-bold text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-2">
+              <Forward className="w-5 h-5 text-blue-500" /> Encaminhar mensagem
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 truncate italic">
+              "{forwardMsg.content ?? `[${forwardMsg.type}]`}"
+            </p>
+            <div className="max-h-60 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-700">
+              {conversations.filter(c => c.id !== selectedConvId).length === 0 ? (
+                <p className="p-4 text-sm text-slate-400 text-center">Nenhuma outra conversa</p>
+              ) : conversations.filter(c => c.id !== selectedConvId).map(c => (
+                <button key={c.id} onClick={() => handleForwardTo(c.id)}
+                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 text-left">
+                  <div className={`w-9 h-9 bg-gradient-to-br ${avatarColor(c.contact_name ?? c.phone)} rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0`}>
+                    {getInitials(c.contact_name, c.phone)}
+                  </div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{c.contact_name ?? c.phone}</p>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setShowForwardModal(false)} className="mt-4 w-full text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {/* New conversation modal */}
       {showNewConv && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowNewConv(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
@@ -429,17 +528,12 @@ export default function WhatsAppInbox() {
                 <select value={newInstanceId} onChange={e => setNewInstanceId(e.target.value)}
                   className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Selecionar número...</option>
-                  {instances.map(i => (
-                    <option key={i.id} value={i.id}>{i.name}{i.phone_number ? ` — ${i.phone_number}` : ''}</option>
-                  ))}
+                  {instances.map(i => <option key={i.id} value={i.id}>{i.name}{i.phone_number ? ` — ${i.phone_number}` : ''}</option>)}
                 </select>
               </div>
             </div>
             <div className="flex gap-2 mt-5">
-              <button onClick={() => setShowNewConv(false)}
-                className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-700">
-                Cancelar
-              </button>
+              <button onClick={() => setShowNewConv(false)} className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-700">Cancelar</button>
               <button onClick={handleNewConversation} disabled={!newPhone || !newInstanceId || creatingConv}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-1">
                 {creatingConv && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -467,14 +561,8 @@ export default function WhatsAppInbox() {
               </div>
             </div>
             <div className="flex gap-1">
-              <button onClick={e => { e.stopPropagation(); refetch() }} title="Atualizar"
-                className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">
-                <RefreshCw className="w-4 h-4" />
-              </button>
-              <button onClick={e => { e.stopPropagation(); setShowNewConv(true) }} title="Nova conversa"
-                className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                <Plus className="w-4 h-4" />
-              </button>
+              <button onClick={e => { e.stopPropagation(); refetch() }} title="Atualizar" className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><RefreshCw className="w-4 h-4" /></button>
+              <button onClick={e => { e.stopPropagation(); setShowNewConv(true) }} title="Nova conversa" className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /></button>
             </div>
           </div>
 
@@ -488,16 +576,14 @@ export default function WhatsAppInbox() {
 
           <div className="flex border-b border-slate-100 dark:border-slate-700">
             {([
-              { key: 'open',   label: 'Abertas',    count: counts.open },
+              { key: 'open', label: 'Abertas', count: counts.open },
               { key: 'closed', label: 'Encerradas', count: counts.closed },
-              { key: 'all',    label: 'Todas',      count: counts.all },
+              { key: 'all', label: 'Todas', count: counts.all },
             ] as { key: StatusFilter; label: string; count: number }[]).map(({ key, label, count }) => (
               <button key={key} onClick={() => setStatusFilter(key)}
                 className={`flex-1 py-2 text-xs font-medium relative transition-colors ${statusFilter === key ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
                 {label}
-                {count > 0 && (
-                  <span className={`ml-1 text-[10px] px-1 rounded-full ${statusFilter === key ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{count}</span>
-                )}
+                {count > 0 && <span className={`ml-1 text-[10px] px-1 rounded-full ${statusFilter === key ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{count}</span>}
                 {statusFilter === key && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
               </button>
             ))}
@@ -505,20 +591,16 @@ export default function WhatsAppInbox() {
 
           <div className="flex-1 overflow-y-auto">
             {convLoading ? (
-              <div className="p-4 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
-              </div>
+              <div className="p-4 text-center text-slate-400 text-xs flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>
             ) : filtered.length === 0 ? (
               <div className="p-6 text-center text-slate-400 text-sm">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p>Nenhuma conversa</p>
                 <button onClick={() => setShowNewConv(true)} className="mt-3 text-xs text-blue-600 hover:underline">+ Nova conversa</button>
               </div>
-            ) : (
-              filtered.map(conv => (
-                <ConversationItem key={conv.id} conv={conv} active={conv.id === selectedConvId} onClick={() => handleSelectConv(conv)} />
-              ))
-            )}
+            ) : filtered.map(conv => (
+              <ConversationItem key={conv.id} conv={conv} active={conv.id === selectedConvId} onClick={() => handleSelectConv(conv)} />
+            ))}
           </div>
         </div>
 
@@ -533,12 +615,8 @@ export default function WhatsAppInbox() {
                   {getInitials(selectedConv.contact_name, selectedConv.phone)}
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
-                    {selectedConv.contact_name ?? selectedConv.phone}
-                  </p>
-                  {selectedConv.contact_name && (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{selectedConv.phone}</p>
-                  )}
+                  <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{selectedConv.contact_name ?? selectedConv.phone}</p>
+                  {selectedConv.contact_name && <p className="text-[11px] text-slate-500 dark:text-slate-400">{selectedConv.phone}</p>}
                 </div>
               </div>
 
@@ -548,35 +626,22 @@ export default function WhatsAppInbox() {
                     <Smartphone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     <div className="text-right">
                       <p className="text-xs font-medium text-blue-700 dark:text-blue-300 leading-none">{convInstance.name}</p>
-                      {convInstance.phone_number && (
-                        <p className="text-[10px] text-blue-500 dark:text-blue-400 leading-none mt-0.5">{convInstance.phone_number}</p>
-                      )}
+                      {convInstance.phone_number && <p className="text-[10px] text-blue-500 dark:text-blue-400 leading-none mt-0.5">{convInstance.phone_number}</p>}
                     </div>
                   </div>
                 )}
-
                 {isClosed ? (
-                  <button onClick={() => reopenConversation(selectedConv.id)}
-                    className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-                    Reabrir
-                  </button>
+                  <button onClick={() => reopenConversation(selectedConv.id)} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Reabrir</button>
                 ) : (
-                  <button onClick={() => closeConversation(selectedConv.id)}
-                    className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg font-medium">
-                    Encerrar
-                  </button>
+                  <button onClick={() => closeConversation(selectedConv.id)} className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg font-medium">Encerrar</button>
                 )}
-
                 <div className="relative">
-                  <button onClick={e => { e.stopPropagation(); setShowConvMenu(v => !v) }}
-                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">
+                  <button onClick={e => { e.stopPropagation(); setShowConvMenu(v => !v) }} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">
                     <MoreVertical className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
                   {showConvMenu && (
-                    <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 z-30 min-w-[180px]"
-                      onClick={e => e.stopPropagation()}>
-                      <button onClick={handleDeleteConversation}
-                        className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                    <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 z-30 min-w-[180px]" onClick={e => e.stopPropagation()}>
+                      <button onClick={handleDeleteConversation} className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
                         <Trash2 className="w-4 h-4" /> Excluir conversa
                       </button>
                     </div>
@@ -589,8 +654,7 @@ export default function WhatsAppInbox() {
             {hasMore && (
               <div className="text-center py-1.5 bg-slate-50 dark:bg-slate-900/50 flex-shrink-0">
                 <button onClick={loadMore} disabled={msgLoading} className="text-xs text-blue-600 hover:underline flex items-center gap-1 mx-auto">
-                  {msgLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ChevronDown className="w-3 h-3" />}
-                  Carregar anteriores
+                  {msgLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ChevronDown className="w-3 h-3" />} Carregar anteriores
                 </button>
               </div>
             )}
@@ -598,14 +662,17 @@ export default function WhatsAppInbox() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto py-4 bg-slate-100 dark:bg-slate-900 min-h-0">
               {msgLoading && messages.length === 0 ? (
-                <div className="text-center text-slate-500 text-sm py-8 flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
-                </div>
+                <div className="text-center text-slate-500 text-sm py-8 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>
               ) : messages.length === 0 ? (
                 <div className="text-center text-slate-400 text-sm py-8">Nenhuma mensagem ainda.</div>
-              ) : (
-                messages.map(msg => <MessageBubble key={msg.id} msg={msg} onDelete={handleDeleteMessage} />)
-              )}
+              ) : messages.map(msg => (
+                <MessageBubble key={msg.id} msg={msg} token={token}
+                  onDelete={handleDeleteMessage}
+                  onReply={m => { setReplyTo(m); textareaRef.current?.focus() }}
+                  onForward={m => { setForwardMsg(m); setShowForwardModal(true) }}
+                  onReact={handleReact}
+                />
+              ))}
               <div ref={bottomRef} />
             </div>
 
@@ -620,9 +687,22 @@ export default function WhatsAppInbox() {
               {isClosed && (
                 <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-2 mb-2 text-sm text-amber-700 dark:text-amber-400">
                   <span>Conversa encerrada</span>
-                  <button onClick={() => reopenConversation(selectedConv.id)}
-                    className="ml-3 px-3 py-1 bg-blue-600 text-white rounded-lg text-xs hover:bg-blue-700 font-medium">
-                    Reabrir para responder
+                  <button onClick={() => reopenConversation(selectedConv.id)} className="ml-3 px-3 py-1 bg-blue-600 text-white rounded-lg text-xs hover:bg-blue-700 font-medium">Reabrir para responder</button>
+                </div>
+              )}
+
+              {/* Reply context bar */}
+              {replyTo && (
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-700 border-l-4 border-blue-500 rounded-xl px-3 py-2 mb-2">
+                  <Reply className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                      {replyTo.direction === 'inbound' ? (selectedConv?.contact_name ?? selectedConv?.phone) : 'Você'}
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 truncate">{replyTo.content ?? `[${replyTo.type}]`}</p>
+                  </div>
+                  <button onClick={() => setReplyTo(null)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-full flex-shrink-0">
+                    <X className="w-3.5 h-3.5 text-slate-400" />
                   </button>
                 </div>
               )}
@@ -640,17 +720,12 @@ export default function WhatsAppInbox() {
               ) : (
                 <div className="flex items-end gap-2">
                   <div className="relative flex-shrink-0">
-                    <button
-                      onClick={e => { e.stopPropagation(); setShowAttach(v => !v) }}
-                      disabled={isClosed}
-                      className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-40"
-                    >
+                    <button onClick={e => { e.stopPropagation(); setShowAttach(v => !v) }} disabled={isClosed}
+                      className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-40">
                       <Paperclip className="w-5 h-5" />
                     </button>
-
                     {showAttach && (
-                      <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl py-2 z-30 min-w-[210px]"
-                        onClick={e => e.stopPropagation()}>
+                      <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl py-2 z-30 min-w-[210px]" onClick={e => e.stopPropagation()}>
                         {([
                           { icon: ImageIcon, label: 'Imagem',              color: 'text-violet-500', ref: imgRef },
                           { icon: Video,     label: 'Vídeo',               color: 'text-red-500',    ref: vidRef },
@@ -666,26 +741,18 @@ export default function WhatsAppInbox() {
                     )}
                   </div>
 
-                  <textarea
-                    ref={textareaRef}
-                    value={text}
-                    onChange={e => setText(e.target.value)}
-                    onKeyDown={handleKeyDown}
+                  <textarea ref={textareaRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={handleKeyDown}
                     placeholder={isClosed ? 'Reabra a conversa para enviar mensagens' : 'Digite uma mensagem... (Enter para enviar)'}
-                    disabled={isClosed || sending}
-                    rows={1}
+                    disabled={isClosed || sending} rows={1}
                     className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ minHeight: '42px', maxHeight: '120px' }}
-                  />
+                    style={{ minHeight: '42px', maxHeight: '120px' }} />
 
                   {text.trim() ? (
-                    <button onClick={handleSend} disabled={sending || isClosed}
-                      className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
+                    <button onClick={handleSend} disabled={sending || isClosed} className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
                       {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                     </button>
                   ) : (
-                    <button onClick={startRec} disabled={isClosed}
-                      className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 flex-shrink-0">
+                    <button onClick={startRec} disabled={isClosed} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 flex-shrink-0">
                       <Mic className="w-5 h-5" />
                     </button>
                   )}
@@ -700,8 +767,7 @@ export default function WhatsAppInbox() {
             </div>
             <p className="font-semibold text-slate-600 dark:text-slate-300 text-lg">WhatsApp Inbox</p>
             <p className="text-sm mt-1 text-slate-400 dark:text-slate-500 text-center max-w-xs">Selecione uma conversa ou inicie uma nova.</p>
-            <button onClick={() => setShowNewConv(true)}
-              className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+            <button onClick={() => setShowNewConv(true)} className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
               <Plus className="w-4 h-4" /> Nova Conversa
             </button>
           </div>

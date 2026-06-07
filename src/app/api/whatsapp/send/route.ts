@@ -11,9 +11,9 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
     const body = await req.json().catch(() => ({}))
-    const { conversationId, content, type = 'text', mediaUrl, caption, fileName } = body
+    const { conversationId, content, type = 'text', mediaUrl, caption, fileName, replyToId, replyToContent, replyToSender } = body
 
-    if (!conversationId || !content) {
+    if (!conversationId || (type === 'text' && !content)) {
       return NextResponse.json({ error: 'conversationId e content são obrigatórios' }, { status: 400 })
     }
 
@@ -36,16 +36,19 @@ export async function POST(req: NextRequest) {
 
     if (!instance) return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
 
+    const replyMeta = replyToId ? { reply_to_id: replyToId, reply_to_content: replyToContent ?? null, reply_to_sender: replyToSender ?? null } : {}
+
     // Salva mensagem como pending antes de enviar
     const { data: pendingMsg } = await supabaseAdmin
       .from('whatsapp_messages')
       .insert({
         conversation_id: conversationId,
-        content,
+        content: content ?? null,
         type,
         direction: 'outbound',
         status: 'pending',
         media_url: mediaUrl ?? null,
+        metadata: replyMeta,
       })
       .select('id')
       .single()

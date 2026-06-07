@@ -88,6 +88,7 @@ export function useWhatsAppMessages(conversationId: string | null) {
 
   const sendMessage = useCallback(async (content: string, type = 'text', extras?: {
     mediaUrl?: string; caption?: string; fileName?: string
+    replyToId?: string; replyToContent?: string; replyToSender?: string
   }) => {
     if (!conversationId) return
 
