@@ -12,13 +12,10 @@ export async function GET(req: NextRequest) {
 
     if (!conversationId) return NextResponse.json({ error: 'conversationId é obrigatório' }, { status: 400 })
 
-    // Verifica que a conversa pertence ao usuário
-    const { data: conv } = await supabaseAdmin
-      .from('whatsapp_conversations')
-      .select('id')
-      .eq('id', conversationId)
-      .eq('owner_user_id', user.id)
-      .single()
+    // Verifica que a conversa pertence ao usuário (master vê todas)
+    const convQ = supabaseAdmin.from('whatsapp_conversations').select('id').eq('id', conversationId)
+    if (user.profileType !== 'master') convQ.eq('owner_user_id', user.id)
+    const { data: conv } = await convQ.single()
 
     if (!conv) return NextResponse.json({ error: 'Conversa não encontrada' }, { status: 404 })
 

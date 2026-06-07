@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
         type,
         direction: 'outbound',
         status: 'pending',
+        media_url: mediaUrl ?? null,
       })
       .select('id')
       .single()
