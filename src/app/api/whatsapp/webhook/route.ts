@@ -103,9 +103,9 @@ export async function POST(req: NextRequest) {
       msgType = 'document'
       content = payload.document.caption ?? payload.document.fileName ?? null
       mediaUrl = payload.document.url
-    } else if (payload.audio?.url) {
+    } else if (payload.audio?.url ?? payload.audio?.audioUrl ?? payload.ptt?.url ?? payload.ptt?.audioUrl) {
       msgType = 'audio'
-      mediaUrl = payload.audio.url
+      mediaUrl = payload.audio?.url ?? payload.audio?.audioUrl ?? payload.ptt?.url ?? payload.ptt?.audioUrl ?? null
     } else if (payload.video?.url) {
       msgType = 'video'
       content = payload.video.caption ?? null
