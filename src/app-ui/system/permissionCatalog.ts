@@ -123,6 +123,41 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Pagamentos', name: 'Config. Stripe',           key: 'stripe_config',         permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Pagamentos', name: 'Meus Pagamentos (App)',    key: 'stripe_meus_pagamentos', permissions: mkPerms(full(), full(), full(), full()) },
 
+  // ── Comunicação — WhatsApp (sub-permissões) ──────────────────────────────
+  {
+    group: 'Comunicação',
+    name: 'Instâncias WhatsApp',
+    key: 'whatsapp_instances',
+    permissions: mkPerms(
+      { master: true,  admin: true,  campo: false, church: false },
+      { master: true,  admin: true,  campo: false, church: false },
+      { master: true,  admin: true,  campo: false, church: false },
+      { master: true,  admin: false, campo: false, church: false },
+    ),
+  },
+  {
+    group: 'Comunicação',
+    name: 'Caixa de Entrada WhatsApp',
+    key: 'whatsapp_inbox',
+    permissions: mkPerms(
+      { master: true, admin: true, campo: true, church: true },
+      { master: true, admin: true, campo: true, church: true },
+      { master: true, admin: true, campo: true, church: true },
+      { master: false, admin: false, campo: false, church: false },
+    ),
+  },
+  {
+    group: 'Comunicação',
+    name: 'Envio Automático WhatsApp',
+    key: 'whatsapp_send',
+    permissions: mkPerms(
+      { master: true, admin: true, campo: true, church: true },
+      { master: true, admin: true, campo: true, church: true },
+      { master: true, admin: true, campo: true, church: true },
+      { master: false, admin: false, campo: false, church: false },
+    ),
+  },
+
   // ── Sistema ───────────────────────────────────────────────────────────────
   { group: 'Sistema', name: 'Usuários',          key: 'system_users',    permissions: mkPerms(mngr(), mngr(), mngr(), none()) },
   {

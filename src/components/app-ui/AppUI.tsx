@@ -1,4 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router';
+import { Toaster } from 'sonner';
 import { del } from 'idb-keyval';
 import { 
   LayoutDashboard, 
@@ -19,7 +20,6 @@ import {
   Zap,
   CheckSquare,
   BarChart3,
-  Mail,
   Inbox,
   UserPlus,
   FileText,
@@ -42,7 +42,6 @@ import {
   Plus,
   User,
   List,
-  Radio,
   Ticket,
   BookOpen,
   LogOut,
@@ -186,10 +185,8 @@ const appNavigation: NavigationSection[] = [
   {
     section: 'Comunicação',
     items: [
-      { name: 'WhatsApp',          path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp' },
-      { name: 'E-mail Campanhas',  path: '/app-ui/email-campaigns-screen',       icon: Mail,          permKey: 'email_campaigns' },
-      { name: 'SMS',               path: '/app-ui/sms-campaigns',                icon: MessageSquare, permKey: 'sms' },
-      { name: 'Broadcast',         path: '/app-ui/broadcast-message',            icon: Radio,         permKey: 'email_campaigns' },
+      { name: 'WhatsApp (Caixa)',   path: '/app-ui/communication/whatsapp-inbox',      icon: MessageCircle, permKey: 'whatsapp_inbox' },
+      { name: 'WhatsApp Instâncias', path: '/app-ui/system/whatsapp',                icon: Smartphone,    permKey: 'whatsapp_instances' },
     ]
   },
   {
@@ -1781,6 +1778,7 @@ export function AppUI() {
         )}
       </AnimatePresence>
 
+        <Toaster position="top-right" richColors closeButton />
         {/* Content */}
         <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
           {isCurrentPathAllowed ? (
