@@ -79,6 +79,7 @@ import { THEME_EVENT_NAME, applyThemeSettings, loadThemeSettings, saveThemeSetti
 
 import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
+import { MobileAppOverlay } from '../public/MobileAppPreview';
 
 interface ContextSwitcherItem {
   id: string;
@@ -392,6 +393,7 @@ export function AppUI() {
   }
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mrm_theme') === 'dark');
+  const [showAppPreview, setShowAppPreview] = useState(false);
   const [branding, setBranding] = useState<ThemeSettings>(() => loadThemeSettings());
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -1159,6 +1161,8 @@ export function AppUI() {
         titles={memberTitles}
       />
 
+      {showAppPreview && <MobileAppOverlay onClose={() => setShowAppPreview(false)} />}
+
       <AnimatePresence>
         {quickAddOpen && (
           <>
@@ -1335,6 +1339,17 @@ export function AppUI() {
               title={darkMode ? 'Modo claro' : 'Modo escuro'}
             >
               {darkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-slate-600" />}
+            </button>
+
+            {/* Mobile app preview button */}
+            <button
+              onClick={() => setShowAppPreview(true)}
+              title="Ver App Mobile"
+              className="inline-flex relative w-9 h-9 rounded-full items-center justify-center transition-all hover:scale-110"
+              style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 0 14px rgba(34,197,94,0.5)' }}
+            >
+              <Smartphone className="w-4 h-4 text-white" />
+              <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(34,197,94,0.2)' }} />
             </button>
 
             {/* Notifications button — hidden on mobile (available in 3-dots drawer) */}
