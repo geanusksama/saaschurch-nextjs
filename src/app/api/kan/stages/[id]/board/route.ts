@@ -37,6 +37,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       ];
     }
 
+    // Exclude cards for PF and PJ members
+    cardWhere.AND = [
+      {
+        OR: [
+          { memberId: null },
+          {
+            member: {
+              OR: [
+                { memberType: null },
+                { memberType: { notIn: ["PF", "PJ", "pf", "pj"] } }
+              ]
+            }
+          }
+        ]
+      }
+    ];
+
     const cards = await prisma.kanCard.findMany({
       where: cardWhere,
       include: {

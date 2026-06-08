@@ -174,7 +174,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Try to create KanCard for CAD (Cadastro) and apply matrix rule
     try {
       const service = await prisma.kanService.findFirst({ where: { isActive: true, sigla: "CAD" } });
-      if (service && member) {
+      if (normalizedMemberType === "MEMBRO" && service && member) {
         let stage = await prisma.kanStage.findFirst({ where: { serviceId: service.id, isActive: true }, include: { columns: { where: { columnIndex: 1 }, take: 1 } } });
         if (!stage || !stage.columns?.length) {
           const rule = await prisma.kanMatrixRule.findFirst({ where: { serviceId: service.id, columnIndex: 1, isActive: true }, select: { stageId: true } });
