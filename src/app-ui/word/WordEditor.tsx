@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { usePermissions } from '../../lib/usePermissions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type RibbonTab = 'home' | 'insert' | 'data' | 'view' | 'arquivo';
+type RibbonTab = 'home' | 'insert' | 'data' | 'view' | 'arquivo' | 'table';
 type InsertMode = 'text' | 'table' | 'list';
 
 interface MemberRow {
@@ -16,6 +16,7 @@ interface MemberRow {
   church_id?: string;
   church_name?: string;
   regional_name?: string;
+  photo_url?: string;
 }
 interface Regional { id: string; name: string; }
 interface Church { id: string; name: string; regional_id: string; }
@@ -120,6 +121,7 @@ const RBtnLarge = React.forwardRef<HTMLButtonElement, RBtnLargeProps>(
   function RBtnLargeInner({ icon, label, title, onClick, active, disabled, danger }, ref) {
     return (
       <button ref={ref} title={title} onClick={onClick} disabled={disabled}
+        onMouseDown={e => e.preventDefault()}
         className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 min-h-[52px] min-w-[44px] rounded text-[10px] transition-all border shrink-0 ${
           active
             ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300'
@@ -146,6 +148,7 @@ interface RBtnSmallProps {
 function RBtnSmall({ icon, label, title, onClick, active, disabled, className = '' }: RBtnSmallProps) {
   return (
     <button title={title} onClick={onClick} disabled={disabled}
+      onMouseDown={e => e.preventDefault()}
       className={`flex items-center justify-center gap-0.5 px-1.5 h-7 text-xs rounded transition-all border shrink-0 ${
         active
           ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300'
@@ -306,6 +309,29 @@ function ColorBtn({ title, defaultColor, onApply, label, highlight }: {
   );
 }
 
+function ColorBtnLarge({ title, defaultColor, onApply, label }: {
+  title: string; defaultColor: string; onApply: (c: string) => void; label: string;
+}) {
+  const [color, setColor] = React.useState(defaultColor);
+  return (
+    <div className="relative flex flex-col items-center justify-center cursor-pointer px-2 py-1 min-h-[52px] min-w-[56px] rounded border border-transparent hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shrink-0 text-slate-600 dark:text-slate-300" title={title}>
+      <span className="flex items-center justify-center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+          <path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2a2 2 0 0 0 2.8 0L19 11Z"/>
+          <path d="m5 2 5 5"/>
+          <path d="M2 13h15"/>
+          <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/>
+        </svg>
+      </span>
+      {label && <span className="whitespace-nowrap text-[10px] leading-tight text-center max-w-[60px] mt-0.5">{label}</span>}
+      <div className="w-8 h-[4px] rounded-sm mt-[3px]" style={{ background: color }} />
+      <input type="color" value={color}
+        onChange={e => { setColor(e.target.value); onApply(e.target.value); }}
+        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+    </div>
+  );
+}
+
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 const BoldIco = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 4h8a4 4 0 0 1 0 8H6z"/><path d="M6 12h9a4 4 0 0 1 0 8H6z"/></svg>;
 const ItalicIco = () => <svg width="11" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>;
@@ -322,7 +348,13 @@ const IndLessIco = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="n
 const UndoIco = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 7v6h6"/><path d="M3 13A9 9 0 1 0 5.4 6.4"/></svg>;
 const RedoIco = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 7v6h-6"/><path d="M21 13A9 9 0 1 1 18.6 6.4"/></svg>;
 
+const AlignTopIco = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18M3 9h14M3 15h10"/></svg>;
+const AlignMiddleIco = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18M5 7h14M7 17h10"/></svg>;
+const AlignBottomIco = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 15h14M3 9h10"/></svg>;
+
 const Ico = {
+  UserCard: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg>,
+  AlignWidth: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M5 3v18M19 3v18M9 7l-3 5 3 5M15 7l3 5-3 5M6 12h12"/></svg>,
   Copy: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
   Cut: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><circle cx="6" cy="20" r="2"/><circle cx="6" cy="4" r="2"/><line x1="6" y1="6" x2="6" y2="18"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg>,
   Paste: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M9 2h6a1 1 0 0 1 1 1v1H8V3a1 1 0 0 1 1-1z"/><rect x="4" y="4" width="16" height="18" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="14" y2="14"/></svg>,
@@ -426,6 +458,166 @@ export default function WordEditor() {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [insertMode, setInsertMode] = useState<InsertMode>('table');
 
+  // Table context states
+  const [isInTable, setIsInTable] = useState(false);
+  const [focusedCell, setFocusedCell] = useState<HTMLTableCellElement | null>(null);
+
+  // Photo & Context Menu & History States
+  const [selectedFields, setSelectedFields] = useState<string[]>(['rol', 'name', 'church', 'baptism', 'phone']);
+  const [selectedImg, setSelectedImg] = useState<HTMLImageElement | null>(null);
+  const [tableContextMenu, setTableContextMenu] = useState<{ x: number; y: number; cell: HTMLTableCellElement } | null>(null);
+  const [memberHistories, setMemberHistories] = useState<{
+    functions: any[];
+    titles: any[];
+    occurrences: any[];
+  } | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedHistoryTypes, setSelectedHistoryTypes] = useState<string[]>(['functions', 'titles', 'occurrences']);
+  const [fichaCategories, setFichaCategories] = useState<string[]>([
+    'photo', 'personal', 'contact', 'address', 'church', 'family', 'emergency'
+  ]);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showFichaModal, setShowFichaModal] = useState(false);
+  const [selectedMemberDetails, setSelectedMemberDetails] = useState<any | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  // loadMemberHistories definition
+  const loadMemberHistories = useCallback(async (memberId: string) => {
+    setHistoryLoading(true);
+    try {
+      const [funcsRes, titlesRes, occurrencesRes] = await Promise.all([
+        supabase
+          .from('church_function_history')
+          .select('*, church_function_catalog(name)')
+          .eq('member_id', memberId)
+          .order('start_date', { ascending: false }),
+        supabase
+          .from('member_title_history')
+          .select('*')
+          .eq('member_id', memberId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('member_occurrences')
+          .select('*')
+          .eq('member_id', memberId)
+          .order('occurred_at', { ascending: false })
+      ]);
+      setMemberHistories({
+        functions: funcsRes.data || [],
+        titles: titlesRes.data || [],
+        occurrences: occurrencesRes.data || []
+      });
+    } catch (e) {
+      console.error('loadMemberHistories:', e);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  // loadMemberDetails definition
+  const loadMemberDetails = useCallback(async (memberId: string) => {
+    setDetailsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('*, churches(id, name, regional_id, regionais(name))')
+        .eq('id', memberId)
+        .single();
+      if (error) throw error;
+      setSelectedMemberDetails(data);
+    } catch (e) {
+      console.error('loadMemberDetails:', e);
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, []);
+
+  // Selection change listener to track table focus and dynamic font selection synchronization
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const node = sel.getRangeAt(0).startContainer;
+        if (editorRef.current && editorRef.current.contains(node)) {
+          const el = node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement) : node.parentElement;
+          
+          // Track cell focus
+          const cell = el?.closest('td, th') as HTMLTableCellElement | null;
+          if (cell) {
+            setIsInTable(true);
+            setFocusedCell(cell);
+          } else {
+            setIsInTable(false);
+            setFocusedCell(null);
+          }
+
+          // Sync font family and size dropdowns from current cursor computed styles
+          if (el && document.activeElement === editorRef.current) {
+            const computedStyle = window.getComputedStyle(el);
+            const sizeStr = computedStyle.fontSize;
+            if (sizeStr) {
+              let pt = 12;
+              if (sizeStr.endsWith('px')) {
+                pt = Math.round(parseFloat(sizeStr) * 0.75);
+              } else if (sizeStr.endsWith('pt')) {
+                pt = Math.round(parseFloat(sizeStr));
+              } else {
+                const parsed = parseFloat(sizeStr);
+                if (!isNaN(parsed)) pt = Math.round(parsed);
+              }
+              setFontSize(String(pt));
+            }
+            let family = computedStyle.fontFamily;
+            if (family) {
+              family = family.split(',')[0].replace(/['"]/g, '').trim();
+              setFontFamily(family);
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, []);
+
+  // Click on image listener to open resizing widget
+  useEffect(() => {
+    const handleImgClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'IMG' && editorRef.current?.contains(target)) {
+        setSelectedImg(target as HTMLImageElement);
+      } else {
+        setSelectedImg(null);
+      }
+    };
+    document.addEventListener('click', handleImgClick);
+    return () => document.removeEventListener('click', handleImgClick);
+  }, []);
+
+  // Close context menus on document click
+  useEffect(() => {
+    const closeMenus = () => {
+      setTableContextMenu(null);
+    };
+    document.addEventListener('click', closeMenus);
+    return () => document.removeEventListener('click', closeMenus);
+  }, []);
+
+  // Fetch histories and details automatically when exactly one member is selected
+  useEffect(() => {
+    if (selectedRows.size === 1) {
+      const memberId = Array.from(selectedRows)[0];
+      loadMemberHistories(memberId);
+      loadMemberDetails(memberId);
+    } else {
+      setMemberHistories(null);
+      setSelectedMemberDetails(null);
+    }
+  }, [selectedRows, loadMemberHistories, loadMemberDetails]);
+
   // Page margins in cm
   const [marginLeft, setMarginLeft] = useState(2.5);
   const [marginRight, setMarginRight] = useState(2.5);
@@ -441,6 +633,62 @@ export default function WordEditor() {
 
   // ── execCommand wrapper ──────────────────────────────────────────────────────
   const focusEditor = useCallback(() => { editorRef.current?.focus(); }, []);
+
+  const getSelectedCells = useCallback((): HTMLTableCellElement[] => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return [];
+    const range = sel.getRangeAt(0);
+    const table = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE 
+      ? (range.commonAncestorContainer as HTMLElement).closest('table') 
+      : range.commonAncestorContainer.parentElement?.closest('table');
+    if (!table) return [];
+
+    const cells: HTMLTableCellElement[] = [];
+    table.querySelectorAll('td, th').forEach(cell => {
+      if (sel.containsNode(cell, true)) {
+        cells.push(cell as HTMLTableCellElement);
+      }
+    });
+    
+    if (cells.length === 0) {
+      const startCell = range.startContainer.nodeType === Node.ELEMENT_NODE 
+        ? (range.startContainer as HTMLElement).closest('td, th') 
+        : range.startContainer.parentElement?.closest('td, th');
+      if (startCell && table.contains(startCell)) {
+        cells.push(startCell as HTMLTableCellElement);
+      }
+    }
+    return cells;
+  }, []);
+
+  const getVirtualGrid = useCallback((table: HTMLTableElement) => {
+    const rows = Array.from(table.rows);
+    const grid: (HTMLTableCellElement | null)[][] = [];
+    rows.forEach(() => grid.push([]));
+    
+    rows.forEach((row, ri) => {
+      let ci = 0;
+      Array.from(row.cells).forEach(cell => {
+        const colspan = cell.colSpan || 1;
+        const rowspan = cell.rowSpan || 1;
+        
+        while (grid[ri][ci] !== undefined) {
+          ci++;
+        }
+        
+        for (let r = 0; r < rowspan; r++) {
+          for (let c = 0; c < colspan; c++) {
+            if (grid[ri + r]) {
+              grid[ri + r][ci + c] = cell;
+            }
+          }
+        }
+        ci += colspan;
+      });
+    });
+    return grid;
+  }, []);
+
   const applyCmd = useCallback((cmd: string, val?: string) => {
     focusEditor();
     document.execCommand(cmd, false, val);
@@ -448,8 +696,31 @@ export default function WordEditor() {
 
   const applyFont = useCallback((family: string) => {
     setFontFamily(family);
-    applyCmd('fontName', family);
-  }, [applyCmd]);
+    focusEditor();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (range.collapsed) {
+      const span = document.createElement('span');
+      span.style.fontFamily = family;
+      span.innerHTML = '&#8203;';
+      range.insertNode(span);
+      range.setStart(span.firstChild!, 1);
+      range.setEnd(span.firstChild!, 1);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      document.execCommand('styleWithCSS', false, 'false');
+      document.execCommand('fontName', false, 'temp-font-family');
+      if (editorRef.current) {
+        const fonts = editorRef.current.querySelectorAll('font[face="temp-font-family"]');
+        fonts.forEach(font => {
+          font.removeAttribute('face');
+          font.style.fontFamily = family;
+        });
+      }
+    }
+  }, [focusEditor]);
 
   const applySize = useCallback((pt: string) => {
     setFontSize(pt);
@@ -457,10 +728,55 @@ export default function WordEditor() {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const range = sel.getRangeAt(0);
-    if (range.collapsed) return;
-    const span = document.createElement('span');
-    span.style.fontSize = `${pt}pt`;
-    try { range.surroundContents(span); } catch { /* cross-element selection, ignore */ }
+    if (range.collapsed) {
+      const span = document.createElement('span');
+      span.style.fontSize = `${pt}pt`;
+      span.innerHTML = '&#8203;';
+      range.insertNode(span);
+      range.setStart(span.firstChild!, 1);
+      range.setEnd(span.firstChild!, 1);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      document.execCommand('styleWithCSS', false, 'false');
+      document.execCommand('fontSize', false, '7');
+      if (editorRef.current) {
+        const fonts = editorRef.current.querySelectorAll('font[size="7"]');
+        fonts.forEach(font => {
+          font.removeAttribute('size');
+          font.style.fontSize = `${pt}pt`;
+        });
+      }
+    }
+  }, [focusEditor]);
+
+  const applyStyleTemplate = useCallback((label: string) => {
+    focusEditor();
+    if (label === 'Normal') {
+      document.execCommand('formatBlock', false, 'p');
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const node = sel.getRangeAt(0).startContainer;
+        const block = node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement).closest('p, h1, h2, h3, h4, li, td') : node.parentElement?.closest('p, h1, h2, h3, h4, li, td');
+        if (block) {
+          (block as HTMLElement).style.lineHeight = '';
+        }
+      }
+    } else if (label === 'Sem Espaç.') {
+      document.execCommand('formatBlock', false, 'p');
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const node = sel.getRangeAt(0).startContainer;
+        const block = node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement).closest('p, h1, h2, h3, h4, li, td') : node.parentElement?.closest('p, h1, h2, h3, h4, li, td');
+        if (block) {
+          (block as HTMLElement).style.lineHeight = '1.1';
+        }
+      }
+    } else if (label === 'Título 1') {
+      document.execCommand('formatBlock', false, 'h1');
+    } else if (label === 'Título 2') {
+      document.execCommand('formatBlock', false, 'h2');
+    }
   }, [focusEditor]);
 
   // ── Load user profile + regionals/churches (scoped by tenant) ────────────────
@@ -576,6 +892,7 @@ export default function WordEditor() {
         rol: m.rol ? String(m.rol) : '',
         baptism_date: m.baptism_date || '',
         phone: m.phone || '',
+        photo_url: m.photo_url || '',
         church_name: (m.churches as any)?.name || '',
         regional_name: (m.churches as any)?.regionais?.name || '',
       }));
@@ -599,20 +916,60 @@ export default function WordEditor() {
     if (sel.length === 0) return;
 
     if (insertMode === 'table') {
-      const cols = ['#', 'ROL', 'Nome', 'Igreja', 'Data Batismo', 'Telefone'];
+      const fieldLabels: Record<string, string> = {
+        photo: 'Foto',
+        rol: 'ROL',
+        name: 'Nome',
+        church: 'Igreja',
+        baptism: 'Data Batismo',
+        phone: 'Telefone'
+      };
+      
+      const fieldWidths: Record<string, string> = {
+        photo: '10%',
+        rol: '10%',
+        name: '35%',
+        church: '25%',
+        baptism: '13%',
+        phone: '12%'
+      };
+
+      const columnsToInsert = ['#', ...selectedFields.filter(f => fieldLabels[f])];
+      
       let html = `<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#e2e8f0;">`;
-      cols.forEach(c => { html += `<th style="border:1px solid #94a3b8;padding:6px 8px;text-align:left;font-size:11pt;">${c}</th>`; });
+      columnsToInsert.forEach(col => {
+        const label = col === '#' ? '#' : fieldLabels[col];
+        const width = col === '#' ? '5%' : fieldWidths[col];
+        html += `<th style="border:1px solid #94a3b8;padding:6px 8px;text-align:left;font-size:11pt;width:${width};">${label}</th>`;
+      });
       html += '</tr></thead><tbody>';
+      
       sel.forEach((row, i) => {
         const bg = i % 2 === 0 ? 'background:#fff' : 'background:#f8fafc';
-        html += `<tr style="${bg};">
-          <td style="border:1px solid #94a3b8;padding:6px 8px;">${i + 1}</td>
-          <td style="border:1px solid #94a3b8;padding:6px 8px;">${row.rol || ''}</td>
-          <td style="border:1px solid #94a3b8;padding:6px 8px;">${row.name}</td>
-          <td style="border:1px solid #94a3b8;padding:6px 8px;">${row.church_name || ''}</td>
-          <td style="border:1px solid #94a3b8;padding:6px 8px;">${row.baptism_date ? new Date(row.baptism_date).toLocaleDateString('pt-BR') : ''}</td>
-          <td style="border:1px solid #94a3b8;padding:6px 8px;">${row.phone || ''}</td>
-        </tr>`;
+        html += `<tr style="${bg};">`;
+        
+        columnsToInsert.forEach(col => {
+          if (col === '#') {
+            html += `<td style="border:1px solid #94a3b8;padding:6px 8px;">${i + 1}</td>`;
+          } else if (col === 'photo') {
+            const imgHtml = row.photo_url 
+              ? `<img src="${row.photo_url}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;display:block;" />`
+              : `<div style="width:40px;height:40px;background:#e2e8f0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:16px;">👤</div>`;
+            html += `<td style="border:1px solid #94a3b8;padding:6px 8px;">${imgHtml}</td>`;
+          } else if (col === 'rol') {
+            html += `<td style="border:1px solid #94a3b8;padding:6px 8px;">${row.rol || ''}</td>`;
+          } else if (col === 'name') {
+            html += `<td style="border:1px solid #94a3b8;padding:6px 8px;font-weight:bold;">${row.name}</td>`;
+          } else if (col === 'church') {
+            html += `<td style="border:1px solid #94a3b8;padding:6px 8px;">${row.church_name || ''}</td>`;
+          } else if (col === 'baptism') {
+            html += `<td style="border:1px solid #94a3b8;padding:6px 8px;">${row.baptism_date ? new Date(row.baptism_date).toLocaleDateString('pt-BR') : ''}</td>`;
+          } else if (col === 'phone') {
+            html += `<td style="border:1px solid #94a3b8;padding:6px 8px;">${row.phone || ''}</td>`;
+          }
+        });
+        
+        html += '</tr>';
       });
       html += '</tbody></table><br/>';
       document.execCommand('insertHTML', false, html);
@@ -624,7 +981,7 @@ export default function WordEditor() {
       document.execCommand('insertText', false, text);
     }
     setSelectedRows(new Set());
-  }, [focusEditor, dataRows, selectedRows, insertMode]);
+  }, [focusEditor, dataRows, selectedRows, insertMode, selectedFields]);
 
   const toggleRow = useCallback((id: string) => {
     setSelectedRows(prev => {
@@ -638,6 +995,574 @@ export default function WordEditor() {
     if (selectedRows.size === dataRows.length) setSelectedRows(new Set());
     else setSelectedRows(new Set(dataRows.map(r => r.id)));
   }, [selectedRows, dataRows]);
+
+
+  // ── Member history and forms insertion ─────────────────────────────────────────
+  const insertMemberForm = useCallback(() => {
+    if (!selectedMemberDetails) return;
+    focusEditor();
+    
+    const m = selectedMemberDetails;
+    const formatD = (d?: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '';
+    
+    const photoBox = fichaCategories.includes('photo') 
+      ? (m.photo_url 
+        ? `<img src="${m.photo_url}" style="width:120px;height:140px;object-fit:cover;border:1px solid #cbd5e1;border-radius:4px;display:block;" />`
+        : `<div style="width:120px;height:140px;border:1px dashed #cbd5e1;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;background:#f8fafc;"><span>Foto 3x4</span></div>`)
+      : '';
+
+    let html = `
+      <div style="font-family:'Times New Roman',serif;color:#1e293b;margin-bottom:20px;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+          <tr>
+            <td style="border:none;padding:0;vertical-align:middle;">
+              <h2 style="margin:0;font-size:16pt;color:#1e3a8a;font-weight:bold;text-transform:uppercase;">Ficha Cadastral de Membro</h2>
+              <p style="margin:4px 0 0;font-size:10pt;color:#64748b;">Membro da Assembleia de Deus • ROL nº <strong>${m.rol || 'N/A'}</strong></p>
+            </td>
+            ${photoBox ? `<td style="border:none;padding:0;width:130px;text-align:right;vertical-align:top;">${photoBox}</td>` : ''}
+          </tr>
+        </table>
+    `;
+
+    // Personal Data Section
+    if (fichaCategories.includes('personal')) {
+      html += `
+        <h3 style="font-size:11pt;color:#1e3a8a;margin:12px 0 6px;border-bottom:2px solid #cbd5e1;padding-bottom:2px;font-weight:bold;text-transform:uppercase;">Dados Pessoais</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10pt;">
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:60%;"><strong>Nome Completo:</strong><br/>${m.full_name || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:40%;"><strong>Nome Preferencial:</strong><br/>${m.preferred_name || ''}</td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>CPF:</strong> ${m.cpf || ''} &nbsp;&nbsp;&nbsp;&nbsp; <strong>RG:</strong> ${m.rg || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>Data de Nascimento:</strong> ${formatD(m.birth_date)}</td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>Gênero:</strong> ${m.gender || ''} &nbsp;&nbsp;&nbsp;&nbsp; <strong>Estado Civil:</strong> ${m.marital_status || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>Nacionalidade:</strong> ${m.nationality || ''}</td>
+          </tr>
+        </table>
+      `;
+    }
+
+    // Contact Data Section
+    if (fichaCategories.includes('contact')) {
+      html += `
+        <h3 style="font-size:11pt;color:#1e3a8a;margin:12px 0 6px;border-bottom:2px solid #cbd5e1;padding-bottom:2px;font-weight:bold;text-transform:uppercase;">Contatos</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10pt;">
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:50%;"><strong>E-mail:</strong><br/>${m.email || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:25%;"><strong>Celular:</strong><br/>${m.mobile || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:25%;"><strong>Telefone Residencial:</strong><br/>${m.phone || ''}</td>
+          </tr>
+        </table>
+      `;
+    }
+
+    // Address Data Section
+    if (fichaCategories.includes('address')) {
+      html += `
+        <h3 style="font-size:11pt;color:#1e3a8a;margin:12px 0 6px;border-bottom:2px solid #cbd5e1;padding-bottom:2px;font-weight:bold;text-transform:uppercase;">Endereço</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10pt;">
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:70%;"><strong>Logradouro:</strong><br/>${m.address_street || ''}, ${m.address_number || 'S/N'}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:30%;"><strong>Complemento:</strong><br/>${m.address_complement || ''}</td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>Bairro:</strong><br/>${m.address_neighborhood || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>Cidade / UF / CEP:</strong><br/>${m.address_city || ''} - ${m.address_state || ''} &nbsp;&nbsp;&nbsp;&nbsp; CEP: ${m.address_zipcode || ''}</td>
+          </tr>
+        </table>
+      `;
+    }
+
+    // Church Data Section
+    if (fichaCategories.includes('church')) {
+      html += `
+        <h3 style="font-size:11pt;color:#1e3a8a;margin:12px 0 6px;border-bottom:2px solid #cbd5e1;padding-bottom:2px;font-weight:bold;text-transform:uppercase;">Dados Eclesiásticos</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10pt;">
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:50%;"><strong>Congregação:</strong><br/>${m.churches?.name || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:50%;"><strong>Regional:</strong><br/>${m.churches?.regionais?.name || ''}</td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>Título Eclesiástico:</strong><br/>${m.ecclesiastical_title || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>Data Batismo:</strong><br/>${formatD(m.baptism_date)}</td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>Status de Membresia:</strong><br/>${m.membership_status || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;"><strong>Data de Entrada:</strong><br/>${formatD(m.membership_date)}</td>
+          </tr>
+        </table>
+      `;
+    }
+
+    // Family Data Section
+    if (fichaCategories.includes('family')) {
+      html += `
+        <h3 style="font-size:11pt;color:#1e3a8a;margin:12px 0 6px;border-bottom:2px solid #cbd5e1;padding-bottom:2px;font-weight:bold;text-transform:uppercase;">Família</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10pt;">
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:50%;"><strong>Nome do Pai:</strong><br/>${m.father_name || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:50%;"><strong>Nome da Mãe:</strong><br/>${m.mother_name || ''}</td>
+          </tr>
+          ${m.spouse_name ? `
+          <tr>
+            <td colspan="2" style="border:1px solid #cbd5e1;padding:6px;"><strong>Cônjuge:</strong><br/>${m.spouse_name}</td>
+          </tr>` : ''}
+        </table>
+      `;
+    }
+
+    // Emergency Contact Section
+    if (fichaCategories.includes('emergency')) {
+      html += `
+        <h3 style="font-size:11pt;color:#1e3a8a;margin:12px 0 6px;border-bottom:2px solid #cbd5e1;padding-bottom:2px;font-weight:bold;text-transform:uppercase;">Contato de Emergência</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10pt;">
+          <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:60%;"><strong>Nome do Contato:</strong><br/>${m.emergency_contact_name || ''}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px;width:40%;"><strong>Telefone:</strong><br/>${m.emergency_contact_phone || ''}</td>
+          </tr>
+        </table>
+      `;
+    }
+
+    html += `</div><br/>`;
+    document.execCommand('insertHTML', false, html);
+    setShowFichaModal(false);
+  }, [selectedMemberDetails, fichaCategories, focusEditor]);
+
+  const insertMemberHistory = useCallback(() => {
+    if (!memberHistories || !selectedMemberDetails) return;
+    focusEditor();
+    
+    const m = selectedMemberDetails;
+    const formatD = (d?: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '';
+    
+    let html = `
+      <div style="font-family:'Times New Roman',serif;color:#1e293b;margin-bottom:20px;">
+        <h2 style="margin:0 0 8px;font-size:14pt;color:#1e3a8a;font-weight:bold;text-transform:uppercase;text-align:center;">Histórico de Membro — ${m.full_name}</h2>
+        <p style="margin:0 0 12px;font-size:10pt;color:#64748b;text-align:center;">ROL nº <strong>${m.rol || 'N/A'}</strong></p>
+    `;
+
+    // 1. Function History Table
+    if (selectedHistoryTypes.includes('functions')) {
+      const funcs = memberHistories.functions;
+      html += `
+        <h3 style="font-size:11pt;color:#1e3a8a;margin:12px 0 6px;border-bottom:2px solid #cbd5e1;padding-bottom:2px;font-weight:bold;">Histórico de Cargos e Funções</h3>
+      `;
+      if (funcs.length === 0) {
+        html += `<p style="font-size:10pt;color:#64748b;font-style:italic;margin-bottom:12px;">Nenhum cargo ou função registrado.</p>`;
+      } else {
+        html += `
+          <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:10pt;">
+            <thead>
+              <tr style="background:#f1f5f9;">
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;width:40%;">Cargo/Função</th>
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;width:30%;">Departamento</th>
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:center;width:15%;">Início</th>
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:center;width:15%;">Fim</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        funcs.forEach(f => {
+          const funcName = f.church_function_catalog?.name || 'Função';
+          html += `
+            <tr>
+              <td style="border:1px solid #cbd5e1;padding:6px;">${funcName}</td>
+              <td style="border:1px solid #cbd5e1;padding:6px;">${f.department || 'Geral'}</td>
+              <td style="border:1px solid #cbd5e1;padding:6px;text-align:center;">${formatD(f.start_date)}</td>
+              <td style="border:1px solid #cbd5e1;padding:6px;text-align:center;">${f.end_date ? formatD(f.end_date) : 'Ativo'}</td>
+            </tr>
+          `;
+        });
+        html += `</tbody></table>`;
+      }
+    }
+
+    // 2. Title History Table (Consecrations)
+    if (selectedHistoryTypes.includes('titles')) {
+      const titles = memberHistories.titles;
+      html += `
+        <h3 style="font-size:11pt;color:#1e3a8a;margin:12px 0 6px;border-bottom:2px solid #cbd5e1;padding-bottom:2px;font-weight:bold;">Histórico de Títulos e Consagrações</h3>
+      `;
+      if (titles.length === 0) {
+        html += `<p style="font-size:10pt;color:#64748b;font-style:italic;margin-bottom:12px;">Nenhuma consagração registrada.</p>`;
+      } else {
+        html += `
+          <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:10pt;">
+            <thead>
+              <tr style="background:#f1f5f9;">
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;width:30%;">Título Anterior</th>
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;width:30%;">Novo Título</th>
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;width:25%;">Serviço / Origem</th>
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:center;width:15%;">Data</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        titles.forEach(t => {
+          html += `
+            <tr>
+              <td style="border:1px solid #cbd5e1;padding:6px;">${t.previous_title || 'N/A'}</td>
+              <td style="border:1px solid #cbd5e1;padding:6px;font-weight:bold;">${t.new_title}</td>
+              <td style="border:1px solid #cbd5e1;padding:6px;">${t.service_name || t.source || ''}</td>
+              <td style="border:1px solid #cbd5e1;padding:6px;text-align:center;">${formatD(t.created_at)}</td>
+            </tr>
+          `;
+        });
+        html += `</tbody></table>`;
+      }
+    }
+
+    // 3. Occurrences Table
+    if (selectedHistoryTypes.includes('occurrences')) {
+      const occs = memberHistories.occurrences;
+      html += `
+        <h3 style="font-size:11pt;color:#1e3a8a;margin:12px 0 6px;border-bottom:2px solid #cbd5e1;padding-bottom:2px;font-weight:bold;">Histórico de Ocorrências</h3>
+      `;
+      if (occs.length === 0) {
+        html += `<p style="font-size:10pt;color:#64748b;font-style:italic;margin-bottom:12px;">Nenhuma ocorrência registrada.</p>`;
+      } else {
+        html += `
+          <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:10pt;">
+            <thead>
+              <tr style="background:#f1f5f9;">
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;width:30%;">Ocorrência</th>
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;width:40%;">Detalhes</th>
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;width:15%;">Ação</th>
+                <th style="border:1px solid #cbd5e1;padding:6px;text-align:center;width:15%;">Data</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        occs.forEach(o => {
+          html += `
+            <tr>
+              <td style="border:1px solid #cbd5e1;padding:6px;font-weight:bold;">${o.name}</td>
+              <td style="border:1px solid #cbd5e1;padding:6px;">${o.message || ''}</td>
+              <td style="border:1px solid #cbd5e1;padding:6px;">${o.action || ''}</td>
+              <td style="border:1px solid #cbd5e1;padding:6px;text-align:center;">${formatD(o.occurred_at)}</td>
+            </tr>
+          `;
+        });
+        html += `</tbody></table>`;
+      }
+    }
+
+    html += `</div><br/>`;
+    document.execCommand('insertHTML', false, html);
+    setShowHistoryModal(false);
+  }, [selectedMemberDetails, memberHistories, selectedHistoryTypes, focusEditor]);
+
+  // ── Table row/column manipulation callbacks ────────────────────────────────────
+  const getFocusedTable = () => {
+    if (!focusedCell) return null;
+    return focusedCell.closest('table');
+  };
+
+  const insertRow = useCallback((above: boolean) => {
+    if (!focusedCell) return;
+    focusEditor();
+    const row = focusedCell.parentElement as HTMLTableRowElement | null;
+    const table = row?.closest('table');
+    if (!row || !table) return;
+
+    const newRow = table.insertRow(above ? row.rowIndex : row.rowIndex + 1);
+    Array.from(row.cells).forEach(cell => {
+      const newCell = document.createElement(cell.tagName);
+      newCell.style.cssText = cell.style.cssText;
+      newCell.innerHTML = '&nbsp;';
+      newRow.appendChild(newCell);
+    });
+  }, [focusedCell, focusEditor]);
+
+  const insertColumn = useCallback((left: boolean) => {
+    if (!focusedCell) return;
+    focusEditor();
+    const cellIndex = focusedCell.cellIndex;
+    const table = focusedCell.closest('table');
+    if (!table) return;
+
+    Array.from(table.rows).forEach(row => {
+      const targetIndex = left ? cellIndex : cellIndex + 1;
+      const newCell = document.createElement(row.cells[cellIndex]?.tagName || 'td');
+      newCell.style.cssText = row.cells[cellIndex]?.style.cssText || 'border:1px solid #94a3b8;padding:6px 8px;';
+      newCell.innerHTML = '&nbsp;';
+      
+      if (targetIndex >= row.cells.length) {
+        row.appendChild(newCell);
+      } else {
+        row.insertBefore(newCell, row.cells[targetIndex]);
+      }
+    });
+  }, [focusedCell, focusEditor]);
+
+  const deleteRow = useCallback(() => {
+    if (!focusedCell) return;
+    focusEditor();
+    const row = focusedCell.parentElement as HTMLTableRowElement | null;
+    const table = row?.closest('table');
+    if (!row || !table) return;
+    
+    table.deleteRow(row.rowIndex);
+    setIsInTable(false);
+    setFocusedCell(null);
+  }, [focusedCell, focusEditor]);
+
+  const deleteColumn = useCallback(() => {
+    if (!focusedCell) return;
+    focusEditor();
+    const cellIndex = focusedCell.cellIndex;
+    const table = focusedCell.closest('table');
+    if (!table) return;
+
+    Array.from(table.rows).forEach(row => {
+      if (row.cells.length > cellIndex) {
+        row.deleteCell(cellIndex);
+      }
+    });
+    setIsInTable(false);
+    setFocusedCell(null);
+  }, [focusedCell, focusEditor]);
+
+  const deleteTable = useCallback(() => {
+    const table = getFocusedTable();
+    if (!table) return;
+    focusEditor();
+    table.remove();
+    setIsInTable(false);
+    setFocusedCell(null);
+  }, [focusedCell, focusEditor]);
+
+  const autofitTable = useCallback(() => {
+    const table = getFocusedTable();
+    if (!table) return;
+    focusEditor();
+    table.style.width = '100%';
+    
+    const rows = Array.from(table.rows);
+    if (rows.length > 0) {
+      const colCount = rows[0].cells.length;
+      const pct = (100 / colCount).toFixed(2) + '%';
+      rows.forEach(r => {
+        Array.from(r.cells).forEach(c => {
+          c.style.width = pct;
+        });
+      });
+    }
+  }, [focusedCell, focusEditor]);
+
+  const adjustCellPadding = useCallback((inc: number) => {
+    const table = getFocusedTable();
+    if (!table) return;
+    focusEditor();
+    
+    Array.from(table.rows).forEach(row => {
+      Array.from(row.cells).forEach(cell => {
+        const currentPadding = window.getComputedStyle(cell).paddingTop;
+        const currentPx = parseFloat(currentPadding) || 6;
+        const newPx = Math.max(2, currentPx + inc);
+        cell.style.padding = `${newPx}px ${newPx + 2}px`;
+      });
+    });
+  }, [focusedCell, focusEditor]);
+
+  const applyCellBg = useCallback((color: string) => {
+    focusEditor();
+    const selectedCells = getSelectedCells();
+    if (selectedCells.length > 0) {
+      selectedCells.forEach(cell => {
+        cell.style.background = color;
+      });
+    } else if (focusedCell) {
+      focusedCell.style.background = color;
+    }
+  }, [focusedCell, focusEditor, getSelectedCells]);
+
+  const applyCellAlign = useCallback((alignType: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
+    focusEditor();
+    const selectedCells = getSelectedCells();
+    const cellsToFormat = selectedCells.length > 0 ? selectedCells : (focusedCell ? [focusedCell] : []);
+    
+    cellsToFormat.forEach(cell => {
+      if (['left', 'center', 'right'].includes(alignType)) {
+        cell.style.textAlign = alignType;
+      } else {
+        cell.style.verticalAlign = alignType;
+      }
+    });
+  }, [focusedCell, focusEditor, getSelectedCells]);
+
+  const mergeSelectedCells = useCallback(() => {
+    const cells = getSelectedCells();
+    if (cells.length <= 1) return;
+    const table = cells[0].closest('table');
+    if (!table) return;
+    
+    const grid = getVirtualGrid(table);
+    let minR = Infinity, maxR = -Infinity;
+    let minC = Infinity, maxC = -Infinity;
+    
+    grid.forEach((row, ri) => {
+      row.forEach((cell, ci) => {
+        if (cell && cells.includes(cell)) {
+          minR = Math.min(minR, ri);
+          maxR = Math.max(maxR, ri);
+          minC = Math.min(minC, ci);
+          maxC = Math.max(maxC, ci);
+        }
+      });
+    });
+    
+    const topLeftCell = grid[minR][minC];
+    if (!topLeftCell) return;
+    
+    const cellsToRemove = new Set<HTMLTableCellElement>();
+    for (let r = minR; r <= maxR; r++) {
+      for (let c = minC; c <= maxC; c++) {
+        const cell = grid[r][c];
+        if (cell && cell !== topLeftCell) {
+          cellsToRemove.add(cell);
+        }
+      }
+    }
+    
+    focusEditor();
+    
+    cellsToRemove.forEach(cell => {
+      if (cell.innerHTML.trim() !== '' && cell.innerHTML.trim() !== '&nbsp;') {
+        if (topLeftCell.innerHTML.trim() === '' || topLeftCell.innerHTML.trim() === '&nbsp;') {
+          topLeftCell.innerHTML = cell.innerHTML;
+        } else {
+          topLeftCell.innerHTML += ' ' + cell.innerHTML;
+        }
+      }
+      cell.remove();
+    });
+    
+    topLeftCell.rowSpan = maxR - minR + 1;
+    topLeftCell.colSpan = maxC - minC + 1;
+    topLeftCell.style.width = '';
+    topLeftCell.style.height = '';
+    
+    const newSel = window.getSelection();
+    if (newSel) {
+      newSel.removeAllRanges();
+      const range = document.createRange();
+      range.selectNodeContents(topLeftCell);
+      newSel.addRange(range);
+    }
+  }, [focusEditor, getSelectedCells, getVirtualGrid]);
+
+  const applyTableBorders = useCallback((borderStyle: string) => {
+    const table = getFocusedTable();
+    if (!table) return;
+    focusEditor();
+    
+    Array.from(table.rows).forEach(row => {
+      Array.from(row.cells).forEach(cell => {
+        cell.style.border = borderStyle;
+      });
+    });
+  }, [focusedCell, focusEditor]);
+
+  // Interative table resizer via mouse drag
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    let isResizing = false;
+    let resizeType: 'col' | 'row' | null = null;
+    let targetCell: HTMLTableCellElement | null = null;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing) return;
+
+      const target = e.target as HTMLElement;
+      const cell = target.closest('td, th') as HTMLTableCellElement | null;
+      if (!cell || !editor.contains(cell)) {
+        editor.style.cursor = 'default';
+        return;
+      }
+
+      const rect = cell.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const edgeThreshold = 6;
+
+      const isRightEdge = rect.width - x <= edgeThreshold;
+      const isBottomEdge = rect.height - y <= edgeThreshold;
+
+      if (isRightEdge) {
+        editor.style.cursor = 'col-resize';
+        resizeType = 'col';
+        targetCell = cell;
+      } else if (isBottomEdge) {
+        editor.style.cursor = 'row-resize';
+        resizeType = 'row';
+        targetCell = cell;
+      } else {
+        editor.style.cursor = 'default';
+        resizeType = null;
+        targetCell = null;
+      }
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (!resizeType || !targetCell) return;
+      
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = targetCell.offsetWidth;
+      startHeight = targetCell.offsetHeight;
+
+      const table = targetCell.closest('table');
+      if (table) {
+        table.style.width = `${table.offsetWidth}px`;
+      }
+
+      e.preventDefault();
+
+      const handleMouseDrag = (moveEvt: MouseEvent) => {
+        if (!isResizing || !targetCell) return;
+
+        if (resizeType === 'col') {
+          const deltaX = moveEvt.clientX - startX;
+          const newWidth = Math.max(20, startWidth + deltaX);
+          targetCell.style.width = `${newWidth}px`;
+        } else if (resizeType === 'row') {
+          const deltaY = moveEvt.clientY - startY;
+          const newHeight = Math.max(15, startHeight + deltaY);
+          targetCell.style.height = `${newHeight}px`;
+        }
+      };
+
+      const handleMouseUp = () => {
+        isResizing = false;
+        document.removeEventListener('mousemove', handleMouseDrag);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseDrag);
+      document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    editor.addEventListener('mousemove', handleMouseMove);
+    editor.addEventListener('mousedown', handleMouseDown);
+
+    return () => {
+      editor.removeEventListener('mousemove', handleMouseMove);
+      editor.removeEventListener('mousedown', handleMouseDown);
+      if (editor) editor.style.cursor = 'default';
+    };
+  }, [zoom]);
 
   // ── Table insert ─────────────────────────────────────────────────────────────
   const insertTable = useCallback((rows: number, cols: number) => {
@@ -796,8 +1721,22 @@ export default function WordEditor() {
 
       {/* ── Ribbon tabs + title ── */}
       <div className="flex items-center shrink-0 px-1 gap-0.5" style={{ height: 32, backgroundColor: tc.ribbonBg, borderBottom: `1px solid ${tc.border}` }}>
-        {(['home', 'insert', 'data', 'view', 'arquivo'] as const).map(t => {
-          const labels: Record<RibbonTab, string> = { home: 'Página Inicial', insert: 'Inserir', data: 'Dados', view: 'Exibir', arquivo: 'Arquivo' };
+        {([
+          'home',
+          'insert',
+          'data',
+          'view',
+          'arquivo',
+          ...(isInTable ? ['table'] as const : [])
+        ] as const).map(t => {
+          const labels: Record<RibbonTab, string> = {
+            home: 'Página Inicial',
+            insert: 'Inserir',
+            data: 'Dados',
+            view: 'Exibir',
+            arquivo: 'Arquivo',
+            table: 'Design da Tabela'
+          };
           const isActive = (t === 'arquivo' ? fileDrawerOpen : activeRibbon === t);
           return (
             <button key={t}
@@ -871,18 +1810,27 @@ export default function WordEditor() {
               <div className="flex items-center gap-1">
                 <select className="h-6 text-xs border border-slate-300 rounded px-1 bg-white text-slate-800 w-36"
                   value={fontFamily} onChange={e => applyFont(e.target.value)}>
-                  {['Times New Roman', 'Arial', 'Calibri', 'Cambria', 'Georgia', 'Verdana', 'Courier New', 'Trebuchet MS', 'Garamond'].map(f => (
-                    <option key={f}>{f}</option>
-                  ))}
+                  {(() => {
+                    const defaultFonts = ['Times New Roman', 'Arial', 'Calibri', 'Cambria', 'Georgia', 'Verdana', 'Courier New', 'Trebuchet MS', 'Garamond'];
+                    const list = defaultFonts.includes(fontFamily) ? defaultFonts : [...defaultFonts, fontFamily];
+                    return list.map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ));
+                  })()}
                 </select>
                 <select className="h-6 text-xs border border-slate-300 rounded px-1 bg-white text-slate-800 w-12"
                   value={fontSize} onChange={e => applySize(e.target.value)}>
-                  {[8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 48, 72].map(s => (
-                    <option key={s}>{s}</option>
-                  ))}
+                  {(() => {
+                    const numSize = Number(fontSize) || 12;
+                    const defaultSizes = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 48, 72];
+                    const list = defaultSizes.includes(numSize) ? defaultSizes : [...defaultSizes, numSize].sort((a, b) => a - b);
+                    return list.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ));
+                  })()}
                 </select>
-                <RBtnSmall title="Aumentar fonte" label="A↑" onClick={() => applySize(String(Math.min(72, Number(fontSize) + 2)))} />
-                <RBtnSmall title="Diminuir fonte" label="A↓" onClick={() => applySize(String(Math.max(6, Number(fontSize) - 2)))} />
+                <RBtnSmall title="Aumentar fonte" label="A↑" onClick={() => applySize(String(Math.min(72, (Number(fontSize) || 12) + 2)))} />
+                <RBtnSmall title="Diminuir fonte" label="A↓" onClick={() => applySize(String(Math.max(6, (Number(fontSize) || 12) - 2)))} />
               </div>
               <div className="flex items-center gap-0.5">
                 <RBtnSmall title="Negrito (Ctrl+B)" icon={<BoldIco />} onClick={() => applyCmd('bold')} />
@@ -935,7 +1883,9 @@ export default function WordEditor() {
               { label: 'Título 1', style: { fontSize: 15, fontWeight: 'bold' } as React.CSSProperties },
               { label: 'Título 2', style: { fontSize: 13, fontWeight: 'bold' } as React.CSSProperties },
             ].map(s => (
-              <button key={s.label} title={s.label} onClick={() => focusEditor()}
+              <button key={s.label} title={s.label} 
+                onClick={() => applyStyleTemplate(s.label)}
+                onMouseDown={e => e.preventDefault()}
                 className="px-2 py-1 border border-slate-200 rounded hover:bg-slate-200 text-[11px] min-h-[52px] min-w-[56px] text-slate-700"
                 style={{ fontFamily: 'Times New Roman', ...s.style }}>
                 {s.label}
@@ -1024,6 +1974,15 @@ export default function WordEditor() {
                 onClick={() => setShowMailMerge(true)} disabled={!hasSearched || dataRows.length === 0} />
             )}
           </RGroup>
+          {selectedRows.size === 1 && (
+            <>
+              <RDiv />
+              <RGroup label="Membro Selecionado">
+                <RBtnLarge icon={<Ico.FileText />} label="Histórico" title="Inserir histórico do membro" onClick={() => setShowHistoryModal(true)} />
+                <RBtnLarge icon={<Ico.UserCard />} label="Ficha Cadastral" title="Inserir ficha cadastral do membro" onClick={() => setShowFichaModal(true)} />
+              </RGroup>
+            </>
+          )}
         </>}
 
         {activeRibbon === 'view' && <>
@@ -1036,6 +1995,56 @@ export default function WordEditor() {
           <RDiv />
           <RGroup label="Layout">
             <RBtnLarge icon={<Ico.PageA4 />} label="A4" title="Página A4 (ativo)" active onClick={() => {}} />
+          </RGroup>
+        </>}
+
+        {activeRibbon === 'table' && isInTable && <>
+          <RGroup label="Inserir">
+            <RBtnSmall title="Inserir linha acima" icon={<Ico.Plus />} label="Linha Acima" onClick={() => insertRow(true)} />
+            <RBtnSmall title="Inserir linha abaixo" icon={<Ico.Plus />} label="Linha Abaixo" onClick={() => insertRow(false)} />
+            <RBtnSmall title="Inserir coluna à esquerda" icon={<Ico.Plus />} label="Coluna Esquerda" onClick={() => insertColumn(true)} />
+            <RBtnSmall title="Inserir coluna à direita" icon={<Ico.Plus />} label="Coluna Direita" onClick={() => insertColumn(false)} />
+          </RGroup>
+          <RDiv />
+          <RGroup label="Excluir">
+            <RBtnSmall title="Excluir linha" icon={<Ico.Trash />} label="Linha" onClick={deleteRow} />
+            <RBtnSmall title="Excluir coluna" icon={<Ico.Trash />} label="Coluna" onClick={deleteColumn} />
+            <RBtnLarge icon={<Ico.Trash />} label="Excluir Tabela" title="Excluir tabela completa" onClick={deleteTable} />
+          </RGroup>
+          <RDiv />
+          <RGroup label="Layout">
+            <RBtnLarge icon={<Ico.AlignWidth />} label="Auto-ajustar" title="Ajustar largura para 100%" onClick={autofitTable} />
+            <RCol>
+              <RBtnSmall title="Aumentar espaçamento" label="Padding +" onClick={() => adjustCellPadding(2)} />
+              <RBtnSmall title="Diminuir espaçamento" label="Padding −" onClick={() => adjustCellPadding(-2)} />
+            </RCol>
+          </RGroup>
+          <RDiv />
+          <RGroup label="Mesclar">
+            <RBtnLarge icon={<Ico.Merge />} label="Mesclar" title="Mesclar células selecionadas" onClick={mergeSelectedCells} />
+          </RGroup>
+          <RDiv />
+          <RGroup label="Alinhamento">
+            <RCol>
+              <div className="flex gap-0.5">
+                <RBtnSmall title="Alinhar ao topo" icon={<AlignTopIco />} onClick={() => applyCellAlign('top')} />
+                <RBtnSmall title="Alinhar ao centro vertical" icon={<AlignMiddleIco />} onClick={() => applyCellAlign('middle')} />
+                <RBtnSmall title="Alinhar à base" icon={<AlignBottomIco />} onClick={() => applyCellAlign('bottom')} />
+              </div>
+              <div className="flex gap-0.5">
+                <RBtnSmall title="Alinhar à esquerda" icon={<AlLIco />} onClick={() => applyCellAlign('left')} />
+                <RBtnSmall title="Centralizar horizontal" icon={<AlCIco />} onClick={() => applyCellAlign('center')} />
+                <RBtnSmall title="Alinhar à direita" icon={<AlRIco />} onClick={() => applyCellAlign('right')} />
+              </div>
+            </RCol>
+          </RGroup>
+          <RDiv />
+          <RGroup label="Estilos">
+            <RCol>
+              <RBtnSmall title="Borda Fina" label="Borda Fina" onClick={() => applyTableBorders('1px solid #94a3b8')} />
+              <RBtnSmall title="Sem Borda" label="Sem Borda" onClick={() => applyTableBorders('none')} />
+            </RCol>
+            <ColorBtnLarge title="Fundo da célula" defaultColor="#cbd5e1" onApply={applyCellBg} label="Fundo" />
           </RGroup>
         </>}
       </div>
@@ -1065,8 +2074,8 @@ export default function WordEditor() {
                 paddingBottom: `${Math.round(2.5 * zoom / 100)}cm`,
                 paddingLeft: `${(marginLeft * zoom / 100).toFixed(3)}cm`,
                 paddingRight: `${(marginRight * zoom / 100).toFixed(3)}cm`,
-                fontFamily,
-                fontSize: `${Math.round(Number(fontSize) * zoom / 100)}pt`,
+                fontFamily: 'Times New Roman',
+                fontSize: `${Math.round(12 * zoom / 100)}pt`,
                 lineHeight: 1.6,
                 background: '#fff',
                 color: '#1a1a1a',
@@ -1511,6 +2520,141 @@ export default function WordEditor() {
               ))
             )}
           </div>
+        </div>
+      )}
+      {/* ── Member History Selection Modal ── */}
+      {showHistoryModal && selectedMemberDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowHistoryModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden flex flex-col mx-4" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
+              <div>
+                <h3 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <Ico.FileText /> Inserir Histórico de Membro
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">{selectedMemberDetails.full_name}</p>
+              </div>
+              <button onClick={() => setShowHistoryModal(false)} className="text-slate-400 hover:text-slate-600 w-6 h-6 flex items-center justify-center">✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-slate-500">Selecione quais seções do histórico deseja incluir no documento como tabelas formatadas:</p>
+              <div className="space-y-2.5">
+                {[
+                  { id: 'functions', label: 'Histórico de Cargos e Funções' },
+                  { id: 'titles', label: 'Histórico de Títulos e Consagrações' },
+                  { id: 'occurrences', label: 'Histórico de Ocorrências' }
+                ].map(item => {
+                  const checked = selectedHistoryTypes.includes(item.id);
+                  return (
+                    <label key={item.id} className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors">
+                      <input 
+                        type="checkbox" 
+                        checked={checked} 
+                        onChange={() => {
+                          setSelectedHistoryTypes(prev => 
+                            prev.includes(item.id) ? prev.filter(x => x !== item.id) : [...prev, item.id]
+                          );
+                        }} 
+                        className="w-4.5 h-4.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                      />
+                      {item.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="px-5 py-3.5 border-t border-slate-200 dark:border-slate-700 flex gap-3 justify-end bg-slate-50 dark:bg-slate-900">
+              <button onClick={() => setShowHistoryModal(false)} className="px-4 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">
+                Cancelar
+              </button>
+              <button onClick={insertMemberHistory} disabled={selectedHistoryTypes.length === 0} className="px-4 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded font-medium disabled:opacity-50">
+                Inserir Histórico
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ficha Cadastral Selection Modal ── */}
+      {showFichaModal && selectedMemberDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowFichaModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden flex flex-col mx-4" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
+              <div>
+                <h3 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <Ico.UserCard /> Ficha Cadastral Personalizada
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">{selectedMemberDetails.full_name}</p>
+              </div>
+              <button onClick={() => setShowFichaModal(false)} className="text-slate-400 hover:text-slate-600 w-6 h-6 flex items-center justify-center">✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-500">Selecione quais seções deseja incluir no formulário:</p>
+                <div className="flex gap-2 text-[10px]">
+                  <button onClick={() => setFichaCategories(['photo', 'personal', 'contact', 'address', 'church', 'family', 'emergency'])} className="text-blue-600 hover:underline">Todos</button>
+                  <span className="text-slate-300">|</span>
+                  <button onClick={() => setFichaCategories([])} className="text-red-500 hover:underline">Nenhum</button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3.5">
+                {[
+                  { id: 'photo', label: 'Foto do Membro' },
+                  { id: 'personal', label: 'Dados Pessoais' },
+                  { id: 'contact', label: 'Contatos' },
+                  { id: 'address', label: 'Endereço' },
+                  { id: 'church', label: 'Dados Eclesiásticos' },
+                  { id: 'family', label: 'Dados Familiares' },
+                  { id: 'emergency', label: 'Contato Emergência' }
+                ].map(item => {
+                  const checked = fichaCategories.includes(item.id);
+                  return (
+                    <label key={item.id} className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors">
+                      <input 
+                        type="checkbox" 
+                        checked={checked} 
+                        onChange={() => {
+                          setFichaCategories(prev => 
+                            prev.includes(item.id) ? prev.filter(x => x !== item.id) : [...prev, item.id]
+                          );
+                        }} 
+                        className="w-4.5 h-4.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                      />
+                      {item.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="px-5 py-3.5 border-t border-slate-200 dark:border-slate-700 flex gap-3 justify-end bg-slate-50 dark:bg-slate-900">
+              <button onClick={() => setShowFichaModal(false)} className="px-4 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">
+                Cancelar
+              </button>
+              <button onClick={insertMemberForm} disabled={fichaCategories.length === 0} className="px-4 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded font-medium disabled:opacity-50">
+                Inserir Formulário
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Photo Resize Floating Slider ── */}
+      {selectedImg && (
+        <div className="fixed bottom-4 right-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl p-3.5 z-[1000] flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <span className="text-[11px] text-slate-500 font-medium">Largura da Foto:</span>
+          <input 
+            type="range" 
+            min="40" 
+            max="600" 
+            value={parseInt(selectedImg.style.width || String(selectedImg.width)) || 150} 
+            onChange={e => {
+              const val = e.target.value;
+              selectedImg.style.width = `${val}px`;
+              selectedImg.style.height = `${val}px`; // Keep square aspect ratio
+            }}
+            className="w-32 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+          <span className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">{parseInt(selectedImg.style.width || String(selectedImg.width)) || 150}px</span>
+          <button onClick={() => setSelectedImg(null)} className="text-slate-400 hover:text-slate-600 text-xs px-1">✕</button>
         </div>
       )}
     </div>
