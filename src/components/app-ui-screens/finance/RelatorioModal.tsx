@@ -31,6 +31,7 @@ export type RelatorioProps = {
   dataInicio: string;
   dataFim: string;
   onClose: () => void;
+  autoShare?: boolean;
 };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -253,13 +254,19 @@ function generateHtml(
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose }: RelatorioProps) {
+export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose, autoShare }: RelatorioProps) {
   const [cols, setCols]               = useState<ColKey[]>(DEFAULT_COLS);
   const [orientation, setOrientation] = useState<Orientation>('portrait');
   const [showColPicker, setShowColPicker] = useState(false);
   const [sortCol, setSortCol]         = useState<ColKey | null>(null);
   const [sortDir, setSortDir]         = useState<SortDir>('asc');
   const [isMobile, setIsMobile]       = useState(false);
+
+  useEffect(() => {
+    if (autoShare) {
+      void handleShare();
+    }
+  }, [autoShare]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -528,17 +535,21 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose 
           title: `Relatório Tesouraria — ${churchName || 'Todas'}`,
           text: `Relatório Tesouraria de ${fmtDate(dataInicio)} a ${fmtDate(dataFim)}`,
         });
+        if (autoShare) onClose();
       } else if (navigator.share) {
         await navigator.share({
           title: `Relatório Tesouraria — ${churchName || 'Todas'}`,
           text: `Relatório Tesouraria de ${fmtDate(dataInicio)} a ${fmtDate(dataFim)}`,
         });
+        if (autoShare) onClose();
       } else {
         handleDownload();
+        if (autoShare) onClose();
       }
     } catch (err) {
       console.error('Erro ao compartilhar relatório:', err);
       toast.error('Erro ao compartilhar PDF');
+      if (autoShare) onClose();
     }
   }
 

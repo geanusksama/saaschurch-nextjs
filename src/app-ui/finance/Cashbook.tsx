@@ -1130,6 +1130,7 @@ export default function Cashbook() {
   const [error, setError]           = useState('');
   const [selectedRow, setSelectedRow] = useState<Row | null>(null);
   const [showRelatorio, setShowRelatorio] = useState(false);
+  const [relatorioAutoShare, setRelatorioAutoShare] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
 
   // Summary accordion (mobile only – collapsed by default)
@@ -1361,7 +1362,7 @@ export default function Cashbook() {
                 title="Imprimir relatório"
                 icon={<Printer className="h-4 w-4" />}
                 label="Imprimir"
-                onClick={() => { if (searched && rows.length > 0) setShowRelatorio(true); }}
+                onClick={() => { if (searched && rows.length > 0) { setRelatorioAutoShare(false); setShowRelatorio(true); } }}
                 disabled={!searched || rows.length === 0}
                 className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
               />
@@ -1370,7 +1371,7 @@ export default function Cashbook() {
                 title="Compartilhar relatório"
                 icon={<Share2 className="h-4 w-4" />}
                 label="Compartilhar"
-                onClick={() => { if (searched && rows.length > 0) setShowRelatorio(true); }}
+                onClick={() => { if (searched && rows.length > 0) { setRelatorioAutoShare(true); setShowRelatorio(true); } }}
                 disabled={!searched || rows.length === 0}
                 className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
               />
@@ -1689,6 +1690,7 @@ export default function Cashbook() {
           dataInicio={dataInicio}
           dataFim={dataFim}
           onClose={() => setShowRelatorio(false)}
+          autoShare={relatorioAutoShare}
         />
       )}
 
