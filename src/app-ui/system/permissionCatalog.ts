@@ -48,6 +48,7 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Secretaria', name: 'Modelos de Credencial',  key: 'credential_models', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Relatórios',             key: 'reports',           permissions: mkPerms(full(), mngr(), mngr(), mngr()) },
   { group: 'Secretaria', name: 'Documentos (Word)',      key: 'word_docs',         permissions: mkPerms(full(), mngr(), mngr(), admin()) },
+  { group: 'Secretaria', name: 'Mala Direta (Word)',     key: 'word_mailmerge',    permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Presença',               key: 'attendance',        permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Secretaria', name: 'Aniversariantes',        key: 'birthdays',         permissions: mkPerms(full(), none(), none(), none()) },
   { group: 'Secretaria', name: 'Igrejas',                key: 'churches',          permissions: mkPerms(admin(), admin(), admin(), admin()) },
@@ -71,9 +72,10 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'GF (Grupos Familiares)', name: 'Relatórios de GF',     key: 'cell_reports', permissions: mkPerms(full(), full(), none(), none()) },
 
   // ── Comunicação ──────────────────────────────────────────────────────────
-  { group: 'Comunicação', name: 'WhatsApp',          key: 'whatsapp',        permissions: mkPerms(full(), full(), full(), admin()) },
-  { group: 'Comunicação', name: 'E-mail Campanhas',  key: 'email_campaigns', permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
-  { group: 'Comunicação', name: 'SMS',               key: 'sms',             permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Comunicação', name: 'WhatsApp',                   key: 'whatsapp',              permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Comunicação', name: 'WhatsApp Campanhas/Broadcast', key: 'whatsapp_campaigns',  permissions: mkPerms(full(), mngr(), mngr(), admin()) },
+  { group: 'Comunicação', name: 'E-mail Campanhas',           key: 'email_campaigns',       permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  { group: 'Comunicação', name: 'SMS',                        key: 'sms',                   permissions: mkPerms(mngr(), mngr(), none(), none()) },
 
   // ── Eventos ───────────────────────────────────────────────────────────────
   { group: 'Eventos', name: 'Agenda',     key: 'events',      permissions: mkPerms(full(), full(), full(), admin()) },

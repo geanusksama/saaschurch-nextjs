@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { usePermissions } from '../../lib/usePermissions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type RibbonTab = 'home' | 'insert' | 'data' | 'view' | 'arquivo';
@@ -739,6 +740,10 @@ export default function WordEditor() {
   // Derived user scope flags
   const pt = storedUser.profileType || '';
   const isMaster = pt === 'master' || pt === 'admin';
+
+  // Permission checks
+  const { canCreate: permCanCreate } = usePermissions(pt as 'master' | 'admin' | 'campo' | 'church' | '');
+  const canMailMerge = permCanCreate('word_mailmerge');
   const isChurchLocked = pt === 'church' && !!storedUser.churchId;
   const isRegionalLocked = isChurchLocked || (pt === 'regional' && !!storedUser.regionalId);
   const showDateFilter = dataSource !== 'members';
@@ -1014,8 +1019,10 @@ export default function WordEditor() {
             <RBtnSmall title="Recarregar dados" icon={<Ico.Refresh />} label="Recarregar" onClick={loadData} />
             <RBtnSmall title="Inserir registros" icon={<Ico.InsertDown />} label={`Inserir${selectedRows.size > 0 ? ` (${selectedRows.size})` : ' Todos'}`}
               onClick={insertSelected} />
-            <RBtnSmall title="Mala direta — gerar um documento por membro e imprimir" icon={<Ico.Merge />} label="Mala Direta"
-              onClick={() => setShowMailMerge(true)} disabled={!hasSearched || dataRows.length === 0} />
+            {canMailMerge && (
+              <RBtnSmall title="Mala direta — gerar um documento por membro e imprimir" icon={<Ico.Merge />} label="Mala Direta"
+                onClick={() => setShowMailMerge(true)} disabled={!hasSearched || dataRows.length === 0} />
+            )}
           </RGroup>
         </>}
 
@@ -1240,11 +1247,13 @@ export default function WordEditor() {
             <div className="px-2 py-1.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-1 flex-wrap">
               <span className="text-[10px] text-slate-400">{filteredData.length} reg. · {selectedRows.size} sel.</span>
               <div className="flex items-center gap-2">
-                <button onClick={() => setShowMailMerge(true)}
-                  disabled={!hasSearched || filteredData.length === 0}
-                  className="flex items-center gap-0.5 text-[10px] font-semibold text-purple-600 hover:text-purple-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-                  <Ico.Merge /> Mala Direta
-                </button>
+                {canMailMerge && (
+                  <button onClick={() => setShowMailMerge(true)}
+                    disabled={!hasSearched || filteredData.length === 0}
+                    className="flex items-center gap-0.5 text-[10px] font-semibold text-purple-600 hover:text-purple-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                    <Ico.Merge /> Mala Direta
+                  </button>
+                )}
                 <span className="text-slate-300 text-[10px]">|</span>
                 <button onClick={() => { setHasSearched(true); loadData(); }} className="text-[10px] text-blue-500 hover:text-blue-700">↺ Atualizar</button>
               </div>
