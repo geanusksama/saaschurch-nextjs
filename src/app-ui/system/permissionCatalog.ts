@@ -47,6 +47,7 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Secretaria', name: 'Credenciais',            key: 'credentials',       permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Modelos de Credencial',  key: 'credential_models', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Relatórios',             key: 'reports',           permissions: mkPerms(full(), mngr(), mngr(), mngr()) },
+  { group: 'Secretaria', name: 'Documentos (Word)',      key: 'word_docs',         permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Presença',               key: 'attendance',        permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Secretaria', name: 'Aniversariantes',        key: 'birthdays',         permissions: mkPerms(full(), none(), none(), none()) },
   { group: 'Secretaria', name: 'Igrejas',                key: 'churches',          permissions: mkPerms(admin(), admin(), admin(), admin()) },

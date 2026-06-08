@@ -154,6 +154,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Presença',               path: '/app-ui/attendance',                     icon: Clipboard,   permKey: 'attendance' },
       { name: 'Contatos / Leads',       path: '/app-ui/contacts',                       icon: Contact,     permKey: 'crm_leads' },
       { name: 'Relatórios',             path: '/app-ui/reports',                        icon: BarChart3,   permKey: 'reports' },
+      { name: 'Documentos',             path: '/app-ui/secretariat/word',               icon: FileText,    permKey: 'word_docs' },
       { name: 'Aniversariantes',        path: '/app-ui/birthdays',                      icon: Cake,        permKey: 'birthdays' },
     ]
   },

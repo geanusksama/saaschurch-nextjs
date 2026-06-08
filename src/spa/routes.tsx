@@ -192,6 +192,7 @@ import AppMediaManager from "../app-ui/app/media/AppMediaManager";
 import AppNotificationManager from "../app-ui/app/AppNotificationManager";
 import FeedManager from "../app-ui/app/FeedManager";
 import Spreadsheet from "../app-ui/spreadsheet/Spreadsheet";
+import WordEditor from "../app-ui/word/WordEditor";
 import {
   CRMNew,
   FinanceNew,
@@ -329,6 +330,7 @@ export const router = createBrowserRouter([
       { path: "crm/spreadsheet", Component: Spreadsheet },
       { path: "crm/pipeline", Component: CRMPipeline },
       { path: "secretariat/pipeline", Component: SecretariatPipeline },
+      { path: "secretariat/word", Component: WordEditor },
       { path: "secretariat/services", Component: ServicesMatrix },
       { path: "secretariat/pipelines", Component: PipelinesAdmin },
       { path: "crm/:id", Component: LeadDetail },
