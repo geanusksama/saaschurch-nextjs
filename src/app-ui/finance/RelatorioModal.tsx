@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
 import { Printer, X, Columns, MonitorSmartphone, Maximize2, ArrowUpDown, ArrowUp, ArrowDown, Share2, Download } from 'lucide-react';
 import type { ReciboRow } from './ReciboModal';
 import { jsPDF } from 'jspdf';
+import { toast } from 'sonner';
 
 type Row = ReciboRow;
 type ColKey = 'igreja' | 'doc' | 'favorecido' | 'categoria' | 'tipodoc' | 'referencia' | 'formaPg' | 'data' | 'valor' | 'obs';
@@ -262,8 +263,11 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
   const [sortDir, setSortDir]         = useState<SortDir>('asc');
   const [isMobile, setIsMobile]       = useState(false);
 
+  const sharedRef = useRef(false);
+
   useEffect(() => {
-    if (autoShare) {
+    if (autoShare && !sharedRef.current) {
+      sharedRef.current = true;
       void handleShare();
     }
   }, [autoShare]);
