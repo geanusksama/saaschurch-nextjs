@@ -63,7 +63,7 @@ function slugify(str: string): string {
     .slice(0, 60) || 'documento';
 }
 
-function buildPrintFrame(html: string, title: string) {
+function buildPrintFrame(html: string, title: string, marginLeft = 2.5, marginRight = 2.5) {
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;opacity:0';
   document.body.appendChild(iframe);
@@ -72,7 +72,7 @@ function buildPrintFrame(html: string, title: string) {
   doc.open();
   doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title><style>
     *{box-sizing:border-box}
-    @page{size:A4;margin:2cm}
+    @page{size:A4;margin:2cm ${marginRight}cm 2cm ${marginLeft}cm}
     body{font-family:'Times New Roman',serif;margin:0;padding:0;font-size:11pt;color:#000;line-height:1.5}
     p{margin:0 0 0.4em}
     h1{font-size:16pt;font-weight:bold;margin:0.5em 0}
@@ -349,6 +349,7 @@ const Ico = {
   Refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
   InsertDown: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>,
   FileWord: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13l2 4 2-4 2 4 2-4"/></svg>,
+  Merge: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M4 6h6M4 12h6M4 18h6"/><path d="M14 9l4-4 4 4"/><path d="M18 5v14"/><path d="M14 15l4 4 4-4"/></svg>,
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -392,6 +393,8 @@ export default function WordEditor() {
   const [confirmDelete, setConfirmDelete] = useState<DocFile | null>(null);
   const [confirmNew, setConfirmNew] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showMailMerge, setShowMailMerge] = useState(false);
+  const [linkDialog, setLinkDialog] = useState<{ url: string; savedRange: Range | null } | null>(null);
 
   // Templates
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
@@ -756,6 +759,32 @@ export default function WordEditor() {
     setConfirmNew(false);
   };
 
+  const doMailMerge = useCallback(() => {
+    const template = editorRef.current?.innerHTML || '';
+    const members = selectedRows.size > 0
+      ? dataRows.filter(r => selectedRows.has(r.id))
+      : dataRows;
+    if (!template.trim() || members.length === 0) return;
+    const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '';
+    const pages = members.map((m, i) => {
+      const merged = template
+        .replace(/\[NOME DO MEMBRO\]/gi, m.name)
+        .replace(/\[NOME\]/gi, m.name)
+        .replace(/\[ROL\]/gi, m.rol || '')
+        .replace(/\[DATA DE BATISMO\]/gi, fmt(m.baptism_date))
+        .replace(/\[BATISMO\]/gi, fmt(m.baptism_date))
+        .replace(/\[TELEFONE\]/gi, m.phone || '')
+        .replace(/\[FONE\]/gi, m.phone || '')
+        .replace(/\[CELULAR\]/gi, m.phone || '')
+        .replace(/\[IGREJA\]/gi, m.church_name || '')
+        .replace(/\[REGIONAL\]/gi, m.regional_name || '');
+      const pb = i < members.length - 1 ? ' style="page-break-after:always"' : '';
+      return `<div${pb}>${merged}</div>`;
+    });
+    buildPrintFrame(pages.join('\n'), `Mala Direta — ${docTitle} (${members.length})`, marginLeft, marginRight);
+    setShowMailMerge(false);
+  }, [dataRows, selectedRows, docTitle, marginLeft, marginRight]);
+
   return (
     <div className="flex flex-col h-full overflow-hidden select-none"
       style={{ fontFamily: 'Segoe UI, Arial, sans-serif', fontSize: 12, background: tc.ribbonBg, color: tc.text }}>
@@ -794,7 +823,7 @@ export default function WordEditor() {
               {docTitle}
             </span>
           )}
-          <button onClick={() => buildPrintFrame(editorRef.current?.innerHTML || '', docTitle)} title="Imprimir documento"
+          <button onClick={() => buildPrintFrame(editorRef.current?.innerHTML || '', docTitle, marginLeft, marginRight)} title="Imprimir documento"
             className="flex items-center gap-1 px-2 py-1 text-xs rounded border transition-colors"
             style={{ borderColor: isDarkTheme ? '#334155' : '#cbd5e1', color: isDarkTheme ? '#94a3b8' : '#64748b', background: 'transparent' }}
             onMouseEnter={e => (e.currentTarget.style.background = isDarkTheme ? '#1e293b' : '#f1f5f9')}
@@ -940,7 +969,11 @@ export default function WordEditor() {
           <RDiv />
 
           <RGroup label="Texto">
-            <RBtnSmall title="Inserir link" icon={<Ico.Link />} label="Hyperlink" onClick={() => { const u = prompt('URL:'); if (u) applyCmd('createLink', u); }} />
+            <RBtnSmall title="Inserir link" icon={<Ico.Link />} label="Hyperlink" onClick={() => {
+              const sel = window.getSelection();
+              const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+              setLinkDialog({ url: 'https://', savedRange: range });
+            }} />
             <RBtnSmall title="Linha horizontal" label="─" onClick={() => applyCmd('insertHorizontalRule')} />
             <RBtnSmall title="Quebra de página" icon={<Ico.PageBreak />} label="Quebra" onClick={() => { focusEditor(); document.execCommand('insertHTML', false, '<div style="page-break-after:always;border-top:1px dashed #94a3b8;margin:12px 0;"></div>'); }} />
           </RGroup>
@@ -981,6 +1014,8 @@ export default function WordEditor() {
             <RBtnSmall title="Recarregar dados" icon={<Ico.Refresh />} label="Recarregar" onClick={loadData} />
             <RBtnSmall title="Inserir registros" icon={<Ico.InsertDown />} label={`Inserir${selectedRows.size > 0 ? ` (${selectedRows.size})` : ' Todos'}`}
               onClick={insertSelected} />
+            <RBtnSmall title="Mala direta — gerar um documento por membro e imprimir" icon={<Ico.Merge />} label="Mala Direta"
+              onClick={() => setShowMailMerge(true)} disabled={!hasSearched || dataRows.length === 0} />
           </RGroup>
         </>}
 
@@ -1202,9 +1237,17 @@ export default function WordEditor() {
             </div>
 
             {/* Footer */}
-            <div className="px-2 py-1.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-              <span className="text-[10px] text-slate-400">{filteredData.length} reg. · {selectedRows.size} selecionado(s)</span>
-              <button onClick={() => { setHasSearched(true); loadData(); }} className="text-[10px] text-blue-500 hover:text-blue-700">↺ Atualizar</button>
+            <div className="px-2 py-1.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-1 flex-wrap">
+              <span className="text-[10px] text-slate-400">{filteredData.length} reg. · {selectedRows.size} sel.</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowMailMerge(true)}
+                  disabled={!hasSearched || filteredData.length === 0}
+                  className="flex items-center gap-0.5 text-[10px] font-semibold text-purple-600 hover:text-purple-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                  <Ico.Merge /> Mala Direta
+                </button>
+                <span className="text-slate-300 text-[10px]">|</span>
+                <button onClick={() => { setHasSearched(true); loadData(); }} className="text-[10px] text-blue-500 hover:text-blue-700">↺ Atualizar</button>
+              </div>
             </div>
           </div>
         )}
@@ -1219,7 +1262,7 @@ export default function WordEditor() {
         <span className="text-[10px]">·</span>
         <span className="text-[10px]">Zoom {zoom}%</span>
         <div className="ml-auto flex items-center gap-3">
-          <button onClick={() => buildPrintFrame(editorRef.current?.innerHTML || '', docTitle)}
+          <button onClick={() => buildPrintFrame(editorRef.current?.innerHTML || '', docTitle, marginLeft, marginRight)}
             className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700 transition-colors"><Ico.Print /> Imprimir</button>
           <button onClick={() => exportDocx(editorRef.current?.innerHTML || '', docTitle)}
             className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700 transition-colors"><Ico.Download /> Exportar .doc</button>
@@ -1337,6 +1380,99 @@ export default function WordEditor() {
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmNew(false)} className="px-4 py-1.5 text-sm border border-slate-200 rounded hover:bg-slate-50 text-slate-600">Cancelar</button>
               <button onClick={clearDocument} className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium">Novo Documento</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mail merge modal ── */}
+      {showMailMerge && (() => {
+        const mergeMembers = selectedRows.size > 0
+          ? dataRows.filter(r => selectedRows.has(r.id))
+          : dataRows;
+        const template = editorRef.current?.innerHTML || '';
+        const detected = Array.from(new Set(Array.from(template.matchAll(/\[[A-ZÁÉÍÓÚÃÕÂÊÎÔÛÇ\s]+\]/gi), m => m[0])));
+        return (
+          <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/40"
+            onClick={() => setShowMailMerge(false)}>
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-6 max-w-sm w-full mx-4"
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-purple-600"><Ico.Merge /></span>
+                <h3 className="font-semibold text-slate-800">Mala Direta</h3>
+              </div>
+              <p className="text-sm text-slate-600 mb-3">
+                Serão gerados <strong className="text-purple-700">{mergeMembers.length} documento{mergeMembers.length !== 1 ? 's' : ''}</strong>
+                {selectedRows.size > 0 ? ` (${selectedRows.size} selecionado${selectedRows.size !== 1 ? 's' : ''})` : ' (todos da busca)'}, um por folha.
+              </p>
+              {detected.length > 0 && (
+                <div className="mb-4 bg-slate-50 rounded-lg p-3">
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Campos detectados no documento</p>
+                  <div className="flex flex-wrap gap-1">
+                    {detected.map(f => (
+                      <span key={f} className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-mono">{f}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {mergeMembers.length === 0 && (
+                <p className="text-xs text-amber-600 bg-amber-50 rounded p-2 mb-3">Nenhum membro na lista. Faça uma busca no painel de dados primeiro.</p>
+              )}
+              <div className="flex gap-3 justify-end">
+                <button onClick={() => setShowMailMerge(false)}
+                  className="px-4 py-1.5 text-sm border border-slate-200 rounded hover:bg-slate-50 text-slate-600">
+                  Cancelar
+                </button>
+                <button onClick={doMailMerge} disabled={mergeMembers.length === 0}
+                  className="px-4 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded font-medium disabled:opacity-40 flex items-center gap-1.5">
+                  <Ico.Print /> Imprimir {mergeMembers.length} doc{mergeMembers.length !== 1 ? 's' : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Link dialog ── */}
+      {linkDialog && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/40"
+          onClick={() => setLinkDialog(null)}>
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-6 max-w-sm w-full mx-4"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-blue-600"><Ico.Link /></span>
+              <h3 className="font-semibold text-slate-800">Inserir Hyperlink</h3>
+            </div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">URL do link</label>
+            <input
+              autoFocus
+              value={linkDialog.url}
+              onChange={e => setLinkDialog(d => d ? { ...d, url: e.target.value } : null)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  if (linkDialog.savedRange) { const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(linkDialog.savedRange); }
+                  if (linkDialog.url) applyCmd('createLink', linkDialog.url);
+                  setLinkDialog(null);
+                } else if (e.key === 'Escape') {
+                  setLinkDialog(null);
+                }
+              }}
+              placeholder="https://exemplo.com"
+              className="w-full text-sm border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 mb-4"
+            />
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setLinkDialog(null)}
+                className="px-4 py-1.5 text-sm border border-slate-200 rounded hover:bg-slate-50 text-slate-600">
+                Cancelar
+              </button>
+              <button onClick={() => {
+                if (linkDialog.savedRange) { const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(linkDialog.savedRange); }
+                if (linkDialog.url) applyCmd('createLink', linkDialog.url);
+                setLinkDialog(null);
+              }}
+                className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium flex items-center gap-1.5">
+                <Ico.Link /> Inserir Link
+              </button>
             </div>
           </div>
         </div>
