@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Printer, Download, Camera, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut, RotateCw, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
+import { toast } from 'sonner';
 
 const getImageUrl = (photoUrl?: string) => {
   if (!photoUrl) return '';
@@ -342,6 +343,123 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [showWhatsappModal, setShowWhatsappModal] = useState(false);
+  const [instances, setInstances] = useState<any[]>([]);
+  const [selectedInstanceId, setSelectedInstanceId] = useState('');
+  const [loadingInstances, setLoadingInstances] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+
+  useEffect(() => {
+    if (showWhatsappModal) {
+      const loadInstancesAndPhone = async () => {
+        setLoadingInstances(true);
+        try {
+          // 1. Fetch member phone if member_id is available
+          if (row.member_id) {
+            const { data: member } = await supabase
+              .from('members')
+              .select('phone')
+              .eq('id', row.member_id)
+              .maybeSingle();
+            if (member?.phone) {
+              const cleanPhone = member.phone.replace(/\D/g, '');
+              if (cleanPhone) {
+                if (cleanPhone.length === 10 || cleanPhone.length === 11) {
+                  setWhatsappPhone(`55${cleanPhone}`);
+                } else {
+                  setWhatsappPhone(cleanPhone);
+                }
+              }
+            }
+          }
+
+          // 2. Fetch logged-in user profile
+          const rawUser = localStorage.getItem('mrm_user');
+          if (!rawUser) throw new Error('Usuário não logado');
+          const user = JSON.parse(rawUser);
+
+          // 3. Fetch active instances
+          const { data: owned } = await supabase
+            .from('whatsapp_instances')
+            .select('id, name, instance_id, status, is_active, owner_user_id')
+            .eq('is_active', true);
+
+          // 4. Fetch shared instances
+          const { data: shared } = await supabase
+            .from('whatsapp_instance_users')
+            .select('instance_id')
+            .eq('user_id', user.id);
+
+          const sharedIds = (shared || []).map((s: any) => s.instance_id);
+
+          // Filter instances: master can see all active, other users only owned or shared
+          const available = (owned || []).filter((inst: any) => {
+            if (user.profileType === 'master') return true;
+            return inst.owner_user_id === user.id || sharedIds.includes(inst.id);
+          });
+
+          setInstances(available);
+          if (available.length > 0) {
+            setSelectedInstanceId(available[0].id);
+          }
+        } catch (err) {
+          console.error('Erro ao carregar instâncias:', err);
+          toast.error('Erro ao buscar instâncias do WhatsApp');
+        } finally {
+          setLoadingInstances(false);
+        }
+      };
+
+      loadInstancesAndPhone();
+    }
+  }, [showWhatsappModal, row.member_id]);
+
+  const handleSendWhatsapp = async () => {
+    const cleanPhone = whatsappPhone.replace(/\D/g, '');
+    if (!cleanPhone) {
+      toast.error('Por favor, informe um número de telefone válido');
+      return;
+    }
+    if (!selectedInstanceId) {
+      toast.error('Selecione uma instância para o envio');
+      return;
+    }
+
+    setSendingWhatsapp(true);
+    try {
+      const token = localStorage.getItem('mrm_token');
+      const res = await fetch('/api/whatsapp/send-tithe-receipt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          memberName: row.favorecido || 'Membro',
+          phone: cleanPhone,
+          valor: row.valor,
+          referencia: row.referencia,
+          churchName: row.churches?.name,
+          dataLancamento: row.data_lancamento,
+          instanceId: selectedInstanceId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro no envio');
+      }
+
+      toast.success('Recibo enviado com sucesso via WhatsApp!');
+      setShowWhatsappModal(false);
+    } catch (err: any) {
+      toast.error('Erro ao enviar recibo: ' + (err.message || 'Erro desconhecido'));
+    } finally {
+      setSendingWhatsapp(false);
+    }
+  };
+
   const valorNum = Number(row.valor);
   const dataFmt = new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR');
   const docNum = row.legacy_id || row.num_doc || row.id;
@@ -351,6 +469,19 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   const isReceita = row.tipo === 'RECEITA';
   const userRaw = typeof window !== 'undefined' ? localStorage.getItem('mrm_user') : null;
   const userName = row.operador || (userRaw ? (JSON.parse(userRaw).fullName || JSON.parse(userRaw).email || 'Sistema') : 'Sistema');
+
+  const selectedInstance = instances.find(inst => inst.id === selectedInstanceId);
+  const isConnected = selectedInstance?.status === 'connected';
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'connected': return 'Conectado';
+      case 'disconnected': return 'Desconectado';
+      case 'connecting': return 'Conectando...';
+      case 'qr_code': return 'Aguardando QR Code';
+      default: return 'Desconectado';
+    }
+  };
 
   async function handleFotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -558,13 +689,11 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
                 <ImageIcon className="w-5 h-5" />
               </button>
 
-              {/* Observações */}
+              {/* Enviar via WhatsApp */}
               <button
-                onClick={() => setShowObs(s => !s)}
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
-                  showObs ? 'bg-slate-800 text-white' : 'bg-slate-800 hover:bg-slate-700 text-white'
-                }`}
-                title="Observações"
+                onClick={() => setShowWhatsappModal(true)}
+                className="w-12 h-12 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl flex items-center justify-center transition-colors"
+                title="Enviar via WhatsApp"
               >
                 <MessageSquare className="w-5 h-5" />
               </button>
@@ -613,6 +742,105 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
                 {deleting ? 'Removendo...' : 'Remover'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Modal */}
+      {showWhatsappModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => !sendingWhatsapp && setShowWhatsappModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              Enviar via WhatsApp
+            </h3>
+
+            {loadingInstances ? (
+              <div className="flex flex-col items-center justify-center py-6">
+                <div className="w-6 h-6 border-2 border-slate-500 border-t-transparent rounded-full animate-spin mb-2" />
+                <p className="text-xs text-slate-500">Buscando instâncias autorizadas...</p>
+              </div>
+            ) : instances.length === 0 ? (
+              <div className="py-4 text-center">
+                <p className="text-sm text-slate-600 mb-4">Nenhuma instância do WhatsApp conectada e autorizada para você.</p>
+                <button
+                  onClick={() => setShowWhatsappModal(false)}
+                  className="w-full px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold"
+                >
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Instance Select */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    Instância de Envio
+                  </label>
+                  <select
+                    value={selectedInstanceId}
+                    onChange={e => setSelectedInstanceId(e.target.value)}
+                    className="w-full rounded-lg border-slate-200 text-sm focus:border-slate-500 focus:ring-slate-500 bg-white"
+                  >
+                    {instances.map(inst => (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.name} ({getStatusLabel(inst.status)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Phone Input */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    WhatsApp do Destinatário
+                  </label>
+                  <input
+                    type="text"
+                    value={whatsappPhone}
+                    onChange={e => setWhatsappPhone(e.target.value)}
+                    placeholder="Ex: 5511999999999"
+                    className="w-full rounded-lg border-slate-200 text-sm focus:border-slate-500 focus:ring-slate-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Insira o número com o DDI (ex: 55) e DDD. Exemplo: 5511999999999
+                  </p>
+                </div>
+
+                {/* Alert/Tip when not connected */}
+                {selectedInstance && !isConnected && (
+                  <p className="text-xs text-red-500 font-medium leading-relaxed bg-red-50 border border-red-100 rounded-lg p-2.5">
+                    ⚠️ Instância desconectada. Acesse o menu &quot;Instâncias WhatsApp&quot; para conectar.
+                  </p>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowWhatsappModal(false)}
+                    disabled={sendingWhatsapp}
+                    className="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSendWhatsapp}
+                    disabled={sendingWhatsapp || !isConnected}
+                    className="flex-1 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {sendingWhatsapp ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      'Enviar Recibo'
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

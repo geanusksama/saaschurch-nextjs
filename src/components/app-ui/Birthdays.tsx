@@ -1,4 +1,5 @@
 import { Building2, Cake, ChevronLeft, ChevronRight, ExternalLink, Gift, Loader2, Mail, MessageSquare, Phone, Printer, Search, User } from 'lucide-react';
+import { toast } from 'sonner';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
@@ -258,11 +259,39 @@ export function Birthdays() {
     frameWindow.print();
   }
 
-  const handleWhatsApp = (member: BirthdayMember) => {
+  const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
+
+  const handleWhatsApp = async (member: BirthdayMember) => {
     const phone = (member.phone || '').replace(/\D/g, '');
     if (!phone) return;
-    const msg = encodeURIComponent(`Olá ${member.name}! Feliz aniversário! 🎂🎉`);
-    window.open(`https://wa.me/55${phone}?text=${msg}`, '_blank');
+
+    // Tenta enviar via módulo Z-API interno; se não houver instância conectada, abre wa.me como fallback
+    setSendingWhatsApp(member.id);
+    try {
+      const token = localStorage.getItem('mrm_token') ?? '';
+      const res = await fetch('/api/whatsapp/send-birthday', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberName: member.name, phone: `55${phone}`, age: member.age }),
+      });
+      if (res.ok) {
+        toast.success(`Mensagem de aniversário enviada para ${member.name}! 🎉`);
+        return;
+      }
+      const err = await res.json();
+      // Sem instância conectada: fallback para wa.me
+      if (err.error === 'no_active_instance') {
+        const msg = encodeURIComponent(`Olá ${member.name}! Feliz aniversário! 🎂🎉`);
+        window.open(`https://wa.me/55${phone}?text=${msg}`, '_blank');
+      } else {
+        toast.error(`Falha ao enviar WhatsApp: ${err.error ?? 'Erro desconhecido'}`);
+      }
+    } catch {
+      const msg = encodeURIComponent(`Olá ${member.name}! Feliz aniversário! 🎂🎉`);
+      window.open(`https://wa.me/55${phone}?text=${msg}`, '_blank');
+    } finally {
+      setSendingWhatsApp(null);
+    }
   };
 
   const handleEmail = (member: BirthdayMember) => {
@@ -595,10 +624,14 @@ export function Birthdays() {
                   {birthday.phone && (
                     <button
                       onClick={() => handleWhatsApp(birthday)}
-                      title="Enviar WhatsApp"
-                      className="p-3 bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-950/50 transition-colors"
+                      disabled={sendingWhatsApp === birthday.id}
+                      title="Enviar WhatsApp de aniversário"
+                      className="p-3 bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-950/50 transition-colors disabled:opacity-50"
                     >
-                      <MessageSquare className="w-5 h-5" />
+                      {sendingWhatsApp === birthday.id
+                        ? <Loader2 className="w-5 h-5 animate-spin" />
+                        : <MessageSquare className="w-5 h-5" />
+                      }
                     </button>
                   )}
                   <button

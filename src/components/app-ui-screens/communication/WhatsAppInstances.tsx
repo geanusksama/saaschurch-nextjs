@@ -17,6 +17,7 @@ interface SystemUser {
   fullName: string
   email: string
   profileType?: string | null
+  role?: { id: string; name: string } | null
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -95,13 +96,34 @@ function UsersModal({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [filterPerfil, setFilterPerfil] = useState('')
+  const [filterFuncao, setFilterFuncao] = useState('')
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') : null
 
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
 
+  // Role-group isolation helpers
+  const currentMrmUser = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; } })();
+  const currentProfileType: string = currentMrmUser.profileType || '';
+  const currentRoleName: string = currentMrmUser.roleName || currentMrmUser.role?.name || '';
+  const isMasterOrAdmin = ['master', 'admin'].includes(currentProfileType);
+
+  const getRoleGroup = (name: string): string | null => {
+    const lower = name.toLowerCase();
+    if (lower.includes('sec')) return 'sec';
+    if (lower.includes('tes')) return 'tes';
+    return null;
+  };
+
+  // Only master/admin bypass group isolation
+  const currentGroup = isMasterOrAdmin ? null : getRoleGroup(currentRoleName);
+
   useEffect(() => {
+    const activeFieldId = typeof window !== 'undefined' ? localStorage.getItem('mrm_active_field_id') || '' : ''
+    const usersUrl = `/api/users?limit=200` + (activeFieldId ? `&campoId=${activeFieldId}` : '')
+
     Promise.all([
-      fetch('/api/users?limit=200', { headers }).then(r => r.json()),
+      fetch(usersUrl, { headers }).then(r => r.json()),
       fetch(`/api/whatsapp/instances/${instance.id}/users`, { headers }).then(r => r.json()),
     ]).then(([usersRes, authorizedRes]) => {
       setSystemUsers(Array.isArray(usersRes) ? usersRes : Array.isArray(usersRes?.users) ? usersRes.users : [])
@@ -141,10 +163,29 @@ function UsersModal({
     }
   }
 
-  const filtered = systemUsers.filter(u =>
-    u.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase())
-  )
+  const allRoles: string[] = Array.from(
+    new Set(systemUsers.map((u: any) => u.role?.name).filter(Boolean))
+  ) as string[];
+
+  const filtered = systemUsers.filter(u => {
+    const matchSearch =
+      u.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase())
+
+    const matchPerfil = !filterPerfil || u.profileType === filterPerfil
+
+    const matchFuncao =
+      !filterFuncao ||
+      (filterFuncao === '__none__' ? !u.role : u.role?.name === filterFuncao)
+
+    // Regra 1: Users below admin cannot see master accounts
+    const matchMasterVisibility = isMasterOrAdmin || u.profileType !== 'master'
+
+    // Regra 2: Role-group isolation (sec/tes)
+    const matchGroup = !currentGroup || getRoleGroup(u.role?.name || '') === currentGroup
+
+    return matchSearch && matchPerfil && matchFuncao && matchMasterVisibility && matchGroup
+  })
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -164,14 +205,38 @@ function UsersModal({
           </p>
         </div>
 
-        {/* Search */}
-        <div className="px-5 pt-4">
+        {/* Search & Filters */}
+        <div className="px-5 pt-4 space-y-2.5">
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar usuário..."
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
           />
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={filterPerfil}
+              onChange={e => setFilterPerfil(e.target.value)}
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white text-slate-800"
+            >
+              <option value="">Todos os perfis</option>
+              <option value="master">Master</option>
+              <option value="admin">Administrador</option>
+              <option value="campo">Campo</option>
+              <option value="church">Igreja</option>
+            </select>
+            <select
+              value={filterFuncao}
+              onChange={e => setFilterFuncao(e.target.value)}
+              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white text-slate-800"
+            >
+              <option value="">Todas as funções</option>
+              <option value="__none__">Sem função</option>
+              {allRoles.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* List */}

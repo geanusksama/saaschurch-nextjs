@@ -37,7 +37,9 @@ export type AttendanceType =
   | 'financeiro'
   | 'ministerial'
   | 'online'
-  | 'presencial';
+  | 'presencial'
+  | 'casamento'
+  | 'apresentacao_criancas';
 
 export type ColumnKey = 'todo' | 'doing' | 'done' | 'cancelled';
 
@@ -595,6 +597,8 @@ export const ATTENDANCE_TYPE_LABELS: Record<AttendanceType, string> = {
   ministerial: 'Atendimento Ministerial',
   online: 'Atendimento Online',
   presencial: 'Atendimento Presencial',
+  casamento: 'Casamento',
+  apresentacao_criancas: 'Apresentação de Crianças',
 };
 
 export const ATTENDANCE_TYPE_COLORS: Record<AttendanceType, string> = {
@@ -612,6 +616,8 @@ export const ATTENDANCE_TYPE_COLORS: Record<AttendanceType, string> = {
   ministerial: '#a855f7',
   online: '#64748b',
   presencial: '#0ea5e9',
+  casamento: '#f43f5e',
+  apresentacao_criancas: '#10b981',
 };
 
 export const PRIORITY_LABELS: Record<Priority, string> = {

@@ -62,6 +62,18 @@ import { printReport } from '../../lib/printReport';
 
 import { apiBase } from '../../lib/apiBase';
 
+const getImageUrl = (photoUrl?: string) => {
+  if (!photoUrl) return '';
+  const url = photoUrl.toLowerCase();
+  if (!url.includes('.jpg') && !url.includes('.jpeg') && !url.includes('.png') && !url.includes('.gif')) {
+    return `${apiBase}/upload/convert-image/${encodeURIComponent(photoUrl)}`;
+  }
+  if (url.includes('.heic') || url.includes('.webp') || url.includes('.tiff') || url.includes('.bmp')) {
+    return `${apiBase}/upload/convert-image/${encodeURIComponent(photoUrl)}`;
+  }
+  return photoUrl;
+};
+
 const initialFilters = {
   search: '',
   campoId: '',
@@ -1181,10 +1193,15 @@ export function Churches() {
   };
 
   const uploadReceipt = async (file) => {
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new Error(`Imagem muito grande. Máximo: 5MB. Tamanho do arquivo: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${apiBase}/upload`, {
+    const response = await fetch(`${apiBase}/upload/church-photos`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
@@ -1192,7 +1209,7 @@ export function Churches() {
 
     if (!response.ok) {
       const message = await response.json().catch(() => ({}));
-      throw new Error(message.error || 'Falha ao enviar arquivo.');
+      throw new Error(message.error || 'Falha ao enviar imagem.');
     }
 
     return response.json();
@@ -1206,9 +1223,19 @@ export function Churches() {
       setDetailError('');
 
       const uploadedPhotos = [];
+      const errors = [];
+
       for (const file of Array.from(files)) {
-        const uploaded = await uploadReceipt(file);
-        uploadedPhotos.push({ url: uploaded.url, name: file.name });
+        try {
+          const uploaded = await uploadReceipt(file);
+          uploadedPhotos.push({ url: uploaded.url, name: file.name });
+        } catch (error: any) {
+          errors.push(`${file.name}: ${error.message}`);
+        }
+      }
+
+      if (uploadedPhotos.length === 0) {
+        throw new Error(`Falha ao enviar todas as imagens:\n${errors.join('\n')}`);
       }
 
       await fetchJson(
@@ -1221,6 +1248,10 @@ export function Churches() {
       );
 
       await loadChurchWorkspace(form.id);
+
+      if (errors.length > 0) {
+        setDetailError(`${uploadedPhotos.length} imagem(ns) enviada(s) com sucesso.\nErros:\n${errors.join('\n')}`);
+      }
     } catch (photoError: any) {
       setDetailError(photoError.message || 'Falha ao enviar imagens.');
     } finally {
@@ -2299,7 +2330,7 @@ export function Churches() {
                     <div key={photo.id} className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50">
                       <button type="button" onClick={() => { setPhotoPreview(photo); setPhotoZoom(1); setPhotoRotation(0); }} className="block w-full text-left">
                         <div className="aspect-[4/3] overflow-hidden bg-slate-200 dark:bg-slate-800">
-                          <img src={photo.photoUrl} alt={photo.fieldName || form.name || 'Imagem da igreja'} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                          <img src={getImageUrl(photo.photoUrl)} alt={photo.fieldName || form.name || 'Imagem da igreja'} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                         </div>
                       </button>
                       <div className="space-y-3 px-4 py-3">
@@ -2959,10 +2990,10 @@ export function Churches() {
               <button type="button" onClick={() => setPhotoZoom((current) => Math.max(0.5, Number((current - 0.25).toFixed(2))))} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"><ZoomOut className="h-4 w-4" />Menos zoom</button>
               <button type="button" onClick={() => setPhotoZoom((current) => Math.min(3, Number((current + 0.25).toFixed(2))))} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"><ZoomIn className="h-4 w-4" />Mais zoom</button>
               <button type="button" onClick={() => setPhotoRotation((current) => current + 90)} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"><RotateCw className="h-4 w-4" />Girar</button>
-              {photoPreview?.photoUrl ? <a href={photoPreview.photoUrl} download target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"><Download className="h-4 w-4" />Baixar</a> : null}
+              {photoPreview?.photoUrl ? <a href={getImageUrl(photoPreview.photoUrl)} download target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"><Download className="h-4 w-4" />Baixar</a> : null}
             </div>
             <div className="flex min-h-[480px] items-center justify-center overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900/50">
-              {photoPreview?.photoUrl ? <img src={photoPreview.photoUrl} alt={photoPreview.fieldName || form.name || 'Imagem da igreja'} style={{ transform: `scale(${photoZoom}) rotate(${photoRotation}deg)` }} className="max-h-[70vh] max-w-full rounded-xl object-contain transition-transform duration-200" /> : <div className="text-sm text-slate-500">Imagem indisponível.</div>}
+              {photoPreview?.photoUrl ? <img src={getImageUrl(photoPreview.photoUrl)} alt={photoPreview.fieldName || form.name || 'Imagem da igreja'} style={{ transform: `scale(${photoZoom}) rotate(${photoRotation}deg)` }} className="max-h-[70vh] max-w-full rounded-xl object-contain transition-transform duration-200" /> : <div className="text-sm text-slate-500">Imagem indisponível.</div>}
             </div>
           </div>
           <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">

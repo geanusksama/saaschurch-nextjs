@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { ArrowLeft, DollarSign, Search, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, DollarSign, Search, AlertCircle, CheckCircle, MessageSquare, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { supabase } from '../../lib/supabaseClient';
 import { checkChurchCashStatus } from '../../lib/financeCashStatus';
@@ -37,6 +37,9 @@ export default function IncomeNew() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [savedData, setSavedData] = useState<{ memberName: string; phone?: string; valor: string; referencia: string; churchName: string; dataLancamento: string } | null>(null);
+  const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -98,17 +101,93 @@ export default function IncomeNew() {
     setSaving(false);
 
     if (err) { setError('Erro ao salvar: ' + err.message); return; }
+
+    // Guarda dados para recibo WhatsApp
+    const memberPhone = tipoPessoa === 'MEMBRO' && memberId
+      ? (await supabase.from('members').select('mobile, phone').eq('id', memberId).single()).data
+      : null
+    const phone = memberPhone?.mobile || memberPhone?.phone || null
+    setSavedData({
+      memberName: tipoPessoa === 'MEMBRO' ? memberSearch : (favorecido || 'Não identificado'),
+      phone: phone ? String(phone).replace(/\D/g, '') : undefined,
+      valor,
+      referencia,
+      churchName: churches.find(c => c.id === churchId)?.name ?? '',
+      dataLancamento,
+    })
+
     setSuccess(true);
-    setTimeout(() => navigate('/app-ui/finance/cashbook'), 1500);
+    // Sem phone: redireciona automaticamente após 1.5s
+    if (!phone) setTimeout(() => navigate('/app-ui/finance/cashbook'), 1500);
+  }
+
+  async function handleSendReceipt() {
+    if (!savedData?.phone) return;
+    setSendingReceipt(true);
+    try {
+      const token = localStorage.getItem('mrm_token') ?? '';
+      const res = await fetch('/api/whatsapp/send-tithe-receipt', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberName: savedData.memberName,
+          phone: savedData.phone.startsWith('55') ? savedData.phone : `55${savedData.phone}`,
+          valor: Number(savedData.valor.replace(',', '.')),
+          referencia: savedData.referencia,
+          churchName: savedData.churchName,
+          dataLancamento: savedData.dataLancamento,
+        }),
+      });
+      if (res.ok) {
+        setReceiptSent(true);
+      } else {
+        const err = await res.json();
+        alert(err.error === 'no_active_instance' ? 'Nenhuma instância WhatsApp conectada.' : `Erro: ${err.error}`);
+      }
+    } finally {
+      setSendingReceipt(false);
+    }
   }
 
   if (success) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
+        <div className="text-center max-w-sm">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-900">Receita lancada com sucesso!</h2>
-          <p className="text-slate-500 mt-1">Redirecionando para o Livro Caixa...</p>
+          <h2 className="text-xl font-bold text-slate-900">Receita lançada com sucesso!</h2>
+          {savedData?.phone && !receiptSent && (
+            <div className="mt-5 space-y-3">
+              <p className="text-slate-500 text-sm">Deseja enviar o recibo por WhatsApp para <strong>{savedData.memberName}</strong>?</p>
+              <button
+                onClick={handleSendReceipt}
+                disabled={sendingReceipt}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-medium text-sm"
+              >
+                {sendingReceipt ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                {sendingReceipt ? 'Enviando...' : 'Enviar Recibo WhatsApp'}
+              </button>
+              <button
+                onClick={() => navigate('/app-ui/finance/cashbook')}
+                className="w-full px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 text-sm"
+              >
+                Pular e ir ao Caixa
+              </button>
+            </div>
+          )}
+          {receiptSent && (
+            <div className="mt-4">
+              <p className="text-green-600 font-medium text-sm">✅ Recibo enviado por WhatsApp!</p>
+              <button
+                onClick={() => navigate('/app-ui/finance/cashbook')}
+                className="mt-3 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 text-sm"
+              >
+                Ir ao Livro Caixa
+              </button>
+            </div>
+          )}
+          {!savedData?.phone && (
+            <p className="text-slate-400 text-sm mt-3">Redirecionando para o Livro Caixa...</p>
+          )}
         </div>
       </div>
     );

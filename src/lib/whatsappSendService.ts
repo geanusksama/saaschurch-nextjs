@@ -143,10 +143,25 @@ export interface QuickSendOptions {
   phone: string
   message: string
   contactName?: string
+  instanceId?: string
 }
 
 export async function quickSendWhatsApp(opts: QuickSendOptions): Promise<SendMessageResult> {
-  const instance = await getActiveInstance(opts.ownerUserId, opts.profileType)
+  let instance: WhatsAppInstance | null = null
+
+  if (opts.instanceId) {
+    const { data } = await supabaseAdmin
+      .from('whatsapp_instances')
+      .select('*')
+      .eq('id', opts.instanceId)
+      .eq('is_active', true)
+      .eq('status', 'connected')
+      .single()
+    instance = data as WhatsAppInstance | null
+  } else {
+    instance = await getActiveInstance(opts.ownerUserId, opts.profileType)
+  }
+
   if (!instance) {
     return { messageId: '', status: 'error', error: 'no_active_instance' }
   }

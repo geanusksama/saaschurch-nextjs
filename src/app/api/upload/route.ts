@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import sharp from "sharp";
 
-/**
- * Generic file upload endpoint used by Requerimentos and other modules.
- * Stores files in the 'dados' bucket under 'requerimentos/' folder.
- */
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 export async function POST(req: NextRequest) {
   return withAuth(req, async () => {
     try {
@@ -13,20 +12,87 @@ export async function POST(req: NextRequest) {
       const file = formData.get("file") as File | null;
       if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
-      const ext = file.name.split(".").pop() || "bin";
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      if (buffer.length > MAX_FILE_SIZE) {
+        return NextResponse.json({ error: "Imagem muito grande. Máximo: 5MB." }, { status: 400 });
+      }
+
+      let compressedBuffer = buffer;
+
+      // Primeiro valida se é uma imagem
+      try {
+        await sharp(buffer).metadata();
+      } catch (err: any) {
+        console.error("Arquivo não é imagem válida:", err?.message);
+        return NextResponse.json(
+          { error: "Arquivo não é uma imagem válida. Tente JPG, PNG, HEIC ou WebP." },
+          { status: 400 }
+        );
+      }
+
+      // Tenta converter para PNG
+      try {
+        compressedBuffer = await sharp(buffer, { animated: false })
+          .resize(2048, 2048, {
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .png({ compressionLevel: 9 })
+          .toBuffer();
+      } catch (compressionError: any) {
+        console.error("Erro ao comprimir com resize:", compressionError?.message);
+
+        try {
+          compressedBuffer = await sharp(buffer)
+            .png({ compressionLevel: 6 })
+            .toBuffer();
+        } catch (fallbackError: any) {
+          console.error("Erro ao comprimir sem resize:", fallbackError?.message);
+          return NextResponse.json(
+            { error: "Formato de imagem não suportado ou corrompido." },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (compressedBuffer.length < 100) {
+        return NextResponse.json(
+          { error: "Erro ao processar imagem - arquivo vazio." },
+          { status: 400 }
+        );
+      }
+
+      // Valida se o PNG gerado é válido
+      try {
+        await sharp(compressedBuffer).metadata();
+      } catch (validationError: any) {
+        console.error("PNG gerado é inválido:", validationError?.message);
+        return NextResponse.json(
+          { error: "Erro ao processar imagem. Tente com outro arquivo." },
+          { status: 400 }
+        );
+      }
+
+      if (compressedBuffer.length > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: "Imagem comprimida ainda excede 5MB. Tente com resolução menor." },
+          { status: 400 }
+        );
+      }
+
       const sanitized = file.name
         .replace(/[^a-zA-Z0-9.\-_]/g, "_")
-        .substring(0, 80);
+        .substring(0, 80)
+        .replace(/\.[^/.]+$/, ".png");
       const fileName = `${Date.now()}_${sanitized}`;
       const folder = (formData.get("folder") as string | null) || "uploads";
       const path = `${folder}/${fileName}`;
 
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
       const { error } = await supabaseAdmin.storage
         .from("dados")
-        .upload(path, buffer, { upsert: true, contentType: file.type || "application/octet-stream" });
+        .upload(path, compressedBuffer, { upsert: true, contentType: "image/png" });
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

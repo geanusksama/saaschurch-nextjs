@@ -162,9 +162,6 @@ const appNavigation: NavigationSection[] = [
     items: [
       { name: 'Gestão',               path: '/app-ui/pastoral-kanban',        icon: LayoutGrid,    permKey: 'pastoral_visits' },
       { name: 'Discipulado',          path: '/app-ui/discipleship-tracking',  icon: GraduationCap,  permKey: 'discipleship' },
-      { name: 'Aconselhamentos',      path: '/app-ui/counseling-list',        icon: HeartHandshake, permKey: 'counseling' },
-      { name: 'Pedidos de Oração',    path: '/app-ui/prayer-wall',            icon: HandHeart,      permKey: 'prayer_requests' },
-      { name: 'Follow-up',            path: '/app-ui/followup-dashboard',     icon: Target,        permKey: 'followup' },
       { name: 'Relatórios Pastorais', path: '/app-ui/pastoral-reports',       icon: BarChart3,     permKey: 'pastoral_reports' },
     ]
   },

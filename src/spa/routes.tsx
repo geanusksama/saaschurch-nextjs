@@ -62,6 +62,7 @@ import LancamentoNew from "../app-ui/finance/LancamentoNew";
 import { Events } from "../components/app-ui/Events";
 import { Communication } from "../components/app-ui/Communication";
 import WhatsAppInbox from "../app-ui/communication/WhatsAppInbox";
+import WhatsAppInstances from "../components/app-ui-screens/communication/WhatsAppInstances";
 import { Ministries } from "../components/app-ui/Ministries";
 import MinistryDetail from "../app-ui/ministries/MinistryDetail";
 import { System } from "../components/app-ui/System";
@@ -386,7 +387,8 @@ export const router = createBrowserRouter([
       { path: "system/notifications", Component: SystemNotificationSettings },
       { path: "system/templates", Component: Templates },
       { path: "system/email", Component: SystemEmailSettings },
-      { path: "system/whatsapp", Component: SystemWhatsAppSettings },
+      { path: "system/whatsapp", Component: WhatsAppInstances },
+      { path: "communication/whatsapp-instances", Component: WhatsAppInstances },
       { path: "system/sms", Component: SmsSettings },
       { path: "system/integrations", Component: Integrations },
       { path: "system/webhooks", Component: Webhooks },

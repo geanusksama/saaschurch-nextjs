@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { quickSendWhatsApp } from '@/lib/whatsappSendService'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 // POST /api/whatsapp/send-tithe-receipt
 // Body: { memberName, phone, valor, referencia?, churchName?, dataLancamento? }
@@ -8,10 +9,38 @@ import { quickSendWhatsApp } from '@/lib/whatsappSendService'
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
     const body = await req.json().catch(() => ({}))
-    const { memberName, phone, valor, referencia, churchName, dataLancamento } = body
+    const { memberName, phone, valor, referencia, churchName, dataLancamento, instanceId } = body
 
     if (!memberName || !phone || !valor) {
       return NextResponse.json({ error: 'memberName, phone e valor são obrigatórios' }, { status: 400 })
+    }
+
+    if (instanceId) {
+      // Check permission for specific instance
+      const { data: inst } = await supabaseAdmin
+        .from('whatsapp_instances')
+        .select('id, owner_user_id')
+        .eq('id', instanceId)
+        .eq('is_active', true)
+        .eq('status', 'connected')
+        .single()
+
+      if (!inst) {
+        return NextResponse.json({ error: 'Instância não conectada ou indisponível' }, { status: 404 })
+      }
+
+      if (user.profileType !== 'master' && inst.owner_user_id !== user.id) {
+        const { data: shared } = await supabaseAdmin
+          .from('whatsapp_instance_users')
+          .select('id')
+          .eq('instance_id', instanceId)
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        if (!shared) {
+          return NextResponse.json({ error: 'Você não está autorizado a utilizar esta instância' }, { status: 403 })
+        }
+      }
     }
 
     const firstName = String(memberName).split(' ')[0]
@@ -44,6 +73,7 @@ export async function POST(req: NextRequest) {
       phone,
       message,
       contactName: memberName,
+      instanceId,
     })
 
     if (result.status === 'error') {
