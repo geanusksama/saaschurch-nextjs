@@ -3,7 +3,7 @@ import {
   DollarSign, Plus, Search, Download, Printer, Eye, AlertCircle,
   TrendingDown, TrendingUp, Building2, X, ChevronUp, ChevronDown,
   ChevronsUpDown, ChevronLeft, ChevronRight, MapPin, Users,
-  Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet
+  Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet, Share2
 } from 'lucide-react';
 import { Link } from 'react-router';
 import * as XLSX from 'xlsx';
@@ -963,7 +963,7 @@ export default function Cashbook() {
                 label={loading ? 'Consultando' : 'Consultar'}
                 onClick={() => { void buscar(); }}
                 disabled={loading}
-                tone="blue"
+                className="w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
               />
             </RibbonGroup>
 
@@ -972,13 +972,22 @@ export default function Cashbook() {
             <RibbonGroup
               label="Relatórios"
               className="w-full md:w-auto"
-              bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-auto md:gap-1 md:px-1"
+              bodyClassName="grid w-full grid-cols-3 gap-2 px-0 md:flex md:w-auto md:gap-1 md:px-1"
             >
               <RibbonButton
                 size="lg"
                 title="Imprimir relatório"
                 icon={<Printer className="h-4 w-4" />}
                 label="Imprimir"
+                onClick={() => { if (searched && rows.length > 0) setShowRelatorio(true); }}
+                disabled={!searched || rows.length === 0}
+                className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
+              />
+              <RibbonButton
+                size="lg"
+                title="Compartilhar relatório"
+                icon={<Share2 className="h-4 w-4" />}
+                label="Compartilhar"
                 onClick={() => { if (searched && rows.length > 0) setShowRelatorio(true); }}
                 disabled={!searched || rows.length === 0}
                 className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
