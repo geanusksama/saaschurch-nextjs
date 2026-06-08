@@ -136,6 +136,42 @@ export async function ensureConversation(
   return created!.id
 }
 
+// ── Chama Z-API para enviar documento ──────────────────────────────────────────
+export async function sendDocumentViaZApi(
+  instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
+  to: string,
+  documentUrl: string,
+  caption: string,
+  fileName: string
+): Promise<SendMessageResult> {
+  await enforceRateLimit(instance.instance_id)
+
+  const ext = fileName.split('.').pop() || 'pdf'
+  const url = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}/send-document/${ext}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Client-Token': instance.client_token,
+    },
+    body: JSON.stringify({
+      phone: to,
+      document: documentUrl,
+      fileName,
+      mimeType: 'application/pdf',
+      caption,
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => 'unknown')
+    return { messageId: '', status: 'error', error: err }
+  }
+
+  const json = await res.json()
+  return { messageId: json.messageId ?? json.id ?? '', status: 'sent' }
+}
+
 // ── Função de alto nível: enviar mensagem de qualquer módulo ──────────────────
 export interface QuickSendOptions {
   ownerUserId: string
@@ -144,6 +180,8 @@ export interface QuickSendOptions {
   message: string
   contactName?: string
   instanceId?: string
+  documentUrl?: string
+  fileName?: string
 }
 
 export async function quickSendWhatsApp(opts: QuickSendOptions): Promise<SendMessageResult> {
@@ -167,10 +205,17 @@ export async function quickSendWhatsApp(opts: QuickSendOptions): Promise<SendMes
   }
 
   const to = opts.phone.replace(/\D/g, '')
-  const result = await sendTextViaZApi(instance, to, opts.message)
+  
+  let result: SendMessageResult
+  if (opts.documentUrl) {
+    result = await sendDocumentViaZApi(instance, to, opts.documentUrl, opts.message, opts.fileName || 'recibo.pdf')
+  } else {
+    result = await sendTextViaZApi(instance, to, opts.message)
+  }
 
   const conversationId = await ensureConversation(instance.id, opts.ownerUserId, to, opts.contactName)
   await persistOutboundMessage(conversationId, opts.message, result.messageId || undefined)
 
   return result
 }
+

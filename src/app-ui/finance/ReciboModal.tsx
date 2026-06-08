@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Printer, Download, Camera, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut, RotateCw, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { apiBase } from '../../lib/apiBase';
 import { toast } from 'sonner';
+import { jsPDF } from 'jspdf';
 
 export type ReciboRow = {
   id: string;
@@ -414,6 +416,117 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
 
     setSendingWhatsapp(true);
     try {
+      let pdfUrl = '';
+      let pdfPublicUrl = '';
+
+      // Generate the PDF blob and upload it
+      try {
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        const valorNum = Number(row.valor);
+        const dataFmt = new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR');
+        const agora = new Date().toLocaleString('pt-BR');
+        const extenso = valorPorExtenso(valorNum);
+        const formaPg = row.forma_pg || 'DINHEIRO';
+        const docNum = row.legacy_id || row.num_doc || row.id;
+        const churchName = row.churches?.name || '';
+        const operatorName = userName;
+
+        doc.setFont('Helvetica', 'normal');
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text('ADCampinas', 20, 20);
+        
+        doc.setFontSize(12);
+        doc.setTextColor(50, 50, 50);
+        doc.text(churchName, 20, 26);
+        
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.setTextColor(0, 0, 0);
+        doc.text('RECIBO DE LANÇAMENTO', 20, 38);
+        
+        doc.setDrawColor(200, 200, 200);
+        doc.line(20, 42, 190, 42);
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.setTextColor(80, 80, 80);
+        doc.text(`Documento Nº: ${docNum}`, 20, 50);
+        doc.text(`Data: ${dataFmt}`, 20, 56);
+        doc.text(`Tipo: ${row.tipo}`, 20, 62);
+        
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Favorecido:', 20, 72);
+        doc.setFont('Helvetica', 'normal');
+        const favorecidoText = row.rol ? `[ROL ${row.rol}] ${row.favorecido || ''}` : (row.favorecido || '');
+        doc.text(favorecidoText, 45, 72);
+        
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Categoria / Conta:', 20, 78);
+        doc.setFont('Helvetica', 'normal');
+        doc.text(row.plano_de_conta || row.categoria || '—', 58, 78);
+        
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Forma de Pagto:', 20, 84);
+        doc.setFont('Helvetica', 'normal');
+        doc.text(formaPg, 55, 84);
+        
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Valor:', 20, 92);
+        doc.setFontSize(16);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`R$ ${valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 35, 93);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.setFont('Helvetica', 'italic');
+        doc.text(`(${extenso})`, 20, 101);
+        
+        if (row.obs) {
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(11);
+          doc.setTextColor(50, 50, 50);
+          doc.text('Observação:', 20, 112);
+          doc.setFont('Helvetica', 'normal');
+          doc.text(row.obs, 20, 118, { maxWidth: 170 });
+        }
+        
+        doc.line(20, 150, 190, 150);
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Operador: ${operatorName}`, 20, 156);
+        doc.text(`Emitido em: ${agora}`, 20, 162);
+
+        const pdfBlob = doc.output('blob');
+        const filename = `recibo_${row.id}_${Date.now()}`;
+        const filePath = `recibos/${filename}.pdf`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from('dados')
+          .upload(filePath, pdfBlob, { contentType: 'application/pdf', upsert: true });
+
+        if (uploadErr) {
+          console.error('Erro ao salvar PDF no bucket:', uploadErr);
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('dados')
+            .getPublicUrl(filePath);
+          
+          const publicUrl = urlData?.publicUrl || '';
+          pdfPublicUrl = publicUrl;
+          pdfUrl = `${window.location.origin}/api/d/${filename}`;
+        }
+      } catch (errPDF) {
+        console.error('Falha ao gerar e salvar PDF:', errPDF);
+      }
+
       const token = localStorage.getItem('mrm_token');
       const res = await fetch('/api/whatsapp/send-tithe-receipt', {
         method: 'POST',
@@ -429,6 +542,9 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
           churchName: row.churches?.name,
           dataLancamento: row.data_lancamento,
           instanceId: selectedInstanceId,
+          pdfUrl,
+          pdfPublicUrl,
+          id: row.id,
         }),
       });
 
