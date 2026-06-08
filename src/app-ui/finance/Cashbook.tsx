@@ -1257,7 +1257,7 @@ export default function Cashbook() {
           <div className="flex flex-wrap items-stretch gap-x-2 gap-y-3 md:items-center md:overflow-x-auto">
             <RibbonGroup
               label="Escopo"
-              className="w-full md:flex-1"
+              className="w-full md:w-auto flex-1 min-w-[260px]"
               bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-full md:items-center md:gap-1 md:px-1"
             >
               {canChooseChurch ? (
@@ -1300,25 +1300,6 @@ export default function Cashbook() {
                   </div>
                 </RibbonField>
               ) : null}
-
-              <RibbonButton
-                size="lg"
-                title="Consultar lançamentos por igreja e período"
-                icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                label={loading ? 'Consultando' : 'Consultar Livro Caixa'}
-                onClick={() => { void buscar(); }}
-                disabled={loading}
-                tone="blue"
-                className="w-full md:w-auto"
-              />
-              <RibbonButton
-                size="lg"
-                title="Consultar lançamento por categoria, nome, ROL ou igreja"
-                icon={<Filter className="h-4 w-4" />}
-                label="Consultar Lançamento"
-                onClick={() => setShowSearchModal(true)}
-                className="w-full md:w-auto bg-blue-700 text-white hover:!bg-blue-800 shadow-md"
-              />
             </RibbonGroup>
 
             <RibbonDivider />
@@ -1340,6 +1321,33 @@ export default function Cashbook() {
                   className="h-8 rounded border border-slate-300 bg-white px-2 text-xs text-slate-700 outline-none focus:border-blue-400"
                 />
               </RibbonField>
+            </RibbonGroup>
+
+            <RibbonDivider />
+
+            <RibbonGroup
+              label="Consultas"
+              className="w-full md:w-auto"
+              bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-auto md:items-center md:gap-1 md:px-1"
+            >
+              <RibbonButton
+                size="lg"
+                title="Consultar lançamentos por igreja e período"
+                icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                label={loading ? 'Consultando' : 'Consultar Livro Caixa'}
+                onClick={() => { void buscar(); }}
+                disabled={loading}
+                tone="blue"
+                className="w-full md:w-auto"
+              />
+              <RibbonButton
+                size="lg"
+                title="Consultar lançamento por categoria, nome, ROL ou igreja"
+                icon={<Filter className="h-4 w-4" />}
+                label="Consultar Lançamento"
+                onClick={() => setShowSearchModal(true)}
+                className="w-full md:w-auto bg-blue-700 text-white hover:!bg-blue-800 shadow-md"
+              />
             </RibbonGroup>
 
             <RibbonDivider />

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
 import { checkChurchCashStatus } from '../../lib/financeCashStatus';
+import { convertToJpeg } from '../../lib/imageConverter';
 
 type Church = { id: string; name: string };
 type PlanoDeContas = { id: string; nome: string; codigo: string | null };
@@ -87,9 +88,10 @@ export default function ExpenseNew() {
     if (fotoFile) {
       setUploadingFoto(true);
       try {
+        const convertedFile = await convertToJpeg(fotoFile);
         const token = localStorage.getItem('mrm_token');
         const formData = new FormData();
-        formData.append('file', fotoFile);
+        formData.append('file', convertedFile);
         const res = await fetch(`${apiBase}/upload/foto-despesa`, {
           method: 'POST',
           headers: token ? { Authorization: `Bearer ${token}` } : {},

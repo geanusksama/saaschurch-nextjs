@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Printer, Download, Camera, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut, RotateCw, Trash2 } from 'lucide-react';
+import { X, Printer, Download, Camera, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut, RotateCw, Trash2, Share2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
 import { toast } from 'sonner';
 import { jsPDF } from 'jspdf';
+import { convertToJpeg, loadHeic2Any } from '../../lib/imageConverter';
 
 const getImageUrl = (photoUrl?: string) => {
   if (!photoUrl) return '';
@@ -95,7 +96,41 @@ function valorPorExtenso(valor: number): string {
   return result;
 }
 
-export function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: string | null) {
+function imageToDataUri(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function () {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        try {
+          const dataURL = canvas.toDataURL('image/jpeg', 0.85);
+          resolve(dataURL);
+        } catch (e) {
+          reject(e);
+        }
+      } else {
+        reject(new Error('Could not get canvas context'));
+      }
+    };
+    img.onerror = function (e) {
+      reject(e);
+    };
+    img.src = url;
+  });
+}
+
+export async function generateReciboPdf(row: ReciboRow, incluirComprovante: boolean, foto: string | null, userName: string) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
   const valorNum = Number(row.valor);
   const dataFmt = new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR');
   const agora = new Date().toLocaleString('pt-BR');
@@ -103,10 +138,131 @@ export function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: s
   const formaPg = row.forma_pg || 'DINHEIRO';
   const docNum = row.legacy_id || row.num_doc || row.id;
   const churchName = row.churches?.name || '';
+  const operatorName = userName;
 
+  doc.setFont('Helvetica', 'normal');
+  
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text('ADCampinas', 20, 20);
+  
+  doc.setFontSize(12);
+  doc.setTextColor(50, 50, 50);
+  doc.text(churchName, 20, 26);
+  
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(0, 0, 0);
+  doc.text('RECIBO DE LANÇAMENTO', 20, 38);
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.line(20, 42, 190, 42);
+  
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(80, 80, 80);
+  doc.text(`Documento Nº: ${docNum}`, 20, 50);
+  doc.text(`Data: ${dataFmt}`, 20, 56);
+  doc.text(`Tipo: ${row.tipo}`, 20, 62);
+  
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Favorecido:', 20, 72);
+  doc.setFont('Helvetica', 'normal');
+  const favorecidoText = row.rol ? `[ROL ${row.rol}] ${row.favorecido || ''}` : (row.favorecido || '');
+  doc.text(favorecidoText, 45, 72);
+  
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Categoria / Conta:', 20, 78);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(row.plano_de_conta || row.categoria || '—', 58, 78);
+  
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Forma de Pagto:', 20, 84);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(formaPg, 55, 84);
+  
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Valor:', 20, 92);
+  doc.setFontSize(16);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`R$ ${valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 35, 93);
+  
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.setFont('Helvetica', 'italic');
+  doc.text(`(${extenso})`, 20, 101);
+  
+  if (row.obs) {
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(50, 50, 50);
+    doc.text('Observação:', 20, 112);
+    doc.setFont('Helvetica', 'normal');
+    doc.text(row.obs, 20, 118, { maxWidth: 170 });
+  }
+  
+  doc.line(20, 150, 190, 150);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(120, 120, 120);
+  doc.text(`Operador: ${operatorName}`, 20, 156);
+  doc.text(`Emitido em: ${agora}`, 20, 162);
+
+  if (incluirComprovante && foto) {
+    try {
+      const dataUri = await imageToDataUri(foto);
+      doc.addPage();
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text('COMPROVANTE ANEXADO', 20, 20);
+      doc.line(20, 24, 190, 24);
+      doc.addImage(dataUri, 'JPEG', 20, 30, 170, 220, undefined, 'FAST');
+    } catch (e) {
+      console.error('Falha ao adicionar comprovante ao PDF:', e);
+    }
+  }
+
+  return doc;
+}
+
+export async function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: string | null) {
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window);
+  
   const userName = row.operador || (() => {
     try { const u = JSON.parse(localStorage.getItem('mrm_user') || '{}'); return u.fullName || u.email || 'Sistema'; } catch { return 'Sistema'; }
   })();
+
+  if (isMobile) {
+    try {
+      const doc = await generateReciboPdf(row, incluirComprovante, foto, userName);
+      const pdfBlob = doc.output('blob');
+      const docNum = row.legacy_id || row.num_doc || row.id;
+      const fileName = `recibo-${docNum}.pdf`;
+      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Recibo ${docNum}`,
+          text: `Recibo de Lançamento`,
+        });
+      } else {
+        doc.save(fileName);
+      }
+    } catch (e) {
+      console.error('Error generating mobile PDF:', e);
+    }
+    return;
+  }
+
+  const valorNum = Number(row.valor);
+  const dataFmt = new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR');
+  const agora = new Date().toLocaleString('pt-BR');
+  const extenso = valorPorExtenso(valorNum);
+  const formaPg = row.forma_pg || 'DINHEIRO';
+  const docNum = row.legacy_id || row.num_doc || row.id;
+  const churchName = row.churches?.name || '';
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -205,7 +361,6 @@ export function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: s
 </body>
 </html>`;
 
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window);
   const printWindow = window.open('', '_blank', 'width=800,height=600');
   if (!printWindow) return;
   printWindow.document.open();
@@ -350,6 +505,68 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   const [loadingInstances, setLoadingInstances] = useState(false);
   const [whatsappPhone, setWhatsappPhone] = useState('');
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+
+  const [displayFoto, setDisplayFoto] = useState<string>('');
+
+  useEffect(() => {
+    if (!currentFoto) {
+      setDisplayFoto('');
+      return;
+    }
+    
+    const urlLower = currentFoto.toLowerCase();
+    const isHeic = urlLower.endsWith('.heic') || urlLower.endsWith('.heif');
+    let localUrlToRevoke: string | null = null;
+    let active = true;
+
+    if (isHeic) {
+      const convertHeicUrl = async () => {
+        try {
+          const res = await fetch(currentFoto);
+          if (!res.ok) throw new Error('Fetch failed');
+          const blob = await res.blob();
+          
+          const heic2any = await loadHeic2Any();
+          if (heic2any && active) {
+            const converted = await heic2any({
+              blob: blob,
+              toType: 'image/jpeg',
+              quality: 0.8,
+            });
+            const resultBlob = Array.isArray(converted) ? converted[0] : converted;
+            const localUrl = URL.createObjectURL(resultBlob);
+            localUrlToRevoke = localUrl;
+            if (active) {
+              setDisplayFoto(localUrl);
+            } else {
+              URL.revokeObjectURL(localUrl);
+            }
+          } else {
+            if (active) setDisplayFoto(currentFoto);
+          }
+        } catch (err) {
+          console.error('Failed to load HEIC client-side:', err);
+          if (active) setDisplayFoto(currentFoto);
+        }
+      };
+      
+      convertHeicUrl();
+    } else {
+      const isStandard = urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg') || urlLower.endsWith('.png') || urlLower.endsWith('.gif') || urlLower.endsWith('.webp');
+      if (!isStandard || urlLower.includes('.tiff') || urlLower.includes('.bmp')) {
+        setDisplayFoto(`/api/upload/convert-image/${encodeURIComponent(currentFoto)}`);
+      } else {
+        setDisplayFoto(currentFoto);
+      }
+    }
+
+    return () => {
+      active = false;
+      if (localUrlToRevoke) {
+        URL.revokeObjectURL(localUrlToRevoke);
+      }
+    };
+  }, [currentFoto]);
 
   useEffect(() => {
     if (showWhatsappModal) {
@@ -585,6 +802,43 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   const userRaw = typeof window !== 'undefined' ? localStorage.getItem('mrm_user') : null;
   const userName = row.operador || (userRaw ? (JSON.parse(userRaw).fullName || JSON.parse(userRaw).email || 'Sistema') : 'Sistema');
 
+  async function handleDownloadPdf() {
+    try {
+      const doc = await generateReciboPdf(row, incluirComprovante, displayFoto || currentFoto, userName);
+      doc.save(`recibo-${docNum}.pdf`);
+    } catch (e) {
+      console.error('Erro ao baixar PDF:', e);
+      toast.error('Erro ao gerar PDF');
+    }
+  }
+
+  async function handleSharePdf() {
+    try {
+      const doc = await generateReciboPdf(row, incluirComprovante, displayFoto || currentFoto, userName);
+      const pdfBlob = doc.output('blob');
+      const fileName = `recibo-${docNum}.pdf`;
+      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Recibo ${docNum} — ${row.churches?.name || ''}`,
+          text: `Recibo de Lançamento no valor de R$ ${fmt(valorNum)}`,
+        });
+      } else if (navigator.share) {
+        await navigator.share({
+          title: `Recibo ${docNum}`,
+          text: `Recibo de Lançamento no valor de R$ ${fmt(valorNum)}`,
+        });
+      } else {
+        doc.save(fileName);
+      }
+    } catch (e) {
+      console.error('Erro ao compartilhar PDF:', e);
+      toast.error('Erro ao compartilhar PDF');
+    }
+  }
+
   const selectedInstance = instances.find(inst => inst.id === selectedInstanceId);
   const isConnected = selectedInstance?.status === 'connected';
 
@@ -603,9 +857,12 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
     if (!file) return;
     setUploading(true);
     try {
+      // Convert to JPEG before uploading
+      const convertedFile = await convertToJpeg(file);
+
       const token = localStorage.getItem('mrm_token');
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', convertedFile);
       const res = await fetch(`${apiBase}/upload/foto-despesa`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -648,169 +905,179 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   return (
     <>
       {/* Overlay */}
-      <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center sm:p-4" onClick={onClose}>
+        <div className="bg-white dark:bg-slate-950 w-full h-full sm:h-auto sm:max-w-sm sm:rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden" onClick={e => e.stopPropagation()}>
           {/* Header */}
-          <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 dark:border-slate-900 shrink-0">
             <div className="text-center flex-1">
               <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Operação</p>
               <p className="text-[10px] text-slate-400 font-mono">{shortDoc}</p>
             </div>
-            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg ml-2">
+            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg ml-2">
               <X className="w-4 h-4 text-slate-500" />
             </button>
           </div>
 
-          {/* Receipt Card */}
-          <div className="mx-4 mb-3 border border-slate-200 rounded-xl p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="font-bold text-base text-slate-900">RECIBO</p>
-                <p className="text-xs text-slate-500">{row.churches?.name || '—'}</p>
+          {/* Scrollable Receipt Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Receipt Card */}
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white dark:bg-slate-900/50">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="font-bold text-base text-slate-900 dark:text-white">RECIBO</p>
+                  <p className="text-xs text-slate-500">{row.churches?.name || '—'}</p>
+                </div>
+                <p className="text-xs text-slate-400">{dataFmt}</p>
               </div>
-              <p className="text-xs text-slate-400">{dataFmt}</p>
-            </div>
 
-            <p className={`text-2xl font-bold mb-3 ${isReceita ? 'text-slate-900' : 'text-slate-900'}`}>
-              R$ {fmt(valorNum)}
-            </p>
+              <p className="text-2xl font-bold mb-3 text-slate-900 dark:text-white">
+                R$ {fmt(valorNum)}
+              </p>
 
-            <div className="space-y-1.5 text-sm">
-              {row.favorecido && (
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-24 shrink-0">Favorecido:</span>
-                  <span className="font-medium text-slate-800">
-                    {row.rol ? <span className="text-xs text-slate-400 mr-1">ROL {row.rol}</span> : null}
-                    {row.favorecido}
-                  </span>
-                </div>
-              )}
-              {row.referencia && (
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-24 shrink-0">Referência:</span>
-                  <span className="font-medium text-slate-800">{row.referencia}</span>
-                </div>
-              )}
-              {(row.plano_de_conta || row.categoria) && (
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-24 shrink-0">Categoria:</span>
-                  <span className="font-medium text-slate-800">
-                    <span className={`font-bold ${isReceita ? 'text-emerald-600' : 'text-red-600'}`}>{row.tipo}</span>{' - '}{row.plano_de_conta || row.categoria}
-                  </span>
-                </div>
-              )}
-              {row.obs && (
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-24 shrink-0">Observação:</span>
-                  <span className="font-medium text-slate-800">{row.obs}</span>
-                </div>
-              )}
-              {row.forma_pg && (
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-24 shrink-0">Forma de Pagto:</span>
-                  <span className="font-medium text-slate-800">{row.forma_pg}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400">
-              <span>Doc: {shortDoc}</span>
-              <span>Op: {userName}</span>
-            </div>
-
-            {/* Comprovante */}
-            {currentFoto ? (
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                    <span className="w-4 h-4 bg-green-600 text-white rounded-full flex items-center justify-center text-[10px]">✓</span>
-                    Comprovante Anexado
-                  </span>
-                  <button onClick={() => setShowViewer(true)} className="text-xs text-blue-600 hover:underline">
-                    (Ver Imagem)
-                  </button>
-                  <button onClick={() => setShowDeleteConfirm(true)} disabled={deleting} className="text-xs text-red-500 hover:underline disabled:opacity-50">
-                    {deleting ? '...' : '(Deletar)'}
-                  </button>
-                </div>
-                <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={incluirComprovante}
-                    onChange={e => setIncluirComprovante(e.target.checked)}
-                    className="rounded border-slate-300 text-slate-700"
-                  />
-                  <span className="text-xs text-slate-600">Incluir comprovante na impressão</span>
-                </label>
+              <div className="space-y-1.5 text-sm">
+                {row.favorecido && (
+                  <div className="flex gap-2">
+                    <span className="text-slate-500 w-24 shrink-0">Favorecido:</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                      {row.rol ? <span className="text-xs text-slate-400 mr-1">ROL {row.rol}</span> : null}
+                      {row.favorecido}
+                    </span>
+                  </div>
+                )}
+                {row.referencia && (
+                  <div className="flex gap-2">
+                    <span className="text-slate-500 w-24 shrink-0">Referência:</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{row.referencia}</span>
+                  </div>
+                )}
+                {(row.plano_de_conta || row.categoria) && (
+                  <div className="flex gap-2">
+                    <span className="text-slate-500 w-24 shrink-0">Categoria:</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                      <span className={`font-bold ${isReceita ? 'text-emerald-600' : 'text-red-600'}`}>{row.tipo}</span>{' - '}{row.plano_de_conta || row.categoria}
+                    </span>
+                  </div>
+                )}
+                {row.obs && (
+                  <div className="flex gap-2">
+                    <span className="text-slate-500 w-24 shrink-0">Observação:</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{row.obs}</span>
+                  </div>
+                )}
+                {row.forma_pg && (
+                  <div className="flex gap-2">
+                    <span className="text-slate-500 w-24 shrink-0">Forma de Pagto:</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{row.forma_pg}</span>
+                  </div>
+                )}
               </div>
-            ) : null}
 
-            {/* Obs */}
-            {row.obs && (
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <p className="text-xs text-slate-500 mb-1">Observação:</p>
-                <p className="text-sm text-slate-700">{row.obs}</p>
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400">
+                <span>Doc: {shortDoc}</span>
+                <span>Op: {userName}</span>
               </div>
-            )}
+
+              {/* Comprovante */}
+              {currentFoto ? (
+                <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                      <span className="w-4 h-4 bg-green-600 text-white rounded-full flex items-center justify-center text-[10px]">✓</span>
+                      Comprovante Anexado
+                    </span>
+                    <button onClick={() => setShowViewer(true)} className="text-xs text-blue-600 hover:underline">
+                      (Ver Imagem)
+                    </button>
+                    <button onClick={() => setShowDeleteConfirm(true)} disabled={deleting} className="text-xs text-red-500 hover:underline disabled:opacity-50">
+                      {deleting ? '...' : '(Deletar)'}
+                    </button>
+                  </div>
+                  <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={incluirComprovante}
+                      onChange={e => setIncluirComprovante(e.target.checked)}
+                      className="rounded border-slate-300 text-slate-700"
+                    />
+                    <span className="text-xs text-slate-600 dark:text-slate-400">Incluir comprovante na impressão</span>
+                  </label>
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="px-4 pb-5">
-            <p className="text-center text-xs text-slate-400 mb-3">Opções</p>
-            <div className="flex items-center justify-center gap-3">
+          {/* Action Buttons Section */}
+          <div className="p-4 border-t border-slate-100 dark:border-slate-900 bg-slate-50 dark:bg-slate-950 shrink-0">
+            <p className="text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Opções de Recibo</p>
+            <div className="grid grid-cols-3 gap-2">
               {/* Imprimir */}
               <button
-                onClick={() => { printRecibo(row, incluirComprovante, currentFoto); onClose(); }}
-                className="w-12 h-12 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl flex items-center justify-center transition-colors"
-                title="Imprimir Recibo"
+                onClick={() => printRecibo(row, incluirComprovante, displayFoto || currentFoto)}
+                className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                title="Imprimir"
               >
-                <Printer className="w-5 h-5" />
+                <Printer className="w-5 h-5 mb-1.5" />
+                <span className="text-[10px] font-medium leading-none">Imprimir</span>
               </button>
 
-              {/* Download */}
+              {/* Baixar PDF */}
               <button
-                onClick={() => { printRecibo(row, incluirComprovante, currentFoto); onClose(); }}
-                className="w-12 h-12 bg-slate-700 hover:bg-slate-600 text-white rounded-2xl flex items-center justify-center transition-colors"
-                title="Download PDF"
+                onClick={handleDownloadPdf}
+                className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                title="Baixar PDF"
               >
-                <Download className="w-5 h-5" />
+                <Download className="w-5 h-5 mb-1.5" />
+                <span className="text-[10px] font-medium leading-none">Baixar PDF</span>
               </button>
 
-              {/* Câmera - Anexar foto */}
+              {/* Compartilhar PDF */}
+              <button
+                onClick={handleSharePdf}
+                className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                title="Compartilhar"
+              >
+                <Share2 className="w-5 h-5 mb-1.5" />
+                <span className="text-[10px] font-medium leading-none">Compartilhar</span>
+              </button>
+
+              {/* Anexar */}
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="w-12 h-12 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-2xl flex items-center justify-center transition-colors disabled:opacity-50"
-                title="Anexar Comprovante"
+                className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800 disabled:opacity-50"
+                title="Anexar"
               >
                 {uploading ? (
-                  <div className="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 mb-1.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <Camera className="w-5 h-5" />
+                  <Camera className="w-5 h-5 mb-1.5" />
                 )}
+                <span className="text-[10px] font-medium leading-none">Anexar</span>
               </button>
 
-              {/* Ver imagem */}
+              {/* Ver Comprovante */}
               <button
                 onClick={() => currentFoto ? setShowViewer(true) : undefined}
                 disabled={!currentFoto}
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
+                className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all border ${
                   currentFoto
-                    ? 'bg-slate-800 hover:bg-slate-700 text-white'
-                    : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                    ? 'bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800'
+                    : 'bg-white/50 dark:bg-slate-900/30 text-slate-300 dark:text-slate-700 border-slate-100 dark:border-slate-900/50 cursor-not-allowed'
                 }`}
                 title="Ver Comprovante"
               >
-                <ImageIcon className="w-5 h-5" />
+                <ImageIcon className="w-5 h-5 mb-1.5" />
+                <span className="text-[10px] font-medium leading-none">Ver Anexo</span>
               </button>
 
-              {/* Enviar via WhatsApp */}
+              {/* WhatsApp */}
               <button
                 onClick={() => setShowWhatsappModal(true)}
-                className="w-12 h-12 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl flex items-center justify-center transition-colors"
-                title="Enviar via WhatsApp"
+                className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                title="Enviar WhatsApp"
               >
-                <MessageSquare className="w-5 h-5" />
+                <MessageSquare className="w-5 h-5 mb-1.5" />
+                <span className="text-[10px] font-medium leading-none">WhatsApp</span>
               </button>
             </div>
           </div>
@@ -829,7 +1096,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
       {/* Comprovante Viewer */}
       {showViewer && currentFoto && (
         <ComprovanteViewer
-          src={currentFoto}
+          src={displayFoto || currentFoto}
           docNum={docNum || ''}
           onClose={() => setShowViewer(false)}
         />

@@ -33,14 +33,14 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Tenta converter para PNG
+      // Tenta converter para JPEG
       try {
         compressedBuffer = await sharp(buffer, { animated: false })
           .resize(2048, 2048, {
             fit: "inside",
             withoutEnlargement: true,
           })
-          .png({ compressionLevel: 9 })
+          .jpeg({ quality: 80, progressive: true })
           .toBuffer();
       } catch (compressionError: any) {
         console.error("Erro ao comprimir com resize:", compressionError?.message);
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         try {
           // Tenta sem resize
           compressedBuffer = await sharp(buffer)
-            .png({ compressionLevel: 6 })
+            .jpeg({ quality: 85, progressive: true })
             .toBuffer();
         } catch (fallbackError: any) {
           console.error("Erro ao comprimir sem resize:", fallbackError?.message);
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Valida o PNG gerado
+      // Valida o JPEG gerado
       if (compressedBuffer.length < 100) {
         return NextResponse.json(
           { error: "Erro ao processar imagem - arquivo vazio." },
@@ -67,11 +67,11 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Valida se o PNG gerado é válido
+      // Valida se o JPEG gerado é válido
       try {
         await sharp(compressedBuffer).metadata();
       } catch (validationError: any) {
-        console.error("PNG gerado é inválido:", validationError?.message);
+        console.error("JPEG gerado é inválido:", validationError?.message);
         return NextResponse.json(
           { error: "Erro ao processar imagem. Tente com outro arquivo." },
           { status: 400 }
@@ -88,13 +88,13 @@ export async function POST(req: NextRequest) {
       const sanitized = file.name
         .replace(/[^a-zA-Z0-9.\-_]/g, "_")
         .substring(0, 80)
-        .replace(/\.[^/.]+$/, ".png");
+        .replace(/\.[^/.]+$/, ".jpg");
       const fileName = `${Date.now()}_${sanitized}`;
       const path = `fotodespesa/${fileName}`;
 
       const { error } = await supabaseAdmin.storage
         .from("fotos")
-        .upload(path, compressedBuffer, { upsert: true, contentType: "image/png" });
+        .upload(path, compressedBuffer, { upsert: true, contentType: "image/jpeg" });
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

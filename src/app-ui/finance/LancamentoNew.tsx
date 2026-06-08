@@ -7,6 +7,7 @@ import { checkChurchCashStatus } from '../../lib/financeCashStatus';
 import { ReciboModal } from './ReciboModal';
 import type { ReciboRow } from './ReciboModal';
 import { MemberQuickCreateModal } from '../../components/app-ui/MemberQuickCreateModal';
+import { convertToJpeg } from '../../lib/imageConverter';
 
 // Ícone de Igreja (cruz)
 function ChurchIcon({ className }: { className?: string }) {
@@ -1139,9 +1140,10 @@ export default function LancamentoNew() {
 
     if (fotoFile && modo === 'DESPESA') {
       try {
+        const convertedFile = await convertToJpeg(fotoFile);
         const token = localStorage.getItem('mrm_token');
         const formData = new FormData();
-        formData.append('file', fotoFile);
+        formData.append('file', convertedFile);
         const res = await fetch(`${apiBase}/upload/foto-despesa`, {
           method: 'POST',
           headers: token ? { Authorization: `Bearer ${token}` } : {},

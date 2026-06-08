@@ -921,15 +921,6 @@ export default function Cashbook() {
                   </button>
                 </RibbonField>
               ) : null}
-              <RibbonButton
-                size="lg"
-                title="Consultar lançamentos"
-                icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                label={loading ? 'Consultando' : 'Consultar'}
-                onClick={() => { void buscar(); }}
-                disabled={loading}
-                tone="blue"
-              />
 
               {isChurchProfile && selectedChurch ? (
                 <RibbonField label="Igreja" icon={<Building2 className="h-3 w-3" />} className="min-w-[220px]">
@@ -960,6 +951,20 @@ export default function Cashbook() {
                   className="h-8 rounded border border-slate-300 bg-white px-2 text-xs text-slate-700 outline-none focus:border-blue-400"
                 />
               </RibbonField>
+            </RibbonGroup>
+
+            <RibbonDivider />
+
+            <RibbonGroup label="Consultas">
+              <RibbonButton
+                size="lg"
+                title="Consultar lançamentos"
+                icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                label={loading ? 'Consultando' : 'Consultar'}
+                onClick={() => { void buscar(); }}
+                disabled={loading}
+                tone="blue"
+              />
             </RibbonGroup>
 
             <RibbonDivider />

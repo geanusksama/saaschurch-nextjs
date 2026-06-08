@@ -1,6 +1,7 @@
-import { useState, useMemo, Fragment } from 'react';
-import { Printer, X, Columns, MonitorSmartphone, Maximize2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
+import { Printer, X, Columns, MonitorSmartphone, Maximize2, ArrowUpDown, ArrowUp, ArrowDown, Share2, Download } from 'lucide-react';
 import type { ReciboRow } from './ReciboModal';
+import { jsPDF } from 'jspdf';
 
 type Row = ReciboRow;
 type ColKey = 'igreja' | 'doc' | 'favorecido' | 'categoria' | 'tipodoc' | 'referencia' | 'formaPg' | 'data' | 'valor' | 'obs';
@@ -258,6 +259,14 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose 
   const [showColPicker, setShowColPicker] = useState(false);
   const [sortCol, setSortCol]         = useState<ColKey | null>(null);
   const [sortDir, setSortDir]         = useState<SortDir>('asc');
+  const [isMobile, setIsMobile]       = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   function handleSortCol(col: ColKey) {
     if (UNSORTABLE.includes(col)) return;
@@ -303,84 +312,407 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose 
   function handlePrint() {
     const html = generateHtml(rows, cols, orientation, churchName, dataInicio, dataFim, sortCol, sortDir);
     const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-    document.body.appendChild(iframe);
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) { document.body.removeChild(iframe); return; }
-    doc.open();
-    doc.write(html);
-    doc.close();
-    iframe.contentWindow?.addEventListener('afterprint', () => document.body.removeChild(iframe));
-    setTimeout(() => iframe.contentWindow?.print(), 500);
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;bo  function generateReportPdf() {
+    const doc = new jsPDF({
+      orientation: orientation,
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    const pageWidth = orientation === 'portrait' ? 210 : 297;
+    const pageHeight = orientation === 'portrait' ? 297 : 210;
+
+    let y = 15;
+    const margin = 10;
+    const startX = margin;
+
+    const fmtNum = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtDt = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR');
+
+    // Define weights for proportional column widths
+    const COL_WEIGHTS: Record<ColKey, number> = {
+      igreja: 2.0,
+      doc: 1.2,
+      favorecido: 3.5,
+      categoria: 2.5,
+      tipodoc: 1.5,
+      referencia: 1.5,
+      formaPg: 1.8,
+      data: 1.5,
+      valor: 2.0,
+      obs: 3.0,
+    };
+
+    const totalWeight = cols.reduce((sum, col) => sum + (COL_WEIGHTS[col] || 1), 0);
+    const usableWidth = pageWidth - 2 * margin;
+    const colWidths = cols.map(col => ((COL_WEIGHTS[col] || 1) / totalWeight) * usableWidth);
+
+    const getColX = (colIdx: number) => {
+      let x = startX;
+      for (let i = 0; i < colIdx; i++) {
+        x += colWidths[i];
+      }
+      return x;
+    };
+
+    const truncateText = (text: string, width: number) => {
+      let truncated = String(text);
+      if (doc.getTextWidth(truncated) <= width - 2) return truncated;
+      while (truncated.length > 0 && doc.getTextWidth(truncated) > width - 3) {
+        truncated = truncated.slice(0, -1);
+      }
+      return truncated.slice(0, -1) + '…';
+    };
+
+    const printPageHeader = (pageNumber: number) => {
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(15, 23, 42); // slate-900
+      doc.text('RELATÓRIO TESOURARIA', startX, y);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Página ${pageNumber} | Emitido em: ${new Date().toLocaleString('pt-BR')}`, pageWidth - margin, y, { align: 'right' });
+      
+      y += 5;
+      doc.setFontSize(9);
+      doc.setTextColor(50, 50, 50);
+      doc.text(`Igreja: ${churchName || 'Todas'}`, startX, y);
+      doc.text(`Período: ${fmtDt(dataInicio)} a ${fmtDt(dataFim)}`, pageWidth - margin, y, { align: 'right' });
+      
+      y += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
+      doc.line(startX, y, pageWidth - margin, y);
+      y += 6;
+    };
+
+    // First page summary
+    let pageCount = 1;
+    printPageHeader(pageCount);
+
+    const totalReceita = rows.filter(r => r.tipo === 'RECEITA').reduce((s, r) => s + Number(r.valor), 0);
+    const totalDespesa = rows.filter(r => r.tipo === 'DESPESA').reduce((s, r) => s + Number(r.valor), 0);
+    const totalDizimos = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).reduce((s, r) => s + Number(r.valor), 0);
+    const totalOfertas = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).reduce((s, r) => s + Number(r.valor), 0);
+    const liquido = totalReceita - totalDespesa;
+
+    // Totals grid
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(`Total Receita: R$ ${fmtNum(totalReceita)}`, startX, y);
+    doc.text(`Total Despesa: R$ ${fmtNum(totalDespesa)}`, startX + usableWidth / 4, y);
+    doc.text(`Total Dízimos: R$ ${fmtNum(totalDizimos)}`, startX + 2 * usableWidth / 4, y);
+    doc.text(`Total Ofertas: R$ ${fmtNum(totalOfertas)}`, startX + 3 * usableWidth / 4, y);
+
+    y += 5;
+    doc.setTextColor(liquido < 0 ? 153 : 22, liquido < 0 ? 27 : 101, liquido < 0 ? 27 : 52); // green or red
+    doc.text(`Língua / Líquido: R$ ${fmtNum(liquido)}`, pageWidth - margin, y, { align: 'right' });
+    y += 4;
+    doc.line(startX, y, pageWidth - margin, y);
+    y += 6;
+
+    // Draw Table headers
+    const drawTableHeaders = () => {
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.rect(startX, y - 4, usableWidth, 6, 'F');
+      doc.setDrawColor(100, 116, 139); // slate-500
+      doc.line(startX, y + 2, pageWidth - margin, y + 2);
+      
+      doc.setTextColor(15, 23, 42); // slate-900
+      cols.forEach((col, i) => {
+        const align = col === 'valor' ? 'right' : 'left';
+        const colX = getColX(i) + (col === 'valor' ? colWidths[i] - 2 : 2);
+        doc.text(COL_LABELS[col], colX, y, { align: align });
+      });
+      y += 6;
+    };
+
+    drawTableHeaders();
+
+    const sortedGroups = groupByPlano(rows);
+    for (const group of sortedGroups) {
+      if (y > pageHeight - 20) {
+        doc.addPage();
+        y = 15;
+        pageCount++;
+        printPageHeader(pageCount);
+        drawTableHeaders();
+      }
+
+      // Group title
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(9);
+      const isRec = group.tipo === 'RECEITA';
+      doc.setFillColor(isRec ? 240 : 254, isRec ? 253 : 242, isRec ? 244 : 242); // green/red tint
+      doc.rect(startX, y - 4, usableWidth, 6, 'F');
+      
+      doc.setTextColor(isRec ? 22 : 153, isRec ? 101 : 27, isRec ? 52 : 27); // green/red text
+      doc.text(group.key, startX + 2, y);
+      y += 6;
+
+      const groupRows = sortRows(group.rows, sortCol, sortDir);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(51, 65, 85); // slate-700
+
+      for (const row of groupRows) {
+        if (y > pageHeight - 15) {
+          doc.addPage();
+          y = 15;
+          pageCount++;
+          printPageHeader(pageCount);
+          drawTableHeaders();
+        }
+
+        // Draw row cells
+        cols.forEach((col, i) => {
+          const align = col === 'valor' ? 'right' : 'left';
+          const colX = getColX(i) + (col === 'valor' ? colWidths[i] - 2 : 2);
+          const cellVal = getCell(row, col);
+          const truncated = truncateText(cellVal, colWidths[i]);
+          doc.text(truncated, colX, y, { align: align });
+        });
+        y += 4.5;
+
+        // Draw obs if present
+        if (row.obs && !cols.includes('obs')) {
+          if (y > pageHeight - 15) {
+            doc.addPage();
+            y = 15;
+            pageCount++;
+            printPageHeader(pageCount);
+            drawTableHeaders();
+          }
+          doc.setFont('Helvetica', 'italic');
+          doc.setTextColor(37, 99, 235); // blue-600
+          doc.text(`  ↳ Obs: ${row.obs}`, startX + 4, y);
+          doc.setFont('Helvetica', 'normal');
+          doc.setTextColor(51, 65, 85);
+          y += 4.5;
+        }
+      }
+
+      // Group Subtotal
+      const sectionTotal = group.rows.reduce((s, r) => s + Number(r.valor), 0);
+      if (y > pageHeight - 15) {
+        doc.addPage();
+        y = 15;
+        pageCount++;
+        printPageHeader(pageCount);
+        drawTableHeaders();
+      }
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(isRec ? 22 : 153, isRec ? 101 : 27, isRec ? 52 : 27);
+      doc.text(`Subtotal ${group.key}: R$ ${fmtNum(sectionTotal)}`, pageWidth - margin - 2, y, { align: 'right' });
+      y += 7;
+    }
+
+    return doc;
+  }
+
+  async function handleShare() {
+    try {
+      const doc = generateReportPdf();
+      const pdfBlob = doc.output('blob');
+      const formattedChurch = (churchName || 'Todas').replace(/\s+/g, '_');
+      const fileName = `relatorio-${formattedChurch}-${dataInicio}-a-${dataFim}.pdf`;
+      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Relatório Tesouraria — ${churchName || 'Todas'}`,
+          text: `Relatório Tesouraria de ${fmtDate(dataInicio)} a ${fmtDate(dataFim)}`,
+        });
+      } else if (navigator.share) {
+        await navigator.share({
+          title: `Relatório Tesouraria — ${churchName || 'Todas'}`,
+          text: `Relatório Tesouraria de ${fmtDate(dataInicio)} a ${fmtDate(dataFim)}`,
+        });
+      } else {
+        handleDownload();
+      }
+    } catch (err) {
+      console.error('Erro ao compartilhar relatório:', err);
+      toast.error('Erro ao compartilhar PDF');
+    }
+  }
+
+  function handleDownload() {
+    try {
+      const doc = generateReportPdf();
+      const formattedChurch = (churchName || 'Todas').replace(/\s+/g, '_');
+      const fileName = `relatorio-${formattedChurch}-${dataInicio}-a-${dataFim}.pdf`;
+      doc.save(fileName);
+    } catch (err) {
+      console.error('Erro ao baixar relatório:', err);
+      toast.error('Erro ao gerar PDF');
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3">
-      <div className="bg-white rounded-2xl shadow-2xl flex flex-col" style={{ width: '96vw', maxWidth: 1200, height: '92vh' }}>
+    <div className="fixed inset-0 z-50 bg-slate-900/60 md:flex md:items-center md:justify-center md:p-3 flex flex-col">
+      <div className="bg-white flex flex-col w-full h-full md:rounded-2xl md:shadow-2xl md:w-[96vw] md:max-w-[1200px] md:h-[92vh]">
 
         {/* ── Toolbar ── */}
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-200 bg-white rounded-t-2xl flex-shrink-0 flex-wrap">
-          <span className="text-base font-bold text-slate-900 flex-1 min-w-0 truncate">Relatório Analítico — Tesouraria</span>
-
-          {/* Orientation */}
-          <div className="flex rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-            <button onClick={() => setOrientation('portrait')}
-              className={`px-4 py-2 text-xs font-bold flex items-center gap-1.5 transition-colors ${
-                orientation === 'portrait' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
-              }`}>
-              <MonitorSmartphone className="w-3.5 h-3.5" /> Retrato
-            </button>
-            <button onClick={() => setOrientation('landscape')}
-              className={`px-4 py-2 text-xs font-bold flex items-center gap-1.5 transition-colors border-l border-slate-200 ${
-                orientation === 'landscape' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
-              }`}>
-              <Maximize2 className="w-3.5 h-3.5" /> Paisagem
-            </button>
-          </div>
-
-          {/* Column picker */}
-          <div className="relative">
-            <button onClick={() => setShowColPicker(p => !p)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold shadow-sm border transition-colors ${
-                showColPicker ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}>
-              <Columns className="w-3.5 h-3.5" /> Colunas
-            </button>
-            {showColPicker && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl p-3 z-20 min-w-[220px]">
-                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Selecionar e ordenar colunas</p>
-                {ALL_COLS.map(col => {
-                  const active = cols.includes(col);
-                  const idx = cols.indexOf(col);
-                  return (
-                    <div key={col} className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-slate-50">
-                      <input type="checkbox" checked={active} onChange={() => toggleCol(col)} className="rounded border-slate-300 accent-indigo-600" />
-                      <span className="text-sm text-slate-700 flex-1">{COL_LABELS[col]}</span>
-                      {active && (
-                        <div className="flex gap-0.5">
-                          <button onClick={() => moveCol(col, -1)} disabled={idx === 0} className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30">↑</button>
-                          <button onClick={() => moveCol(col, 1)} disabled={idx === cols.length - 1} className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30">↓</button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+        <div className="flex flex-col md:flex-row md:items-center gap-3 px-4 py-3 md:px-5 border-b border-slate-200 bg-white rounded-t-none md:rounded-t-2xl flex-shrink-0">
+          
+          {/* Top Row on Mobile, Main Row on Desktop */}
+          <div className="flex items-center justify-between w-full gap-2">
+            <span className="text-base font-bold text-slate-900 truncate">Relatório Analítico — Tesouraria</span>
+            
+            {/* Desktop Actions */}
+            <div className="hidden md:flex items-center gap-2">
+              {/* Orientation */}
+              <div className="flex rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                <button onClick={() => setOrientation('portrait')}
+                  className={`px-4 py-2 text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                    orientation === 'portrait' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                  }`}>
+                  <MonitorSmartphone className="w-3.5 h-3.5" /> Retrato
+                </button>
+                <button onClick={() => setOrientation('landscape')}
+                  className={`px-4 py-2 text-xs font-bold flex items-center gap-1.5 transition-colors border-l border-slate-200 ${
+                    orientation === 'landscape' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                  }`}>
+                  <Maximize2 className="w-3.5 h-3.5" /> Paisagem
+                </button>
               </div>
-            )}
+
+              {/* Column picker */}
+              <div className="relative">
+                <button onClick={() => setShowColPicker(p => !p)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold shadow-sm border transition-colors ${
+                    showColPicker ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}>
+                  <Columns className="w-3.5 h-3.5" /> Colunas
+                </button>
+                {showColPicker && (
+                  <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl p-3 z-20 min-w-[220px]">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Selecionar e ordenar colunas</p>
+                    {ALL_COLS.map(col => {
+                      const active = cols.includes(col);
+                      const idx = cols.indexOf(col);
+                      return (
+                        <div key={col} className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-slate-50">
+                          <input type="checkbox" checked={active} onChange={() => toggleCol(col)} className="rounded border-slate-300 accent-indigo-600" />
+                          <span className="text-sm text-slate-700 flex-1">{COL_LABELS[col]}</span>
+                          {active && (
+                            <div className="flex gap-0.5">
+                              <button onClick={() => moveCol(col, -1)} disabled={idx === 0} className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30">↑</button>
+                              <button onClick={() => moveCol(col, 1)} disabled={idx === cols.length - 1} className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30">↓</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <button onClick={handleShare}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
+                <Share2 className="w-4 h-4" /> Compartilhar
+              </button>
+
+              <button onClick={handleDownload}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
+                <Download className="w-4 h-4" /> Baixar
+              </button>
+
+              <button onClick={handlePrint}
+                className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
+                <Printer className="w-4 h-4" /> Imprimir
+              </button>
+            </div>
+
+            {/* Mobile Actions in Top Row */}
+            <div className="flex md:hidden items-center gap-1.5">
+              <button onClick={handleShare}
+                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
+                title="Compartilhar">
+                <Share2 className="w-5 h-5" />
+              </button>
+              <button onClick={handleDownload}
+                className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                title="Baixar">
+                <Download className="w-5 h-5" />
+              </button>
+              <button onClick={handlePrint}
+                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+                title="Imprimir">
+                <Printer className="w-5 h-5" />
+              </button>
+              <button onClick={onClose}
+                className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                title="Fechar">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            {/* Desktop Close Button */}
+            <button onClick={onClose} className="hidden md:block p-2 hover:bg-slate-100 rounded-xl transition-colors">
+              <X className="w-4 h-4 text-slate-500" />
+            </button>
           </div>
 
-          <button onClick={handlePrint}
-            className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
-            <Printer className="w-4 h-4" /> Imprimir
-          </button>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-            <X className="w-4 h-4 text-slate-500" />
-          </button>
+          {/* Mobile Secondary Row for Controls (Orientation, Columns) */}
+          <div className="flex md:hidden items-center justify-between gap-2 w-full pt-2 border-t border-slate-100">
+            <div className="flex rounded-lg overflow-hidden border border-slate-200 shadow-sm">
+              <button onClick={() => setOrientation('portrait')}
+                className={`px-3 py-1.5 text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                  orientation === 'portrait' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600'
+                }`}>
+                <MonitorSmartphone className="w-3.5 h-3.5" /> Retrato
+              </button>
+              <button onClick={() => setOrientation('landscape')}
+                className={`px-3 py-1.5 text-[11px] font-bold flex items-center gap-1 transition-colors border-l border-slate-200 ${
+                  orientation === 'landscape' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600'
+                }`}>
+                <Maximize2 className="w-3.5 h-3.5" /> Paisagem
+              </button>
+            </div>
+
+            <div className="relative">
+              <button onClick={() => setShowColPicker(p => !p)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold shadow-sm border transition-colors ${
+                  showColPicker ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-600'
+                }`}>
+                <Columns className="w-3.5 h-3.5" /> Colunas
+              </button>
+              {showColPicker && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl p-3 z-20 min-w-[200px]">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Colunas</p>
+                  {ALL_COLS.map(col => {
+                    const active = cols.includes(col);
+                    const idx = cols.indexOf(col);
+                    return (
+                      <div key={col} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-slate-50">
+                        <input type="checkbox" checked={active} onChange={() => toggleCol(col)} className="rounded border-slate-300 accent-indigo-600" />
+                        <span className="text-xs text-slate-700 flex-1">{COL_LABELS[col]}</span>
+                        {active && (
+                          <div className="flex gap-0.5">
+                            <button onClick={() => moveCol(col, -1)} disabled={idx === 0} className="px-1 text-xs text-slate-400 disabled:opacity-30">↑</button>
+                            <button onClick={() => moveCol(col, 1)} disabled={idx === cols.length - 1} className="px-1 text-xs text-slate-400 disabled:opacity-30">↓</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
 
         {/* ── Preview ── */}
-        <div className="flex-1 overflow-auto bg-slate-100 p-4">
-          <div className="bg-white shadow-sm rounded-xl p-6 max-w-5xl mx-auto">
+        <div className="flex-1 overflow-auto bg-slate-100 p-2 md:p-4">
+          <div className="bg-white shadow-sm rounded-xl p-4 md:p-6 max-w-5xl mx-auto w-full">
 
             {/* Report header */}
             <h1 className="text-2xl font-black tracking-wide">RELATÓRIO</h1>
@@ -428,85 +760,88 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose 
               Líquido: R$ {fmt(liquido)}
             </div>
 
-            {/* Table preview */}
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr>
-                  {cols.map(col => {
-                    const sortable = !UNSORTABLE.includes(col);
-                    const active = sortCol === col;
-                    return (
-                      <th
-                        key={col}
-                        onClick={() => handleSortCol(col)}
-                        className={`py-2 px-2 text-[10px] font-bold uppercase border-b-2 border-slate-800 whitespace-nowrap select-none ${
-                          col === 'valor' ? 'text-right' : 'text-left'
-                        } ${sortable ? 'cursor-pointer hover:text-indigo-600' : ''} ${
-                          active ? 'text-indigo-600' : 'text-slate-500'
-                        }`}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          {COL_LABELS[col]}
-                          {sortable && (
-                            active
-                              ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)
-                              : <ArrowUpDown className="w-3 h-3 opacity-30" />
-                          )}
-                        </span>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              {groups.map(group => {
-                const sectionTotal = group.rows.reduce((s, r) => s + Number(r.valor), 0);
-                const isRec = group.tipo === 'RECEITA';
-                return (
-                  <tbody key={group.key}>
-                    <tr className="bg-slate-50">
-                      <td colSpan={cols.length} className={`py-2 px-2 font-bold text-sm border-b-2 ${isRec ? 'text-green-800 border-green-200' : 'text-red-800 border-red-200'}`}>
-                        {group.key}
-                      </td>
-                    </tr>
-                    {group.rows.map(row => (
-                      <Fragment key={row.id}>
-                        <tr className="hover:bg-slate-50/60">
-                          {cols.map(col => (
-                            <td key={col} className={`py-1 px-2 border-b border-slate-100 ${
-                              col === 'valor' ? 'text-right font-semibold' : ''
-                            } ${col === 'obs' ? 'text-[10px] text-blue-600' : ''}`}>
-                              {getCell(row, col)}
-                            </td>
-                          ))}
-                        </tr>
-                        {row.obs && !cols.includes('obs') && (() => {
-                          const favIdx = cols.indexOf('favorecido');
-                          return (
-                            <tr>
-                              {favIdx > 0 && <td colSpan={favIdx} className="border-b border-slate-100" />}
-                              <td colSpan={favIdx >= 0 ? cols.length - favIdx : cols.length} className="py-0.5 px-2 text-[10px] text-blue-600 border-b border-slate-100">
-                                {row.obs}
-                              </td>
-                            </tr>
-                          );
-                        })()}
-                      </Fragment>
-                    ))}
-                    <tr>
-                      {cols.length > 1 && (
-                        <td colSpan={cols.length - 1} className="py-1 px-2 text-[10px] text-right text-slate-400 italic border-t border-slate-200">
-                          Subtotal {group.key}:
+            {/* Table preview container */}
+            <div className="w-full overflow-x-auto select-text">
+              <table className="w-full text-xs border-collapse min-w-[650px]">
+                <thead>
+                  <tr>
+                    {cols.map(col => {
+                      const sortable = !UNSORTABLE.includes(col);
+                      const active = sortCol === col;
+                      return (
+                        <th
+                          key={col}
+                          onClick={() => handleSortCol(col)}
+                          className={`py-2 px-2 text-[10px] font-bold uppercase border-b-2 border-slate-800 whitespace-nowrap select-none ${
+                            col === 'valor' ? 'text-right' : 'text-left'
+                          } ${sortable ? 'cursor-pointer hover:text-indigo-600' : ''} ${
+                            active ? 'text-indigo-600' : 'text-slate-500'
+                          }`}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            {COL_LABELS[col]}
+                            {sortable && (
+                              active
+                                ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)
+                                : <ArrowUpDown className="w-3 h-3 opacity-30" />
+                            )}
+                          </span>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                {groups.map(group => {
+                  const sectionTotal = group.rows.reduce((s, r) => s + Number(r.valor), 0);
+                  const isRec = group.tipo === 'RECEITA';
+                  return (
+                    <tbody key={group.key}>
+                      <tr className="bg-slate-50">
+                        <td colSpan={cols.length} className={`py-2 px-2 font-bold text-sm border-b-2 ${isRec ? 'text-green-800 border-green-200' : 'text-red-800 border-red-200'}`}>
+                          {group.key}
                         </td>
-                      )}
-                      <td className={`py-1 px-2 text-right text-[10px] font-bold border-t border-slate-200 ${isRec ? 'text-green-700' : 'text-red-700'}`}>
-                        R$ {fmt(sectionTotal)}
-                      </td>
-                    </tr>
-                    <tr><td colSpan={cols.length} className="h-2" /></tr>
-                  </tbody>
-                );
-              })}
-            </table>
+                      </tr>
+                      {group.rows.map(row => (
+                        <Fragment key={row.id}>
+                          <tr className="hover:bg-slate-50/60">
+                            {cols.map(col => (
+                              <td key={col} className={`py-1 px-2 border-b border-slate-100 ${
+                                col === 'valor' ? 'text-right font-semibold' : ''
+                              } ${col === 'obs' ? 'text-[10px] text-blue-600' : ''}`}>
+                                {getCell(row, col)}
+                              </td>
+                            ))}
+                          </tr>
+                          {row.obs && !cols.includes('obs') && (() => {
+                            const favIdx = cols.indexOf('favorecido');
+                            return (
+                              <tr>
+                                {favIdx > 0 && <td colSpan={favIdx} className="border-b border-slate-100" />}
+                                <td colSpan={favIdx >= 0 ? cols.length - favIdx : cols.length} className="py-0.5 px-2 text-[10px] text-blue-600 border-b border-slate-100">
+                                  {row.obs}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </Fragment>
+                      ))}
+                      <tr>
+                        {cols.length > 1 && (
+                          <td colSpan={cols.length - 1} className="py-1 px-2 text-[10px] text-right text-slate-400 italic border-t border-slate-200">
+                            Subtotal {group.key}:
+                          </td>
+                        )}
+                        <td className={`py-1 px-2 text-right text-[10px] font-bold border-t border-slate-200 ${isRec ? 'text-green-700' : 'text-red-700'}`}>
+                          R$ {fmt(sectionTotal)}
+                        </td>
+                      </tr>
+                      <tr><td colSpan={cols.length} className="h-2" /></tr>
+                    </tbody>
+                  );
+                })}
+              </table>
+            </div>
+
           </div>
         </div>
       </div>
