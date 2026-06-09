@@ -387,6 +387,38 @@ function ComprovanteViewer({ src, docNum, onClose }: { src: string; docNum: stri
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  const isPdf = src.toLowerCase().includes('.pdf');
+
+  if (isPdf) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
+        <div
+          className="bg-[#1a1a1a] rounded-2xl shadow-2xl flex flex-col"
+          style={{ width: '90vw', maxWidth: 840, height: '88vh' }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Toolbar */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 flex-shrink-0">
+            <span className="text-white text-sm font-medium">Comprovante PDF — Doc {docNum}</span>
+            <div className="flex items-center gap-1">
+              <a href={getImageUrl(src)} download className="p-1.5 rounded hover:bg-white/10 text-white" title="Download"><Download className="w-4 h-4" /></a>
+              <button onClick={onClose} className="p-1.5 rounded hover:bg-white/10 text-white ml-1" title="Fechar"><X className="w-4 h-4" /></button>
+            </div>
+          </div>
+
+          {/* PDF viewport */}
+          <div className="flex-1 relative overflow-hidden bg-[#111] p-2">
+            <iframe
+              src={getImageUrl(src)}
+              className="w-full h-full border-0 rounded-lg bg-white"
+              title={`Comprovante Doc ${docNum}`}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function handleWheel(e: React.WheelEvent) {
     e.preventDefault();
     const delta = e.deltaY < 0 ? 0.15 : -0.15;

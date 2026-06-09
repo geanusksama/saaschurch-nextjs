@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { User, Play, Radio, Camera, Users, MapPin, Smartphone, Sun, Moon } from 'lucide-react';
 import { MobileAppOverlay } from './MobileAppPreview';
+import { AnimatePresence } from 'motion/react';
+import { PortalExperience } from './portal/PortalExperience';
 
 export function PublicHome() {
   const [isDark, setIsDark] = useState(true);
   const [showApp, setShowApp] = useState(false);
+  const [showPortal, setShowPortal] = useState(false);
 
   const bg        = isDark ? '#0a0a0a' : '#f5f4f0';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -56,10 +59,13 @@ export function PublicHome() {
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${avatarCls}`}>
             {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
           </button>
-          <button onClick={() => setShowApp(true)} title="Ver App Mobile" className="btn-phone relative w-10 h-10 rounded-full flex items-center justify-center"
+          {/* <button onClick={() => setShowPortal(true)} title="Portal Digital — Explorar" className="btn-phone relative w-10 h-10 rounded-full flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 0 18px rgba(34,197,94,0.55)' }}>
             <Smartphone className="w-5 h-5 text-white" />
             <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(34,197,94,0.22)' }} />
+          </button> */}
+          <button onClick={() => setShowApp(true)} title="Preview App" className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${avatarCls}`}>
+            <Play className="w-4 h-4" style={{ color: isDark ? '#94a3b8' : '#6b7280' }} />
           </button>
           <Link to="/auth/login" className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${avatarCls}`}>
             <User className="w-5 h-5" style={{ color: isDark ? '#94a3b8' : '#6b7280' }} />
@@ -128,6 +134,10 @@ export function PublicHome() {
       </main>
 
       {showApp && <MobileAppOverlay onClose={() => setShowApp(false)} />}
+
+      <AnimatePresence>
+        {showPortal && <PortalExperience onClose={() => setShowPortal(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

@@ -175,6 +175,12 @@ import StripeAdmin from "../app-ui/stripe/StripeAdmin";
 import MeusPagamentos from "../app-ui/stripe/MeusPagamentos";
 
 
+import CMSDashboard from "../app-ui/cms/CMSDashboard";
+import CMSPageBuilder from "../app-ui/cms/CMSPageBuilder";
+import CMSTemplates from "../app-ui/cms/CMSTemplates";
+import CMSDeptSettings from "../app-ui/cms/CMSDeptSettings";
+import { PortalHomePage, PortalDeptPage } from "../components/public/portal/PortalPage";
+
 import AppDashboard from "../app-ui/app/AppDashboard";
 import AppEvents from "../app-ui/app/AppEvents";
 import AppEventNew  from "../app-ui/app/AppEventNew";
@@ -267,6 +273,17 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: PublicHome },
     ]
+  },
+  // Portal standalone pages (opened from CMSDashboard preview or direct link)
+  {
+    path: "/portal",
+    Component: PortalHomePage,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/portal/dept/:slug",
+    Component: PortalDeptPage,
+    errorElement: <ErrorBoundary />,
   },
   {
     path: "/public",
@@ -589,6 +606,12 @@ export const router = createBrowserRouter([
       { path: "app/media",        Component: AppMediaManager },
       { path: "app/notifications", Component: AppNotificationManager },
       { path: "app/feed",          Component: FeedManager },
+
+      // CMS de Departamentos
+      { path: "cms",                                       Component: CMSDashboard },
+      { path: "cms/templates",                             Component: CMSTemplates },
+      { path: "cms/departamentos/:id",                     Component: CMSDeptSettings },
+      { path: "cms/departamentos/:id/builder",             Component: CMSPageBuilder },
     ],
   },
 ]);

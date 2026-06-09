@@ -68,6 +68,8 @@ import {
   RefreshCcw,
   Video,
   Rss,
+  Globe,
+  LayoutTemplate,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -200,6 +202,7 @@ const appNavigation: NavigationSection[] = [
   {
     section: 'App Móvel',
     items: [
+      { name: 'CMS Departamentos',      path: '/app-ui/cms',               icon: LayoutTemplate, permKey: 'cms_departments' },
       { name: 'Dashboard App',         path: '/app-ui/app/dashboard',     icon: Smartphone,   permKey: 'app_dashboard' },
       { name: 'Eventos com Ingressos',  path: '/app-ui/app/events',        icon: Ticket,       permKey: 'app_events' },
       { name: 'Pedidos',                path: '/app-ui/app/orders',        icon: ShoppingCart, permKey: 'app_orders' },
