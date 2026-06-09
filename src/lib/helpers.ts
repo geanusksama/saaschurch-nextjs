@@ -113,3 +113,20 @@ export async function assertChurchAccess(
   if (user.churchId === churchId) return true;
   return false;
 }
+
+export function isPastMonth(year: number, month: number): boolean {
+  try {
+    const tzDateStr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const [day, m, y] = tzDateStr.split('/').map(Number);
+    if (year < y) return true;
+    if (year === y && month < m) return true;
+  } catch (e) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    if (year < y) return true;
+    if (year === y && month < m) return true;
+  }
+  return false;
+}
+

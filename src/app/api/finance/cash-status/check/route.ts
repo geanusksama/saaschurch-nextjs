@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { isRestrictedToOwnChurch } from "@/lib/helpers";
+import { isRestrictedToOwnChurch, isPastMonth } from "@/lib/helpers";
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
     );
     const row = rows[0] || null;
     const allowUntil = row?.allowUntil ? (typeof row.allowUntil === "string" ? row.allowUntil.slice(0, 10) : new Date(row.allowUntil as string).toISOString().slice(0, 10)) : null;
-    const rawStatus = String(row?.status || "OPEN").toUpperCase();
+    const defaultStatus = isPastMonth(referenceYear, referenceMonth) ? "CLOSED" : "OPEN";
+    const rawStatus = String(row?.status || defaultStatus).toUpperCase();
     const isOpen = rawStatus === "OPEN" || (allowUntil !== null && allowUntil >= referenceDate);
     return NextResponse.json({ churchId, date: referenceDate, year: referenceYear, month: referenceMonth, canInsert: isOpen, status: rawStatus, allowUntil, message: isOpen ? "Caixa liberado para lancamentos." : "Caixa fechado para esta igreja neste periodo." });
   });

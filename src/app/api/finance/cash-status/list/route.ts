@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { isRestrictedToOwnChurch } from "@/lib/helpers";
+import { isRestrictedToOwnChurch, isPastMonth } from "@/lib/helpers";
 
 async function listScopedChurchRows({ user, churchIds = [] as string[], regionalIds = [] as string[], search = "" }) {
   const conditions: string[] = ["c.deleted_at IS NULL"];
@@ -22,10 +22,11 @@ async function listScopedChurchRows({ user, churchIds = [] as string[], regional
 
 }
 
-function normalizeCashStatusRow(row: Record<string, unknown> | null, referenceDate?: string) {
+function normalizeCashStatusRow(row: Record<string, unknown> | null, year: number, month: number, referenceDate?: string) {
   const effectiveDate = referenceDate || new Date().toISOString().slice(0, 10);
   const allowUntil = row?.allowUntil ? (typeof row.allowUntil === "string" ? row.allowUntil.slice(0, 10) : new Date(row.allowUntil as string).toISOString().slice(0, 10)) : null;
-  const rawStatus = String(row?.status || "OPEN").toUpperCase();
+  const defaultStatus = isPastMonth(year, month) ? "CLOSED" : "OPEN";
+  const rawStatus = String(row?.status || defaultStatus).toUpperCase();
   const isOpen = rawStatus === "OPEN" || (allowUntil !== null && allowUntil >= effectiveDate);
   return { status: rawStatus, allowUntil, isOpen, label: rawStatus === "OPEN" ? "Aberto" : (allowUntil && allowUntil >= effectiveDate ? `Permitido ate ${allowUntil}` : "Fechado") };
 }
@@ -56,9 +57,9 @@ export async function POST(req: NextRequest) {
       `SELECT church_id::text AS "churchId", reference_month AS "month", status AS "status", allow_until AS "allowUntil", updated_at AS "updatedAt" FROM church_cashbook_status WHERE reference_year = $1 AND church_id = ANY($2::uuid[]) AND reference_month = ANY($3::int[])`,
       referenceYear, churchIdList, selectedMonths
     );
-    const statusMap = new Map<string, ReturnType<typeof normalizeCashStatusRow>>();
-    statusRows.forEach((row) => { statusMap.set(`${row.churchId}:${row.month}`, normalizeCashStatusRow(row)); });
+    const statusMap = new Map<string, Record<string, unknown>>();
+    statusRows.forEach((row) => { statusMap.set(`${row.churchId}:${row.month}`, row); });
 
-    return NextResponse.json({ rows: scopedChurches.map((churchRow) => ({ churchId: churchRow.churchId, churchName: churchRow.churchName, regionalId: churchRow.regionalId, regionalName: churchRow.regionalName, months: selectedMonths.map((month) => { const c = statusMap.get(`${churchRow.churchId}:${month}`) || normalizeCashStatusRow(null); return { month, status: c.status, allowUntil: c.allowUntil, isOpen: c.isOpen, label: c.label }; }) })) });
+    return NextResponse.json({ rows: scopedChurches.map((churchRow) => ({ churchId: churchRow.churchId, churchName: churchRow.churchName, regionalId: churchRow.regionalId, regionalName: churchRow.regionalName, months: selectedMonths.map((month) => { const dbRow = statusMap.get(`${churchRow.churchId}:${month}`) || null; const c = normalizeCashStatusRow(dbRow, referenceYear, month); return { month, status: c.status, allowUntil: c.allowUntil, isOpen: c.isOpen, label: c.label }; }) })) });
   });
 }
