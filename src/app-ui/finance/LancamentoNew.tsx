@@ -1319,7 +1319,7 @@ export default function LancamentoNew() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 pt-3 pb-3 flex flex-col gap-3 w-full bg-[#fefefe] dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen">
+    <form onSubmit={handleSubmit} className="p-4 pt-3 pb-3 flex flex-col gap-3 w-full bg-[#fefefe] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
       {/* Header row */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
