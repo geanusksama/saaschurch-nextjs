@@ -81,6 +81,7 @@ import { THEME_EVENT_NAME, applyThemeSettings, loadThemeSettings, saveThemeSetti
 
 import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
+import { SantanderIcon } from '../ui/SantanderIcon';
 import { MobileAppOverlay } from '../public/MobileAppPreview';
 
 interface ContextSwitcherItem {
@@ -225,6 +226,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Livro Caixa',      path: '/app-ui/finance/cashbook',       icon: BookOpen,        permKey: 'cashbook' },
       { name: 'Lançamento',       path: '/app-ui/finance/lancamento/new', icon: TrendingUp,      permKey: 'finance_entries' },
       { name: 'Fluxo de Caixa',   path: '/app-ui/finance/cash-flow',      icon: Wallet,          permKey: 'cash_flow' },
+      { name: 'Banco / Santander',path: '/app-ui/finance/santander',      icon: SantanderIcon,   permKey: 'santander_view' },
       { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },
       { name: 'Rel. Financeiros', path: '/app-ui/financial-reports',      icon: BarChart3,       permKey: 'finance_reports' },
     ]

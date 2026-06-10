@@ -5,6 +5,7 @@ import {
   ChevronsUpDown, ChevronLeft, ChevronRight, MapPin, Users,
   Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet, CalendarDays, Share2
 } from 'lucide-react';
+import { DateRangePicker } from '../../components/ui/DateRangePicker';
 import { Link } from 'react-router';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../lib/supabaseClient';
@@ -1306,20 +1307,12 @@ export default function Cashbook() {
             <RibbonDivider />
 
             <RibbonGroup label="Período">
-              <RibbonField label="Data inicial" className="min-w-[140px]">
-                <input
-                  type="date"
-                  value={dataInicio}
-                  onChange={e => setDataInicio(e.target.value)}
-                  className="h-8 rounded border border-slate-300 bg-white px-2 text-xs text-slate-700 outline-none focus:border-blue-400"
-                />
-              </RibbonField>
-              <RibbonField label="Data final" className="min-w-[140px]">
-                <input
-                  type="date"
-                  value={dataFim}
-                  onChange={e => setDataFim(e.target.value)}
-                  className="h-8 rounded border border-slate-300 bg-white px-2 text-xs text-slate-700 outline-none focus:border-blue-400"
+              <RibbonField label="Intervalo de datas">
+                <DateRangePicker
+                  from={dataInicio}
+                  to={dataFim}
+                  onChangeFrom={setDataInicio}
+                  onChangeTo={setDataFim}
                 />
               </RibbonField>
             </RibbonGroup>

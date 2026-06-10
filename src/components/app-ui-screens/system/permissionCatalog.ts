@@ -88,6 +88,18 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Finanças', name: 'Tesouraria (geral)',       key: 'finance',         permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
   { group: 'Finanças', name: 'Relatórios Financeiros',  key: 'finance_reports', permissions: mkPerms(mngr(), mngr(), none(), none()) },
 
+  // ── Banco / Santander ────────────────────────────────────────────────────
+  // Acesso restrito: master, admin e campo — church NÃO tem acesso
+  { group: 'Banco Santander', name: 'Visualizar Movimentos',        key: 'santander_view',      permissions: mkPerms(mngr(), none(), none(), none()) },
+  { group: 'Banco Santander', name: 'Configurar Credenciais',       key: 'santander_config',    permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Banco Santander', name: 'Consultar / Sincronizar API',  key: 'santander_sync',      permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Banco Santander', name: 'Importar FEBRABAN 240',        key: 'santander_import',    permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Banco Santander', name: 'Conciliar Movimentos',         key: 'santander_conciliar', permissions: mkPerms(mngr(), mngr(), mngr(), none()) },
+  { group: 'Banco Santander', name: 'Lançar no Livro Caixa',        key: 'santander_lancar',    permissions: mkPerms(mngr(), mngr(), mngr(), none()) },
+  { group: 'Banco Santander', name: 'Ignorar Movimentos',           key: 'santander_ignorar',   permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Banco Santander', name: 'Exportar Dados',               key: 'santander_export',    permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Banco Santander', name: 'Log de Auditoria Santander',   key: 'santander_audit',     permissions: mkPerms(admin(), admin(), none(), none()) },
+
   // ── Gestão EBD ───────────────────────────────────────────────────────────
   { group: 'Gestão EBD', name: 'Dashboard EBD',          key: 'ebd_dashboard',    permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
   { group: 'Gestão EBD', name: 'Cadastros EBD',           key: 'ebd_cadastros',    permissions: mkPerms(mngr(), mngr(), mngr(), none()) },
