@@ -108,7 +108,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const [church, resolvedTitle] = await Promise.all([
-      prisma.church.findFirst({ where: { id: churchId, deletedAt: null } }),
+      prisma.church.findFirst({
+        where: { id: churchId, deletedAt: null },
+        include: { regional: { select: { campoId: true } } }
+      }),
       normalizedMemberType === "MEMBRO" && ecclesiasticalTitleId
         ? prisma.ecclesiasticalTitle.findFirst({ where: { id: ecclesiasticalTitleId, deletedAt: null, isActive: true } })
         : Promise.resolve(null),
@@ -123,6 +126,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (cnpj) {
       const existingCompany = await prisma.member.findFirst({ where: { cnpj, deletedAt: null } });
       if (existingCompany) return NextResponse.json({ error: "CNPJ já cadastrado para outro registro." }, { status: 409 });
+    }
+    if (manualRol) {
+      const targetCampoId = church.regional?.campoId;
+      if (targetCampoId) {
+        const existingRol = await prisma.member.findFirst({
+          where: {
+            rol: manualRol,
+            deletedAt: null,
+            OR: [
+              { campoId: targetCampoId },
+              { church: { regional: { campoId: targetCampoId } } }
+            ]
+          }
+        });
+        if (existingRol) return NextResponse.json({ error: "Este ROL já está cadastrado para outro membro deste Campo." }, { status: 409 });
+      }
     }
 
     const effectiveMembershipDate = membershipDate ? new Date(membershipDate) : new Date();

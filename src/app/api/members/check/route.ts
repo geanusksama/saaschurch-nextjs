@@ -7,41 +7,140 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const cpf = searchParams.get('cpf')?.replace(/[^\d]/g, '');
     const name = searchParams.get('name')?.trim();
+    const rol = searchParams.get('rol')?.trim();
 
-    if (!cpf && !name) {
-      return NextResponse.json({ error: 'Forneça o CPF ou o Nome.' }, { status: 400 });
+    if (!cpf && !name && !rol) {
+      return NextResponse.json({ error: 'Forneça o CPF, o Nome ou o ROL.' }, { status: 400 });
     }
 
     try {
-      // Prioritize CPF check
+      // 1. Prioritize CPF check
       if (cpf) {
         const memberByCpf = await prisma.member.findFirst({
           where: { cpf: { contains: cpf }, deletedAt: null },
-          select: { id: true, fullName: true, cpf: true, churchId: true, church: { select: { id: true, name: true, code: true } } }
+          select: {
+            id: true,
+            fullName: true,
+            cpf: true,
+            churchId: true,
+            campoId: true,
+            church: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                regional: {
+                  select: {
+                    campoId: true
+                  }
+                }
+              }
+            }
+          }
         });
 
         if (memberByCpf) {
+          const memberCampoId = memberByCpf.campoId || memberByCpf.church?.regional?.campoId;
+          const sameCampo = !!(memberCampoId && user.campoId && memberCampoId === user.campoId) ||
+            user.profileType === 'master' ||
+            user.profileType === 'admin';
+
           return NextResponse.json({
             exists: true,
             type: 'cpf',
-            member: memberByCpf
+            sameCampo,
+            member: sameCampo ? memberByCpf : {
+              id: memberByCpf.id,
+              churchId: memberByCpf.churchId,
+            }
           });
         }
       }
 
-      // Then check name if no CPF matched
+      // 2. Check ROL if no CPF matched
+      if (rol) {
+        const parsedRol = parseInt(rol, 10);
+        if (!isNaN(parsedRol)) {
+          const memberByRol = await prisma.member.findFirst({
+            where: { rol: parsedRol, deletedAt: null },
+            select: {
+              id: true,
+              fullName: true,
+              rol: true,
+              churchId: true,
+              campoId: true,
+              church: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  regional: {
+                    select: {
+                      campoId: true
+                    }
+                  }
+                }
+              }
+            }
+          });
+
+          if (memberByRol) {
+            const memberCampoId = memberByRol.campoId || memberByRol.church?.regional?.campoId;
+            const sameCampo = !!(memberCampoId && user.campoId && memberCampoId === user.campoId) ||
+              user.profileType === 'master' ||
+              user.profileType === 'admin';
+
+            if (sameCampo) {
+              return NextResponse.json({
+                exists: true,
+                type: 'rol',
+                sameCampo: true,
+                member: memberByRol
+              });
+            }
+          }
+        }
+      }
+
+      // 3. Check name if no CPF and no ROL matched
       if (name) {
-        // Simple case-insensitive exact match or close match
         const memberByName = await prisma.member.findFirst({
           where: { fullName: { equals: name, mode: 'insensitive' }, deletedAt: null },
-          select: { id: true, fullName: true, cpf: true, churchId: true, church: { select: { id: true, name: true, code: true } } }
+          select: {
+            id: true,
+            fullName: true,
+            cpf: true,
+            churchId: true,
+            campoId: true,
+            church: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                regional: {
+                  select: {
+                    campoId: true
+                  }
+                }
+              }
+            }
+          }
         });
 
         if (memberByName) {
+          const memberCampoId = memberByName.campoId || memberByName.church?.regional?.campoId;
+          const sameCampo = !!(memberCampoId && user.campoId && memberCampoId === user.campoId) ||
+            user.profileType === 'master' ||
+            user.profileType === 'admin';
+
           return NextResponse.json({
             exists: true,
             type: 'name',
-            member: memberByName
+            sameCampo,
+            member: sameCampo ? memberByName : {
+              id: memberByName.id,
+              churchId: memberByName.churchId,
+            }
           });
         }
       }
@@ -53,3 +152,4 @@ export async function GET(req: NextRequest) {
     }
   });
 }
+

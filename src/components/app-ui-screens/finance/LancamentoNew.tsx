@@ -981,6 +981,11 @@ export default function LancamentoNew() {
   const [reciboRow, setReciboRow] = useState<ReciboRow | null>(null);
   const [cashClosedMessage, setCashClosedMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [duplicateTransactionModal, setDuplicateTransactionModal] = useState<{
+    show: boolean;
+    message: string;
+    solution: string;
+  } | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -1150,17 +1155,23 @@ export default function LancamentoNew() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setSaving(true);
 
-    if (!caixaId) { setError('Igreja caixa não definida. Selecione uma igreja.'); return; }
-    if (!planoId) { setError('Selecione o plano de contas.'); return; }
-    if (!tipoDocId) { setError('Selecione o tipo de documento.'); return; }
-    if (modo === 'DESPESA' && isBlank(numDoc)) { setError('Informe o número do documento para a despesa.'); return; }
-    if (!formaId) { setError('Selecione a forma de pagamento.'); return; }
-    if (isBlank(dataLancamento)) { setError('Informe a data do lançamento.'); return; }
-    if (isBlank(referencia)) { setError('Informe a referência do lançamento.'); return; }
+    const handleFail = (msg: string) => {
+      setError(msg);
+      setSaving(false);
+    };
+
+    if (!caixaId) { handleFail('Igreja caixa não definida. Selecione uma igreja.'); return; }
+    if (!planoId) { handleFail('Selecione o plano de contas.'); return; }
+    if (!tipoDocId) { handleFail('Selecione o tipo de documento.'); return; }
+    if (modo === 'DESPESA' && isBlank(numDoc)) { handleFail('Informe o número do documento para a despesa.'); return; }
+    if (!formaId) { handleFail('Selecione a forma de pagamento.'); return; }
+    if (isBlank(dataLancamento)) { handleFail('Informe a data do lançamento.'); return; }
+    if (isBlank(referencia)) { handleFail('Informe a referência do lançamento.'); return; }
 
     const valorNum = Number(valor.replace(/\./g, '').replace(',', '.'));
-    if (!valor || isNaN(valorNum) || valorNum <= 0) { setError('Informe um valor válido.'); return; }
+    if (!valor || isNaN(valorNum) || valorNum <= 0) { handleFail('Informe um valor válido.'); return; }
 
     let favNome: string | null = null;
     let memId: string | null = null;
@@ -1168,16 +1179,16 @@ export default function LancamentoNew() {
     if (tipoPessoa === 'MEMBRO') {
       favNome = favorecidoNome || null;
       memId = favorecidoId || null;
-      if (!memId || isBlank(favNome)) { setError(isReceita ? 'Selecione o contribuinte membro.' : 'Selecione o beneficiado membro.'); return; }
+      if (!memId || isBlank(favNome)) { handleFail(isReceita ? 'Selecione o contribuinte membro.' : 'Selecione o beneficiado membro.'); return; }
     } else if (tipoPessoa === 'IGREJA') {
       favNome = favorecidoNome || null;
-      if (!favorecidoId || isBlank(favNome)) { setError(isReceita ? 'Selecione a igreja contribuinte.' : 'Selecione a igreja beneficiada.'); return; }
+      if (!favorecidoId || isBlank(favNome)) { handleFail(isReceita ? 'Selecione a igreja contribuinte.' : 'Selecione a igreja beneficiada.'); return; }
     } else if (tipoPessoa === 'NAO_MEMBRO') {
       favNome = naoMembroNome.trim() || null;
-      if (isBlank(favNome)) { setError(isReceita ? 'Informe o contribuinte.' : 'Informe o beneficiado.'); return; }
+      if (isBlank(favNome)) { handleFail(isReceita ? 'Informe o contribuinte.' : 'Informe o beneficiado.'); return; }
     } else if (tipoPessoa === 'PJ') {
       favNome = pjNome.trim() || null;
-      if (isBlank(favNome)) { setError(isReceita ? 'Informe a pessoa jurídica contribuinte.' : 'Informe a pessoa jurídica beneficiada.'); return; }
+      if (isBlank(favNome)) { handleFail(isReceita ? 'Informe a pessoa jurídica contribuinte.' : 'Informe a pessoa jurídica beneficiada.'); return; }
     }
 
     const plano = planos.find(p => p.id === planoId);
@@ -1189,12 +1200,11 @@ export default function LancamentoNew() {
 
     let duplicateQuery = supabase
       .from('livro_caixa')
-      .select('id, obs')
+      .select('id, obs, num_doc')
       .eq('church_id', caixaId)
       .eq('tipo', modo)
       .eq('data_lancamento', dataLancamento)
       .eq('valor', valorNum)
-      .eq('plano_de_conta', plano?.nome ?? null)
       .limit(5);
 
     if (memId) {
@@ -1205,27 +1215,37 @@ export default function LancamentoNew() {
         .eq('favorecido', favNome);
     }
 
+    if (numDocTrimmed) {
+      duplicateQuery = duplicateQuery.eq('num_doc', numDocTrimmed);
+    } else {
+      duplicateQuery = duplicateQuery.is('num_doc', null);
+    }
+
     const { data: duplicateRows, error: duplicateError } = await duplicateQuery;
     if (duplicateError) {
-      setError('Não foi possível validar duplicidade antes de salvar.');
+      handleFail('Não foi possível validar duplicidade antes de salvar.');
       return;
     }
 
     if (duplicateRows?.length) {
-      if (!obsTrimmed) {
-        setError('Já existe um lançamento com a mesma data, valor e favorecido/beneficiado. Se for intencional, informe uma observação para diferenciar este registro.');
-        return;
-      }
-
       const sameObservation = duplicateRows.some((row) => normalizeText(row.obs) === normalizeText(obsTrimmed));
       if (sameObservation) {
-        setError('Foi encontrada uma repetição com a mesma observação. Informe uma observação diferente para permitir este lançamento duplicado.');
+        setSaving(false);
+        setDuplicateTransactionModal({
+          show: true,
+          message: 'Lançamento Duplicado Detectado!',
+          solution: 'Já existe um lançamento cadastrado exatamente com os mesmos dados (valor, pessoa, data, número de documento e observação).'
+        });
         return;
       }
     }
 
     const cashStatus = await checkChurchCashStatus(caixaId, dataLancamento);
-    if (!cashStatus.canInsert) { setCashClosedMessage(cashStatus.message); return; }
+    if (!cashStatus.canInsert) {
+      setCashClosedMessage(cashStatus.message);
+      setSaving(false);
+      return;
+    }
 
     setSaving(true);
     let fotoUrl: string | null = null;
@@ -1718,6 +1738,38 @@ export default function LancamentoNew() {
           message={cashClosedMessage}
           onClose={() => setCashClosedMessage('')}
         />
+      )}
+      {duplicateTransactionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-slate-900 dark:text-white text-base">Lançamento Duplicado Detectado</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Já existe um lançamento cadastrado exatamente com o mesmo valor, pessoa, data, número de documento e observação.
+                </p>
+              </div>
+            </div>
+            
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800 dark:bg-amber-900/20 dark:border-amber-900/40 dark:text-amber-300">
+              <p className="font-semibold mb-1">Como resolver:</p>
+              <p>Se você realmente deseja fazer este lançamento em duplicidade, por favor altere a observação deste lançamento para informar o motivo (ex: "Segunda via", "Referente ao serviço complementar", etc.).</p>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDuplicateTransactionModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors"
+              >
+                Entendi, vou ajustar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -280,16 +280,18 @@ export function MemberRegistration() {
   const [lookingUpCep, setLookingUpCep] = useState(false);
   const [savedMember, setSavedMember] = useState<SavedMemberSummary | null>(null);
   const [cityOptions, setCityOptions] = useState<{ field: 'city' | 'naturalityCity'; options: Array<{ city: string; state: string }> } | null>(null);
-  const [duplicateMember, setDuplicateMember] = useState<{ exists: boolean; type: 'cpf' | 'name'; member: any } | null>(null);
+  const [duplicateMember, setDuplicateMember] = useState<{ exists: boolean; type: 'cpf' | 'name' | 'rol'; sameCampo: boolean; member: any } | null>(null);
 
   const handleCheckDuplicate = async () => {
-    if (!formData.cpf && (!formData.firstName || !formData.lastName)) return;
+    if (!formData.cpf && (!formData.firstName || !formData.lastName) && !formData.rol) return;
     try {
       const qCpf = formData.cpf ? formData.cpf.replace(/[^\d]/g, '') : '';
       const qName = `${formData.firstName} ${formData.lastName}`.trim();
+      const qRol = formData.rol ? formData.rol.trim() : '';
       const query = new URLSearchParams();
       if (qCpf) query.append('cpf', qCpf);
       if (qName) query.append('name', qName);
+      if (qRol) query.append('rol', qRol);
       if (!query.toString()) return;
 
       const res = await fetch(`${apiBase}/members/check?${query.toString()}`, {
@@ -581,6 +583,11 @@ export function MemberRegistration() {
     event.preventDefault();
     setError('');
 
+    if (duplicateMember && (duplicateMember.type === 'cpf' || duplicateMember.type === 'rol')) {
+      setError(`O cadastro não pode ser salvo pois o ${duplicateMember.type.toUpperCase()} informado já está em uso.`);
+      return;
+    }
+
     if (!formData.churchId) {
       setError('Selecione a igreja.');
       return;
@@ -856,10 +863,11 @@ export function MemberRegistration() {
                 min="1"
                 value={formData.rol}
                 onChange={(e) => updateFormValue('rol', e.target.value)}
+                onBlur={handleCheckDuplicate}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="Gerado automaticamente"
               />
-              <p className="mt-1 text-xs text-slate-400">Deixe em branco para gerar automaticamente. Duplicatas são permitidas.</p>
+              <p className="mt-1 text-xs text-slate-400">Deixe em branco para gerar automaticamente. Duplicatas não são permitidas.</p>
             </div>
 
             <div>
@@ -1484,21 +1492,38 @@ export function MemberRegistration() {
               <div>
                 <h3 className="text-xl font-bold text-slate-900">Possível Duplicidade</h3>
                 <p className="text-sm text-slate-500">
-                  {duplicateMember.type === 'cpf' ? 'Este CPF' : 'Este nome'} já consta em nossa base.
+                  {duplicateMember.type === 'cpf' && 'Este CPF já consta em nossa base.'}
+                  {duplicateMember.type === 'rol' && 'Este ROL já consta em nossa base.'}
+                  {duplicateMember.type === 'name' && 'Este nome já consta em nossa base.'}
                 </p>
               </div>
             </div>
 
-            <div className="mb-6 rounded-xl bg-slate-50 p-4 border border-slate-100">
-              <p className="font-semibold text-slate-900">{duplicateMember.member.fullName}</p>
-              {duplicateMember.member.cpf && (
-                <p className="text-sm text-slate-600 mt-1">CPF: {duplicateMember.member.cpf}</p>
-              )}
-              <p className="text-sm text-slate-600 mt-1">
-                Igreja: {duplicateMember.member.church?.code ? `${duplicateMember.member.church.code} - ` : ''}
-                {duplicateMember.member.church?.name}
-              </p>
-            </div>
+            {duplicateMember.sameCampo ? (
+              <div className="mb-6 rounded-xl bg-slate-50 p-4 border border-slate-100">
+                <p className="font-semibold text-slate-900">{duplicateMember.member.fullName}</p>
+                {duplicateMember.member.cpf && (
+                  <p className="text-sm text-slate-600 mt-1">CPF: {duplicateMember.member.cpf}</p>
+                )}
+                {duplicateMember.member.rol && (
+                  <p className="text-sm text-slate-600 mt-1">ROL: {duplicateMember.member.rol}</p>
+                )}
+                <p className="text-sm text-slate-600 mt-1">
+                  Igreja: {duplicateMember.member.church?.code ? `${duplicateMember.member.church.code} - ` : ''}
+                  {duplicateMember.member.church?.name}
+                </p>
+              </div>
+            ) : (
+              <div className="mb-6 rounded-xl bg-rose-50 p-4 border border-rose-100">
+                <p className="text-sm text-rose-800 font-medium">
+                  {duplicateMember.type === 'cpf' 
+                    ? 'Este CPF pertence a um membro de outro Campo. Por motivos de privacidade, os dados do membro não podem ser exibidos.' 
+                    : duplicateMember.type === 'rol'
+                    ? 'Este ROL pertence a um membro de outro Campo. Por motivos de privacidade, os dados do membro não podem ser exibidos.'
+                    : 'Este membro pertence a outro Campo.'}
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button
@@ -1508,15 +1533,7 @@ export function MemberRegistration() {
               >
                 Voltar e Corrigir
               </button>
-              {((isMasterOrAdmin) || (storedUser.profileType === 'igreja' && storedUser.churchId === duplicateMember.member.churchId)) ? (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/app-ui/members/${duplicateMember.member.id}/edit`)}
-                  className="flex-1 rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-700 transition-colors"
-                >
-                  Editar Membro
-                </button>
-              ) : duplicateMember.type === 'name' ? (
+              {duplicateMember.type === 'name' && (
                 <button
                   type="button"
                   onClick={() => setDuplicateMember(null)}
@@ -1524,11 +1541,20 @@ export function MemberRegistration() {
                 >
                   É Homônimo (Continuar)
                 </button>
-              ) : null}
+              )}
+              {duplicateMember.sameCampo && (isMasterOrAdmin || (storedUser.profileType === 'igreja' && storedUser.churchId === duplicateMember.member.churchId)) && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/app-ui/members/${duplicateMember.member.id}/edit`)}
+                  className="flex-1 rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-700 transition-colors"
+                >
+                  Editar Membro
+                </button>
+              )}
             </div>
-            {duplicateMember.type === 'cpf' && !isMasterOrAdmin && storedUser.churchId !== duplicateMember.member.churchId && (
+            {(duplicateMember.type === 'cpf' || duplicateMember.type === 'rol') && (
               <p className="mt-4 text-xs text-center text-rose-500 font-medium">
-                Este CPF pertence a um membro de outra congregação. O cadastro não pode prosseguir.
+                O cadastro não pode prosseguir com CPF ou ROL duplicados.
               </p>
             )}
           </div>
