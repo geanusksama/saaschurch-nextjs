@@ -83,6 +83,7 @@ import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
 import { SantanderIcon } from '../ui/SantanderIcon';
 import { MobileAppOverlay } from '../public/MobileAppPreview';
+import { ChatFAB } from './ChatFAB';
 
 interface ContextSwitcherItem {
   id: string;
@@ -2063,6 +2064,7 @@ export function AppUI() {
           />
         )}
       </AnimatePresence>
+      <ChatFAB />
     </div>
   );
 }

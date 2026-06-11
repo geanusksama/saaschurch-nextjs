@@ -50,6 +50,7 @@ model Campo {
   stripeConfig       StripeConfig?              @relation("CampoStripeConfig")
   stripePayments     StripePayment[]            @relation("CampoStripePayments")
   stripeSubscriptions StripeSubscription[]      @relation("CampoStripeSubscriptions")
+  internalChatMessages InternalChatMessage[]
 
   @@map("campos")
 }
@@ -386,6 +387,10 @@ model User {
 
   userNotes       UserNote[]       @relation("UserNotes")
   userStickyNotes UserStickyNote[] @relation("UserStickyNotes")
+  lastActiveAt DateTime? @map("last_active_at")
+  presenceStatus String @default("online") @map("presence_status") @db.VarChar(20)
+  customStatus String? @map("custom_status") @db.VarChar(255)
+  internalChatMessages InternalChatMessage[]
 
   @@map("users")
 }
@@ -3144,4 +3149,25 @@ model UserStickyNote {
   user User @relation("UserStickyNotes", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_sticky_notes")
+}
+
+model InternalChatMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  campoId   String   @map("campo_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  userName  String   @map("user_name") @db.VarChar(255)
+  userRole  String?  @map("user_role") @db.VarChar(255)
+  body      String?  @db.Text
+  fileUrl   String?  @map("file_url") @db.Text
+  fileName  String?  @map("file_name") @db.VarChar(255)
+  fileType  String?  @map("file_type") @db.VarChar(50)
+  fileSize  Int?     @map("file_size")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  campo     Campo    @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([campoId])
+  @@index([createdAt])
+  @@map("internal_chat_messages")
 }
