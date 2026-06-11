@@ -914,7 +914,7 @@ export function ChatFAB() {
                               <div className={`flex items-center gap-1 relative max-w-full ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}>
                                 {/* Bubble Content wrapper */}
                                 <div
-                                  className={`relative max-w-[75%] min-w-0 overflow-hidden rounded-2xl px-3 py-2.5 text-sm shadow-sm border ${
+                                  className={`relative max-w-[75%] min-w-0 rounded-2xl px-3 py-2.5 text-sm shadow-sm border ${
                                     isSelf
                                       ? 'bg-purple-600 text-white border-purple-500 rounded-tr-none'
                                       : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-750 rounded-tl-none'
@@ -1001,8 +1001,8 @@ export function ChatFAB() {
                                   )}
                                 </div>
 
-                                {/* Option Actions (3-dot dropdown) visible on hover */}
-                                <div className="relative shrink-0 flex items-center">
+                                {/* Option Actions (3-dot button) visible on hover */}
+                                <div className="shrink-0 flex items-center">
                                   <button
                                     type="button"
                                     onClick={() => setActiveDropdownMsgId(activeDropdownMsgId === msg.id ? null : msg.id)}
@@ -1011,60 +1011,6 @@ export function ChatFAB() {
                                   >
                                     <MoreVertical className="w-4 h-4" />
                                   </button>
-
-                                  {/* Menu overlay box */}
-                                  {activeDropdownMsgId === msg.id && (
-                                    <>
-                                      <div className="fixed inset-0 z-30" onClick={() => setActiveDropdownMsgId(null)} />
-                                      <div className={`absolute z-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1.5 w-40 flex flex-col gap-0.5 bottom-full mb-1 ${isSelf ? 'right-0' : 'left-0'}`}>
-                                        {/* Quick reactions emojis */}
-                                        <div className="flex gap-1 justify-between px-1 py-1 border-b border-slate-100 dark:border-slate-800 mb-1">
-                                          {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
-                                            <button
-                                              key={emoji}
-                                              type="button"
-                                              onClick={() => {
-                                                handleToggleReaction(msg.id, emoji);
-                                                setActiveDropdownMsgId(null);
-                                              }}
-                                              className="hover:scale-125 transition text-sm active:scale-95"
-                                            >
-                                              {emoji}
-                                            </button>
-                                          ))}
-                                        </div>
-                                        {/* Reply button */}
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setReplyingTo(msg);
-                                            setActiveDropdownMsgId(null);
-                                            chatInputRef.current?.focus();
-                                          }}
-                                          className="w-full text-left px-2 py-1 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex items-center gap-1.5 font-medium text-slate-750 dark:text-slate-305 transition-colors"
-                                        >
-                                          <CornerUpLeft className="w-3.5 h-3.5" />
-                                          Responder
-                                        </button>
-                                        {/* Delete button */}
-                                        {(isSelf || storedUser.profileType === 'master') && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              if (confirm("Deseja excluir esta mensagem para todos?")) {
-                                                handleDeleteMessage(msg.id);
-                                              }
-                                              setActiveDropdownMsgId(null);
-                                            }}
-                                            className="w-full text-left px-2 py-1 text-xs hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg flex items-center gap-1.5 font-bold text-rose-600 dark:text-rose-400 transition-colors"
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                            Excluir
-                                          </button>
-                                        )}
-                                      </div>
-                                    </>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1226,6 +1172,80 @@ export function ChatFAB() {
                 </div>
               )}
             </div>
+
+            {/* Centered Message Actions Modal */}
+            <AnimatePresence>
+              {activeDropdownMsgId && (() => {
+                const targetMsg = messages.find(m => m.id === activeDropdownMsgId);
+                if (!targetMsg) return null;
+                const isSelfMsg = targetMsg.userId === currentUserId;
+                return (
+                  <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[2px] rounded-3xl">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{ duration: 0.15 }}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-3 w-52 flex flex-col gap-1"
+                    >
+                      {/* Quick reactions */}
+                      <div className="flex gap-2 justify-center py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+                        {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              handleToggleReaction(activeDropdownMsgId, emoji);
+                              setActiveDropdownMsgId(null);
+                            }}
+                            className="hover:scale-130 transition text-lg active:scale-95 p-0.5"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Reply */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyingTo(targetMsg);
+                          setActiveDropdownMsgId(null);
+                          chatInputRef.current?.focus();
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+                      >
+                        <CornerUpLeft className="w-4 h-4 text-purple-500" />
+                        Responder
+                      </button>
+                      {/* Delete */}
+                      {(isSelfMsg || storedUser.profileType === 'master') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm("Deseja excluir esta mensagem para todos?")) {
+                              handleDeleteMessage(activeDropdownMsgId);
+                            }
+                            setActiveDropdownMsgId(null);
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl flex items-center gap-2 font-bold text-rose-600 dark:text-rose-400 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Excluir
+                        </button>
+                      )}
+                      {/* Cancel */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveDropdownMsgId(null)}
+                        className="w-full text-center px-3 py-2 text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-semibold text-slate-500 dark:text-slate-400 transition-colors mt-1"
+                      >
+                        Cancelar
+                      </button>
+                    </motion.div>
+                  </div>
+                );
+              })()}
+            </AnimatePresence>
 
             {/* Audio Recording overlay block */}
             <AnimatePresence>
