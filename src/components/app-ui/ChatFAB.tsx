@@ -724,7 +724,7 @@ export function ChatFAB() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 30 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="fixed bottom-24 right-6 z-40 w-96 max-w-full h-[620px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-800 dark:text-slate-100 font-sans"
+            className="fixed bottom-24 right-6 z-40 w-96 max-w-[calc(100vw-3rem)] h-[620px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-800 dark:text-slate-100 font-sans"
           >
             {/* Header */}
             <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-2">
@@ -870,7 +870,7 @@ export function ChatFAB() {
             )}
 
             {/* Content Panel */}
-            <div className="flex-1 overflow-y-auto bg-slate-50/30 dark:bg-slate-900/50 p-4">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/30 dark:bg-slate-900/50 p-4">
               {activeTab === 'chat' ? (
                 /* Chat view */
                 selectedContact ? (
@@ -883,13 +883,13 @@ export function ChatFAB() {
                         <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Diga olá para iniciar esta conversa!</p>
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-4 min-w-0">
                         {messages.map((msg) => {
                           const isSelf = msg.userId === currentUserId;
                           return (
                             <div
                               key={msg.id}
-                              className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'} group/row mb-2`}
+                              className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'} group/row mb-2 min-w-0`}
                             >
                               {/* Metadata */}
                               <div className="flex items-center gap-1.5 mb-1 px-1">
@@ -911,10 +911,10 @@ export function ChatFAB() {
                               </div>
 
                               {/* Message bubble + Actions row */}
-                              <div className={`flex items-center gap-1 relative ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}>
+                              <div className={`flex items-center gap-1 relative max-w-full ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}>
                                 {/* Bubble Content wrapper */}
                                 <div
-                                  className={`relative max-w-[80vw] sm:max-w-[70%] rounded-2xl px-4 py-2.5 text-sm shadow-sm border ${
+                                  className={`relative max-w-[75%] min-w-0 overflow-hidden rounded-2xl px-3 py-2.5 text-sm shadow-sm border ${
                                     isSelf
                                       ? 'bg-purple-600 text-white border-purple-500 rounded-tr-none'
                                       : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-750 rounded-tl-none'
@@ -922,7 +922,7 @@ export function ChatFAB() {
                                 >
                                   {/* Reply Box quote inside the bubble */}
                                   {msg.parentId && (
-                                    <div className={`mb-2 p-2 rounded-lg border-l-4 text-xs text-left max-w-full truncate opacity-95 ${
+                                    <div className={`mb-2 p-1.5 rounded-lg border-l-3 text-xs text-left overflow-hidden opacity-95 ${
                                       isSelf
                                         ? 'bg-black/20 border-purple-300 text-purple-100'
                                         : 'bg-slate-100 dark:bg-slate-900 border-purple-500 text-slate-700 dark:text-slate-300'
@@ -932,11 +932,11 @@ export function ChatFAB() {
                                     </div>
                                   )}
 
-                                  {msg.body && <p className="leading-relaxed break-words">{msg.body}</p>}
+                                  {msg.body && <p className="leading-relaxed break-words whitespace-pre-wrap">{msg.body}</p>}
 
                                   {/* Media Attachment types */}
                                   {msg.fileUrl && (
-                                    <div className="mt-1">
+                                    <div className="mt-1 min-w-0 max-w-full">
                                       {msg.fileType === 'image' ? (
                                         <button
                                           type="button"
@@ -950,10 +950,10 @@ export function ChatFAB() {
                                           />
                                         </button>
                                       ) : msg.fileType === 'audio' ? (
-                                        <div className="flex flex-col gap-1 w-64 bg-slate-100 dark:bg-slate-950/40 p-2.5 rounded-xl border border-slate-200 dark:border-white/5">
+                                        <div className="flex flex-col gap-1 w-full bg-slate-100 dark:bg-slate-950/40 p-2 rounded-xl border border-slate-200 dark:border-white/5">
                                           <div className="flex items-center gap-2">
                                             <Volume2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                                            <audio src={msg.fileUrl} controls className="h-8 w-full rounded outline-none" />
+                                            <audio src={msg.fileUrl} controls className="h-8 w-full min-w-0 rounded outline-none" style={{ maxWidth: '100%' }} />
                                           </div>
                                           <span className="text-[9px] text-slate-500 dark:text-slate-400 self-end">
                                             {msg.fileSize ? formatFileSize(msg.fileSize) : ''}
@@ -1006,17 +1006,17 @@ export function ChatFAB() {
                                   <button
                                     type="button"
                                     onClick={() => setActiveDropdownMsgId(activeDropdownMsgId === msg.id ? null : msg.id)}
-                                    className="opacity-0 group-hover/row:opacity-100 p-1 rounded-lg hover:bg-slate-250 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-opacity duration-150 mx-1 shrink-0"
+                                    className="opacity-0 group-hover/row:opacity-100 p-1 rounded-lg hover:bg-slate-250 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-opacity duration-150 shrink-0"
                                     title="Opções"
                                   >
-                                    <MoreVertical className="w-4.5 h-4.5" />
+                                    <MoreVertical className="w-4 h-4" />
                                   </button>
 
                                   {/* Menu overlay box */}
                                   {activeDropdownMsgId === msg.id && (
                                     <>
                                       <div className="fixed inset-0 z-30" onClick={() => setActiveDropdownMsgId(null)} />
-                                      <div className={`absolute z-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1.5 w-36 flex flex-col gap-0.5 ${isSelf ? 'right-full mr-1 bottom-0' : 'left-full ml-1 bottom-0'}`}>
+                                      <div className={`absolute z-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1.5 w-40 flex flex-col gap-0.5 bottom-full mb-1 ${isSelf ? 'right-0' : 'left-0'}`}>
                                         {/* Quick reactions emojis */}
                                         <div className="flex gap-1 justify-between px-1 py-1 border-b border-slate-100 dark:border-slate-800 mb-1">
                                           {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
