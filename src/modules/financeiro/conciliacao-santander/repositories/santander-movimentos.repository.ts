@@ -22,7 +22,7 @@ export interface MovimentoFilter {
   santander_account_id: string
   from: string
   to: string
-  type?: 'all' | 'credit' | 'debit'
+  type?: 'all' | 'credit' | 'debit' | 'pix'
   status?: SantanderMovimentoStatus
   page?: number
   limit?: number
@@ -89,16 +89,19 @@ class SantanderMovimentosRepository {
     const limit = Math.min(filter.limit ?? 50, 100)
     const offset = (page - 1) * limit
 
-    const typeFilter = filter.type === 'credit' ? "'C'" : filter.type === 'debit' ? "'D'" : null
-    const statusFilter = filter.status ? `'${filter.status}'` : null
+    const typeFilter  = filter.type === 'credit' ? "AND credit_debit_type = 'C'"
+                      : filter.type === 'debit'  ? "AND credit_debit_type = 'D'"
+                      : filter.type === 'pix'    ? "AND raw_payload->>'type' = 'PIX'"
+                      : ''
+    const statusFilter = filter.status ? `AND status = '${filter.status}'` : ''
 
     const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT *
       FROM santander_movimentos
       WHERE santander_account_id = '${filter.santander_account_id}'::uuid
         AND transaction_date BETWEEN '${filter.from}'::date AND '${filter.to}'::date
-        ${typeFilter ? `AND credit_debit_type = ${typeFilter}` : ''}
-        ${statusFilter ? `AND status = ${statusFilter}` : ''}
+        ${typeFilter}
+        ${statusFilter}
       ORDER BY transaction_date DESC, created_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `)
@@ -108,8 +111,8 @@ class SantanderMovimentosRepository {
       FROM santander_movimentos
       WHERE santander_account_id = '${filter.santander_account_id}'::uuid
         AND transaction_date BETWEEN '${filter.from}'::date AND '${filter.to}'::date
-        ${typeFilter ? `AND credit_debit_type = ${typeFilter}` : ''}
-        ${statusFilter ? `AND status = ${statusFilter}` : ''}
+        ${typeFilter}
+        ${statusFilter}
     `)
 
     return { rows, total: parseInt(count, 10) }

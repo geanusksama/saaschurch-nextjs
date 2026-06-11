@@ -111,6 +111,7 @@ export interface SantanderMovimentoDto {
   created_at: string
   updated_at: string
   imported_by: string | null
+  conciliacao_id?: string | null
 }
 
 /** Resposta normalizada de um movimento da API Santander (antes de salvar) */
@@ -125,6 +126,11 @@ export interface SantanderApiMovimento {
   historyDescription?: string
   documentNumber?: string
   complement?: string
+  // Campos do endpoint /statements (Open Banking)
+  type?: string                            // "PIX", "TED", "DOC", "BOLETO", etc.
+  transactionId?: string                   // ID único retornado pela API
+  partieCnpjCpf?: string                   // CPF/CNPJ da contraparte
+  completedAuthorisedPaymentType?: string  // ex: "TRANSACAO_EFETIVADA"
   rawPayload?: Record<string, unknown>
 }
 
@@ -135,7 +141,7 @@ export interface TransactionsQueryDto {
   account_id: string       // UUID da conta local
   from: string             // YYYY-MM-DD
   to?: string              // YYYY-MM-DD (padrão: hoje)
-  type?: 'all' | 'credit' | 'debit'
+  type?: 'all' | 'credit' | 'debit' | 'pix'
   status?: SantanderMovimentoStatus
   page?: number
   limit?: number

@@ -2,33 +2,40 @@
 
 import { useState, useEffect } from 'react';
 import { ConciliacaoSantander } from '../../modules/financeiro/conciliacao-santander/frontend/ConciliacaoSantander';
+import { usePermissions } from '../../lib/usePermissions';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
 import { Loader2 } from 'lucide-react';
 
 interface PageData {
   churchId: string;
-  credentials: { id: string; apelido: string }[];
-  accounts: { id: string; display_name: string; branch_code: string; account_number: string }[];
-  permissions: string[];
+  credentials: { id: string; apelido: string; ambiente: string }[];
   planoDeContasOptions: { value: string; label: string }[];
   formaPagamentoOptions: { value: string; label: string }[];
 }
 
-// Permissões padrão para admin enquanto tabelas não têm RLS configurada
-const DEFAULT_PERMISSIONS = [
-  'financeiro.santander.visualizar',
-  'financeiro.santander.configurar',
-  'financeiro.santander.consultar',
-  'financeiro.santander.importar',
-  'financeiro.santander.conciliar',
-  'financeiro.santander.lancar_livro_caixa',
-  'financeiro.santander.ignorar',
-  'financeiro.santander.exportar',
-  'financeiro.santander.auditoria',
-];
-
 export default function SantanderPage() {
+  const [profileType] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'church';
+    try {
+      return (JSON.parse(localStorage.getItem('mrm_user') || '{}') as Record<string, unknown>).profileType as string || 'church';
+    } catch { return 'church'; }
+  });
+
+  const { canView, canCreate, canEdit } = usePermissions(profileType);
+
+  const permissions: string[] = [
+    canView('santander_view')      && 'financeiro.santander.visualizar',
+    canView('santander_config')    && 'financeiro.santander.configurar',
+    canCreate('santander_sync')    && 'financeiro.santander.consultar',
+    canCreate('santander_import')  && 'financeiro.santander.importar',
+    canEdit('santander_conciliar') && 'financeiro.santander.conciliar',
+    canEdit('santander_lancar')    && 'financeiro.santander.lancar_livro_caixa',
+    canCreate('santander_ignorar') && 'financeiro.santander.ignorar',
+    canCreate('santander_export')  && 'financeiro.santander.exportar',
+    canView('santander_audit')     && 'financeiro.santander.auditoria',
+  ].filter(Boolean) as string[];
+
   const [data, setData] = useState<PageData | null>(null);
 
   useEffect(() => {
@@ -37,29 +44,17 @@ export default function SantanderPage() {
       const user = raw ? JSON.parse(raw) as Record<string, unknown> : {};
       const token = localStorage.getItem('mrm_token') ?? '';
       const churchId = String(user.churchId ?? user.church_id ?? '');
-
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Permissões: garante que é sempre um array de strings
-      const rawPerms = user.permissions;
-      const permissions: string[] = Array.isArray(rawPerms)
-        ? rawPerms.filter((p): p is string => typeof p === 'string')
-        : DEFAULT_PERMISSIONS;
-
-      // Busca credenciais — pode retornar 403, 404 ou 500 se tabela não existe
-      let credentials: { id: string; apelido: string }[] = [];
-      let accounts: { id: string; display_name: string; branch_code: string; account_number: string }[] = [];
+      let credentials: { id: string; apelido: string; ambiente: string }[] = [];
       try {
         const credRes = await fetch(`${apiBase}/santander/credentials`, { headers });
         if (credRes.ok) {
-          const json = await credRes.json() as { credentials?: { id: string; apelido: string }[] };
+          const json = await credRes.json() as { credentials?: { id: string; apelido: string; ambiente: string }[] };
           credentials = Array.isArray(json.credentials) ? json.credentials : [];
         }
-      } catch {
-        // silencia — componente mostra estado vazio
-      }
+      } catch { /* sem credenciais */ }
 
-      // Busca plano de contas e formas de pagamento (Supabase direto — independe das tabelas Santander)
       const [planoRes, formaRes] = await Promise.all([
         supabase.from('plano_de_contas').select('id, nome').eq('ativo', true).order('nome'),
         supabase.from('forma_pagamento').select('id, nome').eq('mostrar', true).order('nome'),
@@ -72,7 +67,7 @@ export default function SantanderPage() {
         (f: { id: number; nome: string }) => ({ value: String(f.id), label: f.nome })
       );
 
-      setData({ churchId, credentials, accounts, permissions, planoDeContasOptions, formaPagamentoOptions });
+      setData({ churchId, credentials, planoDeContasOptions, formaPagamentoOptions });
     }
     void load();
   }, []);
@@ -90,11 +85,10 @@ export default function SantanderPage() {
       <ConciliacaoSantander
         churchId={data.churchId}
         credentials={data.credentials}
-        accounts={data.accounts}
-        permissions={data.permissions}
+        permissions={permissions}
         planoDeContasOptions={data.planoDeContasOptions}
         formaPagamentoOptions={data.formaPagamentoOptions}
       />
     </div>
-  )
+  );
 }

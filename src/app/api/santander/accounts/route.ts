@@ -7,7 +7,7 @@ import { santanderCredentialsRepo } from '@/modules/financeiro/conciliacao-santa
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
-    if (!user.permissions?.includes('financeiro.santander.visualizar')) {
+    if (!user.permissions?.['financeiro.santander.visualizar']) {
       return NextResponse.json({ error: 'Permissão negada' }, { status: 403 })
     }
 

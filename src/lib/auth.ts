@@ -20,7 +20,7 @@ export interface AuthUser {
   campoName: string | null;
   roleId: string | null;
   roleName: string | null;
-  permissions: unknown;
+  permissions: Record<string, boolean> | null;
   isAdmin: boolean;
   parentChurchId: string | null;
   parentChurch: unknown;

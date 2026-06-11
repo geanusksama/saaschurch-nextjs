@@ -1,14 +1,21 @@
 import { santanderGet, type SantanderRequestConfig } from './santander-api-client'
 
 // Consulta saldo de conta bancária Santander
-// GET /bank_account_information/v1/banks/banks/{bank_id}/balances/{balance_id}
-// balance_id: LPAD(branch_code, 4) + '.' + LPAD(account_number, 12)
-// Ex: 0001.000010331607
+// GET /bank_account_information/v1/banks/{bank_id}/balances/{balance_id}
+//
+// balance_id : LPAD(branchCode,4) + '.' + LPAD(accountNumber,12)
+//              ex: "0770.000013001496"
+// bank_id    : "0033" para Santander
+//
+// ATENÇÃO: a API retorna amounts como STRING ("100.00"), não número.
 
 interface BalanceResponse {
-  availableAmount?: number
-  blockedAmount?: number
-  automaticallyInvestedAmount?: number
+  availableAmount?: string | number
+  availableAmountCurrency?: string
+  blockedAmount?: string | number
+  blockedAmountCurrency?: string
+  automaticallyInvestedAmount?: string | number
+  automaticallyInvestedAmountCurrency?: string
 }
 
 export interface SantanderBalance {
@@ -17,6 +24,11 @@ export interface SantanderBalance {
   blocked_amount: number
   automatically_invested_amount: number
   queried_at: Date
+}
+
+function toFloat(value: string | number | undefined): number {
+  if (value === undefined || value === null) return 0
+  return typeof value === 'string' ? parseFloat(value) : value
 }
 
 class SantanderBalanceService {
@@ -30,14 +42,16 @@ class SantanderBalanceService {
 
     const response = await santanderGet<BalanceResponse>(
       config,
-      `/bank_account_information/v1/banks/banks/${bankId}/balances/${balanceId}`,
+      // Caminho correto: /banks/{bank_id}/balances/{balance_id}
+      // (não /banks/banks — era typo na versão anterior)
+      `/bank_account_information/v1/banks/${bankId}/balances/${balanceId}`,
     )
 
     return {
       balance_id: balanceId,
-      available_amount: response.availableAmount ?? 0,
-      blocked_amount: response.blockedAmount ?? 0,
-      automatically_invested_amount: response.automaticallyInvestedAmount ?? 0,
+      available_amount:              toFloat(response.availableAmount),
+      blocked_amount:                toFloat(response.blockedAmount),
+      automatically_invested_amount: toFloat(response.automaticallyInvestedAmount),
       queried_at: new Date(),
     }
   }

@@ -399,7 +399,7 @@ function PJModal({
 // ─── Historico Panel ─────────────────────────────────────────────────────────
 
 function HistoricoPanel({
-  lancamentosRecentes, loadRecentes, onClearHistory, caixaId, currentModo, onRepetir, onReciboReady,
+  lancamentosRecentes, loadRecentes, onClearHistory, caixaId, currentModo, onRepetir, onReciboReady, setCashClosedMessage, defaultTab = 'historico',
 }: {
   lancamentosRecentes: LancamentoRecente[];
   loadRecentes: () => void;
@@ -408,8 +408,15 @@ function HistoricoPanel({
   currentModo: string;
   onRepetir: (l: LancamentoRecente) => void;
   onReciboReady: (row: ReciboRow) => void;
+  setCashClosedMessage: (msg: string) => void;
+  defaultTab?: 'historico' | 'repetir';
 }) {
-  const [activeTab, setActiveTab] = useState<'historico' | 'repetir'>('historico');
+  const [activeTab, setActiveTab] = useState<'historico' | 'repetir'>(defaultTab);
+
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValor, setEditValor] = useState('');
   // Obs editing
@@ -597,13 +604,13 @@ function HistoricoPanel({
   }
 
   return (
-    <div className="w-full lg:w-[440px] lg:flex-shrink-0 flex flex-col gap-2">
+    <div className="w-full flex flex-col gap-2">
       {repeatError && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div className="rounded-[4px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
           {repeatError}
         </div>
       )}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+      <div className="flex flex-col flex-1" style={{ minHeight: '350px' }}>
 
         {/* Tabs */}
         <div className="flex border-b border-slate-100 flex-shrink-0">
@@ -978,6 +985,8 @@ export default function LancamentoNew() {
   const [showPJSearchModal, setShowPJSearchModal] = useState(false);
   const [showCaixaModal, setShowCaixaModal] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
+  const [showHistoricoRepetirModal, setShowHistoricoRepetirModal] = useState(false);
+  const [modalTab, setModalTab] = useState<'historico' | 'repetir'>('historico');
   const [reciboRow, setReciboRow] = useState<ReciboRow | null>(null);
   const [cashClosedMessage, setCashClosedMessage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1369,316 +1378,415 @@ export default function LancamentoNew() {
     }));
   }
 
+  const formatData = (dtStr: string) => {
+    if (!dtStr) return '—';
+    const parts = dtStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dtStr;
+  };
+
   return (
-    <div className="p-4 flex flex-col lg:flex-row gap-4 min-h-0 w-full">
-
-      {/* ── LEFT: form ─────────────────────────────────────────────────── */}
-      <div className="flex-1 min-w-0 flex flex-col gap-4">
-
-        {/* Header */}
+    <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6 min-h-screen w-full bg-[#f4f7f5] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+      {/* Header row */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link to="/app-ui/finance/cashbook" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg flex-shrink-0">
-            <ArrowLeft className="w-5 h-5 text-slate-600" />
+          <Link to="/app-ui/finance/cashbook" className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center hover:bg-slate-50 transition-colors flex-shrink-0">
+            <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
           </Link>
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${isReceita ? 'bg-[#d1fae5]' : 'bg-red-100'}`}>
-            <span className={`font-bold text-base ${isReceita ? 'text-[#059669]' : 'text-red-600'}`}>{isReceita ? '+' : '−'}</span>
+          <div>
+            <h1 className="text-xl font-bold text-[#064e3b] dark:text-emerald-400 leading-tight">
+              {isReceita ? 'Inserir Receita' : 'Inserir Despesa'}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {isReceita ? 'Preencha os dados abaixo para lançar uma nova receita' : 'Preencha os dados abaixo para lançar uma nova despesa'}
+            </p>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{isReceita ? 'Inserir Receita' : 'Inserir Despesa'}</h1>
-            <p className="text-xs text-slate-400 hidden sm:block">Preencha os dados abaixo</p>
+        </div>
+        
+        <div className="flex items-center gap-2 flex-wrap">
+          <button type="button" onClick={() => setModo('RECEITA')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-[4px] text-xs font-bold transition-colors ${isReceita ? 'bg-[#059669] text-white border border-[#059669]' : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600 hover:bg-slate-50'}`}>
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            RECEITA (F2)
+          </button>
+          <button type="button" onClick={() => setModo('DESPESA')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-[4px] text-xs font-bold transition-colors ${!isReceita ? 'bg-red-600 text-white border border-red-600' : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600 hover:bg-slate-50'}`}>
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            DESPESA (F4)
+          </button>
+        </div>
+      </div>
+
+      {/* Caixa de Origem row */}
+      <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center flex-shrink-0">
+            <ChurchIcon className="w-5 h-5 text-pink-600 dark:text-pink-400" />
           </div>
-          <div className="ml-auto flex flex-col sm:flex-row flex-shrink-0 gap-1">
-            <button type="button" onClick={() => setModo('RECEITA')}
-              className={`px-3 py-1.5 rounded-lg sm:rounded-l-lg sm:rounded-r-none text-xs font-bold border transition-colors ${isReceita ? 'bg-[#059669] text-white border-[#10b981]' : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'}`}>
-              RECEITA (F2)
-            </button>
-            <button type="button" onClick={() => setModo('DESPESA')}
-              className={`px-3 py-1.5 rounded-lg sm:rounded-r-lg sm:rounded-l-none text-xs font-bold border sm:border-l-0 transition-colors ${!isReceita ? 'bg-red-600 text-white border-red-600' : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'}`}>
-              DESPESA (F4)
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowPanel(v => !v)}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-              title={showPanel ? 'Fechar painel lateral' : 'Abrir painel lateral'}
-            >
-              {showPanel ? <PanelRightClose className="w-5 h-5 text-slate-600" /> : <PanelRightOpen className="w-5 h-5 text-slate-600" />}
-            </button>
+          <div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold tracking-wider uppercase">CAIXA DE ORIGEM</p>
+            <div className="flex items-center gap-2">
+              {isChurchUser ? (
+                <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                  {caixaNome || 'Igreja não definida'}
+                </span>
+              ) : (
+                <button type="button" onClick={() => setShowCaixaModal(true)}
+                  className="font-bold text-slate-800 dark:text-slate-100 text-sm hover:text-indigo-600 transition-colors text-left">
+                  {caixaNome || 'Selecione uma igreja'}
+                </button>
+              )}
+              {caixaId && <span className="text-[9px] font-bold bg-[#d1fae5] text-[#047857] dark:bg-emerald-950 dark:text-emerald-400 px-2 py-0.5 rounded-[4px]">ATIVA</span>}
+            </div>
           </div>
         </div>
 
-        {/* Indicador modo */}
-        <div className={`h-1 rounded-full ${accentBar}`} />
-
-        {/* Caixa de Origem */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <ChurchIcon className="w-4 h-4 text-indigo-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">CAIXA DE ORIGEM</p>
-                {isChurchUser ? (
-                  <p className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">
-                    {caixaNome || 'Igreja não definida'}
-                  </p>
-                ) : (
-                  <button type="button" onClick={() => setShowCaixaModal(true)}
-                    className="font-bold text-slate-800 dark:text-slate-100 text-sm hover:text-indigo-600 transition-colors truncate text-left w-full">
-                    {caixaNome || 'Selecione uma igreja'}
-                  </button>
-                )}
-              </div>
-              {caixaId && <span className="text-[10px] font-bold bg-[#d1fae5] text-[#047857] px-2 py-0.5 rounded-full flex-shrink-0">ATIVA</span>}
-
-              {/* Toggle transferir — oculto para perfil church */}
-              {!isChurchUser && (
-                <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-                  <span className="text-xs text-slate-400 hidden sm:block">Outra igreja</span>
-                  <div onClick={() => setTransferir(v => !v)} className="cursor-pointer">
-                    <div className={`w-10 h-5 rounded-full relative transition-colors ${transferir ? 'bg-indigo-600' : 'bg-slate-300'}`}>
-                      <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${transferir ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </div>
-                  </div>
+        <div className="flex items-center gap-4">
+          {!isChurchUser && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400">Outra igreja</span>
+              <div onClick={() => setTransferir(v => !v)} className="cursor-pointer">
+                <div className={`w-10 h-5 rounded-full relative transition-colors ${transferir ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${transferir ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </div>
-              )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {transferir && (
+        <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-4 shadow-sm -mt-4">
+          <button type="button" onClick={() => setShowCaixaModal(true)}
+            className="w-full flex items-center gap-2 px-3 py-2.5 border border-dashed border-indigo-300 rounded-[4px] text-sm text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-colors">
+            <Search className="w-4 h-4" />
+            {caixaNome ? `Alterar: ${caixaNome}` : 'Buscar igreja...'}
+          </button>
+        </div>
+      )}
+
+      {/* Two Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* Left Form */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-6">
+          {/* Favorecido Section */}
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white ${isReceita ? 'bg-[#059669]' : 'bg-red-600'}`}>
+                {tipoPessoa === 'MEMBRO' ? <User className="w-4.5 h-4.5" /> : <Users className="w-4.5 h-4.5" />}
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Favorecido / Contribuinte</h2>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Selecione o tipo de pessoa</p>
+              </div>
+            </div>
+
+            {/* Person type buttons */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              {([
+                { key: 'MEMBRO', label: 'Membro', icon: User },
+                { key: 'IGREJA', label: 'Igreja', icon: ChurchIcon },
+                { key: 'NAO_MEMBRO', label: 'Não Membro', icon: Users },
+                { key: 'PJ', label: 'Jurídica', icon: Briefcase },
+              ] as const).map(({ key, label, icon: Icon }) => (
+                <button key={key} type="button"
+                  onClick={() => {
+                    setTipoPessoa(key);
+                    setFavorecidoId('');
+                    setFavorecidoNome('');
+                    setFavorecidoRol(null);
+                    if (key === 'MEMBRO') setShowMemberModal(true);
+                    else if (key === 'IGREJA') setShowChurchModal(true);
+                    else if (key === 'PJ') setShowPJSearchModal(true);
+                  }}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-[4px] border text-xs font-semibold transition-colors ${tipoPessoa === key ? `${accentBg} text-white border-transparent` : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-slate-400'}`}>
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />{label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search / display field */}
+            {(tipoPessoa === 'MEMBRO' || tipoPessoa === 'IGREJA') && (
+              <div className="relative">
+                <input
+                  type="text"
+                  readOnly
+                  onClick={() => tipoPessoa === 'MEMBRO' ? setShowMemberModal(true) : setShowChurchModal(true)}
+                  value={favorecidoNome}
+                  placeholder="Busque por nome, CPF ou código..."
+                  className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white placeholder:text-slate-400 cursor-pointer pr-10"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                  {favorecidoNome ? (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setFavorecidoId(''); setFavorecidoNome(''); setFavorecidoRol(null); }}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-[4px] flex-shrink-0"><X className="w-3.5 h-3.5 text-slate-500" /></button>
+                  ) : (
+                    <Search className="w-4 h-4 text-slate-400" />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {tipoPessoa === 'NAO_MEMBRO' && (
+              <div className="relative">
+                <input type="text" value={naoMembroNome} onChange={e => setNaoMembroNome(e.target.value)}
+                  placeholder="Busque por nome, CPF ou código..."
+                  className={`w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 pr-10`} />
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              </div>
+            )}
+
+            {tipoPessoa === 'PJ' && (
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input type="text" value={pjNome} onChange={e => setPjNome(e.target.value)}
+                    placeholder="Busque por nome, CPF ou código..."
+                    className={`w-full pl-3 pr-10 py-2.5 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                </div>
+                <button type="button" onClick={() => setShowPJModal(true)}
+                  className="px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-[4px] hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" title="Cadastrar nova PJ">
+                  <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                </button>
+                <button type="button" onClick={() => setShowPJSearchModal(true)}
+                  className="px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-[4px] hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" title="Buscar PJ existente">
+                  <Search className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Form inputs grid */}
+          <div className="space-y-4">
+            {/* Plano de Contas */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Plano de Contas</label>
+              <SearchableSelect 
+                value={planoId} 
+                onChange={setPlanoId}
+                options={planos.map(p => ({ id: p.id, label: p.nome }))}
+                placeholder="Selecione a categoria..."
+                className={`w-full px-3 py-2.5 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}
+              />
+            </div>
+
+            {/* Documento / Numero */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Documento</label>
+                <select value={tipoDocId} onChange={e => setTipoDocId(e.target.value)}
+                  className={`w-full px-3 py-2.5 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
+                  <option value="">Selecione o tipo...</option>
+                  {tiposDocs.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Nº do Documento</label>
+                <input type="text" value={numDoc} onChange={e => setNumDoc(e.target.value)}
+                  placeholder="Opcional"
+                  className={`w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+              </div>
+            </div>
+
+            {/* Forma de Pagamento */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Forma de Pagamento</label>
+              <select value={formaId} onChange={e => setFormaId(e.target.value)}
+                className={`w-full px-3 py-2.5 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
+                <option value="">Selecione a forma...</option>
+                {formas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            </div>
+
+            {/* Datas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Data de Lançamento</label>
+                <input type="date" value={dataLancamento} onChange={e => setDataLancamento(e.target.value)} required
+                  className={`w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Referência (Mês/Ano)</label>
+                <input type="text" value={referencia} onChange={e => setReferencia(e.target.value)} placeholder="MM/AAAA"
+                  className={`w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+              </div>
+            </div>
+
+            {/* Obs + Valor */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Observações (Opcional)</label>
+                <div className="relative">
+                  <input type="text" value={obs} onChange={e => setObs(e.target.value.slice(0, 200))} placeholder="Detalhes adicionais sobre este lançamento..."
+                    className={`w-full pl-3 pr-12 py-2.5 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">{obs.length}/200</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Valor (R$)</label>
+                <div className={`flex items-stretch border-2 ${accentBorder} rounded-[4px] overflow-hidden`}>
+                  <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold px-3 py-2.5 flex items-center text-sm border-r border-slate-200 dark:border-slate-600">R$</span>
+                  <input type="text" inputMode="numeric" value={valor} onChange={handleValorChange} placeholder="0,00" required
+                    className={`w-full px-3 py-2.5 text-sm font-bold text-right bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none`} />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Buscar outra igreja (quando transferir ativo) */}
-          {transferir && (
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              <button type="button" onClick={() => setShowCaixaModal(true)}
-                className="w-full flex items-center gap-2 px-3 py-2.5 border border-dashed border-indigo-300 rounded-lg text-sm text-indigo-600 hover:bg-indigo-50 transition-colors">
-                <Search className="w-4 h-4" />
-                {caixaNome ? `Alterar: ${caixaNome}` : 'Buscar igreja...'}
-              </button>
+          {/* Comprovante */}
+          {modo === 'DESPESA' && (
+            <div className="pt-2">
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Comprovante</label>
+              <div className="flex items-center gap-3">
+                {fotoPreview ? (
+                  <div className="flex items-center gap-2">
+                    <img src={fotoPreview} alt="comprovante" className="w-16 h-16 object-cover rounded-[4px] border border-slate-200" />
+                    <button type="button" onClick={() => { setFotoFile(null); setFotoPreview(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-[4px] text-slate-400 hover:text-red-500 transition-colors" title="Remover foto">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-4 py-2 border border-dashed border-slate-300 rounded-[4px] text-xs text-slate-500 hover:border-red-400 hover:bg-slate-50 transition-colors whitespace-nowrap">
+                    <Camera className="w-4 h-4 flex-shrink-0" />
+                    <span>Foto Comprovante</span>
+                  </button>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFoto} className="hidden" />
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-[4px]">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+          {success && (
+            <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-[4px]">
+              <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              <p className="text-sm text-emerald-700">Lançamento registrado com sucesso!</p>
             </div>
           )}
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 space-y-4">
-
-            {/* Favorecido */}
+        {/* Right Column (Ticket) */}
+        <div className="relative bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 shadow-sm p-6 overflow-hidden flex flex-col gap-5 pb-10">
+          {/* Ticket Header */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+            </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                {isReceita ? 'Favorecido / Contribuinte' : 'Favorecido / Beneficiado'}
-              </p>
-              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-3">
-                {([
-                  { key: 'MEMBRO', label: 'Membro', icon: User },
-                  { key: 'IGREJA', label: 'Igreja', icon: ChurchIcon },
-                  { key: 'NAO_MEMBRO', label: 'Não Membro', icon: Users },
-                  { key: 'PJ', label: 'Jurídica', icon: Briefcase },
-                ] as const).map(({ key, label, icon: Icon }) => (
-                  <button key={key} type="button"
-                    onClick={() => {
-                      setTipoPessoa(key);
-                      setFavorecidoId('');
-                      setFavorecidoNome('');
-                      setFavorecidoRol(null);
-                      if (key === 'MEMBRO') setShowMemberModal(true);
-                      else if (key === 'IGREJA') setShowChurchModal(true);
-                      else if (key === 'PJ') setShowPJSearchModal(true);
-                    }}
-                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-sm transition-colors ${tipoPessoa === key ? `${accentBg} text-white border-transparent` : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
-                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />{label}
-                  </button>
-                ))}
-              </div>
-
-              {(tipoPessoa === 'MEMBRO' || tipoPessoa === 'IGREJA') && (
-                <div className="w-full flex items-center gap-2 px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-700">
-                  <span className={`flex-1 ${favorecidoNome ? 'text-slate-800 font-medium' : 'text-slate-400'}`}>
-                    {favorecidoNome || (tipoPessoa === 'MEMBRO' ? 'Nenhuma seleção' : 'Nenhuma seleção')}
-                  </span>
-                  {favorecidoNome ? (
-                    <button type="button" onClick={() => { setFavorecidoId(''); setFavorecidoNome(''); setFavorecidoRol(null); }}
-                      className="p-0.5 hover:bg-slate-200 rounded flex-shrink-0"><X className="w-3 h-3 text-slate-500" /></button>
-                  ) : null}
-                </div>
-              )}
-
-              {tipoPessoa === 'NAO_MEMBRO' && (
-                <input type="text" value={naoMembroNome} onChange={e => setNaoMembroNome(e.target.value)}
-                  placeholder="Nome do contribuinte / favorecido..."
-                  className={`w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 ${accentRing}`} />
-              )}
-
-              {tipoPessoa === 'PJ' && (
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="text" value={pjNome} onChange={e => setPjNome(e.target.value)}
-                      placeholder="Nome da empresa..."
-                      className={`w-full pl-9 pr-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 ${accentRing}`} />
-                  </div>
-                  <button type="button" onClick={() => setShowPJModal(true)}
-                    className="px-3 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors" title="Cadastrar nova PJ">
-                    <Plus className="w-4 h-4 text-slate-600" />
-                  </button>
-                  <button type="button" onClick={() => setShowPJSearchModal(true)}
-                    className="px-3 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors" title="Buscar PJ existente">
-                    <Search className="w-4 h-4 text-slate-600" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Campos principais */}
-            <div className="space-y-3">
-              {/* Plano de Contas — linha inteira */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Plano de Contas</label>
-                <SearchableSelect 
-                  value={planoId} 
-                  onChange={setPlanoId}
-                  options={planos.map(p => ({ id: p.id, label: p.nome }))}
-                  placeholder="Selecione a categoria..."
-                  className={`w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${accentRing} bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}
-                />
-              </div>
-              {/* Documento + Nº Doc lado a lado */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Documento</label>
-                  <select value={tipoDocId} onChange={e => setTipoDocId(e.target.value)}
-                    className={`w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${accentRing} bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
-                    <option value="">Tipo...</option>
-                    {tiposDocs.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Nº Doc</label>
-                  <input type="text" value={numDoc} onChange={e => setNumDoc(e.target.value)}
-                    placeholder={modo === 'DESPESA' ? 'Requerido' : 'Opcional'}
-                    className={`w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 ${accentRing}`} />
-                </div>
-              </div>
-              {/* Forma Pgto — linha inteira */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Forma de Pagamento</label>
-                <select value={formaId} onChange={e => setFormaId(e.target.value)}
-                  className={`w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${accentRing} bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
-                  <option value="">Selecione...</option>
-                  {formas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Datas + valor */}
-            <div className="space-y-3">
-              {/* Data + Referência lado a lado */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Data Lançamento</label>
-                  <input type="date" value={dataLancamento} onChange={e => setDataLancamento(e.target.value)} required
-                    className={`w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 ${accentRing}`} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Referência (Mês/Ano)</label>
-                  <input type="text" value={referencia} onChange={e => setReferencia(e.target.value)} placeholder="MM/AAAA"
-                    className={`w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 ${accentRing}`} />
-                </div>
-              </div>
-              {/* Obs + Valor lado a lado */}
-              <div className="grid grid-cols-2 gap-3 items-end">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Observações (Opcional)</label>
-                  <input type="text" value={obs} onChange={e => setObs(e.target.value)} placeholder="Detalhes adicionais..."
-                    className={`w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 ${accentRing}`} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Valor (R$)</label>
-                  <input type="text" inputMode="numeric" value={valor} onChange={handleValorChange} placeholder="0,00" required
-                    className={`w-full px-3 py-2.5 border-2 ${accentBorder} rounded-lg text-sm font-bold text-right bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${accentRing}`} />
-                </div>
-              </div>
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-            {success && (
-              <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                <p className="text-sm text-emerald-700">Lançamento registrado com sucesso!</p>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 pt-1">
-              {/* Comprovante (DESPESA) inline */}
-              {modo === 'DESPESA' && (
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {fotoPreview ? (
-                    <>
-                      <img src={fotoPreview} alt="comprovante" className="w-8 h-8 object-cover rounded-lg border border-slate-200" />
-                      <button type="button" onClick={() => { setFotoFile(null); setFotoPreview(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                        className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition-colors" title="Remover foto">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-1.5 px-2.5 py-2 border border-dashed border-slate-300 rounded-lg text-xs text-slate-500 hover:border-red-400 hover:bg-slate-50 transition-colors whitespace-nowrap">
-                      <Camera className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="hidden xs:inline">Foto</span>
-                    </button>
-                  )}
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFoto} className="hidden" />
-                </div>
-              )}
-              <div className="flex-1" />
-              <button type="button" onClick={limpar}
-                className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-600 hover:bg-slate-50 transition-colors whitespace-nowrap">
-                <RotateCcw className="w-3.5 h-3.5" /> Limpar
-              </button>
-              <button type="submit" disabled={saving}
-                className={`flex items-center gap-1.5 px-4 py-2 ${accentBg} ${accentHover} text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-60 whitespace-nowrap`}>
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Resumo do Lançamento</h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Confira os detalhes antes de salvar</p>
             </div>
           </div>
-        </form>
+
+          <hr className="border-slate-100 dark:border-slate-700" />
+
+          {/* Ticket Details */}
+          <div className="text-xs space-y-3">
+            <div className="flex justify-between gap-4 py-1.5 border-b border-slate-50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300">
+              <span className="text-slate-500 dark:text-slate-400">Caixa de Origem</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[200px]" title={caixaNome}>{caixaNome || '—'}</span>
+            </div>
+            <div className="flex justify-between gap-4 py-1.5 border-b border-slate-50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300">
+              <span className="text-slate-500 dark:text-slate-400">Favorecido</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[200px]">{
+                (tipoPessoa === 'MEMBRO' || tipoPessoa === 'IGREJA' ? favorecidoNome : tipoPessoa === 'NAO_MEMBRO' ? naoMembroNome : pjNome) || '—'
+              }</span>
+            </div>
+            <div className="flex justify-between gap-4 py-1.5 border-b border-slate-50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300">
+              <span className="text-slate-500 dark:text-slate-400">Categoria</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[200px]">{
+                planos.find(p => p.id === planoId)?.nome || '—'
+              }</span>
+            </div>
+            <div className="flex justify-between gap-4 py-1.5 border-b border-slate-50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300">
+              <span className="text-slate-500 dark:text-slate-400">Forma de Pagamento</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[200px]">{
+                formas.find(f => f.id === formaId)?.nome || '—'
+              }</span>
+            </div>
+            
+            {/* Highlighted Valor Row */}
+            <div className={`flex justify-between items-center px-3 py-2 rounded-[4px] ${isReceita ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : 'bg-red-50/60 dark:bg-red-950/20'}`}>
+              <span className="font-semibold text-slate-600 dark:text-slate-300">Valor</span>
+              <span className={`font-bold text-sm ${isReceita ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                R$ {valor || '0,00'}
+              </span>
+            </div>
+
+            <div className="flex justify-between gap-4 py-1.5 border-b border-slate-50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300">
+              <span className="text-slate-500 dark:text-slate-400">Referência</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right">{referencia || '—'}</span>
+            </div>
+            <div className="flex justify-between gap-4 py-1.5 border-b border-slate-50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300">
+              <span className="text-slate-500 dark:text-slate-400">Data de Lançamento</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right">{formatData(dataLancamento)}</span>
+            </div>
+          </div>
+
+          {/* Interactive Icons instead of Transparency box */}
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            <button 
+              type="button"
+              onClick={() => { setModalTab('historico'); setShowHistoricoRepetirModal(true); }}
+              className="flex flex-col items-center justify-center p-3 bg-slate-50 dark:bg-slate-700/55 border border-slate-200 dark:border-slate-700 rounded-[4px] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-700 dark:text-slate-300 font-bold text-xs gap-1.5"
+            >
+              <RotateCcw className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+              <span>Ver Histórico</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => { setModalTab('repetir'); setShowHistoricoRepetirModal(true); }}
+              className="flex flex-col items-center justify-center p-3 bg-slate-50 dark:bg-slate-700/55 border border-slate-200 dark:border-slate-700 rounded-[4px] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-700 dark:text-slate-300 font-bold text-xs gap-1.5"
+            >
+              <Repeat2 className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+              <span>Repetir Dízimos</span>
+            </button>
+          </div>
+
+          {/* Action buttons inside the ticket */}
+          <hr className="border-slate-100 dark:border-slate-700" />
+          <div className="flex flex-col gap-2">
+            <button 
+              type="submit" 
+              disabled={saving}
+              className={`w-full flex items-center justify-center gap-1.5 px-5 py-2.5 ${accentBg} ${accentHover} text-white rounded-[4px] text-xs font-bold transition-colors disabled:opacity-60 whitespace-nowrap shadow-sm`}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              {saving ? 'Salvando...' : isReceita ? 'Salvar Receita' : 'Salvar Despesa'}
+            </button>
+            <button 
+              type="button" 
+              onClick={limpar}
+              className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-[4px] text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap"
+            >
+              <RotateCcw className="w-4 h-4" /> Limpar campos
+            </button>
+          </div>
+
+          {/* Jagged bottom edge simulation */}
+          <div className="absolute bottom-0 left-0 right-0 h-2 bg-repeat-x bg-[bottom_left]" 
+               style={{ 
+                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' viewBox='0 0 12 6'%3E%3Cpath d='M0 6 L6 0 L12 6 Z' fill='%23f4f7f5'/%3E%3C/svg%3E")`,
+                 backgroundSize: '12px 6px'
+               }} 
+          />
+        </div>
       </div>
 
-      {/* ── RIGHT: Histórico + Repetir ──────────────────────────────────── */}
-      {showPanel && (
-        <HistoricoPanel
-          lancamentosRecentes={lancamentosRecentes}
-          loadRecentes={loadRecentes}
-          onClearHistory={() => setLancamentosRecentes([])}
-          caixaId={caixaId}
-          currentModo={modo}
-          onRepetir={(l) => {
-            // Preenche o formulário com os dados do lançamento
-            setModo(l.tipo as Modo);
-            if (l.plano_de_conta) {
-              const p = planos.find(x => x.nome === l.plano_de_conta);
-              if (p) setPlanoId(p.id);
-            }
-            setValor(Number(l.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-            if (l.favorecido) { setTipoPessoa('NAO_MEMBRO'); setNaoMembroNome(l.favorecido); }
-            loadRecentes();
-          }}
-          onReciboReady={row => setReciboRow(row)}
-        />
-      )}
-
-      {/* ── Modais ── */}
+      {/* Modals */}
       {showMemberModal && (
-        <SearchModal title="Buscar Membro" placeholder="Digite o nome do membro..."
+        <SearchModal title="Buscar Contribuinte Membro" placeholder="Digite o nome ou ROL..."
           searchFn={searchMember}
           onSelect={item => {
             setFavorecidoId(item.id);
             setFavorecidoNome(item.label);
-            // extrai ROL do sub: "ROL 123 - Igreja"
             const rolMatch = item.sub?.match(/ROL\s+(\S+)/i);
             setFavorecidoRol(rolMatch ? rolMatch[1] : null);
             setShowMemberModal(false);
@@ -1686,7 +1794,7 @@ export default function LancamentoNew() {
           onClose={() => setShowMemberModal(false)} />
       )}
       {showChurchModal && (
-        <SearchModal title="Buscar Igreja" placeholder="Digite o nome da igreja..."
+        <SearchModal title="Buscar Igreja Contribuinte" placeholder="Digite o nome da igreja..."
           searchFn={searchChurch}
           onSelect={item => { setFavorecidoId(item.id); setFavorecidoNome(item.label); setShowChurchModal(false); }}
           onClose={() => setShowChurchModal(false)} />
@@ -1771,6 +1879,49 @@ export default function LancamentoNew() {
           </div>
         </div>
       )}
-    </div>
+
+      {/* Histórico + Repetir Modal */}
+      {showHistoricoRepetirModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-[480px] flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                {modalTab === 'historico' ? 'Histórico de Lançamentos' : 'Repetir Dízimos'}
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setShowHistoricoRepetirModal(false)}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-[4px]"
+              >
+                <X className="w-4 h-4 text-slate-500 dark:text-slate-300" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <HistoricoPanel
+                lancamentosRecentes={lancamentosRecentes}
+                loadRecentes={loadRecentes}
+                onClearHistory={() => setLancamentosRecentes([])}
+                caixaId={caixaId}
+                currentModo={modo}
+                onRepetir={(l) => {
+                  setModo(l.tipo as Modo);
+                  if (l.plano_de_conta) {
+                    const p = planos.find(x => x.nome === l.plano_de_conta);
+                    if (p) setPlanoId(p.id);
+                  }
+                  setValor(Number(l.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                  if (l.favorecido) { setTipoPessoa('NAO_MEMBRO'); setNaoMembroNome(l.favorecido); }
+                  loadRecentes();
+                  setShowHistoricoRepetirModal(false);
+                }}
+                onReciboReady={row => setReciboRow(row)}
+                setCashClosedMessage={setCashClosedMessage}
+                defaultTab={modalTab}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </form>
   );
 }

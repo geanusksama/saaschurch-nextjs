@@ -69,10 +69,14 @@ class ConciliacaoService {
       }
 
       const to = query.to ?? new Date().toISOString().split('T')[0]
-      const movimentos = await santanderTransactionsService.getAll(
+      // bank_id da credencial (0033 para Santander, CNPJ para Open Finance)
+      const bankId = (credential.bank_id as string | undefined) ?? '0033'
+      const movimentos = await santanderTransactionsService.getStatements(
         apiConfig,
+        bankId,
         account.branch_code,
         account.account_number,
+        account.account_id,   // accountId da API Santander (não nosso UUID)
         query.from,
         to,
       )

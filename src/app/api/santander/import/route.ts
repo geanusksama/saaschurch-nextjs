@@ -4,7 +4,7 @@ import { conciliacaoService } from '@/modules/financeiro/conciliacao-santander/b
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
-    if (!user.permissions?.includes('financeiro.santander.importar')) {
+    if (!user.permissions?.['financeiro.santander.importar']) {
       return NextResponse.json({ error: 'Permissão negada' }, { status: 403 })
     }
 

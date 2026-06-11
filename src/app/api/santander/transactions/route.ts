@@ -10,7 +10,9 @@ export async function GET(req: NextRequest) {
     const account_id = searchParams.get('account_id')
     const from = searchParams.get('from')
     const to = searchParams.get('to') ?? undefined
-    const type = (searchParams.get('type') as 'all' | 'credit' | 'debit') ?? 'all'
+    const pixOnly = searchParams.get('pix') === 'true'
+    const rawType = searchParams.get('type') as 'all' | 'credit' | 'debit' | null
+    const type: 'all' | 'credit' | 'debit' | 'pix' = pixOnly ? 'pix' : (rawType ?? 'all')
     const status = searchParams.get('status') ?? undefined
     const page = parseInt(searchParams.get('page') ?? '1', 10)
     const limit = parseInt(searchParams.get('limit') ?? '50', 10)
@@ -20,7 +22,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Parâmetros obrigatórios: credential_id, account_id, from' }, { status: 400 })
     }
 
-    if (!user.permissions?.includes('financeiro.santander.consultar')) {
+    if (!user.permissions?.['financeiro.santander.consultar']) {
       return NextResponse.json({ error: 'Permissão negada' }, { status: 403 })
     }
 

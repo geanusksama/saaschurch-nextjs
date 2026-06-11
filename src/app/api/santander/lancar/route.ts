@@ -5,7 +5,7 @@ import type { LancarNoLivroCaixaDto } from '@/modules/financeiro/conciliacao-san
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
-    if (!user.permissions?.includes('financeiro.santander.lancar_livro_caixa')) {
+    if (!user.permissions?.['financeiro.santander.lancar_livro_caixa']) {
       return NextResponse.json({ error: 'Permissão negada' }, { status: 403 })
     }
 

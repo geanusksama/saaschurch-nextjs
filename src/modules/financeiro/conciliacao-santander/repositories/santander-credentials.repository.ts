@@ -35,7 +35,7 @@ class SantanderCredentialsRepository {
     const { encrypted, iv } = santanderAuthService.encryptSecret(data.client_secret)
 
     // Determinar campo a partir da empresa_id (usa empresa_id como campo se não especificado)
-    const campo = (data as Record<string, unknown>).campo as string ?? data.empresa_id
+    const campo = (data as unknown as Record<string, unknown>).campo as string ?? data.empresa_id
 
     // Salvar certificado público em arquivo seguro
     const publicPath = path.join(CERT_BASE_DIR, `${data.empresa_id}_${data.ambiente}_public.pem`)
