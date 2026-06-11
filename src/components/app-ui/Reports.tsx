@@ -781,6 +781,8 @@ type ChurchPreviewRow = {
   newMembers: number;
 };
 
+type ChurchReportSummaryRow = Omit<ChurchPreviewRow, 'id' | 'name' | 'code'>;
+
 type SavedMemberReportTemplate = {
   id: string;
   name: string;
@@ -3380,6 +3382,26 @@ export function Reports() {
   const [chartEditorOpen, setChartEditorOpen] = useState(false);
   const [editingChartId, setEditingChartId] = useState<string | null>(null);
   const [activeReportModal, setActiveReportModal] = useState<ReportLauncherKey | null>(null);
+
+  const [membersSearchTriggered, setMembersSearchTriggered] = useState(false);
+  const [churchesSearchTriggered, setChurchesSearchTriggered] = useState(false);
+  const [baptismSearchTriggered, setBaptismSearchTriggered] = useState(false);
+  const [consecrationSearchTriggered, setConsecrationSearchTriggered] = useState(false);
+  const [transferSearchTriggered, setTransferSearchTriggered] = useState(false);
+  const [requirementsSearchTriggered, setRequirementsSearchTriggered] = useState(false);
+  const [credentialsSearchTriggered, setCredentialsSearchTriggered] = useState(false);
+
+  useEffect(() => {
+    if (activeReportModal === null) {
+      setMembersSearchTriggered(false);
+      setChurchesSearchTriggered(false);
+      setBaptismSearchTriggered(false);
+      setConsecrationSearchTriggered(false);
+      setTransferSearchTriggered(false);
+      setRequirementsSearchTriggered(false);
+      setCredentialsSearchTriggered(false);
+    }
+  }, [activeReportModal]);
   const [memberReportTemplates, setMemberReportTemplates] = useState<SavedMemberReportTemplate[]>(() => loadPersistedMemberReportTemplates());
   const [activeMemberReportTemplateId, setActiveMemberReportTemplateId] = useState<string | null>(null);
   const [memberReportTemplateName, setMemberReportTemplateName] = useState('');
@@ -3597,6 +3619,7 @@ export function Reports() {
   // Load requirements data when modal opens
   useEffect(() => {
     if (activeReportModal !== 'requirements') { setRequirementsRawData([]); return; }
+    if (!requirementsSearchTriggered) return;
     setRequirementsLoading(true);
     const params = new URLSearchParams();
     if (requirementsReportBuilder.dateFrom) params.set('from', requirementsReportBuilder.dateFrom);
@@ -3637,11 +3660,12 @@ export function Reports() {
       .catch(() => setRequirementsRawData([]))
       .finally(() => setRequirementsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeReportModal, requirementsSearchTrigger]);
+  }, [activeReportModal, requirementsSearchTrigger, requirementsSearchTriggered]);
 
   // Load credential report data when modal opens
   useEffect(() => {
     if (activeReportModal !== 'credentials') { setCredentialRawData([]); return; }
+    if (!credentialsSearchTriggered) return;
     setCredentialLoading(true);
     const params = new URLSearchParams();
     if (credentialReportBuilder.dateFrom) params.set('from', credentialReportBuilder.dateFrom);
@@ -3659,7 +3683,7 @@ export function Reports() {
       .catch(() => setCredentialRawData([]))
       .finally(() => setCredentialLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeReportModal, credentialSearchTrigger]);
+  }, [activeReportModal, credentialSearchTrigger, credentialsSearchTriggered]);
 
   useEffect(() => {
     const storedTemplates = localStorage.getItem(MEMBER_REPORT_TEMPLATES_STORAGE_KEY);
@@ -3754,35 +3778,13 @@ export function Reports() {
     }
   }
 
-  useEffect(() => {
-    if (activeTab !== 'dashboards' || loading || dashboardData) return;
-    void loadReportsData();
-  }, [activeTab, loading, dashboardData]);
+  const [hasLoadedDashboards, setHasLoadedDashboards] = useState(false);
 
   useEffect(() => {
-    if (activeReportModal !== 'members' || loading || members.length > 0) return;
-    void loadMembersPreviewData();
-  }, [activeReportModal, loading, members.length]);
-
-  useEffect(() => {
-    if (activeReportModal !== 'baptism' || loading || baptismData) return;
+    if (activeTab !== 'dashboards' || hasLoadedDashboards) return;
+    setHasLoadedDashboards(true);
     void loadReportsData();
-  }, [activeReportModal, baptismData, loading]);
-
-  useEffect(() => {
-    if (activeReportModal !== 'consecration' || loading || consecrationData) return;
-    void loadReportsData();
-  }, [activeReportModal, consecrationData, loading]);
-
-  useEffect(() => {
-    if (activeReportModal !== 'transfer' || loading || transferData) return;
-    void loadReportsData();
-  }, [activeReportModal, transferData, loading]);
-
-  useEffect(() => {
-    if (activeReportModal !== 'churches' || loading || dashboardData) return;
-    void loadReportsData();
-  }, [activeReportModal, dashboardData, loading]);
+  }, [activeTab, hasLoadedDashboards]);
 
   useEffect(() => {
     async function loadFilterOptions() {
@@ -5466,6 +5468,8 @@ export function Reports() {
   function handleLoadRequirementsReportTemplate(template: SavedRequirementsReportTemplate) {
     setRequirementsReportBuilder(normalizeRequirementsReportBuilderState(template.builder));
     setActiveRequirementsReportTemplateId(template.id);
+    setRequirementsSearchTriggered(true);
+    setRequirementsSearchTrigger((n) => n + 1);
   }
 
   function handleDeleteRequirementsReportTemplate(id: string) {
@@ -5610,6 +5614,8 @@ export function Reports() {
     if (!tpl) return;
     setCredentialReportBuilder(normalizeCredentialReportBuilderState(tpl.builder));
     setActiveCredentialReportTemplateId(id);
+    setCredentialsSearchTriggered(true);
+    setCredentialSearchTrigger((n) => n + 1);
   }
 
   function handleDeleteCredentialReportTemplate(id: string) {
@@ -6856,34 +6862,69 @@ export function Reports() {
     setChurchReportTemplateName('');
   }
 
+  const handleMembersSearch = () => {
+    setMembersSearchTriggered(true);
+    void loadMembersPreviewData();
+  };
+
+  const handleBaptismSearch = () => {
+    setBaptismSearchTriggered(true);
+    void loadReportsData();
+  };
+
+  const handleConsecrationSearch = () => {
+    setConsecrationSearchTriggered(true);
+    void loadReportsData();
+  };
+
+  const handleTransferSearch = () => {
+    setTransferSearchTriggered(true);
+    void loadReportsData();
+  };
+
+  const handleChurchesSearch = () => {
+    setChurchesSearchTriggered(true);
+    void loadReportsData();
+  };
+
   function handleLoadMemberReportTemplate(template: SavedMemberReportTemplate) {
     setActiveMemberReportTemplateId(template.id);
     setMemberReportTemplateName(template.name);
     setMemberReportBuilder(cloneMemberReportBuilderState(template.builder));
+    setMembersSearchTriggered(true);
+    void loadMembersPreviewData();
   }
 
   function handleLoadBaptismReportTemplate(template: SavedBaptismReportTemplate) {
     setActiveBaptismReportTemplateId(template.id);
     setBaptismReportTemplateName(template.name);
     setBaptismReportBuilder(cloneBaptismReportBuilderState(template.builder));
+    setBaptismSearchTriggered(true);
+    void loadReportsData();
   }
 
   function handleLoadConsecrationReportTemplate(template: SavedConsecrationReportTemplate) {
     setActiveConsecrationReportTemplateId(template.id);
     setConsecrationReportTemplateName(template.name);
     setConsecrationReportBuilder(cloneConsecrationReportBuilderState(template.builder));
+    setConsecrationSearchTriggered(true);
+    void loadReportsData();
   }
 
   function handleLoadTransferReportTemplate(template: SavedTransferReportTemplate) {
     setActiveTransferReportTemplateId(template.id);
     setTransferReportTemplateName(template.name);
     setTransferReportBuilder(cloneTransferReportBuilderState(template.builder));
+    setTransferSearchTriggered(true);
+    void loadReportsData();
   }
 
   function handleLoadChurchReportTemplate(template: SavedChurchReportTemplate) {
     setActiveChurchReportTemplateId(template.id);
     setChurchReportTemplateName(template.name);
     setChurchReportBuilder(cloneChurchReportBuilderState(template.builder));
+    setChurchesSearchTriggered(true);
+    void loadReportsData();
   }
 
   function handleSaveMemberReportTemplate() {
@@ -8137,6 +8178,15 @@ export function Reports() {
                       </div>
                     </div>
 
+                    <button
+                      type="button"
+                      onClick={handleMembersSearch}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 hover:bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                      {loading ? 'Consultando...' : 'Consultar'}
+                    </button>
+
                   </div>
                 </div>
 
@@ -8159,6 +8209,24 @@ export function Reports() {
                       <div className="flex items-center justify-center py-20">
                         <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
                         <span className="ml-3 text-sm text-slate-500">Carregando membros...</span>
+                      </div>
+                    ) : !membersSearchTriggered ? (
+                      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-sky-50 text-sky-500 mb-4 shadow-sm border border-sky-100">
+                          <Filter className="h-7 w-7" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Visualização do Relatório</h3>
+                        <p className="mt-2 text-sm text-slate-500 max-w-sm">
+                          Configure os filtros desejados na barra lateral esquerda e clique em <strong>Consultar</strong> para carregar e visualizar os dados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleMembersSearch}
+                          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-sky-600 hover:bg-sky-500 transition px-5 py-3 text-sm font-semibold text-white shadow-sm"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Consultar Relatório
+                        </button>
                       </div>
                     ) : memberReportBuilder.groupBy.length > 0 ? (
                       <div className="space-y-5">{renderMemberPreviewGroups(memberPreviewGroups)}</div>
@@ -8526,11 +8594,46 @@ export function Reports() {
                         </label>
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={handleChurchesSearch}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                      {loading ? 'Consultando...' : 'Consultar'}
+                    </button>
+
                   </div>
                 </div>
 
                 <div id="church-report-preview-root" className="min-h-0 space-y-4 overflow-y-auto bg-white px-6 py-5">
-                  {churchReportBuilder.mode === 'single' ? (
+                  {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+                      <span className="ml-3 text-sm text-slate-500">Carregando igrejas...</span>
+                    </div>
+                  ) : !churchesSearchTriggered ? (
+                    <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-50 text-blue-500 mb-4 shadow-sm border border-blue-100">
+                        <Filter className="h-7 w-7" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900">Visualização do Relatório</h3>
+                      <p className="mt-2 text-sm text-slate-500 max-w-sm">
+                        Configure os filtros desejados na barra lateral esquerda e clique em <strong>Consultar</strong> para carregar e visualizar os dados.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleChurchesSearch}
+                        className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-500 transition px-5 py-3 text-sm font-semibold text-white shadow-sm"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Consultar Relatório
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {churchReportBuilder.mode === 'single' ? (
                     churchActiveRow ? (
                       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
                         {/* CABEÇALHO */}
@@ -8847,6 +8950,8 @@ export function Reports() {
                         ) : null}
                       </div>
                     </div>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -8889,19 +8994,23 @@ export function Reports() {
                       </div>
                     </div>
 
-                    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Resumo operacional</p>
-                      <div className="mt-3 space-y-2 text-sm text-slate-700">
-                        <div className="rounded-xl bg-slate-100 px-3 py-2 font-semibold">Igrejas no relatório: {formatMetric(churchReportSummaryRows.length)}</div>
-                        <div className="rounded-xl bg-slate-100 px-3 py-2 font-semibold">Membros consolidados: {formatMetric(churchReportSummaryRows.reduce((total, row) => total + row.totalMembers, 0))}</div>
-                        <div className="rounded-xl bg-slate-100 px-3 py-2 font-semibold">Batismos: {formatMetric(churchReportSummaryRows.reduce((total, row) => total + row.baptisms, 0))}</div>
-                        <div className="rounded-xl bg-slate-100 px-3 py-2 font-semibold">Consagrações: {formatMetric(churchReportSummaryRows.reduce((total, row) => total + row.consecrations, 0))}</div>
-                      </div>
-                    </div>
-                    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Indicador financeiro</p>
-                      <p className="mt-2 text-sm text-slate-600">A evolução de dízimos e ofertas ficará disponível quando a fonte financeira estiver integrada ao construtor da secretaria.</p>
-                    </div>
+                    {churchesSearchTriggered && !loading && (
+                      <>
+                        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Resumo operacional</p>
+                          <div className="mt-3 space-y-2 text-sm text-slate-700">
+                            <div className="rounded-xl bg-slate-100 px-3 py-2 font-semibold">Igrejas no relatório: {formatMetric(churchReportSummaryRows.length)}</div>
+                            <div className="rounded-xl bg-slate-100 px-3 py-2 font-semibold">Membros consolidados: {formatMetric(churchReportSummaryRows.reduce((total, row) => total + row.totalMembers, 0))}</div>
+                            <div className="rounded-xl bg-slate-100 px-3 py-2 font-semibold">Batismos: {formatMetric(churchReportSummaryRows.reduce((total, row) => total + row.baptisms, 0))}</div>
+                            <div className="rounded-xl bg-slate-100 px-3 py-2 font-semibold">Consagrações: {formatMetric(churchReportSummaryRows.reduce((total, row) => total + row.consecrations, 0))}</div>
+                          </div>
+                        </div>
+                        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Indicador financeiro</p>
+                          <p className="mt-2 text-sm text-slate-600">A evolução de dízimos e ofertas ficará disponível quando a fonte financeira estiver integrada ao construtor da secretaria.</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -9137,6 +9246,16 @@ export function Reports() {
                           </label>
                         </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={handleBaptismSearch}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-600 hover:bg-cyan-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        {loading ? 'Consultando...' : 'Consultar'}
+                      </button>
+
                     </div>
                   </div>
                 </div>
@@ -9166,7 +9285,27 @@ export function Reports() {
                         <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
                         <span className="ml-3 text-sm text-slate-500">Carregando batismos...</span>
                       </div>
-                    ) : baptismReportBuilder.groupBy.length > 0 ? (
+                    ) : !baptismSearchTriggered ? (
+                      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-cyan-50 text-cyan-500 mb-4 shadow-sm border border-cyan-100">
+                          <Filter className="h-7 w-7" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Visualização do Relatório</h3>
+                        <p className="mt-2 text-sm text-slate-500 max-w-sm">
+                          Configure os filtros desejados na barra lateral esquerda e clique em <strong>Consultar</strong> para carregar e visualizar os dados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleBaptismSearch}
+                          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-cyan-600 hover:bg-cyan-500 transition px-5 py-3 text-sm font-semibold text-white shadow-sm"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Consultar Relatório
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {baptismReportBuilder.groupBy.length > 0 ? (
                       <div className="space-y-5">{renderBaptismPreviewGroups(baptismPreviewGroups)}</div>
                     ) : (
                       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
@@ -9214,9 +9353,11 @@ export function Reports() {
                         'text-sky-900 bg-sky-50',
                       )}
                     </div>
-                    <div className="px-1 text-xs font-medium text-slate-600">
-                      Total geral: {formatMetric(baptismReportSummary.metricTotal)} | Registros: {formatMetric(baptismFilteredRows.length)}
-                    </div>
+                        <div className="px-1 text-xs font-medium text-slate-600">
+                          Total geral: {formatMetric(baptismReportSummary.metricTotal)} | Registros: {formatMetric(baptismFilteredRows.length)}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -9583,6 +9724,16 @@ export function Reports() {
                           </label>
                         </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={handleConsecrationSearch}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        {loading ? 'Consultando...' : 'Consultar'}
+                      </button>
+
                     </div>
                   </div>
                 </div>
@@ -9612,7 +9763,27 @@ export function Reports() {
                         <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
                         <span className="ml-3 text-sm text-slate-500">Carregando consagrações...</span>
                       </div>
-                    ) : consecrationReportBuilder.groupBy.length > 0 ? (
+                    ) : !consecrationSearchTriggered ? (
+                      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-500 mb-4 shadow-sm border border-emerald-100">
+                          <Filter className="h-7 w-7" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Visualização do Relatório</h3>
+                        <p className="mt-2 text-sm text-slate-500 max-w-sm">
+                          Configure os filtros desejados na barra lateral esquerda e clique em <strong>Consultar</strong> para carregar e visualizar os dados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleConsecrationSearch}
+                          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 transition px-5 py-3 text-sm font-semibold text-white shadow-sm"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Consultar Relatório
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {consecrationReportBuilder.groupBy.length > 0 ? (
                       <div className="space-y-5">{renderConsecrationPreviewGroups(consecrationPreviewGroups)}</div>
                     ) : (
                       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
@@ -9663,9 +9834,11 @@ export function Reports() {
                       )}
                     </div>
 
-                    <div className="px-1 text-xs font-medium text-slate-600">
-                      Total geral: {formatMetric(consecrationReportSummary.metricTotal)} | Registros: {formatMetric(consecrationFilteredRows.length)}
-                    </div>
+                        <div className="px-1 text-xs font-medium text-slate-600">
+                          Total geral: {formatMetric(consecrationReportSummary.metricTotal)} | Registros: {formatMetric(consecrationFilteredRows.length)}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -9956,6 +10129,16 @@ export function Reports() {
                           </label>
                         </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={handleTransferSearch}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-600 hover:bg-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        {loading ? 'Consultando...' : 'Consultar'}
+                      </button>
+
                     </div>
                   </div>
                 </div>
@@ -9985,7 +10168,27 @@ export function Reports() {
                         <Loader2 className="h-8 w-8 animate-spin text-orange-400" />
                         <span className="ml-3 text-sm text-slate-500">Carregando transferências...</span>
                       </div>
-                    ) : transferReportBuilder.groupBy.length > 0 ? (
+                    ) : !transferSearchTriggered ? (
+                      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-orange-50 text-orange-500 mb-4 shadow-sm border border-orange-100">
+                          <Filter className="h-7 w-7" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Visualização do Relatório</h3>
+                        <p className="mt-2 text-sm text-slate-500 max-w-sm">
+                          Configure os filtros desejados na barra lateral esquerda e clique em <strong>Consultar</strong> para carregar e visualizar os dados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleTransferSearch}
+                          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-orange-600 hover:bg-orange-500 transition px-5 py-3 text-sm font-semibold text-white shadow-sm"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Consultar Relatório
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {transferReportBuilder.groupBy.length > 0 ? (
                       <div className="space-y-5">{renderTransferPreviewGroups(transferPreviewGroups)}</div>
                     ) : (
                       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
@@ -10036,9 +10239,11 @@ export function Reports() {
                       )}
                     </div>
 
-                    <div className="px-1 text-xs font-medium text-slate-600">
-                      Total geral: {formatMetric(transferReportSummary.metricTotal)} | Registros: {formatMetric(transferFilteredRows.length)}
-                    </div>
+                        <div className="px-1 text-xs font-medium text-slate-600">
+                          Total geral: {formatMetric(transferReportSummary.metricTotal)} | Registros: {formatMetric(transferFilteredRows.length)}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -10287,7 +10492,10 @@ export function Reports() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setRequirementsSearchTrigger((n) => n + 1)}
+                          onClick={() => {
+                            setRequirementsSearchTriggered(true);
+                            setRequirementsSearchTrigger((n) => n + 1);
+                          }}
                           disabled={requirementsLoading}
                           className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
                         >
@@ -10355,6 +10563,27 @@ export function Reports() {
                       <div className="flex items-center justify-center py-20">
                         <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
                         <span className="ml-3 text-sm text-slate-500">Carregando requerimentos...</span>
+                      </div>
+                    ) : !requirementsSearchTriggered ? (
+                      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-50 text-slate-500 mb-4 shadow-sm border border-slate-100">
+                          <Filter className="h-7 w-7" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Visualização do Relatório</h3>
+                        <p className="mt-2 text-sm text-slate-500 max-w-sm">
+                          Configure os filtros desejados na barra lateral esquerda e clique em <strong>Buscar</strong> para carregar e visualizar os dados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRequirementsSearchTriggered(true);
+                            setRequirementsSearchTrigger((n) => n + 1);
+                          }}
+                          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 transition px-5 py-3 text-sm font-semibold text-white shadow-sm"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Buscar Relatório
+                        </button>
                       </div>
                     ) : requirementsFilteredRows.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-20 text-center text-slate-400">
@@ -10835,7 +11064,10 @@ export function Reports() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setCredentialSearchTrigger((n) => n + 1)}
+                          onClick={() => {
+                            setCredentialsSearchTriggered(true);
+                            setCredentialSearchTrigger((n) => n + 1);
+                          }}
                           disabled={credentialLoading}
                           className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:opacity-60"
                         >
@@ -10875,7 +11107,7 @@ export function Reports() {
                             return (
                               <div key={tpl.id} className={`rounded-2xl border p-3 transition ${isActive ? 'border-violet-500 bg-violet-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
                                 <div className="flex items-center justify-between gap-2">
-                                  <button type="button" onClick={() => handleLoadCredentialReportTemplate(tpl)} className="min-w-0 flex-1 text-left">
+                                  <button type="button" onClick={() => handleLoadCredentialReportTemplate(tpl.id)} className="min-w-0 flex-1 text-left">
                                     <p className={`truncate text-sm font-semibold ${isActive ? 'text-violet-900' : 'text-slate-900'}`}>{tpl.name}</p>
                                     <p className="text-xs text-slate-500">{tpl.builder.columns.length} colunas</p>
                                   </button>
@@ -10897,6 +11129,27 @@ export function Reports() {
                       <div className="flex items-center justify-center py-20">
                         <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
                         <span className="ml-3 text-sm text-slate-500">Carregando credenciais...</span>
+                      </div>
+                    ) : !credentialsSearchTriggered ? (
+                      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-50 text-slate-500 mb-4 shadow-sm border border-slate-100">
+                          <Filter className="h-7 w-7" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Visualização do Relatório</h3>
+                        <p className="mt-2 text-sm text-slate-500 max-w-sm">
+                          Configure os filtros desejados na barra lateral esquerda e clique em <strong>Buscar</strong> para carregar e visualizar os dados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCredentialsSearchTriggered(true);
+                            setCredentialSearchTrigger((n) => n + 1);
+                          }}
+                          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-violet-600 hover:bg-violet-500 transition px-5 py-3 text-sm font-semibold text-white shadow-sm"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Buscar Relatório
+                        </button>
                       </div>
                     ) : credentialFilteredRows.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-20 text-center text-slate-400">

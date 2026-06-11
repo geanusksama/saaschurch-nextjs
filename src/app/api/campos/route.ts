@@ -9,17 +9,28 @@ function sanitizeCampo(campo: Record<string, unknown>) {
   return safeCampo;
 }
 
-export async function GET() {
-  try {
-    const campos = await prisma.campo.findMany({
-      where: { deletedAt: null },
-      orderBy: { name: "asc" },
-    });
-    return NextResponse.json(campos.map(sanitizeCampo));
-  } catch (e) {
-    console.error("[GET /api/campos]", e);
-    return NextResponse.json({ error: "Erro ao carregar campos." }, { status: 500 });
-  }
+export async function GET(req: NextRequest) {
+  return withAuth(req, async (user) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const where: any = { deletedAt: null };
+      if (user.profileType !== "master") {
+        if (!user.campoId) {
+          return NextResponse.json([]);
+        }
+        where.id = user.campoId;
+      }
+
+      const campos = await prisma.campo.findMany({
+        where,
+        orderBy: { name: "asc" },
+      });
+      return NextResponse.json(campos.map(sanitizeCampo));
+    } catch (e) {
+      console.error("[GET /api/campos]", e);
+      return NextResponse.json({ error: "Erro ao carregar campos." }, { status: 500 });
+    }
+  });
 }
 
 export async function POST(req: NextRequest) {

@@ -93,6 +93,18 @@ export async function GET(req: NextRequest) {
       churchWhere.regional = { campoId: user.campoId };
     }
 
+    // Force user's campoId scope if they are not master
+    if (user.profileType !== "master") {
+      if (!user.campoId) {
+        return NextResponse.json({ error: "Sem acesso. Campo não definido." }, { status: 403 });
+      }
+      // Ensure the regional relation is defined and filters by user's campoId
+      churchWhere.regional = {
+        ...(churchWhere.regional as Record<string, unknown> || {}),
+        campoId: user.campoId,
+      };
+    }
+
     if (isRestrictedToOwnChurch(user)) {
       if (!user.churchId) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
       churchWhere.id = user.churchId;

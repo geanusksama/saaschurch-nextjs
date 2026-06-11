@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { prisma } from "@/lib/prisma";
+import { isRestrictedToOwnChurch } from "@/lib/helpers";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
@@ -13,16 +14,49 @@ export async function GET(req: NextRequest) {
     const from      = searchParams.get("from");
     const to        = searchParams.get("to");
 
-    const canSeeAll = user.profileType === "master" || user.profileType === "admin" || user.profileType === "campo";
+    let allowedChurchIds: string[] = [];
+    if (user.profileType !== "master") {
+      if (!user.campoId) {
+        return NextResponse.json([]);
+      }
+      const campoChurches = await prisma.church.findMany({
+        where: { regional: { campoId: user.campoId }, deletedAt: null },
+        select: { id: true }
+      });
+      allowedChurchIds = campoChurches.map((c) => c.id);
+      if (allowedChurchIds.length === 0) {
+        return NextResponse.json([]);
+      }
+    }
 
     // ── 1. Busca credenciais ──────────────────────────────────────────────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = supabaseAdmin.from("tbcredencial").select("*").order("created_at", { ascending: false });
-    if (situacao)  query = (query as ReturnType<typeof supabaseAdmin.from>).eq("situacao", situacao) as typeof query;
-    if (churchId)  query = (query as ReturnType<typeof supabaseAdmin.from>).eq("church_id", churchId) as typeof query;
-    if (!canSeeAll && user.churchId) query = (query as ReturnType<typeof supabaseAdmin.from>).eq("church_id", user.churchId) as typeof query;
-    if (from) query = (query as ReturnType<typeof supabaseAdmin.from>).gte("created_at", from) as typeof query;
-    if (to)   query = (query as ReturnType<typeof supabaseAdmin.from>).lte("created_at", to + "T23:59:59Z") as typeof query;
+    let query: any = supabaseAdmin.from("tbcredencial").select("*").order("created_at", { ascending: false });
+
+    if (user.profileType !== "master") {
+      if (isRestrictedToOwnChurch(user)) {
+        if (!user.churchId || !allowedChurchIds.includes(user.churchId)) {
+          return NextResponse.json([]);
+        }
+        query = query.eq("church_id", user.churchId);
+      } else {
+        query = query.in("church_id", allowedChurchIds);
+      }
+    }
+
+    if (churchId) {
+      if (user.profileType !== "master" && !allowedChurchIds.includes(churchId)) {
+        return NextResponse.json([]);
+      }
+      if (isRestrictedToOwnChurch(user) && user.churchId && churchId !== user.churchId) {
+        return NextResponse.json([]);
+      }
+      query = query.eq("church_id", churchId);
+    }
+
+    if (situacao)  query = query.eq("situacao", situacao);
+    if (from) query = query.gte("created_at", from);
+    if (to)   query = query.lte("created_at", to + "T23:59:59Z");
 
     const { data: creds, error } = await query.limit(2000);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

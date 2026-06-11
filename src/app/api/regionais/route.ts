@@ -13,9 +13,8 @@ export async function GET(req: NextRequest) {
     const where: Record<string, any> = { deletedAt: null };
     if (user.profileType === "master") {
       if (campoId) where.campoId = campoId;
-    } else if (user.profileType === "admin" || user.profileType === "campo") {
-      where.campoId = user.campoId;
-    } else if (user.campoId) {
+    } else {
+      if (!user.campoId) return NextResponse.json([]);
       where.campoId = user.campoId;
     }
     if (churchId) where.churchId = churchId;

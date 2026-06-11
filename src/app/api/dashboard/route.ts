@@ -5,13 +5,19 @@ import { serializeBigInts } from "@/lib/helpers";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
-    const isGlobal = user.profileType === "master" || user.profileType === "admin";
+    const isMaster = user.profileType === "master";
     let campoChurchIds: string[] | null = null;
-    if (!isGlobal && user.profileType === "campo" && user.campoId) {
+    if (!isMaster && (user.profileType === "admin" || user.profileType === "campo") && user.campoId) {
       const campoChurches = await prisma.church.findMany({ where: { regional: { campoId: user.campoId }, deletedAt: null }, select: { id: true } });
       campoChurchIds = campoChurches.map((c) => c.id);
     }
-    const churchFilter = isGlobal ? {} : campoChurchIds ? { churchId: { in: campoChurchIds } } : (user.churchId ? { churchId: user.churchId } : { churchId: null as unknown as string });
+    const churchFilter = isMaster
+      ? {}
+      : campoChurchIds
+        ? { churchId: { in: campoChurchIds } }
+        : user.churchId
+          ? { churchId: user.churchId }
+          : { churchId: "00000000-0000-0000-0000-000000000000" };
 
     const now = new Date();
     const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -30,8 +36,8 @@ export async function GET(req: NextRequest) {
       prisma.member.count({ where: { ...churchFilter, deletedAt: null, membershipStatus: { not: "INATIVO" } } }),
       prisma.member.count({ where: { ...churchFilter, deletedAt: null, createdAt: { gte: startOfThisMonth } } }),
       prisma.member.count({ where: { ...churchFilter, deletedAt: null, createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } } }),
-      prisma.lead.count({ where: { ...(isGlobal ? {} : campoChurchIds ? { churchId: { in: campoChurchIds } } : user.churchId ? { churchId: user.churchId } : {}), createdAt: { gte: startOfThisMonth } } }).catch(() => 0),
-      prisma.lead.count({ where: { ...(isGlobal ? {} : campoChurchIds ? { churchId: { in: campoChurchIds } } : user.churchId ? { churchId: user.churchId } : {}), createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } } }).catch(() => 0),
+      prisma.lead.count({ where: { ...churchFilter, createdAt: { gte: startOfThisMonth } } }).catch(() => 0),
+      prisma.lead.count({ where: { ...churchFilter, createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } } }).catch(() => 0),
       prisma.event.findMany({
         where: { ...churchFilter, startDatetime: { gte: now, lte: new Date(now.getTime() + 30 * 86400000) } },
         orderBy: { startDatetime: "asc" }, take: 5, select: { id: true, title: true, startDatetime: true, endDatetime: true },
@@ -44,7 +50,7 @@ export async function GET(req: NextRequest) {
       prisma.ministryMember.groupBy({
         by: ["ministryId"],
         _count: { memberId: true },
-        where: isGlobal ? {} : (campoChurchIds ? { ministry: { churchId: { in: campoChurchIds } } } : (user.churchId ? { ministry: { churchId: user.churchId } } : {})),
+        where: isMaster ? {} : (campoChurchIds ? { ministry: { churchId: { in: campoChurchIds } } } : (user.churchId ? { ministry: { churchId: user.churchId } } : { ministry: { churchId: "00000000-0000-0000-0000-000000000000" } })),
         orderBy: { _count: { memberId: "desc" } }, take: 5,
       }).then(async (rows) => {
         const ids = rows.map((r) => r.ministryId);
@@ -67,7 +73,7 @@ export async function GET(req: NextRequest) {
         const end = new Date(year, month + 1, 0, 23, 59, 59);
         const [members, leads] = await Promise.all([
           prisma.member.count({ where: { ...churchFilter, deletedAt: null, createdAt: { gte: start, lte: end } } }),
-          prisma.lead.count({ where: { ...(isGlobal ? {} : campoChurchIds ? { churchId: { in: campoChurchIds } } : user.churchId ? { churchId: user.churchId } : {}), createdAt: { gte: start, lte: end } } }).catch(() => 0),
+          prisma.lead.count({ where: { ...churchFilter, createdAt: { gte: start, lte: end } } }).catch(() => 0),
         ]);
         return { presenca: members, visitantes: leads };
       })),

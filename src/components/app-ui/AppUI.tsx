@@ -104,6 +104,7 @@ interface NavigationItem {
   badge?: string;
   /** permissionKey from permissionCatalog — if set, only profiles with view=true for that key can see this item */
   permKey?: string;
+  exact?: boolean;
 }
 
 type EcclesiasticalTitleOption = {
@@ -792,6 +793,62 @@ export function AppUI() {
         : [...current, path],
     );
   };
+
+  const isUnassigned =
+    storedUser &&
+    storedUser.profileType === 'church' &&
+    !storedUser.churchId &&
+    !storedUser.regionalId;
+
+  if (isUnassigned) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans w-full">
+        {/* Background decorative blobs */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-900/20 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-rose-950/20 blur-[120px] pointer-events-none" />
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="w-full max-w-md space-y-8 bg-slate-800/80 backdrop-blur-xl border border-slate-700/60 p-8 rounded-3xl shadow-2xl relative z-10 text-center"
+        >
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-rose-500/20 to-purple-500/20 border border-rose-500/30 flex items-center justify-center mb-6 shadow-inner animate-pulse">
+            <Lock className="w-8 h-8 text-rose-400" />
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="text-2xl font-black tracking-tight text-white">
+              Acesso Restrito
+            </h2>
+            <p className="text-sm font-semibold uppercase tracking-wider text-rose-400">
+              Perfil Incompleto
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Olá, <span className="font-bold text-white">{displayName}</span>. Identificamos que a sua conta não possui uma <span className="font-semibold text-purple-300">Regional</span> ou <span className="font-semibold text-purple-300">Igreja</span> vinculada.
+            </p>
+            <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-700/30 text-xs text-slate-400 leading-normal text-left">
+              <span className="font-bold text-slate-300 block mb-1">O que fazer?</span>
+              Para sua segurança e conformidade de dados, o acesso ao sistema fica bloqueado até que as atribuições sejam definidas. Por favor, entre em contato com o <span className="font-semibold text-slate-200">administrador do sistema</span> para atualizar os dados de seu perfil.
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-3">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-purple-950/40 hover:shadow-purple-900/30 transition-all hover:scale-[1.02]"
+            >
+              <LogOut className="w-4 h-4" />
+              Sair da Conta
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200">

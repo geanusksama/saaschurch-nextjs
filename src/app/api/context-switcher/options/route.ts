@@ -33,19 +33,41 @@ export async function GET(req: NextRequest) {
 
     if (user.profileType === "master") {
       // sees everything
-    } else if ((user.profileType === "admin" || user.profileType === "campo") && user.campoId) {
-      fieldWhere.id = user.campoId;
-      regionalWhere.campoId = user.campoId;
-      churchWhere.regional = { campoId: user.campoId };
-    } else if (isRestrictedToOwnChurch(user) && user.churchId) {
-      const scopedChurch = await prisma.church.findFirst({
-        where: { id: user.churchId, deletedAt: null },
-        include: { regional: { select: { id: true, campoId: true } } },
-      });
-      if (scopedChurch && scopedChurch.regional) {
-        fieldWhere.id = scopedChurch.regional.campoId;
-        regionalWhere.id = scopedChurch.regional.id;
-        churchWhere.id = user.churchId;
+    } else {
+      // For all non-master profiles (admin, campo, church, etc.), restrict strictly to their campoId.
+      if (user.campoId) {
+        fieldWhere.id = user.campoId;
+        regionalWhere.campoId = user.campoId;
+        churchWhere.regional = { campoId: user.campoId };
+      } else {
+        // If they don't even have a campoId, restrict to nothing
+        fieldWhere.id = "00000000-0000-0000-0000-000000000000";
+        regionalWhere.campoId = "00000000-0000-0000-0000-000000000000";
+        churchWhere.id = "00000000-0000-0000-0000-000000000000";
+      }
+
+      // If restricted to a specific church, apply further restrictions
+      if (isRestrictedToOwnChurch(user)) {
+        if (user.churchId) {
+          const scopedChurch = await prisma.church.findFirst({
+            where: { id: user.churchId, deletedAt: null },
+            include: { regional: { select: { id: true, campoId: true } } },
+          });
+          if (scopedChurch && scopedChurch.regional) {
+            fieldWhere.id = scopedChurch.regional.campoId;
+            regionalWhere.id = scopedChurch.regional.id;
+            churchWhere.id = user.churchId;
+          } else {
+            // Church or regional not found/deleted
+            regionalWhere.id = "00000000-0000-0000-0000-000000000000";
+            churchWhere.id = "00000000-0000-0000-0000-000000000000";
+          }
+        } else {
+          // Restricted to own church but has no churchId assigned (e.g. Gabriel)
+          // They should see only their own campo, and see no regionals or churches
+          regionalWhere.id = "00000000-0000-0000-0000-000000000000";
+          churchWhere.id = "00000000-0000-0000-0000-000000000000";
+        }
       }
     }
 

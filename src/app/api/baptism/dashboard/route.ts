@@ -9,7 +9,7 @@ function buildScheduleScope(user: {
   churchId?: string;
 }): { clause: string; params: string[] } {
   const pt = user?.profileType;
-  if (pt === "master" || pt === "admin") return { clause: "", params: [] };
+  if (pt === "master") return { clause: "", params: [] };
 
   if (user?.campoId) {
     return {
@@ -31,13 +31,17 @@ function buildScheduleScope(user: {
     };
   }
 
-  return { clause: "", params: [] };
+  return { clause: "AND 1 = 0", params: [] };
 }
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
     const canManageSchedules = ["master", "admin", "campo", "regional"].includes(user.profileType || "");
-    const scope = buildScheduleScope(user);
+    const scope = buildScheduleScope({
+      profileType: user.profileType || undefined,
+      campoId: user.campoId || undefined,
+      churchId: user.churchId || undefined,
+    });
 
     // Raw query for baptism schedules
     const scheduleRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(

@@ -64,6 +64,15 @@ export function getManagedCampoId(user: AuthUser) {
 
 export function kanScopeFilter(user: AuthUser) {
   const pt = user.profileType;
+  if (pt === "master") return {};
+
+  // All non-master users must be restricted to their own campo
+  if (!user.campoId) {
+    return { churchId: "00000000-0000-0000-0000-000000000000" };
+  }
+
+  const baseFilter = { church: { regional: { campoId: user.campoId } } };
+
   const isSecret = roleClassOf(user) === "secretary";
   const isTesour = roleClassOf(user) === "treasurer";
   const isAtSede = isAtHeadquartersChurch(user);
@@ -72,16 +81,19 @@ export function kanScopeFilter(user: AuthUser) {
     pt === "campo" ||
     (pt === "church" && isAtSede && !isSecret && !isTesour);
 
-  if (pt === "master") return {};
-  if (seesAllInCampo && user.campoId) {
-    return { church: { regional: { campoId: user.campoId } } };
+  if (seesAllInCampo) {
+    return baseFilter;
   }
+
   if (pt === "church" || isRestrictedToOwnChurch(user)) {
-    if (user.churchId) return { churchId: user.churchId };
-    return {};
+    if (user.churchId) {
+      return { churchId: user.churchId };
+    }
+    // Restricted to own church but has no churchId assigned
+    return { churchId: "00000000-0000-0000-0000-000000000000" };
   }
-  if (user.campoId) return { church: { regional: { campoId: user.campoId } } };
-  return {};
+
+  return baseFilter;
 }
 
 export function buildProtocol(sigla: string) {

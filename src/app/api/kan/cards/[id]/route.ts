@@ -100,7 +100,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const card = await prisma.kanCard.findUnique({
       where: { id },
       include: {
-        church: { select: { id: true, name: true, code: true } },
+        church: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            regional: { select: { campoId: true } }
+          }
+        },
         destinationChurch: { select: { id: true, name: true, code: true } },
         member: { select: { id: true, fullName: true, ecclesiasticalTitle: true, membershipStatus: true, rol: true, memberType: true } },
         service: { select: { sigla: true, description: true, serviceGroup: true } },
@@ -111,8 +118,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
     });
     if (!card || card.deletedAt) return NextResponse.json({ error: "card not found" }, { status: 404 });
-    if (isRestrictedToOwnChurch(user) && user.churchId && card.churchId !== user.churchId) {
-      return NextResponse.json({ error: "Sem acesso a registros de outra igreja." }, { status: 403 });
+
+    if (user.profileType !== "master") {
+      if (!user.campoId || card.church?.regional?.campoId !== user.campoId) {
+        return NextResponse.json({ error: "Sem acesso a registros de outro campo." }, { status: 403 });
+      }
+      if (isRestrictedToOwnChurch(user)) {
+        if (!user.churchId || card.churchId !== user.churchId) {
+          return NextResponse.json({ error: "Sem acesso a registros de outra igreja." }, { status: 403 });
+        }
+      }
     }
     const userIds = [...new Set([card.createdBy, card.updatedBy, ...card.eventHistory.map((h) => h.createdBy)].filter(Boolean))] as string[];
     const users = userIds.length ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true, email: true } }) : [];
@@ -131,11 +146,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const card = await prisma.kanCard.findUnique({
       where: { id },
-      include: { stage: { include: { columns: true } } },
+      include: {
+        stage: { include: { columns: true } },
+        church: { select: { regional: { select: { campoId: true } } } }
+      },
     });
     if (!card || card.deletedAt) return NextResponse.json({ error: "card not found" }, { status: 404 });
-    if (isRestrictedToOwnChurch(user) && user.churchId && card.churchId !== user.churchId) {
-      return NextResponse.json({ error: "Sem acesso para alterar registros de outra igreja." }, { status: 403 });
+
+    if (user.profileType !== "master") {
+      if (!user.campoId || card.church?.regional?.campoId !== user.campoId) {
+        return NextResponse.json({ error: "Sem acesso para alterar registros de outro campo." }, { status: 403 });
+      }
+      if (isRestrictedToOwnChurch(user)) {
+        if (!user.churchId || card.churchId !== user.churchId) {
+          return NextResponse.json({ error: "Sem acesso para alterar registros de outra igreja." }, { status: 403 });
+        }
+      }
     }
     const body = await req.json().catch(() => ({}));
     const newColumnIndex = body.columnIndex != null ? Number(body.columnIndex) : null;
@@ -212,8 +238,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
-    const existing = await prisma.kanCard.findUnique({ where: { id }, select: { id: true, protocol: true, churchId: true, memberId: true, candidateName: true } });
+    const existing = await prisma.kanCard.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        protocol: true,
+        churchId: true,
+        memberId: true,
+        candidateName: true,
+        church: { select: { regional: { select: { campoId: true } } } }
+      }
+    });
     if (!existing) return NextResponse.json({ error: "card not found" }, { status: 404 });
+
+    if (user.profileType !== "master") {
+      if (!user.campoId || existing.church?.regional?.campoId !== user.campoId) {
+        return NextResponse.json({ error: "Sem acesso para excluir registros de outro campo." }, { status: 403 });
+      }
+      if (isRestrictedToOwnChurch(user)) {
+        if (!user.churchId || existing.churchId !== user.churchId) {
+          return NextResponse.json({ error: "Sem acesso para excluir registros de outra igreja." }, { status: 403 });
+        }
+      }
+    }
     await prisma.kanCard.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: user.id || null } });
     // Notify about deletion
     await notifyKanAction({

@@ -10,7 +10,7 @@ function buildScheduleScope(user: {
   churchId?: string;
 }): { clause: string; params: string[] } {
   const pt = user?.profileType;
-  if (pt === "master" || pt === "admin") return { clause: "", params: [] };
+  if (pt === "master") return { clause: "", params: [] };
 
   // User bound to a campo directly
   if (user?.campoId) {
@@ -34,7 +34,7 @@ function buildScheduleScope(user: {
     };
   }
 
-  return { clause: "", params: [] };
+  return { clause: "AND 1 = 0", params: [] };
 }
 
 // Detect whether a KanService belongs to a consecration process
@@ -48,7 +48,11 @@ function isConsecrationService(s: { serviceGroup?: string | null; sigla?: string
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
     const canManageSchedules = ["master", "admin", "campo", "regional"].includes(user.profileType || "");
-    const scope = buildScheduleScope(user);
+    const scope = buildScheduleScope({
+      profileType: user.profileType || undefined,
+      campoId: user.campoId || undefined,
+      churchId: user.churchId || undefined,
+    });
 
     // ── Schedules ─────────────────────────────────────────────────────────
     // Mirror old query: JOIN regionais to get campo_id for field-based lookup

@@ -13,10 +13,17 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const fieldId = url.searchParams.get("fieldId");
 
-    const scopedFieldId =
-      user.profileType === "master" || user.profileType === "admin" ? (fieldId || null) : (user.campoId || null);
+    // Force user's campoId if not master
+    if (user.profileType !== "master") {
+      if (!user.campoId) {
+        return NextResponse.json([]);
+      }
+    }
 
-    if (isRestrictedToOwnChurch(user) && user.churchId) {
+    if (isRestrictedToOwnChurch(user)) {
+      if (!user.churchId) {
+        return NextResponse.json([]);
+      }
       return NextResponse.json(
         await prisma.church.findMany({
           where: { id: user.churchId, deletedAt: null },
@@ -27,6 +34,9 @@ export async function GET(req: NextRequest) {
         })
       );
     }
+
+    const scopedFieldId =
+      user.profileType === "master" ? (fieldId || null) : (user.campoId || null);
 
     try {
       const churches = await prisma.church.findMany({

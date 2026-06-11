@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { serializeBigInts, kanScopeFilter } from "@/lib/helpers";
+import { serializeBigInts, kanScopeFilter, isRestrictedToOwnChurch } from "@/lib/helpers";
 
 const REQUIREMENT_SIGLAS = [
   "ADMINM", "ADMINOB", "CDM", "DESCR", "DESCRH", "DESCRPH",
@@ -23,7 +23,6 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, any> = {
       deletedAt: null,
-      ...kanScopeFilter(user),
       service: {
         is: {
           OR: [
@@ -34,9 +33,33 @@ export async function GET(req: NextRequest) {
       },
     };
 
-    if (churchId) where.churchId = churchId;
-    else if (regionalId) where.church = { regionalId };
-    else if (campoId) where.church = { regional: { campoId } };
+    if (churchId) {
+      where.churchId = churchId;
+    } else if (regionalId) {
+      where.church = { regionalId };
+    } else if (campoId) {
+      where.church = { regional: { campoId } };
+    }
+
+    // Force security constraints in AND to prevent any client filters from overwriting them in JS
+    const securityConditions: any[] = [];
+    if (user.profileType !== "master") {
+      if (!user.campoId) {
+        return NextResponse.json({ queue: [] });
+      }
+      securityConditions.push({ church: { regional: { campoId: user.campoId } } });
+
+      if (isRestrictedToOwnChurch(user)) {
+        if (!user.churchId) {
+          return NextResponse.json({ queue: [] });
+        }
+        securityConditions.push({ churchId: user.churchId });
+      }
+    }
+
+    if (securityConditions.length > 0) {
+      where.AND = securityConditions;
+    }
 
     if (serviceId) where.serviceId = Number(serviceId);
 

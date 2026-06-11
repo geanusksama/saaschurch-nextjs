@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { serializeBigInts, assertChurchAccess, buildProtocol } from "@/lib/helpers";
+import { serializeBigInts, assertChurchAccess, buildProtocol, isRestrictedToOwnChurch } from "@/lib/helpers";
 
 function canSeeAll(user: { profileType?: string }) {
   return user.profileType === "master" || user.profileType === "admin" || user.profileType === "campo";
@@ -14,13 +14,49 @@ export async function GET(req: NextRequest) {
     const situacao = searchParams.get("situacao");
     const churchId = searchParams.get("church_id");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = supabaseAdmin.from("tbcredencial").select("*").order("created_at", { ascending: false });
-    if (situacao) query = (query as ReturnType<typeof supabaseAdmin.from>).eq("situacao", situacao) as typeof query;
-    if (churchId) query = (query as ReturnType<typeof supabaseAdmin.from>).eq("church_id", churchId) as typeof query;
-    if (!canSeeAll(user) && user.churchId) {
-      query = (query as ReturnType<typeof supabaseAdmin.from>).eq("church_id", user.churchId) as typeof query;
+    let allowedChurchIds: string[] = [];
+    if (user.profileType !== "master") {
+      if (!user.campoId) {
+        return NextResponse.json([]);
+      }
+      const campoChurches = await prisma.church.findMany({
+        where: { regional: { campoId: user.campoId }, deletedAt: null },
+        select: { id: true }
+      });
+      allowedChurchIds = campoChurches.map((c) => c.id);
+      if (allowedChurchIds.length === 0) {
+        return NextResponse.json([]);
+      }
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query: any = supabaseAdmin.from("tbcredencial").select("*").order("created_at", { ascending: false });
+
+    if (user.profileType !== "master") {
+      if (isRestrictedToOwnChurch(user)) {
+        if (!user.churchId || !allowedChurchIds.includes(user.churchId)) {
+          return NextResponse.json([]);
+        }
+        query = query.eq("church_id", user.churchId);
+      } else {
+        query = query.in("church_id", allowedChurchIds);
+      }
+    }
+
+    if (churchId) {
+      if (user.profileType !== "master" && !allowedChurchIds.includes(churchId)) {
+        return NextResponse.json([]);
+      }
+      if (isRestrictedToOwnChurch(user) && user.churchId && churchId !== user.churchId) {
+        return NextResponse.json([]);
+      }
+      query = query.eq("church_id", churchId);
+    }
+
+    if (situacao) {
+      query = query.eq("situacao", situacao);
+    }
+
     const { data, error } = await query.limit(500);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data || []);
