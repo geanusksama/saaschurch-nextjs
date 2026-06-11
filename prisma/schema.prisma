@@ -3152,22 +3152,29 @@ model UserStickyNote {
 }
 
 model InternalChatMessage {
-  id        String   @id @default(uuid()) @db.Uuid
-  campoId   String   @map("campo_id") @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  userName  String   @map("user_name") @db.VarChar(255)
-  userRole  String?  @map("user_role") @db.VarChar(255)
-  body      String?  @db.Text
-  fileUrl   String?  @map("file_url") @db.Text
-  fileName  String?  @map("file_name") @db.VarChar(255)
-  fileType  String?  @map("file_type") @db.VarChar(50)
-  fileSize  Int?     @map("file_size")
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String    @id @default(uuid()) @db.Uuid
+  campoId    String    @map("campo_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  userName   String    @map("user_name") @db.VarChar(255)
+  userRole   String?   @map("user_role") @db.VarChar(255)
+  body       String?   @db.Text
+  fileUrl    String?   @map("file_url") @db.Text
+  fileName   String?   @map("file_name") @db.VarChar(255)
+  fileType   String?   @map("file_type") @db.VarChar(50)
+  fileSize   Int?      @map("file_size")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  deletedAt  DateTime? @map("deleted_at")
+  parentId   String?   @map("parent_id") @db.Uuid
+  parentName String?   @map("parent_name") @db.VarChar(255)
+  parentBody String?   @map("parent_body") @db.Text
+  reactions  Json?     @db.JsonB
+  receiverId String?   @map("receiver_id") @db.Uuid
 
-  campo     Campo    @relation(fields: [campoId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campo Campo @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([campoId])
   @@index([createdAt])
+  @@index([receiverId])
   @@map("internal_chat_messages")
 }

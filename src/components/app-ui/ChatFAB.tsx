@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   MessageSquare, X, Send, Paperclip, Mic, Image, File, Play, Pause, 
-  Circle, AlertCircle, Loader, User, Clock, Check, Volume2, Shield 
+  Circle, AlertCircle, Loader, User, Clock, Check, Volume2, Shield,
+  Wifi, WifiOff, Search, ArrowLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabaseClient';
@@ -29,6 +30,7 @@ interface OnlineContact {
   customStatus: string | null;
   roleName: string | null;
   lastActiveAt: string;
+  email?: string;
 }
 
 export function ChatFAB() {
@@ -39,9 +41,15 @@ export function ChatFAB() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [previewFile, setPreviewFile] = useState<{ url: string; name: string; type: string } | null>(null);
   
+  // 1-on-1 private chat states
+  const [selectedContact, setSelectedContact] = useState<any | null>(null);
+  const [conversations, setConversations] = useState<any[]>([]);
+
   // User presence info
-  const [presenceStatus, setPresenceStatus] = useState<'online' | 'busy' | 'away'>('online');
+  const [presenceStatus, setPresenceStatus] = useState<'online' | 'busy' | 'away' | 'furtivo'>('online');
   const [customStatus, setCustomStatus] = useState('');
   const [isEditingStatusPhrase, setIsEditingStatusPhrase] = useState(false);
   const [statusPhraseInput, setStatusPhraseInput] = useState('');
@@ -56,13 +64,23 @@ export function ChatFAB() {
   // References
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   const storedUser = (() => {
     try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
   })();
   const token = localStorage.getItem('mrm_token');
-  const campoId = storedUser.campoId || '';
+  const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
   const currentUserId = storedUser.id || '';
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showOnlyOnline, setShowOnlyOnline] = useState(false);
+
+  // Reset unread count when opening the panel
+  useEffect(() => {
+    if (isOpen) {
+      setUnreadCount(0);
+    }
+  }, [isOpen]);
 
   // Heartbeat effect (Updates user presence status & fetches online users every 10 seconds)
   useEffect(() => {
@@ -78,19 +96,123 @@ export function ChatFAB() {
     }, 10000);
 
     return () => clearInterval(presenceInterval);
-  }, [token, presenceStatus, customStatus]);
+  }, [token, presenceStatus, customStatus, activeFieldId]);
 
-  // Messages polling effect (polls every 4 seconds when chat panel is open)
+  // Load conversation messages or conversations list
   useEffect(() => {
     if (!token || !isOpen) return;
 
-    fetchMessages();
-    const chatInterval = setInterval(() => {
-      fetchMessages();
-    }, 4000);
+    if (selectedContact) {
+      fetchMessages(selectedContact.id);
+    } else {
+      fetchConversations();
+    }
+  }, [token, isOpen, selectedContact, activeFieldId]);
 
-    return () => clearInterval(chatInterval);
-  }, [token, isOpen]);
+  // Realtime subscription for new chat messages (active always)
+  useEffect(() => {
+    if (!token || !activeFieldId) return;
+
+    const channel = supabase
+      .channel(`chat_messages_${activeFieldId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'internal_chat_messages',
+          filter: `campo_id=eq.${activeFieldId}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newMsg = payload.new as any;
+            if (!newMsg) return;
+
+            const isForSelectedContact =
+              selectedContact &&
+              ((newMsg.user_id === currentUserId && newMsg.receiver_id === selectedContact.id) ||
+               (newMsg.user_id === selectedContact.id && newMsg.receiver_id === currentUserId));
+
+            if (isForSelectedContact) {
+              const formattedMsg: ChatMessage = {
+                id: newMsg.id,
+                campoId: newMsg.campo_id,
+                userId: newMsg.user_id,
+                userName: newMsg.user_name,
+                userRole: newMsg.user_role,
+                body: newMsg.body,
+                fileUrl: newMsg.file_url,
+                fileName: newMsg.file_name,
+                fileType: newMsg.file_type,
+                fileSize: newMsg.file_size,
+                createdAt: newMsg.created_at
+              };
+
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === formattedMsg.id)) return prev;
+                return [...prev, formattedMsg];
+              });
+            }
+
+            // Always reload active conversations list to keep snippets fresh
+            fetchConversations();
+
+            // Notify if message is directed to current user and either chat is closed or it's from a different contact
+            const isForMe = newMsg.receiver_id === currentUserId;
+            const isNotSelected = !selectedContact || selectedContact.id !== newMsg.user_id;
+
+            if (isForMe && (isNotSelected || !isOpen)) {
+              setUnreadCount((prev) => prev + 1);
+              toast.info(`Nova mensagem de ${newMsg.user_name}: ${newMsg.body || 'Arquivo anexado'}`, {
+                action: {
+                  label: 'Conversar',
+                  onClick: () => {
+                    setSelectedContact({
+                      id: newMsg.user_id,
+                      fullName: newMsg.user_name,
+                      presenceStatus: 'online'
+                    });
+                    setActiveTab('chat');
+                    setIsOpen(true);
+                  }
+                }
+              });
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              setMessages((prev) => prev.filter((m) => m.id !== oldId));
+              fetchConversations();
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedMsg = payload.new as any;
+            if (updatedMsg) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === updatedMsg.id
+                    ? {
+                        ...m,
+                        body: updatedMsg.body,
+                        fileUrl: updatedMsg.file_url,
+                        fileName: updatedMsg.file_name,
+                        fileType: updatedMsg.file_type,
+                        fileSize: updatedMsg.file_size,
+                        createdAt: updatedMsg.created_at
+                      }
+                    : m
+                )
+              );
+              fetchConversations();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [token, activeFieldId, isOpen, selectedContact, currentUserId]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -134,7 +256,7 @@ export function ChatFAB() {
   const fetchPresence = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${apiBase}/chat/presence${storedUser.profileType === 'master' ? `?campoId=${campoId}` : ''}`, {
+      const res = await fetch(`${apiBase}/chat/presence${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -146,10 +268,13 @@ export function ChatFAB() {
     }
   };
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (contactId?: string) => {
     if (!token) return;
+    const targetId = contactId || selectedContact?.id;
+    if (!targetId) return;
+
     try {
-      const res = await fetch(`${apiBase}/chat/messages${storedUser.profileType === 'master' ? `?campoId=${campoId}` : ''}`, {
+      const res = await fetch(`${apiBase}/chat/messages?contactId=${targetId}${activeFieldId ? `&campoId=${activeFieldId}` : ''}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -161,27 +286,46 @@ export function ChatFAB() {
     }
   };
 
+  const fetchConversations = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setConversations(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch conversations", err);
+    }
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputText.trim() || !token) return;
+    if (!inputText.trim() || !token || !selectedContact) return;
 
     const bodyText = inputText;
     setInputText('');
     setLoading(true);
 
     try {
-      const res = await fetch(`${apiBase}/chat/messages${storedUser.profileType === 'master' ? `?campoId=${campoId}` : ''}`, {
+      const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ body: bodyText })
+        body: JSON.stringify({
+          body: bodyText,
+          receiverId: selectedContact.id
+        })
       });
 
       if (res.ok) {
         const newMessage = await res.json();
         setMessages((prev) => [...prev, newMessage]);
+        fetchConversations();
       } else {
         toast.error('Erro ao enviar mensagem.');
       }
@@ -195,7 +339,7 @@ export function ChatFAB() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !token) return;
+    if (!file || !token || !selectedContact) return;
 
     // Check size limit: 5MB
     const maxSize = 5 * 1024 * 1024;
@@ -217,7 +361,7 @@ export function ChatFAB() {
 
       const fileType = file.type.startsWith('image/') ? 'image' : 'file';
 
-      const res = await fetch(`${apiBase}/chat/messages${storedUser.profileType === 'master' ? `?campoId=${campoId}` : ''}`, {
+      const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -227,13 +371,15 @@ export function ChatFAB() {
           fileUrl: publicUrl,
           fileName: file.name,
           fileType,
-          fileSize: file.size
+          fileSize: file.size,
+          receiverId: selectedContact.id
         })
       });
 
       if (res.ok) {
         const newMessage = await res.json();
         setMessages((prev) => [...prev, newMessage]);
+        fetchConversations();
         toast.success('Arquivo enviado com sucesso!');
       } else {
         toast.error('Erro ao registrar arquivo.');
@@ -249,6 +395,7 @@ export function ChatFAB() {
 
   // Recording audio
   const startRecording = async () => {
+    if (!selectedContact) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -279,7 +426,7 @@ export function ChatFAB() {
 
           const { data: urlData } = supabase.storage.from('dados').getPublicUrl(path);
           
-          const res = await fetch(`${apiBase}/chat/messages${storedUser.profileType === 'master' ? `?campoId=${campoId}` : ''}`, {
+          const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -289,13 +436,15 @@ export function ChatFAB() {
               fileUrl: urlData.publicUrl,
               fileName: 'Áudio Gravado.webm',
               fileType: 'audio',
-              fileSize: audioBlob.size
+              fileSize: audioBlob.size,
+              receiverId: selectedContact.id
             })
           });
 
           if (res.ok) {
             const newMessage = await res.json();
             setMessages((prev) => [...prev, newMessage]);
+            fetchConversations();
           } else {
             toast.error('Erro ao enviar áudio.');
           }
@@ -345,13 +494,23 @@ export function ChatFAB() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const getStatusColorClass = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return 'bg-emerald-500 ring-emerald-500/20';
-      case 'busy': return 'bg-rose-500 ring-rose-500/20';
-      case 'away': return 'bg-amber-500 ring-amber-500/20';
-      default: return 'bg-slate-400 ring-slate-400/20';
+      case 'online': return '#22c55e'; // Green
+      case 'busy': return '#ef4444'; // Red
+      case 'away': return '#f59e0b'; // Amber/Orange
+      case 'furtivo': return '#94a3b8'; // Slate/Gray
+      default: return '#94a3b8'; // Slate/Gray
     }
+  };
+
+  const handleContactClick = (contact: OnlineContact) => {
+    setSelectedContact(contact);
+    setActiveTab('chat');
+    setInputText('');
+    setTimeout(() => {
+      chatInputRef.current?.focus();
+    }, 50);
   };
 
   const getStatusLabel = (status: string) => {
@@ -359,9 +518,26 @@ export function ChatFAB() {
       case 'online': return 'Disponível';
       case 'busy': return 'Ocupado';
       case 'away': return 'Ausente';
-      default: return 'Inativo';
+      case 'furtivo': return 'Invisível';
+      default: return 'Offline';
     }
   };
+
+  const filteredContacts = contacts.filter((contact) => {
+    const query = searchQuery.toLowerCase();
+    const matchesSearch =
+      contact.fullName.toLowerCase().includes(query) ||
+      (contact.roleName || '').toLowerCase().includes(query) ||
+      (contact.email || '').toLowerCase().includes(query);
+
+    if (!matchesSearch) return false;
+
+    if (showOnlyOnline) {
+      return contact.presenceStatus !== 'offline' && contact.presenceStatus !== 'furtivo';
+    }
+
+    return true;
+  });
 
   return (
     <>
@@ -373,10 +549,27 @@ export function ChatFAB() {
           title="Chat do Campo"
         >
           <MessageSquare className="h-6 w-6" />
+
+          {/* Unread count badge */}
+          {unreadCount > 0 && (
+            <span className="absolute -top-2 -left-2 bg-rose-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow animate-bounce">
+              {unreadCount}
+            </span>
+          )}
+
           {/* Heartbeat notification ring */}
           <span className="absolute -top-1 -right-1 flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className={`relative inline-flex rounded-full h-4 w-4 ${getStatusColorClass(presenceStatus)}`}></span>
+            <span
+              className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+              style={{ backgroundColor: getStatusColor(presenceStatus) }}
+            />
+            <span
+              className="relative inline-flex rounded-full h-4 w-4"
+              style={{
+                backgroundColor: getStatusColor(presenceStatus),
+                boxShadow: `0 0 0 2px ${getStatusColor(presenceStatus)}20`
+              }}
+            />
           </span>
         </button>
       </div>
@@ -389,238 +582,400 @@ export function ChatFAB() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 30 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="fixed bottom-24 right-6 z-40 w-96 max-w-full h-[620px] bg-slate-900 border border-slate-700/60 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-100 font-sans"
+            className="fixed bottom-24 right-6 z-40 w-96 max-w-full h-[620px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-800 dark:text-slate-100 font-sans"
           >
-            {/* MSN Messenger Nostalgic Header */}
-            <div className="p-4 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <div className="w-10 h-10 bg-purple-600/30 rounded-xl flex items-center justify-center border border-purple-500/30">
-                      <User className="w-5 h-5 text-purple-300" />
-                    </div>
-                    <span className={`absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-slate-900 ${getStatusColorClass(presenceStatus)}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm tracking-tight text-white">{storedUser.fullName || 'Eu'}</h3>
-                    {/* Status selection list */}
-                    <div className="flex items-center gap-2.5 mt-0.5">
-                      <select
-                        value={presenceStatus}
-                        onChange={(e) => {
-                          const nextStatus = e.target.value as 'online' | 'busy' | 'away';
-                          setPresenceStatus(nextStatus);
-                          toast.success(`Status alterado para: ${getStatusLabel(nextStatus)}`);
-                        }}
-                        className="bg-transparent text-xs text-slate-400 border-none outline-none cursor-pointer focus:ring-0 p-0 font-medium hover:text-white"
-                      >
-                        <option value="online" className="bg-slate-900 text-slate-100">Disponível</option>
-                        <option value="busy" className="bg-slate-900 text-slate-100">Ocupado</option>
-                        <option value="away" className="bg-slate-900 text-slate-100">Ausente</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Status Custom Message (Old MSN Personal Message) */}
-              <div className="px-1 py-0.5">
-                {isEditingStatusPhrase ? (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={statusPhraseInput}
-                      onChange={(e) => setStatusPhraseInput(e.target.value)}
-                      placeholder="Coloque uma frase no seu MSN..."
-                      maxLength={100}
-                      className="flex-1 bg-slate-850 text-xs px-2 py-1 rounded-lg border border-slate-700 text-slate-100 focus:outline-none focus:border-purple-500"
-                    />
+            {/* Header */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+              {selectedContact ? (
+                /* Conversation Header (WhatsApp-style back button and contact info) */
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
                     <button
-                      onClick={handleSavePhrase}
-                      className="px-2 py-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-semibold"
+                      type="button"
+                      onClick={() => setSelectedContact(null)}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors"
+                      title="Voltar para conversas"
                     >
-                      Ok
+                      <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <button
-                      onClick={() => setIsEditingStatusPhrase(false)}
-                      className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs"
-                    >
-                      Canc.
-                    </button>
+                    <div className="relative">
+                      <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center border border-purple-200 dark:border-purple-800/30">
+                        <User className="w-5 h-5 text-purple-600 dark:text-purple-300" />
+                      </div>
+                      <span
+                        className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900"
+                        style={{ backgroundColor: getStatusColor(selectedContact.presenceStatus) }}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-sm tracking-tight text-slate-800 dark:text-white truncate max-w-[150px]" title={selectedContact.fullName}>
+                        {selectedContact.fullName}
+                      </h3>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 italic truncate max-w-[150px]">
+                        {selectedContact.customStatus ? `"${selectedContact.customStatus}"` : selectedContact.roleName || getStatusLabel(selectedContact.presenceStatus)}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <p
-                    onClick={() => {
-                      setStatusPhraseInput(customStatus || '');
-                      setIsEditingStatusPhrase(true);
-                    }}
-                    className="text-xs text-slate-400 italic hover:text-purple-300 cursor-pointer truncate"
-                    title="Clique para mudar a sua frase de status"
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-450 hover:text-slate-650 dark:hover:text-white transition-colors"
                   >
-                    {customStatus ? `"${customStatus}"` : 'Clique para digitar uma frase de status...'}
-                  </p>
-                )}
-              </div>
-            </div>
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                /* Main Header (Self Status Selector) */
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center border border-purple-200 dark:border-purple-800/30">
+                        <User className="w-5 h-5 text-purple-600 dark:text-purple-300" />
+                      </div>
+                      <span
+                        className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900"
+                        style={{ backgroundColor: getStatusColor(presenceStatus) }}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm tracking-tight text-slate-800 dark:text-white">{storedUser.fullName || 'Eu'}</h3>
+                      {/* Status selection list */}
+                      <div className="flex items-center gap-2.5 mt-0.5">
+                        <select
+                          value={presenceStatus}
+                          onChange={(e) => {
+                            const nextStatus = e.target.value as 'online' | 'busy' | 'away' | 'furtivo';
+                            setPresenceStatus(nextStatus);
+                            toast.success(`Status alterado para: ${getStatusLabel(nextStatus)}`);
+                          }}
+                          className="bg-transparent text-xs text-slate-500 dark:text-slate-400 border-none outline-none cursor-pointer focus:ring-0 p-0 font-semibold hover:text-slate-800 dark:hover:text-white"
+                        >
+                          <option value="online" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-semibold">Disponível</option>
+                          <option value="busy" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-semibold">Ocupado</option>
+                          <option value="away" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-semibold">Ausente</option>
+                          <option value="furtivo" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-semibold">Invisível (Furtivo)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
 
-            {/* Tab navigation */}
-            <div className="flex border-b border-slate-800 bg-slate-950/40 text-xs font-bold uppercase tracking-wider text-center">
-              <button
-                onClick={() => setActiveTab('chat')}
-                className={`flex-1 py-3 transition ${activeTab === 'chat' ? 'border-b-2 border-purple-500 text-white bg-slate-900/50' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                Conversa ({messages.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('contacts')}
-                className={`flex-1 py-3 transition ${activeTab === 'contacts' ? 'border-b-2 border-purple-500 text-white bg-slate-900/50' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                Contatos MSN ({contacts.length})
-              </button>
-            </div>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-450 hover:text-slate-650 dark:hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
 
-            {/* Content Tabs */}
-            <div className="flex-1 overflow-y-auto bg-slate-900/50 p-4">
-              {activeTab === 'chat' ? (
-                /* Chat view */
-                <div className="flex flex-col gap-3 h-full">
-                  {messages.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
-                      <MessageSquare className="h-10 w-10 text-slate-700 mb-2" />
-                      <p className="text-sm font-semibold text-slate-500">Nenhuma mensagem no Campo</p>
-                      <p className="text-xs text-slate-600 mt-1">Seja o primeiro a enviar uma mensagem para seus colegas de Campo.</p>
+              {/* Status Custom Message (Self status, shown only when conversations list / contacts list is active) */}
+              {!selectedContact && (
+                <div className="px-1 py-0.5">
+                  {isEditingStatusPhrase ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={statusPhraseInput}
+                        onChange={(e) => setStatusPhraseInput(e.target.value)}
+                        placeholder="Coloque uma frase de status..."
+                        maxLength={100}
+                        className="flex-1 bg-white dark:bg-slate-900 text-xs px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-purple-500"
+                      />
+                      <button
+                        onClick={handleSavePhrase}
+                        className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-semibold text-white transition"
+                      >
+                        Ok
+                      </button>
+                      <button
+                        onClick={() => setIsEditingStatusPhrase(false)}
+                        className="px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-350 dark:hover:bg-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-300"
+                      >
+                        Canc.
+                      </button>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {messages.map((msg) => {
-                        const isSelf = msg.userId === currentUserId;
+                    <p
+                      onClick={() => {
+                        setStatusPhraseInput(customStatus || '');
+                        setIsEditingStatusPhrase(true);
+                      }}
+                      className="text-xs text-slate-500 dark:text-slate-400 italic hover:text-purple-650 dark:hover:text-purple-300 cursor-pointer truncate"
+                      title="Clique para mudar a sua frase de status"
+                    >
+                      {customStatus ? `"${customStatus}"` : 'Clique para digitar uma frase de status...'}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Tab navigation (Hidden when inside a private conversation) */}
+            {!selectedContact && (
+              <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-950/40 text-xs font-bold uppercase tracking-wider text-center">
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className={`flex-1 py-3 transition ${activeTab === 'chat' ? 'border-b-2 border-purple-500 text-purple-600 dark:text-white bg-purple-50/10 dark:bg-slate-900/50' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                  Conversas ({conversations.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('contacts')}
+                  className={`flex-1 py-3 transition ${activeTab === 'contacts' ? 'border-b-2 border-purple-500 text-purple-600 dark:text-white bg-purple-50/10 dark:bg-slate-900/50' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                  Contatos ({contacts.length})
+                </button>
+              </div>
+            )}
+
+            {/* Content Panel */}
+            <div className="flex-1 overflow-y-auto bg-slate-50/30 dark:bg-slate-900/50 p-4">
+              {activeTab === 'chat' ? (
+                /* Chat view */
+                selectedContact ? (
+                  /* Active conversation messages */
+                  <div className="flex flex-col gap-3 h-full">
+                    {messages.length === 0 ? (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+                        <MessageSquare className="h-10 w-10 text-slate-300 dark:text-slate-700 mb-2" />
+                        <p className="text-sm font-semibold text-slate-400 dark:text-slate-500">Nenhuma mensagem ainda</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Diga olá para iniciar esta conversa!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {messages.map((msg) => {
+                          const isSelf = msg.userId === currentUserId;
+                          return (
+                            <div
+                              key={msg.id}
+                              className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}
+                            >
+                              {/* Metadata */}
+                              <div className="flex items-center gap-1.5 mb-1 px-1">
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                  {msg.userName}
+                                </span>
+                                {msg.userRole && (
+                                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-650 dark:text-slate-300 px-1 rounded font-medium flex items-center gap-0.5">
+                                    <Shield className="w-2.5 h-2.5" />
+                                    {msg.userRole}
+                                  </span>
+                                )}
+                                <span className="text-[9px] text-slate-400 dark:text-slate-505">
+                                  {new Date(msg.createdAt).toLocaleTimeString('pt-BR', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+
+                              {/* Bubble Content */}
+                              <div
+                                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm border ${
+                                  isSelf
+                                    ? 'bg-purple-600 text-white border-purple-500 rounded-tr-none'
+                                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-750 rounded-tl-none'
+                                }`}
+                              >
+                                {msg.body && <p className="leading-relaxed break-words">{msg.body}</p>}
+
+                                {/* Media Attachment types */}
+                                {msg.fileUrl && (
+                                  <div className="mt-1">
+                                    {msg.fileType === 'image' ? (
+                                      /* Image rendering */
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewFile({ url: msg.fileUrl!, name: msg.fileName || 'Imagem', type: 'image' })}
+                                        className="block w-full text-left"
+                                      >
+                                        <img
+                                          src={msg.fileUrl}
+                                          alt={msg.fileName || 'Imagem'}
+                                          className="rounded-lg max-h-48 w-full object-cover border border-slate-150 dark:border-slate-700/50 hover:opacity-90 transition cursor-zoom-in"
+                                        />
+                                      </button>
+                                    ) : msg.fileType === 'audio' ? (
+                                      /* Audio player wrapper */
+                                      <div className="flex flex-col gap-1 w-64 bg-slate-100 dark:bg-slate-950/40 p-2.5 rounded-xl border border-slate-200 dark:border-white/5">
+                                        <div className="flex items-center gap-2">
+                                          <Volume2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                          <audio src={msg.fileUrl} controls className="h-8 w-full rounded outline-none" />
+                                        </div>
+                                        <span className="text-[9px] text-slate-500 dark:text-slate-400 self-end">
+                                          {msg.fileSize ? formatFileSize(msg.fileSize) : ''}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      /* Generic files */
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const isPdf = msg.fileName?.toLowerCase().endsWith('.pdf');
+                                          const isOffice = ['.docx', '.xlsx', '.pptx', '.doc', '.xls'].some(ext => msg.fileName?.toLowerCase().endsWith(ext));
+                                          const type = isPdf ? 'pdf' : isOffice ? 'office' : 'download';
+                                          setPreviewFile({ url: msg.fileUrl!, name: msg.fileName || 'Arquivo', type });
+                                        }}
+                                        className="w-full flex items-center gap-3 bg-slate-100 dark:bg-slate-900/40 hover:bg-slate-200 dark:hover:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-white/5 text-xs font-semibold text-purple-650 dark:text-purple-300 text-left transition"
+                                      >
+                                        <File className="w-5 h-5 shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-slate-750 dark:text-slate-200">{msg.fileName}</p>
+                                          <p className="text-[9px] text-slate-500 font-medium">
+                                            {msg.fileSize ? formatFileSize(msg.fileSize) : ''}
+                                          </p>
+                                        </div>
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div ref={chatEndRef} />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Conversations List (WhatsApp style) */
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-505">
+                      Conversas Recentes
+                    </p>
+                    {conversations.length === 0 ? (
+                      <div className="text-center py-10 flex flex-col items-center justify-center">
+                        <MessageSquare className="h-10 w-10 text-slate-300 dark:text-slate-700 mb-2" />
+                        <p className="text-sm text-slate-400 dark:text-slate-500 font-semibold">Nenhuma conversa ativa</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-600 mt-1 max-w-[200px] mx-auto">
+                          Vá para a aba **Contatos** para iniciar um novo chat privado com seus colegas.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-150 dark:divide-slate-800">
+                        {conversations.map((conv) => {
+                          const isOffline = conv.presenceStatus === 'offline' || conv.presenceStatus === 'furtivo';
+                          const lastMsg = conv.lastMessage;
+                          const formattedTime = new Date(lastMsg.createdAt).toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          });
+
+                          return (
+                            <div
+                              key={conv.id}
+                              onClick={() => setSelectedContact(conv)}
+                              className="flex items-center gap-3 py-3 px-2 hover:bg-slate-100 dark:hover:bg-slate-850/50 rounded-xl cursor-pointer transition-colors"
+                            >
+                              <div className="relative mt-0.5">
+                                <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 shrink-0">
+                                  <User className="w-4.5 h-4.5 text-slate-500 dark:text-slate-400" />
+                                </div>
+                                <span
+                                  className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border border-white dark:border-slate-900"
+                                  style={{ backgroundColor: getStatusColor(conv.presenceStatus) }}
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <p className="text-sm font-semibold text-slate-750 dark:text-slate-100 truncate">{conv.fullName}</p>
+                                    {conv.roleName && (
+                                      <span className="text-[8px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-0.5 rounded font-bold shrink-0">
+                                        {conv.roleName}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[9px] text-slate-400 dark:text-slate-505 shrink-0 font-medium">{formattedTime}</span>
+                                </div>
+                                <p className="text-xs text-slate-450 dark:text-slate-400 truncate mt-0.5 font-medium">
+                                  {lastMsg.senderId === currentUserId ? 'Você: ' : ''}
+                                  {lastMsg.body || (lastMsg.fileType === 'image' ? '📷 Imagem' : lastMsg.fileType === 'audio' ? '🎵 Áudio' : '📎 Arquivo')}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : (
+                /* Contacts list with query */
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Buscar por nome, e-mail ou cargo..."
+                        className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-505 rounded-xl pl-8 pr-3 py-1.5 text-xs border border-slate-200 dark:border-slate-850 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition"
+                      />
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-3.5 h-3.5" />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs font-bold"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowOnlyOnline(!showOnlyOnline)}
+                      className={`p-2 rounded-xl border transition-all duration-200 shrink-0 active:scale-95 ${
+                        showOnlyOnline
+                          ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                          : 'bg-slate-100 border-slate-200 dark:bg-slate-900 dark:border-slate-850 text-slate-500 dark:text-slate-400 hover:bg-slate-150 dark:hover:bg-slate-800'
+                      }`}
+                      title={showOnlyOnline ? "Mostrando apenas online" : "Mostrando todos"}
+                    >
+                      {showOnlyOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-505">
+                    Contatos ({filteredContacts.length})
+                  </p>
+                  {filteredContacts.length === 0 ? (
+                    <div className="text-center py-10">
+                      <p className="text-sm text-slate-450 dark:text-slate-505">Nenhum contato encontrado.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-150 dark:divide-slate-800">
+                      {filteredContacts.map((contact) => {
+                        const isOffline = contact.presenceStatus === 'offline' || contact.presenceStatus === 'furtivo';
                         return (
                           <div
-                            key={msg.id}
-                            className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}
+                            key={contact.id}
+                            onClick={() => handleContactClick(contact)}
+                            className="flex items-start gap-3 py-2 px-2 hover:bg-slate-100 dark:hover:bg-slate-850/50 rounded-xl cursor-pointer transition-colors"
                           >
-                            {/* Metadata */}
-                            <div className="flex items-center gap-1.5 mb-1 px-1">
-                              <span className="text-[10px] font-bold text-slate-400">
-                                {msg.userName}
-                              </span>
-                              {msg.userRole && (
-                                <span className="text-[9px] bg-slate-800 border border-slate-700 text-slate-300 px-1 rounded font-medium flex items-center gap-0.5">
-                                  <Shield className="w-2.5 h-2.5" />
-                                  {msg.userRole}
-                                </span>
-                              )}
-                              <span className="text-[9px] text-slate-500">
-                                {new Date(msg.createdAt).toLocaleTimeString('pt-BR', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
+                            <div className="relative mt-0.5">
+                              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                                <User className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                              </div>
+                              <span
+                                className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border border-white dark:border-slate-900"
+                                style={{ backgroundColor: getStatusColor(contact.presenceStatus) }}
+                              />
                             </div>
-
-                            {/* Bubble Content */}
-                            <div
-                              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-md border ${
-                                isSelf
-                                  ? 'bg-purple-600 text-white border-purple-500 rounded-tr-none'
-                                  : 'bg-slate-800 text-slate-100 border-slate-750 rounded-tl-none'
-                              }`}
-                            >
-                              {msg.body && <p className="leading-relaxed break-words">{msg.body}</p>}
-
-                              {/* Media Attachment types */}
-                              {msg.fileUrl && (
-                                <div className="mt-1">
-                                  {msg.fileType === 'image' ? (
-                                    /* Image rendering */
-                                    <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
-                                      <img
-                                        src={msg.fileUrl}
-                                        alt={msg.fileName || 'Imagem'}
-                                        className="rounded-lg max-h-48 w-full object-cover border border-slate-700/50 hover:opacity-90 transition cursor-zoom-in"
-                                      />
-                                    </a>
-                                  ) : msg.fileType === 'audio' ? (
-                                    /* Custom nostalgic audio player styling wrapper */
-                                    <div className="flex flex-col gap-1 w-64 bg-slate-950/40 p-2.5 rounded-xl border border-white/5">
-                                      <div className="flex items-center gap-2">
-                                        <Volume2 className="w-4 h-4 text-purple-400 shrink-0" />
-                                        <audio src={msg.fileUrl} controls className="h-8 w-full rounded outline-none" />
-                                      </div>
-                                      <span className="text-[9px] text-slate-400 self-end">
-                                        {msg.fileSize ? formatFileSize(msg.fileSize) : ''}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    /* Generic files */
-                                    <a
-                                      href={msg.fileUrl}
-                                      download={msg.fileName || 'arquivo'}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-3 bg-slate-900/40 hover:bg-slate-900/60 p-2.5 rounded-xl border border-white/5 text-xs font-semibold text-purple-300 hover:text-purple-200 transition"
-                                    >
-                                      <File className="w-5 h-5 shrink-0" />
-                                      <div className="min-w-0 flex-1">
-                                        <p className="truncate text-slate-200">{msg.fileName}</p>
-                                        <p className="text-[9px] text-slate-500 font-medium">
-                                          {msg.fileSize ? formatFileSize(msg.fileSize) : ''}
-                                        </p>
-                                      </div>
-                                    </a>
-                                  )}
-                                </div>
-                              )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-semibold text-slate-750 dark:text-slate-100 truncate">{contact.fullName}</p>
+                                {contact.roleName && (
+                                  <span className="text-[8px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-0.5 rounded font-bold shrink-0">
+                                    {contact.roleName}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-400 dark:text-slate-505 italic truncate mt-0.5">
+                                {contact.customStatus ? `"${contact.customStatus}"` : isOffline ? '(Inativo)' : `(${getStatusLabel(contact.presenceStatus)})`}
+                              </p>
                             </div>
                           </div>
                         );
                       })}
-                      <div ref={chatEndRef} />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Online Presence List */
-                <div className="space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Membros online no Campo ({contacts.length})
-                  </p>
-                  {contacts.length === 0 ? (
-                    <div className="text-center py-10">
-                      <p className="text-sm text-slate-500">Nenhum colega online no momento.</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-slate-800">
-                      {contacts.map((contact) => (
-                        <div key={contact.id} className="flex items-start gap-3 py-3">
-                          <div className="relative mt-0.5">
-                            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700">
-                              <User className="w-4 h-4 text-slate-400" />
-                            </div>
-                            <span className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border border-slate-900 ${getStatusColorClass(contact.presenceStatus)}`} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-semibold text-slate-100 truncate">{contact.fullName}</p>
-                              {contact.roleName && (
-                                <span className="text-[8px] bg-slate-800 border border-slate-700 text-slate-400 px-0.5 rounded font-bold shrink-0">
-                                  {contact.roleName}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-slate-400 italic truncate mt-0.5">
-                              {contact.customStatus ? `"${contact.customStatus}"` : `(${getStatusLabel(contact.presenceStatus)})`}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   )}
                 </div>
@@ -634,22 +989,22 @@ export function ChatFAB() {
                   initial={{ y: 50, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: 50, opacity: 0 }}
-                  className="absolute bottom-0 inset-x-0 p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-xs"
+                  className="absolute bottom-0 inset-x-0 p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-850 dark:text-slate-100"
                 >
                   <div className="flex items-center gap-3">
                     <span className="flex h-3 w-3 relative">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
                     </span>
-                    <span className="font-bold text-rose-400">Gravando Áudio...</span>
-                    <span className="text-slate-400 font-mono">
+                    <span className="font-bold text-rose-600 dark:text-rose-400">Gravando Áudio...</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-mono">
                       {Math.floor(recordDuration / 60)}:{String(recordDuration % 60).padStart(2, '0')}
                     </span>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={cancelRecording}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 hover:text-white rounded-xl font-semibold text-slate-300 transition"
+                      className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold text-slate-650 dark:text-slate-350 transition"
                     >
                       Descartar
                     </button>
@@ -664,11 +1019,11 @@ export function ChatFAB() {
               )}
             </AnimatePresence>
 
-            {/* Normal Input Area footer */}
-            {!isRecording && activeTab === 'chat' && (
+            {/* Normal Input Area footer (Shown only when in an active conversation and not recording) */}
+            {!isRecording && activeTab === 'chat' && selectedContact && (
               <form
                 onSubmit={handleSendMessage}
-                className="p-4 bg-slate-950 border-t border-slate-800 flex items-center gap-2"
+                className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2"
               >
                 {/* Upload attachment hidden input */}
                 <input
@@ -683,7 +1038,7 @@ export function ChatFAB() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={fileLoading || loading}
-                  className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition disabled:opacity-50"
+                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition disabled:opacity-50"
                   title="Anexar arquivo (Máx 5MB)"
                 >
                   {fileLoading ? (
@@ -698,31 +1053,111 @@ export function ChatFAB() {
                   type="button"
                   onClick={startRecording}
                   disabled={fileLoading || loading}
-                  className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-rose-400 transition disabled:opacity-50"
+                  className="p-2 hover:bg-slate-250 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-rose-500 transition disabled:opacity-50"
                   title="Gravar Mensagem de Voz"
                 >
                   <Mic className="w-5 h-5" />
                 </button>
 
                 <input
+                  ref={chatInputRef}
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   disabled={loading}
                   placeholder="Enviar mensagem..."
-                  className="flex-1 bg-slate-900 border border-slate-800 hover:border-slate-700 focus:border-purple-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 transition text-slate-100 placeholder:text-slate-500"
+                  className="flex-1 bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 focus:border-purple-500 dark:focus:border-purple-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 transition text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-505"
                 />
 
                 <button
                   type="submit"
                   disabled={!inputText.trim() || loading}
-                  className="p-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-800 text-white rounded-xl shadow transition disabled:opacity-50"
+                  className="p-2 bg-purple-650 hover:bg-purple-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl shadow transition disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
                 </button>
               </form>
             )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* File Preview Modal */}
+      <AnimatePresence>
+        {previewFile && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800"
+            >
+              {/* Modal Header */}
+              <div className="p-4 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <File className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0" />
+                  <h3 className="font-bold text-sm text-slate-800 dark:text-white truncate" title={previewFile.name}>
+                    {previewFile.name}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={previewFile.url}
+                    download={previewFile.name}
+                    className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-purple-500/10"
+                  >
+                    Baixar Arquivo
+                  </a>
+                  <button
+                    onClick={() => setPreviewFile(null)}
+                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body / Viewer */}
+              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-100 dark:bg-slate-950/40 min-h-[300px]">
+                {previewFile.type === 'image' ? (
+                  <img
+                    src={previewFile.url}
+                    alt={previewFile.name}
+                    className="max-w-full max-h-[70vh] object-contain rounded-lg shadow border border-slate-200 dark:border-slate-800"
+                  />
+                ) : previewFile.type === 'pdf' ? (
+                  <iframe
+                    src={`${previewFile.url}#toolbar=0`}
+                    className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-800"
+                    title={previewFile.name}
+                  />
+                ) : previewFile.type === 'office' ? (
+                  <iframe
+                    src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewFile.url)}`}
+                    className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-800"
+                    title={previewFile.name}
+                  />
+                ) : (
+                  <div className="text-center p-8 max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow">
+                    <File className="w-12 h-12 text-slate-305 dark:text-slate-600 mx-auto mb-3" />
+                    <p className="font-bold text-sm text-slate-800 dark:text-white mb-1">
+                      Visualização indisponível
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                      Este tipo de arquivo não pode ser visualizado diretamente no navegador.
+                    </p>
+                    <a
+                      href={previewFile.url}
+                      download={previewFile.name}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow"
+                    >
+                      Clique para fazer o download
+                    </a>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </>

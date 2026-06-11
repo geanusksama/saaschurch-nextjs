@@ -4,34 +4,35 @@ import { withAuth } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
-    let campoId = user.campoId;
-    if (user.profileType === "master") {
-      const { searchParams } = new URL(req.url);
-      campoId = searchParams.get("campoId") || user.campoId;
-    }
-
-    if (!campoId) {
-      return NextResponse.json([]);
-    }
-
     // Active time window: last 25 seconds
     const threshold = new Date(Date.now() - 25000);
 
     try {
-      const onlineUsers = await prisma.user.findMany({
-        where: {
-          campoId,
-          deletedAt: null,
-          lastActiveAt: {
-            gte: threshold,
-          },
-        },
+      const isMaster = user.profileType === "master";
+      const whereClause: any = {
+        deletedAt: null,
+      };
+
+      if (!isMaster) {
+        whereClause.campoId = user.campoId || "00000000-0000-0000-0000-000000000000";
+      } else {
+        const { searchParams } = new URL(req.url);
+        const paramCampoId = searchParams.get("campoId");
+        if (paramCampoId) {
+          whereClause.campoId = paramCampoId;
+        }
+      }
+
+      const allUsers = await prisma.user.findMany({
+        where: whereClause,
         select: {
           id: true,
           fullName: true,
+          email: true,
           presenceStatus: true,
           customStatus: true,
           lastActiveAt: true,
+          profileType: true,
           role: {
             select: {
               name: true,
@@ -43,14 +44,47 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      const formatted = onlineUsers.map((u) => ({
-        id: u.id,
-        fullName: u.fullName,
-        presenceStatus: u.presenceStatus,
-        customStatus: u.customStatus,
-        lastActiveAt: u.lastActiveAt,
-        roleName: u.role?.name || null,
-      }));
+      // Filter: master/admin/campo profiles or roles containing "secret" or "tesour"
+      const filteredUsers = allUsers.filter((u) => {
+        if (u.id === user.id) return false; // Exclude self from contact list
+
+        const profile = (u.profileType || "").toLowerCase();
+        if (["master", "admin", "campo"].includes(profile)) {
+          return true;
+        }
+        const roleName = (u.role?.name || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+
+        if (
+          roleName.includes("secret") ||
+          roleName.includes("tesour") ||
+          roleName.includes("campo") ||
+          roleName.includes("admin") ||
+          roleName.includes("master")
+        ) {
+          return true;
+        }
+        return false;
+      });
+
+      const formatted = filteredUsers.map((u) => {
+        const isOnline =
+          u.presenceStatus !== "furtivo" &&
+          u.lastActiveAt &&
+          new Date(u.lastActiveAt).getTime() >= threshold.getTime();
+
+        return {
+          id: u.id,
+          fullName: u.fullName,
+          email: u.email,
+          presenceStatus: isOnline ? u.presenceStatus : "offline",
+          customStatus: u.customStatus,
+          lastActiveAt: u.lastActiveAt,
+          roleName: u.role?.name || (u.profileType ? u.profileType.toUpperCase() : null),
+        };
+      });
 
       return NextResponse.json(formatted);
     } catch (error) {
