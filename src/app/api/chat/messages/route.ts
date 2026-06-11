@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const bodyData = await req.json();
-      const { body, fileUrl, fileName, fileType, fileSize, receiverId } = bodyData;
+      const { body, fileUrl, fileName, fileType, fileSize, receiverId, parentId, parentName, parentBody } = bodyData;
 
       if (!body && !fileUrl) {
         return NextResponse.json({ error: "Conteúdo da mensagem vazio." }, { status: 400 });
@@ -156,7 +156,10 @@ export async function POST(req: NextRequest) {
           fileName: fileName || null,
           fileType: fileType || null,
           fileSize: fileSize ? Number(fileSize) : null,
-          receiverId: receiverId || null
+          receiverId: receiverId || null,
+          parentId: parentId || null,
+          parentName: parentName || null,
+          parentBody: parentBody || null
         },
       });
 
@@ -164,6 +167,102 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error("[chat_messages_post]", error);
       return NextResponse.json({ error: "Erro ao enviar mensagem." }, { status: 500 });
+    }
+  });
+}
+
+export async function DELETE(req: NextRequest) {
+  return withAuth(req, async (user) => {
+    const { searchParams } = new URL(req.url);
+    const messageId = searchParams.get("messageId");
+
+    if (!messageId) {
+      return NextResponse.json({ error: "ID da mensagem não fornecido." }, { status: 400 });
+    }
+
+    try {
+      const message = await prisma.internalChatMessage.findUnique({
+        where: { id: messageId }
+      });
+
+      if (!message) {
+        return NextResponse.json({ error: "Mensagem não encontrada." }, { status: 404 });
+      }
+
+      // Only the sender or a master can delete the message
+      if (message.userId !== user.id && user.profileType !== "master") {
+        return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
+      }
+
+      await prisma.internalChatMessage.delete({
+        where: { id: messageId }
+      });
+
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      console.error("[chat_messages_delete]", error);
+      return NextResponse.json({ error: "Erro ao excluir mensagem." }, { status: 500 });
+    }
+  });
+}
+
+export async function PATCH(req: NextRequest) {
+  return withAuth(req, async (user) => {
+    try {
+      const bodyData = await req.json();
+      const { messageId, emoji } = bodyData;
+
+      if (!messageId || !emoji) {
+        return NextResponse.json({ error: "messageId e emoji são obrigatórios." }, { status: 400 });
+      }
+
+      const message = await prisma.internalChatMessage.findUnique({
+        where: { id: messageId }
+      });
+
+      if (!message) {
+        return NextResponse.json({ error: "Mensagem não encontrada." }, { status: 404 });
+      }
+
+      // Manage reactions JSON:
+      // Format: { [emoji]: [ { userId: "...", userName: "..." }, ... ] }
+      let reactions = (message.reactions as Record<string, Array<{ userId: string; userName: string }>>) || {};
+
+      if (typeof reactions !== "object" || Array.isArray(reactions) || reactions === null) {
+        reactions = {};
+      }
+
+      if (!reactions[emoji]) {
+        reactions[emoji] = [];
+      }
+
+      const existingIndex = reactions[emoji].findIndex(r => r.userId === user.id);
+
+      if (existingIndex > -1) {
+        // Remove reaction
+        reactions[emoji].splice(existingIndex, 1);
+      } else {
+        // Add reaction
+        reactions[emoji].push({
+          userId: user.id,
+          userName: user.fullName || "Usuário"
+        });
+      }
+
+      // Clean up empty emoji arrays
+      if (reactions[emoji].length === 0) {
+        delete reactions[emoji];
+      }
+
+      const updated = await prisma.internalChatMessage.update({
+        where: { id: messageId },
+        data: { reactions: reactions }
+      });
+
+      return NextResponse.json(serializeBigInts(updated));
+    } catch (error) {
+      console.error("[chat_messages_patch]", error);
+      return NextResponse.json({ error: "Erro ao gerenciar reação." }, { status: 500 });
     }
   });
 }

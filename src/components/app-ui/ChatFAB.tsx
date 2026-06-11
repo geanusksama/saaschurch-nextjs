@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   MessageSquare, X, Send, Paperclip, Mic, Image, File, Play, Pause, 
   Circle, AlertCircle, Loader, User, Clock, Check, Volume2, Shield,
-  Wifi, WifiOff, Search, ArrowLeft
+  Wifi, WifiOff, Search, ArrowLeft, MoreVertical, Smile, CornerUpLeft, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabaseClient';
@@ -21,6 +21,10 @@ interface ChatMessage {
   fileType: string | null;
   fileSize: number | null;
   createdAt: string;
+  parentId?: string | null;
+  parentName?: string | null;
+  parentBody?: string | null;
+  reactions?: any | null;
 }
 
 interface OnlineContact {
@@ -47,6 +51,9 @@ export function ChatFAB() {
   // 1-on-1 private chat states
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
   const [conversations, setConversations] = useState<any[]>([]);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [stagedFile, setStagedFile] = useState<File | null>(null);
+  const [activeDropdownMsgId, setActiveDropdownMsgId] = useState<string | null>(null);
 
   // User presence info
   const [presenceStatus, setPresenceStatus] = useState<'online' | 'busy' | 'away' | 'furtivo'>('online');
@@ -145,7 +152,11 @@ export function ChatFAB() {
                 fileName: newMsg.file_name,
                 fileType: newMsg.file_type,
                 fileSize: newMsg.file_size,
-                createdAt: newMsg.created_at
+                createdAt: newMsg.created_at,
+                parentId: newMsg.parent_id,
+                parentName: newMsg.parent_name,
+                parentBody: newMsg.parent_body,
+                reactions: newMsg.reactions
               };
 
               setMessages((prev) => {
@@ -197,7 +208,11 @@ export function ChatFAB() {
                         fileName: updatedMsg.file_name,
                         fileType: updatedMsg.file_type,
                         fileSize: updatedMsg.file_size,
-                        createdAt: updatedMsg.created_at
+                        createdAt: updatedMsg.created_at,
+                        parentId: updatedMsg.parent_id,
+                        parentName: updatedMsg.parent_name,
+                        parentBody: updatedMsg.parent_body,
+                        reactions: updatedMsg.reactions
                       }
                     : m
                 )
@@ -303,13 +318,50 @@ export function ChatFAB() {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputText.trim() || !token || !selectedContact) return;
+    if ((!inputText.trim() && !stagedFile) || !token || !selectedContact) return;
 
     const bodyText = inputText;
+    const currentReply = replyingTo;
+
     setInputText('');
+    setReplyingTo(null);
     setLoading(true);
 
     try {
+      let uploadedFileUrl = null;
+      let uploadedFileName = null;
+      let uploadedFileType = null;
+      let uploadedFileSize = null;
+
+      // 1. Upload file if staged
+      if (stagedFile) {
+        setFileLoading(true);
+        try {
+          const fileExt = stagedFile.name.split('.').pop();
+          const path = `chat-files/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+
+          const { data, error } = await supabase.storage.from('dados').upload(path, stagedFile);
+          if (error) throw error;
+
+          const { data: urlData } = supabase.storage.from('dados').getPublicUrl(path);
+          uploadedFileUrl = urlData.publicUrl;
+          uploadedFileName = stagedFile.name;
+          uploadedFileType = stagedFile.type.startsWith('image/') ? 'image' : 'file';
+          uploadedFileSize = stagedFile.size;
+
+          setStagedFile(null);
+        } catch (err) {
+          console.error("File upload failed", err);
+          toast.error('Erro ao fazer upload do arquivo.');
+          setLoading(false);
+          setFileLoading(false);
+          return;
+        } finally {
+          setFileLoading(false);
+        }
+      }
+
+      // 2. Send request to messages API
       const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
         method: 'POST',
         headers: {
@@ -317,8 +369,15 @@ export function ChatFAB() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          body: bodyText,
-          receiverId: selectedContact.id
+          body: bodyText || null,
+          receiverId: selectedContact.id,
+          fileUrl: uploadedFileUrl,
+          fileName: uploadedFileName,
+          fileType: uploadedFileType,
+          fileSize: uploadedFileSize,
+          parentId: currentReply ? currentReply.id : null,
+          parentName: currentReply ? currentReply.userName : null,
+          parentBody: currentReply ? (currentReply.body || currentReply.fileName || 'Arquivo') : null
         })
       });
 
@@ -337,9 +396,9 @@ export function ChatFAB() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !token || !selectedContact) return;
+    if (!file) return;
 
     // Check size limit: 5MB
     const maxSize = 5 * 1024 * 1024;
@@ -348,48 +407,51 @@ export function ChatFAB() {
       return;
     }
 
-    setFileLoading(true);
+    setStagedFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleToggleReaction = async (messageId: string, emoji: string) => {
+    if (!token) return;
     try {
-      const fileExt = file.name.split('.').pop();
-      const path = `chat-files/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-
-      const { data, error } = await supabase.storage.from('dados').upload(path, file);
-      if (error) throw error;
-
-      const { data: urlData } = supabase.storage.from('dados').getPublicUrl(path);
-      const publicUrl = urlData.publicUrl;
-
-      const fileType = file.type.startsWith('image/') ? 'image' : 'file';
-
-      const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
-        method: 'POST',
+      const res = await fetch(`${apiBase}/chat/messages`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          fileUrl: publicUrl,
-          fileName: file.name,
-          fileType,
-          fileSize: file.size,
-          receiverId: selectedContact.id
-        })
+        body: JSON.stringify({ messageId, emoji })
       });
-
       if (res.ok) {
-        const newMessage = await res.json();
-        setMessages((prev) => [...prev, newMessage]);
-        fetchConversations();
-        toast.success('Arquivo enviado com sucesso!');
-      } else {
-        toast.error('Erro ao registrar arquivo.');
+        const updatedMsg = await res.json();
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, reactions: updatedMsg.reactions } : m))
+        );
       }
     } catch (err) {
-      console.error("File upload failed", err);
-      toast.error('Erro ao fazer upload do arquivo.');
-    } finally {
-      setFileLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      console.error("Failed to toggle reaction", err);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiBase}/chat/messages?messageId=${messageId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        fetchConversations();
+        toast.success("Mensagem excluída.");
+      } else {
+        toast.error("Não foi possível excluir a mensagem.");
+      }
+    } catch (err) {
+      console.error("Failed to delete message", err);
+      toast.error("Erro ao excluir.");
     }
   };
 
@@ -747,7 +809,7 @@ export function ChatFAB() {
                           return (
                             <div
                               key={msg.id}
-                              className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}
+                              className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'} group/row mb-2`}
                             >
                               {/* Metadata */}
                               <div className="flex items-center gap-1.5 mb-1 px-1">
@@ -768,66 +830,162 @@ export function ChatFAB() {
                                 </span>
                               </div>
 
-                              {/* Bubble Content */}
-                              <div
-                                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm border ${
-                                  isSelf
-                                    ? 'bg-purple-600 text-white border-purple-500 rounded-tr-none'
-                                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-750 rounded-tl-none'
-                                }`}
-                              >
-                                {msg.body && <p className="leading-relaxed break-words">{msg.body}</p>}
+                              {/* Message bubble + Actions row */}
+                              <div className={`flex items-center gap-1 relative ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}>
+                                {/* Bubble Content wrapper */}
+                                <div
+                                  className={`relative max-w-[80vw] sm:max-w-[70%] rounded-2xl px-4 py-2.5 text-sm shadow-sm border ${
+                                    isSelf
+                                      ? 'bg-purple-600 text-white border-purple-500 rounded-tr-none'
+                                      : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-750 rounded-tl-none'
+                                  }`}
+                                >
+                                  {/* Reply Box quote inside the bubble */}
+                                  {msg.parentId && (
+                                    <div className={`mb-2 p-2 rounded-lg border-l-4 text-xs text-left max-w-full truncate opacity-95 ${
+                                      isSelf
+                                        ? 'bg-black/20 border-purple-300 text-purple-100'
+                                        : 'bg-slate-100 dark:bg-slate-900 border-purple-500 text-slate-700 dark:text-slate-300'
+                                    }`}>
+                                      <p className={`font-bold mb-0.5 truncate ${isSelf ? 'text-white' : 'text-purple-600 dark:text-purple-400'}`}>{msg.parentName}</p>
+                                      <p className="truncate opacity-90">{msg.parentBody}</p>
+                                    </div>
+                                  )}
 
-                                {/* Media Attachment types */}
-                                {msg.fileUrl && (
-                                  <div className="mt-1">
-                                    {msg.fileType === 'image' ? (
-                                      /* Image rendering */
-                                      <button
-                                        type="button"
-                                        onClick={() => setPreviewFile({ url: msg.fileUrl!, name: msg.fileName || 'Imagem', type: 'image' })}
-                                        className="block w-full text-left"
-                                      >
-                                        <img
-                                          src={msg.fileUrl}
-                                          alt={msg.fileName || 'Imagem'}
-                                          className="rounded-lg max-h-48 w-full object-cover border border-slate-150 dark:border-slate-700/50 hover:opacity-90 transition cursor-zoom-in"
-                                        />
-                                      </button>
-                                    ) : msg.fileType === 'audio' ? (
-                                      /* Audio player wrapper */
-                                      <div className="flex flex-col gap-1 w-64 bg-slate-100 dark:bg-slate-950/40 p-2.5 rounded-xl border border-slate-200 dark:border-white/5">
-                                        <div className="flex items-center gap-2">
-                                          <Volume2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                                          <audio src={msg.fileUrl} controls className="h-8 w-full rounded outline-none" />
-                                        </div>
-                                        <span className="text-[9px] text-slate-500 dark:text-slate-400 self-end">
-                                          {msg.fileSize ? formatFileSize(msg.fileSize) : ''}
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      /* Generic files */
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const isPdf = msg.fileName?.toLowerCase().endsWith('.pdf');
-                                          const isOffice = ['.docx', '.xlsx', '.pptx', '.doc', '.xls'].some(ext => msg.fileName?.toLowerCase().endsWith(ext));
-                                          const type = isPdf ? 'pdf' : isOffice ? 'office' : 'download';
-                                          setPreviewFile({ url: msg.fileUrl!, name: msg.fileName || 'Arquivo', type });
-                                        }}
-                                        className="w-full flex items-center gap-3 bg-slate-100 dark:bg-slate-900/40 hover:bg-slate-200 dark:hover:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-white/5 text-xs font-semibold text-purple-650 dark:text-purple-300 text-left transition"
-                                      >
-                                        <File className="w-5 h-5 shrink-0" />
-                                        <div className="min-w-0 flex-1">
-                                          <p className="truncate text-slate-750 dark:text-slate-200">{msg.fileName}</p>
-                                          <p className="text-[9px] text-slate-500 font-medium">
+                                  {msg.body && <p className="leading-relaxed break-words">{msg.body}</p>}
+
+                                  {/* Media Attachment types */}
+                                  {msg.fileUrl && (
+                                    <div className="mt-1">
+                                      {msg.fileType === 'image' ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewFile({ url: msg.fileUrl!, name: msg.fileName || 'Imagem', type: 'image' })}
+                                          className="block w-full text-left"
+                                        >
+                                          <img
+                                            src={msg.fileUrl}
+                                            alt={msg.fileName || 'Imagem'}
+                                            className="rounded-lg max-h-48 w-full object-cover border border-slate-150 dark:border-slate-700/50 hover:opacity-90 transition cursor-zoom-in"
+                                          />
+                                        </button>
+                                      ) : msg.fileType === 'audio' ? (
+                                        <div className="flex flex-col gap-1 w-64 bg-slate-100 dark:bg-slate-950/40 p-2.5 rounded-xl border border-slate-200 dark:border-white/5">
+                                          <div className="flex items-center gap-2">
+                                            <Volume2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                            <audio src={msg.fileUrl} controls className="h-8 w-full rounded outline-none" />
+                                          </div>
+                                          <span className="text-[9px] text-slate-500 dark:text-slate-400 self-end">
                                             {msg.fileSize ? formatFileSize(msg.fileSize) : ''}
-                                          </p>
+                                          </span>
                                         </div>
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const isPdf = msg.fileName?.toLowerCase().endsWith('.pdf');
+                                            const isOffice = ['.docx', '.xlsx', '.pptx', '.doc', '.xls'].some(ext => msg.fileName?.toLowerCase().endsWith(ext));
+                                            const type = isPdf ? 'pdf' : isOffice ? 'office' : 'download';
+                                            setPreviewFile({ url: msg.fileUrl!, name: msg.fileName || 'Arquivo', type });
+                                          }}
+                                          className="w-full flex items-center gap-3 bg-slate-100 dark:bg-slate-900/40 hover:bg-slate-200 dark:hover:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-white/5 text-xs font-semibold text-purple-650 dark:text-purple-300 text-left transition"
+                                        >
+                                          <File className="w-5 h-5 shrink-0" />
+                                          <div className="min-w-0 flex-1">
+                                            <p className="truncate text-slate-750 dark:text-slate-200">{msg.fileName}</p>
+                                            <p className="text-[9px] text-slate-500 font-medium">
+                                              {msg.fileSize ? formatFileSize(msg.fileSize) : ''}
+                                            </p>
+                                          </div>
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Emoji Reactions Badge inside bubble boundary */}
+                                  {msg.reactions && typeof msg.reactions === 'object' && Object.keys(msg.reactions).length > 0 && (
+                                    <div className={`absolute -bottom-2.5 flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded-full shadow-sm text-[10px] z-10 ${isSelf ? 'right-2' : 'left-2'}`}>
+                                      {Object.entries(msg.reactions).map(([emoji, users]: [string, any]) => (
+                                        <button
+                                          key={emoji}
+                                          type="button"
+                                          onClick={() => handleToggleReaction(msg.id, emoji)}
+                                          title={users.map((u: any) => u.userName).join(', ')}
+                                          className="flex items-center gap-0.5 hover:scale-110 active:scale-95 transition"
+                                        >
+                                          <span>{emoji}</span>
+                                          <span className="text-slate-500 dark:text-slate-400 font-semibold">{users.length}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Option Actions (3-dot dropdown) visible on hover */}
+                                <div className="relative shrink-0 flex items-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveDropdownMsgId(activeDropdownMsgId === msg.id ? null : msg.id)}
+                                    className="opacity-0 group-hover/row:opacity-100 p-1 rounded-lg hover:bg-slate-250 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-opacity duration-150 mx-1 shrink-0"
+                                    title="Opções"
+                                  >
+                                    <MoreVertical className="w-4.5 h-4.5" />
+                                  </button>
+
+                                  {/* Menu overlay box */}
+                                  {activeDropdownMsgId === msg.id && (
+                                    <>
+                                      <div className="fixed inset-0 z-30" onClick={() => setActiveDropdownMsgId(null)} />
+                                      <div className={`absolute z-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1.5 w-36 flex flex-col gap-0.5 ${isSelf ? 'right-full mr-1 bottom-0' : 'left-full ml-1 bottom-0'}`}>
+                                        {/* Quick reactions emojis */}
+                                        <div className="flex gap-1 justify-between px-1 py-1 border-b border-slate-100 dark:border-slate-800 mb-1">
+                                          {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
+                                            <button
+                                              key={emoji}
+                                              type="button"
+                                              onClick={() => {
+                                                handleToggleReaction(msg.id, emoji);
+                                                setActiveDropdownMsgId(null);
+                                              }}
+                                              className="hover:scale-125 transition text-sm active:scale-95"
+                                            >
+                                              {emoji}
+                                            </button>
+                                          ))}
+                                        </div>
+                                        {/* Reply button */}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setReplyingTo(msg);
+                                            setActiveDropdownMsgId(null);
+                                            chatInputRef.current?.focus();
+                                          }}
+                                          className="w-full text-left px-2 py-1 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex items-center gap-1.5 font-medium text-slate-750 dark:text-slate-305 transition-colors"
+                                        >
+                                          <CornerUpLeft className="w-3.5 h-3.5" />
+                                          Responder
+                                        </button>
+                                        {/* Delete button */}
+                                        {(isSelf || storedUser.profileType === 'master') && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (confirm("Deseja excluir esta mensagem para todos?")) {
+                                                handleDeleteMessage(msg.id);
+                                              }
+                                              setActiveDropdownMsgId(null);
+                                            }}
+                                            className="w-full text-left px-2 py-1 text-xs hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg flex items-center gap-1.5 font-bold text-rose-600 dark:text-rose-400 transition-colors"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                            Excluir
+                                          </button>
+                                        )}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           );
@@ -1028,62 +1186,107 @@ export function ChatFAB() {
 
             {/* Normal Input Area footer (Shown only when in an active conversation and not recording) */}
             {!isRecording && activeTab === 'chat' && selectedContact && (
-              <form
-                onSubmit={handleSendMessage}
-                className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2"
-              >
-                {/* Upload attachment hidden input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  accept="image/*,audio/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
-                />
+              <div className="flex flex-col border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                {/* Reply Preview Banner */}
+                {replyingTo && (
+                  <div className="px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <div className="flex-1 min-w-0 border-l-2 border-purple-500 pl-2">
+                      <p className="font-bold text-purple-600 dark:text-purple-400">Respondendo a {replyingTo.userName}</p>
+                      <p className="text-slate-500 dark:text-slate-400 truncate">
+                        {replyingTo.body || (replyingTo.fileType === 'image' ? 'Imagem' : replyingTo.fileType === 'audio' ? 'Áudio' : 'Arquivo')}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReplyingTo(null)}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-600 dark:hover:text-white transition"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={fileLoading || loading}
-                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition disabled:opacity-50"
-                  title="Anexar arquivo (Máx 5MB)"
+                {/* Staged File Preview Banner */}
+                {stagedFile && (
+                  <div className="px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      {stagedFile.type.startsWith('image/') ? (
+                        <Image className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                      ) : (
+                        <File className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-slate-700 dark:text-slate-300 truncate">{stagedFile.name}</p>
+                        <p className="text-[10px] text-slate-500">{formatFileSize(stagedFile.size)}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStagedFile(null)}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-600 dark:hover:text-white transition"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <form
+                  onSubmit={handleSendMessage}
+                  className="p-4 flex items-center gap-2"
                 >
-                  {fileLoading ? (
-                    <Loader className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Paperclip className="w-5 h-5" />
-                  )}
-                </button>
+                  {/* Upload attachment hidden input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept="image/*,audio/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+                  />
 
-                {/* Microphone audio record trigger */}
-                <button
-                  type="button"
-                  onClick={startRecording}
-                  disabled={fileLoading || loading}
-                  className="p-2 hover:bg-slate-250 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-rose-500 transition disabled:opacity-50"
-                  title="Gravar Mensagem de Voz"
-                >
-                  <Mic className="w-5 h-5" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={fileLoading || loading}
+                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition disabled:opacity-50"
+                    title="Anexar arquivo (Máx 5MB)"
+                  >
+                    {fileLoading ? (
+                      <Loader className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Paperclip className="w-5 h-5" />
+                    )}
+                  </button>
 
-                <input
-                  ref={chatInputRef}
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  disabled={loading}
-                  placeholder="Enviar mensagem..."
-                  className="flex-1 bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 focus:border-purple-500 dark:focus:border-purple-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 transition text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-505"
-                />
+                  {/* Microphone audio record trigger */}
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    disabled={fileLoading || loading}
+                    className="p-2 hover:bg-slate-250 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-rose-500 transition disabled:opacity-50"
+                    title="Gravar Mensagem de Voz"
+                  >
+                    <Mic className="w-5 h-5" />
+                  </button>
 
-                <button
-                  type="submit"
-                  disabled={!inputText.trim() || loading}
-                  className="p-2 bg-purple-650 hover:bg-purple-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl shadow transition disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
+                  <input
+                    ref={chatInputRef}
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    disabled={loading}
+                    placeholder={stagedFile ? "Adicionar legenda..." : "Enviar mensagem..."}
+                    className="flex-1 bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 focus:border-purple-500 dark:focus:border-purple-500 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 transition text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-505"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={(!inputText.trim() && !stagedFile) || loading}
+                    className="p-2 bg-purple-650 hover:bg-purple-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl shadow transition disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
             )}
           </motion.div>
         )}
