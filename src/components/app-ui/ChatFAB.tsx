@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   MessageSquare, X, Send, Paperclip, Mic, Image, File, Play, Pause, 
   Circle, AlertCircle, Loader, User, Clock, Check, Volume2, Shield,
-  Wifi, WifiOff, Search, ArrowLeft, MoreVertical, Smile, CornerUpLeft, Trash2
+  Wifi, WifiOff, Search, ArrowLeft, MoreVertical, Smile, CornerUpLeft, Trash2,
+  MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabaseClient';
@@ -54,6 +55,11 @@ export function ChatFAB() {
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [stagedFile, setStagedFile] = useState<File | null>(null);
   const [activeDropdownMsgId, setActiveDropdownMsgId] = useState<string | null>(null);
+  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationName, setLocationName] = useState('Minha Localização');
+  const [loadingGps, setLoadingGps] = useState(false);
 
   // User presence info
   const [presenceStatus, setPresenceStatus] = useState<'online' | 'busy' | 'away' | 'furtivo'>('online');
@@ -346,7 +352,11 @@ export function ChatFAB() {
           const { data: urlData } = supabase.storage.from('dados').getPublicUrl(path);
           uploadedFileUrl = urlData.publicUrl;
           uploadedFileName = stagedFile.name;
-          uploadedFileType = stagedFile.type.startsWith('image/') ? 'image' : 'file';
+          uploadedFileType = stagedFile.type.startsWith('image/')
+            ? 'image'
+            : stagedFile.type.startsWith('audio/')
+            ? 'audio'
+            : 'file';
           uploadedFileSize = stagedFile.size;
 
           setStagedFile(null);
@@ -452,6 +462,76 @@ export function ChatFAB() {
     } catch (err) {
       console.error("Failed to delete message", err);
       toast.error("Erro ao excluir.");
+    }
+  };
+
+  // Location handling
+  const handleRequestLocation = () => {
+    setAttachmentMenuOpen(false);
+    setLoadingGps(true);
+    setLocationModalOpen(true);
+    setLocationName('Minha Localização');
+    setGpsCoords(null);
+
+    if (!navigator.geolocation) {
+      toast.error('Geolocalização não é suportada neste navegador.');
+      setLoadingGps(false);
+      setLocationModalOpen(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGpsCoords({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setLoadingGps(false);
+      },
+      (error) => {
+        console.error("Geolocation error", error);
+        toast.error('Não foi possível obter sua localização. Verifique as permissões.');
+        setLoadingGps(false);
+        setLocationModalOpen(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
+
+  const handleSendLocation = async () => {
+    if (!gpsCoords || !token || !selectedContact) return;
+    setLocationModalOpen(false);
+    setLoading(true);
+
+    try {
+      const mapsUrl = `https://www.google.com/maps?q=${gpsCoords.lat},${gpsCoords.lng}`;
+      const bodyText = `📍 ${locationName}\n${mapsUrl}`;
+
+      const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          body: bodyText,
+          receiverId: selectedContact.id
+        })
+      });
+
+      if (res.ok) {
+        const newMessage = await res.json();
+        setMessages((prev) => [...prev, newMessage]);
+        fetchConversations();
+      } else {
+        toast.error('Erro ao enviar localização.');
+      }
+    } catch (err) {
+      console.error("Location send failed", err);
+      toast.error('Falha ao enviar localização.');
+    } finally {
+      setLoading(false);
+      setGpsCoords(null);
     }
   };
 
@@ -1234,28 +1314,85 @@ export function ChatFAB() {
                   onSubmit={handleSendMessage}
                   className="p-4 flex items-center gap-2"
                 >
-                  {/* Upload attachment hidden input */}
+                  {/* Upload attachment hidden inputs */}
                   <input
                     ref={fileInputRef}
                     type="file"
                     onChange={handleFileChange}
                     className="hidden"
-                    accept="image/*,audio/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+                    accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+                  />
+                  <input
+                    id="audioFileInput"
+                    type="file"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept="audio/*"
                   />
 
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={fileLoading || loading}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition disabled:opacity-50"
-                    title="Anexar arquivo (Máx 5MB)"
-                  >
-                    {fileLoading ? (
-                      <Loader className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Paperclip className="w-5 h-5" />
-                    )}
-                  </button>
+                  {/* Attachment popover trigger */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setAttachmentMenuOpen(!attachmentMenuOpen)}
+                      disabled={fileLoading || loading}
+                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition disabled:opacity-50"
+                      title="Anexar"
+                    >
+                      {fileLoading ? (
+                        <Loader className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Paperclip className="w-5 h-5" />
+                      )}
+                    </button>
+
+                    {/* Attachment options dropdown */}
+                    <AnimatePresence>
+                      {attachmentMenuOpen && (
+                        <>
+                          <div className="fixed inset-0 z-30" onClick={() => setAttachmentMenuOpen(false)} />
+                          <motion.div
+                            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute bottom-full mb-2 left-0 z-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1.5 w-48 flex flex-col gap-0.5"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAttachmentMenuOpen(false);
+                                fileInputRef.current?.click();
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2.5 font-medium text-slate-700 dark:text-slate-300 transition-colors"
+                            >
+                              <File className="w-4 h-4 text-purple-500" />
+                              Arquivo / Imagem
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAttachmentMenuOpen(false);
+                                document.getElementById('audioFileInput')?.click();
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2.5 font-medium text-slate-700 dark:text-slate-300 transition-colors"
+                            >
+                              <Volume2 className="w-4 h-4 text-rose-500" />
+                              Áudio do Sistema
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleRequestLocation}
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2.5 font-medium text-slate-700 dark:text-slate-300 transition-colors"
+                            >
+                              <MapPin className="w-4 h-4 text-emerald-500" />
+                              Localização
+                            </button>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
                   {/* Microphone audio record trigger */}
                   <button
@@ -1365,6 +1502,103 @@ export function ChatFAB() {
                     </a>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Location Confirmation Modal */}
+      <AnimatePresence>
+        {locationModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800"
+            >
+              {/* Location Modal Header */}
+              <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-emerald-500" />
+                  <h3 className="font-bold text-sm text-slate-800 dark:text-white">Enviar Localização</h3>
+                </div>
+                <button
+                  onClick={() => { setLocationModalOpen(false); setGpsCoords(null); }}
+                  className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Location Modal Body */}
+              <div className="p-5 flex flex-col gap-4">
+                {loadingGps ? (
+                  <div className="flex flex-col items-center justify-center py-6 gap-3">
+                    <Loader className="w-8 h-8 animate-spin text-emerald-500" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Obtendo localização GPS...</p>
+                  </div>
+                ) : gpsCoords ? (
+                  <>
+                    {/* Mini map preview */}
+                    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <img
+                        src={`https://maps.googleapis.com/maps/api/staticmap?center=${gpsCoords.lat},${gpsCoords.lng}&zoom=15&size=400x200&markers=color:red%7C${gpsCoords.lat},${gpsCoords.lng}&key=`}
+                        alt="Mapa"
+                        className="w-full h-40 object-cover bg-slate-100 dark:bg-slate-800"
+                        onError={(e) => {
+                          // Fallback if Google Maps static API fails (no key)
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      {/* Fallback: show text coords when image fails */}
+                      <div className="p-3 bg-slate-50 dark:bg-slate-950 flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                            {gpsCoords.lat.toFixed(6)}, {gpsCoords.lng.toFixed(6)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Location name input */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                        Nome do local (opcional)
+                      </label>
+                      <input
+                        type="text"
+                        value={locationName}
+                        onChange={(e) => setLocationName(e.target.value)}
+                        placeholder="Ex: Casa, Escritório, Igreja..."
+                        maxLength={120}
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition"
+                      />
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setLocationModalOpen(false); setGpsCoords(null); }}
+                        className="flex-1 px-3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSendLocation}
+                        className="flex-1 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow transition flex items-center justify-center gap-1.5"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        Enviar Localização
+                      </button>
+                    </div>
+                  </>
+                ) : null}
               </div>
             </motion.div>
           </div>
