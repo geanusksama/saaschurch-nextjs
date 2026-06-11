@@ -864,7 +864,7 @@ export function ChatFAB() {
                             <div
                               key={conv.id}
                               onClick={() => setSelectedContact(conv)}
-                              className="flex items-center gap-3 py-3 px-2 hover:bg-slate-100 dark:hover:bg-slate-850/50 rounded-xl cursor-pointer transition-colors"
+                              className="flex items-center gap-3 py-3 px-2 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer transition-colors"
                             >
                               <div className="relative mt-0.5">
                                 <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 shrink-0">
@@ -942,36 +942,43 @@ export function ChatFAB() {
                       <p className="text-sm text-slate-450 dark:text-slate-505">Nenhum contato encontrado.</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-slate-150 dark:divide-slate-800">
+                    <div className="divide-y divide-slate-150 dark:divide-slate-800/60">
                       {filteredContacts.map((contact) => {
                         const isOffline = contact.presenceStatus === 'offline' || contact.presenceStatus === 'furtivo';
                         return (
                           <div
                             key={contact.id}
                             onClick={() => handleContactClick(contact)}
-                            className="flex items-start gap-3 py-2 px-2 hover:bg-slate-100 dark:hover:bg-slate-850/50 rounded-xl cursor-pointer transition-colors"
+                            className="flex items-center justify-between py-3 px-2 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer transition-colors group"
                           >
-                            <div className="relative mt-0.5">
-                              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
-                                <User className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="relative shrink-0">
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                                  <User className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                                </div>
+                                <span
+                                  className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border border-white dark:border-slate-900"
+                                  style={{ backgroundColor: getStatusColor(contact.presenceStatus) }}
+                                />
                               </div>
-                              <span
-                                className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border border-white dark:border-slate-900"
-                                style={{ backgroundColor: getStatusColor(contact.presenceStatus) }}
-                              />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-sm font-semibold text-slate-750 dark:text-slate-100 truncate">{contact.fullName}</p>
+                                  {contact.roleName && (
+                                    <span className="text-[8px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-0.5 rounded font-bold shrink-0">
+                                      {contact.roleName}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-400 dark:text-slate-505 italic truncate mt-0.5">
+                                  {contact.customStatus ? `"${contact.customStatus}"` : isOffline ? '(Inativo)' : `(${getStatusLabel(contact.presenceStatus)})`}
+                                </p>
+                              </div>
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-semibold text-slate-750 dark:text-slate-100 truncate">{contact.fullName}</p>
-                                {contact.roleName && (
-                                  <span className="text-[8px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-0.5 rounded font-bold shrink-0">
-                                    {contact.roleName}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-slate-400 dark:text-slate-505 italic truncate mt-0.5">
-                                {contact.customStatus ? `"${contact.customStatus}"` : isOffline ? '(Inativo)' : `(${getStatusLabel(contact.presenceStatus)})`}
-                              </p>
+
+                            {/* Chat icon indicator on the right */}
+                            <div className="p-2 rounded-lg text-purple-650 dark:text-purple-400 group-hover:bg-purple-50 dark:group-hover:bg-purple-950/30 transition shrink-0 ml-2" title="Iniciar conversa">
+                              <MessageSquare className="w-4 h-4" />
                             </div>
                           </div>
                         );
