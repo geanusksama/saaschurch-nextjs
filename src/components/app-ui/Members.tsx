@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { AlertTriangle, ArrowUpDown, Building2, ChevronDown, Download, Eye, Mail, MapPin, Pencil, Phone, Plus, Trash2, User, UserRound, Users, Search } from 'lucide-react';
-import { Link } from 'react-router';
+import { AlertTriangle, ArrowUpDown, Building2, ChevronDown, Download, Eye, Mail, MapPin, Pencil, Phone, Plus, Trash2, User, UserRound, Users, Search, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MemberEditDrawer } from './MemberEditDrawer';
 import { MemberQuickCreateModal } from './MemberQuickCreateModal';
@@ -488,6 +488,7 @@ type MembersQueryData = {
 };
 
 export function Members() {
+  const navigate = useNavigate();
   const token = localStorage.getItem('mrm_token');
   const storedUser = readStoredUser();
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
@@ -531,7 +532,10 @@ export function Members() {
   const [serverChurchCount, setServerChurchCount] = useState(0);
   const [error, setError] = useState('');
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [isNavigatingNew, setIsNavigatingNew] = useState(false);
   const isLoadingScreen = loadingFilters || loadingMembers;
+  const isAnyActionActive = printModalOpen || exportingExcel || (quickCreateType !== null) || isNavigatingNew;
 
   const filteredRegionais = useMemo(() => {
     if (hasFixedChurchScope && storedUser.regionalId) {
@@ -808,32 +812,41 @@ export function Members() {
   // ── Legacy loadMembers useEffect (removed — replaced by TanStack Query above) ─
 
   const handleExportExcel = useCallback(async () => {
-    const XLSX = await import('xlsx');
-    const rows = visibleMembers.map((m) => ({
-      'Nome': m.fullName,
-      'ROL': m.rol ?? '',
-      'Tipo': getMemberTypeLabel(m.memberType),
-      'Título Eclesiástico': getTitleLabel(m),
-      'Igreja': m.churchName || '',
-      'Regional': m.regionalName || '',
-      'Campo': m.fieldName || '',
-      'Situação': m.membershipStatus || '',
-      'Membro desde': m.membershipDate ? new Date(m.membershipDate).toLocaleDateString('pt-BR') : '',
-      'Telefone': formatPhone(m.mobile || m.phone) || '',
-      'Email': m.email || '',
-      'CPF': formatCpf(m.cpf) || '',
-      'Estado Civil': m.maritalStatus || '',
-      'Cônjuge': m.spouseName || '',
-      'Nascimento': m.birthDate ? new Date(m.birthDate).toLocaleDateString('pt-BR') : '',
-      'Endereço': [m.addressStreet, m.addressNumber, m.addressNeighborhood].filter(Boolean).join(', '),
-      'Cidade': m.addressCity || '',
-      'UF': m.addressState || '',
-      'CEP': m.addressZipcode || '',
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Membros');
-    XLSX.writeFile(wb, `membros_${new Date().toISOString().split('T')[0]}.xlsx`);
+    try {
+      setExportingExcel(true);
+      setError('');
+      const XLSX = await import('xlsx');
+      const rows = visibleMembers.map((m) => ({
+        'Nome': m.fullName,
+        'ROL': m.rol ?? '',
+        'Tipo': getMemberTypeLabel(m.memberType),
+        'Título Eclesiástico': getTitleLabel(m),
+        'Igreja': m.churchName || '',
+        'Regional': m.regionalName || '',
+        'Campo': m.fieldName || '',
+        'Situação': m.membershipStatus || '',
+        'Membro desde': m.membershipDate ? new Date(m.membershipDate).toLocaleDateString('pt-BR') : '',
+        'Telefone': formatPhone(m.mobile || m.phone) || '',
+        'Email': m.email || '',
+        'CPF': formatCpf(m.cpf) || '',
+        'Estado Civil': m.maritalStatus || '',
+        'Cônjuge': m.spouseName || '',
+        'Nascimento': m.birthDate ? new Date(m.birthDate).toLocaleDateString('pt-BR') : '',
+        'Endereço': [m.addressStreet, m.addressNumber, m.addressNeighborhood].filter(Boolean).join(', '),
+        'Cidade': m.addressCity || '',
+        'UF': m.addressState || '',
+        'CEP': m.addressZipcode || '',
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Membros');
+      XLSX.writeFile(wb, `membros_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (err) {
+      console.error(err);
+      setError('Erro ao exportar planilha Excel.');
+    } finally {
+      setExportingExcel(false);
+    }
   }, [visibleMembers]);
 
   const qc = useQueryClient();
@@ -975,44 +988,73 @@ export function Members() {
 
         <div className="flex flex-wrap gap-3">
           <button
-            className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
             onClick={() => setPrintModalOpen(true)}
+            disabled={isAnyActionActive}
           >
-            <Download className="h-4 w-4" />
-            Imprimir
+            {printModalOpen ? (
+              <Loader2 className="h-4 w-4 animate-spin text-slate-600 dark:text-slate-400" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {printModalOpen ? 'Carregando...' : 'Imprimir'}
           </button>
           <button
-            className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700 hover:bg-green-100 transition-colors"
+            className="flex items-center gap-2 rounded-lg border border-green-300 dark:border-green-800/40 bg-green-50 dark:bg-green-950/20 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/40 hover:border-green-400 dark:hover:border-green-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
             onClick={handleExportExcel}
-            disabled={!visibleMembers.length}
+            disabled={!visibleMembers.length || isAnyActionActive}
           >
-            <Download className="h-4 w-4" />
-            Exportar Excel
+            {exportingExcel ? (
+              <Loader2 className="h-4 w-4 animate-spin text-green-700 dark:text-green-400" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {exportingExcel ? 'Exportando...' : 'Exportar Excel'}
           </button>
 
           <button
             type="button"
             onClick={() => setQuickCreateType('PF')}
-            className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-700 hover:bg-sky-100 transition-colors"
+            disabled={isAnyActionActive}
+            className="flex items-center gap-2 rounded-lg border border-sky-300 dark:border-sky-800/40 bg-sky-50 dark:bg-sky-950/20 px-4 py-2 text-sm font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-950/40 hover:border-sky-400 dark:hover:border-sky-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
           >
-            <UserRound className="h-4 w-4" />
-            Novo PF
+            {quickCreateType === 'PF' ? (
+              <Loader2 className="h-4 w-4 animate-spin text-sky-700 dark:text-sky-400" />
+            ) : (
+              <UserRound className="h-4 w-4" />
+            )}
+            {quickCreateType === 'PF' ? 'Carregando...' : 'Novo PF'}
           </button>
           <button
             type="button"
             onClick={() => setQuickCreateType('PJ')}
-            className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
+            disabled={isAnyActionActive}
+            className="flex items-center gap-2 rounded-lg border border-indigo-300 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/20 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/40 hover:border-indigo-400 dark:hover:border-indigo-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
           >
-            <Building2 className="h-4 w-4" />
-            Novo PJ
+            {quickCreateType === 'PJ' ? (
+              <Loader2 className="h-4 w-4 animate-spin text-indigo-700 dark:text-indigo-400" />
+            ) : (
+              <Building2 className="h-4 w-4" />
+            )}
+            {quickCreateType === 'PJ' ? 'Carregando...' : 'Novo PJ'}
           </button>
-          <Link
-            to="/app-ui/members/new"
-            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700 transition-colors"
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              setIsNavigatingNew(true);
+              navigate('/app-ui/members/new');
+            }}
+            disabled={isAnyActionActive}
+            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
           >
-            <Plus className="h-4 w-4" />
-            Novo Membro
-          </Link>
+            {isNavigatingNew ? (
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {isNavigatingNew ? 'Carregando...' : 'Novo Membro'}
+          </button>
         </div>
       </div>
 

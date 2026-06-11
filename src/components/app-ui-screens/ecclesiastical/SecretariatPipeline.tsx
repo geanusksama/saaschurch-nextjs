@@ -348,22 +348,31 @@ export default function SecretariatPipeline() {
   const [movingCardIds, setMovingCardIds] = useState<Set<string>>(new Set());
   const [moveError, setMoveError] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
-  const exportExcel = () => {
-    const rows = allCards.map((c) => ({
-      Protocolo: c.protocol || "",
-      "Membro / Candidato": c.candidateName || c.member?.fullName || "",
-      Serviço: c.service ? `${c.service.sigla} — ${c.service.description}` : "",
-      Igreja: c.church?.name || "",
-      "Igreja Destino": c.destinationChurch?.name || "",
-      Etapa: stageMeta?.name || "",
-      Situação: c.statusLabel || c.status || "",
-      Abertura: c.openedAt ? new Date(c.openedAt).toLocaleDateString("pt-BR") : "",
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Pipeline");
-    XLSX.writeFile(wb, `pipeline-${stageMeta?.name || "secretaria"}.xlsx`);
+  const exportExcel = async () => {
+    try {
+      setExportingExcel(true);
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const rows = allCards.map((c) => ({
+        Protocolo: c.protocol || "",
+        "Membro / Candidato": c.candidateName || c.member?.fullName || "",
+        Serviço: c.service ? `${c.service.sigla} — ${c.service.description}` : "",
+        Igreja: c.church?.name || "",
+        "Igreja Destino": c.destinationChurch?.name || "",
+        Etapa: stageMeta?.name || "",
+        Situação: c.statusLabel || c.status || "",
+        Abertura: c.openedAt ? new Date(c.openedAt).toLocaleDateString("pt-BR") : "",
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Pipeline");
+      XLSX.writeFile(wb, `pipeline-${stageMeta?.name || "secretaria"}.xlsx`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setExportingExcel(false);
+    }
   };
 
   const handleArchiveCard = async () => {
@@ -630,19 +639,29 @@ export default function SecretariatPipeline() {
 
             <button
               onClick={exportExcel}
+              disabled={exportingExcel || printModalOpen}
               title="Exportar Excel"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-white hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
             >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Exportar</span>
+              {exportingExcel ? (
+                <Loader2 className="w-4 h-4 animate-spin text-slate-600 dark:text-slate-400" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">{exportingExcel ? "Exportando..." : "Exportar"}</span>
             </button>
             <button
               onClick={() => setPrintModalOpen(true)}
+              disabled={exportingExcel || printModalOpen}
               title="Imprimir relatório"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-white hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
             >
-              <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Imprimir</span>
+              {printModalOpen ? (
+                <Loader2 className="h-4 w-4 animate-spin text-slate-600 dark:text-slate-400" />
+              ) : (
+                <Printer className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">{printModalOpen ? "Carregando..." : "Imprimir"}</span>
             </button>
 
             <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 p-1">
