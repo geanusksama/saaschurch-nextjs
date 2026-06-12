@@ -4,7 +4,7 @@ import {
   MessageSquare, X, Send, Paperclip, Mic, Image, File, Play, Pause, 
   Circle, AlertCircle, Loader, User, Clock, Check, Volume2, Shield,
   Wifi, WifiOff, Search, ArrowLeft, MoreVertical, Smile, CornerUpLeft, Trash2,
-  MapPin
+  MapPin, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabaseClient';
@@ -51,6 +51,12 @@ export function ChatFAB() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [previewFile, setPreviewFile] = useState<{ url: string; name: string; type: string } | null>(null);
   
+  // Campus filtering states for Master users
+  const [campos, setCampos] = useState<{ id: string; name: string }[]>([]);
+  const [selectedCamposIds, setSelectedCamposIds] = useState<string[]>([]);
+  const [camposDropdownOpen, setCamposDropdownOpen] = useState(false);
+  const [campoSearchQuery, setCampoSearchQuery] = useState('');
+
   // 1-on-1 private chat states
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
   const [conversations, setConversations] = useState<any[]>([]);
@@ -90,6 +96,43 @@ export function ChatFAB() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showOnlyOnline, setShowOnlyOnline] = useState(false);
 
+  const fetchCampos = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiBase}/campos`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCampos(data);
+        
+        // Initialize selected campos if not in localStorage
+        const stored = localStorage.getItem('mrm_chat_selected_campos');
+        if (stored) {
+          try {
+            setSelectedCamposIds(JSON.parse(stored));
+          } catch (e) {
+            setSelectedCamposIds(data.map((c: any) => c.id));
+          }
+        } else {
+          // Default to all campos
+          const allIds = data.map((c: any) => c.id);
+          setSelectedCamposIds(allIds);
+          localStorage.setItem('mrm_chat_selected_campos', JSON.stringify(allIds));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch campos", err);
+    }
+  };
+
+  // Fetch campos on load if master
+  useEffect(() => {
+    if (storedUser.profileType === 'master' && token && isOpen) {
+      fetchCampos();
+    }
+  }, [token, isOpen]);
+
   // Reset unread count when opening the panel
   useEffect(() => {
     if (isOpen) {
@@ -111,7 +154,7 @@ export function ChatFAB() {
     }, 10000);
 
     return () => clearInterval(presenceInterval);
-  }, [token, presenceStatus, customStatus, activeFieldId]);
+  }, [token, presenceStatus, customStatus, activeFieldId, selectedCamposIds]);
 
   // Load conversation messages or conversations list
   useEffect(() => {
@@ -122,26 +165,34 @@ export function ChatFAB() {
     } else {
       fetchConversations();
     }
-  }, [token, isOpen, selectedContact, activeFieldId]);
+  }, [token, isOpen, selectedContact, activeFieldId, selectedCamposIds]);
 
   // Realtime subscription for new chat messages (active always)
   useEffect(() => {
-    if (!token || !activeFieldId) return;
+    if (!token) return;
+
+    const isMaster = storedUser.profileType === 'master';
+    const filter = isMaster ? undefined : `campo_id=eq.${activeFieldId || '00000000-0000-0000-0000-000000000000'}`;
 
     const channel = supabase
-      .channel(`chat_messages_${activeFieldId}`)
+      .channel(`chat_messages_${activeFieldId || 'master'}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'internal_chat_messages',
-          filter: `campo_id=eq.${activeFieldId}`
+          filter: filter
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newMsg = payload.new as any;
             if (!newMsg) return;
+
+            // Client-side filter for master
+            if (isMaster && selectedCamposIds.length > 0 && !selectedCamposIds.includes(newMsg.campo_id)) {
+              return;
+            }
 
             const isForSelectedContact =
               selectedContact &&
@@ -189,7 +240,8 @@ export function ChatFAB() {
                     setSelectedContact({
                       id: newMsg.user_id,
                       fullName: newMsg.user_name,
-                      presenceStatus: 'online'
+                      presenceStatus: 'online',
+                      campoId: newMsg.campo_id
                     });
                     setActiveTab('chat');
                     setIsOpen(true);
@@ -206,6 +258,10 @@ export function ChatFAB() {
           } else if (payload.eventType === 'UPDATE') {
             const updatedMsg = payload.new as any;
             if (updatedMsg) {
+              // Client-side filter for master
+              if (isMaster && selectedCamposIds.length > 0 && !selectedCamposIds.includes(updatedMsg.campo_id)) {
+                return;
+              }
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === updatedMsg.id
@@ -235,7 +291,7 @@ export function ChatFAB() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [token, activeFieldId, isOpen, selectedContact, currentUserId]);
+  }, [token, activeFieldId, isOpen, selectedContact, currentUserId, selectedCamposIds]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -279,7 +335,18 @@ export function ChatFAB() {
   const fetchPresence = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${apiBase}/chat/presence${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
+      const url = new URL(`${apiBase}/chat/presence`, window.location.origin);
+      if (storedUser.profileType === 'master') {
+        if (selectedCamposIds.length > 0) {
+          url.searchParams.set('campoIds', selectedCamposIds.join(','));
+        } else {
+          url.searchParams.set('campoIds', '');
+        }
+      } else if (activeFieldId) {
+        url.searchParams.set('campoId', activeFieldId);
+      }
+
+      const res = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -297,7 +364,19 @@ export function ChatFAB() {
     if (!targetId) return;
 
     try {
-      const res = await fetch(`${apiBase}/chat/messages?contactId=${targetId}${activeFieldId ? `&campoId=${activeFieldId}` : ''}`, {
+      const url = new URL(`${apiBase}/chat/messages`, window.location.origin);
+      url.searchParams.set('contactId', targetId);
+      if (storedUser.profileType === 'master') {
+        if (selectedCamposIds.length > 0) {
+          url.searchParams.set('campoIds', selectedCamposIds.join(','));
+        } else {
+          url.searchParams.set('campoIds', '');
+        }
+      } else if (activeFieldId) {
+        url.searchParams.set('campoId', activeFieldId);
+      }
+
+      const res = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -312,7 +391,18 @@ export function ChatFAB() {
   const fetchConversations = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
+      const url = new URL(`${apiBase}/chat/messages`, window.location.origin);
+      if (storedUser.profileType === 'master') {
+        if (selectedCamposIds.length > 0) {
+          url.searchParams.set('campoIds', selectedCamposIds.join(','));
+        } else {
+          url.searchParams.set('campoIds', '');
+        }
+      } else if (activeFieldId) {
+        url.searchParams.set('campoId', activeFieldId);
+      }
+
+      const res = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -373,8 +463,12 @@ export function ChatFAB() {
         }
       }
 
+      const targetCampoId = (storedUser.profileType === 'master' && selectedContact?.campoId)
+        ? selectedContact.campoId
+        : (activeFieldId || storedUser.campoId || '');
+
       // 2. Send request to messages API
-      const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
+      const res = await fetch(`${apiBase}/chat/messages${targetCampoId ? `?campoId=${targetCampoId}` : ''}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -509,7 +603,11 @@ export function ChatFAB() {
       const mapsUrl = `https://www.google.com/maps?q=${gpsCoords.lat},${gpsCoords.lng}`;
       const bodyText = `📍 ${locationName}\n${mapsUrl}`;
 
-      const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
+      const targetCampoId = (storedUser.profileType === 'master' && selectedContact?.campoId)
+        ? selectedContact.campoId
+        : (activeFieldId || storedUser.campoId || '');
+
+      const res = await fetch(`${apiBase}/chat/messages${targetCampoId ? `?campoId=${targetCampoId}` : ''}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -570,7 +668,11 @@ export function ChatFAB() {
 
           const { data: urlData } = supabase.storage.from('dados').getPublicUrl(path);
           
-          const res = await fetch(`${apiBase}/chat/messages${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
+          const targetCampoId = (storedUser.profileType === 'master' && selectedContact?.campoId)
+            ? selectedContact.campoId
+            : (activeFieldId || storedUser.campoId || '');
+
+          const res = await fetch(`${apiBase}/chat/messages${targetCampoId ? `?campoId=${targetCampoId}` : ''}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -833,7 +935,7 @@ export function ChatFAB() {
                       </button>
                       <button
                         onClick={() => setIsEditingStatusPhrase(false)}
-                        className="px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-350 dark:hover:bg-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-300"
+                        className="px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-355 dark:hover:bg-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-300"
                       >
                         Canc.
                       </button>
@@ -850,6 +952,118 @@ export function ChatFAB() {
                       {customStatus ? `"${customStatus}"` : 'Clique para digitar uma frase de status...'}
                     </p>
                   )}
+                </div>
+              )}
+
+              {/* Multiselect dropdown for Master user to select campuses to listen to */}
+              {!selectedContact && storedUser.profileType === 'master' && (
+                <div className="relative mt-2 px-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                    Filtro de Campos (Ouvir Mensagens)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCamposDropdownOpen(!camposDropdownOpen)}
+                    className="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition text-slate-700 dark:text-slate-200"
+                  >
+                    <span className="truncate">
+                      {selectedCamposIds.length === 0
+                        ? 'Nenhum campo selecionado'
+                        : selectedCamposIds.length === campos.length
+                        ? 'Todos os campos'
+                        : `${selectedCamposIds.length} ${selectedCamposIds.length === 1 ? 'campo selecionado' : 'campos selecionados'}`}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-2 shrink-0" />
+                  </button>
+
+                  <AnimatePresence>
+                    {camposDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setCamposDropdownOpen(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute left-0 right-0 mt-1.5 z-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl max-h-56 overflow-y-auto flex flex-col p-2"
+                        >
+                          {/* Search Input for Campos */}
+                          <div className="mb-2 relative">
+                            <input
+                              type="text"
+                              value={campoSearchQuery}
+                              onChange={(e) => setCampoSearchQuery(e.target.value)}
+                              placeholder="Buscar campo..."
+                              className="w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-650 rounded-lg pl-7 pr-2 py-1 text-[11px] border border-slate-200 dark:border-slate-850 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 w-3 h-3" />
+                          </div>
+
+                          {/* Select All / Deselect All Toggle */}
+                          <div className="flex justify-between items-center px-2 py-1 border-b border-slate-100 dark:border-slate-850 mb-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const allIds = campos.map(c => c.id);
+                                setSelectedCamposIds(allIds);
+                                localStorage.setItem('mrm_chat_selected_campos', JSON.stringify(allIds));
+                              }}
+                              className="text-[10px] text-purple-600 dark:text-purple-400 font-bold hover:underline"
+                            >
+                              Selecionar Todos
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCamposIds([]);
+                                localStorage.setItem('mrm_chat_selected_campos', JSON.stringify([]));
+                              }}
+                              className="text-[10px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-350 font-bold hover:underline"
+                            >
+                              Limpar
+                            </button>
+                          </div>
+
+                          {/* Campos List */}
+                          <div className="overflow-y-auto max-h-36 flex flex-col gap-0.5 pr-0.5">
+                            {campos
+                              .filter(c => c.name.toLowerCase().includes(campoSearchQuery.toLowerCase()))
+                              .map((campo) => {
+                                const isChecked = selectedCamposIds.includes(campo.id);
+                                return (
+                                  <label
+                                    key={campo.id}
+                                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-850 rounded-lg cursor-pointer text-xs transition"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {
+                                        let updated;
+                                        if (isChecked) {
+                                          updated = selectedCamposIds.filter(id => id !== campo.id);
+                                        } else {
+                                          updated = [...selectedCamposIds, campo.id];
+                                        }
+                                        setSelectedCamposIds(updated);
+                                        localStorage.setItem('mrm_chat_selected_campos', JSON.stringify(updated));
+                                      }}
+                                      className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="truncate text-slate-700 dark:text-slate-200 font-medium">
+                                      {campo.name}
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            {campos.filter(c => c.name.toLowerCase().includes(campoSearchQuery.toLowerCase())).length === 0 && (
+                              <p className="text-[10px] text-slate-455 text-center py-2">Nenhum campo encontrado</p>
+                            )}
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
             </div>

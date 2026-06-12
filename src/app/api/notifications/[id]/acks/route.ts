@@ -7,12 +7,20 @@ import { isFieldAdmin } from "@/lib/helpers";
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
-    if (!isFieldAdmin(user)) {
+    const isSuperUser = user.profileType === "master" || user.profileType === "campo" || isFieldAdmin(user);
+    if (!isSuperUser) {
       return NextResponse.json({ error: "Acesso restrito ao administrador do campo." }, { status: 403 });
     }
 
     const notification = await prisma.notification.findFirst({ where: { id } });
     if (!notification) return NextResponse.json({ error: "Notificação não encontrada." }, { status: 404 });
+
+    const metadata = (notification.data as Record<string, unknown>) || {};
+    const notificationCampoId = metadata.campoId as string | undefined;
+
+    if (user.profileType !== "master" && notificationCampoId && notificationCampoId !== user.campoId) {
+      return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
+    }
 
     const data = (notification.data as Record<string, unknown>) || {};
     const batchId = data.batchId as string | undefined;

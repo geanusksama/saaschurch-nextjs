@@ -15,10 +15,14 @@ import {
   Megaphone,
   MessageSquare,
   Plus,
+  RefreshCw,
+  RotateCw,
   Shield,
   Trash2,
   Users,
   X,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '../../design-system/components/Badge';
@@ -131,6 +135,19 @@ const initialForm: FormState = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function formatMessageText(text?: string | null) {
+  if (!text) return 'Sem descrição adicional.';
+  
+  const normalized = text.replace(/\*\*/g, '*');
+  const parts = normalized.split(/(\*[^*]+\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <strong key={index} className="font-bold text-slate-900 dark:text-white">{part.slice(1, -1)}</strong>;
+    }
+    return part;
+  });
+}
+
 function readStoredUser() {
   try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); }
   catch { return {}; }
@@ -187,6 +204,12 @@ export function Notifications() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomRotation, setZoomRotation] = useState(0);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [deleteTarget, setDeleteTarget] = useState<NotificationRecord | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [archivingAll, setArchivingAll] = useState(false);
@@ -455,6 +478,69 @@ export function Notifications() {
     }
   };
 
+  // Image Zoom Handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomScale <= 1) return;
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPanOffset({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (zoomScale <= 1 || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    setIsDragging(true);
+    setDragStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    setPanOffset({
+      x: touch.clientX - dragStart.x,
+      y: touch.clientY - dragStart.y,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const zoomFactor = 0.15;
+    let newScale = zoomScale;
+    if (e.deltaY < 0) {
+      newScale = Math.min(5, zoomScale + zoomFactor);
+    } else {
+      newScale = Math.max(1, zoomScale - zoomFactor);
+    }
+    setZoomScale(newScale);
+    if (newScale === 1) {
+      setPanOffset({ x: 0, y: 0 });
+    }
+  };
+
+  const closeZoom = () => {
+    setZoomImage(null);
+    setZoomScale(1);
+    setZoomRotation(0);
+    setPanOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+  };
+
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -511,8 +597,8 @@ export function Notifications() {
 
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary">Campo: {currentUser.campoName || 'Não vinculado'}</Badge>
-            <Badge variant="secondary">Perfil: {currentUser.roleName || currentUser.profileType || 'Usuário'}</Badge>
+            <Badge variant="inactive">Campo: {currentUser.campoName || 'Não vinculado'}</Badge>
+            <Badge variant="inactive">Perfil: {currentUser.roleName || currentUser.profileType || 'Usuário'}</Badge>
             <span className="text-sm text-slate-500 dark:text-slate-400">
               {canCreate
                 ? 'Crie e envie mensagens para seu campo ou igrejas específicas.'
@@ -587,8 +673,8 @@ export function Notifications() {
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-slate-900 dark:text-slate-100">{notification.title}</h3>
-                          {notification.canManage ? <Badge variant="secondary">Campo</Badge> : null}
-                          {notification.scope === 'church' ? <Badge variant="secondary">Igreja</Badge> : null}
+                          {notification.canManage ? <Badge variant="inactive">Campo</Badge> : null}
+                          {notification.scope === 'church' ? <Badge variant="inactive">Igreja</Badge> : null}
                         </div>
                         {!notification.read ? <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-purple-600" /> : null}
                       </div>
@@ -596,7 +682,7 @@ export function Notifications() {
                     </div>
 
                     {/* Message */}
-                    <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">{notification.message || 'Sem descrição adicional.'}</p>
+                    <p className="mb-3 text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{formatMessageText(notification.message)}</p>
 
                     {/* Image */}
                     {notification.imageUrl ? (
@@ -604,7 +690,13 @@ export function Notifications() {
                         <img
                           src={notification.imageUrl}
                           alt="Imagem anexada"
-                          className="rounded-lg max-h-48 w-auto border border-slate-200 dark:border-slate-700"
+                          onClick={() => {
+                            setZoomImage(notification.imageUrl || null);
+                            setZoomScale(1);
+                            setZoomRotation(0);
+                            setPanOffset({ x: 0, y: 0 });
+                          }}
+                          className="rounded-lg max-h-48 w-auto border border-slate-200 dark:border-slate-700 cursor-zoom-in hover:opacity-90 transition-all active:scale-98"
                         />
                       </div>
                     ) : null}
@@ -999,6 +1091,100 @@ export function Notifications() {
         onConfirm={confirmDeleteNotification}
         onCancel={() => (deleting ? null : setDeleteTarget(null))}
       />
+
+      {/* Image Zoom Modal */}
+      <Dialog open={Boolean(zoomImage)} onOpenChange={(open) => { if (!open) closeZoom(); }}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden border border-slate-800 bg-slate-950 flex flex-col items-center justify-center select-none shadow-2xl">
+          <div
+            className="relative w-full h-[80vh] flex items-center justify-center overflow-hidden bg-slate-950/40"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onWheel={handleWheel}
+            style={{ cursor: zoomScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+          >
+            <button
+              type="button"
+              onClick={closeZoom}
+              className="absolute top-4 right-4 z-50 p-2 bg-slate-900/80 hover:bg-slate-800 rounded-full text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {zoomImage && (
+              <div
+                style={{
+                  transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale}) rotate(${zoomRotation}deg)`,
+                  transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+                  transformOrigin: 'center center',
+                }}
+                className="flex items-center justify-center max-w-full max-h-full"
+              >
+                <img
+                  src={zoomImage}
+                  alt="Imagem em tamanho real"
+                  className="max-w-[90vw] max-h-[75vh] object-contain rounded-lg shadow-2xl pointer-events-none"
+                  draggable={false}
+                />
+              </div>
+            )}
+
+            {/* Zoom Controls Overlay */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-slate-900/90 px-4 py-2 text-white shadow-lg backdrop-blur-xs border border-slate-800 pointer-events-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setZoomScale((s) => {
+                    const next = Math.max(1, Number((s - 0.25).toFixed(2)));
+                    if (next === 1) setPanOffset({ x: 0, y: 0 });
+                    return next;
+                  });
+                }}
+                className="p-1.5 hover:bg-slate-800 rounded-full transition-colors"
+                title="Menos zoom"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-mono min-w-[3rem] text-center select-none">
+                {Math.round(zoomScale * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setZoomScale((s) => Math.min(5, Number((s + 0.25).toFixed(2))))}
+                className="p-1.5 hover:bg-slate-800 rounded-full transition-colors"
+                title="Mais zoom"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              <div className="w-px h-4 bg-slate-800 mx-1" />
+              <button
+                type="button"
+                onClick={() => setZoomRotation((r) => (r + 90) % 360)}
+                className="p-1.5 hover:bg-slate-800 rounded-full transition-colors"
+                title="Rotacionar"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setZoomScale(1);
+                  setZoomRotation(0);
+                  setPanOffset({ x: 0, y: 0 });
+                }}
+                className="p-1.5 hover:bg-slate-800 rounded-full transition-colors"
+                title="Redefinir"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

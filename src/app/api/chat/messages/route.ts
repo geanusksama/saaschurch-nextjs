@@ -5,30 +5,41 @@ import { serializeBigInts } from "@/lib/helpers";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
-    let campoId = user.campoId;
-    if (user.profileType === "master") {
-      const { searchParams } = new URL(req.url);
-      campoId = searchParams.get("campoId") || user.campoId;
-    }
-
-    if (!campoId) {
-      return NextResponse.json([]);
-    }
-
     const { searchParams } = new URL(req.url);
     const contactId = searchParams.get("contactId");
+    const paramCampoIds = searchParams.get("campoIds");
+    const paramCampoId = searchParams.get("campoId");
+
+    let restrictCampo = true;
+    let campoIds: string[] = [];
+
+    if (user.profileType === "master") {
+      if (paramCampoIds !== null) {
+        campoIds = paramCampoIds.split(",").filter(Boolean);
+      } else if (paramCampoId) {
+        campoIds = [paramCampoId];
+      } else {
+        restrictCampo = false;
+      }
+    } else if (user.campoId) {
+      campoIds = [user.campoId];
+    }
 
     try {
       if (contactId) {
         // Fetch 1-to-1 conversation messages between current user and contactId
+        const whereClause: any = {
+          OR: [
+            { userId: user.id, receiverId: contactId },
+            { userId: contactId, receiverId: user.id }
+          ]
+        };
+        if (restrictCampo) {
+          whereClause.campoId = { in: campoIds };
+        }
+
         const messages = await prisma.internalChatMessage.findMany({
-          where: {
-            campoId,
-            OR: [
-              { userId: user.id, receiverId: contactId },
-              { userId: contactId, receiverId: user.id }
-            ]
-          },
+          where: whereClause,
           orderBy: { createdAt: "asc" },
           take: 100 // load up to 100 messages
         });
@@ -37,14 +48,18 @@ export async function GET(req: NextRequest) {
       } else {
         // Fetch Conversations List
         // 1. Fetch all messages in the Campo involving the current user
+        const whereClause: any = {
+          OR: [
+            { userId: user.id },
+            { receiverId: user.id }
+          ]
+        };
+        if (restrictCampo) {
+          whereClause.campoId = { in: campoIds };
+        }
+
         const allMyMessages = await prisma.internalChatMessage.findMany({
-          where: {
-            campoId,
-            OR: [
-              { userId: user.id },
-              { receiverId: user.id }
-            ]
-          },
+          where: whereClause,
           orderBy: { createdAt: "desc" }
         });
 
@@ -75,6 +90,7 @@ export async function GET(req: NextRequest) {
             presenceStatus: true,
             customStatus: true,
             lastActiveAt: true,
+            campoId: true,
             role: {
               select: {
                 name: true
@@ -111,6 +127,7 @@ export async function GET(req: NextRequest) {
             roleName: p.role?.name || null,
             churchName: p.church?.name || null,
             campoName: p.campo?.name || null,
+            campoId: p.campoId,
             lastMessage: {
               body: lastMsg.body,
               fileType: lastMsg.fileType,

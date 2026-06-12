@@ -17,8 +17,12 @@ export async function GET(req: NextRequest) {
         whereClause.campoId = user.campoId || "00000000-0000-0000-0000-000000000000";
       } else {
         const { searchParams } = new URL(req.url);
+        const paramCampoIds = searchParams.get("campoIds");
         const paramCampoId = searchParams.get("campoId");
-        if (paramCampoId) {
+        if (paramCampoIds !== null) {
+          const ids = paramCampoIds.split(",").filter(Boolean);
+          whereClause.campoId = { in: ids };
+        } else if (paramCampoId) {
           whereClause.campoId = paramCampoId;
         }
       }
@@ -33,6 +37,7 @@ export async function GET(req: NextRequest) {
           customStatus: true,
           lastActiveAt: true,
           profileType: true,
+          campoId: true,
           role: {
             select: {
               name: true,
@@ -95,6 +100,7 @@ export async function GET(req: NextRequest) {
           roleName: u.role?.name || (u.profileType ? u.profileType.toUpperCase() : null),
           churchName: u.church?.name || null,
           campoName: u.campo?.name || null,
+          campoId: u.campoId,
         };
       });
 

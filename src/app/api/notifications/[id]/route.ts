@@ -28,6 +28,9 @@ function fixPossiblyMojibake(value: unknown) {
 function serializeNotification(notification: Record<string, unknown>, user: import("@/lib/auth").AuthUser) {
   const payload = serializeBigInts(notification) as Record<string, unknown>;
   const metadata = normalizeNotificationData((payload.data as Record<string, unknown>) || {});
+  const canManage = user.profileType === "master" ||
+    ((user.profileType === "campo" || isFieldAdmin(user)) && metadata.campoId === user.campoId);
+
   return {
     ...payload,
     title: fixPossiblyMojibake(payload.title),
@@ -37,19 +40,23 @@ function serializeNotification(notification: Record<string, unknown>, user: impo
     colorKey: metadata.colorKey,
     batchId: metadata.batchId,
     scope: metadata.scope,
-    canManage: isFieldAdmin(user) && metadata.scope === "field" && metadata.campoId === user.campoId,
+    canManage,
   };
 }
 
-async function listFieldNotificationIds(campoId: string, batchId: string) {
-  if (!campoId || !batchId) return [];
-  const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
-    `SELECT n.id::text AS id FROM notifications n JOIN users u ON u.id = n.user_id
-     LEFT JOIN churches c ON c.id = u.church_id LEFT JOIN regionais r ON r.id = c.regional_id
-     WHERE COALESCE(u.campo_id, r.campo_id)::text = $1 AND n.data->>'batchId' = $2`,
-    campoId, batchId
-  );
-  return rows.map((r) => r.id).filter(Boolean);
+async function listNotificationIdsByBatch(batchId: string, campoId?: string | null) {
+  if (!batchId) return [];
+  const filters: any[] = [
+    { data: { path: ["batchId"], equals: batchId } }
+  ];
+  if (campoId) {
+    filters.push({ data: { path: ["campoId"], equals: campoId } });
+  }
+  const notifications = await prisma.notification.findMany({
+    where: { AND: filters },
+    select: { id: true }
+  });
+  return notifications.map((n) => n.id);
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -71,9 +78,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Archive (soft-hide from user's view only)
     if (archived !== undefined && !title && !message && !notificationType && !actionUrl && !actionText && !iconKey && !colorKey && read === undefined) {
-      // Se for broadcast de campo, arquiva todos os registros do lote (antigos duplicados incluídos)
-      if (isFieldAdmin(user) && metadata.scope === "field" && metadata.campoId === user.campoId && metadata.batchId) {
-        const notificationIds = await listFieldNotificationIds(user.campoId!, metadata.batchId as string);
+      const canManage = user.profileType === "master" ||
+        ((user.profileType === "campo" || isFieldAdmin(user)) && metadata.campoId === user.campoId);
+
+      if (canManage && metadata.batchId) {
+        const campoFilter = user.profileType === "master" ? null : user.campoId;
+        const notificationIds = await listNotificationIdsByBatch(metadata.batchId as string, campoFilter);
         if (notificationIds.length) {
           await prisma.notification.updateMany({
             where: { id: { in: notificationIds } },
@@ -93,10 +103,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const wantsContentUpdate = [title, message, notificationType, actionUrl, actionText, iconKey, colorKey].some((v) => v !== undefined);
 
     if (wantsContentUpdate) {
-      if (!isFieldAdmin(user) || metadata.scope !== "field" || metadata.campoId !== user.campoId || !metadata.batchId) {
-        return NextResponse.json({ error: "Apenas o administrador do campo pode editar esta notificação." }, { status: 403 });
+      const canEdit = user.profileType === "master" ||
+        ((user.profileType === "campo" || isFieldAdmin(user)) && metadata.campoId === user.campoId);
+
+      if (!canEdit || !metadata.batchId) {
+        return NextResponse.json({ error: "Você não tem permissão para editar esta notificação." }, { status: 403 });
       }
-      const notificationIds = await listFieldNotificationIds(user.campoId!, metadata.batchId as string);
+      const campoFilter = user.profileType === "master" ? null : user.campoId;
+      const notificationIds = await listNotificationIdsByBatch(metadata.batchId as string, campoFilter);
       if (!notificationIds.length) return NextResponse.json({ error: "Lote de notificações não encontrado." }, { status: 404 });
 
       await prisma.notification.updateMany({
@@ -135,8 +149,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!current) return NextResponse.json({ error: "Notificação não encontrada." }, { status: 404 });
 
     const metadata = normalizeNotificationData((current.data as Record<string, unknown>) || {});
-    if (isFieldAdmin(user) && metadata.scope === "field" && metadata.campoId === user.campoId && metadata.batchId) {
-      const notificationIds = await listFieldNotificationIds(user.campoId!, metadata.batchId as string);
+    const canManage = user.profileType === "master" ||
+      ((user.profileType === "campo" || isFieldAdmin(user)) && metadata.campoId === user.campoId);
+
+    if (canManage && metadata.batchId) {
+      const campoFilter = user.profileType === "master" ? null : user.campoId;
+      const notificationIds = await listNotificationIdsByBatch(metadata.batchId as string, campoFilter);
       if (notificationIds.length) {
         await prisma.notification.deleteMany({ where: { id: { in: notificationIds } } });
         return new NextResponse(null, { status: 204 });

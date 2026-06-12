@@ -28,6 +28,9 @@ function fixPossiblyMojibake(value: unknown) {
 function serializeNotification(notification: Record<string, unknown>, user: import("@/lib/auth").AuthUser) {
   const payload = serializeBigInts(notification) as Record<string, unknown>;
   const metadata = normalizeNotificationData((payload.data as Record<string, unknown>) || {});
+  const canManage = user.profileType === "master" ||
+    ((user.profileType === "campo" || isFieldAdmin(user)) && metadata.campoId === user.campoId);
+
   return {
     ...payload,
     title: fixPossiblyMojibake(payload.title),
@@ -37,7 +40,7 @@ function serializeNotification(notification: Record<string, unknown>, user: impo
     colorKey: metadata.colorKey,
     batchId: metadata.batchId,
     scope: metadata.scope,
-    canManage: isFieldAdmin(user) && metadata.scope === "field" && metadata.campoId === user.campoId,
+    canManage,
   };
 }
 
