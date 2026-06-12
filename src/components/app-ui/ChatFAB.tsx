@@ -36,6 +36,8 @@ interface OnlineContact {
   roleName: string | null;
   lastActiveAt: string;
   email?: string;
+  churchName?: string | null;
+  campoName?: string | null;
 }
 
 export function ChatFAB() {
@@ -753,8 +755,9 @@ export function ChatFAB() {
                       <h3 className="font-bold text-sm tracking-tight text-slate-800 dark:text-white truncate max-w-[150px]" title={selectedContact.fullName}>
                         {selectedContact.fullName}
                       </h3>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 italic truncate max-w-[150px]">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 italic truncate max-w-[180px]">
                         {selectedContact.customStatus ? `"${selectedContact.customStatus}"` : selectedContact.roleName || getStatusLabel(selectedContact.presenceStatus)}
+                        {(selectedContact.churchName || selectedContact.campoName) && ` | ${[selectedContact.churchName, selectedContact.campoName].filter(Boolean).join(' • ')}`}
                       </p>
                     </div>
                   </div>
@@ -1071,6 +1074,11 @@ export function ChatFAB() {
                                   </div>
                                   <span className="text-[9px] text-slate-400 dark:text-slate-505 shrink-0 font-medium">{formattedTime}</span>
                                 </div>
+                                {(conv.churchName || conv.campoName) && (
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate leading-tight mt-0.5">
+                                    {[conv.churchName, conv.campoName].filter(Boolean).join(' • ')}
+                                  </p>
+                                )}
                                 <p className="text-xs text-slate-450 dark:text-slate-400 truncate mt-0.5 font-medium">
                                   {lastMsg.senderId === currentUserId ? 'Você: ' : ''}
                                   {lastMsg.body || (lastMsg.fileType === 'image' ? '📷 Imagem' : lastMsg.fileType === 'audio' ? '🎵 Áudio' : '📎 Arquivo')}
@@ -1157,6 +1165,11 @@ export function ChatFAB() {
                                 <p className="text-xs text-slate-400 dark:text-slate-505 italic truncate mt-0.5">
                                   {contact.customStatus ? `"${contact.customStatus}"` : isOffline ? '(Inativo)' : `(${getStatusLabel(contact.presenceStatus)})`}
                                 </p>
+                                {(contact.churchName || contact.campoName) && (
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate leading-tight mt-0.5">
+                                    {[contact.churchName, contact.campoName].filter(Boolean).join(' • ')}
+                                  </p>
+                                )}
                               </div>
                             </div>
 

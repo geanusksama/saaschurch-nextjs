@@ -79,6 +79,16 @@ export async function GET(req: NextRequest) {
               select: {
                 name: true
               }
+            },
+            church: {
+              select: {
+                name: true
+              }
+            },
+            campo: {
+              select: {
+                name: true
+              }
             }
           }
         });
@@ -99,6 +109,8 @@ export async function GET(req: NextRequest) {
             presenceStatus: isOnline ? p.presenceStatus : "offline",
             customStatus: p.customStatus,
             roleName: p.role?.name || null,
+            churchName: p.church?.name || null,
+            campoName: p.campo?.name || null,
             lastMessage: {
               body: lastMsg.body,
               fileType: lastMsg.fileType,

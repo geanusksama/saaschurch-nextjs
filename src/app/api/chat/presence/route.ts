@@ -38,6 +38,16 @@ export async function GET(req: NextRequest) {
               name: true,
             },
           },
+          church: {
+            select: {
+              name: true,
+            },
+          },
+          campo: {
+            select: {
+              name: true,
+            },
+          },
         },
         orderBy: {
           fullName: "asc",
@@ -83,6 +93,8 @@ export async function GET(req: NextRequest) {
           customStatus: u.customStatus,
           lastActiveAt: u.lastActiveAt,
           roleName: u.role?.name || (u.profileType ? u.profileType.toUpperCase() : null),
+          churchName: u.church?.name || null,
+          campoName: u.campo?.name || null,
         };
       });
 
