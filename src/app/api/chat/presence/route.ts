@@ -22,7 +22,21 @@ export async function GET(req: NextRequest) {
       };
 
       if (!isMasterSupportOrAdmin) {
-        whereClause.campoId = user.campoId || "00000000-0000-0000-0000-000000000000";
+        // Regular users: see their own campus users OR any administrative users from any campus
+        whereClause.OR = [
+          { campoId: user.campoId || "00000000-0000-0000-0000-000000000000" },
+          { profileType: { in: ["master", "admin"] } },
+          {
+            role: {
+              OR: [
+                { name: { contains: "suporte", mode: "insensitive" } },
+                { name: { contains: "support", mode: "insensitive" } },
+                { name: { contains: "admin", mode: "insensitive" } },
+                { name: { contains: "master", mode: "insensitive" } }
+              ]
+            }
+          }
+        ];
       } else {
         const { searchParams } = new URL(req.url);
         const paramCampoIds = searchParams.get("campoIds");
@@ -67,7 +81,7 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      // Filter: Exclude master, admin, and support profiles/roles from the contacts list (they shouldn't be called directly)
+      // Filter: Allow administrative profiles to be visible to everyone, and regular users to be visible only within their campus
       const filteredUsers = allUsers.filter((u) => {
         if (u.id === user.id) return false; // Exclude self from contact list
 
@@ -77,18 +91,25 @@ export async function GET(req: NextRequest) {
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "");
 
-        const isExcludedProfile = ["master", "admin"].includes(profile);
-        const isExcludedRole =
+        const isAdministrative =
+          ["master", "admin"].includes(profile) ||
           roleName.includes("master") ||
           roleName.includes("admin") ||
           roleName.includes("suporte") ||
           roleName.includes("support");
 
-        if (isExcludedProfile || isExcludedRole) {
+        // Administrative profiles are visible to all campuses
+        if (isAdministrative) {
+          return true;
+        }
+
+        // Non-administrative users are only visible within their own campus (unless the querier is admin/support/master themselves)
+        const isSameCampo = isMasterSupportOrAdmin || u.campoId === user.campoId;
+        if (!isSameCampo) {
           return false;
         }
 
-        // Only include "campo" profile or roles containing "secret", "tesour", "campo"
+        // Only include "campo" profile or roles containing "secret", "tesour", "campo" within the same campus
         if (profile === "campo") {
           return true;
         }
