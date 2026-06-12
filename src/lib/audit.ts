@@ -17,6 +17,15 @@ export async function logMutationAudit(
       return;
     }
 
+    // Ignore background polling and presence heartbeats
+    if (
+      path.includes("/api/chat/presence") ||
+      path.includes("/api/notifications") ||
+      path.includes("/api/auth/me")
+    ) {
+      return;
+    }
+
     let responseData: any = null;
     try {
       const cloned = res.clone();
@@ -114,10 +123,10 @@ export async function logMutationAudit(
       resourceName = responseData?.name || requestData?.name || "WhatsApp";
       entityId = responseData?.id || requestData?.id || null;
       description = method === "POST" ? "Criação de instância/campanha" : "Atualização de WhatsApp";
-    } else if (path.includes("/api/chat")) {
+    } else if (path.includes("/api/chat/messages")) {
       entityType = "Chat";
       resourceName = "Mensagem de Chat";
-      description = "Enviou mensagem no chat";
+      description = method === "POST" ? "Enviou mensagem no chat" : method === "DELETE" ? "Excluiu mensagem no chat" : "Reagiu a mensagem no chat";
     } else if (path.includes("/api/settings") || path.includes("/api/system-settings")) {
       entityType = "Setting";
       resourceName = responseData?.settingKey || requestData?.settingKey || "Configurações";
