@@ -17,11 +17,12 @@ export async function logMutationAudit(
       return;
     }
 
-    // Ignore background polling and presence heartbeats
+    // Ignore background polling, presence heartbeats, and audit log creations
     if (
       path.includes("/api/chat/presence") ||
       path.includes("/api/notifications") ||
-      path.includes("/api/auth/me")
+      path.includes("/api/auth/me") ||
+      path.includes("/api/audit-logs")
     ) {
       return;
     }

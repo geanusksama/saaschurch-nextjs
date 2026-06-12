@@ -84,6 +84,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { SantanderIcon } from '../ui/SantanderIcon';
 import { MobileAppOverlay } from '../public/MobileAppPreview';
 import { ChatFAB } from './ChatFAB';
+import { logClientAudit } from '../../lib/auditClient';
+
 
 interface ContextSwitcherItem {
   id: string;
@@ -133,6 +135,83 @@ function normalizeNavigationLabel(value: string) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 }
+
+function getFriendlyScreenName(path: string): string {
+  const p = path.toLowerCase();
+  if (p === "/app-ui/dashboard/field") return "Dashboard do Campo";
+  if (p === "/app-ui/dashboard/regional") return "Dashboard Regional";
+  if (p === "/app-ui/notifications") return "Notificações";
+  if (p === "/app-ui/inbox") return "Caixa de Entrada";
+  if (p === "/app-ui/secretariat/pipeline") return "Pipeline da Secretaria";
+  if (p === "/app-ui/secretariat/services") return "Serviços e Ocorrências";
+  if (p === "/app-ui/secretariat/pipelines") return "Configurar Pipelines";
+  if (p === "/app-ui/churches") return "Igrejas";
+  if (p === "/app-ui/members") return "Lista de Membros";
+  if (p === "/app-ui/members/grid") return "Visualização em Grade de Membros";
+  if (p === "/app-ui/members/new") return "Cadastro de Novo Membro";
+  if (p.startsWith("/app-ui/members/") && p.endsWith("/edit")) return "Edição de Perfil de Membro";
+  if (p.startsWith("/app-ui/members/") && p.endsWith("/documents")) return "Documentos de Membro";
+  if (p.startsWith("/app-ui/members/") && p.endsWith("/family")) return "Família de Membro";
+  if (p.startsWith("/app-ui/members/") && p.endsWith("/notes")) return "Anotações de Membro";
+  if (p.startsWith("/app-ui/members/")) return "Perfil do Membro";
+  if (p === "/app-ui/members/import") return "Importação de Membros";
+  if (p === "/app-ui/baptism") return "Módulo de Batismo";
+  if (p === "/app-ui/consecration") return "Módulo de Consagração";
+  if (p === "/app-ui/transfer") return "Módulo de Transferência";
+  if (p === "/app-ui/credentials") return "Credenciais";
+  if (p === "/app-ui/secretariat/credential-models") return "Modelos de Credencial";
+  if (p === "/app-ui/requirements") return "Requerimentos";
+  if (p === "/app-ui/attendance") return "Frequência / Presença";
+  if (p === "/app-ui/contacts") return "Contatos / Leads";
+  if (p === "/app-ui/reports") return "Painel de Relatórios";
+  if (p === "/app-ui/secretariat/word") return "Editor de Documentos";
+  if (p === "/app-ui/birthdays") return "Aniversariantes";
+  if (p === "/app-ui/pastoral-kanban") return "Gestão Pastoral (Kanban)";
+  if (p === "/app-ui/discipleship-tracking") return "Acompanhamento de Discipulado";
+  if (p === "/app-ui/pastoral-reports") return "Relatórios Pastorais";
+  if (p === "/app-ui/ministries") return "Todos os Ministérios";
+  if (p === "/app-ui/ministry-teams") return "Equipes / Escalas de Ministério";
+  if (p === "/app-ui/cells") return "Todos os Grupos Familiares (Células)";
+  if (p === "/app-ui/cells/reports") return "Relatórios de Células";
+  if (p === "/app-ui/communication/whatsapp-inbox") return "WhatsApp Caixa de Entrada";
+  if (p === "/app-ui/system/whatsapp") return "WhatsApp Instâncias";
+  if (p === "/app-ui/events") return "Agenda de Eventos";
+  if (p === "/app-ui/daily-bread") return "Pão Diário";
+  if (p === "/app-ui/ticket-purchase") return "Venda de Ingressos";
+  if (p === "/app-ui/checkin") return "Check-in";
+  if (p === "/app-ui/cms") return "CMS Departamentos";
+  if (p === "/app-ui/finance/cashbook") return "Livro Caixa";
+  if (p === "/app-ui/finance/lancamento/new") return "Novo Lançamento Financeiro";
+  if (p === "/app-ui/finance/cash-flow") return "Fluxo de Caixa";
+  if (p === "/app-ui/finance/santander") return "Banco / Santander";
+  if (p === "/app-ui/crm/spreadsheet") return "Planilhas Financeiras";
+  if (p === "/app-ui/financial-reports") return "Relatórios Financeiros";
+  if (p === "/app-ui/ebd") return "Dashboard EBD";
+  if (p === "/app-ui/ebd/cadastros") return "EBD Cadastros";
+  if (p === "/app-ui/ebd/estoque") return "EBD Estoque";
+  if (p === "/app-ui/ebd/entrega") return "EBD Entrega";
+  if (p === "/app-ui/ebd/financeiro") return "Financeiro EBD";
+  if (p === "/app-ui/ebd/historico") return "Histórico EBD";
+  if (p === "/app-ui/ebd/relatorios") return "Relatórios EBD";
+  if (p === "/app-ui/system/users") return "Lista de Usuários";
+  if (p === "/app-ui/system/permissions") return "Funções e Permissões";
+  if (p === "/app-ui/system-settings") return "Configurações do Sistema";
+  if (p === "/app-ui/system/campo-senhas") return "Senha dos Campos";
+  if (p === "/app-ui/system/audit-log") return "Log de Auditoria";
+  if (p === "/app-ui/system/integrations") return "Integrações";
+
+  if (p.startsWith("/app-ui/crm/")) return "Ficha de Lead CRM";
+  if (p.startsWith("/app-ui/cells/")) return "Ficha de Célula";
+  if (p.startsWith("/app-ui/events/")) return "Detalhes do Evento";
+  if (p.startsWith("/app-ui/ministries/")) return "Detalhes do Ministério";
+  if (p.startsWith("/app-ui/system/users/")) {
+    if (p.endsWith("/permissions")) return "Permissões de Usuário";
+    if (p.endsWith("/edit")) return "Edição de Usuário";
+    return "Ficha de Usuário";
+  }
+  return "";
+}
+
 
 const appNavigation: NavigationSection[] = [
   {
@@ -278,6 +357,14 @@ export function AppUI() {
     } catch { /* ignore */ }
   }, [navigate]);
 
+  // Log screen views
+  useEffect(() => {
+    const screenName = getFriendlyScreenName(location.pathname);
+    if (screenName) {
+      logClientAudit('read', `Entrou na tela ${screenName}`, screenName);
+    }
+  }, [location.pathname]);
+
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [churchSwitcherOpen, setChurchSwitcherOpen] = useState(false);
@@ -327,9 +414,10 @@ export function AppUI() {
         (item) => item.name.toLowerCase() === activeContextFieldName.toLowerCase(),
       ) || fieldSwitcherItems[0] || activeContext;
 
-  const storedUser = (() => {
+  const [storedUserState, setStoredUserState] = useState(() => {
     try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
-  })();
+  });
+  const storedUser = storedUserState;
   const explicitActiveFieldId = localStorage.getItem('mrm_active_field_id') || '';
   const explicitActiveFieldName = localStorage.getItem('mrm_active_field_name') || '';
   const displayName = storedUser.fullName || 'Usuário';
@@ -445,6 +533,13 @@ export function AppUI() {
     const handleStorage = (event: StorageEvent) => {
       if (event.key === 'mrm_branding') {
         setBranding(loadThemeSettings());
+      }
+      if (event.key === 'mrm_user') {
+        try {
+          const user = JSON.parse(event.newValue || localStorage.getItem('mrm_user') || '{}');
+          setStoredUserState(user);
+          setUserFoto(user.foto || null);
+        } catch { /* noop */ }
       }
     };
 

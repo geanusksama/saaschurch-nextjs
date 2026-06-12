@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+
 
 function getManagedCampoId(user: import("@/lib/auth").AuthUser) {
   if ((user.profileType === "admin" || user.profileType === "campo") && user.campoId) return user.campoId;
@@ -83,6 +85,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const updated = await prisma.user.update({ where: { id }, data: body, include: userInclude });
+
+    // Sync metadata with Supabase Auth
+    try {
+      await supabaseAdmin.auth.admin.updateUserById(id, {
+        user_metadata: {
+          full_name: updated.fullName,
+          profile_type: updated.profileType,
+          role_name: updated.role?.name || null,
+        }
+      });
+    } catch (sbErr) {
+      console.error("[users_id_patch] Supabase sync failed:", sbErr);
+    }
+
     return NextResponse.json(serializeBigInts(updated));
   });
 }

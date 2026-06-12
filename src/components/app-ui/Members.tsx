@@ -11,6 +11,7 @@ import { useDebounce } from '../../lib/secretariaHooks';
 import { qk } from '../../lib/queryClient';
 
 import { apiBase } from '../../lib/apiBase';
+import { logClientAudit } from '../../lib/auditClient';
 
 type CampoOption = {
   id: string;
@@ -809,12 +810,20 @@ export function Members() {
     }
   }, [membersQuery.data, membersQuery.isLoading, membersQuery.error]);
 
+  // Log search actions
+  useEffect(() => {
+    if (debouncedSearch) {
+      logClientAudit('read', `Pesquisou membros na secretaria por: "${debouncedSearch}"`, 'Lista de Membros');
+    }
+  }, [debouncedSearch]);
+
   // ── Legacy loadMembers useEffect (removed — replaced by TanStack Query above) ─
 
   const handleExportExcel = useCallback(async () => {
     try {
       setExportingExcel(true);
       setError('');
+      logClientAudit('read', 'Exportou lista de membros para planilha Excel', 'Lista de Membros');
       const XLSX = await import('xlsx');
       const rows = visibleMembers.map((m) => ({
         'Nome': m.fullName,
@@ -1537,6 +1546,7 @@ export function Members() {
         ]}
         defaultSort="fullName"
         onPrint={(orientation, sortBy, selectedColumns, groupByChurch) => {
+          logClientAudit('read', 'Imprimiu relatório ou ficha de membros', 'Lista de Membros');
           const sorted = [...visibleMembers].sort((a, b) =>
             String(a[sortBy as keyof typeof a] ?? '').localeCompare(String(b[sortBy as keyof typeof b] ?? ''), 'pt-BR')
           );

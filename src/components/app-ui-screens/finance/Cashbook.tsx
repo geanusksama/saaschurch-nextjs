@@ -12,6 +12,7 @@ import { apiBase } from '../../lib/apiBase';
 import { ReciboModal, printRecibo } from './ReciboModal';
 import type { ReciboRow } from './ReciboModal';
 import { RelatorioModal } from './RelatorioModal';
+import { logClientAudit } from '../../lib/auditClient';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 function firstDayOfMonth() {
@@ -30,6 +31,7 @@ function normalizeText(s: string) {
 }
 
 function exportToExcel(rows: import('./ReciboModal').ReciboRow[], dateFrom: string, dateTo: string) {
+  logClientAudit('read', `Exportou o Livro Caixa para planilha Excel (Período: ${dateFrom} a ${dateTo})`, 'Livro Caixa');
   const data = rows.map((r, i) => ({
     '#': i + 1,
     'Data': r.data_lancamento ? new Date(r.data_lancamento + 'T00:00:00').toLocaleDateString('pt-BR') : '',
@@ -794,6 +796,7 @@ export default function Cashbook() {
     setLoading(true);
     setSearched(true);
     setPage(1);
+    logClientAudit('read', `Consultou o Livro Caixa no período de ${dataInicio} a ${dataFim}`, 'Livro Caixa');
 
     let query = supabase
       .from('livro_caixa')
@@ -980,7 +983,13 @@ export default function Cashbook() {
                 title="Imprimir relatório"
                 icon={<Printer className="h-4 w-4" />}
                 label="Imprimir"
-                onClick={() => { if (searched && rows.length > 0) { setRelatorioAutoShare(false); setShowRelatorio(true); } }}
+                onClick={() => {
+                  if (searched && rows.length > 0) {
+                    logClientAudit('read', `Gerou relatório impresso do Livro Caixa (Período: ${dataInicio} a ${dataFim})`, 'Livro Caixa');
+                    setRelatorioAutoShare(false);
+                    setShowRelatorio(true);
+                  }
+                }}
                 disabled={!searched || rows.length === 0}
                 className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
               />
@@ -989,7 +998,13 @@ export default function Cashbook() {
                 title="Compartilhar relatório"
                 icon={<Share2 className="h-4 w-4" />}
                 label="Compartilhar"
-                onClick={() => { if (searched && rows.length > 0) { setRelatorioAutoShare(true); setShowRelatorio(true); } }}
+                onClick={() => {
+                  if (searched && rows.length > 0) {
+                    logClientAudit('read', `Gerou link de compartilhamento de relatório do Livro Caixa (Período: ${dataInicio} a ${dataFim})`, 'Livro Caixa');
+                    setRelatorioAutoShare(true);
+                    setShowRelatorio(true);
+                  }
+                }}
                 disabled={!searched || rows.length === 0}
                 className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
               />

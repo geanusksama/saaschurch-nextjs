@@ -225,6 +225,27 @@ export default function UserEdit() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Erro ${res.status}`);
       }
+      const updatedUser = await res.json().catch(() => null);
+
+      if (updatedUser && id === currentUser.id) {
+        const newLocalUser = {
+          ...currentUser,
+          fullName: updatedUser.fullName,
+          phone: updatedUser.phone,
+          campoId: updatedUser.campoId || updatedUser.campo?.id || null,
+          regionalId: updatedUser.regionalId || updatedUser.regional?.id || null,
+          churchId: updatedUser.churchId || updatedUser.church?.id || null,
+          profileType: updatedUser.profileType,
+          roleId: updatedUser.roleId || updatedUser.role?.id || null,
+          roleName: updatedUser.role?.name || null,
+          churchName: updatedUser.church?.name || null,
+          campoName: updatedUser.campo?.name || null,
+          regionalName: updatedUser.regional?.name || null,
+        };
+        localStorage.setItem('mrm_user', JSON.stringify(newLocalUser));
+        window.dispatchEvent(new StorageEvent('storage', { key: 'mrm_user', newValue: JSON.stringify(newLocalUser) }));
+      }
+
       navigate('/app-ui/system/users');
     } catch (err: any) {
       setError(err.message || 'Falha ao salvar alterações.');
