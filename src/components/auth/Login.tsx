@@ -81,6 +81,21 @@ export function Login() {
         localStorage.setItem('mrm_active_field_name', resolvedUser.campoName);
       }
 
+      // Log successful login to audit logs
+      fetch(`${apiBase}/audit-logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          actionType: 'auth',
+          description: 'Login realizado',
+          resourceName: 'Dashboard Admin',
+          changes: { email: resolvedUser.email },
+        }),
+      }).catch(err => console.error("Failed to log auth audit:", err));
+
       if (resolvedUser.profileType === 'pending') {
         navigate('/pending-activation');
         return;

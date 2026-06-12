@@ -19,6 +19,7 @@ const full = (): Record<ProfileKey, boolean> => ({ master: true, admin: true, ca
 const admin = (): Record<ProfileKey, boolean> => ({ master: true, admin: true, campo: false, church: false });
 const mngr = (): Record<ProfileKey, boolean> => ({ master: true, admin: true, campo: true, church: false });
 const none = (): Record<ProfileKey, boolean> => ({ master: false, admin: false, campo: false, church: false });
+const master = (): Record<ProfileKey, boolean> => ({ master: true, admin: false, campo: false, church: false });
 
 function mkPerms(
   view: Record<ProfileKey, boolean>,
@@ -210,7 +211,7 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
     ),
   },
   { group: 'Sistema', name: 'Configurações (página)', key: 'system_settings', permissions: mkPerms(admin(), admin(), none(), none()) },
-  { group: 'Sistema', name: 'Log de Auditoria',        key: 'audit_log',      permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Sistema', name: 'Log de Auditoria',        key: 'audit_log',      permissions: mkPerms(master(), master(), none(), none()) },
   {
     group: 'Sistema',
     name: 'Integrações / API',

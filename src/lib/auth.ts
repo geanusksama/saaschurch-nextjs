@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "./supabase-admin";
 import { prisma } from "./prisma";
+import { logMutationAudit } from "./audit";
 
 export interface AuthUser {
   id: string | null;
@@ -169,7 +170,19 @@ export async function withAuth(
 ): Promise<NextResponse> {
   try {
     const user = await getAuthUser(req);
-    return await handler(user);
+    const res = await handler(user);
+
+    // Auto log mutations on success
+    if (res.status >= 200 && res.status < 300) {
+      const method = req.method;
+      if (["POST", "PATCH", "PUT", "DELETE"].includes(method)) {
+        logMutationAudit(req, user, res).catch((err) =>
+          console.error("[withAuth] Auto audit failed:", err)
+        );
+      }
+    }
+
+    return res;
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("[auth]", e);
