@@ -13,7 +13,16 @@ export async function GET(req: NextRequest) {
     let restrictCampo = true;
     let campoIds: string[] = [];
 
-    if (user.profileType === "master") {
+    const isMasterSupportOrAdmin =
+      user.profileType === "master" ||
+      user.profileType === "admin" ||
+      (user.roleName && (
+        user.roleName.toLowerCase().includes("suporte") ||
+        user.roleName.toLowerCase().includes("admin") ||
+        user.roleName.toLowerCase().includes("master")
+      ));
+
+    if (isMasterSupportOrAdmin) {
       if (paramCampoIds !== null) {
         campoIds = paramCampoIds.split(",").filter(Boolean);
       } else if (paramCampoId) {
@@ -153,7 +162,16 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
     let campoId = user.campoId;
-    if (user.profileType === "master") {
+    const isMasterSupportOrAdmin =
+      user.profileType === "master" ||
+      user.profileType === "admin" ||
+      (user.roleName && (
+        user.roleName.toLowerCase().includes("suporte") ||
+        user.roleName.toLowerCase().includes("admin") ||
+        user.roleName.toLowerCase().includes("master")
+      ));
+
+    if (isMasterSupportOrAdmin) {
       const { searchParams } = new URL(req.url);
       campoId = searchParams.get("campoId") || user.campoId;
     }
@@ -218,8 +236,17 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ error: "Mensagem não encontrada." }, { status: 404 });
       }
 
-      // Only the sender or a master can delete the message
-      if (message.userId !== user.id && user.profileType !== "master") {
+      const isMasterSupportOrAdmin =
+        user.profileType === "master" ||
+        user.profileType === "admin" ||
+        (user.roleName && (
+          user.roleName.toLowerCase().includes("suporte") ||
+          user.roleName.toLowerCase().includes("admin") ||
+          user.roleName.toLowerCase().includes("master")
+        ));
+
+      // Only the sender or a master/support/admin can delete the message
+      if (message.userId !== user.id && !isMasterSupportOrAdmin) {
         return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
       }
 

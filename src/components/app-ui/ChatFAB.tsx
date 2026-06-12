@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   MessageSquare, X, Send, Paperclip, Mic, Image, File, Play, Pause, 
-  Circle, AlertCircle, Loader, User, Clock, Check, Volume2, Shield,
+  Circle, AlertCircle, Loader, User, Clock, Check, Volume2, VolumeX, Shield,
   Wifi, WifiOff, Search, ArrowLeft, MoreVertical, Smile, CornerUpLeft, Trash2,
   MapPin, ChevronDown
 } from 'lucide-react';
@@ -96,6 +96,61 @@ export function ChatFAB() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showOnlyOnline, setShowOnlyOnline] = useState(false);
 
+  const [isMuted, setIsMuted] = useState(() => {
+    try {
+      return localStorage.getItem('mrm_chat_muted') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const isMutedRef = useRef(isMuted);
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  const isMasterSupportOrAdmin = 
+    storedUser.profileType === 'master' ||
+    storedUser.profileType === 'admin' ||
+    (storedUser.roleName && (
+      String(storedUser.roleName).toLowerCase().includes('suporte') ||
+      String(storedUser.roleName).toLowerCase().includes('admin') ||
+      String(storedUser.roleName).toLowerCase().includes('master')
+    ));
+
+  const playNotificationSound = () => {
+    if (isMutedRef.current) return;
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // First chime
+      const osc1 = audioCtx.createOscillator();
+      const gain1 = audioCtx.createGain();
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+      gain1.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      osc1.start(audioCtx.currentTime);
+      osc1.stop(audioCtx.currentTime + 0.3);
+      
+      // Second chime (slightly delayed and higher pitch)
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.08); // C6
+      gain2.gain.setValueAtTime(0.08, audioCtx.currentTime + 0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.38);
+      osc2.start(audioCtx.currentTime + 0.08);
+      osc2.stop(audioCtx.currentTime + 0.38);
+    } catch (e) {
+      console.warn("Failed to play notification audio", e);
+    }
+  };
+
   const fetchCampos = async () => {
     if (!token) return;
     try {
@@ -128,7 +183,7 @@ export function ChatFAB() {
 
   // Fetch campos on load if master
   useEffect(() => {
-    if (storedUser.profileType === 'master' && token && isOpen) {
+    if (isMasterSupportOrAdmin && token && isOpen) {
       fetchCampos();
     }
   }, [token, isOpen]);
@@ -171,7 +226,7 @@ export function ChatFAB() {
   useEffect(() => {
     if (!token) return;
 
-    const isMaster = storedUser.profileType === 'master';
+    const isMaster = isMasterSupportOrAdmin;
     const filter = isMaster ? undefined : `campo_id=eq.${activeFieldId || '00000000-0000-0000-0000-000000000000'}`;
 
     const channel = supabase
@@ -231,23 +286,26 @@ export function ChatFAB() {
             const isForMe = newMsg.receiver_id === currentUserId;
             const isNotSelected = !selectedContact || selectedContact.id !== newMsg.user_id;
 
-            if (isForMe && (isNotSelected || !isOpen)) {
-              setUnreadCount((prev) => prev + 1);
-              toast.info(`Nova mensagem de ${newMsg.user_name}: ${newMsg.body || 'Arquivo anexado'}`, {
-                action: {
-                  label: 'Conversar',
-                  onClick: () => {
-                    setSelectedContact({
-                      id: newMsg.user_id,
-                      fullName: newMsg.user_name,
-                      presenceStatus: 'online',
-                      campoId: newMsg.campo_id
-                    });
-                    setActiveTab('chat');
-                    setIsOpen(true);
+            if (isForMe) {
+              playNotificationSound();
+              if (isNotSelected || !isOpen) {
+                setUnreadCount((prev) => prev + 1);
+                toast.info(`Nova mensagem de ${newMsg.user_name}: ${newMsg.body || 'Arquivo anexado'}`, {
+                  action: {
+                    label: 'Conversar',
+                    onClick: () => {
+                      setSelectedContact({
+                        id: newMsg.user_id,
+                        fullName: newMsg.user_name,
+                        presenceStatus: 'online',
+                        campoId: newMsg.campo_id
+                      });
+                      setActiveTab('chat');
+                      setIsOpen(true);
+                    }
                   }
-                }
-              });
+                });
+              }
             }
           } else if (payload.eventType === 'DELETE') {
             const oldId = payload.old?.id;
@@ -336,7 +394,7 @@ export function ChatFAB() {
     if (!token) return;
     try {
       const url = new URL(`${apiBase}/chat/presence`, window.location.origin);
-      if (storedUser.profileType === 'master') {
+      if (isMasterSupportOrAdmin) {
         if (selectedCamposIds.length > 0) {
           url.searchParams.set('campoIds', selectedCamposIds.join(','));
         } else {
@@ -366,7 +424,7 @@ export function ChatFAB() {
     try {
       const url = new URL(`${apiBase}/chat/messages`, window.location.origin);
       url.searchParams.set('contactId', targetId);
-      if (storedUser.profileType === 'master') {
+      if (isMasterSupportOrAdmin) {
         if (selectedCamposIds.length > 0) {
           url.searchParams.set('campoIds', selectedCamposIds.join(','));
         } else {
@@ -392,7 +450,7 @@ export function ChatFAB() {
     if (!token) return;
     try {
       const url = new URL(`${apiBase}/chat/messages`, window.location.origin);
-      if (storedUser.profileType === 'master') {
+      if (isMasterSupportOrAdmin) {
         if (selectedCamposIds.length > 0) {
           url.searchParams.set('campoIds', selectedCamposIds.join(','));
         } else {
@@ -463,7 +521,7 @@ export function ChatFAB() {
         }
       }
 
-      const targetCampoId = (storedUser.profileType === 'master' && selectedContact?.campoId)
+      const targetCampoId = (isMasterSupportOrAdmin && selectedContact?.campoId)
         ? selectedContact.campoId
         : (activeFieldId || storedUser.campoId || '');
 
@@ -603,7 +661,7 @@ export function ChatFAB() {
       const mapsUrl = `https://www.google.com/maps?q=${gpsCoords.lat},${gpsCoords.lng}`;
       const bodyText = `📍 ${locationName}\n${mapsUrl}`;
 
-      const targetCampoId = (storedUser.profileType === 'master' && selectedContact?.campoId)
+      const targetCampoId = (isMasterSupportOrAdmin && selectedContact?.campoId)
         ? selectedContact.campoId
         : (activeFieldId || storedUser.campoId || '');
 
@@ -668,7 +726,7 @@ export function ChatFAB() {
 
           const { data: urlData } = supabase.storage.from('dados').getPublicUrl(path);
           
-          const targetCampoId = (storedUser.profileType === 'master' && selectedContact?.campoId)
+          const targetCampoId = (isMasterSupportOrAdmin && selectedContact?.campoId)
             ? selectedContact.campoId
             : (activeFieldId || storedUser.campoId || '');
 
@@ -863,12 +921,28 @@ export function ChatFAB() {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-450 hover:text-slate-650 dark:hover:text-white transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextMuted = !isMuted;
+                        setIsMuted(nextMuted);
+                        localStorage.setItem('mrm_chat_muted', String(nextMuted));
+                        toast.success(nextMuted ? "Notificações sonoras silenciadas" : "Notificações sonoras ativas");
+                      }}
+                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-450 hover:text-[#7c3aed] dark:hover:text-purple-300 transition-colors"
+                      title={isMuted ? "Ativar som de notificações" : "Silenciar notificações"}
+                    >
+                      {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-500" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-450 hover:text-slate-650 dark:hover:text-white transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* Main Header (Self Status Selector) */
@@ -905,12 +979,28 @@ export function ChatFAB() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-450 hover:text-slate-650 dark:hover:text-white transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextMuted = !isMuted;
+                        setIsMuted(nextMuted);
+                        localStorage.setItem('mrm_chat_muted', String(nextMuted));
+                        toast.success(nextMuted ? "Notificações sonoras silenciadas" : "Notificações sonoras ativas");
+                      }}
+                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-450 hover:text-[#7c3aed] dark:hover:text-purple-300 transition-colors"
+                      title={isMuted ? "Ativar som de notificações" : "Silenciar notificações"}
+                    >
+                      {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-500" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-450 hover:text-slate-650 dark:hover:text-white transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -956,7 +1046,7 @@ export function ChatFAB() {
               )}
 
               {/* Multiselect dropdown for Master user to select campuses to listen to */}
-              {!selectedContact && storedUser.profileType === 'master' && (
+              {!selectedContact && isMasterSupportOrAdmin && (
                 <div className="relative mt-2 px-1">
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                     Filtro de Campos (Ouvir Mensagens)

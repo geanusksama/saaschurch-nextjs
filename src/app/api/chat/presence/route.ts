@@ -8,12 +8,20 @@ export async function GET(req: NextRequest) {
     const threshold = new Date(Date.now() - 25000);
 
     try {
-      const isMaster = user.profileType === "master";
+      const isMasterSupportOrAdmin =
+        user.profileType === "master" ||
+        user.profileType === "admin" ||
+        (user.roleName && (
+          user.roleName.toLowerCase().includes("suporte") ||
+          user.roleName.toLowerCase().includes("admin") ||
+          user.roleName.toLowerCase().includes("master")
+        ));
+
       const whereClause: any = {
         deletedAt: null,
       };
 
-      if (!isMaster) {
+      if (!isMasterSupportOrAdmin) {
         whereClause.campoId = user.campoId || "00000000-0000-0000-0000-000000000000";
       } else {
         const { searchParams } = new URL(req.url);
@@ -59,25 +67,36 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      // Filter: master/admin/campo profiles or roles containing "secret" or "tesour"
+      // Filter: Exclude master, admin, and support profiles/roles from the contacts list (they shouldn't be called directly)
       const filteredUsers = allUsers.filter((u) => {
         if (u.id === user.id) return false; // Exclude self from contact list
 
         const profile = (u.profileType || "").toLowerCase();
-        if (["master", "admin", "campo"].includes(profile)) {
-          return true;
-        }
         const roleName = (u.role?.name || "")
           .toLowerCase()
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "");
 
+        const isExcludedProfile = ["master", "admin"].includes(profile);
+        const isExcludedRole =
+          roleName.includes("master") ||
+          roleName.includes("admin") ||
+          roleName.includes("suporte") ||
+          roleName.includes("support");
+
+        if (isExcludedProfile || isExcludedRole) {
+          return false;
+        }
+
+        // Only include "campo" profile or roles containing "secret", "tesour", "campo"
+        if (profile === "campo") {
+          return true;
+        }
+
         if (
           roleName.includes("secret") ||
           roleName.includes("tesour") ||
-          roleName.includes("campo") ||
-          roleName.includes("admin") ||
-          roleName.includes("master")
+          roleName.includes("campo")
         ) {
           return true;
         }
