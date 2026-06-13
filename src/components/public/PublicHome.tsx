@@ -5,10 +5,37 @@ import { MobileAppOverlay } from './MobileAppPreview';
 import { AnimatePresence } from 'motion/react';
 import { PortalExperience } from './portal/PortalExperience';
 
+function DoveIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M22 3s-3 1-5.5 3c-3 2.5-5.5 6-6.5 8.5-.75.25-1.5.25-2.25 0-.5-.5-1-1.5-1.25-2.75C5.75 9 4.25 8.75 3 9c1.5 1.5 3 2.5 3.5 4.5.5 2 2 3.5 3.5 4.5.5.25.75.75.5 1.25-.25.75-1 1.75-2.5 2.25 1.25-.25 2.25-.75 2.5-1.5.25-.75.75-.75 1.25-.5 1 1 2.5 2.5 4.5 3.5-.25-1.25-.5-2.75-1.25-3.75C16 18.5 19.5 16 22 13.5c2-2 1.5-5.5 0-7.5-1-1-2-1-2.5-1.5.5-1 1-1.5.5-1.5z" />
+    </svg>
+  );
+}
+
 export function PublicHome() {
   const [isDark, setIsDark] = useState(true);
   const [showApp, setShowApp] = useState(false);
   const [showPortal, setShowPortal] = useState(false);
+
+  // Lê o tema salvo (compartilhado com a página pública do Peniel)
+  useEffect(() => {
+    const saved = localStorage.getItem("mrm_public_theme");
+    if (saved) setIsDark(saved !== "light");
+  }, []);
+
+  // Persiste o tema escolhido para que outras páginas públicas (Peniel) o sigam
+  useEffect(() => {
+    try { localStorage.setItem("mrm_public_theme", isDark ? "dark" : "light"); } catch { /* ignore */ }
+  }, [isDark]);
 
   const bg        = isDark ? '#0a0a0a' : '#f5f4f0';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
@@ -48,12 +75,12 @@ export function PublicHome() {
       )}
 
       <img src="/adcampinas.png" alt=""
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-[80vw] md:w-[50vw] lg:max-w-2xl object-contain z-0"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-[80vw] md:w-[50vw] lg:w-[42rem] aspect-square object-cover rounded-full z-0"
         style={{ opacity: isDark ? 0.05 : 0.04, mixBlendMode: isDark ? 'screen' : 'multiply' }} />
 
       {/* Header */}
       <header className="flex items-center justify-between p-6 md:px-12 relative z-10">
-        <img src="/adcampinas.png" alt="AD Campinas" className="h-10 md:h-12 object-contain opacity-90 hover:opacity-100 transition-opacity" style={{ mixBlendMode: 'screen' }} />
+        <img src="/adcampinas.png" alt="AD Campinas" className={`w-12 h-12 md:w-14 md:h-14 rounded-full object-cover opacity-95 hover:opacity-100 transition-opacity ring-1 ${isDark ? 'ring-white/10' : 'ring-black/10'}`} />
         <div className="flex items-center gap-3">
           <button onClick={() => setIsDark(d => !d)} title={isDark ? 'Tema claro' : 'Tema escuro'}
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${avatarCls}`}>
@@ -86,6 +113,16 @@ export function PublicHome() {
         </div>
 
         <div className="w-full md:w-1/2 max-w-md space-y-8">
+          <Link to="/peniel" className="flex items-start gap-5 group hover:opacity-80 transition-opacity">
+            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#d4af37] transition-colors ${border}`}>
+              <DoveIcon className={`w-6 h-6 group-hover:text-[#d4af37] transition-colors ${iconColor}`} />
+            </div>
+            <div className="flex flex-col justify-center min-h-[3.5rem]">
+              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Inscrições Peniel</h3>
+              <p className={`text-xs leading-relaxed ${textSub}`}>Um lugar de encontro, fé e transformação.<br />Saiba mais e faça sua inscrição.</p>
+            </div>
+          </Link>
+
           <div className="flex items-start gap-5">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center ${border}`}><Users className={`w-6 h-6 ${iconColor}`} /></div>
             <div className="flex flex-col justify-center min-h-[3.5rem]">

@@ -51,6 +51,8 @@ model Campo {
   stripePayments     StripePayment[]            @relation("CampoStripePayments")
   stripeSubscriptions StripeSubscription[]      @relation("CampoStripeSubscriptions")
   internalChatMessages InternalChatMessage[]
+  penielConfig       PenielConfig?
+  penielEvents       PenielEvent[]
 
   @@map("campos")
 }
@@ -3177,4 +3179,96 @@ model InternalChatMessage {
   @@index([createdAt])
   @@index([receiverId])
   @@map("internal_chat_messages")
+}
+
+model PenielConfig {
+  id                 String   @id @default(uuid()) @db.Uuid
+  campoId            String   @unique @map("campo_id") @db.Uuid
+  title              String   @default("Peniel") @db.VarChar(255)
+  subtitle           String?  @db.VarChar(255)
+  description        String?  @db.Text
+  heroBgImage        String?  @map("hero_bg_image") @db.VarChar(500)
+  primaryColor       String   @default("#0b2819") @map("primary_color") @db.VarChar(7)
+  secondaryColor     String   @default("#d4af37") @map("secondary_color") @db.VarChar(7)
+  accentColor        String   @default("#c5a880") @map("accent_color") @db.VarChar(7)
+  buttonsConfig      Json?    @map("buttons_config") @db.JsonB
+  heroCards          Json?    @map("hero_cards") @db.JsonB
+  testimonyVideos    Json?    @map("testimony_videos") @db.JsonB
+  whatsappInstanceId String?  @map("whatsapp_instance_id") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  campo Campo @relation(fields: [campoId], references: [id], onDelete: Cascade)
+
+  @@map("peniel_configs")
+}
+
+model PenielEvent {
+  id                String               @id @default(uuid()) @db.Uuid
+  campoId           String               @map("campo_id") @db.Uuid
+  title             String               @db.VarChar(255)
+  date              DateTime             @db.Date
+  time              String               @db.VarChar(50)
+  location          String               @db.VarChar(255)
+  value             Decimal              @db.Decimal(12, 2)
+  limit             Int                  @default(100)
+  status            String               @default("active") @db.VarChar(20)
+  isFeatured        Boolean              @default(false) @map("is_featured")
+  paymentLink       String?              @map("payment_link") @db.Text
+  description       String?              @db.Text
+  dateLabel         String?              @map("date_label") @db.VarChar(255)
+  departureLocation String?              @map("departure_location") @db.VarChar(255)
+  eventLocation     String?              @map("event_location") @db.VarChar(255)
+  latitude          String?              @db.VarChar(50)
+  longitude         String?              @db.VarChar(50)
+  extraFieldsConfig Json?                @map("extra_fields_config") @db.JsonB
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  deletedAt         DateTime?            @map("deleted_at")
+  registrations     PenielRegistration[]
+
+  campo Campo @relation(fields: [campoId], references: [id], onDelete: Cascade)
+
+  @@map("peniel_events")
+}
+
+model PenielRegistration {
+  id                     String      @id @default(uuid()) @db.Uuid
+  eventId                String      @map("event_id") @db.Uuid
+  tipoParticipante       String      @map("tipo_participante") @db.VarChar(20)
+  nome                   String      @db.VarChar(255)
+  endereco               String      @db.VarChar(255)
+  dataNascimento         DateTime    @map("data_nascimento") @db.Date
+  estadoCivil            String      @map("estado_civil") @db.VarChar(50)
+  idade                  Int
+  celular                String      @db.VarChar(20)
+  igrejaBase             String      @map("igreja_base") @db.VarChar(255)
+  batizadoAguas          Boolean     @map("batizado_aguas")
+  participaGrupoFamiliar Boolean     @map("participa_grupo_familiar")
+  grupoFamiliarQual      String?     @map("grupo_familiar_qual") @db.VarChar(255)
+  nomeLider              String?     @map("nome_lider") @db.VarChar(255)
+  quemMotivou            String      @map("quem_motivou") @db.VarChar(255)
+  porqueDecidiu          String      @map("porque_decidiu") @db.Text
+  expectativas           String      @db.Text
+  peso                   Decimal     @db.Decimal(5, 2)
+  altura                 Decimal     @db.Decimal(3, 2)
+  medicamentos           String?     @db.Text
+  alergiasRestricoes     String?     @map("alergias_restricoes") @db.Text
+  importantContacts      Json        @map("important_contacts") @db.JsonB
+  additionalFields       Json?       @map("additional_fields") @db.JsonB
+  status                 String      @default("inscrito") @db.VarChar(20)
+  checkInCode            String?     @unique @map("check_in_code") @db.VarChar(20)
+  qrCodeUrl              String?     @map("qr_code_url") @db.Text
+  checkedIn              Boolean     @default(false) @map("checked_in")
+  checkedInAt            DateTime?   @map("checked_in_at")
+  paymentStatus         String      @default("pendente") @map("payment_status") @db.VarChar(30)
+  paymentPromiseDate    DateTime?   @map("payment_promise_date") @db.Date
+  paymentProofUrl       String?     @map("payment_proof_url") @db.Text
+  createdAt              DateTime    @default(now()) @map("created_at")
+  updatedAt              DateTime    @updatedAt @map("updated_at")
+  deletedAt              DateTime?   @map("deleted_at")
+
+  event PenielEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("peniel_registrations")
 }

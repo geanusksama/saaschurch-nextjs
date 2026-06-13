@@ -84,6 +84,10 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Eventos', name: 'Ingressos',  key: 'tickets',     permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Eventos', name: 'Check-in',   key: 'checkin',     permissions: mkPerms(full(), full(), full(), admin()) },
 
+  // ── Peniel ────────────────────────────────────────────────────────────────
+  { group: 'Peniel', name: 'Gestão Peniel',   key: 'peniel',          permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  { group: 'Peniel', name: 'Check-in (QR)',   key: 'peniel_checkin',  permissions: mkPerms(mngr(), none(), mngr(), none()) },
+
   // ── App Móvel ─────────────────────────────────────────────────────────────
   { group: 'App Móvel', name: 'Dashboard App',        key: 'app_dashboard',    permissions: mkPerms(full(),  none(),  none(),  none()) },
   { group: 'App Móvel', name: 'Eventos com Ingressos', key: 'app_events',       permissions: mkPerms(full(),  mngr(),  mngr(),  admin()) },
@@ -299,6 +303,19 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
     ),
   },
 ];
+
+/**
+ * Mescla uma matriz salva (do banco/localStorage, possivelmente desatualizada)
+ * com o catálogo atual: todos os módulos do catálogo ficam presentes (módulos
+ * novos como Peniel entram com seus padrões), preservando os valores salvos
+ * onde a key existir. Garante que novos módulos sejam exibidos e controláveis
+ * sem exigir um re-save manual da matriz.
+ */
+export function mergeModules(saved?: PermissionModule[] | null): PermissionModule[] {
+  if (!saved || !Array.isArray(saved)) return [...DEFAULT_PERMISSION_MODULES];
+  const savedByKey = new Map(saved.map((m) => [m.key, m]));
+  return DEFAULT_PERMISSION_MODULES.map((def) => savedByKey.get(def.key) ?? def);
+}
 
 export const ROLE_PERMISSION_ACTIONS: { key: Action; label: string }[] = [
   { key: 'view', label: 'Ver' },

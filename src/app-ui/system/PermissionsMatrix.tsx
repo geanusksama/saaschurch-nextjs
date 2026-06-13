@@ -5,6 +5,7 @@ import {
   DEFAULT_PERMISSION_MODULES,
   PERMISSION_GROUPS,
   ROLE_PERMISSION_ACTIONS,
+  mergeModules,
   type Action,
   type PermissionModule as Module,
   type ProfileKey,
@@ -31,9 +32,9 @@ const PROFILE_COLORS: Record<ProfileKey, string> = {
 function loadModules(): Module[] {
   try {
     const stored = localStorage.getItem('mrm_permissions');
-    if (stored) return JSON.parse(stored) as Module[];
+    if (stored) return mergeModules(JSON.parse(stored) as Module[]);
   } catch { /* ignore */ }
-  return DEFAULT_PERMISSION_MODULES;
+  return [...DEFAULT_PERMISSION_MODULES];
 }
 
 export function PermissionsMatrix() {

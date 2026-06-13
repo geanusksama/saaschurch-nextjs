@@ -181,6 +181,9 @@ import CMSPageBuilder from "../app-ui/cms/CMSPageBuilder";
 import CMSTemplates from "../app-ui/cms/CMSTemplates";
 import CMSDeptSettings from "../app-ui/cms/CMSDeptSettings";
 import { PortalHomePage, PortalDeptPage } from "../components/public/portal/PortalPage";
+import { PenielPublicPage } from "../components/public/PenielPublicPage";
+import PenielDashboard from "../app-ui/peniel/PenielDashboard";
+import PenielCheckInPage from "../app-ui/peniel/PenielCheckInPage";
 
 import AppDashboard from "../app-ui/app/AppDashboard";
 import AppEvents from "../app-ui/app/AppEvents";
@@ -273,6 +276,7 @@ export const router = createBrowserRouter([
     errorElement: <ErrorBoundary />,
     children: [
       { index: true, Component: PublicHome },
+      { path: "peniel", Component: PenielPublicPage },
     ]
   },
   // Portal standalone pages (opened from CMSDashboard preview or direct link)
@@ -614,6 +618,10 @@ export const router = createBrowserRouter([
       { path: "cms/templates",                             Component: CMSTemplates },
       { path: "cms/departamentos/:id",                     Component: CMSDeptSettings },
       { path: "cms/departamentos/:id/builder",             Component: CMSPageBuilder },
+
+      // Módulo Peniel
+      { path: "peniel",                                    Component: PenielDashboard },
+      { path: "peniel/checkin",                            Component: PenielCheckInPage },
     ],
   },
 ]);

@@ -71,6 +71,26 @@ import {
   Globe,
   LayoutTemplate,
 } from 'lucide-react';
+
+function Dove(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={props.className}
+      style={props.style}
+      width={props.width || "24"}
+      height={props.height || "24"}
+      {...props}
+    >
+      <path d="M22 3s-3 1-5.5 3c-3 2.5-5.5 6-6.5 8.5-.75.25-1.5.25-2.25 0-.5-.5-1-1.5-1.25-2.75C5.75 9 4.25 8.75 3 9c1.5 1.5 3 2.5 3.5 4.5.5 2 2 3.5 3.5 4.5.5.25.75.75.5 1.25-.25.75-1 1.75-2.5 2.25 1.25-.25 2.25-.75 2.5-1.5.25-.75.75-.75 1.25-.5 1 1 2.5 2.5 4.5 3.5-.25-1.25-.5-2.75-1.25-3.75C16 18.5 19.5 16 22 13.5c2-2 1.5-5.5 0-7.5-1-1-2-1-2.5-1.5.5-1 1-1.5.5-1.5z" />
+    </svg>
+  );
+}
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearchModal } from './GlobalSearchModal';
@@ -186,6 +206,8 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/finance/santander") return "Banco / Santander";
   if (p === "/app-ui/crm/spreadsheet") return "Planilhas Financeiras";
   if (p === "/app-ui/financial-reports") return "Relatórios Financeiros";
+  if (p === "/app-ui/peniel/checkin") return "Check-in Peniel";
+  if (p === "/app-ui/peniel") return "Gestão Peniel";
   if (p === "/app-ui/ebd") return "Dashboard EBD";
   if (p === "/app-ui/ebd/cadastros") return "EBD Cadastros";
   if (p === "/app-ui/ebd/estoque") return "EBD Estoque";
@@ -322,6 +344,13 @@ const appNavigation: NavigationSection[] = [
       { name: 'Financeiro EBD',    path: '/app-ui/ebd/financeiro',       icon: DollarSign,  permKey: 'ebd_financeiro' },
       { name: 'Histórico',         path: '/app-ui/ebd/historico',        icon: List,        permKey: 'ebd_historico' },
       { name: 'Relatórios',        path: '/app-ui/ebd/relatorios',       icon: BarChart3,   permKey: 'ebd_relatorios' },
+    ]
+  },
+  {
+    section: 'Peniel',
+    items: [
+      { name: 'Dashboard', path: '/app-ui/peniel', icon: Dove, permKey: 'peniel' },
+      { name: 'Check-in (QR)', path: '/app-ui/peniel/checkin', icon: QrCode, permKey: 'peniel_checkin' }
     ]
   },
   {

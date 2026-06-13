@@ -17,6 +17,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   DEFAULT_PERMISSION_MODULES,
+  mergeModules,
   type PermissionModule,
   type ProfileKey,
 } from '../app-ui/system/permissionCatalog';
@@ -30,7 +31,7 @@ let _moduleCache: PermissionModule[] | null = null;
 function readLocalStorage(): PermissionModule[] | null {
   try {
     const s = localStorage.getItem(LS_KEY);
-    if (s) return JSON.parse(s) as PermissionModule[];
+    if (s) return mergeModules(JSON.parse(s) as PermissionModule[]);
   } catch { /* ignore */ }
   return null;
 }
@@ -135,9 +136,10 @@ export function usePermissions(profileType?: string) {
         try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
         setModules([...DEFAULT_PERMISSION_MODULES]);
       } else if (result) {
-        _moduleCache = result;
-        try { localStorage.setItem(LS_KEY, JSON.stringify(result)); } catch { /* ignore */ }
-        setModules(result);
+        const merged = mergeModules(result);
+        _moduleCache = merged;
+        try { localStorage.setItem(LS_KEY, JSON.stringify(merged)); } catch { /* ignore */ }
+        setModules(merged);
       }
     });
     // Also refresh user overrides and roleId from localStorage (may have been updated after login)
@@ -152,8 +154,9 @@ export function usePermissions(profileType?: string) {
       try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
       setModules([...DEFAULT_PERMISSION_MODULES]);
     } else if (result) {
-      setGlobalPermissionMatrix(result);
-      setModules(result);
+      const merged = mergeModules(result);
+      setGlobalPermissionMatrix(merged);
+      setModules(merged);
     }
     setUserOverrides(readUserOverrides());
   }, []);

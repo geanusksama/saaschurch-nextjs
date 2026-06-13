@@ -172,6 +172,34 @@ export async function sendDocumentViaZApi(
   return { messageId: json.messageId ?? json.id ?? '', status: 'sent' }
 }
 
+// ── Chama Z-API para enviar imagem ─────────────────────────────────────────────
+export async function sendImageViaZApi(
+  instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
+  to: string,
+  imageUrl: string,
+  caption: string
+): Promise<SendMessageResult> {
+  await enforceRateLimit(instance.instance_id)
+
+  const url = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}/send-image`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Client-Token': instance.client_token,
+    },
+    body: JSON.stringify({ phone: to, image: imageUrl, caption }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => 'unknown')
+    return { messageId: '', status: 'error', error: err }
+  }
+
+  const json = await res.json()
+  return { messageId: json.messageId ?? json.id ?? '', status: 'sent' }
+}
+
 // ── Função de alto nível: enviar mensagem de qualquer módulo ──────────────────
 export interface QuickSendOptions {
   ownerUserId: string
@@ -181,6 +209,7 @@ export interface QuickSendOptions {
   contactName?: string
   instanceId?: string
   documentUrl?: string
+  imageUrl?: string
   fileName?: string
 }
 
@@ -207,7 +236,9 @@ export async function quickSendWhatsApp(opts: QuickSendOptions): Promise<SendMes
   const to = opts.phone.replace(/\D/g, '')
   
   let result: SendMessageResult
-  if (opts.documentUrl) {
+  if (opts.imageUrl) {
+    result = await sendImageViaZApi(instance, to, opts.imageUrl, opts.message)
+  } else if (opts.documentUrl) {
     result = await sendDocumentViaZApi(instance, to, opts.documentUrl, opts.message, opts.fileName || 'recibo.pdf')
   } else {
     result = await sendTextViaZApi(instance, to, opts.message)
