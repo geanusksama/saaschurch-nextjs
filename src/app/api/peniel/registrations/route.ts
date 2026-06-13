@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     // Only authenticated users can access the registration list
     const user = await getAuthUser(req).catch(() => null);
-    if (!user || !["master", "admin", "campo", "regional"].includes(user.profileType || "")) {
+    if (!user || !["master", "admin", "campo", "regional", "church"].includes(user.profileType || "")) {
       return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
     }
 

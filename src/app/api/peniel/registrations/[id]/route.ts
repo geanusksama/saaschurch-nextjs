@@ -6,7 +6,7 @@ import { withAuth } from "@/lib/auth";
 // Admin updates registration status
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin", "campo", "regional"].includes(user.profileType || "")) {
+    if (!["master", "admin", "campo", "regional", "church"].includes(user.profileType || "")) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
 
@@ -67,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 // Soft delete of a registration
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin", "campo", "regional"].includes(user.profileType || "")) {
+    if (!["master", "admin", "campo", "regional", "church"].includes(user.profileType || "")) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
 

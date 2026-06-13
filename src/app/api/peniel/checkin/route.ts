@@ -7,7 +7,7 @@ import { withAuth } from "@/lib/auth";
 // marcando a inscrição como check-in realizado (participou).
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin", "campo", "regional"].includes(user.profileType || "")) {
+    if (!["master", "admin", "campo", "regional", "church"].includes(user.profileType || "")) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
 

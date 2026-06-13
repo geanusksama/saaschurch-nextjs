@@ -153,8 +153,11 @@ export function PenielPublicPage() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const campoId = urlParams.get("campoId") || "";
-        const configUrl = campoId ? `/api/peniel/config?campoId=${campoId}` : "/api/peniel/config";
-        const eventsUrl = campoId ? `/api/peniel/events?futureOnly=true&campoId=${campoId}` : "/api/peniel/events?futureOnly=true";
+        const campo = urlParams.get("campo") || ""; // ?campo=campinas
+        // Monta query: campoId (UUID) tem prioridade; senão usa ?campo=<nome>
+        const q = campoId ? `campoId=${encodeURIComponent(campoId)}` : campo ? `campo=${encodeURIComponent(campo)}` : "";
+        const configUrl = q ? `/api/peniel/config?${q}` : "/api/peniel/config";
+        const eventsUrl = q ? `/api/peniel/events?futureOnly=true&${q}` : "/api/peniel/events?futureOnly=true";
 
         const [configRes, eventsRes] = await Promise.all([
           fetch(configUrl),

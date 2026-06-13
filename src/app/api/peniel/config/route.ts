@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { resolvePublicCampoId } from "@/lib/penielCampo";
 
 const DEFAULT_CONFIG = {
   title: "Peniel",
@@ -36,34 +37,10 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     let campoId = searchParams.get("campoId");
+    const campo = searchParams.get("campo"); // nome do campo (ex: ?campo=campinas)
 
-    // Fallback: If no campoId is specified, resolve to the campo that actually
-    // has Peniel set up (config first, then events), so the public page does not
-    // land on an arbitrary empty campo when multiple campos exist.
-    if (!campoId) {
-      const configuredCampo = await prisma.penielConfig.findFirst({
-        select: { campoId: true }
-      });
-      if (configuredCampo) {
-        campoId = configuredCampo.campoId;
-      } else {
-        const eventCampo = await prisma.penielEvent.findFirst({
-          where: { deletedAt: null },
-          select: { campoId: true }
-        });
-        if (eventCampo) {
-          campoId = eventCampo.campoId;
-        } else {
-          const firstCampo = await prisma.campo.findFirst({
-            where: { deletedAt: null },
-            select: { id: true }
-          });
-          if (firstCampo) {
-            campoId = firstCampo.id;
-          }
-        }
-      }
-    }
+    // Resolve por campoId (UUID) ou ?campo=<nome>; fallback para campo com Peniel
+    campoId = await resolvePublicCampoId({ campoId, campo });
 
     if (!campoId) {
       return NextResponse.json({ error: "Nenhum campo encontrado no sistema." }, { status: 404 });

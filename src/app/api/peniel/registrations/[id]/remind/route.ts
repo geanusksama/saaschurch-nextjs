@@ -7,7 +7,7 @@ import { sendPaymentReminder } from "@/lib/penielTicket";
 // Envia lembrete de pagamento pendente por WhatsApp.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin", "campo", "regional"].includes(user.profileType || "")) {
+    if (!["master", "admin", "campo", "regional", "church"].includes(user.profileType || "")) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
 

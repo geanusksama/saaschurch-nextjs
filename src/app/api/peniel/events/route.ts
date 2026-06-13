@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { resolvePublicCampoId } from "@/lib/penielCampo";
 
 // GET /api/peniel/events
 // Public lookup or admin list of Peniel events
@@ -8,6 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     let campoId = searchParams.get("campoId");
+    const campo = searchParams.get("campo"); // nome do campo (ex: ?campo=campinas)
     const futureOnly = searchParams.get("futureOnly") === "true";
     const all = searchParams.get("all") === "true";
 
@@ -17,34 +19,8 @@ export async function GET(req: NextRequest) {
     };
 
     if (!all) {
-      if (!campoId) {
-        // Resolve to the campo that actually has Peniel in use (events first,
-        // then config) instead of an arbitrary first campo, so the public page
-        // shows the right church when multiple campos exist.
-        const eventCampo = await prisma.penielEvent.findFirst({
-          where: { deletedAt: null },
-          orderBy: { date: "asc" },
-          select: { campoId: true }
-        });
-        if (eventCampo) {
-          campoId = eventCampo.campoId;
-        } else {
-          const configuredCampo = await prisma.penielConfig.findFirst({
-            select: { campoId: true }
-          });
-          if (configuredCampo) {
-            campoId = configuredCampo.campoId;
-          } else {
-            const firstCampo = await prisma.campo.findFirst({
-              where: { deletedAt: null },
-              select: { id: true }
-            });
-            if (firstCampo) {
-              campoId = firstCampo.id;
-            }
-          }
-        }
-      }
+      // Resolve por campoId (UUID) ou ?campo=<nome>; fallback para campo com Peniel
+      campoId = await resolvePublicCampoId({ campoId, campo });
 
       if (!campoId) {
         return NextResponse.json({ error: "Nenhum campo encontrado no sistema." }, { status: 404 });

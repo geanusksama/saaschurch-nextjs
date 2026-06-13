@@ -166,6 +166,17 @@ interface WhatsappInstance {
 
 export default function PenielDashboard() {
   const campoId = useCampoId();
+  // Link público amigável por nome do campo (?campo=campinas); fallback p/ campoId
+  const publicPenielUrl = (() => {
+    try {
+      const nome = JSON.parse(localStorage.getItem("mrm_user") || "{}").campoName as string | undefined;
+      if (nome) {
+        const slug = nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (slug) return `/peniel?campo=${slug}`;
+      }
+    } catch { /* ignore */ }
+    return `/peniel?campoId=${campoId}`;
+  })();
   const [activeTab, setActiveTab] = useState<"dashboard" | "registrations" | "events" | "checkin" | "cms">("dashboard");
   // Ocultar/mostrar o Valor Arrecadado (preferência persistida; oculto por padrão)
   const [showRevenue, setShowRevenue] = useState<boolean>(() => {
@@ -1051,7 +1062,7 @@ export default function PenielDashboard() {
         {/* Global actions & Messages */}
         <div className="flex items-center gap-3">
           <a
-            href={`/peniel?campoId=${campoId}`}
+            href={publicPenielUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg text-sm transition-colors font-medium"
