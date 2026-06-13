@@ -195,6 +195,7 @@ export default function PenielDashboard() {
   const monthEnd = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toLocaleDateString("en-CA"); })();
   const [dateStart, setDateStart] = useState<string>(monthStart);
   const [dateEnd, setDateEnd] = useState<string>(monthEnd);
+  const [checkinFilter, setCheckinFilter] = useState<string>("all"); // all | sim | nao
 
   // UI Loaders & Errors
   const [loading, setLoading] = useState(true);
@@ -373,13 +374,14 @@ export default function PenielDashboard() {
       }
       if (dateStart) url += `&startDate=${dateStart}`;
       if (dateEnd) url += `&endDate=${dateEnd}`;
+      if (checkinFilter && checkinFilter !== "all") url += `&checkin=${checkinFilter}`;
 
       const res = await authFetch<PenielRegistration[]>(url);
       setRegistrations(Array.isArray(res) ? res : []);
     } catch (e) {
       console.error("Erro ao buscar inscrições:", e);
     }
-  }, [campoId, selectedEventFilter, selectedStatusFilter, searchTerm, dateStart, dateEnd]);
+  }, [campoId, selectedEventFilter, selectedStatusFilter, searchTerm, dateStart, dateEnd, checkinFilter]);
 
   useEffect(() => {
     fetchData();
@@ -546,6 +548,15 @@ export default function PenielDashboard() {
     } finally {
       setResendingId(null);
     }
+  };
+
+  // Máscara de celular: (99) 99999-9999
+  const maskPhone = (v: string) => {
+    const d = (v || "").replace(/\D/g, "").slice(0, 11);
+    if (d.length === 0) return "";
+    if (d.length <= 2) return `(${d}`;
+    if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   };
 
   // Edição da ficha
@@ -1427,8 +1438,8 @@ export default function PenielDashboard() {
               </div>
             </div>
 
-            {/* Intervalo de datas */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Intervalo de datas + presença */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className={labelCls}>Data início (inscrição)</label>
                 <input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} className={inputCls} />
@@ -1436,6 +1447,14 @@ export default function PenielDashboard() {
               <div>
                 <label className={labelCls}>Data fim (inscrição)</label>
                 <input type="date" value={dateEnd} onChange={e => setDateEnd(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Presença (check-in)</label>
+                <select value={checkinFilter} onChange={e => setCheckinFilter(e.target.value)} className={selectCls}>
+                  <option value="all">Todos</option>
+                  <option value="sim">Presentes (fizeram check-in)</option>
+                  <option value="nao">Ausentes (sem check-in)</option>
+                </select>
               </div>
               <div className="flex items-end gap-2">
                 <button
@@ -1471,6 +1490,7 @@ export default function PenielDashboard() {
             <div className="flex justify-between items-center flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
               <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 Total localizado: <strong className="text-slate-900 dark:text-white">{registrations.length}</strong> inscrições
+                · <strong className="text-teal-600 dark:text-teal-400">{registrations.filter(r => r.checkedIn).length} presente(s)</strong>
                 {selectedRegIds.length > 0 && <> · <strong className="text-emerald-600">{selectedRegIds.length} selecionada(s)</strong></>}
               </span>
 
@@ -2659,7 +2679,7 @@ export default function PenielDashboard() {
                     </div>
                     <div>
                       <label className={labelCls}>Celular / WhatsApp</label>
-                      <input className={inputCls} value={editForm.celular || ""} onChange={e => setEditForm({ ...editForm, celular: e.target.value })} placeholder="(19) 99999-9999" />
+                      <input className={inputCls} value={editForm.celular || ""} onChange={e => setEditForm({ ...editForm, celular: maskPhone(e.target.value) })} placeholder="(19) 99999-9999" />
                     </div>
                     <div>
                       <label className={labelCls}>Igreja Base</label>

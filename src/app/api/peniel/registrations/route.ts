@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search");
     const startDate = searchParams.get("startDate"); // YYYY-MM-DD
     const endDate = searchParams.get("endDate"); // YYYY-MM-DD
+    const checkin = searchParams.get("checkin"); // sim | nao
 
     const targetCampoId = user.profileType === "master" && searchParams.get("campoId")
       ? searchParams.get("campoId")
@@ -44,6 +45,10 @@ export async function GET(req: NextRequest) {
     if (status) {
       whereClause.status = status;
     }
+
+    // Filtro por presença (check-in)
+    if (checkin === "sim") whereClause.checkedIn = true;
+    else if (checkin === "nao") whereClause.checkedIn = false;
 
     // Filtro por intervalo de datas (data da inscrição)
     if (startDate || endDate) {

@@ -290,6 +290,15 @@ export function PenielPublicPage() {
     }
   };
 
+  // Máscara de celular brasileiro: (99) 99999-9999
+  const maskPhone = (v: string) => {
+    const d = (v || "").replace(/\D/g, "").slice(0, 11);
+    if (d.length === 0) return "";
+    if (d.length <= 2) return `(${d}`;
+    if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  };
+
   const handleContactChange = (index: number, field: string, value: string) => {
     const next = [...contacts];
     next[index] = { ...next[index], [field]: value };
@@ -335,7 +344,8 @@ export function PenielPublicPage() {
       porqueDecidiu,
       expectativas,
       peso: Number(peso),
-      altura: Number(altura),
+      // Altura em metros. Se digitarem em cm (ex.: 180), converte para 1.80.
+      altura: (() => { const a = Number(altura); return a >= 10 ? Math.round(a) / 100 : a; })(),
       medicamentos,
       alergiasRestricoes,
       importantContacts: contacts.filter(c => c.nome.trim() !== ""),
@@ -1483,7 +1493,7 @@ export function PenielPublicPage() {
                         type="tel"
                         required
                         value={celular}
-                        onChange={e => setCelular(e.target.value)}
+                        onChange={e => setCelular(maskPhone(e.target.value))}
                         placeholder="(19) 99999-9999"
                         className={fld}
                       />
@@ -1720,11 +1730,14 @@ export function PenielPublicPage() {
                   <div className="space-y-4">
                     {contacts.map((contact, i) => (
                       <div key={i} className={`p-3.5 rounded-2xl border space-y-3 ${dark ? "bg-white/[0.02] border-white/5" : "bg-black/[0.02] border-black/10"}`}>
-                        <span className={`text-[10px] font-bold block ${T.textFaint}`}>Pessoa #{i + 1}</span>
+                        <span className={`text-[10px] font-bold block ${T.textFaint}`}>
+                          Pessoa #{i + 1} {i < 3 ? <span className="text-[#d4af37]">*</span> : <span className="opacity-60">(opcional)</span>}
+                        </span>
 
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             type="text"
+                            required={i < 3}
                             placeholder="Nome Completo"
                             value={contact.nome}
                             onChange={e => handleContactChange(i, "nome", e.target.value)}
@@ -1732,9 +1745,10 @@ export function PenielPublicPage() {
                           />
                           <input
                             type="text"
+                            required={i < 3}
                             placeholder="WhatsApp (ex: 19 99999-9999)"
                             value={contact.whatsapp}
-                            onChange={e => handleContactChange(i, "whatsapp", e.target.value)}
+                            onChange={e => handleContactChange(i, "whatsapp", maskPhone(e.target.value))}
                             className={fldContact}
                           />
                         </div>
@@ -1742,6 +1756,7 @@ export function PenielPublicPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             type="text"
+                            required={i < 3}
                             placeholder="Parentesco (Mãe, Irmão, Amigo)"
                             value={contact.parentesco}
                             onChange={e => handleContactChange(i, "parentesco", e.target.value)}
@@ -1749,6 +1764,7 @@ export function PenielPublicPage() {
                           />
                           <input
                             type="text"
+                            required={i < 3}
                             placeholder="Qual sua relação com esta pessoa?"
                             value={contact.relacao}
                             onChange={e => handleContactChange(i, "relacao", e.target.value)}
@@ -1785,12 +1801,15 @@ export function PenielPublicPage() {
                       <input
                         type="number"
                         step="0.01"
+                        min="0.5"
+                        max="2.6"
                         required
                         value={altura}
                         onChange={e => setAltura(e.target.value)}
                         placeholder="Ex: 1.68"
                         className={fld}
                       />
+                      <p className={`text-[10px] ${T.textMuted}`}>Em metros (ex.: 1.68)</p>
                     </div>
                   </div>
 
