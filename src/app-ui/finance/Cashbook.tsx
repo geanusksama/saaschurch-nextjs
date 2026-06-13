@@ -3,7 +3,8 @@ import {
   DollarSign, Plus, Search, Download, Printer, Eye, AlertCircle,
   TrendingDown, TrendingUp, Building2, X, ChevronUp, ChevronDown,
   ChevronsUpDown, ChevronLeft, ChevronRight, MapPin, Users,
-  Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet, CalendarDays, Share2
+  Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet, CalendarDays, Share2,
+  BarChart3
 } from 'lucide-react';
 import { DateRangePicker } from '../../components/ui/DateRangePicker';
 import { Link } from 'react-router';
@@ -13,6 +14,7 @@ import { apiBase } from '../../lib/apiBase';
 import { ReciboModal, printRecibo } from './ReciboModal';
 import type { ReciboRow } from './ReciboModal';
 import { RelatorioModal } from './RelatorioModal';
+import { AnalyticsModal } from './AnalyticsModal';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 function firstDayOfMonth() {
@@ -235,19 +237,28 @@ function SummaryPanel({
   icon?: React.ReactNode;
   tone?: 'neutral' | 'positive' | 'negative';
 }) {
-  const toneClass = tone === 'positive'
-    ? 'border-slate-200 bg-white text-slate-700'
+  const labelStyle = tone === 'positive'
+    ? { color: '#15803d' } // green-700
     : tone === 'negative'
-      ? 'border-slate-200 bg-white text-slate-700'
-      : 'border-slate-200 bg-white text-slate-700';
+      ? { color: '#b91c1c' } // red-700
+      : undefined;
+
+  const valStyle = tone === 'positive'
+    ? { color: '#16a34a', fontWeight: 'bold' as const } // green-600
+    : tone === 'negative'
+      ? { color: '#dc2626', fontWeight: 'bold' as const } // red-600
+      : { fontWeight: '600' as const };
 
   return (
-    <div className={`rounded-md border px-3 py-2 ${toneClass}`}>
-      <div className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-700">
-        {icon ? <span className="text-slate-600">{icon}</span> : null}
+    <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 shadow-sm">
+      <div 
+        className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.18em]"
+        style={labelStyle}
+      >
+        {icon ? <span className="opacity-90">{icon}</span> : null}
         <span>{label}</span>
       </div>
-      <div className="mt-1 text-sm font-semibold leading-none text-slate-800">{value}</div>
+      <div className="mt-1 text-sm leading-none" style={valStyle}>{value}</div>
     </div>
   );
 }
@@ -1133,6 +1144,7 @@ export default function Cashbook() {
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [relatorioAutoShare, setRelatorioAutoShare] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
   // Summary accordion (mobile only – collapsed by default)
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -1387,6 +1399,24 @@ export default function Cashbook() {
             <RibbonDivider />
 
             <RibbonGroup
+              label="Análise"
+              className="w-full md:w-auto"
+              bodyClassName="grid w-full grid-cols-1 gap-2 px-0 md:flex md:w-auto md:gap-1 md:px-1"
+            >
+              <RibbonButton
+                size="lg"
+                title="Visualizar gráficos analíticos"
+                icon={<BarChart3 className="h-4 w-4" />}
+                label="Gráficos"
+                onClick={() => setShowAnalyticsModal(true)}
+                disabled={!searched || rows.length === 0}
+                className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
+              />
+            </RibbonGroup>
+
+            <RibbonDivider />
+
+            <RibbonGroup
               label="Lançamentos"
               className="w-full md:w-auto"
               bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-auto md:gap-1 md:px-1"
@@ -1451,32 +1481,32 @@ export default function Cashbook() {
               <SummaryPanel
                 label="Total dízimos"
                 value={`R$ ${fmt(totalDizimos)}`}
-                tone="neutral"
+                tone="positive"
               />
               <SummaryPanel
                 label="Total ofertas"
                 value={`R$ ${fmt(totalOfertas)}`}
-                tone="neutral"
+                tone="positive"
               />
               <SummaryPanel
                 label="Qtd. receitas"
                 value={`${qtdReceitas}`}
-                tone="neutral"
+                tone="positive"
               />
               <SummaryPanel
                 label="Qtd. despesas"
                 value={`${qtdDespesas}`}
-                tone="neutral"
+                tone="negative"
               />
               <SummaryPanel
                 label="Qtd. dízimos"
                 value={`${qtdDizimos}`}
-                tone="neutral"
+                tone="positive"
               />
               <SummaryPanel
                 label="Qtd. ofertas"
                 value={`${qtdOfertas}`}
-                tone="neutral"
+                tone="positive"
               />
             </div>
           </div>
@@ -1609,20 +1639,24 @@ export default function Cashbook() {
                       {row.referencia && <p className="text-[9px] text-slate-400 truncate">{row.referencia}</p>}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <span className={`font-semibold text-[11px] px-2 py-0.5 rounded ${
-                        row.tipo === 'RECEITA'
-                          ? 'text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-900/40'
-                          : 'text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-900/40'
-                      }`}>
+                      <span 
+                        className="font-bold text-[11px] px-2 py-0.5 rounded"
+                        style={{
+                          color: row.tipo === 'RECEITA' ? '#16a34a' : '#dc2626',
+                          backgroundColor: row.tipo === 'RECEITA' ? '#f0fdf4' : '#fef2f2'
+                        }}
+                      >
                         R$ {fmt(Number(row.valor))}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide ${
-                        row.tipo === 'RECEITA'
-                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                          : 'bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300'
-                      }`}>
+                      <span 
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide"
+                        style={{
+                          color: row.tipo === 'RECEITA' ? '#15803d' : '#b91c1c',
+                          backgroundColor: row.tipo === 'RECEITA' ? '#dcfce7' : '#fee2e2'
+                        }}
+                      >
                         {row.tipo}
                       </span>
                     </td>
@@ -1684,6 +1718,20 @@ export default function Cashbook() {
           dataFim={dataFim}
           onClose={() => setShowRelatorio(false)}
           autoShare={relatorioAutoShare}
+        />
+      )}
+
+      {showAnalyticsModal && (
+        <AnalyticsModal
+          onClose={() => setShowAnalyticsModal(false)}
+          rows={rows}
+          churchId={selectedChurch?.id || (isChurchProfile && storedUser.churchId ? storedUser.churchId : null)}
+          churchName={selectedChurch?.name || (isChurchProfile && storedUser.churchName ? storedUser.churchName : 'Minha Igreja')}
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          totalReceita={totalReceita}
+          totalDespesa={totalDespesa}
+          liquido={liquido}
         />
       )}
 
