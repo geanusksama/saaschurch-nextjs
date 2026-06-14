@@ -8,7 +8,6 @@ export { Backup } from './Backup';
 export { Webhooks } from './Webhooks';
 export { Roles } from './Roles';
 export { Import, Export } from './ImportExport';
-export { Permissions } from './Permissions';
 export { NotificationSettings } from './NotificationSettings';
 export { Templates } from './Templates';
 export { EmailSettings } from './EmailSettings';

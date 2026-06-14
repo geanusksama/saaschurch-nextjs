@@ -53,6 +53,10 @@ import {
   HelpCircle,
   Star,
   LayoutGrid,
+  Snowflake,
+  CloudRain,
+  Wind,
+  Cloud,
   GitBranch,
   FileSpreadsheet,
   MoreHorizontal,
@@ -393,6 +397,148 @@ export function AppUI() {
       logClientAudit('read', `Entrou na tela ${screenName}`, screenName);
     }
   }, [location.pathname]);
+
+  // Weather state & dynamic logic
+  const [weather, setWeather] = useState<{
+    icon: 'sun' | 'cloud-rain' | 'wind' | 'cloud' | 'snowflake';
+    label: string;
+    animation: string;
+  }>({
+    icon: 'snowflake',
+    label: 'Carregando clima...',
+    animation: 'spin 30s linear infinite',
+  });
+
+  const renderWeatherIcon = () => {
+    const sizeClass = "h-4 w-4";
+    const animStyle = weather.animation !== 'none' ? { animation: weather.animation } : undefined;
+    
+    switch (weather.icon) {
+      case 'sun':
+        return <Sun className={sizeClass} style={animStyle} />;
+      case 'cloud-rain':
+        return <CloudRain className={sizeClass} style={animStyle} />;
+      case 'wind':
+        return <Wind className={sizeClass} style={animStyle} />;
+      case 'cloud':
+        return <Cloud className={sizeClass} style={animStyle} />;
+      case 'snowflake':
+      default:
+        return <Snowflake className={sizeClass} style={animStyle} />;
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchWeather = async (lat: number, lon: number) => {
+      try {
+        const res = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !data.current) return;
+
+        const { temperature_2m: temp, weather_code: code, wind_speed_10m: wind } = data.current;
+
+        let icon: 'sun' | 'cloud-rain' | 'wind' | 'cloud' | 'snowflake' = 'sun';
+        let label = 'Ensolarado';
+        let animation = 'none';
+
+        // Weather mapping
+        if (code >= 51 && code <= 99) {
+          if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) {
+            icon = 'snowflake';
+            label = `Neve (${temp}°C)`;
+            animation = 'spin 20s linear infinite';
+          } else {
+            icon = 'cloud-rain';
+            label = `Chuva (${temp}°C)`;
+            animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
+          }
+        } else if (wind > 25) {
+          icon = 'wind';
+          label = `Vento (${temp}°C, ${wind} km/h)`;
+          animation = 'pulse 3s ease-in-out infinite';
+        } else if (temp < 15) {
+          icon = 'snowflake';
+          label = `Frio (${temp}°C)`;
+          animation = 'spin 40s linear infinite';
+        } else if (temp > 30) {
+          icon = 'sun';
+          label = `Calor (${temp}°C)`;
+          animation = 'spin 60s linear infinite';
+        } else if (code >= 1 && code <= 48) {
+          icon = 'cloud';
+          label = `Nublado (${temp}°C)`;
+          animation = 'none';
+        } else {
+          icon = 'sun';
+          label = `Agradável (${temp}°C)`;
+          animation = 'spin 80s linear infinite';
+        }
+
+        const result = { icon, label, animation };
+        setWeather(result);
+        
+        // Cache for 30 minutes
+        localStorage.setItem('mrm_weather_cache', JSON.stringify({
+          timestamp: Date.now(),
+          data: result
+        }));
+      } catch (err) {
+        console.error('Failed to fetch weather:', err);
+      }
+    };
+
+    const getPositionAndFetch = async () => {
+      // Check cache
+      try {
+        const cached = localStorage.getItem('mrm_weather_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const age = Date.now() - parsed.timestamp;
+          if (age < 30 * 60 * 1000) {
+            setWeather(parsed.data);
+            return;
+          }
+        }
+      } catch {}
+
+      // Try browser geolocation
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            fetchWeather(pos.coords.latitude, pos.coords.longitude);
+          },
+          async () => {
+            // Fallback to IP lookup
+            try {
+              const ipRes = await fetch('https://ipapi.co/json/');
+              if (ipRes.ok) {
+                const ipData = await ipRes.json();
+                if (ipData.latitude && ipData.longitude) {
+                  fetchWeather(ipData.latitude, ipData.longitude);
+                  return;
+                }
+              }
+            } catch {}
+            // Default fallback: São Paulo
+            fetchWeather(-23.5505, -46.6333);
+          },
+          { timeout: 5000 }
+        );
+      } else {
+        fetchWeather(-23.5505, -46.6333);
+      }
+    };
+
+    getPositionAndFetch();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
@@ -1377,7 +1523,13 @@ export function AppUI() {
                       <Plus className="h-5 w-5 text-purple-600 dark:text-purple-300" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">Atalhos Favoritos</h2>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Atalhos Favoritos</h2>
+                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-650 dark:text-slate-300 shadow-sm animate-in fade-in slide-in-from-top-1 duration-300">
+                          {renderWeatherIcon()}
+                          <span>{weather.label}</span>
+                        </div>
+                      </div>
                       <p className="text-sm text-slate-500 dark:text-slate-400">Favorite itens no menu lateral para acessa-los aqui.</p>
                     </div>
                   </div>
@@ -1493,9 +1645,10 @@ export function AppUI() {
             <button
               type="button"
               onClick={() => setQuickAddOpen(true)}
-              className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+              className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-755"
+              title={weather.label}
             >
-              <LayoutGrid className="h-4 w-4" />
+              {renderWeatherIcon()}
               Mais
             </button>
             {/* Novo Membro — visible on sm+ screens */}

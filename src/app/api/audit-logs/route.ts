@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
     const limitParam = sp.get("limit");
     const searchTerm = (sp.get("search") || sp.get("q") || "").trim();
     const filterType = sp.get("type") || "all";
+    const startDateParam = sp.get("startDate");
+    const endDateParam = sp.get("endDate");
 
     const filterConditions: any[] = [];
 
@@ -33,6 +35,27 @@ export async function GET(req: NextRequest) {
     // Filter by type ('create' | 'update' | 'delete' etc.)
     if (filterType && filterType !== "all") {
       filterConditions.push({ action: filterType });
+    }
+
+    // Filter by date range
+    if (startDateParam) {
+      filterConditions.push({
+        createdAt: {
+          gte: new Date(startDateParam),
+        },
+      });
+    }
+
+    if (endDateParam) {
+      const end = new Date(endDateParam);
+      if (endDateParam.length <= 10) {
+        end.setHours(23, 59, 59, 999);
+      }
+      filterConditions.push({
+        createdAt: {
+          lte: end,
+        },
+      });
     }
 
     const where: any = {};
