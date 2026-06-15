@@ -225,7 +225,7 @@ export function ChurchInfo() {
 
       if (!activeFieldId) throw new Error('Nenhum campo ativo encontrado. Faça login novamente.');
 
-      const hqRes = await fetch(`${apiBase}/headquarters?fieldId=${activeFieldId}`, {
+      const hqRes = await fetch(`${apiBase}/headquarters?campoId=${activeFieldId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!hqRes.ok) throw new Error('Sem permissao para ver a sede.');

@@ -6,7 +6,8 @@ import { serializeBigInts } from "@/lib/helpers";
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
     const { searchParams } = new URL(req.url);
-    const campoId = searchParams.get("campoId");
+    // Accept both `campoId` and the `fieldId` alias used by some callers.
+    const campoId = searchParams.get("campoId") || searchParams.get("fieldId");
     const churchId = searchParams.get("churchId");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
