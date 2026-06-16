@@ -42,7 +42,7 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Secretaria', name: 'Transferência', key: 'transfer', permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Secretaria', name: 'Credenciais', key: 'credentials', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Relatórios', key: 'reports', permissions: mkPerms(full(), mngr(), mngr(), mngr()) },
-  { group: 'Secretaria', name: 'Presença', key: 'attendance', permissions: mkPerms(full(), full(), full(), admin()) },
+  { group: 'Secretaria', name: 'Presença Facial', key: 'attendance', permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Secretaria', name: 'Aniversariantes', key: 'birthdays', permissions: mkPerms(full(), none(), none(), none()) },
 
   { group: 'Pastoral', name: 'Visitas Pastorais', key: 'pastoral_visits', permissions: mkPerms(full(), full(), full(), admin()) },

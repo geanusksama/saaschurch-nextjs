@@ -941,6 +941,22 @@ model EventAttendance {
   @@map("event_attendance")
 }
 
+model FacePresenca {
+  id             String   @id @default(uuid()) @db.Uuid
+  rol            Int?
+  nome           String   @db.VarChar(255)
+  cargo          String?  @db.VarChar(100)
+  horario        DateTime @map("horario")
+  confianca      Float?
+  camera         String?  @db.VarChar(100)
+  igrejaRegional String?  @map("igreja_regional") @db.VarChar(255)
+  campo          String?  @db.VarChar(255)
+  churchId       String?  @map("church_id") @db.Uuid
+  dataRegistro   DateTime @default(now()) @map("data_registro")
+
+  @@map("face_presencas")
+}
+
 model Lead {
   id              String                   @id @default(uuid()) @db.Uuid
   churchId        String                   @map("church_id") @db.Uuid
