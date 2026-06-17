@@ -1018,9 +1018,12 @@ export default function LancamentoNew() {
   // Retorna null = sem filtro (master/admin); array vazio = sem acesso; array com ids = escopo permitido
   async function resolveAllowedChurchIds(): Promise<string[] | null> {
     if (userProfileType === 'master' || userProfileType === 'admin') return null;
-    // Perfil campo: acesso amplo a todas as igrejas do campo, independente do caixa selecionado
+    // Perfil campo: acesso amplo a todas as igrejas do campo via join regionais → churches
     if (userProfileType === 'campo' && userCampoId) {
-      const { data } = await supabase.from('churches').select('id').eq('campo_id', userCampoId);
+      const { data: regs } = await supabase.from('regionais').select('id').eq('campo_id', userCampoId);
+      const regIds = (regs ?? []).map((r: any) => r.id);
+      if (regIds.length === 0) return [];
+      const { data } = await supabase.from('churches').select('id').in('regional_id', regIds);
       return (data ?? []).map((c: any) => c.id);
     }
     // Perfil igreja: restringe ao caixa ativo ou à própria igreja
