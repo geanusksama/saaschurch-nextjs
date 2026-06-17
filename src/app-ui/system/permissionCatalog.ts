@@ -113,6 +113,7 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Finanças', name: 'Planilhas',               key: 'spreadsheets',    permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Finanças', name: 'Tesouraria (geral)',      key: 'finance',         permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
   { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  { group: 'Finanças', name: 'Painel Executivo Financeiro', key: 'finance_executive', permissions: mkPerms(mngr(), mngr(), none(), none()) },
 
   // ── Banco / Santander ────────────────────────────────────────────────────
   // Acesso restrito: master, admin e campo — church NÃO tem acesso
