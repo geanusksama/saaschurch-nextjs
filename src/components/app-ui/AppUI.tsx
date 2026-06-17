@@ -208,6 +208,7 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/finance/lancamento/new") return "Novo Lançamento Financeiro";
   if (p === "/app-ui/finance/cash-flow") return "Fluxo de Caixa";
   if (p === "/app-ui/finance/santander") return "Banco / Santander";
+  if (p === "/app-ui/finance/diretoria") return "Painel Diretoria";
   if (p === "/app-ui/crm/spreadsheet") return "Planilhas Financeiras";
   if (p === "/app-ui/financial-reports") return "Relatórios Financeiros";
   if (p === "/app-ui/peniel/checkin") return "Check-in Peniel";
@@ -335,6 +336,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Fluxo de Caixa',   path: '/app-ui/finance/cash-flow',      icon: Wallet,          permKey: 'cash_flow' },
       { name: 'Banco / Santander',path: '/app-ui/finance/santander',      icon: SantanderIcon,   permKey: 'santander_view' },
       { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },
+      { name: 'Diretoria',        path: '/app-ui/finance/diretoria',       icon: BarChart3,       permKey: 'finance_executive' },
       { name: 'Rel. Financeiros', path: '/app-ui/financial-reports',      icon: BarChart3,       permKey: 'finance_reports' },
     ]
   },
