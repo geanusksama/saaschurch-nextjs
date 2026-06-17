@@ -1006,13 +1006,31 @@ export default function LancamentoNew() {
   }, []);
 
   // ── Search functions ──────────────────────────────────────────────────────
+
+  // Retorna null = sem filtro (master/admin); array vazio = sem acesso; array com ids = escopo permitido
+  async function resolveAllowedChurchIds(): Promise<string[] | null> {
+    if (userProfileType === 'master' || userProfileType === 'admin') return null;
+    if (caixaId) return [caixaId];
+    if (userProfileType === 'campo' && userCampoId) {
+      const { data } = await supabase.from('churches').select('id').eq('campo_id', userCampoId);
+      return (data ?? []).map((c: any) => c.id);
+    }
+    if (userObj?.churchId) return [userObj.churchId];
+    return [];
+  }
+
   async function searchMember(q: string) {
     const trimmed = q.trim();
     const isRol = /^\d+$/.test(trimmed);
+    const allowedIds = await resolveAllowedChurchIds();
+    if (allowedIds !== null && allowedIds.length === 0) return [];
     let query = supabase
       .from('members')
       .select('id, full_name, rol, church_id, churches(name)')
       .limit(20);
+    if (allowedIds !== null && allowedIds.length > 0) {
+      query = query.in('church_id', allowedIds);
+    }
     if (isRol) {
       query = query.eq('rol', parseInt(trimmed, 10));
     } else {
@@ -1027,11 +1045,14 @@ export default function LancamentoNew() {
   }
 
   async function searchChurch(q: string) {
-    const { data } = await supabase
-      .from('churches')
-      .select('id, name')
-      .ilike('name', `%${q}%`)
-      .limit(20);
+    const allowedChurchIds = await resolveAllowedChurchIds();
+    let query = supabase.from('churches').select('id, name').ilike('name', `%${q}%`).limit(20);
+    if (allowedChurchIds !== null && allowedChurchIds.length > 0) {
+      query = query.in('id', allowedChurchIds);
+    } else if (allowedChurchIds !== null && allowedChurchIds.length === 0) {
+      return [];
+    }
+    const { data } = await query;
     return (data ?? []).map((c: { id: string; name: string }) => ({ id: c.id, label: c.name }));
   }
 
@@ -1280,22 +1301,32 @@ export default function LancamentoNew() {
   const accentBar = isReceita ? 'bg-[#10b981]' : 'bg-red-500';
 
   async function searchPJ(q: string) {
-    // Busca PJs na tabela members
-    const { data: membersData } = await supabase
+    const allowedChurchIds = await resolveAllowedChurchIds();
+
+    let membersQuery = supabase
       .from('members')
-      .select('id, full_name, fantasy_name, cnpj, cpf')
+      .select('id, full_name, fantasy_name, cnpj, cpf, church_id')
       .eq('member_type', 'PJ')
       .or(`full_name.ilike.%${q}%,fantasy_name.ilike.%${q}%`)
       .limit(20);
+    if (allowedChurchIds !== null && allowedChurchIds.length > 0) {
+      membersQuery = membersQuery.in('church_id', allowedChurchIds);
+    } else if (allowedChurchIds !== null && allowedChurchIds.length === 0) {
+      return [];
+    }
+    const { data: membersData } = await membersQuery;
 
-    // Busca em lançamentos anteriores com tipo_pessoa PJ
-    const { data: caixaData } = await supabase
+    let caixaQuery = supabase
       .from('livro_caixa')
-      .select('id, favorecido, id_favorecido_externo')
+      .select('id, favorecido, id_favorecido_externo, church_id')
       .eq('tipo_pessoa', 'PJ')
       .ilike('favorecido', `%${q}%`)
       .not('favorecido', 'is', null)
       .limit(20);
+    if (allowedChurchIds !== null && allowedChurchIds.length > 0) {
+      caixaQuery = caixaQuery.in('church_id', allowedChurchIds);
+    }
+    const { data: caixaData } = await caixaQuery;
 
     // Deduplicate by name
     const seen = new Set<string>();

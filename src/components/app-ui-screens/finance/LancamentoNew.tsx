@@ -1102,13 +1102,31 @@ export default function LancamentoNew() {
   }, []);
 
   // ── Search functions ──────────────────────────────────────────────────────
+
+  // null = sem filtro (master/admin); [] = sem acesso; [...] = escopo permitido
+  async function resolveAllowedChurchIds(): Promise<string[] | null> {
+    if (userProfileType === 'master' || userProfileType === 'admin') return null;
+    if (caixaId) return [caixaId];
+    if (userProfileType === 'campo' && userCampoId) {
+      const { data } = await supabase.from('churches').select('id').eq('campo_id', userCampoId);
+      return (data ?? []).map((c: any) => c.id);
+    }
+    if (userObj?.churchId) return [userObj.churchId];
+    return [];
+  }
+
   async function searchMember(q: string) {
     const trimmed = q.trim();
     const isRol = /^\d+$/.test(trimmed);
+    const allowedIds = await resolveAllowedChurchIds();
+    if (allowedIds !== null && allowedIds.length === 0) return [];
     let query = supabase
       .from('members')
       .select('id, full_name, rol, church_id, churches(name)')
       .limit(20);
+    if (allowedIds !== null && allowedIds.length > 0) {
+      query = query.in('church_id', allowedIds);
+    }
     if (isRol) {
       query = query.eq('rol', parseInt(trimmed, 10));
     } else {
@@ -1123,11 +1141,13 @@ export default function LancamentoNew() {
   }
 
   async function searchChurch(q: string) {
-    const { data } = await supabase
-      .from('churches')
-      .select('id, name')
-      .ilike('name', `%${q}%`)
-      .limit(20);
+    const allowedIds = await resolveAllowedChurchIds();
+    if (allowedIds !== null && allowedIds.length === 0) return [];
+    let query = supabase.from('churches').select('id, name').ilike('name', `%${q}%`).limit(20);
+    if (allowedIds !== null && allowedIds.length > 0) {
+      query = query.in('id', allowedIds);
+    }
+    const { data } = await query;
     return (data ?? []).map((c: { id: string; name: string }) => ({ id: c.id, label: c.name }));
   }
 
@@ -1367,26 +1387,48 @@ export default function LancamentoNew() {
   const accentBar = isReceita ? 'bg-[#10b981]' : 'bg-red-500';
 
   async function searchPJ(q: string) {
-    // Busca em lançamentos anteriores com tipo_pessoa PJ
-    const { data } = await supabase
+    const allowedIds = await resolveAllowedChurchIds();
+    if (allowedIds !== null && allowedIds.length === 0) return [];
+
+    let membersQuery = supabase
+      .from('members')
+      .select('id, full_name, fantasy_name, church_id')
+      .eq('member_type', 'PJ')
+      .or(`full_name.ilike.%${q}%,fantasy_name.ilike.%${q}%`)
+      .limit(20);
+    if (allowedIds !== null && allowedIds.length > 0) {
+      membersQuery = membersQuery.in('church_id', allowedIds);
+    }
+    const { data: membersData } = await membersQuery;
+
+    let caixaQuery = supabase
       .from('livro_caixa')
-      .select('id, favorecido, id_favorecido_externo')
+      .select('id, favorecido, id_favorecido_externo, church_id')
       .eq('tipo_pessoa', 'PJ')
       .ilike('favorecido', `%${q}%`)
       .not('favorecido', 'is', null)
       .limit(20);
-    // Deduplicate by name
+    if (allowedIds !== null && allowedIds.length > 0) {
+      caixaQuery = caixaQuery.in('church_id', allowedIds);
+    }
+    const { data: caixaData } = await caixaQuery;
+
     const seen = new Set<string>();
-    return (data ?? []).filter((r: any) => {
-      const k = r.favorecido?.toLowerCase() ?? '';
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    }).map((r: any) => ({
-      id: r.id_favorecido_externo ?? r.id,
-      label: r.favorecido ?? '',
-      sub: r.id_favorecido_externo ?? undefined,
-    }));
+    const results: { id: string; label: string; sub?: string }[] = [];
+    (membersData ?? []).forEach((m: any) => {
+      const nome = m.fantasy_name || m.full_name;
+      if (nome && !seen.has(nome.toLowerCase())) {
+        seen.add(nome.toLowerCase());
+        results.push({ id: m.id, label: nome, sub: m.full_name !== nome ? m.full_name : undefined });
+      }
+    });
+    (caixaData ?? []).forEach((r: any) => {
+      if (r.favorecido && !seen.has(r.favorecido.toLowerCase())) {
+        seen.add(r.favorecido.toLowerCase());
+        results.push({ id: r.id_favorecido_externo ?? r.id, label: r.favorecido });
+      }
+    });
+    return results;
   }
 
   const formatData = (dtStr: string) => {
