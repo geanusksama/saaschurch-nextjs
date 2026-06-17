@@ -40,15 +40,16 @@ function buildManagedUsersWhere(user: import("@/lib/auth").AuthUser, query: Reco
   if (regionalId) where.regionalId = regionalId;
   if (isActive !== undefined) where.isActive = isActive === "true";
 
-  if (effectiveCampoId) {
+  // Master users searching by name/email bypass the campo filter so they can
+  // find and fix orphaned accounts (no campoId/regionalId/churchId set).
+  const masterSearchingByText = user.profileType === "master" && !!search;
+
+  if (effectiveCampoId && !masterSearchingByText) {
     const fieldClauses: unknown[] = [
       { campoId: effectiveCampoId },
       { regional: { is: { campoId: effectiveCampoId } } },
       { church: { is: { regional: { is: { campoId: effectiveCampoId } } } } },
     ];
-    if (user.profileType === "master" && user.sub) {
-      fieldClauses.push({ id: user.sub });
-    }
     andClauses.push({ OR: fieldClauses });
   }
 

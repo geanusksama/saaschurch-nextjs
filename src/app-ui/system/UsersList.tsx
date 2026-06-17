@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Users, Plus, Search, Trash2, Edit, RefreshCw, Lock, KeyRound, Eye, EyeOff, ClipboardPaste } from 'lucide-react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
@@ -67,13 +67,16 @@ export default function UsersList() {
   // Only master/admin bypass group isolation
   const currentGroup = isMasterOrAdmin ? null : getRoleGroup(currentRoleName);
 
-  const load = async () => {
+  const load = async (search?: string) => {
     setLoading(true);
     setError('');
     try {
       const params = new URLSearchParams();
       if (activeFieldId) {
         params.set('campoId', activeFieldId);
+      }
+      if (search) {
+        params.set('search', search);
       }
 
       const res = await fetch(`${apiBase}/users${params.toString() ? `?${params.toString()}` : ''}`, {
@@ -92,6 +95,15 @@ export default function UsersList() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      load(searchTerm || undefined);
+    }, 400);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
+  }, [searchTerm]);
 
   const handleDelete = (id: string) => {
     setConfirmTarget(id);
