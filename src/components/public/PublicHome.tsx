@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
-import { User, Play, Radio, Camera, Users, MapPin, Smartphone, Sun, Moon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
+import { User, Play, Radio, Camera, Users, MapPin, Sun, Moon } from 'lucide-react';
 import { MobileAppOverlay } from './MobileAppPreview';
 import { AnimatePresence } from 'motion/react';
 import { PortalExperience } from './portal/PortalExperience';
+import { MembroLogin } from '../membro/MembroLogin';
+import { MembroProvider } from '../membro/MembroProvider';
 
 function DoveIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -25,6 +27,8 @@ export function PublicHome() {
   const [isDark, setIsDark] = useState(true);
   const [showApp, setShowApp] = useState(false);
   const [showPortal, setShowPortal] = useState(false);
+  const [showMembroLogin, setShowMembroLogin] = useState(false);
+  const navigate = useNavigate();
 
   // Lê o tema salvo (compartilhado com a página pública do Peniel)
   useEffect(() => {
@@ -93,6 +97,16 @@ export function PublicHome() {
           </button> */}
           <button onClick={() => setShowApp(true)} title="Preview App" className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${avatarCls}`}>
             <Play className="w-4 h-4" style={{ color: isDark ? '#94a3b8' : '#6b7280' }} />
+          </button>
+          {/* Sou Membro CTA */}
+          <button
+            onClick={() => setShowMembroLogin(true)}
+            title="Área do Membro"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95"
+            style={{ background: '#2dd4bf', color: '#0d0f17', boxShadow: '0 0 18px rgba(45,212,191,0.4)' }}
+          >
+            <User className="w-4 h-4" />
+            <span className="hidden sm:block">Sou Membro</span>
           </button>
           <Link to="/auth/login" className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${avatarCls}`}>
             <User className="w-5 h-5" style={{ color: isDark ? '#94a3b8' : '#6b7280' }} />
@@ -174,6 +188,17 @@ export function PublicHome() {
 
       <AnimatePresence>
         {showPortal && <PortalExperience onClose={() => setShowPortal(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showMembroLogin && (
+          <MembroProvider>
+            <MembroLogin
+              onClose={() => setShowMembroLogin(false)}
+              onSuccess={() => { setShowMembroLogin(false); navigate('/membro/perfil'); }}
+            />
+          </MembroProvider>
+        )}
       </AnimatePresence>
     </div>
   );
