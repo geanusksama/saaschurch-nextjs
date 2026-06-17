@@ -38,10 +38,23 @@ export default function IncomeNew() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const userObj = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || 'null'); } catch { return null; } })();
+  const profileType: string = userObj?.profileType ?? 'church';
+  const userCampoId: string = userObj?.campoId ?? '';
+  const userChurchId: string = userObj?.churchId ?? '';
+
   useEffect(() => {
     (async () => {
+      let churchQuery = supabase.from('churches').select('id, name').order('name').limit(300);
+      if (profileType !== 'master' && profileType !== 'admin') {
+        if (profileType === 'campo' && userCampoId) {
+          churchQuery = churchQuery.eq('campo_id', userCampoId);
+        } else if (userChurchId) {
+          churchQuery = churchQuery.eq('id', userChurchId);
+        }
+      }
       const [c, p, f, t] = await Promise.all([
-        supabase.from('churches').select('id, name').order('name').limit(300),
+        churchQuery,
         supabase.from('plano_de_contas').select('id, nome, codigo').eq('tipo', 'RECEITA').eq('ativo', true).order('nome'),
         supabase.from('forma_pagamento').select('id, nome').eq('mostrar', true).order('nome'),
         supabase.from('tipo_documento').select('id, nome, sigla').eq('disponivel_receita', true).eq('ativo', true).order('nome'),
@@ -57,7 +70,18 @@ export default function IncomeNew() {
     setMemberSearch(q);
     setMemberId('');
     if (q.length < 2) { setMemberResults([]); return; }
-    const { data } = await supabase.from('members').select('id, nome').ilike('nome', `%${q}%`).limit(10);
+    let query = supabase.from('members').select('id, nome').ilike('nome', `%${q}%`).limit(10);
+    if (profileType !== 'master' && profileType !== 'admin') {
+      if (churchId) query = query.eq('church_id', churchId);
+      else if (profileType === 'campo' && userCampoId) {
+        const { data: cc } = await supabase.from('churches').select('id').eq('campo_id', userCampoId);
+        const ids = (cc ?? []).map((c: any) => c.id);
+        if (ids.length > 0) query = query.in('church_id', ids);
+      } else if (userChurchId) {
+        query = query.eq('church_id', userChurchId);
+      }
+    }
+    const { data } = await query;
     setMemberResults(data || []);
   }
 

@@ -466,8 +466,14 @@ function HistoricoPanel({
   const [churchesPanel, setChurchesPanel] = useState<Church[]>([]);
   useEffect(() => {
     if (!isChurchProfile && activeTab === 'repetir' && churchesPanel.length === 0) {
-      supabase.from('churches').select('id, name').order('name').limit(500)
-        .then(({ data }) => { if (data) setChurchesPanel(data as Church[]); });
+      const userObjPanel2 = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || 'null'); } catch { return null; } })();
+      const pt: string = userObjPanel2?.profileType ?? 'church';
+      const campoId2: string = userObjPanel2?.campoId ?? '';
+      let q = supabase.from('churches').select('id, name').order('name').limit(500);
+      if (pt !== 'master' && pt !== 'admin' && pt === 'campo' && campoId2) {
+        q = q.eq('campo_id', campoId2);
+      }
+      q.then(({ data }) => { if (data) setChurchesPanel(data as Church[]); });
     }
   }, [activeTab, isChurchProfile, churchesPanel.length]);
 
@@ -1006,8 +1012,16 @@ export default function LancamentoNew() {
   // ── Load base data ────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
+      let churchQuery = supabase.from('churches').select('id, name').order('name').limit(500);
+      if (userProfileType !== 'master' && userProfileType !== 'admin') {
+        if (userProfileType === 'campo' && userCampoId) {
+          churchQuery = churchQuery.eq('campo_id', userCampoId);
+        } else if (profileChurchId) {
+          churchQuery = churchQuery.eq('id', profileChurchId);
+        }
+      }
       const [c, f] = await Promise.all([
-        supabase.from('churches').select('id, name').order('name').limit(500),
+        churchQuery,
         supabase.from('forma_pagamento').select('id, nome').eq('mostrar', true).order('nome'),
       ]);
       if (c.data) setChurches(c.data);

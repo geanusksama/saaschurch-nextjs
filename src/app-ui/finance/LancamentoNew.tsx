@@ -910,8 +910,16 @@ export default function LancamentoNew() {
   // ── Load base data ────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
+      let churchQuery = supabase.from('churches').select('id, name').order('name').limit(500);
+      if (userProfileType !== 'master' && userProfileType !== 'admin') {
+        if (userProfileType === 'campo' && userCampoId) {
+          churchQuery = churchQuery.eq('campo_id', userCampoId);
+        } else if (profileChurchId) {
+          churchQuery = churchQuery.eq('id', profileChurchId);
+        }
+      }
       const [c, f] = await Promise.all([
-        supabase.from('churches').select('id, name').order('name').limit(500),
+        churchQuery,
         supabase.from('forma_pagamento').select('id, nome').eq('mostrar', true).order('nome'),
       ]);
       if (c.data) setChurches(c.data);

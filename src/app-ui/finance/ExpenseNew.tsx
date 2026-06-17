@@ -40,10 +40,23 @@ export default function ExpenseNew() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const userObj = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || 'null'); } catch { return null; } })();
+  const profileType: string = userObj?.profileType ?? 'church';
+  const userCampoId: string = userObj?.campoId ?? '';
+  const userChurchId: string = userObj?.churchId ?? '';
+
   useEffect(() => {
     (async () => {
+      let churchQuery = supabase.from('churches').select('id, name').order('name').limit(300);
+      if (profileType !== 'master' && profileType !== 'admin') {
+        if (profileType === 'campo' && userCampoId) {
+          churchQuery = churchQuery.eq('campo_id', userCampoId);
+        } else if (userChurchId) {
+          churchQuery = churchQuery.eq('id', userChurchId);
+        }
+      }
       const [c, p, f, t] = await Promise.all([
-        supabase.from('churches').select('id, name').order('name').limit(300),
+        churchQuery,
         supabase.from('plano_de_contas').select('id, nome, codigo').eq('tipo', 'DESPESA').eq('ativo', true).order('nome'),
         supabase.from('forma_pagamento').select('id, nome').eq('mostrar', true).order('nome'),
         supabase.from('tipo_documento').select('id, nome, sigla').eq('disponivel_despesa', true).eq('ativo', true).order('nome'),
