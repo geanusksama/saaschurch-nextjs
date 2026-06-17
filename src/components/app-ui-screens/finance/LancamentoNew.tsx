@@ -179,6 +179,8 @@ type LancamentoRecente = {
   member_id?: string | null;
   rol?: number | null;
   tipo_pessoa?: string | null;
+  church_id?: string | null;
+  church_name?: string | null;
 };
 
 function normalizeText(value: string | null | undefined) {
@@ -658,6 +660,9 @@ function HistoricoPanel({
                           <p className="text-[11px] text-slate-400 dark:text-slate-500">{new Date(l.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
                           <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{l.plano_de_conta ?? '—'}</p>
                           <p className="text-[11px] text-slate-400 truncate">{l.favorecido ?? 'Sem dados'}</p>
+                          {!isChurchProfile && l.church_name && (
+                            <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">{l.church_name}</p>
+                          )}
                         </div>
                         <span className={`text-xs font-bold flex-shrink-0 ${l.tipo === 'RECEITA' ? 'text-emerald-600' : 'text-red-600'}`}>
                           R$ {Number(l.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -1055,7 +1060,7 @@ export default function LancamentoNew() {
   const loadRecentes = useCallback(async () => {
     let query = supabase
       .from('livro_caixa')
-      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, num_doc, church_id, member_id, rol, tipo_pessoa')
+      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, num_doc, church_id, member_id, rol, tipo_pessoa, churches(name)')
       .order('created_at', { ascending: false })
       .limit(30);
 
@@ -1075,7 +1080,13 @@ export default function LancamentoNew() {
       if (ids.length > 0) query = query.in('church_id', ids);
     }
     const { data } = await query;
-    if (data) setLancamentosRecentes(data as LancamentoRecente[]);
+    if (data) {
+      const mapped = (data as any[]).map(row => ({
+        ...row,
+        church_name: row.churches?.name ?? null,
+      }));
+      setLancamentosRecentes(mapped as LancamentoRecente[]);
+    }
   }, [caixaId, userProfileType, userCampoId]);
 
   useEffect(() => { loadRecentes(); }, [loadRecentes]);

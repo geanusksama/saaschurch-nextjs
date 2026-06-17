@@ -177,6 +177,8 @@ type LancamentoRecente = {
   num_doc: string | null;
   obs?: string | null;
   repetido_mes?: string | null;
+  church_id?: string | null;
+  church_name?: string | null;
 };
 
 function normalizeText(value: string | null | undefined) {
@@ -962,7 +964,7 @@ export default function LancamentoNew() {
   const loadRecentes = useCallback(async () => {
     let query = supabase
       .from('livro_caixa')
-      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, num_doc, church_id')
+      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, num_doc, church_id, churches(name)')
       .order('created_at', { ascending: false })
       .limit(30);
 
@@ -982,7 +984,13 @@ export default function LancamentoNew() {
       if (ids.length > 0) query = query.in('church_id', ids);
     }
     const { data } = await query;
-    if (data) setLancamentosRecentes(data as LancamentoRecente[]);
+    if (data) {
+      const mapped = (data as any[]).map(row => ({
+        ...row,
+        church_name: row.churches?.name ?? null,
+      }));
+      setLancamentosRecentes(mapped as LancamentoRecente[]);
+    }
   }, [caixaId, userProfileType, userCampoId]);
 
   useEffect(() => { loadRecentes(); }, [loadRecentes]);
@@ -1745,6 +1753,9 @@ export default function LancamentoNew() {
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 truncate">{l.plano_de_conta ?? '—'}</p>
                       <p className="text-[10px] text-slate-400 truncate">{l.favorecido ?? 'Sem dados'} · {new Date(l.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+                      {!isChurchUser && l.church_name && (
+                        <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">{l.church_name}</p>
+                      )}
                     </div>
                     <span className={`text-[11px] font-bold flex-shrink-0 ${l.tipo === 'RECEITA' ? 'text-emerald-600' : 'text-red-500'}`}>
                       {l.tipo === 'RECEITA' ? '+' : '-'} R$ {Number(l.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
