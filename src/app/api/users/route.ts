@@ -73,16 +73,33 @@ export async function GET(req: NextRequest) {
     const query = Object.fromEntries(searchParams.entries());
     const where = buildManagedUsersWhere(user, query);
 
-    const limit = Math.min(500, Math.max(1, parseInt(searchParams.get("limit") || "200")));
+    // Legacy flat-array path (e.g. GlobalSearchModal passes explicit limit)
+    const limitParam = searchParams.get("limit");
+    if (limitParam) {
+      const limit = Math.min(500, Math.max(1, parseInt(limitParam) || 200));
+      const users = await prisma.user.findMany({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        where: where as any,
+        include: userInclude,
+        orderBy: { fullName: "asc" },
+        take: limit,
+      });
+      return NextResponse.json(serializeBigInts(users));
+    }
 
-    const users = await prisma.user.findMany({
-      where: where as Parameters<typeof prisma.user.findMany>[0]["where"],
-      include: userInclude,
-      orderBy: { fullName: "asc" },
-      take: limit,
-    });
+    // Paginated path
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const pageSize = Math.min(100, Math.max(10, parseInt(searchParams.get("pageSize") || "25")));
+    const skip = (page - 1) * pageSize;
 
-    return NextResponse.json(serializeBigInts(users));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = where as any;
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({ where: w, include: userInclude, orderBy: { fullName: "asc" }, skip, take: pageSize }),
+      prisma.user.count({ where: w }),
+    ]);
+
+    return NextResponse.json(serializeBigInts({ data: users, total, page, pageSize }));
   });
 }
 

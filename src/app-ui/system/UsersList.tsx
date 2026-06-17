@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Users, Plus, Search, Trash2, Edit, RefreshCw, Lock, KeyRound, Eye, EyeOff, ClipboardPaste } from 'lucide-react';
+import { Users, Plus, Search, Trash2, Edit, RefreshCw, Lock, KeyRound, Eye, EyeOff, ClipboardPaste, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { AlertDialog, ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
@@ -23,13 +23,16 @@ const PROFILE_COLORS: Record<string, string> = {
 };
 
 export default function UsersList() {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPerfil, setFilterPerfil] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterFuncao, setFilterFuncao] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(25);
+  const [total, setTotal] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState('');
@@ -53,7 +56,6 @@ export default function UsersList() {
   // Role-group isolation helpers
   const currentMrmUser = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; } })();
   const currentProfileType: string = currentMrmUser.profileType || '';
-  // auth/me may return role as nested object (Prisma) or flat roleName field
   const currentRoleName: string = currentMrmUser.roleName || currentMrmUser.role?.name || '';
   const isMasterOrAdmin = ['master', 'admin'].includes(currentProfileType);
 
@@ -64,29 +66,30 @@ export default function UsersList() {
     return null;
   };
 
-  // Only master/admin bypass group isolation
   const currentGroup = isMasterOrAdmin ? null : getRoleGroup(currentRoleName);
 
-  const load = async (search?: string) => {
+  const load = async (opts: { search?: string; page?: number; profileType?: string; isActive?: string } = {}) => {
     setLoading(true);
     setError('');
     try {
       const params = new URLSearchParams();
-      if (activeFieldId) {
-        params.set('campoId', activeFieldId);
-      }
-      if (search) {
-        params.set('search', search);
-      }
+      if (activeFieldId) params.set('campoId', activeFieldId);
+      if (opts.search) params.set('search', opts.search);
+      if (opts.profileType) params.set('profileType', opts.profileType);
+      if (opts.isActive !== undefined && opts.isActive !== '') params.set('isActive', opts.isActive);
+      params.set('page', String(opts.page ?? 1));
+      params.set('pageSize', String(pageSize));
 
-      const res = await fetch(`${apiBase}/users${params.toString() ? `?${params.toString()}` : ''}`, {
+      const res = await fetch(`${apiBase}/users?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Erro ${res.status}`);
       }
-      setUsers(await res.json());
+      const json = await res.json();
+      setUsers(json.data ?? json);
+      setTotal(json.total ?? json.length ?? 0);
     } catch (err: any) {
       setError(err.message || 'Falha ao carregar usuários.');
     } finally {
@@ -94,16 +97,31 @@ export default function UsersList() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load({ page: 1 }); }, []);
 
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
     searchDebounce.current = setTimeout(() => {
-      load(searchTerm || undefined);
+      setPage(1);
+      load({
+        search: searchTerm || undefined,
+        profileType: filterPerfil || undefined,
+        isActive: filterStatus === 'active' ? 'true' : filterStatus === 'inactive' ? 'false' : undefined,
+        page: 1,
+      });
     }, 400);
     return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
-  }, [searchTerm]);
+  }, [searchTerm, filterPerfil, filterStatus]);
+
+  useEffect(() => {
+    load({
+      search: searchTerm || undefined,
+      profileType: filterPerfil || undefined,
+      isActive: filterStatus === 'active' ? 'true' : filterStatus === 'inactive' ? 'false' : undefined,
+      page,
+    });
+  }, [page]);
 
   const handleDelete = (id: string) => {
     setConfirmTarget(id);
@@ -196,24 +214,16 @@ export default function UsersList() {
     new Set(users.map((u: any) => u.role?.name).filter(Boolean))
   ) as string[];
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // search/profileType/isActive are server-side; funcao and security checks remain client-side
   const filtered = users.filter((u: any) => {
-    const matchSearch =
-      !searchTerm ||
-      u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchPerfil = !filterPerfil || u.profileType === filterPerfil;
-    const matchStatus =
-      !filterStatus ||
-      (filterStatus === 'active' ? u.isActive : !u.isActive);
     const matchFuncao =
       !filterFuncao ||
       (filterFuncao === '__none__' ? !u.role : u.role?.name === filterFuncao);
-    // Users below admin cannot see master accounts
     const matchMasterVisibility = isMasterOrAdmin || u.profileType !== 'master';
-    // Role-group isolation: if current user belongs to a group (sec/tes),
-    // only show users from the same group
     const matchGroup = !currentGroup || getRoleGroup(u.role?.name || '') === currentGroup;
-    return matchSearch && matchPerfil && matchStatus && matchFuncao && matchMasterVisibility && matchGroup;
+    return matchFuncao && matchMasterVisibility && matchGroup;
   });
 
   return (
@@ -243,7 +253,7 @@ export default function UsersList() {
                 Fazer login
               </Link>
             )}
-            <button onClick={load} className="flex items-center gap-1 text-red-600 hover:text-red-800 font-medium">
+            <button onClick={() => load()} className="flex items-center gap-1 text-red-600 hover:text-red-800 font-medium">
               <RefreshCw className="w-4 h-4" /> Tentar novamente
             </button>
           </div>
@@ -413,6 +423,52 @@ export default function UsersList() {
           </table>
         )}
       </div>
+
+      {/* Paginação */}
+      {total > pageSize && (
+        <div className="flex items-center justify-between mt-4 px-1">
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} de {total} usuários
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 transition-colors"
+              title="Primeira"
+            >
+              <ChevronsLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            </button>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 transition-colors"
+              title="Anterior"
+            >
+              <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            </button>
+            <span className="px-3 py-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 transition-colors"
+              title="Próxima"
+            >
+              <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            </button>
+            <button
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 transition-colors"
+              title="Última"
+            >
+              <ChevronsRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={bulkPasteConfirm}
