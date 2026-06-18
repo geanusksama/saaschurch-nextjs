@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
-    if (!["master", "admin"].includes(user.profileType)) {
+    if (!["master", "admin", "campo"].includes(user.profileType)) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
     const body = await req.json().catch(() => ({}));
