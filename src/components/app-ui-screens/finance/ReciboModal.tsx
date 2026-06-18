@@ -378,7 +378,35 @@ function ComprovanteViewer({ src, docNum, onClose }: { src: string; docNum: stri
   const [rotation, setRotation] = useState(0);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const dragStart = useRef<{ mx: number; my: number; px: number; py: number } | null>(null);
+
+  // Força download via blob — evita abertura em nova aba (cross-origin)
+  async function handleDownload(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const url = getImageUrl(src);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Falha ao baixar');
+      const blob = await res.blob();
+      const ext = src.split('.').pop()?.split('?')[0] || 'jpg';
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `comprovante-doc-${docNum}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      // fallback: abre no navegador
+      window.open(getImageUrl(src), '_blank');
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   // ESC to close
   useEffect(() => {
@@ -401,7 +429,7 @@ function ComprovanteViewer({ src, docNum, onClose }: { src: string; docNum: stri
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 flex-shrink-0">
             <span className="text-white text-sm font-medium">Comprovante PDF — Doc {docNum}</span>
             <div className="flex items-center gap-1">
-              <a href={getImageUrl(src)} download className="p-1.5 rounded hover:bg-white/10 text-white" title="Download"><Download className="w-4 h-4" /></a>
+              <button onClick={handleDownload} disabled={downloading} className="p-1.5 rounded hover:bg-white/10 text-white disabled:opacity-50" title="Baixar arquivo"><Download className="w-4 h-4" /></button>
               <button onClick={onClose} className="p-1.5 rounded hover:bg-white/10 text-white ml-1" title="Fechar"><X className="w-4 h-4" /></button>
             </div>
           </div>
@@ -469,7 +497,7 @@ function ComprovanteViewer({ src, docNum, onClose }: { src: string; docNum: stri
             <button onClick={() => setScale(s => Math.min(10, +(s + 0.2).toFixed(2)))} className="p-1.5 rounded hover:bg-white/10 text-white" title="Ampliar"><ZoomIn className="w-4 h-4" /></button>
             <button onClick={resetView} className="p-1.5 rounded hover:bg-white/10 text-white" title="Resetar view"><RotateCw className="w-4 h-4" /></button>
             <button onClick={() => setRotation(r => (r + 90) % 360)} className="p-1.5 rounded hover:bg-white/10 text-white text-sm font-bold px-2" title="Girar">↻</button>
-            <a href={getImageUrl(src)} download className="p-1.5 rounded hover:bg-white/10 text-white" title="Download"><Download className="w-4 h-4" /></a>
+            <button onClick={handleDownload} disabled={downloading} className="p-1.5 rounded hover:bg-white/10 text-white disabled:opacity-50" title="Baixar arquivo"><Download className="w-4 h-4" /></button>
             <button onClick={onClose} className="p-1.5 rounded hover:bg-white/10 text-white ml-1" title="Fechar"><X className="w-4 h-4" /></button>
           </div>
         </div>

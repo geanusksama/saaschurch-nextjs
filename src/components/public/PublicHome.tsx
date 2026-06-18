@@ -91,16 +91,6 @@ export function PublicHome() {
             <Smartphone className="w-5 h-5 text-white" />
             <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(34,197,94,0.22)' }} />
           </button> */}
-          {/* Sou Membro CTA */}
-          <button
-            onClick={() => setShowMembroLogin(true)}
-            title="Área do Membro"
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95"
-            style={{ background: '#2dd4bf', color: '#0d0f17', boxShadow: '0 0 18px rgba(45,212,191,0.4)' }}
-          >
-            <User className="w-4 h-4" />
-            <span className="hidden sm:block">Sou Membro</span>
-          </button>
           <Link to="/auth/login" className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${avatarCls}`}>
             <User className="w-5 h-5" style={{ color: isDark ? '#94a3b8' : '#6b7280' }} />
           </Link>
@@ -119,8 +109,22 @@ export function PublicHome() {
           <p className={`text-xs tracking-wide ${textMuted}`}>João 3:16</p>
         </div>
 
-        <div className="w-full md:w-1/2 max-w-md space-y-8">
-          <Link to="/peniel" className="flex items-start gap-5 group hover:opacity-80 transition-opacity">
+        <div className="w-full md:w-1/2 max-w-xl grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-7">
+
+          {/* Sou Membro — círculo verde */}
+          <button onClick={() => setShowMembroLogin(true)}
+            className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left">
+            <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors"
+              style={{ borderColor: '#22c55e', background: 'rgba(34,197,94,0.08)' }}>
+              <User className="w-6 h-6 transition-colors" style={{ color: '#22c55e' }} />
+            </div>
+            <div className="flex flex-col justify-center min-h-[3.5rem]">
+              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Sou Membro</h3>
+              <p className={`text-xs leading-relaxed ${textSub}`}>Acesse sua área exclusiva<br />de membro da igreja.</p>
+            </div>
+          </button>
+
+          <Link to="/peniel" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#d4af37] transition-colors ${border}`}>
               <DoveIcon className={`w-6 h-6 group-hover:text-[#d4af37] transition-colors ${iconColor}`} />
             </div>
@@ -130,20 +134,7 @@ export function PublicHome() {
             </div>
           </Link>
 
-          <div className="flex items-start gap-5">
-            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center ${border}`}><Users className={`w-6 h-6 ${iconColor}`} /></div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Dias de culto</h3>
-              <div className={`text-xs leading-relaxed space-y-0.5 ${textSub}`}>
-                <p><strong className={textPrimary}>Domingo:</strong> 8h EBD, 9:30 e 18:30 Culto da Família</p>
-                <p><strong className={textPrimary}>Quarta:</strong> 19:15 Culto de Ensino</p>
-                <p><strong className={textPrimary}>Sexta:</strong> 23h Vigília</p>
-                <p><strong className={textPrimary}>Sábado:</strong> Manhã - Oração das Mulheres, Noite - Culto de Jovens</p>
-              </div>
-            </div>
-          </div>
-
-          <a href="https://www.youtube.com/@tvadcampinas" target="_blank" rel="noopener noreferrer" className="flex items-start gap-5 group hover:opacity-80 transition-opacity">
+          <a href="https://www.youtube.com/@tvadcampinas" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#ff0000] transition-colors ${border}`}><Play className={`w-6 h-6 group-hover:text-[#ff0000] transition-colors ${iconColor}`} /></div>
             <div className="flex flex-col justify-center min-h-[3.5rem]">
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Culto ao vivo</h3>
@@ -151,7 +142,7 @@ export function PublicHome() {
             </div>
           </a>
 
-          <div className="flex items-start gap-5">
+          <div className="flex items-start gap-4">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center ${border}`}><Radio className={`w-6 h-6 ${iconColor}`} /></div>
             <div className="flex flex-col justify-center min-h-[3.5rem]">
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>102,9</h3>
@@ -159,7 +150,7 @@ export function PublicHome() {
             </div>
           </div>
 
-          <a href="https://www.instagram.com/adcampinas/" target="_blank" rel="noopener noreferrer" className="flex items-start gap-5 group hover:opacity-80 transition-opacity">
+          <a href="https://www.instagram.com/adcampinas/" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-pink-500 transition-colors ${border}`}><Camera className={`w-6 h-6 group-hover:text-pink-500 transition-colors ${iconColor}`} /></div>
             <div className="flex flex-col justify-center min-h-[3.5rem]">
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Instagram</h3>
@@ -167,13 +158,26 @@ export function PublicHome() {
             </div>
           </a>
 
-          <a href="https://www.google.com/maps/search/?api=1&query=Rua+Barão+de+Parnaíba,+149+-+Campinas" target="_blank" rel="noopener noreferrer" className="flex items-start gap-5 group hover:opacity-80 transition-opacity">
+          <a href="https://www.google.com/maps/search/?api=1&query=Rua+Barão+de+Parnaíba,+149+-+Campinas" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-blue-400 transition-colors ${border}`}><MapPin className={`w-6 h-6 group-hover:text-blue-400 transition-colors ${iconColor}`} /></div>
             <div className="flex flex-col justify-center min-h-[3.5rem]">
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Nossa Sede</h3>
               <p className={`text-xs leading-relaxed ${textSub}`}>Rua Barão de Parnaíba, 149 - Campinas<br />Telefone/WhatsApp: (19) 98928-1188</p>
             </div>
           </a>
+
+          <div className="flex items-start gap-4 lg:col-span-2">
+            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center ${border}`}><Users className={`w-6 h-6 ${iconColor}`} /></div>
+            <div className="flex flex-col justify-center min-h-[3.5rem]">
+              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Dias de culto</h3>
+              <div className={`text-xs leading-relaxed space-y-0.5 ${textSub}`}>
+                <p><strong className={textPrimary}>Domingo:</strong> 8h EBD, 9:30 e 18:30 Culto da Família</p>
+                <p><strong className={textPrimary}>Quarta:</strong> 19:15 Culto de Ensino &nbsp;·&nbsp; <strong className={textPrimary}>Sexta:</strong> 23h Vigília</p>
+                <p><strong className={textPrimary}>Sábado:</strong> Manhã - Oração das Mulheres, Noite - Culto de Jovens</p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </main>
 
