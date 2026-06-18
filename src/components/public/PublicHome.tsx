@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { User, Play, Radio, Camera, Users, MapPin, Sun, Moon } from 'lucide-react';
-import { MobileAppOverlay } from './MobileAppPreview';
 import { AnimatePresence } from 'motion/react';
-import { PortalExperience } from './portal/PortalExperience';
 import { MembroLogin } from '../membro/MembroLogin';
 import { MembroProvider } from '../membro/MembroProvider';
 
@@ -25,8 +23,6 @@ function DoveIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export function PublicHome() {
   const [isDark, setIsDark] = useState(true);
-  const [showApp, setShowApp] = useState(false);
-  const [showPortal, setShowPortal] = useState(false);
   const [showMembroLogin, setShowMembroLogin] = useState(false);
   const navigate = useNavigate();
 
@@ -95,9 +91,6 @@ export function PublicHome() {
             <Smartphone className="w-5 h-5 text-white" />
             <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(34,197,94,0.22)' }} />
           </button> */}
-          <button onClick={() => setShowApp(true)} title="Preview App" className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${avatarCls}`}>
-            <Play className="w-4 h-4" style={{ color: isDark ? '#94a3b8' : '#6b7280' }} />
-          </button>
           {/* Sou Membro CTA */}
           <button
             onClick={() => setShowMembroLogin(true)}
@@ -184,16 +177,11 @@ export function PublicHome() {
         </div>
       </main>
 
-      {showApp && <MobileAppOverlay onClose={() => setShowApp(false)} />}
-
-      <AnimatePresence>
-        {showPortal && <PortalExperience onClose={() => setShowPortal(false)} />}
-      </AnimatePresence>
-
       <AnimatePresence>
         {showMembroLogin && (
           <MembroProvider>
             <MembroLogin
+              isDark={isDark}
               onClose={() => setShowMembroLogin(false)}
               onSuccess={() => { setShowMembroLogin(false); navigate('/membro/perfil'); }}
             />
