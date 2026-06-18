@@ -1151,6 +1151,7 @@ export default function Cashbook() {
 
   // Table state
   const [filterType, setFilterType] = useState<'all' | 'RECEITA' | 'DESPESA'>('all');
+  const [tableSearch, setTableSearch] = useState('');
   const [sortKey, setSortKey]       = useState<SortKey>('plano_tipo');
   const [sortDir, setSortDir]       = useState<SortDir>('asc');
   const [page, setPage]             = useState(1);
@@ -1210,8 +1211,20 @@ export default function Cashbook() {
   // Computed values
   const typeFiltered = filterType === 'all' ? rows : rows.filter(r => r.tipo === filterType);
 
+  const searchFiltered = useMemo(() => {
+    const q = tableSearch.trim().toLowerCase();
+    if (!q) return typeFiltered;
+    return typeFiltered.filter(r =>
+      (r.favorecido    || '').toLowerCase().includes(q) ||
+      (r.plano_de_conta|| '').toLowerCase().includes(q) ||
+      (r.categoria     || '').toLowerCase().includes(q) ||
+      (r.forma_pg      || '').toLowerCase().includes(q) ||
+      String(r.valor   || '').includes(q)
+    );
+  }, [typeFiltered, tableSearch]);
+
   const sorted = useMemo(() => {
-    return [...typeFiltered].sort((a, b) => {
+    return [...searchFiltered].sort((a, b) => {
       if (sortKey === 'plano_tipo') {
         const pa = planoPriority(a), pb = planoPriority(b);
         if (pa !== pb) return sortDir === 'asc' ? pa - pb : pb - pa;
@@ -1227,7 +1240,7 @@ export default function Cashbook() {
       if (typeof av === 'number') return sortDir === 'asc' ? av - bv : (bv as number) - av;
       return sortDir === 'asc' ? String(av).localeCompare(String(bv), 'pt-BR') : String(bv).localeCompare(String(av), 'pt-BR');
     });
-  }, [typeFiltered, sortKey, sortDir]);
+  }, [searchFiltered, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const paginated  = useMemo(() => {
@@ -1567,35 +1580,84 @@ export default function Cashbook() {
       {searched && !loading && rows.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm dark:shadow-none overflow-hidden">
           {/* Toolbar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/70 flex-wrap gap-2">
-            {/* Left: type filter */}
-            <div className="flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              {(['all', 'RECEITA', 'DESPESA'] as const).map(t => (
-                <button key={t} onClick={() => { setFilterType(t); setPage(1); }}
+          <div className="flex flex-col gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/70">
+            {/* Row 1: tabs + pager */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              {/* Left: type filter */}
+              <div className="flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                {/* Todos */}
+                <button onClick={() => { setFilterType('all'); setPage(1); setTableSearch(''); }}
                   className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                    filterType === t
-                      ? t === 'RECEITA' ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200'
-                        : t === 'DESPESA' ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-200'
-                        : 'bg-slate-800 text-white'
-                      : 'text-slate-500 hover:bg-slate-100'
+                    filterType === 'all' ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}>
-                  {t === 'all' ? `Todos (${rows.length})` : t === 'RECEITA' ? `Receitas (${qtdReceitas})` : `Despesas (${qtdDespesas})`}
+                  Todos ({rows.length})
                 </button>
-              ))}
+                {/* Receitas */}
+                <button
+                  onClick={() => { setFilterType('RECEITA'); setPage(1); setTableSearch(''); }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border"
+                  style={filterType === 'RECEITA'
+                    ? { background: '#16a34a', color: '#fff', borderColor: '#16a34a' }
+                    : { background: '#dcfce7', color: '#166534', borderColor: '#86efac' }
+                  }>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'currentColor', opacity: 0.8 }} />
+                  Receitas ({qtdReceitas})
+                </button>
+                {/* Despesas */}
+                <button
+                  onClick={() => { setFilterType('DESPESA'); setPage(1); setTableSearch(''); }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border"
+                  style={filterType === 'DESPESA'
+                    ? { background: '#dc2626', color: '#fff', borderColor: '#dc2626' }
+                    : { background: '#fee2e2', color: '#991b1b', borderColor: '#fca5a5' }
+                  }>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'currentColor', opacity: 0.8 }} />
+                  Despesas ({qtdDespesas})
+                  {totalReceita > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                      style={filterType === 'DESPESA'
+                        ? { background: 'rgba(255,255,255,0.22)', color: '#fff' }
+                        : { background: '#fecaca', color: '#991b1b' }
+                      }>
+                      {((totalDespesa / totalReceita) * 100).toFixed(1)}%
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Right: per-page + info */}
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span>Exibir</span>
+                <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded text-sm bg-white dark:bg-slate-900">
+                  {[25, 50, 100, 200, 500].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+                <span>por pagina</span>
+                <span className="text-slate-400 ml-2">{sorted.length} lançamento{sorted.length !== 1 ? 's' : ''}</span>
+              </div>
             </div>
 
-            {/* Right: per-page + info */}
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <span>Exibir</span>
-              <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
-                className="px-2 py-1 border border-slate-200 rounded text-sm bg-white">
-                {[25, 50, 100, 200, 500].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-              <span>por pagina</span>
-              <span className="text-slate-400 ml-2">
-                {sorted.length} lancamento{sorted.length !== 1 ? 's' : ''}
-              </span>
+            {/* Row 2: search */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                <input
+                  value={tableSearch}
+                  onChange={e => { setTableSearch(e.target.value); setPage(1); }}
+                  placeholder="Buscar por favorecido, categoria, plano, forma de pgto…"
+                  className="w-full pl-8 pr-8 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none focus:border-blue-400"
+                />
+                {tableSearch && (
+                  <button onClick={() => { setTableSearch(''); setPage(1); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {tableSearch && (
+                <span className="text-xs text-slate-500">{sorted.length} resultado{sorted.length !== 1 ? 's' : ''}</span>
+              )}
             </div>
           </div>
 
