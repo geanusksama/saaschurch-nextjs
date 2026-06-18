@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   if (!campoId) return NextResponse.json({ error: 'Campo não identificado.' }, { status: 400 })
 
   try {
-    const take = Math.min(Number(limit) || 20, 50)
+    const take = Math.min(Number(limit) || 20, 60)
 
     const members = await prisma.member.findMany({
       where: {

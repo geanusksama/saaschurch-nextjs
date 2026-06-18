@@ -57,6 +57,10 @@ function SnapCard({ m, h, token }: { m: MemberCard; h: number; token: string }) 
   const first = name.split(' ')[0];
   const rest  = name.split(' ').slice(1).join(' ');
 
+  // photo frame: 62% of card height, 80% width, centered, starts at 12% from top
+  const photoH = Math.round(h * 0.62);
+  const photoW = Math.round(Math.min(h * 0.5, 320)); // never wider than ~320
+
   const handleLike = async () => {
     try {
       const res = await fetch('/api/membro/curtir', {
@@ -71,51 +75,81 @@ function SnapCard({ m, h, token }: { m: MemberCard; h: number; token: string }) 
 
   return (
     <div
-      className="relative flex-shrink-0 w-full overflow-hidden"
-      style={{ height: h, scrollSnapAlign: 'start', scrollSnapStop: 'always', background: '#0d1f2d' }}
+      className="relative flex-shrink-0 w-full flex flex-col items-center"
+      style={{ height: h, scrollSnapAlign: 'start', scrollSnapStop: 'always', background: '#0d1117' }}
     >
-      {m.photoUrl ? (
-        <img src={m.photoUrl} alt={name} className="absolute inset-0 w-full h-full"
-          style={{ objectFit: 'cover', objectPosition: 'center top' }} />
-      ) : (
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, #1a3a4c, #0d2a38)' }}>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-black text-white/10" style={{ fontSize: 160 }}>{first.charAt(0)}</span>
+      {/* ── framed photo ── */}
+      <div style={{ marginTop: h * 0.09, width: photoW, height: photoH, position: 'relative', flexShrink: 0 }}>
+        {m.photoUrl ? (
+          <img
+            src={m.photoUrl} alt={name}
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: 'center top',
+              borderRadius: 24,
+              border: '2.5px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 8px 48px rgba(0,0,0,0.7), 0 0 0 6px rgba(255,255,255,0.03)',
+              display: 'block',
+            }}
+          />
+        ) : (
+          <div style={{
+            width: '100%', height: '100%', borderRadius: 24,
+            background: 'linear-gradient(160deg,#1a3a4c,#0d2a38)',
+            border: '2.5px solid rgba(255,255,255,0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: 110, fontWeight: 900, color: 'rgba(255,255,255,0.08)' }}>{first.charAt(0)}</span>
           </div>
+        )}
+
+        {/* Heart button — pinned to top-right of frame */}
+        <div style={{ position: 'absolute', top: 12, right: -14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <button onClick={handleLike}
+            className="active:scale-90 transition-transform"
+            style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)',
+              border: '1.5px solid rgba(255,255,255,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            <Heart size={18} fill={liked ? '#ec4899' : 'none'} color={liked ? '#ec4899' : '#fff'} />
+          </button>
+          {likeCount > 0 && (
+            <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: 700 }}>{likeCount}</span>
+          )}
         </div>
-      )}
-
-      {/* Bottom gradient */}
-      <div className="absolute inset-x-0 bottom-0"
-        style={{ height: '52%', background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)' }} />
-
-      {/* Heart button */}
-      <div className="absolute right-5 flex flex-col items-center gap-1" style={{ top: '30%' }}>
-        <button onClick={handleLike}
-          className="w-11 h-11 rounded-full flex items-center justify-center active:scale-90"
-          style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)' }}>
-          <Heart size={18} fill={liked ? '#ec4899' : 'none'} color={liked ? '#ec4899' : '#fff'} />
-        </button>
-        {likeCount > 0 && <span className="text-white/60 text-[10px] font-semibold">{likeCount}</span>}
       </div>
 
-      {/* Bottom content */}
-      <div className="absolute inset-x-0 bottom-0 px-5 pb-8">
+      {/* ── info below photo ── */}
+      <div style={{ marginTop: 20, paddingInline: 24, textAlign: 'center', width: '100%' }}>
         {m.ecclesiasticalTitle && (
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-3"
-            style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)' }}>
-            <Star size={9} fill="#fff" color="#fff" />
-            <span className="text-[10px] font-semibold text-white uppercase tracking-wider">{m.ecclesiasticalTitle}</span>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '4px 12px', borderRadius: 999, marginBottom: 10,
+            background: `${TEAL}22`, border: `1px solid ${TEAL}44`,
+          }}>
+            <Star size={8} fill={TEAL} color={TEAL} />
+            <span style={{ fontSize: 10, fontWeight: 700, color: TEAL, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              {m.ecclesiasticalTitle}
+            </span>
           </div>
         )}
-        <h2 className="text-white font-semibold leading-tight" style={{ fontSize: 28 }}>{first}</h2>
-        {rest && <p className="text-white/80 font-medium leading-tight mt-0.5" style={{ fontSize: 18 }}>{rest}</p>}
+        <h2 style={{ color: '#fff', fontSize: 30, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>{first}</h2>
+        {rest && <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 18, fontWeight: 500, margin: '4px 0 0' }}>{rest}</p>}
         {m.church?.name && (
-          <div className="flex items-center gap-1.5 mt-3">
-            <Church size={12} color="rgba(255,255,255,0.5)" />
-            <span className="text-[12px] text-white/50">{m.church.name}</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 10 }}>
+            <Church size={11} color="rgba(255,255,255,0.35)" />
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{m.church.name}</span>
           </div>
         )}
+      </div>
+
+      {/* subtle swipe hint — only on first card-ish */}
+      <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5, opacity: 0.25 }}>
+        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff' }} />
+        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff' }} />
+        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff' }} />
       </div>
     </div>
   );
@@ -169,7 +203,7 @@ export default function MembroMembros() {
       const res = await fetch('/api/membro/membros', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: session.member_token, cursor: cursorRef.current, limit: 10 }),
+        body: JSON.stringify({ token: session.member_token, cursor: cursorRef.current, limit: 30 }),
       });
       const data = await res.json();
       const newItems = (data.items || []).filter((m: MemberCard) => isRealPerson(m.fullName));
