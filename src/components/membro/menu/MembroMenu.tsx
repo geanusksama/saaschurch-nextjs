@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useMembroSession } from '../MembroProvider';
@@ -70,10 +71,14 @@ const MODULES: Module[] = [
 ];
 
 export default function MembroMenu() {
-  const { session } = useMembroSession();
+  const { session, isLoading } = useMembroSession();
   const navigate = useNavigate();
 
-  if (!session) { navigate('/membro', { replace: true }); return null; }
+  useEffect(() => {
+    if (!isLoading && !session) navigate('/membro', { replace: true });
+  }, [session, isLoading, navigate]);
+
+  if (isLoading || !session || !session.member) return null;
 
   const firstName = (session.member.preferredName || session.member.fullName).split(' ')[0];
 

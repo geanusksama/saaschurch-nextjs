@@ -185,6 +185,7 @@ import { PenielPublicPage } from "../components/public/PenielPublicPage";
 
 // Portal Membro
 import { MembroProvider } from "../components/membro/MembroProvider";
+import { MembroThemeProvider } from "../components/membro/MembroShell";
 import { MembroRoot } from "../components/membro/MembroRoot";
 import MembroPerfil from "../components/membro/perfil/MembroPerfil";
 import MembroMenu from "../components/membro/menu/MembroMenu";
@@ -196,6 +197,7 @@ import MembroPaoDiario from "../components/membro/pao-diario/MembroPaoDiario";
 import MembroTestemunhos from "../components/membro/testemunhos/MembroTestemunhos";
 import MembroLideranca from "../components/membro/lideranca/MembroLideranca";
 import MembroPastoral from "../components/membro/pastoral/MembroPastoral";
+import MembroMembros from "../components/membro/membros/MembroMembros";
 import PenielDashboard from "../app-ui/peniel/PenielDashboard";
 import PenielCheckInPage from "../app-ui/peniel/PenielCheckInPage";
 
@@ -308,57 +310,62 @@ export const router = createBrowserRouter([
   {
     path: "/membro",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroRoot /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroRoot /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/perfil",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroPerfil /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroPerfil /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/menu",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroMenu /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroMenu /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/feed",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroFeed /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroFeed /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/historia",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroHistoria /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroHistoria /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/pregacoes",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroPregacoes /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroPregacoes /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/agenda",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroAgenda /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroAgenda /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/pao-diario",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroPaoDiario /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroPaoDiario /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/testemunhos",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroTestemunhos /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroTestemunhos /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/lideranca",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroLideranca /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroLideranca /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/pastoral",
     errorElement: <ErrorBoundary />,
-    element: <MembroProvider><MembroPastoral /></MembroProvider>,
+    element: <MembroThemeProvider><MembroProvider><MembroPastoral /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/membros",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroMembros /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/public",

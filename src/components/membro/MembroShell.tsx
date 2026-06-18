@@ -2,9 +2,63 @@
 
 import { useNavigate, useLocation } from 'react-router';
 import { motion } from 'motion/react';
+import { Sun, Moon } from 'lucide-react';
+import { createContext, useContext, useState, useEffect } from 'react';
+
+// ── Theme context ────────────────────────────────────────────────
+export const MembroThemeCtx = createContext<{ isDark: boolean; toggle: () => void }>({
+  isDark: true,
+  toggle: () => {},
+});
+
+export function useMembroTheme() {
+  return useContext(MembroThemeCtx);
+}
+
+const LS_THEME = 'membro_theme';
+
+export function MembroThemeProvider({ children }: { children: React.ReactNode }) {
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(LS_THEME);
+    if (stored !== null) {
+      setIsDark(stored === 'dark');
+    } else {
+      setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+  }, []);
+
+  const toggle = () => {
+    setIsDark(d => {
+      const next = !d;
+      localStorage.setItem(LS_THEME, next ? 'dark' : 'light');
+      return next;
+    });
+  };
+
+  return (
+    <MembroThemeCtx.Provider value={{ isDark, toggle }}>
+      {children}
+    </MembroThemeCtx.Provider>
+  );
+}
+
+// ── Theme tokens ─────────────────────────────────────────────────
+export function useMembroColors() {
+  const { isDark } = useMembroTheme();
+  return {
+    bg:       isDark ? '#0d0f17' : '#f0f4f8',
+    surface:  isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.85)',
+    border:   isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    text:     isDark ? '#f1f5f9' : '#0f172a',
+    textSub:  isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.40)',
+    navBg:    isDark ? 'rgba(13,15,23,0.96)' : 'rgba(240,244,248,0.96)',
+    navBorder:isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
+  };
+}
 
 const TEAL = '#2dd4bf';
-const BG = '#0d0f17';
 
 interface NavItem {
   id: string;
@@ -67,15 +121,17 @@ interface MembroShellProps {
 export function MembroShell({ children, title, showBack }: MembroShellProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDark, toggle } = useMembroTheme();
+  const colors = useMembroColors();
   const active = location.pathname.split('/')[2] || 'perfil';
 
   return (
     <div
       className="fixed inset-0 flex flex-col overflow-hidden"
-      style={{ background: BG, maxWidth: '480px', margin: '0 auto' }}
+      style={{ background: colors.bg, maxWidth: '480px', margin: '0 auto' }}
     >
       {/* Status bar area */}
-      <div style={{ height: 'env(safe-area-inset-top, 44px)', minHeight: 44, background: BG }} />
+      <div style={{ height: 'env(safe-area-inset-top, 44px)', minHeight: 44, background: colors.bg }} />
 
       {/* Top bar */}
       <div
@@ -85,7 +141,8 @@ export function MembroShell({ children, title, showBack }: MembroShellProps) {
         {showBack ? (
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors -ml-1"
+            className="flex items-center gap-1.5 text-sm transition-colors -ml-1"
+            style={{ color: colors.textSub }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
               <polyline points="15 18 9 12 15 6" />
@@ -98,15 +155,30 @@ export function MembroShell({ children, title, showBack }: MembroShellProps) {
               className="w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black text-white"
               style={{ background: TEAL }}
             >A</div>
-            <span className="text-xs font-semibold tracking-widest text-white/25 uppercase">
+            <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: colors.textSub }}>
               {title || 'Portal Membro'}
             </span>
           </div>
         )}
 
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: TEAL }} />
-          <span className="text-[10px] text-white/25 font-medium">ao vivo</span>
+        <div className="flex items-center gap-2.5">
+          {/* Theme toggle */}
+          <button
+            onClick={toggle}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
+            style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+            title={isDark ? 'Tema claro' : 'Tema escuro'}
+          >
+            {isDark
+              ? <Sun size={14} style={{ color: '#fbbf24' }} />
+              : <Moon size={14} style={{ color: '#64748b' }} />
+            }
+          </button>
+          {/* Live dot */}
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: TEAL }} />
+            <span className="text-[10px] font-medium" style={{ color: colors.textSub }}>ao vivo</span>
+          </div>
         </div>
       </div>
 
@@ -119,15 +191,14 @@ export function MembroShell({ children, title, showBack }: MembroShellProps) {
       <div
         className="flex-shrink-0"
         style={{
-          background: 'rgba(13,15,23,0.96)',
-          borderTop: '1px solid rgba(255,255,255,0.07)',
+          background: colors.navBg,
+          borderTop: `1px solid ${colors.navBorder}`,
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
         <div className="flex items-center justify-around px-2" style={{ height: 64 }}>
-          {/* Left tabs */}
           {NAV_LEFT.map(item => (
-            <NavBtn key={item.id} item={item} active={active === item.id} onClick={() => navigate(item.path)} />
+            <NavBtn key={item.id} item={item} active={active === item.id} onClick={() => navigate(item.path)} colors={colors} />
           ))}
 
           {/* Center heart button */}
@@ -146,9 +217,8 @@ export function MembroShell({ children, title, showBack }: MembroShellProps) {
             </div>
           </button>
 
-          {/* Right tabs */}
           {NAV_RIGHT.map(item => (
-            <NavBtn key={item.id} item={item} active={active === item.id} onClick={() => navigate(item.path)} />
+            <NavBtn key={item.id} item={item} active={active === item.id} onClick={() => navigate(item.path)} colors={colors} />
           ))}
         </div>
       </div>
@@ -156,18 +226,18 @@ export function MembroShell({ children, title, showBack }: MembroShellProps) {
   );
 }
 
-function NavBtn({ item, active, onClick }: { item: NavItem; active: boolean; onClick: () => void }) {
+function NavBtn({ item, active, onClick, colors }: { item: NavItem; active: boolean; onClick: () => void; colors: ReturnType<typeof useMembroColors> }) {
   return (
     <button
       onClick={onClick}
       className="flex flex-col items-center gap-1 px-3 py-1 relative"
     >
-      <span style={{ color: active ? TEAL : 'rgba(255,255,255,0.35)' }}>
+      <span style={{ color: active ? TEAL : colors.textSub }}>
         {item.icon}
       </span>
       <span
         className="text-[9px] font-medium tracking-wide"
-        style={{ color: active ? TEAL : 'rgba(255,255,255,0.30)' }}
+        style={{ color: active ? TEAL : colors.textSub }}
       >
         {item.label}
       </span>

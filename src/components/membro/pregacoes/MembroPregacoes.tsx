@@ -1,105 +1,75 @@
 "use client";
 
-import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Play, Loader2, ExternalLink } from 'lucide-react';
+import { Play, Loader2, Mic } from 'lucide-react';
 import { MembroShell } from '../MembroShell';
-import { supabase } from '@/lib/supabaseClient';
+import { useMembroContent } from '../useMembroContent';
 
 const TEAL = '#2dd4bf';
 
-interface MediaItem {
+interface Media {
   id: string;
   title: string;
   description?: string;
   thumbnail_url?: string;
-  video_url?: string;
-  kind?: string;
-  created_at: string;
+  kind: string;
   duration_seconds?: number;
+  published_at: string;
+  speaker_name?: string;
 }
 
-const KIND_LABELS: Record<string, string> = {
-  sermon: 'Sermão', short: 'Short', clip: 'Clipe', podcast: 'Podcast', live: 'Ao Vivo',
-};
-const KIND_ALL = ['all', 'sermon', 'short', 'clip', 'podcast'];
+function fmtDuration(secs?: number): string {
+  if (!secs) return '';
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+const KIND_LABEL: Record<string, string> = { sermon: 'Pregação', short: 'Short', clip: 'Clip', podcast: 'Podcast' };
 
 export default function MembroPregacoes() {
-  const [items, setItems] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const q = supabase.from('app_media_items').select('*').order('created_at', { ascending: false }).limit(40);
-      if (filter !== 'all') q.eq('kind', filter);
-      const { data } = await q;
-      setItems(data || []);
-      setLoading(false);
-    })();
-  }, [filter]);
+  const { data: items, loading } = useMembroContent<Media>('pregacoes');
 
   return (
     <MembroShell title="Pregações" showBack>
-      <div className="h-full flex flex-col">
-        {/* Filter tabs */}
-        <div className="flex-shrink-0 flex gap-2 px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          {KIND_ALL.map(k => (
-            <button
-              key={k}
-              onClick={() => setFilter(k)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-              style={filter === k ? { background: TEAL, color: '#0d0f17' } : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)' }}
-            >
-              {k === 'all' ? 'Todos' : KIND_LABELS[k] || k}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+      <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="max-w-lg mx-auto px-4 py-4 pb-8 space-y-2.5">
           {loading && <div className="flex items-center justify-center py-16"><Loader2 size={24} className="animate-spin text-white/20" /></div>}
-          {!loading && items.length === 0 && <div className="flex items-center justify-center py-16"><p className="text-sm text-white/30">Nenhuma pregação encontrada.</p></div>}
-          {!loading && (
-            <div className="px-4 py-3 space-y-3 pb-6">
-              {items.map((item, i) => (
-                <motion.a
-                  key={item.id}
-                  href={item.video_url || '#'}
-                  target={item.video_url ? '_blank' : undefined}
-                  rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                  className="flex gap-3 items-start rounded-2xl p-3 active:scale-[0.99] transition-transform"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-                >
-                  {/* Thumbnail */}
-                  <div className="flex-shrink-0 w-20 h-14 rounded-xl overflow-hidden relative" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                    {item.thumbnail_url ? (
-                      <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Play size={20} className="text-white/30" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-                        <Play size={12} className="text-white" />
-                      </div>
-                    </div>
-                  </div>
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      {item.kind && <span className="text-[9px] px-1.5 py-0.5 rounded font-medium" style={{ background: `${TEAL}18`, color: TEAL }}>{KIND_LABELS[item.kind] || item.kind}</span>}
-                    </div>
-                    <p className="text-xs font-semibold text-white/85 leading-tight line-clamp-2">{item.title}</p>
-                    <p className="text-[10px] text-white/30 mt-1">{new Date(item.created_at).toLocaleDateString('pt-BR')}</p>
-                  </div>
-                  {item.video_url && <ExternalLink size={13} className="text-white/20 flex-shrink-0 mt-0.5" />}
-                </motion.a>
-              ))}
+          {!loading && items.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <p className="text-2xl">🎙️</p>
+              <p className="text-sm text-white/30">Nenhuma pregação disponível.</p>
             </div>
           )}
+          {!loading && items.map((m, i) => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              className="flex gap-3 items-center px-3 py-3 rounded-2xl"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+            >
+              {m.thumbnail_url ? (
+                <img src={m.thumbnail_url} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${TEAL}18` }}>
+                  <Mic size={22} style={{ color: TEAL }} />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded" style={{ background: `${TEAL}20`, color: TEAL }}>
+                    {KIND_LABEL[m.kind] || m.kind}
+                  </span>
+                  {m.duration_seconds && <span className="text-[9px] text-white/25">{fmtDuration(m.duration_seconds)}</span>}
+                </div>
+                <p className="text-[13px] font-semibold text-white/85 leading-tight truncate">{m.title}</p>
+                {m.speaker_name && <p className="text-[11px] text-white/35 mt-0.5">{m.speaker_name}</p>}
+              </div>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}30` }}>
+                <Play size={14} style={{ color: TEAL }} />
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </MembroShell>

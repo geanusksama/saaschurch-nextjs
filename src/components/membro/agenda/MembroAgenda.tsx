@@ -31,11 +31,15 @@ export default function MembroAgenda() {
   useEffect(() => {
     (async () => {
       setLoading(true);
+      const mm = String(month + 1).padStart(2, '0');
+      const lastDay = new Date(year, month + 1, 0).getDate(); // correct last day
+      const from = `${year}-${mm}-01`;
+      const to   = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
       const { data } = await supabase
         .from('tbeventos')
         .select('*')
-        .gte('data', `${year}-${String(month + 1).padStart(2, '0')}-01`)
-        .lte('data', `${year}-${String(month + 1).padStart(2, '0')}-31`)
+        .gte('data', from)
+        .lte('data', to)
         .order('data', { ascending: true });
       setEventos(data || []);
       setLoading(false);

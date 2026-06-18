@@ -559,6 +559,9 @@ model Member {
   ebdEntregasResponsavel    EbdEntrega[]             @relation("EbdEntregaResponsavel")
   ebdFinMovResponsavel      EbdFinanceiroMovimento[] @relation("EbdFinMovResponsavel")
 
+  likesGiven    MemberLike[] @relation("MemberLikeGiver")
+  likesReceived MemberLike[] @relation("MemberLikeReceiver")
+
   @@index([churchId])
   @@index([campoId])
   @@index([ecclesiasticalTitleId])
@@ -3287,4 +3290,19 @@ model PenielRegistration {
   event PenielEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("peniel_registrations")
+}
+
+model MemberLike {
+  id        String   @id @default(uuid()) @db.Uuid
+  likerId   String   @map("liker_id") @db.Uuid
+  likedId   String   @map("liked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  liker Member @relation("MemberLikeGiver",    fields: [likerId], references: [id], onDelete: Cascade)
+  liked Member @relation("MemberLikeReceiver", fields: [likedId], references: [id], onDelete: Cascade)
+
+  @@unique([likerId, likedId])
+  @@index([likedId])
+  @@index([likerId])
+  @@map("member_likes")
 }

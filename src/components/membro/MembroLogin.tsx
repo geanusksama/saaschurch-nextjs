@@ -70,6 +70,7 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
     background: inputBg,
     border: `1px solid ${inputBorder}`,
     color: textPri,
+    caretColor: TEAL,
   };
 
   const inputClass = "w-full px-4 py-3 rounded-xl text-sm outline-none transition-all";
@@ -305,7 +306,7 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
                 </div>
 
                 {/* OTP inputs */}
-                <div className="flex gap-2 justify-between">
+                <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                   {Array.from({ length: 6 }).map((_, i) => {
                     const digit = (code + '      ')[i];
                     const filled = digit && digit !== ' ';
@@ -319,12 +320,13 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
                         value={filled ? digit : ''}
                         onChange={e => handleCodeInput(i, e.target.value)}
                         onKeyDown={e => handleCodeKeyDown(i, e)}
-                        className="flex-1 rounded-xl text-center text-lg font-bold outline-none transition-all"
+                        className="w-full rounded-xl text-center text-xl font-bold outline-none transition-all"
                         style={{
                           height: '52px',
                           background: filled ? `${TEAL}18` : inputBg,
                           border: `1.5px solid ${filled ? TEAL + '55' : inputBorder}`,
                           color: textPri,
+                          caretColor: TEAL,
                         }}
                       />
                     );
