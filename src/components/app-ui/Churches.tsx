@@ -539,7 +539,7 @@ export function Churches() {
 
       const requests = [
         fetchJson(`/churches${queryString}`, {}, { requiresAuth: true }),
-        fetchJson('/campos'),
+        fetchJson('/campos', {}, { requiresAuth: true }),
         fetchJson(`/regionais${queryString}`, {}, { requiresAuth: true }),
       ];
 

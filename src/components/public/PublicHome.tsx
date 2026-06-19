@@ -4,6 +4,7 @@ import { User, Play, Radio, Camera, Users, MapPin, Sun, Moon } from 'lucide-reac
 import { AnimatePresence } from 'motion/react';
 import { MembroLogin } from '../membro/MembroLogin';
 import { MembroProvider } from '../membro/MembroProvider';
+import { PenielRegistrationModal } from './PenielRegistrationModal';
 
 function DoveIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -24,6 +25,7 @@ function DoveIcon(props: React.SVGProps<SVGSVGElement>) {
 export function PublicHome() {
   const [isDark, setIsDark] = useState(true);
   const [showMembroLogin, setShowMembroLogin] = useState(false);
+  const [showPenielModal, setShowPenielModal] = useState(false);
   const navigate = useNavigate();
 
   // Lê o tema salvo (compartilhado com a página pública do Peniel)
@@ -124,7 +126,7 @@ export function PublicHome() {
             </div>
           </button>
 
-          <Link to="/peniel" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
+          <button onClick={() => setShowPenielModal(true)} className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#d4af37] transition-colors ${border}`}>
               <DoveIcon className={`w-6 h-6 group-hover:text-[#d4af37] transition-colors ${iconColor}`} />
             </div>
@@ -132,7 +134,7 @@ export function PublicHome() {
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Inscrições Peniel</h3>
               <p className={`text-xs leading-relaxed ${textSub}`}>Um lugar de encontro, fé e transformação.<br />Saiba mais e faça sua inscrição.</p>
             </div>
-          </Link>
+          </button>
 
           <a href="https://www.youtube.com/@tvadcampinas" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#ff0000] transition-colors ${border}`}><Play className={`w-6 h-6 group-hover:text-[#ff0000] transition-colors ${iconColor}`} /></div>
@@ -192,6 +194,13 @@ export function PublicHome() {
           </MembroProvider>
         )}
       </AnimatePresence>
+
+      {showPenielModal && (
+        <PenielRegistrationModal
+          isOpen={showPenielModal}
+          onClose={() => setShowPenielModal(false)}
+        />
+      )}
     </div>
   );
 }
