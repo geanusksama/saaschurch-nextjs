@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   CheckSquare, Download, Search, Trash2, ChevronLeft, ChevronRight, 
-  RefreshCw, User, Calendar, Printer, MessageSquare, BarChart2, List, FileText 
+  RefreshCw, User, Calendar, Printer, MessageSquare, BarChart2, List, FileText,
+  Cpu
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Badge } from '../../design-system/components/Badge';
@@ -151,8 +152,8 @@ const getWeeklyBehavior = (memberRecords: FacePresenceRecord[], deDateStr: strin
 export function AttendanceModule() {
   const token = localStorage.getItem('mrm_token');
 
-  // Navigation tabs (4 Tabs)
-  const [activeTab, setActiveTab] = useState<'general' | 'member_history' | 'insights' | 'report'>('general');
+  // Navigation tabs (5 Tabs)
+  const [activeTab, setActiveTab] = useState<'general' | 'member_history' | 'insights' | 'report' | 'devices'>('general');
 
   // Default date filters initialized to start & end of current month
   const [de, setDe] = useState(getStartOfMonth());
@@ -197,6 +198,125 @@ export function AttendanceModule() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [regionais, setRegionais] = useState<any[]>([]);
   const [titles, setTitles] = useState<any[]>([]);
+
+  // --- Tab 5: Devices State ---
+  const [devices, setDevices] = useState<any[]>([]);
+  const [loadingDevices, setLoadingDevices] = useState(false);
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<any | null>(null);
+  const [deviceSerial, setDeviceSerial] = useState('');
+  const [deviceName, setDeviceName] = useState('');
+  const [deviceUsername, setDeviceUsername] = useState('');
+  const [devicePassword, setDevicePassword] = useState('');
+  const [deviceChurchId, setDeviceChurchId] = useState('');
+
+  // Load devices list
+  const loadDevices = async () => {
+    setLoadingDevices(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedChurchId && selectedChurchId !== 'all') {
+        params.set("churchId", selectedChurchId);
+      }
+      const res = await fetch(`/api/face-devices?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDevices(data || []);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar dispositivos:", err);
+    } finally {
+      setLoadingDevices(false);
+    }
+  };
+
+  // Open modal for creating a new device
+  const handleNewDevice = () => {
+    setEditingDevice(null);
+    setDeviceSerial('');
+    setDeviceName('');
+    setDeviceUsername('');
+    setDevicePassword('');
+    setDeviceChurchId(selectedChurchId !== 'all' ? selectedChurchId : (churches[0]?.id || ''));
+    setShowDeviceModal(true);
+  };
+
+  // Open modal for editing a device
+  const handleEditDevice = (dev: any) => {
+    setEditingDevice(dev);
+    setDeviceSerial(dev.serial);
+    setDeviceName(dev.name);
+    setDeviceUsername(dev.username || '');
+    setDevicePassword(dev.password || '');
+    setDeviceChurchId(dev.churchId);
+    setShowDeviceModal(true);
+  };
+
+  // Save device (Create or Edit)
+  const handleSaveDevice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deviceSerial.trim() || !deviceName.trim() || !deviceChurchId) {
+      alert("Por favor, preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    const payload = {
+      serial: deviceSerial.trim(),
+      name: deviceName.trim(),
+      username: deviceUsername.trim() || null,
+      password: devicePassword.trim() || null,
+      churchId: deviceChurchId
+    };
+
+    try {
+      const url = editingDevice ? `/api/face-devices/${editingDevice.id}` : `/api/face-devices`;
+      const method = editingDevice ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Ocorreu um erro ao salvar o dispositivo.");
+      }
+
+      setShowDeviceModal(false);
+      loadDevices();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  // Delete device
+  const handleDeleteDevice = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este dispositivo?")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/face-devices/${id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao remover dispositivo.");
+      }
+
+      loadDevices();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
 
   const toggleSelectMember = (id: string) => {
     setSelectedReportMemberIds(prev => 
@@ -541,6 +661,8 @@ export function AttendanceModule() {
       loadInsights();
     } else if (activeTab === 'member_history' && selectedMember) {
       loadMemberHistory(selectedMember);
+    } else if (activeTab === 'devices') {
+      loadDevices();
     }
   }, [activeTab, page, selectedChurchId]);
 
@@ -840,6 +962,17 @@ export function AttendanceModule() {
           >
             <BarChart2 className="w-4 h-4" />
             Gráficos e Insights
+          </button>
+          <button
+            onClick={() => setActiveTab('devices')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+              activeTab === 'devices'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+            }`}
+          >
+            <Cpu className="w-4 h-4" />
+            Dispositivos Face ID
           </button>
         </div>
       </div>
@@ -1970,6 +2103,227 @@ export function AttendanceModule() {
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 font-medium">
               {generatingReport ? "Carregando membros e calculando frequências..." : "Utilize os filtros acima e clique em 'Gerar' para carregar a planilha de frequência."}
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ─── TAB 5: DEVICES MANAGEMENT ─── */}
+      {activeTab === 'devices' && (
+        <div className="space-y-6 no-print animate-fade-in">
+          
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-lg">
+                <Cpu className="w-5 h-5 text-blue-500" />
+                Gerenciamento de Leitores Face ID
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Cadastre e associe os leitores biométricos locais do ControlID às respectivas congregações.
+              </p>
+            </div>
+            
+            <button
+              onClick={handleNewDevice}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+            >
+              Adicionar Dispositivo
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
+                  <tr>
+                    <th className="px-6 py-4">Nome</th>
+                    <th className="px-6 py-4">ID / Serial do Equipamento</th>
+                    <th className="px-6 py-4">Igreja Vinculada</th>
+                    <th className="px-6 py-4">Usuário do Disp.</th>
+                    <th className="px-6 py-4">Data de Cadastro</th>
+                    <th className="px-6 py-4 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-600 dark:text-slate-400">
+                  {loadingDevices ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+                        Carregando leitores...
+                      </td>
+                    </tr>
+                  ) : devices.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                        Nenhum dispositivo Face ID cadastrado para esta igreja.
+                      </td>
+                    </tr>
+                  ) : (
+                    devices.map((dev) => (
+                      <tr key={dev.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/20 transition-colors">
+                        <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white uppercase tracking-wide">
+                          {dev.name}
+                        </td>
+                        <td className="px-6 py-4 font-mono font-bold text-blue-600 dark:text-blue-400">
+                          {dev.serial}
+                        </td>
+                        <td className="px-6 py-4 font-medium">
+                          {dev.church?.name || "—"}
+                        </td>
+                        <td className="px-6 py-4 font-mono text-xs">
+                          {dev.username || <span className="text-slate-350 dark:text-slate-700">não definido</span>}
+                        </td>
+                        <td className="px-6 py-4 font-mono text-xs">
+                          {new Date(dev.createdAt).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="px-6 py-4 text-center flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => handleEditDevice(dev)}
+                            className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-semibold"
+                          >
+                            Editar
+                          </button>
+                          <span className="text-slate-300 dark:text-slate-750">|</span>
+                          <button
+                            onClick={() => handleDeleteDevice(dev.id)}
+                            className="text-red-500 hover:text-red-650 hover:underline text-xs font-semibold"
+                          >
+                            Excluir
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Modal Overlay for Create/Edit */}
+          {showDeviceModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden transform scale-100 transition-all">
+                
+                {/* Modal Header */}
+                <div className="px-6 py-4 border-b border-slate-150 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 dark:text-white text-base">
+                    {editingDevice ? "Editar Dispositivo" : "Cadastrar Novo Dispositivo"}
+                  </h4>
+                  <button
+                    onClick={() => setShowDeviceModal(false)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold text-lg"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Modal Body / Form */}
+                <form onSubmit={handleSaveDevice}>
+                  <div className="p-6 space-y-4">
+                    
+                    {/* ID/Serial do Equipamento */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        ID/Serial do Dispositivo <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: 99 ou Serial do ControlID"
+                        value={deviceSerial}
+                        onChange={(e) => setDeviceSerial(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
+                      />
+                      <p className="text-[10px] text-slate-400">
+                        Deve coincidir exatamente com o ID enviado nas requisições webhook (campo `device_id`).
+                      </p>
+                    </div>
+
+                    {/* Nome/Identificação */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Nome / Localização <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: Entrada Principal, Templo Central"
+                        value={deviceName}
+                        onChange={(e) => setDeviceName(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
+                      />
+                    </div>
+
+                    {/* Igreja Vinculada */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Igreja Vinculada <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={deviceChurchId}
+                        onChange={(e) => setDeviceChurchId(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 text-slate-700"
+                      >
+                        {churches.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Usuário do Equipamento (Opcional) */}
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Usuário do Disp. (Opcional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="admin"
+                          value={deviceUsername}
+                          onChange={(e) => setDeviceUsername(e.target.value)}
+                          className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
+                        />
+                      </div>
+
+                      {/* Senha do Equipamento (Opcional) */}
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Senha do Disp. (Opcional)
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="••••••"
+                          value={devicePassword}
+                          onChange={(e) => setDevicePassword(e.target.value)}
+                          className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
+                        />
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950/20 border-t border-slate-150 dark:border-slate-800 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeviceModal(false)}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
+                    >
+                      Salvar
+                    </button>
+                  </div>
+                </form>
+
+              </div>
             </div>
           )}
 

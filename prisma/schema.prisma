@@ -188,6 +188,7 @@ model Church {
   ebdNegociacoes        EbdNegociacao[]        @relation("ChurchEbdNegociacoes")
   stripePayments        StripePayment[]        @relation("ChurchStripePayments")
   stripeSubscriptions   StripeSubscription[]   @relation("ChurchStripeSubscriptions")
+  faceidDevices         FaceidDevice[]         @relation("ChurchFaceidDevices")
 
   @@unique([regionalId, code])
   @@index([headquartersId])
@@ -3305,4 +3306,19 @@ model MemberLike {
   @@index([likedId])
   @@index([likerId])
   @@map("member_likes")
+}
+
+model FaceidDevice {
+  id        String   @id @default(uuid()) @db.Uuid
+  churchId  String   @map("church_id") @db.Uuid
+  serial    String   @unique @db.VarChar(100)
+  name      String   @db.VarChar(255)
+  username  String?  @db.VarChar(100)
+  password  String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  church    Church   @relation("ChurchFaceidDevices", fields: [churchId], references: [id], onDelete: Cascade)
+
+  @@map("faceid_devices")
 }
