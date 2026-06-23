@@ -9,6 +9,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Badge } from '../../design-system/components/Badge';
 import { ConfirmDialog } from './shared/ConfirmDialog';
+import * as XLSX from 'xlsx';
 
 // Interfaces
 interface FacePresenceRecord {
@@ -845,6 +846,95 @@ export function AttendanceModule() {
     return generalData.filter(r => getDayOfWeek(r.horario) === selectedDayOfWeek);
   }, [generalData, selectedDayOfWeek]);
 
+  // General Excel Export
+  const exportToExcel = () => {
+    if (generalData.length === 0) return;
+    
+    const data = generalData.map((r, i) => ({
+      'ROL': r.rol || '',
+      'Nome': r.nome,
+      'Cargo': r.cargo || '',
+      'Dia da Semana': getDayOfWeek(r.horario),
+      'Período': getPeriod(r.horario),
+      'Horário': new Date(r.horario).toLocaleString('pt-BR'),
+      'Confiança': r.confianca ? `${Math.round(r.confianca * 100)}%` : '',
+      'Câmera': r.camera || '',
+      'Igreja Regional': r.igrejaRegional || '',
+      'Campo': r.campo || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [
+      { wch: 8 },  // ROL
+      { wch: 35 }, // Nome
+      { wch: 20 }, // Cargo
+      { wch: 15 }, // Dia da Semana
+      { wch: 10 }, // Período
+      { wch: 20 }, // Horário
+      { wch: 12 }, // Confiança
+      { wch: 25 }, // Câmera
+      { wch: 25 }, // Igreja Regional
+      { wch: 40 }, // Campo
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Presenças');
+    XLSX.writeFile(wb, `presencas-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // Report Frequency Excel Export
+  const exportReportToExcel = () => {
+    if (reportMembers.length === 0) return;
+
+    // Filter only selected members
+    const selectedMembers = reportMembers.filter(m => selectedReportMemberIds.includes(m.id));
+    if (selectedMembers.length === 0) {
+      alert("Nenhum membro selecionado para exportação.");
+      return;
+    }
+
+    const data = selectedMembers.map((member) => {
+      const row: Record<string, any> = {
+        'ROL': member.rol || '',
+        'Nome': member.fullName,
+        'Cargo': member.cargo || '',
+        'Igreja': member.igreja || '',
+        'Situação': member.situacao || '',
+        'Com/Total': member.comparecimentoStr,
+        'Falta': member.absences,
+        'Última Presença': member.lastSeenDate,
+      };
+
+      // Add dynamic month presence
+      reportMonths.forEach((m) => {
+        row[m.label] = member.monthPresenceMap[m.label] ? '✓' : 'X';
+      });
+
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    
+    const cols = [
+      { wch: 8 },  // ROL
+      { wch: 35 }, // Nome
+      { wch: 20 }, // Cargo
+      { wch: 25 }, // Igreja
+      { wch: 15 }, // Situação
+      { wch: 12 }, // Com/Total
+      { wch: 8 },  // Falta
+      { wch: 15 }, // Última Presença
+    ];
+    reportMonths.forEach(() => {
+      cols.push({ wch: 10 });
+    });
+    ws['!cols'] = cols;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Relatório Frequência');
+    XLSX.writeFile(wb, `relatorio-presenca-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   // General CSV Export
   const exportToCSV = () => {
     if (generalData.length === 0) return;
@@ -1149,11 +1239,11 @@ export function AttendanceModule() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 lg:col-span-2">
+              <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-2">
                 <button
                   type="submit"
                   disabled={loadingGeneral}
-                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2 px-4 rounded-lg transition-colors h-[38px] disabled:opacity-60"
+                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2 px-4 rounded-lg transition-colors h-[38px] disabled:opacity-60"
                 >
                   {loadingGeneral ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1179,6 +1269,16 @@ export function AttendanceModule() {
                 >
                   <Download className="w-4 h-4" />
                   CSV
+                </button>
+                <button 
+                  type="button"
+                  onClick={exportToExcel}
+                  disabled={filteredGeneralData.length === 0}
+                  className="flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white text-sm px-4 py-2 rounded-lg border border-green-800 transition-colors disabled:opacity-40"
+                  title="Exportar Excel"
+                >
+                  <Download className="w-4 h-4" />
+                  Excel
                 </button>
               </div>
             </div>
@@ -2014,7 +2114,7 @@ export function AttendanceModule() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={generateReport}
                   disabled={generatingReport}
@@ -2034,6 +2134,16 @@ export function AttendanceModule() {
                 >
                   <Printer className="w-4 h-4" />
                   Imprimir
+                </button>
+                <button
+                  type="button"
+                  onClick={exportReportToExcel}
+                  disabled={reportMembers.length === 0}
+                  className="bg-green-700 hover:bg-green-800 text-white font-semibold text-sm px-5 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap h-[38px] disabled:opacity-40"
+                  title="Exportar Excel"
+                >
+                  <Download className="w-4 h-4" />
+                  Excel
                 </button>
               </div>
 
