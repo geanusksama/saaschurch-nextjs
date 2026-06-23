@@ -128,17 +128,31 @@ export async function assertChurchAccess(
 
 export function isPastMonth(year: number, month: number): boolean {
   try {
-    const tzDateStr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-    const [day, m, y] = tzDateStr.split('/').map(Number);
-    if (year < y) return true;
-    if (year === y && month < m) return true;
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "numeric",
+    });
+    const parts = formatter.formatToParts(new Date());
+    const yPart = parts.find((p) => p.type === "year")?.value;
+    const mPart = parts.find((p) => p.type === "month")?.value;
+
+    if (yPart && mPart) {
+      const y = Number(yPart);
+      const m = Number(mPart);
+      if (year < y) return true;
+      if (year === y && month < m) return true;
+      return false;
+    }
   } catch (e) {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-    if (year < y) return true;
-    if (year === y && month < m) return true;
+    // Ignore and fallback
   }
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  if (year < y) return true;
+  if (year === y && month < m) return true;
   return false;
 }
 

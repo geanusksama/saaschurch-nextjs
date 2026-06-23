@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { isPastMonth } from '@/lib/helpers'
 import { santanderAuthService } from '../services/santander/santander-auth.service'
 import { santanderTransactionsService } from '../services/santander/santander-transactions.service'
 import { santanderCredentialsRepo } from '../repositories/santander-credentials.repository'
@@ -291,15 +292,20 @@ class ConciliacaoService {
     const cashYear = cashDate.slice(0, 4)
     const cashMonth = cashDate.slice(5, 7)
 
-    const [cashStatus] = await prisma.$queryRaw<{ can_insert: boolean }[]>`
-      SELECT (status IN ('open', 'forcado')) as can_insert
+    const [cashStatus] = await prisma.$queryRaw<{ status: string; allow_until: Date | null }[]>`
+      SELECT status, allow_until
       FROM church_cashbook_status
-      WHERE church_id = ${data.church_id}
-        AND year = ${cashYear}::integer
-        AND month = ${cashMonth}::integer
+      WHERE church_id = ${data.church_id}::uuid
+        AND reference_year = ${Number(cashYear)}::integer
+        AND reference_month = ${Number(cashMonth)}::integer
       LIMIT 1
     `
-    if (cashStatus && !cashStatus.can_insert) {
+    const defaultStatus = isPastMonth(Number(cashYear), Number(cashMonth)) ? "CLOSED" : "OPEN";
+    const rawStatus = String(cashStatus?.status || defaultStatus).toUpperCase();
+    const allowUntil = cashStatus?.allow_until ? (typeof cashStatus.allow_until === "string" ? cashStatus.allow_until.slice(0, 10) : new Date(cashStatus.allow_until as unknown as string).toISOString().slice(0, 10)) : null;
+    const canInsert = rawStatus === "OPEN" || (allowUntil !== null && allowUntil >= cashDate);
+
+    if (!canInsert) {
       throw Object.assign(new Error('Período do Livro Caixa fechado para esta igreja'), { code: 'CASH_STATUS_FECHADO' })
     }
 
