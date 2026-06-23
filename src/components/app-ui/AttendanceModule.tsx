@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Badge } from '../../design-system/components/Badge';
+import { ConfirmDialog } from './shared/ConfirmDialog';
 
 // Interfaces
 interface FacePresenceRecord {
@@ -154,6 +155,14 @@ export function AttendanceModule() {
 
   // Navigation tabs (5 Tabs)
   const [activeTab, setActiveTab] = useState<'general' | 'member_history' | 'insights' | 'report' | 'devices'>('general');
+
+  // Confirmation dialog state
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   // Default date filters initialized to start & end of current month
   const [de, setDe] = useState(getStartOfMonth());
@@ -864,6 +873,50 @@ export function AttendanceModule() {
     document.body.removeChild(link);
   };
 
+  // Delete presence record from general list
+  const handleDeletePresence = (id: string) => {
+    setPendingConfirm({
+      title: "Excluir registro de presença",
+      message: "Tem certeza que deseja excluir este registro de presença?",
+      onConfirm: async () => {
+        const res = await fetch(`/api/face-presence/${id}`, {
+          method: 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Erro ao remover registro de presença.");
+        }
+
+        loadGeneralPresences();
+      }
+    });
+  };
+
+  // Delete presence record from individual history report list
+  const handleDeletePresenceFromHistory = (id: string) => {
+    setPendingConfirm({
+      title: "Excluir registro de presença",
+      message: "Tem certeza que deseja excluir este registro de presença?",
+      onConfirm: async () => {
+        const res = await fetch(`/api/face-presence/${id}`, {
+          method: 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Erro ao remover registro de presença.");
+        }
+
+        if (selectedMember) {
+          loadMemberHistory(selectedMember);
+        }
+      }
+    });
+  };
+
   // Send WhatsApp message to absent member
   const sendWhatsAppMessage = (phone: string | null | undefined, name: string) => {
     if (!phone) {
@@ -1154,12 +1207,13 @@ export function AttendanceModule() {
                     <th className="px-6 py-4">Câmera</th>
                     <th className="px-6 py-4">Igreja Regional</th>
                     <th className="px-6 py-4">Campo</th>
+                    <th className="px-6 py-4 text-center">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-sm text-slate-600 dark:text-slate-400">
                   {filteredGeneralData.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="px-6 py-8 text-center text-slate-500 dark:text-slate-500">
+                      <td colSpan={11} className="px-6 py-8 text-center text-slate-500 dark:text-slate-500">
                         {loadingGeneral ? "Carregando registros..." : "Nenhum registro de presença facial encontrado."}
                       </td>
                     </tr>
@@ -1215,6 +1269,15 @@ export function AttendanceModule() {
                           </td>
                           <td className="px-6 py-4 text-xs font-mono text-slate-400">
                             {record.campo || '—'}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => handleDeletePresence(record.id)}
+                              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
+                              title="Excluir registro"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </td>
                         </tr>
                       );
@@ -1500,13 +1563,14 @@ export function AttendanceModule() {
                             <th className="px-4 py-2.5">Período</th>
                             <th className="px-4 py-2.5">Confiança</th>
                             <th className="px-4 py-2.5">Câmera</th>
-                            <th className="px-4 py-2.5">Igreja Regional</th>
+                            <th className="px-4 py-2.5 font-medium">Igreja Regional</th>
+                            <th className="px-4 py-2.5 text-center no-print">Ações</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-150 dark:divide-slate-800/40 text-slate-600 dark:text-slate-400">
                           {memberRecords.length === 0 ? (
                             <tr>
-                              <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                              <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
                                 Sem check-ins registrados neste período.
                               </td>
                             </tr>
@@ -1521,6 +1585,15 @@ export function AttendanceModule() {
                                 </td>
                                 <td className="px-4 py-2.5 font-mono text-xs">{r.camera || '—'}</td>
                                 <td className="px-4 py-2.5 font-medium">{r.igrejaRegional || '—'}</td>
+                                <td className="px-4 py-2.5 text-center no-print">
+                                  <button
+                                    onClick={() => handleDeletePresenceFromHistory(r.id)}
+                                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
+                                    title="Excluir registro"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
                               </tr>
                             ))
                           )}
@@ -2329,6 +2402,29 @@ export function AttendanceModule() {
 
         </div>
       )}
+
+      {/* Standard System Confirm Dialog */}
+      <ConfirmDialog
+        open={Boolean(pendingConfirm)}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        confirmLabel="Excluir"
+        variant="danger"
+        loading={confirmLoading}
+        onConfirm={async () => {
+          if (!pendingConfirm) return;
+          try {
+            setConfirmLoading(true);
+            await pendingConfirm.onConfirm();
+            setPendingConfirm(null);
+          } catch (err: any) {
+            alert(err.message || "Erro ao processar exclusão.");
+          } finally {
+            setConfirmLoading(false);
+          }
+        }}
+        onCancel={() => (confirmLoading ? null : setPendingConfirm(null))}
+      />
 
     </div>
   );
