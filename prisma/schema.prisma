@@ -53,6 +53,7 @@ model Campo {
   internalChatMessages InternalChatMessage[]
   penielConfig       PenielConfig?
   penielEvents       PenielEvent[]
+  presenceTickets    ChurchPresenceTicket[]     @relation("CampoPresenceTickets")
 
   @@map("campos")
 }
@@ -189,6 +190,7 @@ model Church {
   stripePayments        StripePayment[]        @relation("ChurchStripePayments")
   stripeSubscriptions   StripeSubscription[]   @relation("ChurchStripeSubscriptions")
   faceidDevices         FaceidDevice[]         @relation("ChurchFaceidDevices")
+  presenceTickets       ChurchPresenceTicket[] @relation("ChurchPresenceTickets")
 
   @@unique([regionalId, code])
   @@index([headquartersId])
@@ -394,6 +396,7 @@ model User {
   presenceStatus String @default("online") @map("presence_status") @db.VarChar(20)
   customStatus String? @map("custom_status") @db.VarChar(255)
   internalChatMessages InternalChatMessage[]
+  presenceTickets      ChurchPresenceTicket[] @relation("UserPresenceTickets")
 
   @@map("users")
 }
@@ -3321,4 +3324,26 @@ model FaceidDevice {
   church    Church   @relation("ChurchFaceidDevices", fields: [churchId], references: [id], onDelete: Cascade)
 
   @@map("faceid_devices")
+}
+
+model ChurchPresenceTicket {
+  id           String   @id @default(uuid()) @db.Uuid
+  campoId      String   @map("campo_id") @db.Uuid
+  churchId     String?  @map("church_id") @db.Uuid
+  churchName   String?  @map("church_name") @db.VarChar(255)
+  regionalName String?  @map("regional_name") @db.VarChar(255)
+  dataCulto    DateTime @map("data_culto") @db.Date
+  ticketCode   String?  @map("ticket_code") @db.VarChar(50)
+  membroRol    String?  @map("membro_rol") @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  campo  Campo   @relation("CampoPresenceTickets", fields: [campoId], references: [id], onDelete: Cascade)
+  church Church? @relation("ChurchPresenceTickets", fields: [churchId], references: [id], onDelete: SetNull)
+  creator User?  @relation("UserPresenceTickets", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([campoId])
+  @@index([churchId])
+  @@index([dataCulto])
+  @@map("church_presence_tickets")
 }

@@ -264,6 +264,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Modelos de Credencial',  path: '/app-ui/secretariat/credential-models',  icon: CreditCard,  permKey: 'credential_models' },
       { name: 'Requerimentos',          path: '/app-ui/requirements',                   icon: FileText,    permKey: 'requirements' },
       { name: 'Presença',               path: '/app-ui/attendance',                     icon: Clipboard,   permKey: 'attendance' },
+      { name: 'Gerar Ticket',           path: '/app-ui/secretariat/tickets',            icon: Ticket,      permKey: 'presence_tickets' },
       { name: 'Contatos / Leads',       path: '/app-ui/contacts',                       icon: Contact,     permKey: 'crm_leads' },
       { name: 'Relatórios',             path: '/app-ui/reports',                        icon: BarChart3,   permKey: 'reports' },
       { name: 'Documentos',             path: '/app-ui/secretariat/word',               icon: FileText,    permKey: 'word_docs' },

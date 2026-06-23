@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 
-function isRestrictedToOwnChurch(user: { profileType: string; roleName?: string | null }) {
-  if (user.profileType === "church") return true;
+function isRestrictedToOwnChurch(user: { profileType: string; roleName?: string | null; churchId?: string | null }) {
+  if (user.profileType === "church" && user.churchId) return true;
+  if (!user.churchId) return false;
   const name = String(user.roleName || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   return name.includes("secret") || name.includes("tesour");
 }
