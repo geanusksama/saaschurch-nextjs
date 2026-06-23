@@ -1061,7 +1061,7 @@ export function AttendanceModule() {
         </div>
         
         {/* Navigation Tabs (4 Tabs) */}
-        <div className="flex bg-white dark:bg-slate-850 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm no-print">
+        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm no-print">
           <button
             onClick={() => setActiveTab('general')}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
@@ -1189,10 +1189,10 @@ export function AttendanceModule() {
 
       {/* ─── TAB 1: GENERAL PRESENCE LIST ─── */}
       {activeTab === 'general' && (
-        <div className="space-y-6 no-print">
+        <div className="space-y-6">
           
           {/* Filters Form */}
-          <form onSubmit={handleGeneralSearch} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+          <form onSubmit={handleGeneralSearch} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm no-print">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
               
               {/* Nome */}
@@ -1264,7 +1264,7 @@ export function AttendanceModule() {
                   type="button"
                   onClick={exportToCSV}
                   disabled={filteredGeneralData.length === 0}
-                  className="flex items-center justify-center gap-2 bg-slate-850 hover:bg-slate-800 text-white text-sm px-4 py-2 rounded-lg border border-slate-750 transition-colors disabled:opacity-40"
+                  className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
                   title="Exportar CSV"
                 >
                   <Download className="w-4 h-4" />
@@ -1274,19 +1274,45 @@ export function AttendanceModule() {
                   type="button"
                   onClick={exportToExcel}
                   disabled={filteredGeneralData.length === 0}
-                  className="flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white text-sm px-4 py-2 rounded-lg border border-green-800 transition-colors disabled:opacity-40"
+                  className="flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white text-sm px-4 py-2 rounded-lg border border-green-800 transition-colors disabled:opacity-40 h-[38px]"
                   title="Exportar Excel"
                 >
                   <Download className="w-4 h-4" />
                   Excel
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => window.print()}
+                  disabled={filteredGeneralData.length === 0}
+                  className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
+                  title="Imprimir Relatório"
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimir
                 </button>
               </div>
             </div>
           </form>
 
           {/* Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden printable-report">
+            {/* Printable Report Header (only visible on print) */}
+            <div className="hidden print:flex justify-between items-start border-b-2 border-slate-900 dark:border-slate-100 pb-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                  saasChurch - Gestão Ministerial
+                </h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 font-semibold uppercase">
+                  Relatório de Presença Geral (Reconhecimento Facial)
+                </p>
+              </div>
+              <div className="text-right text-xs text-slate-500 font-mono">
+                <div>Gerado em: {new Date().toLocaleDateString('pt-BR')}</div>
+                <div>Período: {new Date(de).toLocaleDateString('pt-BR')} até {new Date(ate).toLocaleDateString('pt-BR')}</div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between no-print">
               <h3 className="font-bold text-slate-900 dark:text-white">Registros Gerais</h3>
               <span className="text-xs text-slate-500 dark:text-slate-400">
                 Exibindo <strong>{filteredGeneralData.length}</strong> de <strong>{generalTotal}</strong> registros
@@ -1307,7 +1333,7 @@ export function AttendanceModule() {
                     <th className="px-6 py-4">Câmera</th>
                     <th className="px-6 py-4">Igreja Regional</th>
                     <th className="px-6 py-4">Campo</th>
-                    <th className="px-6 py-4 text-center">Ações</th>
+                    <th className="px-6 py-4 text-center no-print">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-sm text-slate-600 dark:text-slate-400">
@@ -1327,7 +1353,7 @@ export function AttendanceModule() {
                       const period = getPeriod(record.horario);
 
                       return (
-                        <tr key={record.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/20 transition-colors">
+                        <tr key={record.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
                           <td className="px-6 py-4 font-bold text-blue-600 dark:text-blue-400 font-mono">
                             {record.rol || <span className="text-slate-350 dark:text-slate-700">—</span>}
                           </td>
@@ -1370,7 +1396,7 @@ export function AttendanceModule() {
                           <td className="px-6 py-4 text-xs font-mono text-slate-400">
                             {record.campo || '—'}
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-6 py-4 text-center no-print">
                             <button
                               onClick={() => handleDeletePresence(record.id)}
                               className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
@@ -1389,7 +1415,7 @@ export function AttendanceModule() {
 
             {/* Pagination */}
             {generalTotal > pageSize && (
-              <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-4 text-sm bg-slate-50/50 dark:bg-slate-950/20">
+              <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-4 text-sm bg-slate-50/50 dark:bg-slate-950/20 no-print">
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
@@ -1411,6 +1437,15 @@ export function AttendanceModule() {
                 </button>
               </div>
             )}
+
+            {/* Printable report footer signature (only visible on print) */}
+            <div className="hidden print:flex justify-between items-center border-t border-slate-200 dark:border-slate-800 pt-6 mt-8 text-xs text-slate-400 p-6 bg-white">
+              <span>saasChurch Relatórios de Presença Geral</span>
+              <div className="flex flex-col text-right">
+                <span>Assinatura do Responsável Ministerial</span>
+                <span className="w-48 border-b border-slate-400/80 mt-4 block self-end"></span>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -2200,13 +2235,13 @@ export function AttendanceModule() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-855 text-slate-850 dark:text-slate-250">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-850 dark:text-slate-250">
                     {reportMembers.map((member) => {
                       const isSelected = selectedReportMemberIds.includes(member.id);
                       return (
                         <tr 
                           key={member.id} 
-                          className={`hover:bg-slate-50/50 dark:hover:bg-slate-855/10 transition-colors ${
+                          className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors ${
                             !isSelected ? 'opacity-40 no-print' : ''
                           }`}
                         >
