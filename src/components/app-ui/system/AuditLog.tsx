@@ -33,6 +33,8 @@ export function AuditLog() {
 
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(initialEndDate);
+  const [startHour, setStartHour] = useState('00:00');
+  const [endHour, setEndHour] = useState('23:59');
   
   // Selected log for detailed view
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
@@ -58,7 +60,7 @@ export function AuditLog() {
       try {
         const token = localStorage.getItem('mrm_token');
         const response = await fetch(
-          `${apiBase}/audit-logs?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(searchTerm)}&type=${filterType}&startDate=${startDate}&endDate=${endDate}`,
+          `${apiBase}/audit-logs?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(searchTerm)}&type=${filterType}&startDate=${startDate}&endDate=${endDate}&startHour=${startHour}&endHour=${endHour}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -96,19 +98,19 @@ export function AuditLog() {
       active = false;
       clearTimeout(delayDebounceFn);
     };
-  }, [page, searchTerm, filterType, startDate, endDate, isMaster]);
+  }, [page, searchTerm, filterType, startDate, endDate, startHour, endHour, isMaster]);
 
-  // Reset page when search, filter or dates change
+  // Reset page when search, filter, dates or hours change
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, filterType, startDate, endDate]);
+  }, [searchTerm, filterType, startDate, endDate, startHour, endHour]);
 
   const handleExport = async () => {
     try {
       const token = localStorage.getItem('mrm_token');
       // Fetch matching logs with high limit for export
       const response = await fetch(
-        `${apiBase}/audit-logs?limit=5000&search=${encodeURIComponent(searchTerm)}&type=${filterType}&startDate=${startDate}&endDate=${endDate}`,
+        `${apiBase}/audit-logs?limit=5000&search=${encodeURIComponent(searchTerm)}&type=${filterType}&startDate=${startDate}&endDate=${endDate}&startHour=${startHour}&endHour=${endHour}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -400,7 +402,7 @@ export function AuditLog() {
       {/* Filters and Search */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 mb-6 shadow-sm">
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-center">
-          <div className="relative xl:col-span-4">
+          <div className="relative xl:col-span-3">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -411,23 +413,35 @@ export function AuditLog() {
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 xl:col-span-5">
-            <div className="flex-1 flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 xl:col-span-6">
+            <div className="flex-1 flex items-center gap-1.5">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Início:</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                className="w-full px-2.5 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+              />
+              <input
+                type="time"
+                value={startHour}
+                onChange={(e) => setStartHour(e.target.value)}
+                className="px-2 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
               />
             </div>
-            <div className="flex-1 flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-1.5">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Fim:</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                className="w-full px-2.5 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+              />
+              <input
+                type="time"
+                value={endHour}
+                onChange={(e) => setEndHour(e.target.value)}
+                className="px-2 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
               />
             </div>
           </div>

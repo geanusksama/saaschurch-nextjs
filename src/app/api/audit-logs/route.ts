@@ -18,6 +18,8 @@ export async function GET(req: NextRequest) {
     const filterType = sp.get("type") || "all";
     const startDateParam = sp.get("startDate");
     const endDateParam = sp.get("endDate");
+    const startHour = sp.get("startHour") || "00:00";
+    const endHour = sp.get("endHour") || "23:59";
 
     const filterConditions: any[] = [];
 
@@ -37,23 +39,25 @@ export async function GET(req: NextRequest) {
       filterConditions.push({ action: filterType });
     }
 
-    // Filter by date range
+    // Filter by date range and hour range
     if (startDateParam) {
+      const startText = startDateParam.includes("T")
+        ? startDateParam
+        : `${startDateParam}T${startHour}:00`;
       filterConditions.push({
         createdAt: {
-          gte: new Date(startDateParam),
+          gte: new Date(startText),
         },
       });
     }
 
     if (endDateParam) {
-      const end = new Date(endDateParam);
-      if (endDateParam.length <= 10) {
-        end.setHours(23, 59, 59, 999);
-      }
+      const endText = endDateParam.includes("T")
+        ? endDateParam
+        : `${endDateParam}T${endHour}:59.999`;
       filterConditions.push({
         createdAt: {
-          lte: end,
+          lte: new Date(endText),
         },
       });
     }

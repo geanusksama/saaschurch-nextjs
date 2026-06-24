@@ -165,9 +165,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
     const body = await req.json().catch(() => ({}));
     const newColumnIndex = body.columnIndex != null ? Number(body.columnIndex) : null;
-    const isMasterOrAdmin = user.profileType === "master" || user.profileType === "admin";
-    if (newColumnIndex != null && newColumnIndex !== card.columnIndex && !isMasterOrAdmin) {
-      return NextResponse.json({ error: "Apenas administradores e master podem mover registros entre etapas." }, { status: 403 });
+    const isAllowedToMove = user.profileType === "master" || user.profileType === "admin" || user.profileType === "campo";
+    if (newColumnIndex != null && newColumnIndex !== card.columnIndex && !isAllowedToMove) {
+      return NextResponse.json({ error: "Apenas administradores, master e perfil campo podem mover registros entre etapas." }, { status: 403 });
     }
 
     const data: Record<string, unknown> = {};
