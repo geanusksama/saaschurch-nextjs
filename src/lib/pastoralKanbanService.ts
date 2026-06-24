@@ -345,6 +345,21 @@ export async function movePastoralAttendance(params: {
     description: `Movido para ${params.targetColumnName || params.targetColumnKey}`,
     createdBy: params.movedBy || null,
   }).catch(() => {});
+
+  // Trigger WhatsApp status update notification via backend API
+  fetch('/api/pastoral/notify-move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      attendanceId: params.attendanceId,
+      targetColumnName: params.targetColumnName || params.targetColumnKey,
+      targetColumnKey: params.targetColumnKey,
+      churchId: params.churchId,
+      origin: typeof window !== 'undefined' ? window.location.origin : 'https://adcampinas.org',
+    }),
+  }).catch((err) => {
+    console.error('Failed to trigger WhatsApp notification:', err);
+  });
 }
 
 export async function updatePastoralAttendance(
@@ -451,6 +466,21 @@ export async function createPastoralActivity(input: {
     description: `Atividade criada: ${input.title}`,
     createdBy: input.createdBy || null,
   }).catch(() => {});
+
+  // Trigger WhatsApp activity creation notification via backend API
+  fetch('/api/pastoral/notify-activity', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      attendanceId: input.attendanceId,
+      churchId: input.churchId,
+      activityType: input.activityType,
+      title: input.title,
+      origin: typeof window !== 'undefined' ? window.location.origin : 'https://adcampinas.org',
+    }),
+  }).catch((err) => {
+    console.error('Failed to trigger WhatsApp activity notification:', err);
+  });
 
   return data as PastoralActivity;
 }

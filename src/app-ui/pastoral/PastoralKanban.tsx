@@ -4,7 +4,7 @@
  * Módulo EXCLUSIVO do pastoral. NÃO compartilha dados com a Secretaria/CRM.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -262,6 +262,15 @@ export default function PastoralKanban() {
   const churchId = getCurrentChurchId();
   const queryClient = useQueryClient();
 
+  const user = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('mrm_user') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+  const isSecretary = user.profileType === 'church';
+
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<AttendanceType | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<Priority | 'all'>('all');
@@ -272,7 +281,15 @@ export default function PastoralKanban() {
   const [dateFrom, setDateFrom] = useState(_firstDay);
   const [dateTo, setDateTo] = useState(_lastDay);
   const [selectedRegionals, setSelectedRegionals] = useState<string[]>([]);
-  const [filterChurchId, setFilterChurchId] = useState<string>('');
+  const [filterChurchId, setFilterChurchId] = useState<string>(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+      if (u.profileType === 'church' && u.churchId) {
+        return u.churchId;
+      }
+    } catch {}
+    return '';
+  });
   const [showRegionalDropdown, setShowRegionalDropdown] = useState(false);
   const [showChurchDropdown, setShowChurchDropdown] = useState(false);
   const regionalDropdownRef = useRef<HTMLDivElement>(null);
@@ -517,99 +534,103 @@ export default function PastoralKanban() {
                   className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
               </div>
 
-              {/* Regionais multi-select */}
-              <div className="relative" ref={regionalDropdownRef}>
-                <button
-                  onClick={() => { setShowRegionalDropdown((v) => !v); setShowChurchDropdown(false); }}
-                  className="flex items-center gap-2 min-w-[160px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
-                >
-                  <span className="flex-1 text-left truncate">
-                    {selectedRegionals.length === 0
-                      ? 'Todas as regionais'
-                      : selectedRegionals.length === 1
-                        ? (regionais.find((r) => r.id === selectedRegionals[0])?.name ?? '1 regional')
-                        : `${selectedRegionals.length} regionais`}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                </button>
-                {showRegionalDropdown && (
-                  <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-56 overflow-hidden">
-                    <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 bg-slate-50">
-                      <span className="text-xs text-slate-500 flex-1 font-medium">regional</span>
-                      <button onClick={() => setSelectedRegionals(regionais.map((r) => r.id))}
-                        className="text-xs text-blue-600 hover:underline">Marcar todas</button>
-                      <button onClick={() => setSelectedRegionals([])}
-                        className="text-xs text-slate-500 hover:underline">Desmarcar</button>
-                    </div>
-                    <div className="max-h-56 overflow-y-auto">
-                      {regionais.map((r) => {
-                        const checked = selectedRegionals.includes(r.id);
-                        return (
-                          <label key={r.id}
-                            className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
-                            <input
-                              type="checkbox" checked={checked}
-                              onChange={() => {
-                                setSelectedRegionals((prev) =>
-                                  checked ? prev.filter((id) => id !== r.id) : [...prev, r.id]
-                                );
-                                setFilterChurchId('');
-                              }}
-                              className="rounded border-slate-300 accent-green-600"
-                            />
-                            {r.name}
-                          </label>
-                        );
-                      })}
-                    </div>
+              {!isSecretary && (
+                <>
+                  {/* Regionais multi-select */}
+                  <div className="relative" ref={regionalDropdownRef}>
+                    <button
+                      onClick={() => { setShowRegionalDropdown((v) => !v); setShowChurchDropdown(false); }}
+                      className="flex items-center gap-2 min-w-[160px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
+                    >
+                      <span className="flex-1 text-left truncate">
+                        {selectedRegionals.length === 0
+                          ? 'Todas as regionais'
+                          : selectedRegionals.length === 1
+                            ? (regionais.find((r) => r.id === selectedRegionals[0])?.name ?? '1 regional')
+                            : `${selectedRegionals.length} regionais`}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    </button>
+                    {showRegionalDropdown && (
+                      <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-56 overflow-hidden">
+                        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 bg-slate-50">
+                          <span className="text-xs text-slate-500 flex-1 font-medium">regional</span>
+                          <button onClick={() => setSelectedRegionals(regionais.map((r) => r.id))}
+                            className="text-xs text-blue-600 hover:underline">Marcar todas</button>
+                          <button onClick={() => setSelectedRegionals([])}
+                            className="text-xs text-slate-500 hover:underline">Desmarcar</button>
+                        </div>
+                        <div className="max-h-56 overflow-y-auto">
+                          {regionais.map((r) => {
+                            const checked = selectedRegionals.includes(r.id);
+                            return (
+                              <label key={r.id}
+                                className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
+                                <input
+                                  type="checkbox" checked={checked}
+                                  onChange={() => {
+                                    setSelectedRegionals((prev) =>
+                                      checked ? prev.filter((id) => id !== r.id) : [...prev, r.id]
+                                    );
+                                    setFilterChurchId('');
+                                  }}
+                                  className="rounded border-slate-300 accent-green-600"
+                                />
+                                {r.name}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {/* Igrejas select */}
-              <div className="relative" ref={churchDropdownRef}>
-                <button
-                  onClick={() => { setShowChurchDropdown((v) => !v); setShowRegionalDropdown(false); }}
-                  className="flex items-center gap-2 min-w-[180px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
-                >
-                  <span className="flex-1 text-left truncate">
-                    {filterChurchId
-                      ? (allChurches.find((c) => c.id === filterChurchId)?.name ?? 'Igreja selecionada')
-                      : 'Todos as Igrejas'}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                </button>
-                {showChurchDropdown && (
-                  <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-64 overflow-hidden">
-                    <div className="max-h-60 overflow-y-auto">
-                      <button
-                        onClick={() => { setFilterChurchId(''); setShowChurchDropdown(false); }}
-                        className={`flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-slate-50 text-left border-b border-slate-100 ${!filterChurchId ? 'text-green-700 font-semibold' : 'text-slate-700'}`}
-                      >
-                        {!filterChurchId && <Check className="w-3.5 h-3.5 text-green-600" />}
-                        <span className={!filterChurchId ? '' : 'pl-5'}>Todos as Igrejas</span>
-                      </button>
-                      {allChurches.map((c) => (
-                        <button key={c.id}
-                          onClick={() => { setFilterChurchId(c.id); setShowChurchDropdown(false); }}
-                          className={`flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-slate-50 text-left ${filterChurchId === c.id ? 'text-green-700 font-semibold' : 'text-slate-700'}`}
-                        >
-                          {filterChurchId === c.id && <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />}
-                          <span className={filterChurchId === c.id ? '' : 'pl-5'}>{c.name}</span>
-                        </button>
-                      ))}
-                    </div>
+                  {/* Igrejas select */}
+                  <div className="relative" ref={churchDropdownRef}>
+                    <button
+                      onClick={() => { setShowChurchDropdown((v) => !v); setShowRegionalDropdown(false); }}
+                      className="flex items-center gap-2 min-w-[180px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
+                    >
+                      <span className="flex-1 text-left truncate">
+                        {filterChurchId
+                          ? (allChurches.find((c) => c.id === filterChurchId)?.name ?? 'Igreja selecionada')
+                          : 'Todos as Igrejas'}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    </button>
+                    {showChurchDropdown && (
+                      <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-64 overflow-hidden">
+                        <div className="max-h-60 overflow-y-auto">
+                          <button
+                            onClick={() => { setFilterChurchId(''); setShowChurchDropdown(false); }}
+                            className={`flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-slate-50 text-left border-b border-slate-100 ${!filterChurchId ? 'text-green-700 font-semibold' : 'text-slate-700'}`}
+                          >
+                            {!filterChurchId && <Check className="w-3.5 h-3.5 text-green-600" />}
+                            <span className={!filterChurchId ? '' : 'pl-5'}>Todos as Igrejas</span>
+                          </button>
+                          {allChurches.map((c) => (
+                            <button key={c.id}
+                              onClick={() => { setFilterChurchId(c.id); setShowChurchDropdown(false); }}
+                              className={`flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-slate-50 text-left ${filterChurchId === c.id ? 'text-green-700 font-semibold' : 'text-slate-700'}`}
+                            >
+                              {filterChurchId === c.id && <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />}
+                              <span className={filterChurchId === c.id ? '' : 'pl-5'}>{c.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
 
               {/* Limpar filtros */}
-              {(search || filterType !== 'all' || filterPriority !== 'all' || filterChurchId || selectedRegionals.length > 0) && (
+              {(search || filterType !== 'all' || filterPriority !== 'all' || (isSecretary ? filterChurchId !== user.churchId : filterChurchId) || selectedRegionals.length > 0) && (
                 <button
                   onClick={() => {
                     setSearch(''); setFilterType('all'); setFilterPriority('all');
                     setDateFrom(_firstDay); setDateTo(_lastDay);
-                    setSelectedRegionals([]); setFilterChurchId('');
+                    setSelectedRegionals([]); setFilterChurchId(isSecretary ? (user.churchId || '') : '');
                   }}
                   className="flex items-center gap-1 text-xs text-slate-500 hover:text-red-500 transition-colors ml-1"
                 >

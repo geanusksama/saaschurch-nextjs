@@ -156,6 +156,7 @@ import { ProspectingModule } from "../components/app-ui/ProspectingModule";
 import { AttendanceModule } from "../components/app-ui/AttendanceModule";
 import { Churches } from "../components/app-ui/Churches";
 import BaptismRequests from "../app-ui/ecclesiastical/BaptismRequests";
+import QueroSerMembroRequests from "../app-ui/ecclesiastical/QueroSerMembroRequests";
 import ConsecrationRequests from "../app-ui/ecclesiastical/ConsecrationRequests";
 import TransferRequests from "../app-ui/ecclesiastical/TransferRequests";
 import TicketPresencePage from "../app-ui/ecclesiastical/TicketPresencePage";
@@ -183,6 +184,7 @@ import CMSTemplates from "../app-ui/cms/CMSTemplates";
 import CMSDeptSettings from "../app-ui/cms/CMSDeptSettings";
 import { PortalHomePage, PortalDeptPage } from "../components/public/portal/PortalPage";
 import { PenielPublicPage } from "../components/public/PenielPublicPage";
+import PastoralTimelinePublic from "../components/public/PastoralTimelinePublic";
 
 // Portal Membro
 import { MembroProvider } from "../components/membro/MembroProvider";
@@ -305,6 +307,11 @@ export const router = createBrowserRouter([
   {
     path: "/portal/dept/:slug",
     Component: PortalDeptPage,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/pastoral/timeline/:id",
+    Component: PastoralTimelinePublic,
     errorElement: <ErrorBoundary />,
   },
   // Portal Membro — área exclusiva para membros autenticados via ROL+CPF+WhatsApp OTP
@@ -517,6 +524,7 @@ export const router = createBrowserRouter([
       { path: "requirements", Component: Requerimentos },
       { path: "requirements/new", Component: RequirementsNew },
       { path: "baptism-requests", Component: BaptismRequests },
+      { path: "membership-requests", Component: QueroSerMembroRequests },
       { path: "consecration-requests", Component: ConsecrationRequests },
       { path: "transfer-requests", Component: TransferRequests },
       { path: "ticket-purchase", Component: TicketPurchase },

@@ -514,4 +514,9 @@ select:-webkit-autofill {
   .dark tr.bg-slate-50 {
     background-color: #172033 !important;
   }
+  
+  /* Corrige texto e ícone dos itens ativos/selecionados do menu lateral (sidebar) no modo escuro */
+  .dark .app-shell [class*="text-purple-700"] {
+    color: #f8fafc !important;
+  }
 }

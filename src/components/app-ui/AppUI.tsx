@@ -179,6 +179,7 @@ function getFriendlyScreenName(path: string): string {
   if (p.startsWith("/app-ui/members/") && p.endsWith("/notes")) return "Anotações de Membro";
   if (p.startsWith("/app-ui/members/")) return "Perfil do Membro";
   if (p === "/app-ui/members/import") return "Importação de Membros";
+  if (p === "/app-ui/membership-requests") return "Solicitações de Novo Membro";
   if (p === "/app-ui/baptism") return "Módulo de Batismo";
   if (p === "/app-ui/consecration") return "Módulo de Consagração";
   if (p === "/app-ui/transfer") return "Módulo de Transferência";
@@ -256,6 +257,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Configurar Pipelines',   path: '/app-ui/secretariat/pipelines',          icon: GitBranch,   permKey: 'pipeline_config' },
       { name: 'Igrejas',                path: '/app-ui/churches',                       icon: Building,    permKey: 'churches' },
       { name: 'Lista de Membros',       path: '/app-ui/members',                        icon: Users,       permKey: 'members' },
+      { name: 'Quero ser Membro',       path: '/app-ui/membership-requests',            icon: UserPlus,    permKey: 'members' },
       { name: 'Importação de Membros',  path: '/app-ui/members/import',                 icon: UserPlus,    permKey: 'member_import' },
       { name: 'Batismo',                path: '/app-ui/baptism',                        icon: Droplets,    permKey: 'baptism' },
       { name: 'Consagração',            path: '/app-ui/consecration',                   icon: Crown,       permKey: 'consecration' },

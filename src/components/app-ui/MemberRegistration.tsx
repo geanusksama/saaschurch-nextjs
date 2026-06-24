@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Save, User, Phone, MapPin, Heart, Users, X, Search, CheckCircle, UserCircle, Droplets, Star, ArrowRight, AlertTriangle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useLocation } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { apiBase } from '../../lib/apiBase';
@@ -259,13 +259,29 @@ export function MemberRegistration() {
   const storedUser = readStoredUser();
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
   const activeFieldName = localStorage.getItem('mrm_active_field_name') || storedUser.campoName || '';
-  // master/admin podem trocar Campo; campo+ podem trocar Regional e Igreja dentro do seu campo
   const isMasterOrAdmin = storedUser.profileType === 'master' || storedUser.profileType === 'admin';
   const isCampoOrAbove = isMasterOrAdmin || storedUser.profileType === 'campo';
   const canChooseChurch = isCampoOrAbove;
   const canChooseField = isMasterOrAdmin;
   const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
+  const location = useLocation();
+  const prefill = location.state?.prefill;
   const [formData, setFormData] = useState<FormState>(initialFormData);
+
+  useEffect(() => {
+    if (prefill) {
+      setFormData((prev) => ({
+        ...prev,
+        firstName: prefill.firstName || '',
+        lastName: prefill.lastName || '',
+        phone: prefill.phone || '',
+        mobile: prefill.mobile || '',
+        maritalStatus: prefill.maritalStatus || '',
+        churchId: prefill.churchId || prev.churchId,
+        notes: prefill.notes || '',
+      }));
+    }
+  }, [prefill]);
 
   const [fields, setFields] = useState<CampoOption[]>([]);
   const [regionais, setRegionais] = useState<RegionalOption[]>([]);
