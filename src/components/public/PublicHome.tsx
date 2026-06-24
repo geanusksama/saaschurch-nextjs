@@ -464,13 +464,15 @@ export function PublicHome() {
             </div>
           </a>
 
-          <div className="flex items-start gap-4">
-            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center ${border}`}><Radio className={`w-6 h-6 ${iconColor}`} /></div>
+          <a href="https://maisfm1029.com.br/" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
+            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#00b894] transition-colors ${border}`}><Radio className={`w-6 h-6 group-hover:text-[#00b894] transition-colors ${iconColor}`} /></div>
             <div className="flex flex-col justify-center min-h-[3.5rem]">
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>102,9</h3>
               <p className={`text-xs leading-relaxed flex items-center gap-2 ${textSub}`}>Mais FM ao vivo <span className="w-2.5 h-2.5 rounded-full bg-[#00b894] animate-pulse" /></p>
             </div>
-          </div>
+          </a>
+
+
 
           <a href="https://www.instagram.com/adcampinas/" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-pink-500 transition-colors ${border}`}><Camera className={`w-6 h-6 group-hover:text-pink-500 transition-colors ${iconColor}`} /></div>
