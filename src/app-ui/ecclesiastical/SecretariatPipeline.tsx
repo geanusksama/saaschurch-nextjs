@@ -2347,9 +2347,10 @@ function EditCardModal({
                 </label>
                 <div className="relative">
                   <select
+                    disabled
                     value={form.columnIndex}
                     onChange={(e) => set("columnIndex", Number(e.target.value))}
-                    className="w-full appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 py-2.5 text-sm focus:border-indigo-500 focus:outline-none"
+                    className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 pl-3 pr-8 py-2.5 text-sm focus:border-indigo-500 focus:outline-none cursor-not-allowed text-slate-500"
                   >
                     {columns.map((col) => (
                       <option key={col.id} value={col.columnIndex}>
@@ -2366,9 +2367,10 @@ function EditCardModal({
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
                 <div className="relative">
                   <select
+                    disabled
                     value={form.status}
                     onChange={(e) => set("status", e.target.value)}
-                    className="w-full appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 py-2.5 text-sm focus:border-indigo-500 focus:outline-none"
+                    className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 pl-3 pr-8 py-2.5 text-sm focus:border-indigo-500 focus:outline-none cursor-not-allowed text-slate-500"
                   >
                     {statusOptions.map((o) => (
                       <option key={o.value} value={o.value}>
