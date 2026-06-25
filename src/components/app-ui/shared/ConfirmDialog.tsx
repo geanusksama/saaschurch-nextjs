@@ -58,8 +58,8 @@ export function ConfirmDialog({
 
   return (
     <>
-      <div className="fixed inset-0 z-[90] bg-slate-900/50" onClick={loading ? undefined : onCancel} />
-      <div className="fixed left-1/2 top-1/2 z-[100] w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="fixed inset-0 z-[10050] bg-slate-900/50" onClick={loading ? undefined : onCancel} />
+      <div className="fixed left-1/2 top-1/2 z-[10051] w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start gap-4 p-6">
           <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${style.iconBg}`}>
             <Icon className={`h-6 w-6 ${style.iconColor}`} />
@@ -116,8 +116,8 @@ export function AlertDialog({ open, title, message, variant = 'info', buttonLabe
 
   return (
     <>
-      <div className="fixed inset-0 z-[90] bg-slate-900/50" onClick={onClose} />
-      <div className="fixed left-1/2 top-1/2 z-[100] w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="fixed inset-0 z-[10050] bg-slate-900/50" onClick={onClose} />
+      <div className="fixed left-1/2 top-1/2 z-[10051] w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start gap-4 p-6">
           <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${style.iconBg}`}>
             <Icon className={`h-6 w-6 ${style.iconColor}`} />
