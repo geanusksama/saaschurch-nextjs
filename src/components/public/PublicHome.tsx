@@ -32,26 +32,52 @@ interface FloatingItem {
   size: number;
   duration: number;
   delay: number;
+  fadeDuration: number;
+  fadeDelay: number;
+  color: string;
+  peak: number;
 }
 
-function BiblicalFloatingElements() {
+// Total de símbolos bíblicos disponíveis (0..TOTAL-1)
+const BIBLICAL_SYMBOL_COUNT = 12;
+
+// Paleta de cores suaves para os símbolos (alternam entre os elementos)
+const BIBLICAL_COLORS = [
+  '#d4af37', // dourado
+  '#22c55e', // esmeralda
+  '#38bdf8', // azul céu
+  '#f59e0b', // âmbar
+  '#a78bfa', // violeta
+  '#2dd4bf', // teal
+  '#f472b6', // rosa
+  '#e2e8f0', // claro
+];
+
+function BiblicalFloatingElements({ isDark }: { isDark: boolean }) {
   const [items, setItems] = useState<FloatingItem[]>([]);
 
   useEffect(() => {
     const generated: FloatingItem[] = [];
-    for (let i = 0; i < 9; i++) {
+    // Mais elementos para uma amostragem maior alternando na tela
+    for (let i = 0; i < 14; i++) {
       generated.push({
         id: i,
-        type: i % 7,
+        type: i % BIBLICAL_SYMBOL_COUNT,
         left: Math.random() * 85 + 5,
         top: Math.random() * 80 + 10,
-        size: Math.floor(Math.random() * 30) + 35,
+        size: Math.floor(Math.random() * 30) + 38,
         duration: Math.floor(Math.random() * 15) + 20,
         delay: Math.floor(Math.random() * 8),
+        // Ciclo de aparecer/sumir (fade) defasado por elemento
+        fadeDuration: Math.floor(Math.random() * 8) + 9,
+        fadeDelay: Math.floor(Math.random() * 10),
+        color: BIBLICAL_COLORS[i % BIBLICAL_COLORS.length],
+        // Opacidade de pico (mais visível que antes, mas sem competir com o texto)
+        peak: (isDark ? 0.16 : 0.12) + Math.random() * 0.1,
       });
     }
     setItems(generated);
-  }, []);
+  }, [isDark]);
 
   const renderSvgContent = (type: number) => {
     switch (type) {
@@ -69,6 +95,16 @@ function BiblicalFloatingElements() {
         return <path d="M25 65 C20 65, 15 60, 15 50 C15 45, 20 40, 30 40 C32 35, 38 30, 45 30 C50 30, 55 35, 57 40 C62 40, 67 45, 67 52 C67 60, 60 65, 50 65 Z M30 65 L30 75 M45 65 L45 75 M55 65 L55 75 M20 50 L20 75 M65 42 C70 40, 75 42, 78 48 C80 52, 78 56, 74 58" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
       case 6: // Cup and Bread
         return <path d="M25 40 L35 40 M30 40 C30 60, 60 60, 60 40 M45 56 L45 75 M35 75 L55 75 M62 65 C68 58, 82 58, 88 65 C85 72, 65 72, 62 65 Z" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
+      case 7: // Dove (Holy Spirit)
+        return <path d="M18 52 C30 44, 44 42, 58 48 C66 38, 82 36, 90 46 C82 48, 78 53, 76 59 C83 63, 80 73, 71 75 C68 66, 56 62, 46 63 C34 64, 24 60, 18 52 Z M58 48 L54 32 M54 32 L62 38 M54 32 L46 39" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
+      case 8: // Crown
+        return <path d="M20 70 L24 36 L38 54 L50 30 L62 54 L76 36 L80 70 Z M20 72 L80 72 M20 80 L80 80 M38 54 L38 54 M50 30 L50 30" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
+      case 9: // Flame (fire / Pentecost)
+        return <path d="M50 12 C40 34, 28 44, 34 62 C38 76, 46 84, 50 86 C54 84, 62 76, 66 62 C72 44, 60 34, 50 12 Z M50 52 C45 60, 47 72, 50 78 C53 72, 55 60, 50 52 Z" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
+      case 10: // Star of David
+        return <path d="M50 14 L72 58 L28 58 Z M50 86 L28 42 L72 42 Z" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
+      case 11: // Candle / light
+        return <path d="M44 46 L56 46 L56 82 L44 82 Z M38 82 L62 82 M50 46 C46 38, 50 28, 50 28 C50 28, 54 38, 50 46 Z M50 22 L50 28" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
       default:
         return null;
     }
@@ -79,16 +115,21 @@ function BiblicalFloatingElements() {
       {items.map((item) => (
         <div
           key={item.id}
-          className={`absolute text-slate-400/10 dark:text-white/5 animate-float-v${(item.id % 4) + 1}`}
+          className="absolute"
           style={{
             left: `${item.left}%`,
             top: `${item.top}%`,
             width: `${item.size}px`,
             height: `${item.size}px`,
-            animationDuration: `${item.duration}s`,
-            animationDelay: `${item.delay}s`,
-            animationIterationCount: 'infinite',
-            animationTimingFunction: 'linear',
+            color: item.color,
+            opacity: 0,
+            // Movimento de flutuação + ciclo de fade (aparecer/sumir) defasado
+            animationName: `float-v${(item.id % 4) + 1}, biblical-fade`,
+            animationDuration: `${item.duration}s, ${item.fadeDuration}s`,
+            animationDelay: `${item.delay}s, ${item.fadeDelay}s`,
+            animationTimingFunction: 'ease-in-out, ease-in-out',
+            animationIterationCount: 'infinite, infinite',
+            ['--peak' as any]: item.peak,
           }}
         >
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -388,6 +429,11 @@ export function PublicHome() {
           75% { transform: translate(-10px, -30px) rotate(-4deg) scale(0.99); }
           100% { transform: translate(0px, 0px) rotate(0deg); }
         }
+        /* Ciclo de aparecer/sumir dos símbolos (um some, outro aparece) */
+        @keyframes biblical-fade {
+          0%, 100% { opacity: 0; }
+          50% { opacity: var(--peak, 0.2); }
+        }
       `}</style>
 
       {isDark && (
@@ -398,7 +444,7 @@ export function PublicHome() {
       )}
 
       {/* Elegant Biblical Floating Elements Background */}
-      <BiblicalFloatingElements />
+      <BiblicalFloatingElements isDark={isDark} />
 
       <img src="/adcampinas.png" alt=""
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-[80vw] md:w-[50vw] lg:w-[42rem] aspect-square object-cover rounded-full z-0"
