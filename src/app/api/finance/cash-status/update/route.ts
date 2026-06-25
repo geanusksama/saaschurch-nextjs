@@ -10,8 +10,8 @@ async function listScopedChurchRows({ user, churchIds = [] as string[], regional
   let nextParam = 1;
   if (isRestrictedToOwnChurch(user) && user?.churchId) { conditions.push(`c.id = $${nextParam}::uuid`); params.push(user.churchId); nextParam++; }
   else { if (churchIds.length) { conditions.push(`c.id = ANY($${nextParam}::uuid[])`); params.push(churchIds); nextParam++; } if (regionalIds.length) { conditions.push(`c.regional_id = ANY($${nextParam}::uuid[])`); params.push(regionalIds); nextParam++; } if (user?.campoId) { conditions.push(`r.campo_id = $${nextParam}::uuid`); params.push(user.campoId); nextParam++; } }
-  return prisma.$queryRawUnsafe<Array<{ churchId: string }>>(
-    `SELECT c.id::text AS "churchId", c.name AS "churchName" FROM churches c JOIN regionais r ON r.id = c.regional_id WHERE ${conditions.join(" AND ")} ORDER BY r.name ASC, c.name ASC`,
+  return prisma.$queryRawUnsafe<Array<{ churchId: string; permanentOpen: boolean }>>(
+    `SELECT c.id::text AS "churchId", c.name AS "churchName", c.cashbook_permanent_open AS "permanentOpen" FROM churches c JOIN regionais r ON r.id = c.regional_id WHERE ${conditions.join(" AND ")} ORDER BY r.name ASC, c.name ASC`,
     ...params
   );
 }
@@ -35,7 +35,13 @@ export async function POST(req: NextRequest) {
     const allowUntilValue = normalizedAction === "allow" ? String(allowUntil).slice(0, 10) : null;
     const operatorId = user.id || null;
     let updatedCount = 0;
+    let skippedPermanent = 0;
     for (const church of scopedChurches) {
+      // Igrejas com caixa permanentemente aberto nunca são fechadas/monitoradas.
+      if (church.permanentOpen && (normalizedAction === "close" || normalizedAction === "allow")) {
+        skippedPermanent++;
+        continue;
+      }
       for (const month of selectedMonths) {
         await prisma.$executeRawUnsafe(
           `INSERT INTO church_cashbook_status (id, church_id, reference_year, reference_month, status, allow_until, notes, updated_by, created_at, updated_at)
@@ -46,6 +52,6 @@ export async function POST(req: NextRequest) {
         updatedCount++;
       }
     }
-    return NextResponse.json({ updatedCount, churches: scopedChurches.length, months: selectedMonths, action: normalizedAction });
+    return NextResponse.json({ updatedCount, churches: scopedChurches.length, months: selectedMonths, action: normalizedAction, skippedPermanent });
   });
 }

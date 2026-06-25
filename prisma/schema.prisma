@@ -138,6 +138,9 @@ model Church {
   status    String?   @default("active") @db.VarChar(20)
   foundedAt DateTime? @map("founded_at") @db.Date
 
+  // Quando true, o caixa desta igreja fica sempre aberto e nunca é fechado/monitorado.
+  cashbookPermanentOpen Boolean @default(false) @map("cashbook_permanent_open")
+
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")

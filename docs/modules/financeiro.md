@@ -106,9 +106,18 @@ CREATE TABLE church_cashbook_status (
 
 **Lógica de abertura:**
 ```
-isOpen = (status == 'OPEN') OR (allow_until != null AND allow_until >= dataAtual)
+isOpen = churches.cashbook_permanent_open
+         OR (status == 'OPEN')
+         OR (allow_until != null AND allow_until >= dataAtual)
 ```
 Quando não há registro na tabela, o caixa é considerado **ABERTO** por padrão.
+
+**Abertura permanente (`churches.cashbook_permanent_open`):** quando `true`, o caixa da
+igreja fica **sempre aberto** e é **excluído do monitoramento/fechamento**. Nesse estado:
+- `check`, `list` e a conciliação Santander sempre reportam o caixa como aberto;
+- a ação `close`/`allow` do endpoint de update **ignora** essas igrejas (não fecha);
+- alternado pelo switch "Abrir permanente" na tela *Abertura e Fechamento de Caixa*
+  (endpoint `POST /api/finance/cash-status/permanent`).
 
 ---
 

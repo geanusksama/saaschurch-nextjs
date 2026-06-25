@@ -4,6 +4,7 @@ import {
   fetchFinanceCashStatusOptions,
   listFinanceCashStatuses,
   updateFinanceCashStatuses,
+  setFinanceCashPermanentOpen,
   type FinanceCashStatusMonth,
   type FinanceCashStatusOptionChurch,
   type FinanceCashStatusOptionRegional,
@@ -418,6 +419,27 @@ export function FinanceCashFlow() {
     }
   }
 
+  async function togglePermanentOpen(churchId: string, nextValue: boolean) {
+    setSaving(true);
+    setError('');
+    setNotice('');
+    // Atualização otimista para resposta imediata do switch.
+    setRows((current) => current.map((row) => (row.churchId === churchId ? { ...row, permanentOpen: nextValue } : row)));
+    try {
+      await setFinanceCashPermanentOpen({ churchIds: [churchId], permanentOpen: nextValue });
+      await refreshRows();
+      setNotice(nextValue
+        ? 'Caixa marcado como permanentemente aberto. Não será mais monitorado nem fechado.'
+        : 'Abertura permanente desativada. O caixa volta a ser monitorado.');
+    } catch (err: any) {
+      // Reverte em caso de falha.
+      setRows((current) => current.map((row) => (row.churchId === churchId ? { ...row, permanentOpen: !nextValue } : row)));
+      setError(err?.message || 'Não foi possível atualizar a abertura permanente.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const filteredCount = rows.length;
   const bulkChurchIds = rows.map((row) => row.churchId);
   const monthCount = selectedMonths.length;
@@ -596,6 +618,7 @@ export function FinanceCashFlow() {
                     <th key={month} className="px-4 py-3 text-left text-xs font-semibold text-slate-700">{renderMonthLabel(month)} / {year}</th>
                   ))}
                   <th className="px-4 py-3 text-center text-xs font-semibold text-slate-700">Resumo</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-700">Abrir permanente</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-slate-700">Ações</th>
                 </tr>
               </thead>
@@ -620,9 +643,33 @@ export function FinanceCashFlow() {
                       ))}
                       <td className="px-4 py-3 align-top text-center">
                         <div className="inline-flex flex-wrap items-center justify-center gap-1 text-[11px] font-semibold">
-                          <span className="rounded-full bg-[#dcfce7] px-2 py-1 text-[#166534] ring-1 ring-[#86efac]">Abertos {openMonths}</span>
-                          <span className="rounded-full bg-[#fef3c7] px-2 py-1 text-[#92400e] ring-1 ring-[#fcd34d]">Temporários {temporaryMonths}</span>
-                          <span className="rounded-full bg-[#fee2e2] px-2 py-1 text-[#991b1b] ring-1 ring-[#fca5a5]">Fechados {closedMonths}</span>
+                          {row.permanentOpen ? (
+                            <span className="rounded-full bg-[#dcfce7] px-2 py-1 text-[#166534] ring-1 ring-[#86efac]">Sempre aberto</span>
+                          ) : (
+                            <>
+                              <span className="rounded-full bg-[#dcfce7] px-2 py-1 text-[#166534] ring-1 ring-[#86efac]">Abertos {openMonths}</span>
+                              <span className="rounded-full bg-[#fef3c7] px-2 py-1 text-[#92400e] ring-1 ring-[#fcd34d]">Temporários {temporaryMonths}</span>
+                              <span className="rounded-full bg-[#fee2e2] px-2 py-1 text-[#991b1b] ring-1 ring-[#fca5a5]">Fechados {closedMonths}</span>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top text-center">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={row.permanentOpen}
+                            disabled={saving}
+                            onClick={() => void togglePermanentOpen(row.churchId, !row.permanentOpen)}
+                            title={row.permanentOpen ? 'Caixa sempre aberto (não monitorado). Clique para voltar a monitorar.' : 'Ativar para manter o caixa sempre aberto e fora do monitoramento.'}
+                            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${row.permanentOpen ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                          >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${row.permanentOpen ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          </button>
+                          <span className={`text-[10px] font-medium leading-none ${row.permanentOpen ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            {row.permanentOpen ? 'Ativado' : 'Monitorado'}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 align-top">
@@ -630,7 +677,7 @@ export function FinanceCashFlow() {
                           <button
                             type="button"
                             onClick={() => void runUpdate('open', [row.churchId])}
-                            disabled={saving}
+                            disabled={saving || row.permanentOpen}
                             className="rounded-lg bg-[#dcfce7] px-3 py-1.5 text-xs font-semibold text-[#166534] ring-1 ring-[#86efac] hover:bg-[#bbf7d0] disabled:opacity-60"
                           >
                             Abrir
@@ -638,7 +685,8 @@ export function FinanceCashFlow() {
                           <button
                             type="button"
                             onClick={() => void runUpdate('close', [row.churchId])}
-                            disabled={saving}
+                            disabled={saving || row.permanentOpen}
+                            title={row.permanentOpen ? 'Caixa permanentemente aberto. Desative o switch para poder fechar.' : undefined}
                             className="rounded-lg bg-[#fee2e2] px-3 py-1.5 text-xs font-semibold text-[#991b1b] ring-1 ring-[#fca5a5] hover:bg-[#fecaca] disabled:opacity-60"
                           >
                             Fechar
@@ -671,6 +719,27 @@ export function FinanceCashFlow() {
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Gerenciar caixa da igreja</h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{activeChurch.churchName} • {activeChurch.regionalName}</p>
+                {(() => {
+                  const liveRow = rows.find((row) => row.churchId === activeChurch.churchId);
+                  const permanentOpen = liveRow ? liveRow.permanentOpen : activeChurch.permanentOpen;
+                  return (
+                    <label className="mt-3 inline-flex cursor-pointer items-center gap-2">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={permanentOpen}
+                        disabled={saving}
+                        onClick={() => void togglePermanentOpen(activeChurch.churchId, !permanentOpen)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${permanentOpen ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${permanentOpen ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      </button>
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                        Abrir permanentemente <span className="text-slate-400">(sempre aberto, fora do monitoramento)</span>
+                      </span>
+                    </label>
+                  );
+                })()}
               </div>
               <button type="button" onClick={() => setActiveChurch(null)} className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Fechar</button>
             </div>
@@ -710,8 +779,9 @@ export function FinanceCashFlow() {
               </button>
               <button
                 type="button"
-                disabled={saving}
+                disabled={saving || (rows.find((row) => row.churchId === activeChurch.churchId)?.permanentOpen ?? activeChurch.permanentOpen)}
                 onClick={() => void runUpdate('close', [activeChurch.churchId])}
+                title={(rows.find((row) => row.churchId === activeChurch.churchId)?.permanentOpen ?? activeChurch.permanentOpen) ? 'Caixa permanentemente aberto. Desative a abertura permanente para poder fechar.' : undefined}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
               >
                 <Lock className="h-4 w-4" />

@@ -15,20 +15,21 @@ async function listScopedChurchRows({ user, churchIds = [] as string[], regional
     if (user?.campoId) { conditions.push(`r.campo_id = $${nextParam}::uuid`); params.push(user.campoId); nextParam++; }
   }
   if (search?.trim()) { conditions.push(`(c.name ILIKE $${nextParam} OR COALESCE(r.name, '') ILIKE $${nextParam})`); params.push(`%${search.trim()}%`); }
-  return prisma.$queryRawUnsafe<Array<{ churchId: string; churchName: string; regionalId: string | null; regionalName: string | null }>>(
-    `SELECT c.id::text AS "churchId", c.name AS "churchName", r.id::text AS "regionalId", r.name AS "regionalName" FROM churches c LEFT JOIN regionais r ON r.id = c.regional_id WHERE ${conditions.join(" AND ")} ORDER BY COALESCE(r.name, '') ASC, c.name ASC`,
+  return prisma.$queryRawUnsafe<Array<{ churchId: string; churchName: string; regionalId: string | null; regionalName: string | null; permanentOpen: boolean }>>(
+    `SELECT c.id::text AS "churchId", c.name AS "churchName", r.id::text AS "regionalId", r.name AS "regionalName", c.cashbook_permanent_open AS "permanentOpen" FROM churches c LEFT JOIN regionais r ON r.id = c.regional_id WHERE ${conditions.join(" AND ")} ORDER BY COALESCE(r.name, '') ASC, c.name ASC`,
     ...params
   );
 
 }
 
-function normalizeCashStatusRow(row: Record<string, unknown> | null, year: number, month: number, referenceDate?: string) {
+function normalizeCashStatusRow(row: Record<string, unknown> | null, year: number, month: number, referenceDate?: string, permanentOpen = false) {
   const effectiveDate = referenceDate || new Date().toISOString().slice(0, 10);
   const allowUntil = row?.allowUntil ? (typeof row.allowUntil === "string" ? row.allowUntil.slice(0, 10) : new Date(row.allowUntil as string).toISOString().slice(0, 10)) : null;
   const defaultStatus = isPastMonth(year, month) ? "CLOSED" : "OPEN";
-  const rawStatus = String(row?.status || defaultStatus).toUpperCase();
-  const isOpen = rawStatus === "OPEN" || (allowUntil !== null && allowUntil >= effectiveDate);
-  return { status: rawStatus, allowUntil, isOpen, label: rawStatus === "OPEN" ? "Aberto" : (allowUntil && allowUntil >= effectiveDate ? `Permitido ate ${allowUntil}` : "Fechado") };
+  const rawStatus = permanentOpen ? "OPEN" : String(row?.status || defaultStatus).toUpperCase();
+  const isOpen = permanentOpen || rawStatus === "OPEN" || (allowUntil !== null && allowUntil >= effectiveDate);
+  const label = permanentOpen ? "Aberto (permanente)" : (rawStatus === "OPEN" ? "Aberto" : (allowUntil && allowUntil >= effectiveDate ? `Permitido ate ${allowUntil}` : "Fechado"));
+  return { status: rawStatus, allowUntil, isOpen, label };
 }
 
 function sanitizeMonthList(months: unknown) {
@@ -60,6 +61,6 @@ export async function POST(req: NextRequest) {
     const statusMap = new Map<string, Record<string, unknown>>();
     statusRows.forEach((row) => { statusMap.set(`${row.churchId}:${row.month}`, row); });
 
-    return NextResponse.json({ rows: scopedChurches.map((churchRow) => ({ churchId: churchRow.churchId, churchName: churchRow.churchName, regionalId: churchRow.regionalId, regionalName: churchRow.regionalName, months: selectedMonths.map((month) => { const dbRow = statusMap.get(`${churchRow.churchId}:${month}`) || null; const c = normalizeCashStatusRow(dbRow, referenceYear, month); return { month, status: c.status, allowUntil: c.allowUntil, isOpen: c.isOpen, label: c.label }; }) })) });
+    return NextResponse.json({ rows: scopedChurches.map((churchRow) => ({ churchId: churchRow.churchId, churchName: churchRow.churchName, regionalId: churchRow.regionalId, regionalName: churchRow.regionalName, permanentOpen: Boolean(churchRow.permanentOpen), months: selectedMonths.map((month) => { const dbRow = statusMap.get(`${churchRow.churchId}:${month}`) || null; const c = normalizeCashStatusRow(dbRow, referenceYear, month, undefined, Boolean(churchRow.permanentOpen)); return { month, status: c.status, allowUntil: c.allowUntil, isOpen: c.isOpen, label: c.label }; }) })) });
   });
 }

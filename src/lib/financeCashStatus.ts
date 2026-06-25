@@ -23,6 +23,7 @@ export type FinanceCashStatusRow = {
   churchName: string;
   regionalId: string | null;
   regionalName: string;
+  permanentOpen: boolean;
   months: FinanceCashStatusMonth[];
 };
 
@@ -34,6 +35,7 @@ export type FinanceCashStatusCheck = {
   canInsert: boolean;
   status: string;
   allowUntil: string | null;
+  permanentOpen?: boolean;
   message: string;
 };
 
@@ -104,6 +106,19 @@ export async function updateFinanceCashStatuses(input: {
     months: number[];
     action: string;
   }>(response);
+}
+
+export async function setFinanceCashPermanentOpen(input: {
+  churchIds: string[];
+  permanentOpen: boolean;
+}) {
+  const response = await fetch(`${apiBase}/finance/cash-status/permanent`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
+  });
+
+  return parseApiResponse<{ updatedCount: number; permanentOpen: boolean }>(response);
 }
 
 export async function checkChurchCashStatus(churchId: string, date: string) {

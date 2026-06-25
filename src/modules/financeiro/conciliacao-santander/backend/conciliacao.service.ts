@@ -292,6 +292,13 @@ class ConciliacaoService {
     const cashYear = cashDate.slice(0, 4)
     const cashMonth = cashDate.slice(5, 7)
 
+    const [permanentRow] = await prisma.$queryRaw<{ permanent_open: boolean }[]>`
+      SELECT cashbook_permanent_open AS permanent_open
+      FROM churches
+      WHERE id = ${data.church_id}::uuid
+      LIMIT 1
+    `
+    const permanentOpen = Boolean(permanentRow?.permanent_open)
     const [cashStatus] = await prisma.$queryRaw<{ status: string; allow_until: Date | null }[]>`
       SELECT status, allow_until
       FROM church_cashbook_status
@@ -301,9 +308,9 @@ class ConciliacaoService {
       LIMIT 1
     `
     const defaultStatus = isPastMonth(Number(cashYear), Number(cashMonth)) ? "CLOSED" : "OPEN";
-    const rawStatus = String(cashStatus?.status || defaultStatus).toUpperCase();
+    const rawStatus = permanentOpen ? "OPEN" : String(cashStatus?.status || defaultStatus).toUpperCase();
     const allowUntil = cashStatus?.allow_until ? (typeof cashStatus.allow_until === "string" ? cashStatus.allow_until.slice(0, 10) : new Date(cashStatus.allow_until as unknown as string).toISOString().slice(0, 10)) : null;
-    const canInsert = rawStatus === "OPEN" || (allowUntil !== null && allowUntil >= cashDate);
+    const canInsert = permanentOpen || rawStatus === "OPEN" || (allowUntil !== null && allowUntil >= cashDate);
 
     if (!canInsert) {
       throw Object.assign(new Error('Período do Livro Caixa fechado para esta igreja'), { code: 'CASH_STATUS_FECHADO' })
