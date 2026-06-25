@@ -29,6 +29,97 @@ function serializeDbData(obj: any): any {
   return obj;
 }
 
+// Remove acentos e normaliza para minúsculas — usado para classificar plano de contas
+function normalizeText(text: string | null | undefined): string {
+  return (text || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+// Classifica uma receita pelo plano de conta, na MESMA regra do Livro Caixa (Cashbook.tsx):
+// dízimo = plano contém "dizimo"; oferta = plano contém "oferta".
+function classifyPlano(planoDeConta: string | null | undefined): "dizimo" | "oferta" | "outro" {
+  const p = normalizeText(planoDeConta);
+  if (p.includes("dizimo")) return "dizimo";
+  if (p.includes("oferta")) return "oferta";
+  return "outro";
+}
+
+type AggRow = { tipo: string | null; valor: any; planoDeConta?: string | null };
+
+// Soma os totais financeiros de um conjunto de lançamentos (matemática feita no servidor, não pela IA)
+function aggregateRows(rows: AggRow[]) {
+  let receitas = 0, despesas = 0, dizimos = 0, ofertas = 0, outrasReceitas = 0;
+  let qtdReceitas = 0, qtdDespesas = 0, qtdDizimos = 0, qtdOfertas = 0;
+  for (const r of rows) {
+    const valor = Number(r.valor);
+    if (r.tipo === "DESPESA") {
+      // valor pode estar negativo; usamos o módulo para somar despesa
+      despesas += Math.abs(valor);
+      qtdDespesas++;
+    } else if (r.tipo === "RECEITA") {
+      receitas += valor;
+      qtdReceitas++;
+      const cls = classifyPlano(r.planoDeConta);
+      if (cls === "dizimo") { dizimos += valor; qtdDizimos++; }
+      else if (cls === "oferta") { ofertas += valor; qtdOfertas++; }
+      else { outrasReceitas += valor; }
+    }
+  }
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return {
+    totalReceitas: round(receitas),
+    totalDespesas: round(despesas),
+    totalDizimos: round(dizimos),
+    totalOfertas: round(ofertas),
+    totalOutrasReceitas: round(outrasReceitas),
+    liquido: round(receitas - despesas),
+    qtdLancamentos: rows.length,
+    qtdReceitas, qtdDespesas, qtdDizimos, qtdOfertas,
+  };
+}
+
+// Constrói o filtro `where` do Prisma para LivroCaixa a partir dos argumentos da ferramenta.
+// Compartilhado por consultar_livro_caixa, consultar_totais e ranking_igrejas.
+function buildLivroCaixaWhere(args: any, fieldChurchIds: string[] | null): any {
+  const queryWhere: any = {};
+  if (fieldChurchIds !== null) {
+    queryWhere.churchId = { in: fieldChurchIds };
+  }
+  if (args.data_inicio || args.data_fim) {
+    queryWhere.dataLancamento = {};
+    if (args.data_inicio) queryWhere.dataLancamento.gte = new Date(args.data_inicio + "T00:00:00Z");
+    if (args.data_fim) queryWhere.dataLancamento.lte = new Date(args.data_fim + "T23:59:59Z");
+  }
+  if (args.tipo) queryWhere.tipo = args.tipo;
+  if (args.favorecido) {
+    queryWhere.OR = [
+      { favorecido: { contains: args.favorecido, mode: "insensitive" } },
+      { member: { fullName: { contains: args.favorecido, mode: "insensitive" } } },
+    ];
+  }
+  if (args.igreja) {
+    queryWhere.church = { name: { contains: args.igreja, mode: "insensitive" } };
+  }
+  if (args.plano_de_conta) {
+    queryWhere.planoDeConta = { contains: args.plano_de_conta, mode: "insensitive" };
+  }
+  if (args.categoria) {
+    queryWhere.categoria = { contains: args.categoria, mode: "insensitive" };
+  }
+  if (args.centro_de_custo) {
+    queryWhere.centroDeCusto = { contains: args.centro_de_custo, mode: "insensitive" };
+  }
+  if (args.cargo) {
+    queryWhere.member = { ecclesiasticalTitle: { contains: args.cargo, mode: "insensitive" } };
+  }
+  return queryWhere;
+}
+
+// Limite de segurança para varreduras agregadas (1 mês de campo cabe folgado)
+const AGG_SCAN_LIMIT = 50000;
+
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
     try {
@@ -211,7 +302,16 @@ Contexto do usuário logado:
 
 Ao falar com o usuário, trate-o pelo nome e use uma linguagem profissional, prestativa e amigável.
       Se o usuário fizer perguntas financeiras sobre lançamentos, valores, totalizadores ou livro caixa, você PODE usar as ferramentas fornecidas para buscar os dados reais no banco de dados.
-      ATENÇÃO: Você tem acesso aos dados de todas as igrejas pertencentes ao seu campo/região. Por padrão, filtre ou informe os dados da igreja do usuário logado (${user.churchName || "Nenhuma"}, ID: ${user.churchId}) a menos que ele solicite explicitamente sobre outra filial ou sobre o campo todo.`;
+      ATENÇÃO: Você tem acesso aos dados de todas as igrejas pertencentes ao seu campo/região. Por padrão, filtre ou informe os dados da igreja do usuário logado (${user.churchName || "Nenhuma"}, ID: ${user.churchId}) a menos que ele solicite explicitamente sobre outra filial ou sobre o campo todo.
+
+REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão depende disso):
+1. NUNCA some, conte ou ranqueie lançamentos manualmente a partir de listas. Os valores precisos são SEMPRE calculados pelo servidor.
+2. Para TOTAIS/SOMATÓRIOS ("quanto arrecadou", "total de dízimos", "total de despesas do mês"): use a ferramenta "consultar_totais" e responda com os valores do campo "resumo".
+3. Para RANKINGS ("igrejas com maior/menor X", "top 5", "qual arrecadou mais"): use a ferramenta "ranking_igrejas" com a "metrica" adequada e responda exatamente com o "ranking" retornado (campo "valorMetrica" é o valor da métrica pedida).
+4. Para LISTAR lançamentos individuais: use "consultar_livro_caixa". A lista "lancamentos" é apenas amostra (máx. 100); os totais corretos estão no "resumo" — use-os e nunca some a amostra.
+5. Definições (idênticas ao Livro Caixa do sistema): DÍZIMO = receita cujo plano de conta contém "dízimo"; OFERTA = receita cujo plano de conta contém "oferta". LÍQUIDO = receitas − despesas.
+6. Se o usuário pedir "todas as igrejas do campo", NÃO passe o filtro de igreja — deixe a ferramenta agregar o campo inteiro.
+7. Sempre apresente valores monetários no formato R$ com duas casas (ex: R$ 64.512,23).`;
 
       // Formatar mensagens para OpenAI
       const openAiMessages = [
@@ -270,6 +370,49 @@ Ao falar com o usuário, trate-o pelo nome e use uma linguagem profissional, pre
                   description: "Filtra por cargo/título eclesiástico do membro associado (ex: 'EVANGELISTA', 'PASTOR')"
                 }
               }
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "consultar_totais",
+            description: "Retorna os TOTAIS financeiros já somados pelo servidor (total de receitas, despesas, dízimos, ofertas, líquido e quantidades) para um período/filtro. Use SEMPRE que o usuário pedir totais, somatórios, 'quanto arrecadou', total de dízimos/ofertas etc. NUNCA some lançamentos manualmente — use esta ferramenta para garantir o valor exato.",
+            parameters: {
+              type: "object",
+              properties: {
+                data_inicio: { type: "string", description: "Data de início YYYY-MM-DD (ex: '2026-06-01')" },
+                data_fim: { type: "string", description: "Data de fim YYYY-MM-DD (ex: '2026-06-30')" },
+                tipo: { type: "string", enum: ["RECEITA", "DESPESA", "TRANSFERENCIA"], description: "Filtra por tipo de lançamento" },
+                favorecido: { type: "string", description: "Nome ou parte do nome do favorecido/membro" },
+                igreja: { type: "string", description: "Nome ou parte do nome da igreja/filial (ex: 'SEDE'). Omita para somar TODAS as igrejas do campo." },
+                plano_de_conta: { type: "string", description: "Nome ou código do plano de conta (ex: 'DIZIMOS', 'OFERTAS')" },
+                categoria: { type: "string", description: "Categoria do lançamento" },
+                centro_de_custo: { type: "string", description: "Centro de custo" },
+                cargo: { type: "string", description: "Cargo/título eclesiástico do membro (ex: 'PASTOR')" }
+              }
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "ranking_igrejas",
+            description: "Retorna o RANKING das igrejas/congregações do campo já agregado e ordenado pelo servidor, segundo a métrica escolhida (dízimos, ofertas, receitas, despesas ou líquido) em um período. Use SEMPRE que o usuário pedir 'as igrejas com maior/menor X', 'ranking', 'top', 'qual igreja arrecadou mais' etc. NUNCA monte ranking somando manualmente.",
+            parameters: {
+              type: "object",
+              properties: {
+                data_inicio: { type: "string", description: "Data de início YYYY-MM-DD (ex: '2026-06-01')" },
+                data_fim: { type: "string", description: "Data de fim YYYY-MM-DD (ex: '2026-06-30')" },
+                metrica: {
+                  type: "string",
+                  enum: ["dizimos", "ofertas", "receitas", "despesas", "liquido"],
+                  description: "Métrica usada para ordenar o ranking. 'dizimos' = soma das receitas cujo plano de conta contém 'dízimo'."
+                },
+                ordem: { type: "string", enum: ["desc", "asc"], description: "desc = maiores primeiro (padrão); asc = menores primeiro" },
+                limite: { type: "number", description: "Quantidade de igrejas a retornar (padrão 10)" }
+              },
+              required: ["metrica"]
             }
           }
         },
@@ -377,6 +520,131 @@ Ao falar com o usuário, trate-o pelo nome e use uma linguagem profissional, pre
         }
       ];
 
+      // Executor único de ferramentas, compartilhado entre OpenAI e Claude (Anthropic).
+      // Retorna um objeto JS (o chamador serializa). Toda a matemática é feita aqui, no servidor.
+      async function executeAgentTool(name: string, args: any): Promise<any> {
+        if (name === "consultar_livro_caixa") {
+          console.log("[POST /api/ai/chat] Tool 'consultar_livro_caixa' args:", args);
+          const queryWhere = buildLivroCaixaWhere(args, fieldChurchIds);
+          const allRows = await prisma.livroCaixa.findMany({
+            where: queryWhere,
+            select: { tipo: true, valor: true, planoDeConta: true },
+            take: AGG_SCAN_LIMIT
+          });
+          const resumo = aggregateRows(allRows);
+          const dbResults = await prisma.livroCaixa.findMany({
+            where: queryWhere,
+            include: {
+              church: { select: { name: true } },
+              member: { select: { fullName: true, ecclesiasticalTitle: true, memberType: true } }
+            },
+            orderBy: { dataLancamento: "desc" },
+            take: 100
+          });
+          return {
+            resumo,
+            observacao: dbResults.length < resumo.qtdLancamentos
+              ? `O 'resumo' já contém os totais corretos de TODOS os ${resumo.qtdLancamentos} lançamentos. A lista 'lancamentos' é apenas uma amostra dos ${dbResults.length} mais recentes — NÃO some a lista manualmente; use os valores do 'resumo'.`
+              : `O 'resumo' contém os totais de todos os ${resumo.qtdLancamentos} lançamentos.`,
+            lancamentos: serializeDbData(dbResults)
+          };
+        }
+
+        if (name === "consultar_totais") {
+          console.log("[POST /api/ai/chat] Tool 'consultar_totais' args:", args);
+          const queryWhere = buildLivroCaixaWhere(args, fieldChurchIds);
+          const allRows = await prisma.livroCaixa.findMany({
+            where: queryWhere,
+            select: { tipo: true, valor: true, planoDeConta: true },
+            take: AGG_SCAN_LIMIT
+          });
+          const resumo = aggregateRows(allRows);
+          return { resumo, observacao: "Totais já somados pelo servidor. Use exatamente estes valores; não recalcule." };
+        }
+
+        if (name === "ranking_igrejas") {
+          console.log("[POST /api/ai/chat] Tool 'ranking_igrejas' args:", args);
+          const { igreja, ...rankArgs } = args;
+          const queryWhere = buildLivroCaixaWhere(rankArgs, fieldChurchIds);
+          const allRows = await prisma.livroCaixa.findMany({
+            where: queryWhere,
+            select: { churchId: true, tipo: true, valor: true, planoDeConta: true, church: { select: { name: true } } },
+            take: AGG_SCAN_LIMIT
+          });
+          const grupos = new Map<string, { nome: string; rows: AggRow[] }>();
+          for (const r of allRows) {
+            const key = r.churchId;
+            if (!grupos.has(key)) grupos.set(key, { nome: r.church?.name || "(sem nome)", rows: [] });
+            grupos.get(key)!.rows.push(r);
+          }
+          const metrica = (args.metrica || "receitas") as string;
+          const metricKey: Record<string, keyof ReturnType<typeof aggregateRows>> = {
+            dizimos: "totalDizimos", ofertas: "totalOfertas", receitas: "totalReceitas",
+            despesas: "totalDespesas", liquido: "liquido",
+          };
+          const chave = metricKey[metrica] || "totalReceitas";
+          let ranking = Array.from(grupos.values()).map(g => {
+            const agg = aggregateRows(g.rows);
+            return {
+              igreja: g.nome, valorMetrica: agg[chave] as number,
+              totalDizimos: agg.totalDizimos, totalOfertas: agg.totalOfertas,
+              totalReceitas: agg.totalReceitas, totalDespesas: agg.totalDespesas, liquido: agg.liquido,
+            };
+          });
+          const ordem = args.ordem === "asc" ? 1 : -1;
+          ranking.sort((a, b) => (a.valorMetrica - b.valorMetrica) * ordem);
+          const limite = Math.max(1, Math.min(Number(args.limite) || 10, 100));
+          ranking = ranking.slice(0, limite);
+          return {
+            metrica, ordem: args.ordem === "asc" ? "asc" : "desc", totalIgrejas: grupos.size, ranking,
+            observacao: "Ranking já agregado e ordenado pelo servidor pela métrica escolhida (campo 'valorMetrica'). Use exatamente estes valores; não recalcule nem reordene."
+          };
+        }
+
+        if (name === "consultar_membros") {
+          console.log("[POST /api/ai/chat] Tool 'consultar_membros' args:", args);
+          const queryWhereMembers: any = {};
+          if (fieldChurchIds !== null) queryWhereMembers.churchId = { in: fieldChurchIds };
+          if (args.nome) queryWhereMembers.fullName = { contains: args.nome, mode: "insensitive" };
+          if (args.cargo) queryWhereMembers.ecclesiasticalTitle = { contains: args.cargo, mode: "insensitive" };
+          if (args.igreja) queryWhereMembers.church = { name: { contains: args.igreja, mode: "insensitive" } };
+          if (args.status) queryWhereMembers.membershipStatus = args.status;
+          const dbResultsMembers = await prisma.member.findMany({
+            where: queryWhereMembers,
+            include: { church: { select: { name: true } } },
+            take: 100
+          });
+          return serializeDbData(dbResultsMembers);
+        }
+
+        if (name === "gerar_pdf") {
+          try {
+            const downloadUrl = generateReportPdf({
+              titulo: args.titulo, subtitulo: args.subtitulo,
+              colunas: args.colunas || [], linhas: args.linhas || [], totais: args.totais || []
+            });
+            return { success: true, downloadUrl };
+          } catch (pdfErr: any) {
+            console.error("[POST /api/ai/chat] Error generating PDF:", pdfErr);
+            return { success: false, error: pdfErr.message || "Erro desconhecido ao gerar PDF." };
+          }
+        }
+
+        if (name === "gerar_excel") {
+          try {
+            const downloadUrl = generateReportExcel({
+              titulo: args.titulo, colunas: args.colunas || [], linhas: args.linhas || [], totais: args.totais || []
+            });
+            return { success: true, downloadUrl };
+          } catch (xlsErr: any) {
+            console.error("[POST /api/ai/chat] Error generating Excel:", xlsErr);
+            return { success: false, error: xlsErr.message || "Erro desconhecido ao gerar Excel." };
+          }
+        }
+
+        return { error: `Ferramenta desconhecida: ${name}` };
+      }
+
       let assistantResponse = "";
 
       if (config.aiProvider === "openai") {
@@ -411,237 +679,22 @@ Ao falar com o usuário, trate-o pelo nome e use uma linguagem profissional, pre
         let messageObj = choice.message;
 
         if (messageObj.tool_calls && messageObj.tool_calls.length > 0) {
-          // Processar chamadas de ferramenta em paralelo
           const toolMessages: any[] = [];
 
           for (const toolCall of messageObj.tool_calls) {
-            if (toolCall.function.name === "consultar_livro_caixa") {
-              const args = JSON.parse(toolCall.function.arguments);
-              console.log("[POST /api/ai/chat] Tool 'consultar_livro_caixa' called with args:", args);
-              
-              // Executar a busca no LivroCaixa do Prisma filtrando pelas igrejas pertencentes ao Campo do usuário logado (Isolamento por Campo)
-              const queryWhere: any = {};
-              if (fieldChurchIds !== null) {
-                queryWhere.churchId = { in: fieldChurchIds };
-              }
-
-              if (args.data_inicio || args.data_fim) {
-                queryWhere.dataLancamento = {};
-                if (args.data_inicio) {
-                  queryWhere.dataLancamento.gte = new Date(args.data_inicio + "T00:00:00Z");
-                }
-                if (args.data_fim) {
-                  queryWhere.dataLancamento.lte = new Date(args.data_fim + "T23:59:59Z");
-                }
-              }
-
-              if (args.tipo) {
-                queryWhere.tipo = args.tipo;
-              }
-
-              if (args.favorecido) {
-                queryWhere.OR = [
-                  {
-                    favorecido: {
-                      contains: args.favorecido,
-                      mode: "insensitive"
-                    }
-                  },
-                  {
-                    member: {
-                      fullName: {
-                        contains: args.favorecido,
-                        mode: "insensitive"
-                      }
-                    }
-                  }
-                ];
-              }
-
-              if (args.igreja) {
-                queryWhere.church = {
-                  name: {
-                    contains: args.igreja,
-                    mode: "insensitive"
-                  }
-                };
-              }
-
-              if (args.plano_de_conta) {
-                queryWhere.planoDeConta = {
-                  contains: args.plano_de_conta,
-                  mode: "insensitive"
-                };
-              }
-
-              if (args.categoria) {
-                queryWhere.categoria = {
-                  contains: args.categoria,
-                  mode: "insensitive"
-                };
-              }
-
-              if (args.centro_de_custo) {
-                queryWhere.centroDeCusto = {
-                  contains: args.centro_de_custo,
-                  mode: "insensitive"
-                };
-              }
-
-              if (args.cargo) {
-                queryWhere.member = {
-                  ecclesiasticalTitle: {
-                    contains: args.cargo,
-                    mode: "insensitive"
-                  }
-                };
-              }
-
-              const dbResults = await prisma.livroCaixa.findMany({
-                where: queryWhere,
-                include: {
-                  church: {
-                    select: { name: true }
-                  },
-                  member: {
-                    select: {
-                      fullName: true,
-                      ecclesiasticalTitle: true,
-                      memberType: true
-                    }
-                  }
-                },
-                orderBy: { dataLancamento: "desc" },
-                take: 100
-              });
-
-              console.log(`[POST /api/ai/chat] Tool 'consultar_livro_caixa' retrieved ${dbResults.length} records.`);
-              const serializedResults = serializeDbData(dbResults);
-              toolMessages.push({
-                role: "tool",
-                tool_call_id: toolCall.id,
-                name: toolCall.function.name,
-                content: JSON.stringify(serializedResults)
-              });
-            } else if (toolCall.function.name === "consultar_membros") {
-              const args = JSON.parse(toolCall.function.arguments);
-              console.log("[POST /api/ai/chat] Tool 'consultar_membros' called with args:", args);
-
-              const queryWhereMembers: any = {};
-              if (fieldChurchIds !== null) {
-                queryWhereMembers.churchId = { in: fieldChurchIds };
-              }
-
-              if (args.nome) {
-                queryWhereMembers.fullName = {
-                  contains: args.nome,
-                  mode: "insensitive"
-                };
-              }
-
-              if (args.cargo) {
-                queryWhereMembers.ecclesiasticalTitle = {
-                  contains: args.cargo,
-                  mode: "insensitive"
-                };
-              }
-
-              if (args.igreja) {
-                queryWhereMembers.church = {
-                  name: {
-                    contains: args.igreja,
-                    mode: "insensitive"
-                  }
-                };
-              }
-
-              if (args.status) {
-                queryWhereMembers.membershipStatus = args.status;
-              }
-
-              const dbResultsMembers = await prisma.member.findMany({
-                where: queryWhereMembers,
-                include: {
-                  church: {
-                    select: { name: true }
-                  }
-                },
-                take: 100
-              });
-
-              console.log(`[POST /api/ai/chat] Tool 'consultar_membros' retrieved ${dbResultsMembers.length} records.`);
-              const serializedResultsMembers = serializeDbData(dbResultsMembers);
-              toolMessages.push({
-                role: "tool",
-                tool_call_id: toolCall.id,
-                name: toolCall.function.name,
-                content: JSON.stringify(serializedResultsMembers)
-              });
-            } else if (toolCall.function.name === "gerar_pdf") {
-              const args = JSON.parse(toolCall.function.arguments);
-              console.log("[POST /api/ai/chat] Tool 'gerar_pdf' called with args:", {
-                titulo: args.titulo,
-                subtitulo: args.subtitulo,
-                colunasCount: args.colunas?.length,
-                linhasCount: args.linhas?.length
-              });
-
-              try {
-                const downloadUrl = generateReportPdf({
-                  titulo: args.titulo,
-                  subtitulo: args.subtitulo,
-                  colunas: args.colunas || [],
-                  linhas: args.linhas || [],
-                  totais: args.totais || []
-                });
-
-                toolMessages.push({
-                  role: "tool",
-                  tool_call_id: toolCall.id,
-                  name: toolCall.function.name,
-                  content: JSON.stringify({ success: true, downloadUrl })
-                });
-              } catch (pdfErr: any) {
-                console.error("[POST /api/ai/chat] Error generating PDF:", pdfErr);
-                toolMessages.push({
-                  role: "tool",
-                  tool_call_id: toolCall.id,
-                  name: toolCall.function.name,
-                  content: JSON.stringify({ success: false, error: pdfErr.message || "Erro desconhecido ao gerar PDF." })
-                });
-              }
-            } else if (toolCall.function.name === "gerar_excel") {
-              const args = JSON.parse(toolCall.function.arguments);
-              console.log("[POST /api/ai/chat] Tool 'gerar_excel' called with args:", {
-                titulo: args.titulo,
-                colunasCount: args.colunas?.length,
-                linhasCount: args.linhas?.length
-              });
-
-              try {
-                const downloadUrl = generateReportExcel({
-                  titulo: args.titulo,
-                  colunas: args.colunas || [],
-                  linhas: args.linhas || [],
-                  totais: args.totais || []
-                });
-
-                toolMessages.push({
-                  role: "tool",
-                  tool_call_id: toolCall.id,
-                  name: toolCall.function.name,
-                  content: JSON.stringify({ success: true, downloadUrl })
-                });
-              } catch (xlsErr: any) {
-                console.error("[POST /api/ai/chat] Error generating Excel:", xlsErr);
-                toolMessages.push({
-                  role: "tool",
-                  tool_call_id: toolCall.id,
-                  name: toolCall.function.name,
-                  content: JSON.stringify({ success: false, error: xlsErr.message || "Erro desconhecido ao gerar Excel." })
-                });
-              }
+            let parsedArgs: any = {};
+            try {
+              parsedArgs = JSON.parse(toolCall.function.arguments || "{}");
+            } catch {
+              parsedArgs = {};
             }
+            const result = await executeAgentTool(toolCall.function.name, parsedArgs);
+            toolMessages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              name: toolCall.function.name,
+              content: JSON.stringify(result)
+            });
           }
 
           // Enviar os dados da ferramenta de volta para a OpenAI para que ela dê a resposta final
@@ -675,71 +728,80 @@ Ao falar com o usuário, trate-o pelo nome e use uma linguagem profissional, pre
         }
 
       } else {
-        // Anthropic (Claude)
+        // Anthropic (Claude) — tool use nativo, com as MESMAS ferramentas do executor compartilhado.
         if (!config.anthropicApiKey) {
           return NextResponse.json({ error: "Chave Anthropic não cadastrada." }, { status: 400 });
         }
 
-        // Claude format
-        const claudeMessages = messageHistory.map(msg => ({
-          role: msg.role === "user" ? "user" : "assistant",
-          content: msg.content
+        // Converte as tools do formato OpenAI para o formato Anthropic
+        const claudeTools = tools.map(t => ({
+          name: t.function.name,
+          description: t.function.description,
+          input_schema: t.function.parameters
         }));
 
-        // NOTA: Para simplificar, no Claude faremos uma execução sem tool use direta, ou incluiremos os dados diretamente no prompt
-        // caso o usuário peça relatórios ou dados do livro caixa. Como o Claude tem limite e sintaxe diferente de tools, 
-        // e o foco principal do usuário é a chave fornecida de OpenAI (onde as tools rodam perfeitamente), faremos uma busca básica
-        // de livro caixa direto no prompt para o Claude se ele detectar palavras-chaves de finanças ou consulta.
-        // Ou, alternativamente, buscamos os lançamentos recentes do livro caixa do mês atual e enviamos direto como contexto no system prompt do Claude!
-        // Isso é super robusto e garante que o Claude também responda perfeitamente sem precisar lidar com callbacks de tools complexos.
-        let claudeSystemPrompt = systemPrompt;
-        
-        const isFinQuery = message.toLowerCase().includes("livro caixa") || 
-                           message.toLowerCase().includes("registros") || 
-                           message.toLowerCase().includes("financeiro") || 
-                           message.toLowerCase().includes("quantos") ||
-                           message.toLowerCase().includes("despesa") ||
-                           message.toLowerCase().includes("receita") ||
-                           message.toLowerCase().includes("inseridos");
+        // Histórico no formato Anthropic (content como array de blocos)
+        const claudeMessages: any[] = messageHistory.map(msg => ({
+          role: msg.role === "user" ? "user" : "assistant",
+          content: [{ type: "text", text: msg.content }]
+        }));
 
-        if (isFinQuery) {
-          const claudeWhere: any = {};
-          if (fieldChurchIds !== null) {
-            claudeWhere.churchId = { in: fieldChurchIds };
-          }
-          // Pré-carrega dados recentes do livro caixa para abastecer o Claude
-          const recentData = await prisma.livroCaixa.findMany({
-            where: claudeWhere,
-            orderBy: { dataLancamento: "desc" },
-            take: 30
+        const claudeModel = config.aiModel.includes("claude") ? config.aiModel : "claude-3-5-sonnet-20241022";
+        const callClaude = async () => {
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": config.anthropicApiKey,
+              "anthropic-version": "2023-06-01"
+            },
+            body: JSON.stringify({
+              model: claudeModel,
+              max_tokens: config.aiMaxTokens,
+              system: systemPrompt,
+              tools: claudeTools,
+              messages: claudeMessages
+            })
           });
-          const serialized = serializeDbData(recentData);
-          claudeSystemPrompt += `\n\n[DADOS FINANCEIROS RECENTES DA IGREJA (Contexto Real)]:\n${JSON.stringify(serialized)}\nUse esses dados caso o usuário faça perguntas financeiras ou estatísticas sobre hoje ou dias recentes.`;
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error("Claude Chat error:", errText);
+            throw new Error(`Erro na API da Anthropic: ${res.statusText}`);
+          }
+          return res.json();
+        };
+
+        // Loop de tool use (limite de iterações por segurança)
+        let claudeData = await callClaude();
+        let iterations = 0;
+        while (claudeData.stop_reason === "tool_use" && iterations < 5) {
+          iterations++;
+          const toolUseBlocks = (claudeData.content || []).filter((b: any) => b.type === "tool_use");
+
+          // Anexa a resposta do assistente (com os blocos de tool_use) ao histórico
+          claudeMessages.push({ role: "assistant", content: claudeData.content });
+
+          // Executa cada ferramenta e monta os tool_result
+          const toolResults: any[] = [];
+          for (const block of toolUseBlocks) {
+            const result = await executeAgentTool(block.name, block.input || {});
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: JSON.stringify(result)
+            });
+          }
+          claudeMessages.push({ role: "user", content: toolResults });
+
+          claudeData = await callClaude();
         }
 
-        const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": config.anthropicApiKey,
-            "anthropic-version": "2023-06-01"
-          },
-          body: JSON.stringify({
-            model: config.aiModel.includes("claude") ? config.aiModel : "claude-3-5-sonnet-20241022",
-            max_tokens: config.aiMaxTokens,
-            system: claudeSystemPrompt,
-            messages: claudeMessages
-          })
-        });
-
-        if (!claudeRes.ok) {
-          const errText = await claudeRes.text();
-          console.error("Claude Chat error:", errText);
-          throw new Error(`Erro na API da Anthropic: ${claudeRes.statusText}`);
-        }
-
-        const data = await claudeRes.json();
-        assistantResponse = data.content[0].text || "";
+        // Concatena os blocos de texto da resposta final
+        assistantResponse = (claudeData.content || [])
+          .filter((b: any) => b.type === "text")
+          .map((b: any) => b.text)
+          .join("\n")
+          .trim();
       }
 
       // 7. Salvar resposta da IA no banco
