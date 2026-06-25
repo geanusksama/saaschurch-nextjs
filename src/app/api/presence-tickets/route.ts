@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
         ...(dataInicial ? { dataCulto: { gte: new Date(dataInicial) } } : {}),
       },
       orderBy: { createdAt: "desc" },
-      take: 1000,
+      take: 10000,
     });
 
     return NextResponse.json(tickets);

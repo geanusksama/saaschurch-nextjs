@@ -592,12 +592,26 @@ export default function Diretoria() {
         let nonTithers: DizimistasScopeMember[] = [];
         if (selectedSituacao === 'nao_dizimistas') {
           const titherIds = new Set(rawTithers.map((e: any) => e.memberId));
-          const resp = await fetch(`${apiBase}/members?churchIds=${encodeURIComponent(churchIds.join(','))}&limit=2000`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-          if (resp.ok) {
+          // Busca TODOS os membros do escopo paginando. Não usar &limit= aqui: a rota de
+          // membros corta o limit em 500, o que truncava a lista de não-dizimistas em
+          // igrejas/campos grandes. O caminho paginado aceita pageSize até 5000 e retorna total.
+          const mData: any[] = [];
+          const FETCH_PAGE_SIZE = 5000;
+          let memberPage = 1;
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const resp = await fetch(`${apiBase}/members?churchIds=${encodeURIComponent(churchIds.join(','))}&pageSize=${FETCH_PAGE_SIZE}&page=${memberPage}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            if (!resp.ok) break;
             const mRaw = await resp.json();
-            const mData: any[] = Array.isArray(mRaw) ? mRaw : (Array.isArray(mRaw?.data) ? mRaw.data : []);
+            const pageData: any[] = Array.isArray(mRaw) ? mRaw : (Array.isArray(mRaw?.data) ? mRaw.data : []);
+            mData.push(...pageData);
+            const total = typeof mRaw?.total === 'number' ? mRaw.total : pageData.length;
+            if (pageData.length < FETCH_PAGE_SIZE || mData.length >= total) break;
+            memberPage++;
+          }
+          {
             const selectedTitleNames = selectedCargos.length > 0
               ? new Set(selectedCargos.map(id => titles.find(t => t.id === id)?.name?.toUpperCase()).filter(Boolean) as string[])
               : null;
