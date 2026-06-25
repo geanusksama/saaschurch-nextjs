@@ -28,12 +28,14 @@ export async function POST(req: NextRequest) {
       conditions.push(`UPPER(COALESCE(m.ecclesiastical_title, '')) IN (SELECT UPPER(name) FROM ecclesiastical_titles WHERE id = ANY($${nextParam}::uuid[]) AND deleted_at IS NULL)`);
       params.push(reqTitleIds); nextParam++;
     }
-    // Os lançamentos de dízimo são ligados ao membro pela FK lc.member_id (não por id_favorecido_externo,
-    // que é nulo nesses registros). Quando há filtro de título, usamos INNER JOIN para restringir aos membros;
-    // sem filtro, LEFT JOIN para também incluir dizimistas não-membros (favorecido avulso).
+    // A vinculação lançamento->membro é INCONSISTENTE no histórico: lançamentos mais novos usam
+    // a FK lc.member_id; lançamentos mais antigos usam lc.id_favorecido_externo = rol do membro.
+    // Para não perder nenhuma competência, juntamos pelos DOIS critérios (mesma igreja).
+    // Quando há filtro de título, INNER JOIN restringe aos membros; senão, LEFT JOIN inclui não-membros.
+    const memberMatch = "(m.id = lc.member_id OR m.rol::text = lc.id_favorecido_externo) AND m.church_id = lc.church_id AND m.deleted_at IS NULL";
     const memberJoin = reqTitleIds.length
-      ? "JOIN members m ON m.id = lc.member_id AND m.deleted_at IS NULL"
-      : "LEFT JOIN members m ON m.id = lc.member_id AND m.deleted_at IS NULL";
+      ? `JOIN members m ON ${memberMatch}`
+      : `LEFT JOIN members m ON ${memberMatch}`;
 
     const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
       `SELECT COALESCE(m.id::text, NULLIF(TRIM(lc.id_favorecido_externo), ''), CONCAT(lc.church_id::text, ':', UPPER(TRIM(COALESCE(lc.favorecido, 'SEM NOME'))))) AS "memberId",
