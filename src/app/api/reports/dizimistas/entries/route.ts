@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const reqRegionalIds = Array.isArray(regionalIds) ? regionalIds.filter((i: unknown) => typeof i === "string" && i) : [];
     const reqTitleIds = Array.isArray(titleIds) ? titleIds.filter((i: unknown) => typeof i === "string" && i) : [];
 
-    const conditions = ["lc.data_lancamento >= $1::date", "lc.data_lancamento < $2::date", "lc.plano_de_conta = '01.200 - DIZIMOS'", "lc.categoria = 'RECEITA'"];
+    const conditions = ["lc.data_lancamento >= $1::date", "lc.data_lancamento < $2::date", "lc.plano_de_conta = '01.200 - DIZIMOS'", "lc.tipo = 'RECEITA'"];
     const params: unknown[] = [startDate, endDate];
     let nextParam = 3;
 
@@ -28,9 +28,12 @@ export async function POST(req: NextRequest) {
       conditions.push(`UPPER(COALESCE(m.ecclesiastical_title, '')) IN (SELECT UPPER(name) FROM ecclesiastical_titles WHERE id = ANY($${nextParam}::uuid[]) AND deleted_at IS NULL)`);
       params.push(reqTitleIds); nextParam++;
     }
+    // Os lançamentos de dízimo são ligados ao membro pela FK lc.member_id (não por id_favorecido_externo,
+    // que é nulo nesses registros). Quando há filtro de título, usamos INNER JOIN para restringir aos membros;
+    // sem filtro, LEFT JOIN para também incluir dizimistas não-membros (favorecido avulso).
     const memberJoin = reqTitleIds.length
-      ? "JOIN members m ON m.rol::text = lc.id_favorecido_externo AND m.church_id = lc.church_id AND m.deleted_at IS NULL"
-      : "LEFT JOIN members m ON m.rol::text = lc.id_favorecido_externo AND m.church_id = lc.church_id AND m.deleted_at IS NULL";
+      ? "JOIN members m ON m.id = lc.member_id AND m.deleted_at IS NULL"
+      : "LEFT JOIN members m ON m.id = lc.member_id AND m.deleted_at IS NULL";
 
     const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
       `SELECT COALESCE(m.id::text, NULLIF(TRIM(lc.id_favorecido_externo), ''), CONCAT(lc.church_id::text, ':', UPPER(TRIM(COALESCE(lc.favorecido, 'SEM NOME'))))) AS "memberId",
