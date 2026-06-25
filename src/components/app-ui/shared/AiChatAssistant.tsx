@@ -309,7 +309,7 @@ export function AiChatAssistant({ storedUser, isOpen = false, onClose }: AiChatA
     <>
       {/* Popover */}
       {showAiChat && (
-        <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:right-24 w-auto sm:w-[550px] md:w-[700px] lg:w-[850px] bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col h-[550px] sm:h-[650px] max-h-[80vh] animate-slide-up">
+        <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:right-24 z-[9999] w-auto sm:w-[550px] md:w-[700px] lg:w-[850px] bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col h-[550px] sm:h-[650px] max-h-[80vh] animate-slide-up">
             
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white flex items-center justify-between shadow-sm flex-shrink-0">
