@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import {
   X, Calendar, MapPin, Clock, ArrowRight, ArrowLeft, Loader2, Sparkles, Check, CheckCircle2,
-  Download, Paperclip, CreditCard, ShieldAlert, User, Phone, Users, FileText
+  Download, Paperclip, CreditCard, ShieldAlert, User, Phone, Users, FileText, Search, Ticket, QrCode
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
@@ -94,6 +94,17 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
   // Dialog states
   const [waitlistPromptOpen, setWaitlistPromptOpen] = useState(false);
   const [successData, setSuccessData] = useState<any | null>(null);
+
+  // Consultar inscrição pelo código
+  const [lookupOpen, setLookupOpen] = useState(false);
+  const [lookupCode, setLookupCode] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState("");
+  const [lookupData, setLookupData] = useState<any | null>(null);
+  const [lookupProofUploading, setLookupProofUploading] = useState(false);
+  const [lookupResending, setLookupResending] = useState(false);
+  const [lookupInfo, setLookupInfo] = useState("");
+  const lookupProofRef = useRef<HTMLInputElement>(null);
 
   const slideContainerRef = useRef<HTMLDivElement>(null);
 
@@ -231,6 +242,79 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
     }
   };
 
+  // ── Consultar inscrição pelo código ──
+  const handleLookup = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const code = lookupCode.trim().toUpperCase();
+    if (!code) return;
+    setLookupLoading(true);
+    setLookupError("");
+    setLookupInfo("");
+    setLookupData(null);
+    try {
+      const res = await fetch(`/api/peniel/registrations/lookup?code=${encodeURIComponent(code)}`);
+      const data = await res.json();
+      if (!res.ok) setLookupError(data.error || "Inscrição não encontrada.");
+      else setLookupData(data);
+    } catch {
+      setLookupError("Erro de conexão. Tente novamente.");
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  const handleLookupProofUpload = async (file: File) => {
+    if (!file || !lookupData) return;
+    setLookupProofUploading(true);
+    setLookupError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const up = await fetch("/api/peniel/upload-proof", { method: "POST", body: fd });
+      const upJson = await up.json();
+      if (!up.ok) throw new Error(upJson.error || "Falha no upload");
+      const res = await fetch("/api/peniel/registrations/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: lookupData.code, proofUrl: upJson.url })
+      });
+      if (res.ok) setLookupData({ ...lookupData, hasProof: true, paymentProofUrl: upJson.url, paymentStatus: "comprovante_enviado" });
+      else { const d = await res.json().catch(() => ({})); setLookupError(d.error || "Não foi possível anexar o comprovante."); }
+    } catch (err: any) {
+      setLookupError(err.message || "Erro ao enviar o comprovante.");
+    } finally {
+      setLookupProofUploading(false);
+    }
+  };
+
+  const handleLookupResend = async () => {
+    if (!lookupData) return;
+    setLookupResending(true);
+    setLookupInfo("");
+    setLookupError("");
+    try {
+      const res = await fetch("/api/peniel/registrations/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: lookupData.code, action: "resend" })
+      });
+      if (res.ok) setLookupInfo("QR Code reenviado para o seu WhatsApp!");
+      else { const d = await res.json().catch(() => ({})); setLookupError(d.error || "Não foi possível reenviar agora."); }
+    } catch {
+      setLookupError("Erro de conexão ao reenviar.");
+    } finally {
+      setLookupResending(false);
+    }
+  };
+
+  const openLookup = () => {
+    setLookupOpen(true);
+    setLookupCode("");
+    setLookupData(null);
+    setLookupError("");
+    setLookupInfo("");
+  };
+
   const handleFormStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEvent) return;
@@ -314,8 +398,8 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
     }
   };
 
-  const handleDownloadPDF = async () => {
-    const data = successData;
+  const handleDownloadPDF = async (arg?: any) => {
+    const data = arg && !arg.nativeEvent ? arg : successData;
     if (!data) return;
 
     const doc = new jsPDF();
@@ -453,7 +537,7 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
   const showEcc = !!extraCfg.ecclesiastical;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300 font-sans">
+    <div className="peniel-light-form fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300 font-sans">
       <div className="bg-[#f8fafc] text-slate-800 w-full max-w-2xl md:max-w-3xl h-[90vh] max-h-[750px] rounded-3xl shadow-2xl flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-250 border border-slate-200">
         
         {/* Header */}
@@ -482,8 +566,8 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
               </span>
             </div>
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
           >
             <X size={18} />
@@ -499,7 +583,18 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
           >
             {/* VIEW 1: Event List (Left Panel) */}
             <div className="w-1/2 h-full flex flex-col justify-between overflow-y-auto px-6 py-6 space-y-6">
-              
+
+              {/* Consultar inscrição — acima dos eventos (full-width no mobile) */}
+              <div className="flex sm:justify-end shrink-0">
+                <button
+                  onClick={openLookup}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 shadow-sm"
+                >
+                  <Search size={14} className="text-[#d4af37]" />
+                  Consultar Inscrição
+                </button>
+              </div>
+
               <div className="flex-1 space-y-6">
                 {loadingEvents ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -1271,6 +1366,116 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
                 Fechar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONSULTAR INSCRIÇÃO (por código) */}
+      {lookupOpen && (
+        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setLookupOpen(false)}>
+          <div
+            className="relative w-full max-w-md rounded-2xl shadow-2xl p-6 border border-slate-200 bg-white text-slate-800"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setLookupOpen(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            >
+              <X size={16} />
+            </button>
+            <div className="flex items-center gap-2 mb-1">
+              <Ticket size={18} className="text-[#d4af37]" />
+              <h3 className="text-base font-bold text-slate-900">Consultar Inscrição</h3>
+            </div>
+            <p className="text-xs text-slate-500">Digite o código que você recebeu na confirmação da inscrição.</p>
+
+            <form onSubmit={handleLookup} className="flex gap-2 mt-4">
+              <input
+                value={lookupCode}
+                onChange={e => setLookupCode(e.target.value.toUpperCase())}
+                placeholder="Ex: A1B2C3D4"
+                maxLength={20}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37] text-xs font-mono tracking-widest"
+              />
+              <button
+                type="submit"
+                disabled={lookupLoading || !lookupCode.trim()}
+                className="px-4 rounded-xl font-bold bg-[#22c55e] text-white hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center transition-colors"
+              >
+                {lookupLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+              </button>
+            </form>
+
+            {lookupError && <p className="mt-3 text-xs text-red-500 font-semibold">{lookupError}</p>}
+
+            {lookupData && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{lookupData.nome}</p>
+                  <p className="text-xs text-slate-500">{lookupData.event?.title}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${lookupData.status === "inscrito" ? "bg-emerald-500/15 text-emerald-600" : lookupData.status === "fila_espera" ? "bg-amber-500/15 text-amber-600" : "bg-slate-500/15 text-slate-500"}`}>
+                    {lookupData.status === "inscrito" ? "Confirmado" : lookupData.status === "fila_espera" ? "Fila de espera" : "Cancelado"}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${lookupData.paymentStatus === "pago" ? "bg-emerald-500/15 text-emerald-600" : lookupData.paymentStatus === "gratuito" ? "bg-sky-500/15 text-sky-600" : lookupData.paymentStatus === "comprovante_enviado" ? "bg-indigo-500/15 text-indigo-600" : "bg-rose-500/15 text-rose-600"}`}>
+                    {lookupData.paymentStatus === "pago" ? "Pago" : lookupData.paymentStatus === "gratuito" ? "Gratuito" : lookupData.paymentStatus === "comprovante_enviado" ? "Comprovante enviado" : "Pagamento pendente"}
+                  </span>
+                </div>
+
+                {/* Link de pagamento se pendente */}
+                {lookupData.paymentStatus !== "pago" && lookupData.paymentStatus !== "gratuito" && lookupData.event?.paymentLink && (
+                  <a
+                    href={lookupData.event.paymentLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 bg-[#22c55e] text-white hover:bg-emerald-600 transition-colors"
+                  >
+                    <CreditCard size={14} /> Ir para o pagamento
+                  </a>
+                )}
+
+                {/* Anexar comprovante */}
+                {lookupData.paymentStatus !== "gratuito" && (
+                  <div className="space-y-2">
+                    <input ref={lookupProofRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleLookupProofUpload(f); }} />
+                    {lookupData.hasProof ? (
+                      <div className="flex items-center gap-2 text-xs text-emerald-600 font-semibold"><CheckCircle2 size={14} /> Comprovante recebido</div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => lookupProofRef.current?.click()}
+                        disabled={lookupProofUploading}
+                        className="w-full py-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                      >
+                        {lookupProofUploading ? <><Loader2 size={14} className="animate-spin" /> Enviando...</> : <><Paperclip size={14} /> Anexar comprovante</>}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Baixar PDF + Reenviar QR */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPDF(lookupData)}
+                    className="py-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Download size={14} /> Baixar PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLookupResend}
+                    disabled={lookupResending}
+                    className="py-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                  >
+                    {lookupResending ? <><Loader2 size={14} className="animate-spin" /> ...</> : <><QrCode size={14} /> Reenviar QR</>}
+                  </button>
+                </div>
+
+                {lookupInfo && <p className="text-xs text-emerald-600 font-semibold text-center">{lookupInfo}</p>}
+              </div>
+            )}
           </div>
         </div>
       )}

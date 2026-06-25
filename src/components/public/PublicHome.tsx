@@ -439,8 +439,8 @@ export function PublicHome() {
               <DoveIcon className="w-6 h-6 transition-colors" style={{ color: '#d4af37' }} />
             </div>
             <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Inscrições Peniel</h3>
-              <p className={`text-xs leading-relaxed ${textSub}`}>Um lugar de encontro, fé e transformação.<br />Saiba mais e faça sua inscrição.</p>
+              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Inscrições Peniel e consultar inscrições</h3>
+              <p className={`text-xs leading-relaxed ${textSub}`}>Um lugar de encontro, fé e transformação.<br />Faça sua inscrição ou consulte uma já realizada.</p>
             </div>
           </button>
 

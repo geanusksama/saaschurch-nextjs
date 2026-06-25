@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { generateCheckInCode, sendTicketWhatsApp } from "@/lib/penielTicket";
+import { generateCheckInCode, sendTicketWhatsApp, sendRegistrationAwaitingPayment } from "@/lib/penielTicket";
 
 // GET /api/peniel/registrations
 // Admin list of registrations with search and filters
@@ -226,11 +226,19 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // ── Ingresso digital por WhatsApp (QR + dados) ──
-    // Disparado de forma assíncrona para não atrasar a resposta da inscrição.
-    sendTicketWhatsApp(registration.id).catch(err =>
-      console.error("[Peniel ticket WhatsApp fail]", err)
-    );
+    // ── WhatsApp pós-inscrição (assíncrono, não atrasa a resposta) ──
+    // Inscrição com pagamento pendente (evento pago, sem comprovante / "pagar depois"):
+    // envia aviso de inscrição recebida + aguardando pagamento.
+    // Caso contrário (gratuito ou comprovante enviado): envia o ingresso digital (QR).
+    if (registration.status === "inscrito" && registration.paymentStatus === "pendente") {
+      sendRegistrationAwaitingPayment(registration.id).catch(err =>
+        console.error("[Peniel awaiting-payment WhatsApp fail]", err)
+      );
+    } else {
+      sendTicketWhatsApp(registration.id).catch(err =>
+        console.error("[Peniel ticket WhatsApp fail]", err)
+      );
+    }
 
     return NextResponse.json(registration, { status: 201 });
   } catch (error) {

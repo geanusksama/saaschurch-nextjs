@@ -519,4 +519,69 @@ select:-webkit-autofill {
   .dark .app-shell [class*="text-purple-700"] {
     color: #f8fafc !important;
   }
+
+  /* ── Formulário/modal de inscrição do Peniel ──
+     Mantém SEMPRE o tema claro, mesmo quando o sistema está no modo escuro (.dark).
+     Vence as regras genéricas de ".dark" acima por ter especificidade maior
+     (classe extra .peniel-light-form). */
+
+  /* Força o esquema de cores claro (corrige controles nativos — inputs/selects —
+     renderizados em escuro pelo navegador quando o SO está no modo escuro). */
+  .peniel-light-form,
+  .dark .peniel-light-form {
+    color-scheme: light !important;
+  }
+  /* Campos sempre claros — vale mesmo sem o ancestral .dark (cobre o caso de o
+     escuro vir do controle nativo) e vence ".dark input" por vir depois / ser
+     mais específico. */
+  .peniel-light-form input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  .peniel-light-form select,
+  .peniel-light-form textarea,
+  .dark .peniel-light-form input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  .dark .peniel-light-form select,
+  .dark .peniel-light-form textarea {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    color-scheme: light !important;
+  }
+  .peniel-light-form input::placeholder,
+  .peniel-light-form textarea::placeholder,
+  .dark .peniel-light-form input::placeholder,
+  .dark .peniel-light-form textarea::placeholder {
+    color: #94a3b8 !important;
+  }
+
+  .dark .peniel-light-form .bg-white {
+    background-color: #ffffff !important;
+  }
+  .dark .peniel-light-form .bg-slate-50,
+  .dark .peniel-light-form .bg-slate-50\/50,
+  .dark .peniel-light-form .bg-slate-50\/60,
+  .dark .peniel-light-form .bg-slate-50\/70,
+  .dark .peniel-light-form .bg-slate-100 {
+    background-color: #f8fafc !important;
+  }
+  .dark .peniel-light-form .border-slate-100,
+  .dark .peniel-light-form .border-slate-200,
+  .dark .peniel-light-form .border-slate-300 {
+    border-color: #e2e8f0 !important;
+  }
+  .dark .peniel-light-form .text-slate-900,
+  .dark .peniel-light-form .text-slate-800 {
+    color: #0f172a !important;
+  }
+  .dark .peniel-light-form .text-slate-700,
+  .dark .peniel-light-form .text-slate-600 {
+    color: #334155 !important;
+  }
+  .dark .peniel-light-form .text-slate-500,
+  .dark .peniel-light-form .text-slate-400,
+  .dark .peniel-light-form .text-slate-300 {
+    color: #64748b !important;
+  }
+  .dark .peniel-light-form .hover\:bg-slate-50:hover,
+  .dark .peniel-light-form .hover\:bg-slate-100:hover {
+    background-color: #f1f5f9 !important;
+  }
 }

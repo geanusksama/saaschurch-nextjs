@@ -203,3 +203,48 @@ export async function sendPaymentReminder(
   });
   return { ok: res.status === "sent", reason: res.error };
 }
+
+/**
+ * Envia a mensagem de "inscrição recebida, aguardando pagamento" por WhatsApp.
+ * Usada quando a inscrição é criada sem comprovante (opção "pagar depois") em um
+ * evento pago — informa que a inscrição foi feita e está pendente de pagamento,
+ * com link e código para envio do comprovante.
+ */
+export async function sendRegistrationAwaitingPayment(
+  registrationId: string
+): Promise<{ ok: boolean; reason?: string }> {
+  const reg = await prisma.penielRegistration.findUnique({
+    where: { id: registrationId },
+    include: { event: true }
+  });
+  if (!reg || reg.deletedAt) return { ok: false, reason: "not_found" };
+
+  const event = reg.event;
+  const config = await prisma.penielConfig.findUnique({
+    where: { campoId: event.campoId },
+    select: { whatsappInstanceId: true }
+  });
+  if (!config?.whatsappInstanceId) return { ok: false, reason: "no_instance" };
+
+  const { data: instanceData } = await supabaseAdmin
+    .from("whatsapp_instances")
+    .select("owner_user_id")
+    .eq("id", config.whatsappInstanceId)
+    .single();
+  const ownerUserId = instanceData?.owner_user_id || "";
+  if (!ownerUserId) return { ok: false, reason: "no_owner" };
+
+  const valueStr = Number(event.value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  let msg = `Olá, *${reg.nome}*!\n\nSua inscrição no *${event.title}* foi *realizada com sucesso* e está *aguardando pagamento* (valor: ${valueStr}).\n\n`;
+  if (event.paymentLink) msg += `💳 *Link de pagamento:* ${event.paymentLink}\n\n`;
+  msg += `Após pagar, envie o comprovante na página de consulta usando seu código: *${reg.checkInCode}*.\n\nAssim que confirmarmos o pagamento, sua vaga estará garantida.\nQue Deus te abençoe! 🙏`;
+
+  const res = await quickSendWhatsApp({
+    ownerUserId,
+    phone: normalizeBrazilPhone(reg.celular),
+    message: msg,
+    contactName: reg.nome,
+    instanceId: config.whatsappInstanceId
+  });
+  return { ok: res.status === "sent", reason: res.error };
+}
