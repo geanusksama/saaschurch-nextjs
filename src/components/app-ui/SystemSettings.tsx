@@ -37,7 +37,9 @@ import {
   Upload,
   Download,
   BookOpen,
-  Code
+  Code,
+  Sparkles,
+  Bot
 } from 'lucide-react';
 import { Link } from 'react-router';
 import { usePermissions } from '../../lib/usePermissions';
@@ -107,6 +109,15 @@ const settingsSections: SettingsSection[] = [
       { id: 'email',     name: 'Configurações de Email', description: 'SMTP e remetentes',  path: '/app-ui/system/email',     permKey: 'settings_email_config' },
       { id: 'whatsapp',  name: 'WhatsApp Business',      description: 'API e integração',   path: '/app-ui/system/whatsapp',  permKey: 'settings_whatsapp_config' },
       { id: 'sms',       name: 'SMS',                    description: 'Provedor e créditos', path: '/app-ui/system/sms',      permKey: 'settings_sms_config' },
+    ]
+  },
+  {
+    category: 'Inteligência Artificial (IA)',
+    icon: Sparkles,
+    color: 'bg-emerald-500',
+    items: [
+      { id: 'ai-settings', name: 'Configurações de IA', description: 'Chaves de API OpenAI/Claude e modelo', path: '/app-ui/config/ai-settings', permKey: 'settings_branding' },
+      { id: 'ai-agents',   name: 'Agentes de IA',       description: 'Criar assistentes inteligentes especialistas', path: '/app-ui/config/ai-agents',   permKey: 'settings_branding' },
     ]
   },
   {

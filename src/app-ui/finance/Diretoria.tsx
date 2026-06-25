@@ -7,7 +7,7 @@ import {
   ArrowDownRight, AlertTriangle, CheckCircle2, Printer, RefreshCw,
   FileSpreadsheet, Search, Building2, Users, Landmark, FileText, Check, X,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Percent, Info, Lightbulb, UserCheck, Award, ArrowUpDown
+  Percent, Info, Lightbulb, UserCheck, Award, ArrowUpDown, Bot, Send, Sparkles, Trash2, Plus, ArrowRight, MessageSquare, User
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
 import { usePermissions } from '../../lib/usePermissions';
 import { buildDizimistasReport, type DizimistasReport, type DizimistasEntry, type DizimistasScopeMember } from '../spreadsheet/dizimistasAnalysis';
+import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────
 function brl(v: number) {
@@ -396,6 +397,8 @@ export default function Diretoria() {
   const [dizimistasSearch, setDizimistasSearch] = useState('');
   const [titles, setTitles] = useState<Array<{ id: string; name: string }>>([]);
 
+
+
   // Data Loading States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -424,7 +427,6 @@ export default function Diretoria() {
         const { data: regData } = await rQuery;
         const regionaisList = regData || [];
         setRegionais(regionaisList);
-        setSelectedRegionalIds(regionaisList.map((r: any) => r.id));
 
         let cQuery = supabase.from('churches').select('id, name, regional_id').is('deleted_at', null).order('name');
         if (isChurchProfile && storedUser.churchId) {
@@ -443,7 +445,22 @@ export default function Diretoria() {
         }));
         setIgrejas(formattedChurches);
         setAllChurches(formattedChurches);
-        setSelectedChurchIds(formattedChurches.map(c => c.id));
+
+        // Filtro padrão: Apenas a igreja logada do usuário para evitar sobrecarga de rede/carregamento pesado
+        if (storedUser.churchId) {
+          setSelectedChurchIds([storedUser.churchId]);
+          const matchedChurch = formattedChurches.find(c => c.id === storedUser.churchId);
+          if (matchedChurch) {
+            setSelectedRegionalIds([matchedChurch.regionalId]);
+          } else if (storedUser.regionalId) {
+            setSelectedRegionalIds([storedUser.regionalId]);
+          } else {
+            setSelectedRegionalIds(regionaisList.map((r: any) => r.id));
+          }
+        } else {
+          setSelectedRegionalIds(regionaisList.map((r: any) => r.id));
+          setSelectedChurchIds(formattedChurches.map(c => c.id));
+        }
 
         const token = localStorage.getItem('mrm_token') || '';
         const titlesRes = await fetch(`${apiBase}/ecclesiastical-titles`, {
@@ -2098,7 +2115,6 @@ export default function Diretoria() {
           <span>Direitos Reservados • Sistema MRM de Gestão Eclesiástica</span>
         </div>
       </div>
-
     </div>
   );
 }

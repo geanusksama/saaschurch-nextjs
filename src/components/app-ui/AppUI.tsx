@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { del } from 'idb-keyval';
 import { 
   LayoutDashboard, 
@@ -7,7 +7,7 @@ import {
   TrendingUp, 
   DollarSign, 
   Calendar, 
-  MessageSquare, 
+  MessageSquare, Bot, 
   Settings,
   Clipboard,
   Search,
@@ -109,6 +109,7 @@ import { SantanderIcon } from '../ui/SantanderIcon';
 import { MobileAppOverlay } from '../public/MobileAppPreview';
 import { ChatFAB } from './ChatFAB';
 import { logClientAudit } from '../../lib/auditClient';
+import { AiChatAssistant } from './shared/AiChatAssistant';
 
 
 interface ContextSwitcherItem {
@@ -607,6 +608,7 @@ export function AppUI() {
   const initials = displayName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
 
   const [profileOpen, setProfileOpen] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [myProfileOpen, setMyProfileOpen] = useState(false);
   const [themeEditorOpen, setThemeEditorOpen] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
@@ -1686,14 +1688,20 @@ export function AppUI() {
               {darkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-slate-600" />}
             </button>
 
-            {/* Mobile app preview button */}
+            {/* Assistente de IA */}
             <button
-              onClick={() => setShowAppPreview(true)}
-              title="Ver App Mobile"
+              onClick={() => {
+                if (storedUser.profileType === 'master') {
+                  setAiChatOpen(true);
+                } else {
+                  toast.error('Assistente de IA somente pra perfil autorizado');
+                }
+              }}
+              title="Assistente de IA"
               className="inline-flex relative w-9 h-9 rounded-full items-center justify-center transition-all hover:scale-110"
               style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 0 14px rgba(34,197,94,0.5)' }}
             >
-              <Smartphone className="w-4 h-4 text-white" />
+              <Bot className="w-5 h-5 text-white" />
               <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(34,197,94,0.2)' }} />
             </button>
 
@@ -2347,6 +2355,7 @@ export function AppUI() {
         )}
       </AnimatePresence>
       <ChatFAB />
+      <AiChatAssistant storedUser={storedUser} isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
     </div>
   );
 }

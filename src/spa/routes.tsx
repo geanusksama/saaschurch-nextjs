@@ -145,6 +145,8 @@ import ModelosCredencial from "../app-ui/ecclesiastical/ModelosCredencial";
 import SolicitacoesCredencial from "../app-ui/ecclesiastical/SolicitacoesCredencial";
 import { Birthdays } from "../components/app-ui/Birthdays";
 import { ConfigurationCenter } from "../components/app-ui/ConfigurationCenter";
+import AiSettings from "../components/app-ui/AiSettings";
+import AiAgents from "../components/app-ui/AiAgents";
 import { FinanceCashFlow } from "../components/app-ui/FinanceCashFlow";
 import { FinanceTransactions } from "../components/app-ui/FinanceTransactions";
 import { FinanceIncomeForm } from "../components/app-ui/FinanceIncomeForm";
@@ -515,6 +517,8 @@ export const router = createBrowserRouter([
       { path: "credentials", Component: Credentials },
       { path: "birthdays", Component: Birthdays },
       { path: "configuration-center", Component: ConfigurationCenter },
+      { path: "config/ai-settings", Component: AiSettings },
+      { path: "config/ai-agents", Component: AiAgents },
       { path: "churches", Component: Churches },
       { path: "contacts", Component: ContactsModule },
       { path: "prospecting", Component: ProspectingModule },

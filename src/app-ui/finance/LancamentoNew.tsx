@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Search, X, Plus, CheckCircle, AlertCircle, User, Users, Briefcase, Camera, RotateCcw, RefreshCw, Repeat2, Pencil, Check, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { ArrowLeft, Search, X, Plus, CheckCircle, AlertCircle, User, Users, Briefcase, Camera, RotateCcw, RefreshCw, Repeat2, Pencil, Check, PanelRightOpen, PanelRightClose, Sparkles } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
@@ -213,7 +213,7 @@ function SearchModal({
 }: {
   title: string;
   placeholder: string;
-  onSelect: (item: { id: string; label: string }) => void;
+  onSelect: (item: { id: string; label: string; sub?: string }) => void;
   onClose: () => void;
   searchFn: (q: string) => Promise<{ id: string; label: string; sub?: string }[]>;
 }) {
@@ -906,6 +906,101 @@ export default function LancamentoNew() {
   } | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // ── AI Reading State ──
+  const [aiReading, setAiReading] = useState(false);
+  const [aiResult, setAiResult] = useState<any>(null);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiFile, setAiFile] = useState<File | null>(null);
+  const [aiFavType, setAiFavType] = useState<TipoPessoa>('PJ');
+  const fileInputAiRef = useRef<HTMLInputElement>(null);
+
+  const convertToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  async function handleAiFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setAiFile(f);
+    setAiReading(true);
+    setError('');
+    setAiResult(null);
+    try {
+      const base64 = await convertToBase64(f);
+      const token = localStorage.getItem('mrm_token');
+      const res = await fetch(`${apiBase}/ai/read-document`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ image: base64 }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Erro ao ler o documento.');
+      }
+
+      const data = await res.json();
+      setAiResult(data);
+      setAiFavType('PJ'); // Default para PJ em despesas
+      setShowAiModal(true);
+    } catch (err: any) {
+      setError('Erro na leitura com IA: ' + err.message);
+    } finally {
+      setAiReading(false);
+      if (fileInputAiRef.current) fileInputAiRef.current.value = '';
+    }
+  }
+
+  function handleApproveAi() {
+    if (!aiResult) return;
+    if (aiFile) {
+      setFotoFile(aiFile);
+      setFotoPreview(URL.createObjectURL(aiFile));
+    }
+    
+    // Preencher valor formatado (trocando ponto por vírgula)
+    if (aiResult.valor !== undefined) {
+      const valNum = Number(aiResult.valor);
+      setValor(isNaN(valNum) ? String(aiResult.valor || '').replace('.', ',') : valNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    }
+
+    if (aiResult.data_lancamento) {
+      setDataLancamento(aiResult.data_lancamento);
+    }
+
+    if (aiResult.referencia) {
+      setReferencia(aiResult.referencia);
+    }
+
+    if (aiResult.num_doc) {
+      setNumDoc(aiResult.num_doc);
+    }
+
+    if (aiResult.observacao) {
+      setObs(aiResult.observacao);
+    }
+
+    // Set tipo pessoa e nome do favorecido conforme selecionado no modal
+    setTipoPessoa(aiFavType);
+    if (aiFavType === 'PJ') {
+      setPjNome(aiResult.favorecido || '');
+    } else if (aiFavType === 'NAO_MEMBRO') {
+      setNaoMembroNome(aiResult.favorecido || '');
+    } else {
+      setFavorecidoNome(aiResult.favorecido || '');
+    }
+
+    setShowAiModal(false);
+  }
 
   // ── Load base data ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1660,6 +1755,17 @@ export default function LancamentoNew() {
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 <span>{saving ? 'Salvando...' : isReceita ? 'Salvar Receita' : 'Salvar Despesa'}</span>
               </button>
+              
+              <button
+                type="button"
+                onClick={() => fileInputAiRef.current?.click()}
+                disabled={aiReading}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-[4px] text-sm font-bold hover:bg-indigo-100 transition-colors disabled:opacity-60"
+              >
+                {aiReading ? <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" /> : <Sparkles className="w-4 h-4 text-indigo-500" />}
+                <span>{aiReading ? 'Lendo com IA...' : 'Preencher com Imagem'}</span>
+              </button>
+
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -1680,8 +1786,8 @@ export default function LancamentoNew() {
               </div>
             </div>
 
-            {/* Desktop: 3 colunas lado a lado */}
-            <div className="hidden sm:grid grid-cols-3 gap-2">
+            {/* Desktop: 4 colunas lado a lado */}
+            <div className="hidden sm:grid grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={limpar}
@@ -1697,6 +1803,15 @@ export default function LancamentoNew() {
               >
                 <Camera className="w-4 h-4 flex-shrink-0" />
                 <span>Imagem</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputAiRef.current?.click()}
+                disabled={aiReading}
+                className="flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-[4px] text-sm font-bold hover:bg-indigo-100 transition-colors disabled:opacity-60 animate-pulse-slow"
+              >
+                {aiReading ? <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" /> : <Sparkles className="w-4 h-4 text-indigo-500" />}
+                <span>{aiReading ? 'Lendo...' : 'IA Imagem'}</span>
               </button>
               <button
                 type="submit"
@@ -1947,6 +2062,135 @@ export default function LancamentoNew() {
                 setCashClosedMessage={setCashClosedMessage}
                 defaultTab={modalTab}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inputs de arquivo ocultos adicionais para a IA */}
+      <input ref={fileInputAiRef} type="file" accept="image/*" onChange={handleAiFoto} className="hidden" />
+
+      {/* Modal de confirmação da leitura da IA */}
+      {showAiModal && aiResult && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-base">Resultado da Leitura de IA</h3>
+                <p className="text-xs text-slate-400">Verifique os dados extraídos do comprovante</p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 mb-5 text-sm">
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl space-y-2.5">
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Favorecido / Emissor</span>
+                  <input
+                    type="text"
+                    value={aiResult.favorecido || ''}
+                    onChange={(e) => setAiResult({ ...aiResult, favorecido: e.target.value })}
+                    className="w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 p-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Tipo de Beneficiado</span>
+                  <div className="grid grid-cols-3 gap-1.5 mt-1">
+                    {(['PJ', 'NAO_MEMBRO', 'MEMBRO'] as TipoPessoa[]).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setAiFavType(t)}
+                        className={`py-1 text-[10px] font-bold rounded-lg border transition-colors ${
+                          aiFavType === t 
+                            ? 'bg-indigo-600 text-white border-indigo-600' 
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        {t === 'PJ' ? 'Jurídica' : t === 'NAO_MEMBRO' ? 'Não Membro' : 'Membro'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Valor do Lançamento</span>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">R$</span>
+                    <input
+                      type="text"
+                      value={aiResult.valor || ''}
+                      onChange={(e) => setAiResult({ ...aiResult, valor: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 pl-8 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Data de Lançamento</span>
+                  <input
+                    type="date"
+                    value={aiResult.data_lancamento || ''}
+                    onChange={(e) => setAiResult({ ...aiResult, data_lancamento: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Competência / Referência</span>
+                  <input
+                    type="text"
+                    value={aiResult.referencia || ''}
+                    onChange={(e) => setAiResult({ ...aiResult, referencia: e.target.value })}
+                    placeholder="MM/YYYY"
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 rounded-lg text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Nº Documento / Doc</span>
+                  <input
+                    type="text"
+                    value={aiResult.num_doc || ''}
+                    onChange={(e) => setAiResult({ ...aiResult, num_doc: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 rounded-lg text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <span className="block text-[10px] font-bold text-slate-400 uppercase">Observação sugerida</span>
+                <textarea
+                  rows={2}
+                  value={aiResult.observacao || ''}
+                  onChange={(e) => setAiResult({ ...aiResult, observacao: e.target.value })}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 rounded-lg text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setShowAiModal(false); setAiFile(null); setAiResult(null); }}
+                className="flex-1 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 dark:text-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Descartar
+              </button>
+              <button
+                type="button"
+                onClick={handleApproveAi}
+                className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
+              >
+                Aprovar & Preencher
+              </button>
             </div>
           </div>
         </div>

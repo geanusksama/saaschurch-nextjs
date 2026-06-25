@@ -54,6 +54,8 @@ model Campo {
   penielConfig       PenielConfig?
   penielEvents       PenielEvent[]
   presenceTickets    ChurchPresenceTicket[]     @relation("CampoPresenceTickets")
+  aiAgents           AiAgent[]                  @relation("CampoAiAgents")
+  settings           Setting[]                  @relation("CampoSettings")
 
   @@map("campos")
 }
@@ -191,6 +193,8 @@ model Church {
   stripeSubscriptions   StripeSubscription[]   @relation("ChurchStripeSubscriptions")
   faceidDevices         FaceidDevice[]         @relation("ChurchFaceidDevices")
   presenceTickets       ChurchPresenceTicket[] @relation("ChurchPresenceTickets")
+  aiAgents              AiAgent[]
+  aiChatSessions        AiChatSession[]
 
   @@unique([regionalId, code])
   @@index([headquartersId])
@@ -397,6 +401,7 @@ model User {
   customStatus String? @map("custom_status") @db.VarChar(255)
   internalChatMessages InternalChatMessage[]
   presenceTickets      ChurchPresenceTicket[] @relation("UserPresenceTickets")
+  aiChatSessions       AiChatSession[]
 
   @@map("users")
 }
@@ -1422,6 +1427,7 @@ model AuditLog {
 model Setting {
   id           String   @id @default(uuid()) @db.Uuid
   churchId     String?  @map("church_id") @db.Uuid
+  campoId      String?  @map("campo_id") @db.Uuid
   settingKey   String   @map("setting_key") @db.VarChar(100)
   settingValue String?  @map("setting_value") @db.Text
   settingType  String?  @default("string") @map("setting_type") @db.VarChar(20)
@@ -1430,9 +1436,11 @@ model Setting {
   updatedBy    String?  @map("updated_by") @db.Uuid
 
   church        Church? @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  campo         Campo?  @relation("CampoSettings", fields: [campoId], references: [id], onDelete: Cascade)
   updatedByUser User?   @relation("SettingUpdatedBy", fields: [updatedBy], references: [id])
 
   @@unique([churchId, settingKey])
+  @@unique([campoId, settingKey])
   @@map("settings")
 }
 
@@ -3346,4 +3354,53 @@ model ChurchPresenceTicket {
   @@index([churchId])
   @@index([dataCulto])
   @@map("church_presence_tickets")
+}
+
+model AiAgent {
+  id           String   @id @default(uuid()) @db.Uuid
+  churchId     String?  @map("church_id") @db.Uuid
+  campoId      String?  @map("campo_id") @db.Uuid
+  name         String   @db.VarChar(255)
+  description  String?  @db.Text
+  role         String   @db.VarChar(50) // "financeiro" | "secretaria" | "geral"
+  systemPrompt String   @map("system_prompt") @db.Text
+  avatarUrl    String?  @map("avatar_url") @db.VarChar(500)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  church       Church?  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  campo        Campo?   @relation("CampoAiAgents", fields: [campoId], references: [id], onDelete: Cascade)
+  sessions     AiChatSession[]
+
+  @@map("ai_agents")
+}
+
+model AiChatSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  agentId   String   @map("agent_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  churchId  String?  @map("church_id") @db.Uuid
+  title     String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  agent     AiAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  church    Church?  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  messages  AiChatMessage[]
+
+  @@map("ai_chat_sessions")
+}
+
+model AiChatMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  role      String   @db.VarChar(20) // "user" | "assistant" | "system"
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session   AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("ai_chat_messages")
 }
