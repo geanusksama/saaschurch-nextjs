@@ -207,7 +207,7 @@ function KanbanColumn({
   const [isDragOver, setIsDragOver] = useState(false);
 
   return (
-    <div className="flex flex-col w-72 flex-shrink-0">
+    <div className="flex flex-col w-full sm:w-72 sm:max-w-[18rem] flex-shrink-0">
       {/* Column header — compact, secretaria style */}
       <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg mb-2">
         <span style={{ color: column.color }}>
@@ -757,7 +757,7 @@ export default function PastoralKanban() {
     <div className="flex flex-col h-full overflow-hidden bg-slate-50">
       {/* ── Topbar ── */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200 px-5 py-3.5">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center">
               <Heart className="w-5 h-5 text-green-600" />
@@ -768,7 +768,7 @@ export default function PastoralKanban() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 justify-between sm:justify-end">
             <button
               onClick={() => void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-cards'] })}
               className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
@@ -806,7 +806,7 @@ export default function PastoralKanban() {
             {columns.length > 0 && (
               <button
                 onClick={() => setNewCardColumn(columns.find((c) => c.column_key === 'todo') ?? columns[0])}
-                className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Novo Atendimento
@@ -835,20 +835,20 @@ export default function PastoralKanban() {
         <div className="mt-3 pt-3 border-t border-slate-100">
           <div className="flex flex-wrap items-center gap-2">
               {/* Search */}
-              <div className="relative">
+              <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar pessoa, título..."
-                  className="pl-9 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-44"
+                  className="pl-9 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-full sm:w-44"
                 />
               </div>
               {/* Type */}
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as AttendanceType | 'all')}
-                className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
+                className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
               >
                 <option value="all">Todos os tipos</option>
                 {(Object.entries(ATTENDANCE_TYPE_LABELS) as [AttendanceType, string][]).map(([key, label]) => (
@@ -859,7 +859,7 @@ export default function PastoralKanban() {
               <select
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value as Priority | 'all')}
-                className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
+                className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
               >
                 <option value="all">Todas as prioridades</option>
                 <option value="urgent">Urgente</option>
@@ -868,12 +868,12 @@ export default function PastoralKanban() {
                 <option value="low">Baixa</option>
               </select>
               {/* Date range */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 min-w-0">
                 <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                  className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
+                  className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
                 <ChevronRight className="w-3 h-3 text-slate-400 flex-shrink-0" />
                 <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                  className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
+                  className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
               </div>
 
               {!isSecretary && (
@@ -882,7 +882,7 @@ export default function PastoralKanban() {
                   <div className="relative" ref={regionalDropdownRef}>
                     <button
                       onClick={() => { setShowRegionalDropdown((v) => !v); setShowChurchDropdown(false); }}
-                      className="flex items-center gap-2 min-w-[160px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
+                      className="flex items-center gap-2 w-full sm:min-w-[160px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
                     >
                       <span className="flex-1 text-left truncate">
                         {selectedRegionals.length === 0
@@ -931,7 +931,7 @@ export default function PastoralKanban() {
                   <div className="relative" ref={churchDropdownRef}>
                     <button
                       onClick={() => { setShowChurchDropdown((v) => !v); setShowRegionalDropdown(false); }}
-                      className="flex items-center gap-2 min-w-[180px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
+                      className="flex items-center gap-2 w-full sm:min-w-[180px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
                     >
                       <span className="flex-1 text-left truncate">
                         {filterChurchId
@@ -991,7 +991,7 @@ export default function PastoralKanban() {
             Carregando pipeline pastoral...
           </div>
         ) : viewMode === 'kanban' ? (
-          <div className="flex gap-4 p-5 h-full items-start overflow-x-auto overflow-y-auto">
+          <div className="flex flex-col gap-4 p-5 h-full items-start overflow-x-auto overflow-y-auto sm:flex-row">
             {columns.map((col) => (
               <KanbanColumn
                 key={col.id}
@@ -1007,81 +1007,85 @@ export default function PastoralKanban() {
             ))}
           </div>
         ) : (
-          /* ── Table View ── */
-          <div className="p-5">
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Pessoa</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Tipo</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Etapa</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Responsável</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Abertura</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">SLA</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Prioridade</th>
-                    <th className="w-10" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableCards.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="text-center py-12 text-slate-400">
-                        Nenhum atendimento encontrado.
-                      </td>
-                    </tr>
-                  ) : tableCards.map((card) => {
-                    const personName = card.members?.full_name || card.visitor_name || card.title || '—';
-                    const colName = columns.find((c) => c.id === card.column_id)?.name ?? '—';
-                    const colColor = columns.find((c) => c.id === card.column_id)?.color ?? '#94a3b8';
-                    const typeColor = ATTENDANCE_TYPE_COLORS[card.attendance_type] ?? '#6366f1';
-                    const isOverdue = card.sla_date && new Date(card.sla_date) < new Date() && card.status !== 'done' && card.status !== 'cancelled';
-                    return (
-                      <tr key={card.id} onClick={() => setSelectedCard(card)}
-                        className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors last:border-0">
-                        <td className="px-4 py-3">
-                          <p className="font-bold text-slate-800 uppercase text-sm">{personName}</p>
-                          {card.title && card.title !== personName && <p className="text-xs text-slate-400 truncate max-w-[200px]">{card.title}</p>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 rounded text-xs font-semibold"
-                            style={{ backgroundColor: `${typeColor}18`, color: typeColor }}>
-                            {ATTENDANCE_TYPE_LABELS[card.attendance_type]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 rounded text-xs font-semibold"
-                            style={{ backgroundColor: `${colColor}18`, color: colColor }}>
-                            {colName}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600 text-xs">{card.users?.full_name ?? '—'}</td>
-                        <td className="px-4 py-3 text-slate-500 text-xs">{new Date(card.created_at).toLocaleDateString('pt-BR')}</td>
-                        <td className="px-4 py-3 text-xs">
-                          {card.sla_date ? (
-                            <span className={isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500'}>
-                              {new Date(card.sla_date).toLocaleDateString('pt-BR')}
-                            </span>
-                          ) : <span className="text-slate-300">—</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 rounded text-xs font-semibold"
-                            style={{ backgroundColor: `${PRIORITY_COLORS[card.priority]}18`, color: PRIORITY_COLORS[card.priority] }}>
-                            {PRIORITY_LABELS[card.priority]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button className="p-1 rounded hover:bg-slate-100 text-slate-400">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </td>
+          <>
+            {/* ── Table View ── */}
+            <div className="p-5">
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-[900px] w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50">
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Pessoa</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Tipo</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Etapa</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Responsável</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Abertura</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">SLA</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Prioridade</th>
+                        <th className="w-10" />
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {tableCards.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="text-center py-12 text-slate-400">
+                            Nenhum atendimento encontrado.
+                          </td>
+                        </tr>
+                      ) : tableCards.map((card) => {
+                        const personName = card.members?.full_name || card.visitor_name || card.title || '—';
+                        const colName = columns.find((c) => c.id === card.column_id)?.name ?? '—';
+                        const colColor = columns.find((c) => c.id === card.column_id)?.color ?? '#94a3b8';
+                        const typeColor = ATTENDANCE_TYPE_COLORS[card.attendance_type] ?? '#6366f1';
+                        const isOverdue = card.sla_date && new Date(card.sla_date) < new Date() && card.status !== 'done' && card.status !== 'cancelled';
+                        return (
+                          <tr key={card.id} onClick={() => setSelectedCard(card)}
+                            className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors last:border-0">
+                            <td className="px-4 py-3">
+                              <p className="font-bold text-slate-800 uppercase text-sm">{personName}</p>
+                              {card.title && card.title !== personName && <p className="text-xs text-slate-400 truncate max-w-[200px]">{card.title}</p>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold"
+                                style={{ backgroundColor: `${typeColor}18`, color: typeColor }}>
+                                {ATTENDANCE_TYPE_LABELS[card.attendance_type]}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold"
+                                style={{ backgroundColor: `${colColor}18`, color: colColor }}>
+                                {colName}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600 text-xs">{card.users?.full_name ?? '—'}</td>
+                            <td className="px-4 py-3 text-slate-500 text-xs">{new Date(card.created_at).toLocaleDateString('pt-BR')}</td>
+                            <td className="px-4 py-3 text-xs">
+                              {card.sla_date ? (
+                                <span className={isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500'}>
+                                  {new Date(card.sla_date).toLocaleDateString('pt-BR')}
+                                </span>
+                              ) : <span className="text-slate-300">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold"
+                                style={{ backgroundColor: `${PRIORITY_COLORS[card.priority]}18`, color: PRIORITY_COLORS[card.priority] }}>
+                                {PRIORITY_LABELS[card.priority]}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <button className="p-1 rounded hover:bg-slate-100 text-slate-400">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 

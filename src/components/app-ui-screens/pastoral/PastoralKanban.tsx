@@ -207,7 +207,7 @@ function KanbanColumn({
   const [isDragOver, setIsDragOver] = useState(false);
 
   return (
-    <div className="flex flex-col w-72 flex-shrink-0">
+    <div className="flex flex-col w-full sm:w-72 sm:max-w-[18rem] flex-shrink-0">
       {/* Column header — compact, secretaria style */}
       <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg mb-2">
         <span style={{ color: column.color }}>
@@ -765,7 +765,7 @@ export default function PastoralKanban() {
     <div className="flex flex-col h-full overflow-hidden bg-slate-50">
       {/* ── Topbar ── */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200 px-5 py-3.5">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center">
               <Heart className="w-5 h-5 text-green-600" />
@@ -776,7 +776,7 @@ export default function PastoralKanban() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 justify-between sm:justify-end">
             <button
               onClick={() => void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-cards'] })}
               className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
@@ -814,7 +814,7 @@ export default function PastoralKanban() {
             {columns.length > 0 && (
               <button
                 onClick={() => setNewCardColumn(columns.find((c) => c.column_key === 'todo') ?? columns[0])}
-                className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Novo Atendimento
@@ -843,20 +843,20 @@ export default function PastoralKanban() {
         <div className="mt-3 pt-3 border-t border-slate-100">
           <div className="flex flex-wrap items-center gap-2">
               {/* Search */}
-              <div className="relative">
+              <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar pessoa, título..."
-                  className="pl-9 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-44"
+                  className="pl-9 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-full sm:w-44"
                 />
               </div>
               {/* Type */}
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as AttendanceType | 'all')}
-                className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
+                className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
               >
                 <option value="all">Todos os tipos</option>
                 {(Object.entries(ATTENDANCE_TYPE_LABELS) as [AttendanceType, string][]).map(([key, label]) => (
@@ -867,7 +867,7 @@ export default function PastoralKanban() {
               <select
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value as Priority | 'all')}
-                className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
+                className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
               >
                 <option value="all">Todas as prioridades</option>
                 <option value="urgent">Urgente</option>
@@ -876,12 +876,12 @@ export default function PastoralKanban() {
                 <option value="low">Baixa</option>
               </select>
               {/* Date range */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 min-w-0">
                 <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                  className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
+                  className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
                 <ChevronRight className="w-3 h-3 text-slate-400 flex-shrink-0" />
                 <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                  className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
+                  className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
               </div>
 
               {!isSecretary && (
@@ -890,7 +890,7 @@ export default function PastoralKanban() {
                   <div className="relative" ref={regionalDropdownRef}>
                     <button
                       onClick={() => { setShowRegionalDropdown((v) => !v); setShowChurchDropdown(false); }}
-                      className="flex items-center gap-2 min-w-[160px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
+                      className="flex items-center gap-2 w-full sm:min-w-[160px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
                     >
                       <span className="flex-1 text-left truncate">
                         {selectedRegionals.length === 0
@@ -939,7 +939,7 @@ export default function PastoralKanban() {
                   <div className="relative" ref={churchDropdownRef}>
                     <button
                       onClick={() => { setShowChurchDropdown((v) => !v); setShowRegionalDropdown(false); }}
-                      className="flex items-center gap-2 min-w-[180px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
+                      className="flex items-center gap-2 w-full sm:min-w-[180px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
                     >
                       <span className="flex-1 text-left truncate">
                         {filterChurchId
@@ -999,7 +999,7 @@ export default function PastoralKanban() {
             Carregando pipeline pastoral...
           </div>
         ) : viewMode === 'kanban' ? (
-          <div className="flex gap-4 p-5 h-full items-start overflow-x-auto overflow-y-auto">
+          <div className="flex flex-col gap-4 p-5 h-full items-start overflow-x-auto overflow-y-auto sm:flex-row">
             {columns.map((col) => (
               <KanbanColumn
                 key={col.id}
@@ -1018,8 +1018,9 @@ export default function PastoralKanban() {
           /* ── Table View ── */
           <div className="p-5">
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
+              <div className="overflow-x-auto">
+                <table className="min-w-[900px] w-full text-sm">
+                  <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Pessoa</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Tipo</th>
