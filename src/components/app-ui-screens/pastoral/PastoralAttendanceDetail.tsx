@@ -4,7 +4,7 @@
  * Módulo EXCLUSIVO do pastoral. NÃO compartilha dados com a Secretaria/CRM.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X,
@@ -65,6 +65,7 @@ import {
   updatePastoralNote,
   deletePastoralActivity,
   updatePastoralActivity,
+  searchMembersForAttendance,
 } from '../../lib/pastoralKanbanService';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -99,6 +100,7 @@ export function PastoralAttendanceDetail({
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabId>('notas');
   const [noteText, setNoteText] = useState('');
+  const [noteIsPrivate, setNoteIsPrivate] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showParticipantForm, setShowParticipantForm] = useState(false);
@@ -180,19 +182,24 @@ export function PastoralAttendanceDetail({
     await refetchFiles();
   };
 
-  // Member search for participant form
+  const loggedInUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('mrm_user') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+
+  // Member search for participant form (unified, respects tenant isolation)
   const { data: memberSearchResults = [], isLoading: searchLoading } = useQuery({
-    queryKey: ['pastoral-participant-member-search', churchId, participantSearch],
+    queryKey: ['pastoral-participant-member-search', loggedInUser, participantSearch, participantRole],
     enabled: !!churchId && participantSearch.length >= 2,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('members')
-        .select('id, full_name')
-        .eq('church_id', churchId)
-        .ilike('full_name', `%${participantSearch}%`)
-        .limit(8);
-      return (data ?? []) as { id: string; full_name: string }[];
-    },
+    queryFn: () => searchMembersForAttendance({
+      search: participantSearch,
+      profileType: loggedInUser.profileType || 'church',
+      churchId: loggedInUser.churchId,
+      campoId: loggedInUser.campoId
+    }),
     staleTime: 10_000,
   });
 
@@ -203,9 +210,11 @@ export function PastoralAttendanceDetail({
         attendanceId,
         churchId: churchId!,
         content: noteText.trim(),
+        isPrivate: noteIsPrivate,
       }),
     onSuccess: () => {
       setNoteText('');
+      setNoteIsPrivate(false);
       void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-notes', attendanceId] });
       void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-timeline', attendanceId] });
     },
@@ -223,25 +232,72 @@ export function PastoralAttendanceDetail({
         durationMinutes: Number(activityForm.durationMinutes) || undefined,
         priority: activityForm.priority,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       setShowActivityForm(false);
       setActivityForm({ type: 'ligacao', title: '', description: '', scheduledDate: '', durationMinutes: '30', priority: 'normal' });
       void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-activities', attendanceId] });
       void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-timeline', attendanceId] });
+
+      try {
+        await fetch('/api/pastoral/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventType: 'activity_created',
+            attendanceId,
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to trigger activity_created notification:', err);
+      }
     },
   });
 
   const completeActivityMutation = useMutation({
     mutationFn: completePastoralActivity,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-activities', attendanceId] }),
+    onSuccess: async () => {
+      void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-activities', attendanceId] });
+      void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-timeline', attendanceId] });
+
+      try {
+        await fetch('/api/pastoral/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventType: 'activity_completed',
+            attendanceId,
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to trigger activity_completed notification:', err);
+      }
+    },
   });
 
   const addParticipantMutation = useMutation({
     mutationFn: ({ memberId, role }: { memberId: string; role: ParticipantRole }) =>
       addPastoralParticipant({ attendanceId, churchId: churchId!, memberId, role }),
-    onSuccess: () => {
+    onSuccess: async (newParticipant: any) => {
       setParticipantSearch('');
       void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-participants', attendanceId] });
+
+      // Trigger notification if assigned to a responsible (pastor / lider)
+      if (newParticipant?.member_id && (newParticipant.role === 'pastor' || newParticipant.role === 'lider')) {
+        try {
+          await fetch('/api/pastoral/notify', {
+            method: 'POST',
+            headers: notificationHeaders,
+            body: JSON.stringify({
+              eventType: 'responsible_assigned',
+              attendanceId,
+              targetMemberId: newParticipant.member_id,
+              origin: window.location.origin,
+            }),
+          });
+        } catch (err) {
+          console.error('Failed to dispatch responsible_assigned notification:', err);
+        }
+      }
     },
   });
 
@@ -486,83 +542,116 @@ export function PastoralAttendanceDetail({
         <div className="flex-1 overflow-y-auto p-5">
 
           {/* ── NOTAS ── */}
-          {activeTab === 'notas' && (
-            <div className="space-y-4">
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <textarea
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  rows={4}
-                  placeholder="Digite uma nota sobre este atendimento..."
-                  className="w-full px-4 py-3 text-sm resize-none border-0 focus:outline-none focus:ring-0"
-                />
-                <div className="flex items-center justify-end px-4 py-2.5 bg-slate-50 border-t border-slate-200 gap-2">
-                  <button
-                    onClick={() => noteText.trim() && addNoteMutation.mutate()}
-                    disabled={!noteText.trim() || addNoteMutation.isPending}
-                    className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
-                  >
-                    {addNoteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    Salvar
-                  </button>
+          {activeTab === 'notas' && (() => {
+            const visibleNotes = notes.filter((n) => {
+              if (n.is_private) {
+                return (
+                  loggedInUser.profileType === 'master' ||
+                  loggedInUser.profileType === 'campo' ||
+                  attendance?.responsible_user_id === loggedInUser.id ||
+                  participants.some((p) => p.user_id === loggedInUser.id)
+                );
+              }
+              return true;
+            });
+
+            return (
+              <div className="space-y-4">
+                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                  <textarea
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    rows={4}
+                    placeholder="Digite uma nota sobre este atendimento..."
+                    className="w-full px-4 py-3 text-sm resize-none border-0 focus:outline-none focus:ring-0"
+                  />
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-t border-slate-200">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={noteIsPrivate}
+                        onChange={(e) => setNoteIsPrivate(e.target.checked)}
+                        className="rounded border-slate-300 text-green-600 focus:ring-green-500 w-3.5 h-3.5 cursor-pointer"
+                      />
+                      <span>🔒 Restrita</span>
+                    </label>
+                    <button
+                      onClick={() => noteText.trim() && addNoteMutation.mutate()}
+                      disabled={!noteText.trim() || addNoteMutation.isPending}
+                      className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                    >
+                      {addNoteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Salvar
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {visibleNotes.map((note) => (
+                    <div key={note.id} className={`bg-white border rounded-xl p-4 shadow-sm relative ${note.is_pinned ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'}`}>
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        {note.is_pinned && (
+                          <span className="inline-flex items-center gap-1 text-amber-600 text-xs font-semibold">
+                            <Star className="w-3.5 h-3.5 fill-amber-400" />Fixada
+                          </span>
+                        )}
+                        {note.is_private && (
+                          <span className="inline-flex items-center gap-1 text-red-600 text-[10px] font-bold bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase">
+                            🔒 Restrita
+                          </span>
+                        )}
+                      </div>
+                      {editingNoteId === note.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editingNoteText}
+                            onChange={(e) => setEditingNoteText(e.target.value)}
+                            rows={3}
+                            className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => updateNoteMutation.mutate({ id: note.id, content: editingNoteText })}
+                              disabled={!editingNoteText.trim() || updateNoteMutation.isPending}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                            >
+                              {updateNoteMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Salvar
+                            </button>
+                            <button onClick={() => setEditingNoteId(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                      )}
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                        <span className="text-[11px] text-slate-400">
+                          {new Date(note.created_at).toLocaleString('pt-BR')}
+                          {note.users?.full_name && ` por ${note.users.full_name}`}
+                        </span>
+                        {editingNoteId !== note.id && (
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => { setEditingNoteId(note.id); setEditingNoteText(note.content); }}
+                              className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Editar">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => deleteNoteMutation.mutate(note.id)}
+                              disabled={deleteNoteMutation.isPending}
+                              className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {visibleNotes.length === 0 && (
+                    <p className="text-sm text-slate-400 text-center py-6">Nenhuma nota registrada.</p>
+                  )}
                 </div>
               </div>
-
-              <div className="space-y-3">
-                {notes.map((note) => (
-                  <div key={note.id} className={`bg-white border rounded-xl p-4 ${note.is_pinned ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'}`}>
-                    {note.is_pinned && (
-                      <div className="flex items-center gap-1 text-amber-600 text-xs font-semibold mb-2">
-                        <Star className="w-3.5 h-3.5 fill-amber-400" />Fixada
-                      </div>
-                    )}
-                    {editingNoteId === note.id ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={editingNoteText}
-                          onChange={(e) => setEditingNoteText(e.target.value)}
-                          rows={3}
-                          className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => updateNoteMutation.mutate({ id: note.id, content: editingNoteText })}
-                            disabled={!editingNoteText.trim() || updateNoteMutation.isPending}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
-                          >
-                            {updateNoteMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Salvar
-                          </button>
-                          <button onClick={() => setEditingNoteId(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
-                    )}
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-slate-400">{new Date(note.created_at).toLocaleString('pt-BR')}</span>
-                      {editingNoteId !== note.id && (
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => { setEditingNoteId(note.id); setEditingNoteText(note.content); }}
-                            className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Editar">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => deleteNoteMutation.mutate(note.id)}
-                            disabled={deleteNoteMutation.isPending}
-                            className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {notes.length === 0 && (
-                  <p className="text-sm text-slate-400 text-center py-6">Nenhuma nota registrada.</p>
-                )}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── ATIVIDADES ── */}
           {activeTab === 'atividades' && (
@@ -779,81 +868,171 @@ export function PastoralAttendanceDetail({
           )}
 
           {/* ── PESSOAS ── */}
-          {activeTab === 'pessoas' && (
-            <div className="space-y-4">
-              {/* Badges of current participants */}
-              {participants.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {participants.map((p) => {
-                    const name = p.members?.full_name || p.users?.full_name || '—';
-                    return (
-                      <span key={p.id}
-                        className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full bg-green-50 border border-green-200 text-green-800 text-sm font-medium"
-                      >
-                        <span className="w-5 h-5 rounded-full bg-green-600 text-white text-xs flex items-center justify-center flex-shrink-0 font-bold">
-                          {name.charAt(0).toUpperCase()}
-                        </span>
-                        <span className="truncate max-w-[160px]">{name}</span>
-                        <span className="text-xs text-green-600 opacity-70">· {PARTICIPANT_ROLE_LABELS[p.role] ?? p.role}</span>
-                        <button
-                          onClick={() => removeParticipantMutation.mutate(p.id)}
-                          className="ml-0.5 hover:text-red-500 text-green-500 transition-colors"
-                          title="Remover"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
+          {activeTab === 'pessoas' && (() => {
+            const normalizeRole = (role?: string) => (role || '').toString().trim().toLowerCase();
+            const responsibles = participants.filter((p) => {
+              const role = normalizeRole(p.role);
+              return role === 'pastor' || role === 'lider' || role === 'líder';
+            });
+            const otherParticipants = participants.filter((p) => {
+              const role = normalizeRole(p.role);
+              return role !== 'pastor' && role !== 'lider' && role !== 'líder';
+            });
 
-              {/* Add participant form — always visible */}
-              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
-                <h4 className="font-semibold text-slate-800 text-sm">Adicionar Pessoa</h4>
-                <div>
-                  <label className="text-xs font-medium text-slate-600 mb-1 block">Papel</label>
-                  <select value={participantRole} onChange={(e) => setParticipantRole(e.target.value as ParticipantRole)}
-                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
-                    {(Object.entries(PARTICIPANT_ROLE_LABELS) as [ParticipantRole, string][]).map(([k, l]) => (
-                      <option key={k} value={k}>{l}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-slate-600 mb-1 block">Buscar membro</label>
-                  <input
-                    value={participantSearch}
-                    onChange={(e) => setParticipantSearch(e.target.value)}
-                    placeholder="Nome do membro..."
-                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2"
-                  />
-                  {participantSearch.length >= 2 && (
-                    <div className="mt-1 border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                      {searchLoading ? (
-                        <div className="flex items-center justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-slate-400" /></div>
-                      ) : memberSearchResults.length > 0 ? (
-                        memberSearchResults
-                          .filter(m => !participants.some(p => p.member_id === m.id))
-                          .map((m) => (
-                          <button key={m.id}
-                            onClick={() => addParticipantMutation.mutate({ memberId: m.id, role: participantRole })}
-                            disabled={addParticipantMutation.isPending}
-                            className="flex items-center gap-2 w-full px-4 py-2.5 text-sm hover:bg-green-50 hover:text-green-800 text-left border-b border-slate-100 last:border-0 transition-colors">
-                            <User className="w-4 h-4 text-slate-400" />
-                            <span className="font-medium">{m.full_name}</span>
-                            <span className="ml-auto text-xs text-green-600 opacity-0 group-hover:opacity-100">+ Adicionar</span>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="px-4 py-2.5 text-sm text-slate-400">Nenhum membro encontrado</div>
-                      )}
+            return (
+              <div className="space-y-6">
+                {/* Grupo de Responsáveis */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Responsáveis pelo Atendimento</h4>
+                  {responsibles.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-lg border border-slate-200">Nenhum responsável atribuído.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                      {responsibles.map((p) => {
+                        const person = p.members || p.users;
+                        const name = person?.full_name || '—';
+                        const roleName = person?.ecclesiastical_title || PARTICIPANT_ROLE_LABELS[p.role];
+                        const churchName = person?.churches?.name || 'Igreja';
+                        const campoName = person?.campos?.name || 'Sem Campo';
+                        const avatar = person?.photo_url || person?.avatar_url;
+                        const phone = person?.phone;
+                        const statusText = person?.membership_status || (p.users?.is_active ? 'ATIVO' : 'INATIVO') || 'ATIVO';
+                        const isActive = statusText.toUpperCase() === 'ATIVO';
+
+                        return (
+                          <div key={p.id} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                            {avatar ? (
+                              <img src={avatar} alt={name} className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm border border-slate-200 flex-shrink-0">
+                                {name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-sm text-slate-800 truncate">{name}</span>
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${isActive ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                                  {statusText}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                                <span className="font-medium text-slate-700">{roleName}</span>
+                                <span>•</span>
+                                <span>{churchName}</span>
+                                <span>•</span>
+                                <span className="text-slate-400">{campoName}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {phone && (
+                                <a href={`https://wa.me/${phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+                                  className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 hover:text-green-700 transition-colors" title="WhatsApp">
+                                  <MessageCircle className="w-4 h-4" />
+                                </a>
+                              )}
+                              <button onClick={() => removeParticipantMutation.mutate(p.id)}
+                                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors" title="Remover">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
+
+                {/* Grupo de Pessoas Envolvidas */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Outras Pessoas Envolvidas (Atendidos / Visitantes)</h4>
+                  {otherParticipants.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">Nenhuma outra pessoa envolvida.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {otherParticipants.map((p) => {
+                        const person = p.members || p.users;
+                        const name = person?.full_name || '—';
+                        return (
+                          <span key={p.id}
+                            className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-medium"
+                          >
+                            <span className="w-4 h-4 rounded-full bg-slate-400 text-white text-[10px] flex items-center justify-center flex-shrink-0 font-bold">
+                              {name.charAt(0).toUpperCase()}
+                            </span>
+                            <span className="truncate max-w-[140px]">{name}</span>
+                            <span className="text-[10px] text-slate-500 opacity-70">· {PARTICIPANT_ROLE_LABELS[p.role] ?? p.role}</span>
+                            <button
+                              onClick={() => removeParticipantMutation.mutate(p.id)}
+                              className="ml-0.5 hover:text-red-500 text-slate-400 transition-colors"
+                              title="Remover"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Formulário de Adicionar Pessoa */}
+                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
+                  <h4 className="font-semibold text-slate-800 text-sm">Adicionar Pessoa / Responsável</h4>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 mb-1 block">Papel</label>
+                    <select value={participantRole} onChange={(e) => setParticipantRole(e.target.value as ParticipantRole)}
+                      className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                      {(Object.entries(PARTICIPANT_ROLE_LABELS) as [ParticipantRole, string][]).map(([k, l]) => (
+                        <option key={k} value={k}>{l}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 mb-1 block">Buscar membro da igreja</label>
+                    <input
+                      value={participantSearch}
+                      onChange={(e) => setParticipantSearch(e.target.value)}
+                      placeholder="Nome do membro..."
+                      className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2"
+                    />
+                    {participantSearch.length >= 2 && (
+                      <div className="mt-1 border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm max-h-48 overflow-y-auto">
+                        {searchLoading ? (
+                          <div className="flex items-center justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-slate-400" /></div>
+                        ) : memberSearchResults.length > 0 ? (
+                          memberSearchResults
+                            .filter((m) => !participants.some((p) => p.member_id === m.id))
+                            .map((m) => {
+                              const name = m.full_name || 'Sem Nome';
+                              const title = m.ecclesiastical_title || 'Membro';
+                              const churchName = m.churches?.name || 'Igreja';
+                              return (
+                                <button key={m.id}
+                                  onClick={() => addParticipantMutation.mutate({ memberId: m.id, role: participantRole })}
+                                  disabled={addParticipantMutation.isPending}
+                                  className="flex flex-col gap-0.5 w-full px-4 py-2 hover:bg-green-50 text-left border-b border-slate-100 last:border-0 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <User className="w-4 h-4 text-slate-400" />
+                                    <span className="font-semibold text-sm text-slate-800">{name}</span>
+                                    <span className="ml-auto text-xs text-green-600 font-medium hover:underline">+ Adicionar</span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 pl-6">
+                                    {title} • {churchName}
+                                  </div>
+                                </button>
+                              );
+                            })
+                        ) : (
+                          <div className="px-4 py-2.5 text-sm text-slate-400">Nenhum membro encontrado</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── ARQUIVOS ── */}
           {activeTab === 'arquivos' && (
