@@ -935,75 +935,131 @@ export async function getPastoralReportSummary(params: {
   const startISO = `${startDate}T00:00:00`;
   const endISO = `${endDate}T23:59:59`;
 
-  const [visitsRes, counselingRes, prayerRes, discipleshipRes] = await Promise.all([
-    supabase
-      .from('pastoral_visits')
-      .select('id, status, responsible_id, users(full_name)', { count: 'exact' })
-      .eq('church_id', churchId)
-      .is('deleted_at', null)
-      .gte('created_at', startISO)
-      .lte('created_at', endISO),
-    supabase
-      .from('pastoral_counselings')
-      .select('id, status, counselor_id, users(full_name)', { count: 'exact' })
-      .eq('church_id', churchId)
-      .is('deleted_at', null)
-      .gte('created_at', startISO)
-      .lte('created_at', endISO),
-    supabase
-      .from('prayer_requests')
-      .select('id, status, category, prayed_count', { count: 'exact' })
-      .eq('church_id', churchId)
-      .is('deleted_at', null)
-      .gte('created_at', startISO)
-      .lte('created_at', endISO),
-    supabase
-      .from('discipleships')
-      .select('id, status, progress_percent', { count: 'exact' })
-      .eq('church_id', churchId)
-      .is('deleted_at', null)
-      .gte('created_at', startISO)
-      .lte('created_at', endISO),
-  ]);
+  const { data, error } = await supabase
+    .from('pastoral_attendances')
+    .select('id, status, attendance_type, created_at, responsible_user_id, users!pastoral_attendances_responsible_user_id_fkey(full_name)')
+    .eq('church_id', churchId)
+    .is('deleted_at', null)
+    .gte('created_at', startISO)
+    .lte('created_at', endISO);
 
-  const handled = [visitsRes.error, counselingRes.error, prayerRes.error, discipleshipRes.error].find(
-    (error: any) => error && error.code !== '42P01',
-  );
-  if (handled) throw handled;
+  if (error) {
+    if (error.code === '42P01') {
+      return {
+        totals: {
+          visits: 0,
+          counseling: 0,
+          prayers: 0,
+          discipleships: 0,
+          answeredPrayers: 0,
+          completedVisits: 0,
+          activeCounseling: 0,
+          completedDiscipleships: 0,
+          avgDiscipleshipProgress: 0,
+          totalPrayerInteractions: 0,
+        },
+        visitsByResponsible: {},
+        prayerByCategory: {},
+      };
+    }
+    throw error;
+  }
 
-  const visits = visitsRes.data || [];
-  const counseling = counselingRes.data || [];
-  const prayers = prayerRes.data || [];
-  const discipleships = discipleshipRes.data || [];
+  const attendances = data || [];
+
+  let visitsCount = 0;
+  let counselingCount = 0;
+  let prayersCount = 0;
+  let discipleshipsCount = 0;
+
+  let answeredPrayers = 0;
+  let completedVisits = 0;
+  let activeCounseling = 0;
+  let completedDiscipleships = 0;
 
   const visitsByResponsible: Record<string, number> = {};
-  visits.forEach((visit: any) => {
-    const name = visit.users?.full_name || 'Sem responsável';
-    visitsByResponsible[name] = (visitsByResponsible[name] || 0) + 1;
-  });
-
   const prayerByCategory: Record<string, number> = {};
-  prayers.forEach((request: any) => {
-    const key = request.category || 'outro';
-    prayerByCategory[key] = (prayerByCategory[key] || 0) + 1;
+
+  const typeLabels: Record<string, string> = {
+    visita_pastoral: 'Visita Pastoral',
+    aconselhamento: 'Aconselhamento',
+    discipulado: 'Discipulado',
+    pedido_oracao: 'Pedido de Oração',
+    followup: 'Follow-up',
+    emergencial: 'Atendimento Emergencial',
+    reconciliacao: 'Reconciliação',
+    familiar: 'Atendimento Familiar',
+    jovem: 'Atendimento Jovem',
+    infantil: 'Atendimento Infantil',
+    financeiro: 'Atendimento Financeiro',
+    ministerial: 'Atendimento Ministerial',
+    online: 'Atendimento Online',
+    presencial: 'Atendimento Presencial',
+    casamento: 'Casamento',
+    apresentacao_criancas: 'Apresentação de Crianças',
+    quero_ser_membro: 'Quero ser Membro'
+  };
+
+  attendances.forEach((item: any) => {
+    const type = item.attendance_type;
+    const isVisit = ['visita_pastoral', 'online', 'presencial'].includes(type);
+    const isCounseling = ['aconselhamento', 'emergencial', 'reconciliacao', 'familiar', 'jovem', 'infantil', 'financeiro', 'ministerial', 'followup', 'casamento', 'apresentacao_criancas', 'quero_ser_membro'].includes(type);
+    const isPrayer = type === 'pedido_oracao';
+    const isDiscipleship = type === 'discipulado';
+
+    // Increment general type breakdown table
+    const label = typeLabels[type] || type || 'Outro';
+    prayerByCategory[label] = (prayerByCategory[label] || 0) + 1;
+
+    if (isVisit) {
+      visitsCount++;
+      if (item.status === 'done') {
+        completedVisits++;
+      }
+      const name = item.users?.full_name || 'Sem responsável';
+      visitsByResponsible[name] = (visitsByResponsible[name] || 0) + 1;
+    } else if (isCounseling) {
+      counselingCount++;
+      if (item.status !== 'done' && item.status !== 'cancelled') {
+        activeCounseling++;
+      }
+    } else if (isPrayer) {
+      prayersCount++;
+      if (item.status === 'done') {
+        answeredPrayers++;
+      }
+    } else if (isDiscipleship) {
+      discipleshipsCount++;
+      if (item.status === 'done') {
+        completedDiscipleships++;
+      }
+    }
   });
 
+  const discipleships = attendances.filter((item: any) => item.attendance_type === 'discipulado');
   const avgProgress = discipleships.length
-    ? Math.round(discipleships.reduce((acc: number, row: any) => acc + Number(row.progress_percent || 0), 0) / discipleships.length)
+    ? Math.round(
+        discipleships.reduce((acc: number, item: any) => {
+          let progress = 0;
+          if (item.status === 'done') progress = 100;
+          else if (item.status === 'doing') progress = 50;
+          return acc + progress;
+        }, 0) / discipleships.length
+      )
     : 0;
 
   return {
     totals: {
-      visits: Number(visitsRes.count || visits.length),
-      counseling: Number(counselingRes.count || counseling.length),
-      prayers: Number(prayerRes.count || prayers.length),
-      discipleships: Number(discipleshipRes.count || discipleships.length),
-      answeredPrayers: prayers.filter((row: any) => row.status === 'answered').length,
-      completedVisits: visits.filter((row: any) => row.status === 'completed').length,
-      activeCounseling: counseling.filter((row: any) => row.status === 'active').length,
-      completedDiscipleships: discipleships.filter((row: any) => row.status === 'completed').length,
+      visits: visitsCount,
+      counseling: counselingCount,
+      prayers: prayersCount,
+      discipleships: discipleshipsCount,
+      answeredPrayers,
+      completedVisits,
+      activeCounseling,
+      completedDiscipleships,
       avgDiscipleshipProgress: avgProgress,
-      totalPrayerInteractions: prayers.reduce((acc: number, row: any) => acc + Number(row.prayed_count || 0), 0),
+      totalPrayerInteractions: prayersCount, // Fallback since prayed_count is not in pastoral_attendances
     },
     visitsByResponsible,
     prayerByCategory,

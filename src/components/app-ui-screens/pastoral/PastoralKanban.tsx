@@ -4,7 +4,7 @@
  * Módulo EXCLUSIVO do pastoral. NÃO compartilha dados com a Secretaria/CRM.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -32,6 +32,7 @@ import {
   ChevronDown,
   Check,
   X,
+  Printer,
 } from 'lucide-react';
 import {
   type PastoralPipelineColumn,
@@ -49,6 +50,9 @@ import {
   movePastoralAttendance,
   getPastoralKanbanSummary,
   updatePastoralAttendance,
+  listPastoralNotes,
+  listPastoralActivities,
+  listPastoralTimeline,
 } from '../../lib/pastoralKanbanService';
 import { supabase } from '../../lib/supabaseClient';
 import { PastoralAttendanceDetail } from './PastoralAttendanceDetail';
@@ -262,6 +266,15 @@ export default function PastoralKanban() {
   const churchId = getCurrentChurchId();
   const queryClient = useQueryClient();
 
+  const user = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('mrm_user') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+  const isSecretary = user.profileType === 'church';
+
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<AttendanceType | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<Priority | 'all'>('all');
@@ -272,7 +285,15 @@ export default function PastoralKanban() {
   const [dateFrom, setDateFrom] = useState(_firstDay);
   const [dateTo, setDateTo] = useState(_lastDay);
   const [selectedRegionals, setSelectedRegionals] = useState<string[]>([]);
-  const [filterChurchId, setFilterChurchId] = useState<string>('');
+  const [filterChurchId, setFilterChurchId] = useState<string>(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+      if (u.profileType === 'church' && u.churchId) {
+        return u.churchId;
+      }
+    } catch {}
+    return '';
+  });
   const [showRegionalDropdown, setShowRegionalDropdown] = useState(false);
   const [showChurchDropdown, setShowChurchDropdown] = useState(false);
   const regionalDropdownRef = useRef<HTMLDivElement>(null);
@@ -293,24 +314,38 @@ export default function PastoralKanban() {
   }, []);
   const [selectedCard, setSelectedCard] = useState<PastoralAttendance | null>(null);
   const [newCardColumn, setNewCardColumn] = useState<PastoralPipelineColumn | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const dragCardRef = useRef<PastoralAttendance | null>(null);
 
-  // Regionais + Churches queries for filters
+  // Regionais + Churches queries for filters with tenant isolation
   const { data: regionais = [] } = useQuery({
-    queryKey: ['regionais-list'],
+    queryKey: ['regionais-list', user],
     queryFn: async () => {
-      const { data } = await supabase.from('regionais').select('id, name').order('name');
+      let q = supabase.from('regionais').select('id, name').order('name');
+      if (user.profileType === 'campo' && user.campoId) {
+        q = q.eq('campo_id', user.campoId);
+      }
+      const { data } = await q;
       return (data ?? []) as { id: string; name: string }[];
     },
     staleTime: 60_000,
   });
 
   const { data: allChurches = [] } = useQuery({
-    queryKey: ['churches-by-regionals', selectedRegionals],
+    queryKey: ['churches-by-regionals', selectedRegionals, user],
     queryFn: async () => {
       let q = supabase.from('churches').select('id, name, regional_id').order('name');
-      if (selectedRegionals.length > 0) q = q.in('regional_id', selectedRegionals);
+      if (selectedRegionals.length > 0) {
+        q = q.in('regional_id', selectedRegionals);
+      } else if (user.profileType === 'campo' && user.campoId) {
+        const { data: regionaisOfCampo } = await supabase
+          .from('regionais')
+          .select('id')
+          .eq('campo_id', user.campoId);
+        const regIds = regionaisOfCampo?.map((r) => r.id) || [];
+        q = q.in('regional_id', regIds);
+      }
       const { data } = await q.limit(500);
       return (data ?? []) as { id: string; name: string; regional_id: string }[];
     },
@@ -326,15 +361,25 @@ export default function PastoralKanban() {
   });
 
   const { data: allCards = [], isLoading: loadingCards } = useQuery({
-    queryKey: ['pastoral-kanban-cards', churchId, filterChurchId, search, filterType, filterPriority],
+    queryKey: ['pastoral-kanban-cards', churchId, filterChurchId, search, filterType, filterPriority, allChurches, user],
     enabled: !!churchId,
-    queryFn: () =>
-      listPastoralAttendances({
-        churchId: filterChurchId || churchId!,
+    queryFn: () => {
+      const isCampo = user.profileType === 'campo';
+      const useMultiChurch = isCampo && !filterChurchId;
+      const churchIds = useMultiChurch ? allChurches.map((c) => c.id) : undefined;
+
+      if (useMultiChurch && (!churchIds || churchIds.length === 0)) {
+        return [];
+      }
+
+      return listPastoralAttendances({
+        churchId: filterChurchId || (useMultiChurch ? undefined : churchId!),
+        churchIds,
         search,
         attendanceType: filterType,
         priority: filterPriority,
-      }),
+      });
+    },
     staleTime: 10_000,
   });
 
@@ -346,11 +391,40 @@ export default function PastoralKanban() {
   });
 
   // Move mutation
+  const notificationHeaders = useMemo(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') : null;
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  }, []);
+
   const moveMutation = useMutation({
     mutationFn: movePastoralAttendance,
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-cards'] });
       void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-summary'] });
+
+      // Trigger status_changed notification
+      const statusMap: Record<ColumnKey, string> = {
+        todo: 'open',
+        doing: 'doing',
+        done: 'done',
+        cancelled: 'cancelled',
+      };
+
+      const newStatus = statusMap[variables.targetColumnKey];
+      void fetch('/api/pastoral/notify', {
+        method: 'POST',
+        headers: notificationHeaders,
+        body: JSON.stringify({
+          eventType: 'status_changed',
+          attendanceId: variables.attendanceId,
+          newStatus,
+        }),
+      }).catch((err) => {
+        console.error('Failed to trigger status_changed notification:', err);
+      });
     },
   });
 
@@ -374,6 +448,287 @@ export default function PastoralKanban() {
     return true;
   });
   const tableCards = dateFilteredCards;
+
+  async function handlePrintPipeline() {
+    if (dateFilteredCards.length === 0) {
+      alert("Não há atendimentos para imprimir com os filtros aplicados.");
+      return;
+    }
+
+    try {
+      setIsPrinting(true);
+
+      // Fetch details for all cards in parallel
+      const cardsWithDetails = await Promise.all(
+        dateFilteredCards.map(async (card) => {
+          const [notes, activities, timeline] = await Promise.all([
+            listPastoralNotes(card.id).catch(() => []),
+            listPastoralActivities(card.id).catch(() => []),
+            listPastoralTimeline(card.id).catch(() => []),
+          ]);
+          return {
+            ...card,
+            notesList: notes,
+            activitiesList: activities,
+            timelineList: timeline,
+          };
+        })
+      );
+
+      const printDate = new Date().toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+
+      // Build HTML content
+      let htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Relatório do Pipeline Pastoral</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 10px; color: #1e293b; padding: 15px; background: white; }
+    .header { border-bottom: 2px solid #22c55e; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .header-title { font-size: 16px; font-weight: bold; color: #1e293b; text-transform: uppercase; }
+    .header-sub { font-size: 9px; color: #64748b; margin-top: 3px; }
+    .header-brand { font-size: 10px; font-weight: bold; color: #22c55e; }
+    
+    .card-section { margin-bottom: 25px; page-break-inside: avoid; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; background: #fff; }
+    .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
+    .card-person { font-size: 14px; font-weight: bold; color: #0f172a; text-transform: uppercase; }
+    .card-type-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 8px; font-weight: bold; text-transform: uppercase; margin-top: 3px; }
+    
+    .card-meta-grid { display: grid; grid-template-cols: repeat(4, 1fr); gap: 8px; font-size: 9.5px; color: #334155; margin-bottom: 8px; }
+    .meta-item { background: #f8fafc; padding: 6px; border-radius: 4px; border: 1px solid #f1f5f9; }
+    .meta-label { font-weight: bold; color: #64748b; font-size: 8px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+    
+    .card-notes-desc { background: #fdfdfd; border-left: 3px solid #cbd5e1; padding: 8px; font-size: 9.5px; color: #334155; margin-top: 10px; white-space: pre-wrap; }
+    
+    .sub-section { margin-top: 15px; }
+    .sub-section-title { font-size: 10px; font-weight: bold; color: #334155; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; }
+    
+    table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9px; }
+    th, td { border: 1px solid #e2e8f0; padding: 5px 6px; text-align: left; vertical-align: top; }
+    th { background: #f8fafc; font-weight: bold; color: #475569; text-transform: uppercase; font-size: 8px; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .empty-text { font-style: italic; color: #94a3b8; font-size: 9px; padding: 4px 0; }
+    
+    .page-break { page-break-after: always; }
+    @media print {
+      body { padding: 0; }
+      .page-break { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="header-title">Relatório de Atendimentos Pastorais</h1>
+      <p class="header-sub">Filtros aplicados · Gerado em: ${printDate}</p>
+    </div>
+    <div class="header-brand">SISTEMA MRM</div>
+  </div>
+`;
+
+      const typeLabels: Record<string, string> = {
+        visita_pastoral: 'Visita Pastoral',
+        aconselhamento: 'Aconselhamento',
+        discipulado: 'Discipulado',
+        pedido_oracao: 'Pedido de Oração',
+        followup: 'Follow-up',
+        emergencial: 'Atendimento Emergencial',
+        reconciliacao: 'Reconciliação',
+        familiar: 'Atendimento Familiar',
+        jovem: 'Atendimento Jovem',
+        infantil: 'Atendimento Infantil',
+        financeiro: 'Atendimento Financeiro',
+        ministerial: 'Atendimento Ministerial',
+        online: 'Atendimento Online',
+        presencial: 'Atendimento Presencial',
+        casamento: 'Casamento',
+        apresentacao_criancas: 'Apresentação de Crianças'
+      };
+
+      const priorityLabels: Record<string, string> = {
+        low: 'Baixa',
+        normal: 'Normal',
+        high: 'Alta',
+        urgent: 'Urgente'
+      };
+
+      const activityTypeLabels: Record<string, string> = {
+        visit: 'Visita',
+        call: 'Ligação',
+        meeting: 'Reunião',
+        prayer: 'Oração',
+        counseling: 'Aconselhamento',
+        other: 'Outro'
+      };
+
+      cardsWithDetails.forEach((card, index) => {
+        const personName = card.members?.full_name || card.visitor_name || card.title || 'Sem identificação';
+        const columnName = columns.find(c => c.id === card.column_id)?.name || 'Sem coluna';
+        const typeColor = ATTENDANCE_TYPE_COLORS[card.attendance_type] ?? '#6366f1';
+        const typeLabel = typeLabels[card.attendance_type] || card.attendance_type;
+
+        htmlContent += `
+        <div class="card-section ${index < cardsWithDetails.length - 1 ? 'page-break' : ''}">
+          <div class="card-header-row">
+            <div>
+              <h2 class="card-person">${personName}</h2>
+              <span class="card-type-badge" style="background-color: ${typeColor}15; color: ${typeColor};">${typeLabel}</span>
+            </div>
+            <div style="text-align: right; font-size: 9px; color: #64748b;">
+              <strong>Abertura:</strong> ${new Date(card.created_at).toLocaleDateString('pt-BR')}
+            </div>
+          </div>
+          
+          <div class="card-meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Status</span>
+              <strong>${columnName}</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Prioridade</span>
+              <strong>${priorityLabels[card.priority] || card.priority}</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Responsável</span>
+              <strong>${card.users?.full_name || 'Sem responsável'}</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Congregação</span>
+              <strong>${card.churches?.name || 'Sem congregação'}</strong>
+            </div>
+          </div>
+
+          <div class="card-meta-grid" style="grid-template-cols: 1fr 1fr; margin-top: 5px;">
+            <div class="meta-item">
+              <span class="meta-label">WhatsApp / Telefone</span>
+              <strong>${card.phone || '—'}</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">E-mail</span>
+              <strong>${card.email || '—'}</strong>
+            </div>
+          </div>
+
+          ${card.notes ? `
+          <div class="card-notes-desc">
+            <strong>Notas/Descrição Inicial:</strong><br/>${card.notes}
+          </div>
+          ` : ''}
+
+          <!-- NOTAS -->
+          <div class="sub-section">
+            <h3 class="sub-section-title">Notas / Comentários (${card.notesList.length})</h3>
+            ${card.notesList.length === 0 ? '<p class="empty-text">Nenhuma nota cadastrada.</p>' : `
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 15%">Data</th>
+                  <th style="width: 25%">Autor</th>
+                  <th>Conteúdo</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${card.notesList.map((n: any) => `
+                  <tr>
+                    <td>${new Date(n.created_at).toLocaleDateString('pt-BR')}</td>
+                    <td>${n.users?.full_name || '—'}</td>
+                    <td>${n.content}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            `}
+          </div>
+
+          <!-- ATIVIDADES -->
+          <div class="sub-section">
+            <h3 class="sub-section-title">Atividades Agendadas (${card.activitiesList.length})</h3>
+            ${card.activitiesList.length === 0 ? '<p class="empty-text">Nenhuma atividade registrada.</p>' : `
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 15%">Data/SLA</th>
+                  <th style="width: 15%">Tipo</th>
+                  <th style="width: 30%">Título</th>
+                  <th style="width: 15%">Status</th>
+                  <th>Descrição</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${card.activitiesList.map((act: any) => `
+                  <tr>
+                    <td>${act.scheduled_date ? new Date(act.scheduled_date).toLocaleDateString('pt-BR') : '—'}</td>
+                    <td>${activityTypeLabels[act.activity_type] || act.activity_type}</td>
+                    <td>${act.title}</td>
+                    <td>${act.completed ? 'Concluída' : 'Pendente'}</td>
+                    <td>${act.description || '—'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            `}
+          </div>
+
+          <!-- LINHA DO TEMPO -->
+          <div class="sub-section">
+            <h3 class="sub-section-title">Linha do Tempo / Histórico de Movimentações (${card.timelineList.length})</h3>
+            ${card.timelineList.length === 0 ? '<p class="empty-text">Nenhuma movimentação registrada.</p>' : `
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 20%">Data/Hora</th>
+                  <th style="width: 15%">Tipo</th>
+                  <th>Descrição</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${card.timelineList.map((t: any) => `
+                  <tr>
+                    <td>${new Date(t.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                    <td>${t.event_type.toUpperCase()}</td>
+                    <td>${t.description}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            `}
+          </div>
+        </div>
+        `;
+      });
+
+      htmlContent += `
+</body>
+</html>
+      `;
+
+      // Print in hidden iframe
+      const printFrame = document.createElement('iframe');
+      printFrame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
+      document.body.appendChild(printFrame);
+      const fw = printFrame.contentWindow!;
+      fw.document.open();
+      fw.document.write(htmlContent);
+      fw.document.close();
+
+      const cleanup = () => {
+        if (document.body.contains(printFrame)) printFrame.remove();
+      };
+      window.addEventListener('focus', cleanup, { once: true });
+      fw.focus();
+      fw.print();
+    } catch (error) {
+      console.error("Failed to generate pipeline printout:", error);
+      alert("Erro ao gerar a visualização de impressão. Tente novamente.");
+    } finally {
+      setIsPrinting(false);
+    }
+  }
 
   // Group cards by column (respecting date filter)
   const cardsByColumn = columns.reduce<Record<string, PastoralAttendance[]>>((acc, col) => {
@@ -428,6 +783,18 @@ export default function PastoralKanban() {
               title="Atualizar"
             >
               <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handlePrintPipeline}
+              disabled={isPrinting}
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+              title="Imprimir Relatório do Pipeline"
+            >
+              {isPrinting ? (
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+              ) : (
+                <Printer className="w-4 h-4" />
+              )}
             </button>
             {/* View mode toggle */}
             <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
@@ -517,99 +884,103 @@ export default function PastoralKanban() {
                   className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
               </div>
 
-              {/* Regionais multi-select */}
-              <div className="relative" ref={regionalDropdownRef}>
-                <button
-                  onClick={() => { setShowRegionalDropdown((v) => !v); setShowChurchDropdown(false); }}
-                  className="flex items-center gap-2 min-w-[160px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
-                >
-                  <span className="flex-1 text-left truncate">
-                    {selectedRegionals.length === 0
-                      ? 'Todas as regionais'
-                      : selectedRegionals.length === 1
-                        ? (regionais.find((r) => r.id === selectedRegionals[0])?.name ?? '1 regional')
-                        : `${selectedRegionals.length} regionais`}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                </button>
-                {showRegionalDropdown && (
-                  <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-56 overflow-hidden">
-                    <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 bg-slate-50">
-                      <span className="text-xs text-slate-500 flex-1 font-medium">regional</span>
-                      <button onClick={() => setSelectedRegionals(regionais.map((r) => r.id))}
-                        className="text-xs text-blue-600 hover:underline">Marcar todas</button>
-                      <button onClick={() => setSelectedRegionals([])}
-                        className="text-xs text-slate-500 hover:underline">Desmarcar</button>
-                    </div>
-                    <div className="max-h-56 overflow-y-auto">
-                      {regionais.map((r) => {
-                        const checked = selectedRegionals.includes(r.id);
-                        return (
-                          <label key={r.id}
-                            className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
-                            <input
-                              type="checkbox" checked={checked}
-                              onChange={() => {
-                                setSelectedRegionals((prev) =>
-                                  checked ? prev.filter((id) => id !== r.id) : [...prev, r.id]
-                                );
-                                setFilterChurchId('');
-                              }}
-                              className="rounded border-slate-300 accent-green-600"
-                            />
-                            {r.name}
-                          </label>
-                        );
-                      })}
-                    </div>
+              {!isSecretary && (
+                <>
+                  {/* Regionais multi-select */}
+                  <div className="relative" ref={regionalDropdownRef}>
+                    <button
+                      onClick={() => { setShowRegionalDropdown((v) => !v); setShowChurchDropdown(false); }}
+                      className="flex items-center gap-2 min-w-[160px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
+                    >
+                      <span className="flex-1 text-left truncate">
+                        {selectedRegionals.length === 0
+                          ? 'Todas as regionais'
+                          : selectedRegionals.length === 1
+                            ? (regionais.find((r) => r.id === selectedRegionals[0])?.name ?? '1 regional')
+                            : `${selectedRegionals.length} regionais`}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    </button>
+                    {showRegionalDropdown && (
+                      <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-56 overflow-hidden">
+                        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 bg-slate-50">
+                          <span className="text-xs text-slate-500 flex-1 font-medium">regional</span>
+                          <button onClick={() => setSelectedRegionals(regionais.map((r) => r.id))}
+                            className="text-xs text-blue-600 hover:underline">Marcar todas</button>
+                          <button onClick={() => setSelectedRegionals([])}
+                            className="text-xs text-slate-500 hover:underline">Desmarcar</button>
+                        </div>
+                        <div className="max-h-56 overflow-y-auto">
+                          {regionais.map((r) => {
+                            const checked = selectedRegionals.includes(r.id);
+                            return (
+                              <label key={r.id}
+                                className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
+                                <input
+                                  type="checkbox" checked={checked}
+                                  onChange={() => {
+                                    setSelectedRegionals((prev) =>
+                                      checked ? prev.filter((id) => id !== r.id) : [...prev, r.id]
+                                    );
+                                    setFilterChurchId('');
+                                  }}
+                                  className="rounded border-slate-300 accent-green-600"
+                                />
+                                {r.name}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {/* Igrejas select */}
-              <div className="relative" ref={churchDropdownRef}>
-                <button
-                  onClick={() => { setShowChurchDropdown((v) => !v); setShowRegionalDropdown(false); }}
-                  className="flex items-center gap-2 min-w-[180px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
-                >
-                  <span className="flex-1 text-left truncate">
-                    {filterChurchId
-                      ? (allChurches.find((c) => c.id === filterChurchId)?.name ?? 'Igreja selecionada')
-                      : 'Todos as Igrejas'}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                </button>
-                {showChurchDropdown && (
-                  <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-64 overflow-hidden">
-                    <div className="max-h-60 overflow-y-auto">
-                      <button
-                        onClick={() => { setFilterChurchId(''); setShowChurchDropdown(false); }}
-                        className={`flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-slate-50 text-left border-b border-slate-100 ${!filterChurchId ? 'text-green-700 font-semibold' : 'text-slate-700'}`}
-                      >
-                        {!filterChurchId && <Check className="w-3.5 h-3.5 text-green-600" />}
-                        <span className={!filterChurchId ? '' : 'pl-5'}>Todos as Igrejas</span>
-                      </button>
-                      {allChurches.map((c) => (
-                        <button key={c.id}
-                          onClick={() => { setFilterChurchId(c.id); setShowChurchDropdown(false); }}
-                          className={`flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-slate-50 text-left ${filterChurchId === c.id ? 'text-green-700 font-semibold' : 'text-slate-700'}`}
-                        >
-                          {filterChurchId === c.id && <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />}
-                          <span className={filterChurchId === c.id ? '' : 'pl-5'}>{c.name}</span>
-                        </button>
-                      ))}
-                    </div>
+                  {/* Igrejas select */}
+                  <div className="relative" ref={churchDropdownRef}>
+                    <button
+                      onClick={() => { setShowChurchDropdown((v) => !v); setShowRegionalDropdown(false); }}
+                      className="flex items-center gap-2 min-w-[180px] text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 hover:border-slate-300"
+                    >
+                      <span className="flex-1 text-left truncate">
+                        {filterChurchId
+                          ? (allChurches.find((c) => c.id === filterChurchId)?.name ?? 'Igreja selecionada')
+                          : 'Todos as Igrejas'}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    </button>
+                    {showChurchDropdown && (
+                      <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-64 overflow-hidden">
+                        <div className="max-h-60 overflow-y-auto">
+                          <button
+                            onClick={() => { setFilterChurchId(''); setShowChurchDropdown(false); }}
+                            className={`flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-slate-50 text-left border-b border-slate-100 ${!filterChurchId ? 'text-green-700 font-semibold' : 'text-slate-700'}`}
+                          >
+                            {!filterChurchId && <Check className="w-3.5 h-3.5 text-green-600" />}
+                            <span className={!filterChurchId ? '' : 'pl-5'}>Todos as Igrejas</span>
+                          </button>
+                          {allChurches.map((c) => (
+                            <button key={c.id}
+                              onClick={() => { setFilterChurchId(c.id); setShowChurchDropdown(false); }}
+                              className={`flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-slate-50 text-left ${filterChurchId === c.id ? 'text-green-700 font-semibold' : 'text-slate-700'}`}
+                            >
+                              {filterChurchId === c.id && <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />}
+                              <span className={filterChurchId === c.id ? '' : 'pl-5'}>{c.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
 
               {/* Limpar filtros */}
-              {(search || filterType !== 'all' || filterPriority !== 'all' || filterChurchId || selectedRegionals.length > 0) && (
+              {(search || filterType !== 'all' || filterPriority !== 'all' || (isSecretary ? filterChurchId !== user.churchId : filterChurchId) || selectedRegionals.length > 0) && (
                 <button
                   onClick={() => {
                     setSearch(''); setFilterType('all'); setFilterPriority('all');
                     setDateFrom(_firstDay); setDateTo(_lastDay);
-                    setSelectedRegionals([]); setFilterChurchId('');
+                    setSelectedRegionals([]); setFilterChurchId(isSecretary ? (user.churchId || '') : '');
                   }}
                   className="flex items-center gap-1 text-xs text-slate-500 hover:text-red-500 transition-colors ml-1"
                 >

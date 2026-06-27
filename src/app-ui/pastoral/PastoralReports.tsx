@@ -33,7 +33,30 @@ export default function PastoralReports() {
   }
 
   return (
-    <div className="p-6 text-slate-900 dark:text-slate-100">
+    <div id="print-report-content" className="p-6 text-slate-900 dark:text-slate-100">
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #print-report-content, #print-report-content * {
+            visibility: visible;
+          }
+          #print-report-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            background: white !important;
+            color: black !important;
+            padding: 0 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
@@ -47,14 +70,14 @@ export default function PastoralReports() {
 
         <button
           onClick={handlePrintPdf}
-          className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+          className="no-print inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
         >
           <Printer className="h-4 w-4" />
-          Exportar PDF
+          Imprimir
         </button>
       </div>
 
-      <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+      <div className="no-print mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-700">Data inicial</label>
@@ -109,13 +132,13 @@ export default function PastoralReports() {
               </table>
             </div>
 
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-              <div className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-800">Pedidos por categoria</div>
+             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+              <div className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-800">Atendimentos por tipo</div>
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
                   <tr>
-                    <th className="px-4 py-2">Categoria</th>
-                    <th className="px-4 py-2">Qtd. pedidos</th>
+                    <th className="px-4 py-2">Tipo de atendimento</th>
+                    <th className="px-4 py-2">Quantidade</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">

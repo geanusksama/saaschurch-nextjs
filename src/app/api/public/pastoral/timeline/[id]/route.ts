@@ -24,11 +24,21 @@ export async function GET(
 
     const { data: timeline, error: tlErr } = await supabaseAdmin
       .from("pastoral_attendance_timeline")
-      .select("id, event_type, description, created_at")
+      .select("id, event_type, description, created_at, metadata")
       .eq("attendance_id", id)
       .order("created_at", { ascending: true });
 
     if (tlErr) throw tlErr;
+
+    // Filter out private timeline entries
+    const publicTimeline = (timeline || [])
+      .filter((t: any) => !t.metadata?.is_private)
+      .map((t: any) => ({
+        id: t.id,
+        event_type: t.event_type,
+        description: t.description,
+        created_at: t.created_at,
+      }));
 
     // Get current position in column
     let position = 1;
@@ -51,7 +61,7 @@ export async function GET(
         createdAt: attendance.created_at,
         churchName: (attendance.churches as any)?.name || "AD Campinas",
       },
-      timeline: timeline || [],
+      timeline: publicTimeline,
       position,
     });
   } catch (e) {

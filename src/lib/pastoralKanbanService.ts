@@ -120,7 +120,7 @@ export type PastoralNote = {
   is_pinned: boolean;
   created_by: string | null;
   created_at: string;
-  updated_at: string;
+  is_private?: boolean;
   users?: { full_name: string | null } | null;
 };
 
@@ -211,22 +211,28 @@ export async function listPastoralColumns(churchId: string): Promise<PastoralPip
 // ─── Atendimentos (Cards) ────────────────────────────────────────────────────
 
 export async function listPastoralAttendances(params: {
-  churchId: string;
+  churchId?: string;
+  churchIds?: string[];
   columnId?: string;
   search?: string;
   attendanceType?: AttendanceType | 'all';
   responsibleId?: string;
   priority?: Priority | 'all';
 }): Promise<PastoralAttendance[]> {
-  const { churchId, columnId, search = '', attendanceType = 'all', responsibleId, priority = 'all' } = params;
+  const { churchId, churchIds, columnId, search = '', attendanceType = 'all', responsibleId, priority = 'all' } = params;
 
   let query = supabase
     .from('pastoral_attendances')
     .select('*, members(full_name, photo_url), users!pastoral_attendances_responsible_user_id_fkey(full_name), churches(name)')
-    .eq('church_id', churchId)
     .is('deleted_at', null)
     .order('position', { ascending: true })
     .order('created_at', { ascending: false });
+
+  if (churchIds && churchIds.length > 0) {
+    query = query.in('church_id', churchIds);
+  } else if (churchId) {
+    query = query.eq('church_id', churchId);
+  }
 
   if (columnId) query = query.eq('column_id', columnId);
   if (attendanceType !== 'all') query = query.eq('attendance_type', attendanceType);
@@ -519,6 +525,7 @@ export async function createPastoralNote(input: {
   content: string;
   isPinned?: boolean;
   createdBy?: string | null;
+  isPrivate?: boolean;
 }): Promise<PastoralNote> {
   const { data, error } = await supabase
     .from('pastoral_attendance_notes')
@@ -527,6 +534,7 @@ export async function createPastoralNote(input: {
       church_id: input.churchId,
       content: input.content,
       is_pinned: input.isPinned || false,
+      is_private: input.isPrivate || false,
       created_by: input.createdBy || null,
       updated_by: input.createdBy || null,
     })
@@ -539,7 +547,8 @@ export async function createPastoralNote(input: {
     attendanceId: input.attendanceId,
     churchId: input.churchId,
     eventType: 'note',
-    description: 'Nota adicionada',
+    description: input.isPrivate ? 'Nota restrita adicionada' : 'Nota adicionada',
+    metadata: { is_private: input.isPrivate || false },
     createdBy: input.createdBy || null,
   }).catch(() => {});
 
@@ -699,13 +708,22 @@ export type PastoralParticipant = {
   notes: string | null;
   created_at: string;
   members?: { full_name: string | null; photo_url?: string | null } | null;
-  users?: { full_name: string | null } | null;
+  users?: {
+    full_name: string | null;
+    phone?: string | null;
+    avatar_url?: string | null;
+    is_active?: boolean;
+    profile_type?: string;
+    roles?: { name: string } | null;
+    churches?: { name: string } | null;
+    campos?: { name: string } | null;
+  } | null;
 };
 
 export async function listPastoralParticipants(attendanceId: string): Promise<PastoralParticipant[]> {
   const { data, error } = await supabase
     .from('pastoral_attendance_participants')
-    .select('*, members(full_name, photo_url), users!pastoral_attendance_participants_user_id_fkey(full_name)')
+    .select('*, members(full_name, photo_url), users!pastoral_attendance_participants_user_id_fkey(full_name, phone, avatar_url, is_active, profile_type, roles(name), churches(name), campos(name))')
     .eq('attendance_id', attendanceId)
     .order('created_at', { ascending: true });
 
@@ -788,5 +806,104 @@ export async function updatePastoralActivity(
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('id', activityId);
   if (error) throw error;
+}
+
+export async function searchUsersForResponsibility(params: {
+  search: string;
+  profileType: string;
+  churchId?: string | null;
+  campoId?: string | null;
+}): Promise<any[]> {
+  const { search, profileType, churchId, campoId } = params;
+
+  let query = supabase
+    .from('users')
+    .select('id, full_name, phone, avatar_url, is_active, profile_type, roles(name), churches(name), campos(name)')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .ilike('full_name', `%${search}%`)
+    .limit(10);
+
+  if (profileType === 'church' && churchId) {
+    query = query.eq('church_id', churchId);
+  } else if (profileType === 'campo' && campoId) {
+    // Fetch all churches in the campo
+    const { data: regionais } = await supabase
+      .from('regionais')
+      .select('id')
+      .eq('campo_id', campoId);
+
+    const regionalIds = regionais?.map((r) => r.id) || [];
+
+    if (regionalIds.length > 0) {
+      const { data: churches } = await supabase
+        .from('churches')
+        .select('id')
+        .in('regional_id', regionalIds);
+
+      const churchIds = churches?.map((c) => c.id) || [];
+
+      if (churchIds.length > 0) {
+        query = query.or(`campo_id.eq.${campoId},church_id.in.(${churchIds.join(',')})`);
+      } else {
+        query = query.eq('campo_id', campoId);
+      }
+    } else {
+      query = query.eq('campo_id', campoId);
+    }
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function searchMembersForAttendance(params: {
+  search: string;
+  profileType: string;
+  churchId?: string | null;
+  campoId?: string | null;
+}): Promise<any[]> {
+  const { search, profileType, churchId, campoId } = params;
+
+  let query = supabase
+    .from('members')
+    .select('id, full_name, photo_url, phone, membership_status, ecclesiastical_title, churches(name), campos(name)')
+    .is('deleted_at', null)
+    .ilike('full_name', `%${search}%`)
+    .limit(10);
+
+  if (profileType === 'church' && churchId) {
+    query = query.eq('church_id', churchId);
+  } else if (profileType === 'campo' && campoId) {
+    // Fetch all churches in the campo
+    const { data: regionais } = await supabase
+      .from('regionais')
+      .select('id')
+      .eq('campo_id', campoId);
+
+    const regionalIds = regionais?.map((r) => r.id) || [];
+
+    if (regionalIds.length > 0) {
+      const { data: churches } = await supabase
+        .from('churches')
+        .select('id')
+        .in('regional_id', regionalIds);
+
+      const churchIds = churches?.map((c) => c.id) || [];
+
+      if (churchIds.length > 0) {
+        query = query.or(`campo_id.eq.${campoId},church_id.in.(${churchIds.join(',')})`);
+      } else {
+        query = query.eq('campo_id', campoId);
+      }
+    } else {
+      query = query.eq('campo_id', campoId);
+    }
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
 }
 
