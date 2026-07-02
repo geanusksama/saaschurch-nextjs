@@ -68,6 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             await prisma.memberTitleHistory.create({
               data: {
                 memberId: id,
+                churchId: member.churchId,
                 previousTitle: member.ecclesiasticalTitle || null,
                 newTitle: rule.newTitle,
                 source: "OCORRENCIA_RAPIDA",
@@ -109,9 +110,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               columnIndex: colIdx,
               action: occurrenceLabel,
               notes: notes || rule.message || null,
-              metadata: { source: "OCORRENCIA_RAPIDA", serviceId: svcId, columnIndex: colIdx, date: date || null },
+              metadata: {
+                source: "OCORRENCIA_RAPIDA", serviceId: svcId, columnIndex: colIdx, date: date || null,
+                ...(rule.doesTransfer && targetChurchId ? { destinationChurchId: targetChurchId } : {}),
+              },
               createdBy: user.id || null,
-              ...(rule.doesTransfer && targetChurchId ? { destinationChurchId: targetChurchId } : {}),
             },
           });
           appliedActions.push(`Ocorrência registrada: ${occurrenceLabel}`);

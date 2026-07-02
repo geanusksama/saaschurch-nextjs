@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Edit, Info, Pencil, Plus, Search, Star, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Link, useParams } from "react-router";
-import { MemberEditDrawer } from "./MemberEdit";
+import { MemberEditDrawer } from "./MemberEditDrawer";
 
 import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
@@ -149,6 +149,14 @@ export function MemberProfile() {
   const [memberRefreshKey, setMemberRefreshKey] = useState(0);
   const [cropZoom, setCropZoom] = useState(1);
   const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const [ecclesiasticalTitles, setEcclesiasticalTitles] = useState<{ id: string; name: string; abbreviation?: string | null; level: number }[]>([]);
+
+  useEffect(() => {
+    authFetch(`${apiBase}/ecclesiastical-titles`)
+      .then((r) => r.json())
+      .then((data) => setEcclesiasticalTitles(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
   const cropDragRef = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
   const cropCanvasRef = useRef<HTMLCanvasElement>(null);
   const cropImgRef = useRef<HTMLImageElement | null>(null);
@@ -569,9 +577,10 @@ export function MemberProfile() {
         </div>
       </div>
 
-      {showEditDrawer && member && (
+      {member && (
         <MemberEditDrawer
           memberId={member.id}
+          open={showEditDrawer}
           onClose={() => setShowEditDrawer(false)}
           onSaved={() => {
             setShowEditDrawer(false);
@@ -581,6 +590,7 @@ export function MemberProfile() {
               .then((data) => setMember(data))
               .catch(() => {});
           }}
+          titles={ecclesiasticalTitles}
         />
       )}
 

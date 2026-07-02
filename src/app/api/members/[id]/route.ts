@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { serializeBigInts, assertChurchAccess } from "@/lib/helpers";
+import { serializeBigInts, assertChurchAccess, isRestrictedToOwnChurch } from "@/lib/helpers";
 
 const uuidSchema = z.string().uuid();
 
@@ -41,6 +41,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!ok) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     const body = await req.json().catch(() => ({}));
     const data = { ...body };
+
+    // ROL não é editável por este endpoint; e apenas perfis não restritos à própria
+    // igreja (campo/admin/master) podem transferir o membro para outra igreja/regional.
+    delete data.rol;
+    if (isRestrictedToOwnChurch(user)) {
+      delete data.churchId;
+      delete data.regionalId;
+      delete data.campoId;
+    }
 
     const normalizedMemberType = data.memberType !== undefined
       ? (["PF", "PJ"].includes(String(data.memberType || "").toUpperCase()) ? String(data.memberType).toUpperCase() : "MEMBRO")

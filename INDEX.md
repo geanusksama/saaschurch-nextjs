@@ -22,6 +22,9 @@ Bem-vindo ao centro de documentação unificado do **SaasChurch**. Este reposit�
 * [Módulo de Secretaria Eclesiástica](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/secretaria.md) — Documentação da gestão de membros, pipeline Kanban de processos, matriz de decisões e emissão de credenciais.
 * [Integração de Pagamentos com Stripe](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/strip.md) — PRD para doações recorrentes, assinaturas, fluxos de compras no app e webhooks do Stripe.
 
+### 💬 Comunicação e WhatsApp (`docs/whatsapp-system/`)
+* [Sistema WhatsApp do SaaS Church](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/whatsapp-system/README.md) — Documentação consolidada da integração Z-API, endpoints, banco de dados, fluxos, regras críticas e resumo para outra IA.
+
 ### 📂 Arquivos Pendentes de Revisão (`docs/_pendente-revisao/`)
 * [Cópia do Arquivo de Arquitetura de Compra](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/_pendente-revisao/EVENTOS_ARQUITETURA_COMPRA%20copy.md) — Cópia redundante arquivada para evitar perda de rascunhos.
 

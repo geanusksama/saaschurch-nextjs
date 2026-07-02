@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Save, X } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
@@ -10,6 +10,32 @@ type EcclesiasticalTitleOption = {
   level: number;
 };
 
+type CampoOption = {
+  id: string;
+  name: string;
+  code?: string | null;
+};
+
+type RegionalOption = {
+  id: string;
+  name: string;
+  code?: string | null;
+  campoId: string;
+};
+
+type ChurchOption = {
+  id: string;
+  name: string;
+  code?: string | null;
+  regionalId?: string;
+  regional?: {
+    id?: string;
+    name?: string;
+    campoId?: string;
+    campo?: { id: string; name: string; code?: string | null } | null;
+  } | null;
+};
+
 type Props = {
   memberId: string | null;
   open: boolean;
@@ -18,10 +44,21 @@ type Props = {
   titles: EcclesiasticalTitleOption[];
 };
 
+function readStoredUser(): { profileType?: string } {
+  try {
+    return JSON.parse(localStorage.getItem('mrm_user') || '{}');
+  } catch {
+    return {};
+  }
+}
+
 type FormState = {
+  churchId: string;
+  regionalId: string;
   memberType: string;
   fullName: string;
   preferredName: string;
+  fantasyName: string;
   cnpj: string;
   cpf: string;
   rg: string;
@@ -52,15 +89,20 @@ type FormState = {
   voterRegistration: string;
   voterZone: string;
   voterSection: string;
+  occupation: string;
+  company: string;
   notes: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
 };
 
 const emptyForm: FormState = {
+  churchId: '',
+  regionalId: '',
   memberType: 'MEMBRO',
   fullName: '',
   preferredName: '',
+  fantasyName: '',
   cnpj: '',
   cpf: '',
   rg: '',
@@ -91,6 +133,8 @@ const emptyForm: FormState = {
   voterRegistration: '',
   voterZone: '',
   voterSection: '',
+  occupation: '',
+  company: '',
   notes: '',
   emergencyContactName: '',
   emergencyContactPhone: '',
@@ -171,12 +215,35 @@ async function lookupCityState(cityName: string): Promise<CityOption[]> {
 }
 
 export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: Props) {
+  const storedUser = readStoredUser();
+  const canChooseChurch = ['campo', 'admin', 'master'].includes(storedUser.profileType || '');
+
   const [form, setForm] = useState<FormState>(emptyForm);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [lookingUpCityField, setLookingUpCityField] = useState<'naturalityCity' | 'addressCity' | null>(null);
   const [cityOptions, setCityOptions] = useState<{ field: 'naturalityCity' | 'addressCity'; options: CityOption[] } | null>(null);
+
+  const [fields, setFields] = useState<CampoOption[]>([]);
+  const [regionais, setRegionais] = useState<RegionalOption[]>([]);
+  const [churches, setChurches] = useState<ChurchOption[]>([]);
+  const [selectedFieldId, setSelectedFieldId] = useState('');
+
+  useEffect(() => {
+    if (!open || !canChooseChurch) return;
+    const token = localStorage.getItem('mrm_token');
+    if (!token) return;
+    Promise.all([
+      fetch(`${apiBase}/campos`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${apiBase}/regionais`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${apiBase}/churches`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : [])),
+    ]).then(([fieldsData, regionaisData, churchesData]) => {
+      setFields(Array.isArray(fieldsData) ? fieldsData : []);
+      setRegionais(Array.isArray(regionaisData) ? regionaisData : []);
+      setChurches(Array.isArray(churchesData) ? churchesData : []);
+    }).catch(() => {});
+  }, [open, canChooseChurch]);
 
   useEffect(() => {
     if (!open || !memberId) return;
@@ -199,10 +266,14 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
         }
         const data = await response.json();
         if (cancelled) return;
+        setSelectedFieldId(data.church?.regional?.campo?.id || '');
         setForm({
+          churchId: data.churchId || '',
+          regionalId: data.regionalId || '',
           memberType: data.memberType || 'MEMBRO',
           fullName: data.fullName || '',
           preferredName: data.preferredName || '',
+          fantasyName: data.fantasyName || '',
           cnpj: formatCnpj(data.cnpj),
           cpf: formatCpf(data.cpf),
           rg: data.rg || '',
@@ -233,6 +304,8 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
           voterRegistration: data.voterRegistration || '',
           voterZone: data.voterZone || '',
           voterSection: data.voterSection || '',
+          occupation: data.occupation || '',
+          company: data.company || '',
           notes: data.notes || '',
           emergencyContactName: data.emergencyContactName || '',
           emergencyContactPhone: formatPhone(data.emergencyContactPhone),
@@ -251,6 +324,23 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
       cancelled = true;
     };
   }, [open, memberId]);
+
+  const filteredRegionais = useMemo(() => {
+    if (!selectedFieldId) return regionais;
+    return regionais.filter((regional) => regional.campoId === selectedFieldId);
+  }, [regionais, selectedFieldId]);
+
+  const filteredChurches = useMemo(() => {
+    return churches.filter((church) => {
+      if (selectedFieldId && church.regional?.campoId !== selectedFieldId && church.regional?.campo?.id !== selectedFieldId) {
+        return false;
+      }
+      if (form.regionalId && church.regionalId !== form.regionalId && church.regional?.id !== form.regionalId) {
+        return false;
+      }
+      return true;
+    });
+  }, [churches, selectedFieldId, form.regionalId]);
 
   if (!open) return null;
 
@@ -313,9 +403,11 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
       setError('');
 
       const payload: Record<string, any> = {
+        ...(canChooseChurch && form.churchId ? { churchId: form.churchId, regionalId: form.regionalId || undefined } : {}),
         memberType: form.memberType,
         fullName: form.fullName,
         preferredName: form.preferredName || undefined,
+        fantasyName: form.fantasyName || undefined,
         cnpj: digitsOnly(form.cnpj) || undefined,
         cpf: digitsOnly(form.cpf) || undefined,
         rg: form.rg || undefined,
@@ -346,6 +438,8 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
         voterRegistration: form.voterRegistration || undefined,
         voterZone: form.voterZone || undefined,
         voterSection: form.voterSection || undefined,
+        occupation: form.occupation || undefined,
+        company: form.company || undefined,
         notes: form.notes || undefined,
         emergencyContactName: form.emergencyContactName || undefined,
         emergencyContactPhone: digitsOnly(form.emergencyContactPhone) || undefined,
@@ -401,6 +495,53 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
               ) : null}
 
+              {canChooseChurch ? (
+                <section>
+                  <h3 className="mb-3 text-sm font-semibold text-slate-800">Vínculo com Igreja</h3>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <div>
+                      <label className={labelClass}>Campo</label>
+                      <select
+                        value={selectedFieldId}
+                        onChange={(e) => setSelectedFieldId(e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">Todos os campos</option>
+                        {fields.map((field) => (
+                          <option key={field.id} value={field.id}>{field.code ? `${field.code} — ` : ''}{field.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Regional</label>
+                      <select
+                        value={form.regionalId}
+                        onChange={(e) => update('regionalId', e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">Selecione</option>
+                        {filteredRegionais.map((regional) => (
+                          <option key={regional.id} value={regional.id}>{regional.code ? `${regional.code} — ` : ''}{regional.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Igreja *</label>
+                      <select
+                        value={form.churchId}
+                        onChange={(e) => update('churchId', e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">Selecione</option>
+                        {filteredChurches.map((church) => (
+                          <option key={church.id} value={church.id}>{church.code ? `${church.code} — ` : ''}{church.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+
               <section>
                 <h3 className="mb-3 text-sm font-semibold text-slate-800">Identificação</h3>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -419,6 +560,10 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                   <div>
                     <label className={labelClass}>CNPJ</label>
                     <input type="text" value={form.cnpj} onChange={(e) => update('cnpj', formatCnpj(e.target.value))} placeholder="00.000.000/0000-00" className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Nome fantasia</label>
+                    <input type="text" value={form.fantasyName} onChange={(e) => update('fantasyName', e.target.value)} className={inputClass} />
                   </div>
                   <div>
                     <label className={labelClass}>Nome preferido</label>
@@ -610,6 +755,20 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                   <div>
                     <label className={labelClass}>Seção</label>
                     <input type="text" value={form.voterSection} onChange={(e) => update('voterSection', e.target.value)} className={inputClass} />
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-sm font-semibold text-slate-800">Dados profissionais</h3>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className={labelClass}>Profissão</label>
+                    <input type="text" value={form.occupation} onChange={(e) => update('occupation', e.target.value)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Empresa</label>
+                    <input type="text" value={form.company} onChange={(e) => update('company', e.target.value)} className={inputClass} />
                   </div>
                 </div>
               </section>

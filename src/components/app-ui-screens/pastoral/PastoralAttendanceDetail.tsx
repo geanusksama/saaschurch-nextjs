@@ -431,9 +431,9 @@ export function PastoralAttendanceDetail({
             </div>
 
             {/* Meta */}
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
               {attendance.churches?.name && (
-                <div className="flex items-center gap-2 text-slate-600 col-span-2">
+                <div className="flex items-center gap-2 text-slate-600 col-span-1 md:col-span-2">
                   <Heart className="w-4 h-4 text-green-500" />
                   <span className="font-medium text-green-700">{attendance.churches.name}</span>
                 </div>
@@ -515,12 +515,12 @@ export function PastoralAttendanceDetail({
           </div>
 
           {/* Tabs */}
-          <div className="flex border-t border-slate-100 px-5">
+          <div className="flex border-t border-slate-100 px-5 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? 'border-green-600 text-green-700'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -659,7 +659,7 @@ export function PastoralAttendanceDetail({
               {showActivityForm && (
                 <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
                   <h4 className="font-semibold text-slate-800 text-sm">Nova Atividade</h4>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div>
                       <label className="text-xs font-medium text-slate-600 mb-1 block">Tipo</label>
                       <select value={activityForm.type} onChange={(e) => setActivityForm(f => ({ ...f, type: e.target.value }))}
@@ -717,7 +717,7 @@ export function PastoralAttendanceDetail({
                   <div key={act.id} className={`bg-white border rounded-xl p-4 ${act.completed ? 'opacity-60 border-slate-100' : 'border-slate-200'}`}>
                     {editingActivityId === act.id ? (
                       <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                           <div>
                             <label className="text-xs font-medium text-slate-600 mb-1 block">Tipo</label>
                             <select value={editingActivityForm.type} onChange={(e) => setEditingActivityForm(f => ({ ...f, type: e.target.value }))}

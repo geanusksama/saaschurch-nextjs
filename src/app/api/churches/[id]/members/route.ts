@@ -78,10 +78,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
-    let churchId = (await params).id;
-    if (user.profileType !== "master" && user.profileType !== "admin") {
-      if (!user.churchId) return NextResponse.json({ error: "Sem acesso: usuário sem igreja vinculada." }, { status: 403 });
-      churchId = user.churchId;
+    const churchId = (await params).id;
+    if (isRestrictedToOwnChurch(user) && !user.churchId) {
+      return NextResponse.json({ error: "Sem acesso: usuário sem igreja vinculada." }, { status: 403 });
     }
     const ok = await assertChurchAccess(user, churchId, prisma);
     if (!ok) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
