@@ -1,0 +1,463 @@
+Objetivo da Tela
+
+Permitir localizar membros, visitantes ou leads do pipeline, selecionar quem receberá mensagens, definir quais instâncias farão o envio, acompanhar o progresso em tempo real e, opcionalmente, atribuir um atendente para cada pessoa após o envio.
+
+1. Área de Pesquisa
+
+Localizada na parte superior.
+
+Intervalo de Data
+
+Filtro para buscar contatos cadastrados dentro de um período.
+
+Exemplos:
+
+últimos 7 dias
+este mês
+entre duas datas
+
+Pode servir para:
+
+data de cadastro
+data da última interação
+data de entrada no pipeline
+última visita
+Tipo
+
+Filtro principal.
+
+Exemplos:
+
+Todos
+Membros
+Visitantes
+Leads
+Interessados
+Novos Convertidos
+Batismo
+Atendimento
+Discipulado
+
+Dependendo do módulo poderá buscar pessoas em diferentes tabelas.
+
+Digita Nome
+
+Pesquisa textual.
+
+Pode localizar por:
+
+Nome
+CPF
+Telefone
+ROL
+Email
+Botão Buscar
+
+Executa a consulta.
+
+Resultado exibido logo abaixo.
+
+Botão "Enviar em Massa"
+
+É a ação principal.
+
+Após selecionar pessoas, inicia o processo de disparo.
+
+Antes do envio pode:
+
+validar números
+validar instâncias
+mostrar quantidade de mensagens
+estimar tempo
+pedir confirmação
+2. Lista de Pessoas
+
+Ocupa praticamente toda a tela.
+
+Cada linha representa um contato.
+
+Cada card pode conter:
+
+Foto
+Nome
+Telefone
+Igreja
+Regional
+Pipeline
+Etapa
+Último atendimento
+Última mensagem
+Data cadastro
+Status
+Checkbox
+
+Seleciona a pessoa.
+
+Pode existir:
+
+selecionar individualmente
+
+ou
+
+selecionar todos
+Botões da Direita
+
+Embora seja apenas um desenho, provavelmente representam ações rápidas.
+
+Podem ser:
+
+Histórico
+
+Abrir todas as mensagens enviadas.
+
+Conversa WhatsApp
+
+Abrir conversa individual.
+
+Perfil
+
+Abrir cadastro completo.
+
+Também poderiam existir:
+
+editar
+remover
+anexar atendente
+observações
+documentos
+3. Painel de Mensagem
+
+Lado direito.
+
+É onde será escrita a mensagem.
+
+Exemplo mostrado:
+
+Olá {{pega_nome_direto_do_banco}}
+
+Ou seja,
+
+suporta variáveis.
+
+Pode substituir automaticamente por:
+
+{{nome}}
+
+{{igreja}}
+
+{{regional}}
+
+{{pastor}}
+
+{{telefone}}
+
+{{ultima_visita}}
+
+{{cargo}}
+
+{{rol}}
+
+{{cidade}}
+
+{{protocolo}}
+
+Cada envio troca automaticamente as variáveis.
+
+Exemplo:
+
+Pessoa 1
+
+Olá João
+
+Pessoa 2
+
+Olá Maria
+
+Pessoa 3
+
+Olá Pedro
+
+Também pode aceitar:
+
+emojis
+links
+imagens
+PDFs
+vídeos
+áudio
+localização
+Botão Iniciar
+
+Começa o envio.
+
+Ao clicar:
+
+monta fila
+distribui mensagens
+envia
+Botão Cancelar
+
+Interrompe imediatamente.
+
+Pode:
+
+cancelar fila inteira
+
+ou
+
+pausar
+
+para continuar depois.
+
+4. Lista de Instâncias
+
+Na parte inferior direita.
+
+Mostra todas as conexões WhatsApp disponíveis.
+
+Exemplo:
+
+Instância XYZ
+
+Instância ABC
+
+Instância QWE
+
+Cada uma possui um checkbox.
+
+Pode escolher:
+
+Uma instância
+
+ou
+
+várias simultaneamente.
+
+Distribuição Inteligente
+
+Caso sejam escolhidas três instâncias:
+
+1000 mensagens
+
+vira
+
+333
+
+333
+
+334
+
+Diminuindo bloqueios.
+
+Também melhora velocidade.
+
+Pode mostrar:
+
+QR conectado
+Offline
+Bateria
+Última sincronização
+Número
+Perfil WhatsApp
+5. Área Central Grande
+
+Provavelmente representa o console de execução.
+
+Pode exibir:
+
+Mensagens enviadas
+
+Mensagens pendentes
+
+Mensagens com erro
+
+Mensagens aguardando intervalo
+
+Respostas recebidas
+
+Fila
+
+Logs
+
+Exemplo:
+
+João
+
+Enviado
+
+11:20
+Maria
+
+Erro
+
+Número inválido
+Pedro
+
+Aguardando
+
+Também pode mostrar:
+
+tempo restante
+velocidade
+fila
+tentativas
+6. Barra Inferior de Status
+
+Muito importante.
+
+Mostra a orquestração.
+
+Exemplo desenhado:
+
+ORQUESTRAÇÃO
+
+INTERVALO 5 SEG
+
+TOTAL 3 DE 200
+
+INSTÂNCIA 1 ENVIANDO 2 DE 100
+
+INSTÂNCIA 2 ENVIANDO 1 DE 100
+
+Essa barra informa praticamente tudo em tempo real.
+
+Pode conter:
+
+Total selecionado
+
+Enviadas
+
+Pendentes
+
+Erros
+
+Taxa por minuto
+
+Tempo restante
+
+Instâncias ativas
+
+Fila
+
+7. Botão "Anexar Agente para Atender Todos"
+
+Excelente funcionalidade.
+
+Após o envio em massa, todas as pessoas podem ser atribuídas automaticamente para um atendente.
+
+Exemplo:
+
+Campanha Evangelística
+
+500 mensagens
+
+Responderam 90 pessoas
+
+Todas vão automaticamente para:
+
+Pastor João
+
+ou
+
+Equipe Evangelismo
+
+Também pode distribuir automaticamente.
+
+Exemplo:
+
+Agente 1
+
+30 pessoas
+
+Agente 2
+
+30 pessoas
+
+Agente 3
+
+30 pessoas
+
+8. Painel Verde
+
+Representa os agentes.
+
+Exemplo:
+
+Agente 1
+
+Agente 2
+
+Cada agente pode possuir:
+
+Nome
+
+Foto
+
+Status
+
+Quantidade atendendo
+
+Online
+
+Offline
+
+Fila
+
+Especialidade
+
+Igreja
+
+Regional
+
+Pode existir distribuição automática:
+
+Round Robin
+
+Exemplo
+
+Pessoa 1
+
+Agente A
+
+Pessoa 2
+
+Agente B
+
+Pessoa 3
+
+Agente C
+
+Pessoa 4
+
+Agente A
+
+...
+
+Ou distribuição por carga:
+
+Quem possui menos atendimentos recebe primeiro.
+
+Fluxo Completo da Tela
+O usuário filtra os contatos (membros, visitantes ou leads).
+O sistema lista os resultados conforme os filtros aplicados.
+O operador seleciona individualmente ou em massa os destinatários.
+Escreve a mensagem utilizando texto livre e variáveis dinâmicas (como {{nome}}).
+Escolhe uma ou mais instâncias de WhatsApp que realizarão os envios.
+Define, se desejar, os atendentes que ficarão responsáveis pelas respostas.
+Clica em Iniciar.
+O sistema cria uma fila de envio, distribui as mensagens entre as instâncias, respeita intervalos configuráveis para evitar bloqueios e atualiza o painel em tempo real.
+Todas as respostas recebidas podem ser encaminhadas automaticamente aos agentes designados, mantendo cada conversa sob responsabilidade de um atendente específico.
+Funcionalidades que agregariam muito valor
+
+Além do que já aparece no wireframe, eu incluiria:
+
+Pré-visualização da mensagem personalizada antes do envio.
+Validação de variáveis, destacando campos inexistentes.
+Agendamento de campanhas para data e hora específicas.
+Anexos em massa (imagem, PDF, áudio e vídeo).
+Segmentação avançada (idade, igreja, cargo, frequência, pipeline, região etc.).
+Relatórios completos, incluindo taxa de entrega, leitura, resposta e falha.
+Pausar e retomar campanhas sem perder o progresso.
+Limite de mensagens por instância e distribuição inteligente conforme capacidade.
+Logs detalhados para auditoria, registrando quem enviou, quando, por qual instância e para qual destinatário.
+Integração com o CRM, permitindo que respostas criem automaticamente atendimentos, tarefas, eventos ou movimentem o contato no pipeline.

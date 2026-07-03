@@ -83,7 +83,7 @@ import DiscipleshipCurriculum from "../app-ui/pastoral/DiscipleshipCurriculum";
 import DiscipleshipNew from "../app-ui/pastoral/DiscipleshipNew";
 import PastoralTimeline from "../app-ui/pastoral/PastoralTimeline";
 import PastoralReports from "../app-ui/pastoral/PastoralReports";
-import PastoralKanban from "../app-ui/pastoral/PastoralKanban";
+import PastoralHub from "../app-ui/pastoral/PastoralHub";
 import { Automation } from "../components/app-ui/Automation";
 import { AutomationBuilderComponent } from "../components/app-ui/AutomationBuilder";
 import { EventDetail } from "../components/app-ui/EventDetail";
@@ -615,7 +615,7 @@ export const router = createBrowserRouter([
       { path: "discipleship-new", Component: DiscipleshipNew },
       { path: "discipleship-curriculum", Component: DiscipleshipCurriculum },
       { path: "pastoral-timeline", Component: PastoralTimeline },
-      { path: "pastoral-kanban", Component: PastoralKanban },
+      { path: "pastoral-kanban", Component: PastoralHub },
       { path: "pastoral-reports", Component: PastoralReports },
       { path: "category-management", Component: CategoryManagement },
       { path: "chart-of-accounts", Component: ChartOfAccounts },
