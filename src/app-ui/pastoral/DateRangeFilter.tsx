@@ -41,10 +41,11 @@ export function currentMonthRange(): { from: string; to: string } {
   return { from: toIso(startOfMonth(now)), to: toIso(endOfMonth(now)) };
 }
 
-type PresetKey = 'hoje' | 'ontem' | 'semana' | 'mes' | 'mes_anterior' | 'personalizado';
+type PresetKey = 'todos' | 'hoje' | 'ontem' | 'semana' | 'mes' | 'mes_anterior' | 'personalizado';
 
 function presetRange(key: Exclude<PresetKey, 'personalizado'>): { from: string; to: string } {
   const now = new Date();
+  if (key === 'todos') return { from: '', to: '' };
   if (key === 'hoje') return { from: toIso(now), to: toIso(now) };
   if (key === 'ontem') {
     const y = new Date(now); y.setDate(now.getDate() - 1);
@@ -58,6 +59,7 @@ function presetRange(key: Exclude<PresetKey, 'personalizado'>): { from: string; 
 }
 
 const PRESETS: Array<{ key: Exclude<PresetKey, 'personalizado'>; label: string }> = [
+  { key: 'todos', label: 'Todos os períodos' },
   { key: 'hoje', label: 'Hoje' },
   { key: 'ontem', label: 'Ontem' },
   { key: 'semana', label: 'Esta semana' },
@@ -66,6 +68,7 @@ const PRESETS: Array<{ key: Exclude<PresetKey, 'personalizado'>; label: string }
 ];
 
 function activePreset(from: string, to: string): PresetKey {
+  if (!from && !to) return 'todos';
   for (const p of PRESETS) {
     const r = presetRange(p.key);
     if (r.from === from && r.to === to) return p.key;

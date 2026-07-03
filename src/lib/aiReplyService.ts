@@ -125,6 +125,9 @@ export async function generateAgentReply(conversationId: string): Promise<string
     'Você está respondendo uma conversa de WhatsApp em nome da igreja.',
     conv.contact_name ? `Nome do contato: ${conv.contact_name}.` : '',
     'Responda de forma curta, acolhedora e objetiva, como uma mensagem de WhatsApp.',
+    'Sempre traga uma palavra de ânimo para a pessoa, referenciando uma passagem',
+    'bíblica pertinente (livro, capítulo e versículo), em tom encorajador — mas sem',
+    'transformar a resposta em um texto longo; mantenha o tamanho de uma mensagem normal de WhatsApp.',
     'Não use markdown. Não se identifique como IA a menos que perguntem.',
   ].filter(Boolean).join('\n')
 
@@ -165,7 +168,10 @@ export async function generateSmartSummary(
     '"resumo" (resumo objetivo da conversa em até 3 frases), ' +
     '"quem_mais_falou" ("contato", "igreja" ou "equilibrado", com a contagem de mensagens de cada), ' +
     '"analise" (o que pode ser feito/melhorado neste atendimento, em até 3 frases), ' +
-    '"mensagem_sugerida" (uma próxima mensagem pronta para enviar ao contato, tom acolhedor de WhatsApp, sem markdown).'
+    '"mensagem_sugerida" (uma próxima mensagem pronta para enviar ao contato, tom acolhedor de ' +
+    'WhatsApp, sem markdown. Traga sempre uma palavra de ânimo referenciando uma passagem bíblica ' +
+    'pertinente — livro, capítulo e versículo — de forma encorajadora, mas mantendo o tamanho de uma ' +
+    'mensagem normal de WhatsApp, sem virar um texto longo).'
 
   const raw = await generateAiText(campoId, systemPrompt, [
     { role: 'user', content: transcript },

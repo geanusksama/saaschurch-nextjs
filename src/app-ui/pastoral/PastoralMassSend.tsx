@@ -31,11 +31,14 @@ import {
   Image as ImageIcon,
   Link2,
   X,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { ATTENDANCE_TYPE_LABELS, type AttendanceType } from '../../lib/pastoralKanbanService';
 import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
 import DateRangeFilter, { currentMonthRange } from './DateRangeFilter';
 import { usePermissions } from '../../lib/usePermissions';
+import { exportRows } from './exportUtils';
 
 function currentProfileType(): string {
   try {
@@ -60,6 +63,26 @@ interface MassContact {
   category: string | null;
   createdAt: string;
   variables: Record<string, string>;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+}
+
+interface RegionalOption {
+  id: string;
+  name: string;
+  campoId?: string;
+}
+
+interface ChurchOption {
+  id: string;
+  name: string;
+  regionalId?: string;
+  regional?: { id: string; name: string };
+}
+
+interface TitleOption {
+  id: string;
+  name: string;
 }
 
 interface RecipientRow {
@@ -131,6 +154,26 @@ function renderPreview(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key: string) => vars[key] ?? `⟦${key}?⟧`);
 }
 
+/**
+ * Relógio de tempo decorrido isolado num componente próprio: seu próprio
+ * setInterval re-renderiza SÓ este texto a cada segundo, sem forçar a tela
+ * inteira (com a lista de contatos, filtros etc.) a reconciliar a cada tick —
+ * o que antes causava piscar/flicker visual ao passar o mouse pelos botões.
+ */
+function ElapsedClock({ startedAt, finishedAt }: { startedAt: string | null; finishedAt: string | null }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (finishedAt) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [finishedAt]);
+
+  if (!startedAt) return <>—</>;
+  const end = finishedAt ? new Date(finishedAt).getTime() : now;
+  const seconds = Math.max(0, (end - new Date(startedAt).getTime()) / 1000);
+  return <>{fmtDuration(seconds)}</>;
+}
+
 // ─── Componente ──────────────────────────────────────────────────────────────
 
 export default function PastoralMassSend() {
@@ -139,6 +182,39 @@ export default function PastoralMassSend() {
   const [typeFilter, setTypeFilter] = useState('');
   const [q, setQ] = useState('');
   const [{ from: dateFrom, to: dateTo }, setDateRange] = useState(currentMonthRange);
+
+  // isolamento: regional/igreja/título eclesiástico (mesma regra de escopo do
+  // módulo de Membros — servidor já restringe por campo/igreja do usuário)
+  const [regionais, setRegionais] = useState<RegionalOption[]>([]);
+  const [churches, setChurches] = useState<ChurchOption[]>([]);
+  const [titles, setTitles] = useState<TitleOption[]>([]);
+  const [regionalId, setRegionalId] = useState('');
+  const [churchId, setChurchId] = useState('');
+  const [titleId, setTitleId] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [regRes, churchRes, titleRes] = await Promise.all([
+          fetch('/api/regionais', { headers: authHeaders() }),
+          fetch('/api/churches', { headers: authHeaders() }),
+          fetch('/api/ecclesiastical-titles', { headers: authHeaders() }),
+        ]);
+        if (regRes.ok) setRegionais(await regRes.json());
+        if (churchRes.ok) setChurches(await churchRes.json());
+        if (titleRes.ok) setTitles(await titleRes.json());
+      } catch { /* filtros ficam vazios; busca ainda funciona sem eles */ }
+    })();
+  }, []);
+
+  // igreja some/reseta se a regional mudar e ela não pertencer mais à lista filtrada
+  const churchesInRegional = useMemo(
+    () => (regionalId ? churches.filter(c => (c.regionalId ?? c.regional?.id) === regionalId) : churches),
+    [churches, regionalId]
+  );
+  useEffect(() => {
+    if (churchId && !churchesInRegional.some(c => c.id === churchId)) setChurchId('');
+  }, [regionalId, churchId, churchesInRegional]);
 
   // resultados + seleção
   const [contacts, setContacts] = useState<MassContact[]>([]);
@@ -166,13 +242,6 @@ export default function PastoralMassSend() {
   const [starting, setStarting] = useState(false);
   const [viewSummary, setViewSummary] = useState(false);
   const loopActive = useRef(false);
-
-  // relógio (ETA / decorrido)
-  const [nowTs, setNowTs] = useState(Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNowTs(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   // mensagem individual
   const [directTarget, setDirectTarget] = useState<MassContact | null>(null);
@@ -213,6 +282,9 @@ export default function PastoralMassSend() {
       if (typeFilter) params.set('type', typeFilter);
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
+      if (regionalId) params.set('regionalId', regionalId);
+      if (churchId) params.set('churchId', churchId);
+      if (source === 'members' && titleId) params.set('titleId', titleId);
       const res = await fetch(`/api/whatsapp/campaigns/contacts?${params}`, { headers: authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Erro na busca');
@@ -224,7 +296,7 @@ export default function PastoralMassSend() {
     } finally {
       setLoadingContacts(false);
     }
-  }, [source, q, typeFilter, dateFrom, dateTo]);
+  }, [source, q, typeFilter, dateFrom, dateTo, regionalId, churchId, titleId]);
 
   // presets de período (clique, sem Enter) já refazem a busca automaticamente
   useEffect(() => {
@@ -249,6 +321,26 @@ export default function PastoralMassSend() {
     () => contacts.filter(c => selected.has(c.key)),
     [contacts, selected]
   );
+
+  // ── exportação CSV/Excel ─────────────────────────────────────────────────────
+  const exportContacts = (format: 'csv' | 'xlsx') => {
+    const list = selected.size ? selectedContacts : contacts;
+    exportRows(
+      list.map(c => ({
+        Nome: c.name,
+        Telefone: fmtPhone(c.phone),
+        Igreja: c.church ?? '',
+        Regional: c.regional ?? '',
+        Categoria: c.category ? (ATTENDANCE_TYPE_LABELS[c.category as AttendanceType] ?? c.category) : '',
+        Origem: c.source === 'member' ? 'Membro' : 'Pipeline',
+        'Data de cadastro': c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR') : '',
+        'Última mensagem': c.lastMessage ?? '',
+        'Última mensagem em': c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleString('pt-BR') : '',
+      })),
+      'contatos-envio-massa',
+      format
+    );
+  };
 
   // ── campanha ────────────────────────────────────────────────────────────────
   const refreshCampaign = useCallback(async (id: string) => {
@@ -395,10 +487,6 @@ export default function PastoralMassSend() {
     i => selectedInstances.has(i.id) && i.status === 'connected'
   );
 
-  const elapsedSeconds = progress?.startedAt
-    ? Math.max(0, ((progress.finishedAt ? new Date(progress.finishedAt).getTime() : nowTs) - new Date(progress.startedAt).getTime()) / 1000)
-    : 0;
-
   const statusIcon = (status: RecipientRow['status'], error?: string | null) => {
     if (status === 'sent') return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
     if (status === 'error') return <span title={error ?? undefined}><XCircle className="w-4 h-4 text-red-500" /></span>;
@@ -440,6 +528,32 @@ export default function PastoralMassSend() {
             )}
           </select>
         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-slate-500">Regional</label>
+          <select value={regionalId} onChange={e => setRegionalId(e.target.value)}
+            className="h-9 px-2 rounded-lg border border-slate-200 text-sm bg-white min-w-[140px]">
+            <option value="">Todas</option>
+            {regionais.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-slate-500">Igreja</label>
+          <select value={churchId} onChange={e => setChurchId(e.target.value)}
+            className="h-9 px-2 rounded-lg border border-slate-200 text-sm bg-white min-w-[160px]">
+            <option value="">Todas{regionalId ? ' desta regional' : ''}</option>
+            {churchesInRegional.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        {source === 'members' && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-500">Título eclesiástico</label>
+            <select value={titleId} onChange={e => setTitleId(e.target.value)}
+              className="h-9 px-2 rounded-lg border border-slate-200 text-sm bg-white min-w-[160px]">
+              <option value="">Todos</option>
+              {titles.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+        )}
         <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
           <label className="text-xs font-medium text-slate-500">Nome, ROL ou telefone</label>
           <input value={q} onChange={e => setQ(e.target.value)}
@@ -498,7 +612,9 @@ export default function PastoralMassSend() {
                     <div className="text-[11px] uppercase font-semibold text-slate-400 flex items-center gap-1">
                       <Timer className="w-3 h-3" /> Decorrido
                     </div>
-                    <div className="text-xl font-bold text-slate-800">{fmtDuration(elapsedSeconds)}</div>
+                    <div className="text-xl font-bold text-slate-800">
+                      <ElapsedClock startedAt={progress.startedAt} finishedAt={progress.finishedAt} />
+                    </div>
                   </div>
                   <div className="rounded-lg bg-indigo-50 p-2.5">
                     <div className="text-[11px] uppercase font-semibold text-indigo-500 flex items-center gap-1">
@@ -551,6 +667,21 @@ export default function PastoralMassSend() {
                 {selected.size > 0 && (
                   <span className="text-xs text-emerald-600 font-medium">{selected.size} selecionado(s)</span>
                 )}
+                <div className="ml-auto flex items-center gap-1.5">
+                  <span className="text-xs text-slate-400 hidden sm:inline">Exportar:</span>
+                  <button onClick={() => exportContacts('csv')} disabled={!contacts.length}
+                    title={selected.size ? 'Exportar selecionados (CSV)' : 'Exportar todos os listados (CSV)'}
+                    className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+                    <Download className="w-3.5 h-3.5" />
+                    CSV
+                  </button>
+                  <button onClick={() => exportContacts('xlsx')} disabled={!contacts.length}
+                    title={selected.size ? 'Exportar selecionados (Excel)' : 'Exportar todos os listados (Excel)'}
+                    className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    Excel
+                  </button>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
                 {loadingContacts && (
@@ -561,11 +692,20 @@ export default function PastoralMassSend() {
                     <input type="checkbox" checked={selected.has(c.key)} onChange={() => toggleContact(c.key)}
                       className="w-4 h-4 rounded border-slate-300" />
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium text-slate-700 truncate">{c.name}</div>
+                      <div className="font-medium text-slate-700 truncate flex items-center gap-1.5">
+                        {c.name}
+                        {c.lastMessage && (
+                          <span title={`Já existe conversa · ${c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleString('pt-BR') : ''}`}
+                            className="inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 flex-shrink-0">
+                            <MessageCircle className="w-3 h-3" /> já conversou
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-slate-400 truncate">
                         {fmtPhone(c.phone)}
                         {c.church ? ` · ${c.church}` : ''}
                         {c.category ? ` · ${ATTENDANCE_TYPE_LABELS[c.category as AttendanceType] ?? c.category}` : ''}
+                        {c.lastMessage ? ` · "${c.lastMessage.slice(0, 40)}"` : ''}
                       </div>
                     </div>
                     <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded

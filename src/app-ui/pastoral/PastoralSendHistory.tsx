@@ -11,12 +11,15 @@
  * Spec: docs/modules/whatsapp-mass-send/SPEC.md
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Search,
   Loader2,
   Send,
   Bot,
+  Copy,
+  Download,
+  FileSpreadsheet,
   Sparkles,
   X,
   RefreshCw,
@@ -30,6 +33,7 @@ import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
 import DateRangeFilter, { currentMonthRange } from './DateRangeFilter';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { usePermissions } from '../../lib/usePermissions';
+import { exportRows } from './exportUtils';
 
 function currentProfileType(): string {
   try {
@@ -136,6 +140,7 @@ export default function PastoralSendHistory() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const replyInputRef = useRef<HTMLInputElement>(null);
   const [replySending, setReplySending] = useState(false);
 
   // smart
@@ -356,6 +361,27 @@ export default function PastoralSendHistory() {
 
   const agentName = (id: string | null) => agents.find(a => a.id === id)?.name ?? 'Agente IA';
 
+  // ── exportação CSV/Excel ─────────────────────────────────────────────────────
+  const exportSends = (format: 'csv' | 'xlsx') => {
+    const list = selected.size ? sends.filter(s => selected.has(s.recipientId)) : sends;
+    exportRows(
+      list.map(s => ({
+        Nome: s.name ?? '',
+        Telefone: fmtPhone(s.phone),
+        Categoria: s.category ? (ATTENDANCE_TYPE_LABELS[s.category as AttendanceType] ?? s.category) : '',
+        Igreja: s.church ?? '',
+        Campanha: s.campaignName,
+        'Enviado em': fmtDateTime(s.sentAt),
+        Status: s.replied ? 'Respondeu' : 'Sem resposta',
+        'Respondeu em': s.lastInboundAt ? fmtDateTime(s.lastInboundAt) : '',
+        'Última mensagem': s.lastMessage ?? '',
+        'Atendido por IA': s.aiEnabled ? agentName(s.aiAgentId) : '',
+      })),
+      'envios-whatsapp',
+      format
+    );
+  };
+
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -441,9 +467,24 @@ export default function PastoralSendHistory() {
               {selected.size} envio(s) selecionado(s)
             </span>
           )}
-          <button onClick={load} className="ml-auto p-1 rounded hover:bg-slate-100">
-            <RefreshCw className="w-4 h-4 text-slate-400" />
-          </button>
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="text-xs text-slate-400 hidden sm:inline">Exportar:</span>
+            <button onClick={() => exportSends('csv')} disabled={!sends.length}
+              title={selected.size ? 'Exportar selecionados (CSV)' : 'Exportar todos os listados (CSV)'}
+              className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+              <Download className="w-3.5 h-3.5" />
+              CSV
+            </button>
+            <button onClick={() => exportSends('xlsx')} disabled={!sends.length}
+              title={selected.size ? 'Exportar selecionados (Excel)' : 'Exportar todos os listados (Excel)'}
+              className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Excel
+            </button>
+            <button onClick={load} className="h-8 w-8 rounded-lg hover:bg-slate-100 inline-flex items-center justify-center flex-shrink-0">
+              <RefreshCw className="w-4 h-4 text-slate-400" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
@@ -619,12 +660,20 @@ export default function PastoralSendHistory() {
                   <div className="bg-white rounded-lg border border-amber-200 p-2 flex flex-col gap-2">
                     <div className="text-xs font-semibold text-slate-400">Mensagem sugerida</div>
                     <div className="text-slate-700">{smart.mensagem_sugerida}</div>
-                    <button onClick={() => sendReply(smart.mensagem_sugerida)} disabled={replySending || !canResend}
-                      title={!canResend ? 'Sem permissão para enviar mensagens de WhatsApp' : undefined}
-                      className="h-8 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-emerald-500 disabled:opacity-50">
-                      {replySending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                      Enviar sugestão
-                    </button>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => { setReplyText(smart.mensagem_sugerida); replyInputRef.current?.focus(); }}
+                        title="Copiar para o campo de mensagem — permite editar antes de enviar"
+                        className="h-8 px-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-slate-50">
+                        <Copy className="w-3.5 h-3.5" />
+                        Copiar para o campo
+                      </button>
+                      <button onClick={() => sendReply(smart.mensagem_sugerida)} disabled={replySending || !canResend}
+                        title={!canResend ? 'Sem permissão para enviar mensagens de WhatsApp' : undefined}
+                        className="flex-1 h-8 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-emerald-500 disabled:opacity-50">
+                        {replySending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        Enviar sugestão
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -661,7 +710,7 @@ export default function PastoralSendHistory() {
                   : 'Selecione uma instância nos filtros acima para enviar'}
               </div>
               <div className="flex gap-2">
-                <input value={replyText} onChange={e => setReplyText(e.target.value)}
+                <input ref={replyInputRef} value={replyText} onChange={e => setReplyText(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && sendReply()}
                   placeholder="Digite uma mensagem..."
                   className="flex-1 h-10 px-3 rounded-lg border border-slate-200 text-sm" />

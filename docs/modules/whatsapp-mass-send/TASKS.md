@@ -96,6 +96,26 @@
       `getAccessibleInstanceIds()` (novo helper em `whatsappSendService.ts`,
       mesma regra usada por `GET /api/whatsapp/instances`)
 
+## Fase 7 — Export, filtros avançados e IA pastoral (2026-07-03) — concluída
+- [x] `exportUtils.ts` (usa `xlsx`, já instalado) — exporta CSV e Excel
+- [x] Botões Exportar (CSV/Excel) em Envio em Massa (contatos) e Envios (histórico);
+      exporta selecionados se houver seleção, senão todos os listados
+- [x] `DateRangeFilter`: preset "Todos os períodos" — busca sem filtro de data
+- [x] Filtros de **Regional**, **Igreja** (cascata) e **Título eclesiástico**
+      (só para fonte Membros) em Envio em Massa — reaproveita `/api/regionais`,
+      `/api/churches`, `/api/ecclesiastical-titles` (isolamento já garantido
+      nesses endpoints); `contacts/route.ts` ganhou suporte a `titleId`
+- [x] Contatos mesclados com `whatsapp_conversations`: cada linha mostra badge
+      "já conversou" + prévia da última mensagem, respeitando as instâncias
+      acessíveis ao usuário (`getAccessibleInstanceIds`)
+- [x] Smart: botão "Copiar para o campo" ao lado de "Enviar sugestão" — permite
+      editar a sugestão antes de enviar
+- [x] Prompts de IA (agente automático e mensagem sugerida do Smart) sempre
+      trazem uma palavra de ânimo com referência bíblica (livro/capítulo/
+      versículo), tom encorajador, mensagem curta (não vira texto longo)
+- [x] Espelhado, typecheck limpo (erros restantes são pré-existentes em
+      arquivos não relacionados: CounselingNew, PastoralAttendanceDetail, etc.)
+
 ## Pendências manuais
 - [ ] Teste ponta a ponta com instância Z-API real conectada (envio de verdade)
 - [ ] Conferir permissão `whatsapp_campaigns` no papel dos usuários que usarão a tela

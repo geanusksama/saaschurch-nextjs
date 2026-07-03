@@ -493,8 +493,9 @@ export function AppUI() {
           timestamp: Date.now(),
           data: result
         }));
-      } catch (err) {
-        console.error('Failed to fetch weather:', err);
+      } catch {
+        // API externa de clima indisponível (rede/CORS) — widget é decorativo,
+        // falha silenciosa não deve poluir o console nem afetar o resto do app.
       }
     };
 
