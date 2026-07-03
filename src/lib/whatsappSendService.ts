@@ -35,6 +35,26 @@ export async function getActiveInstance(
   return data ?? null
 }
 
+// ── Instâncias que um usuário pode usar: dono OU autorizado em whatsapp_instance_users ──
+// master: acesso irrestrito (retorna null, sentinela de "sem filtro").
+// Mesma regra de acesso usada por GET /api/whatsapp/instances — mantenha sincronizado.
+export async function getAccessibleInstanceIds(
+  userId: string,
+  profileType?: string
+): Promise<Set<string> | null> {
+  if (profileType === 'master') return null
+
+  const [{ data: owned }, { data: links }] = await Promise.all([
+    supabaseAdmin.from('whatsapp_instances').select('id').eq('owner_user_id', userId),
+    supabaseAdmin.from('whatsapp_instance_users').select('instance_id').eq('user_id', userId),
+  ])
+
+  const ids = new Set<string>()
+  for (const row of owned ?? []) ids.add(row.id)
+  for (const row of links ?? []) ids.add(row.instance_id)
+  return ids
+}
+
 // ── Respeita rate limit por instância (5 s) ───────────────────────────────────
 async function enforceRateLimit(instanceId: string): Promise<void> {
   const { data } = await supabaseAdmin

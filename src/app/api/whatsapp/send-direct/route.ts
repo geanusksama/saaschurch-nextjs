@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { quickSendWhatsApp } from '@/lib/whatsappSendService'
+import { quickSendWhatsApp, getAccessibleInstanceIds } from '@/lib/whatsappSendService'
 
 // POST /api/whatsapp/send-direct
 // Mensagem individual pela instância ESCOLHIDA (não abre WhatsApp Web).
@@ -26,14 +26,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'phone e message são obrigatórios' }, { status: 400 })
     }
 
-    // instância precisa pertencer ao usuário (master usa qualquer)
-    let instQuery = supabaseAdmin
+    // instância precisa ser própria, autorizada (whatsapp_instance_users) ou o usuário ser master
+    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    if (accessible && !accessible.has(instanceId)) {
+      return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
+    }
+
+    const { data: instance } = await supabaseAdmin
       .from('whatsapp_instances')
       .select('id, status')
       .eq('id', instanceId)
       .eq('is_active', true)
-    if (user.profileType !== 'master') instQuery = instQuery.eq('owner_user_id', String(user.id))
-    const { data: instance } = await instQuery.single()
+      .single()
 
     if (!instance) return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
     if (instance.status !== 'connected') {

@@ -37,6 +37,27 @@ validam autenticação + escopo de igreja/campo via `withAuth`, não a matriz de
 permissões), essas checagens seguem a mesma convenção das demais telas —
 nenhuma rota nova ganhou verificação server-side de permissão.
 
+### Autorização por instância (whatsapp_instance_users)
+
+Além da permissão `whatsapp_campaigns`, cada instância WhatsApp já tem seu
+próprio controle de acesso (tela "Usuários autorizados" em Instâncias — tabela
+`whatsapp_instance_users`): só o dono (`owner_user_id`) e os usuários marcados
+ali podem enviar por aquele número. `GET /api/whatsapp/instances` já aplicava
+essa regra corretamente (dono + autorizados; master vê tudo), e como
+`PastoralMassSend`/`PastoralSendHistory` usam esse mesmo endpoint via
+`useWhatsAppInstances()`, a lista de instâncias selecionáveis nas novas telas
+já respeita a autorização — um usuário sem nenhuma instância própria/autorizada
+não vê nenhuma instância e não consegue selecionar nada (mesmo comportamento
+da tela de Instâncias).
+
+**Bug corrigido nesta auditoria**: `POST /api/whatsapp/send-direct` e
+`POST /api/whatsapp/campaigns` validavam a instância só por `owner_user_id`,
+ignorando `whatsapp_instance_users` — um usuário autorizado (não-dono) via a
+instância na lista, selecionava, mas o envio falhava com "Instância não
+encontrada". Corrigido com `getAccessibleInstanceIds()` (novo helper em
+`src/lib/whatsappSendService.ts`, mesma regra do GET /instances) usado nas
+duas rotas.
+
 ## v2 (2026-07-03) — evoluções
 
 - **Resumo de envio** substitui o console puro: cards Total/Enviadas/Enviando/

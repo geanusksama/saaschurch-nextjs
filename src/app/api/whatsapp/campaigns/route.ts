@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assignAgentsRoundRobin, type CampaignRecipientInput } from '@/lib/whatsappCampaignService'
+import { getAccessibleInstanceIds } from '@/lib/whatsappSendService'
 
 // GET /api/whatsapp/campaigns — lista campanhas do usuário (master vê todas)
 export async function GET(req: NextRequest) {
@@ -60,16 +61,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Selecione ao menos um destinatário com telefone' }, { status: 400 })
     }
 
-    // valida instâncias: precisam existir, estar ativas e pertencer ao usuário (master: qualquer)
-    let instQuery = supabaseAdmin
-      .from('whatsapp_instances')
-      .select('id, name, status')
-      .in('id', instanceIds)
-      .eq('is_active', true)
-    if (user.profileType !== 'master') {
-      instQuery = instQuery.eq('owner_user_id', String(user.id))
-    }
-    const { data: instances } = await instQuery
+    // valida instâncias: precisam existir, estar ativas e o usuário ser dono OU
+    // autorizado (whatsapp_instance_users) — master usa qualquer
+    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const allowedIds = accessible ? instanceIds.filter((id: string) => accessible.has(id)) : instanceIds
+    const { data: instances } = allowedIds.length
+      ? await supabaseAdmin.from('whatsapp_instances').select('id, name, status').in('id', allowedIds).eq('is_active', true)
+      : { data: [] }
     const connected = (instances ?? []).filter(i => i.status === 'connected')
     if (!connected.length) {
       return NextResponse.json(

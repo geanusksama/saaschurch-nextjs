@@ -89,6 +89,12 @@
       server-side (só `withAuth` + escopo de igreja/campo) — mantido o mesmo
       padrão, sem checagem server-side nova
 - [x] Espelhado e typecheck limpo
+- [x] **Fix relacionado**: `send-direct` e `campaigns` (POST) validavam a
+      instância só por `owner_user_id`, ignorando `whatsapp_instance_users`
+      (autorização por instância, tela "Usuários autorizados"). Um usuário
+      autorizado via a instância na lista mas o envio falhava. Corrigido com
+      `getAccessibleInstanceIds()` (novo helper em `whatsappSendService.ts`,
+      mesma regra usada por `GET /api/whatsapp/instances`)
 
 ## Pendências manuais
 - [ ] Teste ponta a ponta com instância Z-API real conectada (envio de verdade)
