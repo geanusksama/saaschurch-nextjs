@@ -72,7 +72,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const base = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}`
       const headers: HeadersInit = { 'Content-Type': 'application/json', 'Client-Token': instance.client_token }
       const path = action === 'disconnect' ? 'disconnect' : 'restart'
-      await fetch(`${base}/${path}`, { method: 'POST', headers })
+      // A Z-API expõe /restart e /disconnect como GET, não POST — POST retorna
+      // 405 e o botão parecia "não fazer nada" (confirmado em produção em 2026-07-13).
+      await fetch(`${base}/${path}`, { method: 'GET', headers })
       await supabaseAdmin.from('whatsapp_instances').update({ status: 'disconnected' }).eq('id', id)
       return NextResponse.json({ success: true })
     }
