@@ -49,7 +49,13 @@ interface SendRow {
   recipientId: string;
   campaignId: string;
   campaignName: string;
-  source: 'member' | 'pipeline';
+  source: 'member' | 'pipeline' | 'import';
+  /** 'csv' = veio de arquivo importado · 'portal' = busca feita na própria tela */
+  origin: 'csv' | 'portal';
+  /** situação do número na base no momento do envio (preenchido nos envios de CSV) */
+  matchStatus: string | null;
+  matchedStage: string | null;
+  attendanceId: string | null;
   name: string | null;
   phone: string;
   category: string | null;
@@ -100,6 +106,16 @@ function fmtPhone(phone: string): string {
   return phone;
 }
 
+/** Situação do número no momento do envio — o "de-para" da tela geral. */
+function matchLabel(s: { origin?: string; matchStatus: string | null; matchedStage: string | null; source: string }): string {
+  if (s.matchStatus === 'member') return 'Já era membro';
+  if (s.matchStatus === 'both') return `Membro e no pipeline${s.matchedStage ? ` (${s.matchedStage})` : ''}`;
+  if (s.matchStatus === 'pipeline') return `Já estava no pipeline${s.matchedStage ? ` (${s.matchedStage})` : ''}`;
+  if (s.matchStatus === 'new') return 'Contato novo';
+  // envios do portal não passam pelo de-para: a origem da busca já diz o que era
+  return s.source === 'member' ? 'Membro' : s.source === 'pipeline' ? 'Pipeline' : '—';
+}
+
 function fmtDateTime(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -112,6 +128,7 @@ export default function PastoralSendHistory() {
   // filtros
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
+  const [origin, setOrigin] = useState('');
   const [{ from: dateFrom, to: dateTo }, setDateRange] = useState(currentMonthRange);
 
   // dados
@@ -164,6 +181,7 @@ export default function PastoralSendHistory() {
       const params = new URLSearchParams({ limit: '500' });
       if (q.trim()) params.set('q', q.trim());
       if (category) params.set('category', category);
+      if (origin) params.set('origin', origin);
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
       const res = await fetch(`/api/whatsapp/sends?${params}`, { headers: authHeaders() });
@@ -177,7 +195,7 @@ export default function PastoralSendHistory() {
     } finally {
       setLoading(false);
     }
-  }, [q, category, dateFrom, dateTo]);
+  }, [q, category, origin, dateFrom, dateTo]);
 
   // roda na montagem e sempre que o período mudar (presets são clique, sem Enter)
   useEffect(() => {
@@ -370,6 +388,8 @@ export default function PastoralSendHistory() {
         Telefone: fmtPhone(s.phone),
         Categoria: s.category ? (ATTENDANCE_TYPE_LABELS[s.category as AttendanceType] ?? s.category) : '',
         Igreja: s.church ?? '',
+        Origem: s.origin === 'csv' ? 'Importado (CSV)' : 'Sistema',
+        'Situação na base': matchLabel(s),
         Campanha: s.campaignName,
         'Enviado em': fmtDateTime(s.sentAt),
         Status: s.replied ? 'Respondeu' : 'Sem resposta',
@@ -398,6 +418,15 @@ export default function PastoralSendHistory() {
             {(Object.entries(ATTENDANCE_TYPE_LABELS) as Array<[AttendanceType, string]>).map(([key, label]) => (
               <option key={key} value={key}>{label}</option>
             ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-slate-500">Origem</label>
+          <select value={origin} onChange={e => setOrigin(e.target.value)}
+            className="h-9 px-2 rounded-lg border border-slate-200 text-sm bg-white min-w-[150px]">
+            <option value="">Todos os envios</option>
+            <option value="portal">Do sistema (busca)</option>
+            <option value="csv">Importados (CSV)</option>
           </select>
         </div>
         <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
@@ -505,6 +534,18 @@ export default function PastoralSendHistory() {
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-slate-700 truncate flex items-center gap-1.5">
                   {s.name ?? fmtPhone(s.phone)}
+                  {/* origem do envio + situação do número na base */}
+                  <span title={`Origem: ${s.origin === 'csv' ? 'arquivo importado' : 'busca no sistema'}`}
+                    className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded flex-shrink-0
+                      ${s.origin === 'csv' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
+                    {s.origin === 'csv' ? 'CSV' : 'Sistema'}
+                  </span>
+                  {s.matchStatus && s.matchStatus !== 'new' && (
+                    <span title={matchLabel(s)}
+                      className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 flex-shrink-0">
+                      {s.matchStatus === 'member' ? 'já era membro' : `já no pipeline${s.matchedStage ? ` · ${s.matchedStage}` : ''}`}
+                    </span>
+                  )}
                   {s.aiEnabled && (
                     <span title={`Atendida por ${agentName(s.aiAgentId)}`}
                       className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase pl-1.5 pr-1 py-0.5 rounded bg-violet-50 text-violet-600">

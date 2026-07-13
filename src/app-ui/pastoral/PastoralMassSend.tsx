@@ -33,12 +33,14 @@ import {
   X,
   Download,
   FileSpreadsheet,
+  Upload,
 } from 'lucide-react';
 import { ATTENDANCE_TYPE_LABELS, type AttendanceType } from '../../lib/pastoralKanbanService';
 import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
 import DateRangeFilter, { currentMonthRange } from './DateRangeFilter';
 import { usePermissions } from '../../lib/usePermissions';
 import { exportRows } from './exportUtils';
+import ImportCsvModal, { downloadTemplate } from './ImportCsvModal';
 
 function currentProfileType(): string {
   try {
@@ -242,6 +244,9 @@ export default function PastoralMassSend() {
   const [starting, setStarting] = useState(false);
   const [viewSummary, setViewSummary] = useState(false);
   const loopActive = useRef(false);
+
+  // importação de arquivo (CSV/Excel)
+  const [showImport, setShowImport] = useState(false);
 
   // mensagem individual
   const [directTarget, setDirectTarget] = useState<MassContact | null>(null);
@@ -566,6 +571,18 @@ export default function PastoralMassSend() {
           {loadingContacts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
           Buscar
         </button>
+        {/* importação de lista externa (CSV/Excel) — fluxo próprio em 3 fases */}
+        <button onClick={() => setShowImport(true)} disabled={!canSendCampaign}
+          title={!canSendCampaign ? 'Sem permissão para enviar campanhas de WhatsApp' : 'Importar contatos de um arquivo CSV/Excel'}
+          className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium inline-flex items-center gap-2 hover:bg-emerald-500 disabled:opacity-50">
+          <Upload className="w-4 h-4" />
+          Importar CSV
+        </button>
+        <button onClick={downloadTemplate} title="Baixar o arquivo-modelo com as colunas aceitas"
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-600 inline-flex items-center gap-2 hover:bg-slate-50">
+          <Download className="w-4 h-4" />
+          Modelo
+        </button>
         {campaignId && (
           <button onClick={() => setViewSummary(v => !v)}
             className="h-9 px-3 rounded-lg border border-slate-200 text-sm inline-flex items-center gap-2 hover:bg-slate-50">
@@ -743,13 +760,22 @@ export default function PastoralMassSend() {
               placeholder="Olá {{primeiro_nome}}, ..."
               className="w-full rounded-lg border border-slate-200 p-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-emerald-200"
             />
+            {/* variáveis: clique insere no cursor; arrastar solta no meio do texto
+                (o textarea aceita o drop nativo do navegador) */}
             <div className="flex flex-wrap gap-1">
               {TEMPLATE_VARS.map(v => (
-                <button key={v} onClick={() => insertVar(v)}
-                  className="text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 font-mono">
+                <button key={v}
+                  draggable
+                  onDragStart={e => e.dataTransfer.setData('text/plain', `{{${v}}}`)}
+                  onClick={() => insertVar(v)}
+                  title="Clique para inserir no cursor — ou arraste para dentro da mensagem"
+                  className="text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 font-mono cursor-grab active:cursor-grabbing">
                   {`{{${v}}}`}
                 </button>
               ))}
+            </div>
+            <div className="text-[11px] text-slate-400 -mt-1">
+              Arraste uma variável para dentro do texto ou clique para inserir no cursor.
             </div>
 
             {/* anexos */}
@@ -896,6 +922,9 @@ export default function PastoralMassSend() {
           </span>
         </div>
       )}
+
+      {/* ── Modal: importação CSV/Excel (3 fases) ── */}
+      {showImport && <ImportCsvModal onClose={() => setShowImport(false)} />}
 
       {/* ── Modal: mensagem individual ── */}
       {directTarget && (
