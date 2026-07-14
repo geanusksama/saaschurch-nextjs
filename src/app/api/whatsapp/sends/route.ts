@@ -22,17 +22,21 @@ export async function GET(req: NextRequest) {
     const source = sp.get('source') ?? ''
     const limit = Math.min(Math.max(1, Number(sp.get('limit')) || 300), 1000)
 
+    const origin = sp.get('origin') ?? '' // '' | portal | csv
+
     // campanhas visíveis
-    let campQuery = supabaseAdmin.from('whatsapp_campaigns').select('id, name')
+    let campQuery = supabaseAdmin.from('whatsapp_campaigns').select('id, name, origin')
     if (user.profileType !== 'master') campQuery = campQuery.eq('owner_user_id', String(user.id))
+    if (origin === 'csv' || origin === 'portal') campQuery = campQuery.eq('origin', origin)
     const { data: campaigns } = await campQuery
     if (!campaigns?.length) return NextResponse.json({ sends: [] })
     const campaignNames = new Map(campaigns.map(c => [c.id, c.name]))
+    const campaignOrigins = new Map(campaigns.map(c => [c.id, c.origin ?? 'portal']))
 
     // destinatários enviados
     let recQuery = supabaseAdmin
       .from('whatsapp_campaign_recipients')
-      .select('id, campaign_id, name, phone, variables, instance_id, sent_at, source, status')
+      .select('id, campaign_id, name, phone, variables, instance_id, sent_at, source, status, match_status, matched_stage, matched_member_id, attendance_id')
       .in('campaign_id', campaigns.map(c => c.id))
       .eq('status', 'sent')
       .order('sent_at', { ascending: false })
@@ -93,6 +97,14 @@ export async function GET(req: NextRequest) {
         campaignId: r.campaign_id,
         campaignName: campaignNames.get(r.campaign_id) ?? '',
         source: r.source,
+        // origem do envio: 'csv' (arquivo importado) ou 'portal' (busca na tela)
+        origin: campaignOrigins.get(r.campaign_id) ?? 'portal',
+        // situação do número no momento do envio (só preenchido em envios de CSV)
+        matchStatus: r.match_status ?? null,
+        matchedStage: r.matched_stage ?? null,
+        matchedMemberId: r.matched_member_id ?? null,
+        // card criado no pipeline por este envio (coluna FAZENDO)
+        attendanceId: r.attendance_id ?? null,
         name: r.name ?? conv?.contact_name ?? null,
         phone: String(r.phone),
         category: vars.tipo ?? null,

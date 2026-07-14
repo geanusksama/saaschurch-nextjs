@@ -11,13 +11,14 @@
  */
 
 import { useState, useEffect } from 'react';
-import { LayoutGrid, Send, MessagesSquare } from 'lucide-react';
+import { LayoutGrid, Send, MessagesSquare, FileSpreadsheet } from 'lucide-react';
 import PastoralKanban from './PastoralKanban';
 import PastoralMassSend from './PastoralMassSend';
 import PastoralSendHistory from './PastoralSendHistory';
+import PastoralImports from './PastoralImports';
 import { usePermissions } from '../../lib/usePermissions';
 
-type HubTab = 'pipeline' | 'mass-send' | 'sends';
+type HubTab = 'pipeline' | 'mass-send' | 'sends' | 'imports';
 
 function currentProfileType(): string {
   try {
@@ -66,6 +67,14 @@ export default function PastoralHub() {
               <MessagesSquare className="w-4 h-4" />
               Envios
             </button>
+            <button
+              onClick={() => setTab('imports')}
+              className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
+                ${tab === 'imports' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Importações
+            </button>
           </>
         )}
       </div>
@@ -83,6 +92,12 @@ export default function PastoralHub() {
           <div className={tab === 'sends' ? 'flex-1 min-h-0' : 'hidden'}>
             <PastoralSendHistory />
           </div>
+          {/* Importações é montada só quando aberta — a consulta é sob demanda */}
+          {tab === 'imports' && (
+            <div className="flex-1 min-h-0">
+              <PastoralImports />
+            </div>
+          )}
         </>
       )}
     </div>

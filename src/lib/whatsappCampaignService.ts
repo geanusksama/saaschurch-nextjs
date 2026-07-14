@@ -16,6 +16,7 @@ import {
   ensureConversation,
   persistOutboundMessage,
 } from '@/lib/whatsappSendService'
+import { createPipelineCardForSend } from '@/lib/whatsappImportService'
 import type { WhatsAppInstance } from '@/types/whatsapp'
 
 const RATE_LIMIT_MS = 5000 // mínimo absoluto — NUNCA reduzir, risco de ban do número
@@ -286,6 +287,7 @@ export async function processCampaignTick(campaignId: string): Promise<TickResul
 
   let sendStatus: 'sent' | 'error' = 'sent'
   let sendError: string | undefined
+  let attendanceId: string | null = null
 
   try {
     // imagem em anexo: mensagem vira a legenda
@@ -310,6 +312,24 @@ export async function processCampaignTick(campaignId: string): Promise<TickResul
           .update({ assigned_to: next.agent_user_id })
           .eq('id', conversationId)
       }
+      // Campanhas de importação CSV geram um card de acompanhamento na coluna
+      // FAZENDO do pipeline. Campanhas do portal têm create_pipeline_cards
+      // = false (default) e seguem sem card, como sempre foi.
+      const cardChurchId = campaign.pipeline_church_id ?? campaign.church_id
+      if (campaign.create_pipeline_cards && cardChurchId) {
+        attendanceId = await createPipelineCardForSend({
+          churchId: cardChurchId,
+          name: next.name ?? phone,
+          phone,
+          email: (next.variables ?? {}).email || null,
+          // o "tipo" da linha do arquivo tem prioridade sobre o tipo do lote
+          attendanceType: (next.variables ?? {}).tipo || campaign.attendance_type || 'followup',
+          message,
+          campaignName: campaign.name,
+          instanceName: instance.name,
+          ownerUserId: campaign.owner_user_id,
+        })
+      }
     }
   } catch (err) {
     sendStatus = 'error'
@@ -323,8 +343,20 @@ export async function processCampaignTick(campaignId: string): Promise<TickResul
       status: sendStatus,
       error_message: sendError ?? null,
       sent_at: sendStatus === 'sent' ? now : null,
+      attendance_id: attendanceId,
     })
     .eq('id', next.id)
+
+  // espelha o resultado na linha do arquivo importado (de-para da aba Importações)
+  if (next.import_row_id) {
+    await supabaseAdmin
+      .from('whatsapp_import_rows')
+      .update({
+        created_attendance_id: attendanceId,
+        skip_reason: sendStatus === 'error' ? (sendError ?? 'Falha no envio') : null,
+      })
+      .eq('id', next.import_row_id)
+  }
 
   const progress = await getCampaignProgress(campaignId)
 
@@ -337,6 +369,12 @@ export async function processCampaignTick(campaignId: string): Promise<TickResul
     updates.status = 'completed'
     updates.finished_at = now
     progress.status = 'completed'
+    if (campaign.import_batch_id) {
+      await supabaseAdmin
+        .from('whatsapp_import_batches')
+        .update({ status: 'sent' })
+        .eq('id', campaign.import_batch_id)
+    }
   }
   await supabaseAdmin.from('whatsapp_campaigns').update(updates).eq('id', campaignId)
 
