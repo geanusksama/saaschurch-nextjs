@@ -866,15 +866,26 @@ function ConsultarLancamentoModal({
           if (isNaN(rolNum)) { setLoading(false); setError('ROL deve ser um número.'); return; }
           const { data: memberData } = await supabase
             .from('members')
-            .select('id')
+            .select('id, full_name')
             .eq('rol', rolNum);
           const memberIds = (memberData ?? []).map((m: { id: string }) => m.id);
-          if (memberIds.length === 0) {
+          // Também casa por nome no favorecido — cobre lançamentos avulsos /
+          // importados (legado) que não têm member_id vinculado, mas guardam
+          // o nome do favorecido. Espelha o fallback da busca por Nome.
+          const memberNames = Array.from(new Set(
+            (memberData ?? [])
+              .map((m: { full_name?: string | null }) => (m.full_name ?? '').trim())
+              .filter(Boolean),
+          ));
+          if (memberIds.length === 0 && memberNames.length === 0) {
             setLoading(false);
             onResults([], dataInicio, dataFim);
             return;
           }
-          query = query.in('member_id', memberIds);
+          const orParts: string[] = [];
+          if (memberIds.length > 0) orParts.push(`member_id.in.(${memberIds.join(',')})`);
+          for (const name of memberNames) orParts.push(`favorecido.ilike.%${name}%`);
+          query = (query as any).or(orParts.join(','));
         } else {
           // Nome: busca membros pelo nome primeiro, filtra por member_id
           // com fallback para ilike em favorecido (não-membros / lançamentos avulsos)

@@ -30,9 +30,17 @@ export async function POST(req: NextRequest) {
     }
     // A vinculação lançamento->membro é INCONSISTENTE no histórico: lançamentos mais novos usam
     // a FK lc.member_id; lançamentos mais antigos usam lc.id_favorecido_externo = rol do membro.
-    // Para não perder nenhuma competência, juntamos pelos DOIS critérios (mesma igreja).
+    // Para não perder nenhuma competência, juntamos pelos DOIS critérios.
+    //  • Match por FK (m.id = lc.member_id): member_id é chave única, então identifica o membro
+    //    correto INDEPENDENTE da igreja. Isso faz aparecer quem é de outra igreja mas dizima na
+    //    SEDE (o dízimo é atribuído à igreja do lançamento, igual à Análise do Campo).
+    //  • Match legado por ROL: usado só quando NÃO há member_id. O rol é único por CAMPO (pode
+    //    repetir entre campos diferentes), então desambiguamos exigindo que o membro seja do MESMO
+    //    campo do lançamento (r.campo_id) — não da mesma igreja. Assim quem é de outra igreja do
+    //    mesmo campo e dízima na SEDE também casa. O "member_id IS NULL" evita casar duas vezes
+    //    (FK + ROL) e contar em dobro.
     // Quando há filtro de título, INNER JOIN restringe aos membros; senão, LEFT JOIN inclui não-membros.
-    const memberMatch = "(m.id = lc.member_id OR m.rol::text = lc.id_favorecido_externo) AND m.church_id = lc.church_id AND m.deleted_at IS NULL";
+    const memberMatch = `((m.id = lc.member_id) OR (lc.member_id IS NULL AND m.rol::text = lc.id_favorecido_externo AND EXISTS (SELECT 1 FROM churches mc JOIN regionais mr ON mr.id = mc.regional_id WHERE mc.id = m.church_id AND mr.campo_id = r.campo_id))) AND m.deleted_at IS NULL`;
     const memberJoin = reqTitleIds.length
       ? `JOIN members m ON ${memberMatch}`
       : `LEFT JOIN members m ON ${memberMatch}`;
@@ -42,7 +50,7 @@ export async function POST(req: NextRequest) {
        COALESCE(m.full_name, lc.favorecido) AS "memberName", COALESCE(m.ecclesiastical_title, '') AS "ecclesiasticalTitle", m.rol AS "rol",
        lc.church_id::text AS "churchId", c.name AS "churchName", c.regional_id::text AS "regionalId", r.name AS "regionalName",
        TO_CHAR(lc.data_lancamento, 'YYYY-MM-DD') AS "dataLancamento", lc.valor::numeric AS "valor"
-       FROM livro_caixa lc ${memberJoin} JOIN churches c ON c.id = lc.church_id JOIN regionais r ON r.id = c.regional_id
+       FROM livro_caixa lc JOIN churches c ON c.id = lc.church_id JOIN regionais r ON r.id = c.regional_id ${memberJoin}
        WHERE ${conditions.join(" AND ")} ORDER BY r.name ASC, c.name ASC, COALESCE(m.full_name, lc.favorecido) ASC, lc.data_lancamento ASC`,
       ...params
     );

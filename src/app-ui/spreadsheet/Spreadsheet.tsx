@@ -67,7 +67,7 @@ type ScopeChurch = { id: string; name: string; regionalId: string };
 type StoredUser = { profileType?: string; campoId?: string; regionalId?: string; churchId?: string };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const TOTAL_ROWS = 1000;
+const TOTAL_ROWS = 6000;
 const TOTAL_COLS = 52;
 const DEFAULT_COL_WIDTH = 100;
 const DEFAULT_ROW_HEIGHT = 24;
@@ -395,6 +395,8 @@ export default function Spreadsheet() {
   const [renameVal, setRenameVal] = useState('');
   const [showFindBar, setShowFindBar] = useState(false);
   const [findVal, setFindVal] = useState('');
+  const [findInfo, setFindInfo] = useState('');
+  const findCursor = useRef<{ row: number; col: number }>({ row: -1, col: -1 });
   const [showBorderPicker, setShowBorderPicker] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
@@ -1463,6 +1465,12 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
       let minR = TOTAL_ROWS, maxR = -1;
       Object.keys(sh.cells).forEach(k => { const p = parseRef(k); if (!p) return; if (p.row < minR) minR = p.row; if (p.row > maxR) maxR = p.row; });
       if (maxR < 0) return prev;
+      // Nunca reordena as linhas congeladas (título, período, cabeçalho): elas
+      // devem permanecer fixas no topo. Sem isto, o cabeçalho "Nome/ROL/..." é
+      // ordenado junto e vai parar no meio dos dados.
+      const frozen = sh.frozenRows || 0;
+      if (minR < frozen) minR = frozen;
+      if (minR > maxR) return prev;
       type RowMap = Map<number, CellData>;
       const rowMaps: RowMap[] = [];
       for (let r = minR; r <= maxR; r++) {
@@ -1483,6 +1491,30 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
       return next;
     });
   }, [pushUndo, sel, activeIdx]);
+
+  // Localizar: percorre as células que contêm o termo, em ordem de linha/coluna,
+  // avançando para a próxima ocorrência a cada chamada e dando a volta no fim.
+  const findNext = useCallback(() => {
+    const v = findVal.trim().toLowerCase();
+    if (!v) { setFindInfo(''); return; }
+    const matches: { row: number; col: number }[] = [];
+    for (const [k, cell] of Object.entries(activeSheet.cells)) {
+      if (cell.mergeHidden) continue;
+      if ((cell.value ?? '').toLowerCase().includes(v)) {
+        const p = parseRef(k); if (p) matches.push(p);
+      }
+    }
+    if (matches.length === 0) { setFindInfo('Nenhum resultado'); return; }
+    matches.sort((a, b) => (a.row - b.row) || (a.col - b.col));
+    const cur = findCursor.current;
+    let idx = matches.findIndex(m => m.row > cur.row || (m.row === cur.row && m.col > cur.col));
+    if (idx === -1) idx = 0; // volta ao início
+    const hit = matches[idx];
+    findCursor.current = hit;
+    setSel({ r1: hit.row, c1: hit.col, r2: hit.row, c2: hit.col });
+    scrollTo(hit.row, hit.col);
+    setFindInfo(`${idx + 1} de ${matches.length}`);
+  }, [findVal, activeSheet, scrollTo]);
 
   const buildStyledWorkbook = useCallback(() => {
     const wb = XLSX.utils.book_new();
@@ -1954,7 +1986,10 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
             </div>
             <RBtn size="lg" title="Desfazer (Ctrl+Z)" icon={<Ico.Undo />} label="Desfazer" onClick={() => { if (undoStack.current.length) setSheets(undoStack.current.pop()!); }} />
             <RBtn size="lg" title="Refazer (Ctrl+Y)" icon={<Ico.Redo />} label="Refazer" onClick={() => { if (redoStack.current.length) setSheets(redoStack.current.pop()!); }} />
-            <RBtn title="Localizar (Ctrl+F)" icon={<Ico.Search />} onClick={() => setShowFindBar(f => !f)} />
+            <RBtn size="lg" title="Localizar (Ctrl+F)" icon={<Ico.Search />} label="Localizar"
+              active={showFindBar}
+              style={showFindBar ? undefined : { background: 'rgba(245,158,11,0.16)', border: '1px solid rgba(245,158,11,0.45)', color: '#b45309' }}
+              onClick={() => setShowFindBar(f => !f)} />
             <RBtn title="Limpar Seleção" icon={<Ico.Trash />} onClick={clearSelection} />
           </RGroup>
           <RDiv />
@@ -2708,19 +2743,15 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
       {showFindBar && (
         <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700 shrink-0">
           <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">Localizar:</span>
-          <input autoFocus value={findVal} onChange={e => setFindVal(e.target.value)}
+          <input autoFocus value={findVal}
+            onChange={e => { setFindVal(e.target.value); findCursor.current = { row: -1, col: -1 }; setFindInfo(''); }}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); findNext(); } if (e.key === 'Escape') { setShowFindBar(false); } }}
             className="h-6 text-xs border border-amber-300 dark:border-amber-600 rounded px-2 bg-white dark:bg-slate-800 outline-none min-w-[200px]"
-            placeholder="Digite para localizar..." />
-          <button onClick={() => {
-            const v = findVal.toLowerCase();
-            for (const [k, cell] of Object.entries(activeSheet.cells)) {
-              if (cell.value.toLowerCase().includes(v)) {
-                const p = parseRef(k); if (p) { setSel({ r1: p.row, c1: p.col, r2: p.row, c2: p.col }); scrollTo(p.row, p.col); break; }
-              }
-            }
-          }} className="px-3 h-6 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-            Localizar
+            placeholder="Digite e Enter para localizar..." />
+          <button onClick={findNext} className="px-3 h-6 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+            Próximo
           </button>
+          {findInfo && <span className="text-[11px] text-amber-700 dark:text-amber-300">{findInfo}</span>}
           <button onClick={() => setShowFindBar(false)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 ml-1">✕</button>
         </div>
       )}
@@ -2965,6 +2996,10 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
                             type="text"
                             value={editValue}
                             onChange={e => onEditChange(e.target.value)}
+                            // Impede o mousedown de borbulhar até o <div> da célula
+                            // (onCellMouseDown), que comitaria a edição e impediria
+                            // selecionar o texto com o mouse dentro da célula.
+                            onMouseDown={e => e.stopPropagation()}
                             onKeyDown={onEditKeyDown}
                             onBlur={e => {
                               // Don't commit when clicking on a cell in formula mode
