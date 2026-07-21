@@ -42,6 +42,7 @@ export default function MembroFaceId() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [step, setStep] = useState<Step>('intro');
+  const [cameraReady, setCameraReady] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusResponse | null>(null);
@@ -61,6 +62,7 @@ export default function MembroFaceId() {
 
   const startCamera = useCallback(async () => {
     setError(null);
+    setCameraReady(false);
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setError('Este navegador não permite acessar a câmera. Tente pelo Chrome ou Safari.');
@@ -68,14 +70,24 @@ export default function MembroFaceId() {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 1280 },
-        },
-        audio: false,
-      });
+      // facingMode 'user' = câmera frontal (selfie). É uma preferência, não
+      // uma exigência: se o aparelho recusar a restrição, tenta de novo sem
+      // ela em vez de falhar — melhor abrir a traseira do que não abrir nada.
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'user' },
+            width: { ideal: 1280 },
+            height: { ideal: 1280 },
+          },
+          audio: false,
+        });
+      } catch (err) {
+        const name = (err as DOMException)?.name;
+        if (name !== 'OverconstrainedError' && name !== 'NotFoundError') throw err;
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
 
       // Guarda o stream e troca de passo. O <video> só existe depois desta
       // troca, então quem anexa o stream é o efeito abaixo — tentar aqui
@@ -97,19 +109,26 @@ export default function MembroFaceId() {
     }
   }, []);
 
-  // Anexa o stream assim que o <video> entra no DOM
-  useEffect(() => {
-    if (step !== 'camera') return;
-    const video = videoRef.current;
-    const stream = streamRef.current;
-    if (!video || !stream) return;
+  /**
+   * Ref de callback: dispara no exato momento em que o <video> monta.
+   *
+   * Um useEffect([step]) não serve aqui — o bloco da câmera vive dentro de
+   * um AnimatePresence com mode="wait", que adia a montagem até a animação
+   * de saída da tela anterior terminar. O efeito rodaria com o elemento
+   * ainda fora do DOM e o stream nunca seria anexado.
+   */
+  const attachVideo = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (!node) return;
 
-    video.srcObject = stream;
-    video.play().catch(() => {
-      setError('Não foi possível iniciar a pré-visualização. Toque em "Abrir câmera" novamente.');
-      setStep('intro');
+    const stream = streamRef.current;
+    if (!stream) return;
+
+    node.srcObject = stream;
+    node.play().catch(() => {
+      /* autoPlay no elemento cobre o caso de o play programático falhar */
     });
-  }, [step]);
+  }, []);
 
   useEffect(() => () => {
     stopCamera();
@@ -228,6 +247,7 @@ export default function MembroFaceId() {
     setStatus(null);
     setBatchId(null);
     setError(null);
+    setCameraReady(false);
     startCamera();
   }, [startCamera]);
 
@@ -315,10 +335,11 @@ export default function MembroFaceId() {
               <motion.div key="camera" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="relative rounded-2xl overflow-hidden mb-5 bg-black" style={{ aspectRatio: '1/1' }}>
                   <video
-                    ref={videoRef}
+                    ref={attachVideo}
                     autoPlay
                     playsInline
                     muted
+                    onLoadedMetadata={() => setCameraReady(true)}
                     className="w-full h-full object-cover"
                     style={{ transform: 'scaleX(-1)' }}
                   />
@@ -335,16 +356,26 @@ export default function MembroFaceId() {
                     />
                   </div>
                   <p className="absolute bottom-3 inset-x-0 text-center text-[11px] text-white/70 font-medium">
-                    Encaixe o rosto no círculo
+                    {cameraReady ? 'Encaixe o rosto no círculo' : 'Iniciando a câmera…'}
                   </p>
+
+                  {!cameraReady && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div
+                        className="w-9 h-9 rounded-full animate-spin"
+                        style={{ border: `3px solid ${TEAL}22`, borderTopColor: TEAL }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <button
                   onClick={capture}
-                  className="w-full py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98]"
+                  disabled={!cameraReady}
+                  className="w-full py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98] disabled:opacity-40"
                   style={{ background: TEAL }}
                 >
-                  Tirar foto
+                  {cameraReady ? 'Tirar foto' : 'Aguarde…'}
                 </button>
               </motion.div>
             )}
