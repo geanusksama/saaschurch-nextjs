@@ -12,6 +12,46 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 const ALLOWED_STATUS = ['processing', 'done', 'failed'] as const
 type AllowedStatus = (typeof ALLOWED_STATUS)[number]
 
+/**
+ * Copia a foto do cadastro facial (privada) para o caminho público de
+ * fotos de perfil e aponta `members.photo_url` para ela.
+ *
+ * O caminho é determinístico por lote: quando a igreja tem vários
+ * leitores, os N jobs do mesmo lote gravam exatamente o mesmo valor,
+ * então repetir a chamada é inofensivo.
+ */
+async function syncProfilePhoto(memberId: string, batchId: string, sourcePath: string) {
+  const ext = sourcePath.endsWith('.png') ? 'png' : 'jpg'
+  const publicPath = `member-photos/${memberId}/${batchId}.${ext}`
+
+  try {
+    const { error: copyError } = await supabaseAdmin.storage
+      .from('dados')
+      .copy(sourcePath, publicPath)
+
+    // 'already exists' é esperado a partir do segundo leitor do lote
+    if (copyError && !/exist/i.test(copyError.message)) {
+      console.error('faceid-agent: falha ao copiar foto de perfil', copyError)
+      return
+    }
+
+    const { data: pub } = supabaseAdmin.storage.from('dados').getPublicUrl(publicPath)
+
+    const { error: updateError } = await supabaseAdmin
+      .from('members')
+      .update({ photo_url: pub.publicUrl })
+      .eq('id', memberId)
+
+    if (updateError) {
+      console.error('faceid-agent: falha ao atualizar foto de perfil', updateError)
+    }
+  } catch (err) {
+    // Nunca derruba o job: o cadastro no leitor já deu certo, e é isso
+    // que importa. A foto de perfil é um efeito secundário.
+    console.error('faceid-agent: erro inesperado ao sincronizar foto', err)
+  }
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -40,7 +80,7 @@ export async function PATCH(
   // Um agente só pode reportar jobs do próprio dispositivo
   const { data: job } = await supabaseAdmin
     .from('face_enrollment_jobs')
-    .select('id, device_id, attempts')
+    .select('id, device_id, attempts, member_id, batch_id, photo_url')
     .eq('id', id)
     .maybeSingle()
 
@@ -80,6 +120,15 @@ export async function PATCH(
   if (error) {
     console.error('faceid-agent: erro ao atualizar job', error)
     return NextResponse.json({ error: 'Erro ao atualizar job.' }, { status: 500 })
+  }
+
+  // O aparelho aceitou o rosto: a mesma foto vira a foto de perfil do
+  // membro, para o cadastro do leitor e o do sistema não divergirem.
+  //
+  // Só acontece no sucesso — foto recusada pelo leitor (borrada, mal
+  // enquadrada) não deve virar foto de perfil.
+  if (status === 'done' && job.member_id && job.photo_url) {
+    await syncProfilePhoto(job.member_id, job.batch_id, job.photo_url)
   }
 
   return NextResponse.json({ ok: true })

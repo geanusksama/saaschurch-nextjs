@@ -239,10 +239,14 @@ export default function MembroFaceId() {
               <motion.div key="intro" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <div className="rounded-2xl p-5 mb-5"
                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[13px] text-slate-300 leading-relaxed mb-4">
+                  <p className="text-[13px] text-slate-300 leading-relaxed mb-3">
                     Olá, <span className="font-semibold text-white">{firstName}</span>. Vamos cadastrar
                     seu rosto nos leitores da sua igreja para que sua presença seja registrada
                     automaticamente.
+                  </p>
+                  <p className="text-[12px] text-slate-400 leading-relaxed mb-4">
+                    Se você já tem cadastro no leitor, a foto será substituída pela nova.
+                    Ela também passa a ser a foto do seu perfil.
                   </p>
                   <p className="text-[11px] font-semibold text-white/50 mb-2 uppercase tracking-wide">
                     Para a foto dar certo
