@@ -223,6 +223,13 @@ export function AttendanceModule() {
   const [titles, setTitles] = useState<any[]>([]);
 
   // --- Tab 5: Devices State ---
+  // Token que autentica o agente local no endpoint /api/faceid-agent/*
+  const generateAgentToken = () =>
+    (typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+    ).replace(/-/g, '');
+
   const [devices, setDevices] = useState<any[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [showDeviceModal, setShowDeviceModal] = useState(false);
@@ -269,9 +276,7 @@ export function AttendanceModule() {
     setDeviceLocalHost('');
     setDeviceLocalPort('80');
     // Token gerado aqui e copiado para o .env do agente daquela igreja
-    setDeviceAgentToken(
-      (crypto.randomUUID?.() || Math.random().toString(36).slice(2)).replace(/-/g, '')
-    );
+    setDeviceAgentToken(generateAgentToken());
     setDeviceChurchId(selectedChurchId !== 'all' ? selectedChurchId : (churches[0]?.id || ''));
     setShowDeviceModal(true);
   };
@@ -285,7 +290,9 @@ export function AttendanceModule() {
     setDevicePassword(dev.password || '');
     setDeviceLocalHost(dev.localHost || '');
     setDeviceLocalPort(String(dev.localPort || 80));
-    setDeviceAgentToken(dev.agentToken || '');
+    // Dispositivos criados antes do cadastro remoto não têm token —
+    // gera um na hora para não deixar o campo vazio e sem saída.
+    setDeviceAgentToken(dev.agentToken || generateAgentToken());
     setDeviceChurchId(dev.churchId);
     setShowDeviceModal(true);
   };
@@ -2688,8 +2695,16 @@ export function AttendanceModule() {
                           />
                           <button
                             type="button"
-                            onClick={() => navigator.clipboard?.writeText(deviceAgentToken)}
+                            onClick={() => setDeviceAgentToken(generateAgentToken())}
                             className="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
+                          >
+                            Gerar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigator.clipboard?.writeText(deviceAgentToken)}
+                            disabled={!deviceAgentToken}
+                            className="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors whitespace-nowrap"
                           >
                             Copiar
                           </button>
