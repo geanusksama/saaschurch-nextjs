@@ -3335,18 +3335,64 @@ model MemberLike {
 }
 
 model FaceidDevice {
-  id        String   @id @default(uuid()) @db.Uuid
-  churchId  String   @map("church_id") @db.Uuid
-  serial    String   @unique @db.VarChar(100)
-  name      String   @db.VarChar(255)
-  username  String?  @db.VarChar(100)
-  password  String?  @db.VarChar(255)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String    @id @default(uuid()) @db.Uuid
+  churchId   String    @map("church_id") @db.Uuid
+  serial     String    @unique @db.VarChar(100)
+  name       String    @db.VarChar(255)
+  username   String?   @db.VarChar(100)
+  password   String?   @db.VarChar(255)
 
-  church    Church   @relation("ChurchFaceidDevices", fields: [churchId], references: [id], onDelete: Cascade)
+  // Acesso local ao aparelho — usado pelo agente que roda na rede da igreja
+  localHost  String?   @map("local_host") @db.VarChar(100)
+  localPort  Int?      @default(80) @map("local_port")
+  agentToken String?   @unique @map("agent_token") @db.VarChar(100)
+  isActive   Boolean   @default(true) @map("is_active")
+  lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  church     Church    @relation("ChurchFaceidDevices", fields: [churchId], references: [id], onDelete: Cascade)
+  enrollJobs FaceEnrollmentJob[] @relation("DeviceEnrollJobs")
 
   @@map("faceid_devices")
+}
+
+/// Fila de cadastro remoto no leitor Control iD.
+/// Um job por (membro, dispositivo); `batchId` agrupa a solicitação.
+model FaceEnrollmentJob {
+  id           String    @id @default(uuid()) @db.Uuid
+  batchId      String    @map("batch_id") @db.Uuid
+  churchId     String    @map("church_id") @db.Uuid
+  deviceId     String    @map("device_id") @db.Uuid
+  memberId     String    @map("member_id") @db.Uuid
+
+  // Mapeamento Control iD: rol -> user.id ("Código"),
+  // nome -> user.name, cpf -> user.registration ("Matrícula")
+  rol          Int
+  nome         String    @db.VarChar(255)
+  cpf          String?   @db.VarChar(20)
+  photoUrl     String    @map("photo_url")
+
+  /// pending | processing | done | failed | needs_approval | rejected
+  status       String    @default("pending") @db.VarChar(20)
+  allowUpdate  Boolean   @default(false) @map("allow_update")
+
+  errorCode    Int?      @map("error_code")
+  errorMessage String?   @map("error_message")
+  matchUserId  Int?      @map("match_user_id")
+
+  attempts     Int       @default(0)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  processedAt  DateTime? @map("processed_at") @db.Timestamptz
+
+  device       FaceidDevice @relation("DeviceEnrollJobs", fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, status])
+  @@index([batchId])
+  @@index([memberId, createdAt])
+  @@map("face_enrollment_jobs")
 }
 
 model ChurchPresenceTicket {

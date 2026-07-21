@@ -232,6 +232,10 @@ export function AttendanceModule() {
   const [deviceUsername, setDeviceUsername] = useState('');
   const [devicePassword, setDevicePassword] = useState('');
   const [deviceChurchId, setDeviceChurchId] = useState('');
+  // Acesso local ao aparelho — necessário para o cadastro remoto de face
+  const [deviceLocalHost, setDeviceLocalHost] = useState('');
+  const [deviceLocalPort, setDeviceLocalPort] = useState('80');
+  const [deviceAgentToken, setDeviceAgentToken] = useState('');
 
   // Load devices list
   const loadDevices = async () => {
@@ -262,6 +266,12 @@ export function AttendanceModule() {
     setDeviceName('');
     setDeviceUsername('');
     setDevicePassword('');
+    setDeviceLocalHost('');
+    setDeviceLocalPort('80');
+    // Token gerado aqui e copiado para o .env do agente daquela igreja
+    setDeviceAgentToken(
+      (crypto.randomUUID?.() || Math.random().toString(36).slice(2)).replace(/-/g, '')
+    );
     setDeviceChurchId(selectedChurchId !== 'all' ? selectedChurchId : (churches[0]?.id || ''));
     setShowDeviceModal(true);
   };
@@ -273,6 +283,9 @@ export function AttendanceModule() {
     setDeviceName(dev.name);
     setDeviceUsername(dev.username || '');
     setDevicePassword(dev.password || '');
+    setDeviceLocalHost(dev.localHost || '');
+    setDeviceLocalPort(String(dev.localPort || 80));
+    setDeviceAgentToken(dev.agentToken || '');
     setDeviceChurchId(dev.churchId);
     setShowDeviceModal(true);
   };
@@ -290,7 +303,10 @@ export function AttendanceModule() {
       name: deviceName.trim(),
       username: deviceUsername.trim() || null,
       password: devicePassword.trim() || null,
-      churchId: deviceChurchId
+      churchId: deviceChurchId,
+      localHost: deviceLocalHost.trim() || null,
+      localPort: deviceLocalPort.trim() ? Number(deviceLocalPort.trim()) : 80,
+      agentToken: deviceAgentToken.trim() || null
     };
 
     try {
@@ -2618,6 +2634,69 @@ export function AttendanceModule() {
                           onChange={(e) => setDevicePassword(e.target.value)}
                           className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
                         />
+                      </div>
+                    </div>
+
+                    {/* ---- Cadastro remoto de face (agente na rede local) ---- */}
+                    <div className="pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                        Cadastro remoto de face
+                      </p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3 leading-relaxed">
+                        Preencha para permitir que membros cadastrem o rosto pelo portal.
+                        Exige o agente rodando numa máquina da rede desta igreja.
+                      </p>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="col-span-2 space-y-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            IP Local do Aparelho
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="192.168.0.129"
+                            value={deviceLocalHost}
+                            onChange={(e) => setDeviceLocalHost(e.target.value)}
+                            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Porta
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="80"
+                            value={deviceLocalPort}
+                            onChange={(e) => setDeviceLocalPort(e.target.value)}
+                            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 mt-4">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Token do Agente
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={deviceAgentToken}
+                            onChange={(e) => setDeviceAgentToken(e.target.value)}
+                            className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => navigator.clipboard?.writeText(deviceAgentToken)}
+                            className="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-0.5">
+                          Cole em <code className="font-mono">AGENT_TOKEN</code> no arquivo <code className="font-mono">.env</code> do agente.
+                        </p>
                       </div>
                     </div>
 

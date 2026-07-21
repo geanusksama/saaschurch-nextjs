@@ -204,6 +204,7 @@ import MembroTestemunhos from "../components/membro/testemunhos/MembroTestemunho
 import MembroLideranca from "../components/membro/lideranca/MembroLideranca";
 import MembroPastoral from "../components/membro/pastoral/MembroPastoral";
 import MembroMembros from "../components/membro/membros/MembroMembros";
+import MembroFaceId from "../components/membro/faceid/MembroFaceId";
 import PenielDashboard from "../app-ui/peniel/PenielDashboard";
 import PenielCheckInPage from "../app-ui/peniel/PenielCheckInPage";
 
@@ -377,6 +378,11 @@ export const router = createBrowserRouter([
     path: "/membro/membros",
     errorElement: <ErrorBoundary />,
     element: <MembroThemeProvider><MembroProvider><MembroMembros /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/faceid",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroFaceId /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/public",
