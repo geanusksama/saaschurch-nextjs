@@ -213,26 +213,32 @@ export function MemberProfile() {
       .catch(() => setActiveFunctions([]));
   }, [id, functionsRefreshKey]);
 
-  // ── Attendance analytics (hooks must be before any early return) ─────────
+  // ── Presença REAL (face_presencas) ────────────────────────────────────────
+  // Antes isso era derivado de `history` (event-history), que é a auditoria do
+  // CRM — mostrava quando alguém editou o cadastro, não quando o membro veio.
   const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-  const attendanceByDay = useMemo(() => {
-    const counts = Array(7).fill(0);
-    history.forEach((h) => { if (h.createdAt) counts[new Date(h.createdAt).getDay()]++; });
-    return counts;
-  }, [history]);
+  const [attendance, setAttendance] = useState<{
+    byDay: number[];
+    byPeriod: { manha: number; noite: number };
+    total: number;
+    distinctDays: number;
+    lastPresence: { horario: string; igrejaRegional: string | null } | null;
+  } | null>(null);
 
-  const attendanceByPeriod = useMemo(() => {
-    const periods = { manhã: 0, tarde: 0, noite: 0 };
-    history.forEach((h) => {
-      if (!h.createdAt) return;
-      const hour = new Date(h.createdAt).getHours();
-      if (hour < 12) periods.manhã++;
-      else if (hour < 18) periods.tarde++;
-      else periods.noite++;
-    });
-    return periods;
-  }, [history]);
+  useEffect(() => {
+    if (!id) return;
+    authFetch(`${apiBase}/members/${id}/attendance-stats`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setAttendance(data && Array.isArray(data.byDay) ? data : null))
+      .catch(() => setAttendance(null));
+  }, [id]);
 
+  const attendanceByDay = attendance?.byDay ?? [0, 0, 0, 0, 0, 0, 0];
+  // Manhã/Noite com corte às 13h — mesma regra do módulo de Presença Facial.
+  const attendanceByPeriod = attendance?.byPeriod ?? { manha: 0, noite: 0 };
+
+  // Último evento do CRM (ocorrência/serviço) — usado nos indicadores do topo.
+  // Não confundir com presença: isso é a trilha de auditoria, não check-in.
   const lastService = useMemo(() => history[0] ?? null, [history]);
 
   if (loading) {
@@ -584,34 +590,45 @@ export function MemberProfile() {
           <div>
             <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Período de maior presença</h2>
             <div className="space-y-2">
-              {(["manhã", "tarde", "noite"] as const).map((p) => (
-                <div key={p} className="flex items-center gap-2">
-                  <span className="w-10 text-xs text-slate-500 capitalize">{p}</span>
+              {([
+                { key: 'manha', label: 'Manhã', color: '#f59e0b' },
+                { key: 'noite', label: 'Noite', color: '#6366f1' },
+              ] as const).map((p) => (
+                <div key={p.key} className="flex items-center gap-2">
+                  <span className="w-10 text-xs text-slate-500">{p.label}</span>
                   <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
-                        width: `${Math.round((attendanceByPeriod[p] / maxPeriod) * 100)}%`,
-                        background: p === "manhã" ? "#f59e0b" : p === "tarde" ? "#3b82f6" : "#6366f1",
+                        width: `${Math.round((attendanceByPeriod[p.key] / maxPeriod) * 100)}%`,
+                        background: p.color,
                       }}
                     />
                   </div>
-                  <span className="w-5 text-right text-xs font-medium text-slate-600">{attendanceByPeriod[p]}</span>
+                  <span className="w-5 text-right text-xs font-medium text-slate-600">{attendanceByPeriod[p.key]}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {lastService && (
+          {/* Última presença real (face_presencas) */}
+          {attendance?.lastPresence ? (
             <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Último ciclo</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Última presença</p>
               <p className="text-sm font-semibold text-slate-800 leading-tight">
-                {lastService.serviceName || lastService.serviceGroup || lastService.action || "—"}
+                {fmtDate(attendance.lastPresence.horario)}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">{lastService.createdAt ? fmtDate(lastService.createdAt) : ""}</p>
-              {lastService.card?.church?.name && (
-                <p className="text-xs text-indigo-600 mt-0.5">{lastService.card.church.name}</p>
+              {attendance.lastPresence.igrejaRegional && (
+                <p className="text-xs text-indigo-600 mt-0.5">{attendance.lastPresence.igrejaRegional}</p>
               )}
+              <p className="text-xs text-slate-500 mt-1">
+                {attendance.distinctDays} dia(s) com presença · {attendance.total} detecção(ões)
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Última presença</p>
+              <p className="text-sm text-slate-400">Nenhum registro de presença facial.</p>
             </div>
           )}
         </div>
@@ -772,7 +789,9 @@ export function MemberProfile() {
               onChanged={() => setFunctionsRefreshKey((k) => k + 1)}
             />
           )}
-          {activeTab === "familia" && <PlaceholderTab label="Núcleo familiar" />}
+          {activeTab === "familia" && member && (
+            <FamiliaTab memberId={member.id} canManage={canManageHistory} />
+          )}
         </div>
       </div>
 
@@ -934,6 +953,389 @@ function PlaceholderTab({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
       {label} — em breve
+    </div>
+  );
+}
+
+// ─── Núcleo familiar ──────────────────────────────────────────────────────────
+// O familiar pode ser um membro cadastrado OU uma pessoa avulsa (nome +
+// nascimento + sexo) — caso comum de filhos pequenos sem cadastro.
+
+type FamilyRow = {
+  id: string;
+  relationshipType: string;
+  relatedName: string | null;
+  relatedBirthDate: string | null;
+  relatedGender: string | null;
+  notes: string | null;
+  relatedMember?: { id: string; fullName: string; rol: number | null; birthDate: string | null; gender: string | null } | null;
+};
+
+const RELATIONSHIP_LABELS: Record<string, string> = {
+  FILHO: 'Filho(a)',
+  CONJUGE: 'Cônjuge',
+  PAI_MAE: 'Pai/Mãe',
+  IRMAO: 'Irmão/Irmã',
+};
+
+function calcAge(birth: string | null | undefined): string {
+  if (!birth) return '—';
+  const d = new Date(birth);
+  if (isNaN(d.getTime())) return '—';
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return age >= 0 ? `${age} ano${age === 1 ? '' : 's'}` : '—';
+}
+
+const emptyFamilyForm = {
+  id: '',
+  relationshipType: 'FILHO',
+  relatedName: '',
+  relatedBirthDate: '',
+  relatedGender: '',
+  relatedMemberId: '',
+  notes: '',
+};
+
+function FamiliaTab({ memberId, canManage }: { memberId: string; canManage: boolean }) {
+  const [rows, setRows] = useState<FamilyRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState(emptyFamilyForm);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<FamilyRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  // Busca opcional para vincular um membro já cadastrado
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberResults, setMemberResults] = useState<{ id: string; fullName: string; rol: number | null }[]>([]);
+  const [linkedLabel, setLinkedLabel] = useState('');
+
+  const load = () => {
+    setLoading(true);
+    authFetch(`${apiBase}/members/${memberId}/family`)
+      .then((r) => r.json())
+      .then((d) => setRows(Array.isArray(d) ? d : []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [memberId]);
+
+  // Busca de membros para vínculo (debounce simples)
+  useEffect(() => {
+    if (!memberSearch.trim()) { setMemberResults([]); return; }
+    const t = setTimeout(() => {
+      authFetch(`${apiBase}/members?q=${encodeURIComponent(memberSearch.trim())}&pageSize=8`)
+        .then((r) => r.json())
+        .then((d) => setMemberResults(Array.isArray(d) ? d : (d?.data ?? [])))
+        .catch(() => setMemberResults([]));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [memberSearch]);
+
+  const openCreate = () => {
+    setForm(emptyFamilyForm);
+    setLinkedLabel('');
+    setMemberSearch('');
+    setMemberResults([]);
+    setFormError('');
+    setModalOpen(true);
+  };
+
+  const openEdit = (row: FamilyRow) => {
+    setForm({
+      id: row.id,
+      relationshipType: row.relationshipType,
+      relatedName: row.relatedName || '',
+      relatedBirthDate: row.relatedBirthDate ? String(row.relatedBirthDate).slice(0, 10) : '',
+      relatedGender: row.relatedGender || '',
+      relatedMemberId: row.relatedMember?.id || '',
+      notes: row.notes || '',
+    });
+    setLinkedLabel(row.relatedMember?.fullName || '');
+    setMemberSearch('');
+    setMemberResults([]);
+    setFormError('');
+    setModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.relatedMemberId && !form.relatedName.trim()) {
+      setFormError('Informe o nome do familiar ou vincule um membro existente.');
+      return;
+    }
+    setSaving(true);
+    setFormError('');
+    try {
+      const payload = {
+        relationshipType: form.relationshipType,
+        relatedMemberId: form.relatedMemberId || null,
+        relatedName: form.relatedName || null,
+        relatedBirthDate: form.relatedBirthDate || null,
+        relatedGender: form.relatedGender || null,
+        notes: form.notes || null,
+      };
+      const res = form.id
+        ? await authFetch(`${apiBase}/members/${memberId}/family/${form.id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+        : await authFetch(`${apiBase}/members/${memberId}/family`, { method: 'POST', body: JSON.stringify(payload) });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error || 'Falha ao salvar.');
+      }
+      setModalOpen(false);
+      load();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Falha ao salvar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await authFetch(`${apiBase}/members/${memberId}/family/${deleteTarget.id}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 204) throw new Error();
+      setDeleteTarget(null);
+      load();
+    } catch { /* mantém aberto */ } finally { setDeleting(false); }
+  };
+
+  const grouped = ['FILHO', 'CONJUGE', 'PAI_MAE', 'IRMAO'].map((type) => ({
+    type,
+    items: rows.filter((r) => r.relationshipType === type),
+  })).filter((g) => g.items.length > 0);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-slate-400">
+          Filhos, cônjuge e demais familiares. O familiar não precisa ter cadastro de membro.
+        </p>
+        <button
+          onClick={openCreate}
+          disabled={!canManage}
+          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40"
+        >
+          <Plus className="w-4 h-4" /> Adicionar familiar
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-14 bg-slate-100 rounded-lg animate-pulse" />)}</div>
+      ) : rows.length === 0 ? (
+        <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
+          Nenhum familiar cadastrado.
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {grouped.map((g) => (
+            <div key={g.type}>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {RELATIONSHIP_LABELS[g.type] ?? g.type} ({g.items.length})
+              </h4>
+              <div className="space-y-2">
+                {g.items.map((r) => {
+                  const name = r.relatedMember?.fullName || r.relatedName || '—';
+                  const birth = r.relatedMember?.birthDate || r.relatedBirthDate;
+                  return (
+                    <div key={r.id} className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-2.5 hover:bg-slate-50">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
+                        {initials(name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
+                        <p className="text-xs text-slate-500">
+                          {birth ? `${fmtDate(birth)} · ${calcAge(birth)}` : 'Sem data de nascimento'}
+                          {r.relatedMember ? ' · Membro cadastrado' : ''}
+                        </p>
+                      </div>
+                      {r.relatedMember && (
+                        <Link
+                          to={`/app-ui/members/${r.relatedMember.id}`}
+                          className="text-xs font-medium text-indigo-600 hover:underline"
+                        >
+                          Ver perfil
+                        </Link>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => canManage && openEdit(r)}
+                          disabled={!canManage}
+                          className={`p-1 rounded ${canManage ? 'hover:bg-slate-200 text-slate-500' : 'text-slate-300 cursor-not-allowed'}`}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => canManage && setDeleteTarget(r)}
+                          disabled={!canManage}
+                          className={`p-1 rounded ${canManage ? 'hover:bg-red-100 text-slate-500 hover:text-red-600' : 'text-slate-300 cursor-not-allowed'}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <h3 className="text-base font-semibold text-slate-900">
+                {form.id ? 'Editar familiar' : 'Adicionar familiar'}
+              </h3>
+              <button onClick={() => setModalOpen(false)} className="rounded-lg p-1 hover:bg-slate-100">
+                <X className="h-5 w-5 text-slate-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+              {formError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>
+              )}
+
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Vínculo *</label>
+                <select
+                  value={form.relationshipType}
+                  onChange={(e) => setForm((p) => ({ ...p, relationshipType: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  {Object.entries(RELATIONSHIP_LABELS).map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Vínculo opcional com membro já cadastrado */}
+              <div className="rounded-lg border border-slate-200 p-3">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Vincular a um membro (opcional)
+                </p>
+                {form.relatedMemberId ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-slate-700">{linkedLabel || 'Membro vinculado'}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setForm((p) => ({ ...p, relatedMemberId: '' })); setLinkedLabel(''); }}
+                      className="text-xs font-medium text-red-600 hover:underline"
+                    >
+                      Remover vínculo
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Buscar membro por nome..."
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    {memberResults.length > 0 && (
+                      <div className="mt-2 max-h-36 overflow-y-auto rounded-lg border border-slate-100">
+                        {memberResults.map((m) => (
+                          <button
+                            type="button"
+                            key={m.id}
+                            onClick={() => {
+                              setForm((p) => ({ ...p, relatedMemberId: m.id, relatedName: '' }));
+                              setLinkedLabel(m.fullName);
+                              setMemberResults([]);
+                              setMemberSearch('');
+                            }}
+                            className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                          >
+                            {m.fullName}{m.rol ? ` · ROL ${m.rol}` : ''}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Dados avulsos — só quando não há membro vinculado */}
+              {!form.relatedMemberId && (
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Nome *</label>
+                    <input
+                      value={form.relatedName}
+                      onChange={(e) => setForm((p) => ({ ...p, relatedName: e.target.value }))}
+                      placeholder="Nome completo do familiar"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Nascimento</label>
+                      <input
+                        type="date"
+                        value={form.relatedBirthDate}
+                        onChange={(e) => setForm((p) => ({ ...p, relatedBirthDate: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Sexo</label>
+                      <select
+                        value={form.relatedGender}
+                        onChange={(e) => setForm((p) => ({ ...p, relatedGender: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="">Selecione</option>
+                        <option value="MASCULINO">Masculino</option>
+                        <option value="FEMININO">Feminino</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+                  rows={2}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button type="button" onClick={() => setModalOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
+                  {saving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Remover familiar?"
+        message="O vínculo familiar será removido do cadastro deste membro."
+        confirmLabel="Remover"
+        variant="danger"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -588,14 +588,24 @@ model Member {
 model MemberFamilyRelationship {
   id               String   @id @default(uuid()) @db.Uuid
   memberId         String   @map("member_id") @db.Uuid
-  relatedMemberId  String   @map("related_member_id") @db.Uuid
+  /// Opcional: preenchido só quando o familiar TAMBÉM é membro cadastrado.
+  relatedMemberId  String?  @map("related_member_id") @db.Uuid
   relationshipType String   @map("relationship_type") @db.VarChar(30)
+  /// Dados do familiar quando ele NÃO é membro (ex.: criança pequena).
+  relatedName      String?  @map("related_name") @db.VarChar(255)
+  relatedBirthDate DateTime? @map("related_birth_date") @db.Date
+  relatedGender    String?  @map("related_gender") @db.VarChar(20)
+  notes            String?  @db.Text
+  createdBy        String?  @map("created_by") @db.Uuid
   createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
 
-  member        Member @relation("MemberFamilyMember", fields: [memberId], references: [id], onDelete: Cascade)
-  relatedMember Member @relation("MemberFamilyRelated", fields: [relatedMemberId], references: [id], onDelete: Cascade)
+  member        Member  @relation("MemberFamilyMember", fields: [memberId], references: [id], onDelete: Cascade)
+  relatedMember Member? @relation("MemberFamilyRelated", fields: [relatedMemberId], references: [id], onDelete: Cascade)
 
-  @@unique([memberId, relatedMemberId, relationshipType])
+  @@index([memberId])
+  @@index([relatedMemberId])
   @@map("member_family_relationships")
 }
 
