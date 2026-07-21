@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Heart, Phone, Video, MessageCircle, Info, Users, Calendar, MapPin, Church, Star, X, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Heart, ScanFace, LayoutGrid, Info, Users, Calendar, MapPin, Church, Star, X, Sun, Moon } from 'lucide-react';
 import { useMembroSession } from '../MembroProvider';
 import { useMembroTheme } from '../MembroShell';
 
@@ -243,15 +243,24 @@ export default function MembroPerfil() {
                 <Info size={15} />
                 Detalhes
               </button>
-              {[Phone, Video, MessageCircle].map((Icon, i) => (
-                <button
-                  key={i}
-                  className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
-                  style={{ background: SURFACE, boxShadow: CARD_SH, border: `1px solid ${BORDER}` }}
-                >
-                  <Icon size={17} color={TEXT2} />
-                </button>
-              ))}
+              {/* Cadastro facial e menu. Antes havia tres icones decorativos
+                  (telefone, video, chat) sem acao nenhuma. */}
+              <button
+                onClick={() => navigate('/membro/faceid')}
+                title="Cadastrar meu rosto"
+                className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
+                style={{ background: SURFACE, boxShadow: CARD_SH, border: `1px solid ${TEAL}55` }}
+              >
+                <ScanFace size={18} color={TEAL} />
+              </button>
+              <button
+                onClick={() => navigate('/membro/menu')}
+                title="Todos os recursos"
+                className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
+                style={{ background: SURFACE, boxShadow: CARD_SH, border: `1px solid ${BORDER}` }}
+              >
+                <LayoutGrid size={17} color={TEXT2} />
+              </button>
             </div>
 
             {/* BLOCK 3 — Stats */}
@@ -309,40 +318,6 @@ export default function MembroPerfil() {
               Ver Membros do Campo
             </button>
 
-            {/* Cadastro facial — fica aqui porque é onde o membro procura
-                ao querer mexer na própria foto */}
-            <button
-              onClick={() => navigate('/membro/faceid')}
-              className="w-full flex items-center justify-center gap-2 font-semibold transition-all active:scale-[0.98]"
-              style={{
-                height: 52,
-                background: 'transparent',
-                color: TEAL,
-                border: `1.5px solid ${TEAL}66`,
-                borderRadius: 26,
-                fontSize: 14,
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-                <path d="M3 7V5a2 2 0 0 1 2-2h2" />
-                <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-                <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-                <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-                <path d="M9 10h.01" /><path d="M15 10h.01" />
-                <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
-              </svg>
-              Cadastrar meu rosto (Face ID)
-            </button>
-
-            {/* Acesso ao menu completo: a tela de perfil não usa o
-                MembroShell, então não tem a barra de navegação inferior */}
-            <button
-              onClick={() => navigate('/membro/menu')}
-              className="w-full text-[13px] text-center py-2 font-medium transition-opacity hover:opacity-70"
-              style={{ color: TEXT2 }}
-            >
-              Ver todos os recursos
-            </button>
 
             {/* Logout */}
             <button

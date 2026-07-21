@@ -61,6 +61,12 @@ export default function MembroFaceId() {
 
   const startCamera = useCallback(async () => {
     setError(null);
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Este navegador não permite acessar a câmera. Tente pelo Chrome ou Safari.');
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -70,19 +76,40 @@ export default function MembroFaceId() {
         },
         audio: false,
       });
+
+      // Guarda o stream e troca de passo. O <video> só existe depois desta
+      // troca, então quem anexa o stream é o efeito abaixo — tentar aqui
+      // pegaria videoRef.current === null e a tela ficaria preta.
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
       setStep('camera');
-    } catch {
-      setError(
-        'Não conseguimos acessar a câmera. Verifique a permissão do navegador e tente de novo.'
-      );
+    } catch (err) {
+      const name = (err as DOMException)?.name;
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        setError('Permissão de câmera negada. Libere o acesso nas configurações do navegador e tente de novo.');
+      } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+        setError('Nenhuma câmera frontal encontrada neste aparelho.');
+      } else if (name === 'NotReadableError') {
+        setError('A câmera está sendo usada por outro aplicativo. Feche-o e tente de novo.');
+      } else {
+        setError('Não conseguimos acessar a câmera. Verifique a permissão do navegador e tente de novo.');
+      }
       setStep('intro');
     }
   }, []);
+
+  // Anexa o stream assim que o <video> entra no DOM
+  useEffect(() => {
+    if (step !== 'camera') return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+
+    video.srcObject = stream;
+    video.play().catch(() => {
+      setError('Não foi possível iniciar a pré-visualização. Toque em "Abrir câmera" novamente.');
+      setStep('intro');
+    });
+  }, [step]);
 
   useEffect(() => () => {
     stopCamera();
@@ -92,6 +119,12 @@ export default function MembroFaceId() {
   const capture = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Sem dimensões o canvas sairia preto e o leitor recusaria a foto
+    if (!video.videoWidth || !video.videoHeight) {
+      setError('A câmera ainda está carregando. Aguarde um instante e tente de novo.');
+      return;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = CAPTURE_SIZE;
@@ -283,6 +316,7 @@ export default function MembroFaceId() {
                 <div className="relative rounded-2xl overflow-hidden mb-5 bg-black" style={{ aspectRatio: '1/1' }}>
                   <video
                     ref={videoRef}
+                    autoPlay
                     playsInline
                     muted
                     className="w-full h-full object-cover"
