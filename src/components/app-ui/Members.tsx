@@ -76,6 +76,12 @@ type MemberRecord = {
     name?: string;
     code?: string | null;
   } | null;
+  /** Funções ativas do membro (church_function_history). */
+  churchFunctions?: Array<{
+    id: string;
+    isCampoWide?: boolean;
+    function?: { id: string; name: string | null } | null;
+  }> | null;
   church?: {
     id?: string;
     name?: string;
@@ -873,6 +879,7 @@ export function Members() {
         'ROL': m.rol ?? '',
         'Tipo': getMemberTypeLabel(m.memberType),
         'Título Eclesiástico': getTitleLabel(m),
+        'Funções': (m.churchFunctions ?? []).map((f) => f.function?.name).filter(Boolean).join(', '),
         'Igreja': m.churchName || '',
         'Regional': m.regionalName || '',
         'Campo': m.fieldName || '',
@@ -1384,6 +1391,20 @@ export function Members() {
                     </td>
                     <td className="px-4 py-4 align-top">
                       <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{getTitleLabel(member)}</span>
+                      {/* Funções ativas do membro */}
+                      {member.churchFunctions && member.churchFunctions.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {member.churchFunctions.map((f) => (
+                            <span
+                              key={f.id}
+                              title={f.isCampoWide ? 'Função com alcance de campo' : 'Função na igreja'}
+                              className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700"
+                            >
+                              {f.function?.name}{f.isCampoWide ? ' · Campo' : ''}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-4 align-top">
                       <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">

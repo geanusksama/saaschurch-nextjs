@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess, parseDateValue } from "@/lib/helpers";
+import { findActiveFunctionConflict, churchFunctionInclude } from "@/lib/churchFunctions";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
@@ -14,23 +15,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const nextFunctionId = body.functionId || existing.functionId;
     const nextDepartment = body.department === undefined ? existing.department : body.department?.trim() || null;
     const nextEndDate = body.endDate === undefined ? existing.endDate : parseDateValue(body.endDate);
-    const nextFunction = await prisma.churchFunctionCatalog.findUnique({ where: { id: nextFunctionId } });
     const nextIsActive = nextEndDate ? false : body.isActive ?? existing.isActive;
     if (nextIsActive && nextFunctionId) {
-      const activeDuplicate = await prisma.churchFunctionHistory.findFirst({
-        where: {
-          churchId: existing.churchId, functionId: nextFunctionId,
-          deletedAt: null, endDate: null, isActive: true, id: { not: existing.id },
-          ...(nextFunction?.isLeaderRole ? {} : { department: nextDepartment }),
-        },
+      const conflict = await findActiveFunctionConflict({
+        churchId: existing.churchId,
+        functionId: nextFunctionId,
+        department: nextDepartment,
+        ignoreId: existing.id,
       });
-      if (activeDuplicate) {
-        return NextResponse.json({
-          error: nextFunction?.isLeaderRole
-            ? "Já existe um dirigente ativo para esta igreja."
-            : "Já existe uma função ativa desse tipo para esta igreja nesse departamento.",
-        }, { status: 409 });
-      }
+      if (conflict) return NextResponse.json({ error: conflict }, { status: 409 });
     }
     const updated = await prisma.churchFunctionHistory.update({
       where: { id },
@@ -42,11 +35,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         endDate: body.endDate === undefined ? undefined : parseDateValue(body.endDate) as Date | null | undefined,
         notes: body.notes,
         isActive: nextIsActive,
+        isCampoWide: body.isCampoWide === undefined ? undefined : !!body.isCampoWide,
       },
-      include: {
-        member: { select: { id: true, fullName: true } },
-        function: { select: { id: true, name: true, isLeaderRole: true } },
-      },
+      include: churchFunctionInclude,
     });
     return NextResponse.json(serializeBigInts(updated));
   });

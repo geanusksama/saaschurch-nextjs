@@ -16,6 +16,16 @@ const memberInclude = {
   },
   regional: { select: { id: true, name: true, code: true } },
   ecclesiasticalTitleRef: { select: { id: true, name: true, abbreviation: true, level: true } },
+  // Funções ATIVAS — exibidas na listagem/busca de membros.
+  churchFunctions: {
+    where: { isActive: true, deletedAt: null },
+    select: {
+      id: true,
+      isCampoWide: true,
+      function: { select: { id: true, name: true } },
+    },
+    orderBy: { startDate: "desc" },
+  },
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

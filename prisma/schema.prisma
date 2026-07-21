@@ -259,6 +259,8 @@ model ChurchFunctionHistory {
   endDate    DateTime? @map("end_date") @db.Date
   notes      String?   @db.Text
   isActive   Boolean   @default(true) @map("is_active")
+  /// Quando true, a função alcança todo o campo (não apenas a igreja em church_id).
+  isCampoWide Boolean  @default(false) @map("is_campo_wide")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

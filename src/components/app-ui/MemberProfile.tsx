@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Edit, Info, Pencil, Plus, Search, Star, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { MemberEditDrawer } from "./MemberEditDrawer";
+import { ConfirmDialog } from "./shared/ConfirmDialog";
 
 import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
@@ -149,6 +150,9 @@ export function MemberProfile() {
   const [savingHist, setSavingHist] = useState(false);
   const [titleRefreshKey, setTitleRefreshKey] = useState(0);
   const [memberRefreshKey, setMemberRefreshKey] = useState(0);
+  // Funções ativas — exibidas no cabeçalho ao lado do título eclesiástico.
+  const [activeFunctions, setActiveFunctions] = useState<{ id: string; name: string; isCampoWide: boolean }[]>([]);
+  const [functionsRefreshKey, setFunctionsRefreshKey] = useState(0);
   const [cropZoom, setCropZoom] = useState(1);
   const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
   const [ecclesiasticalTitles, setEcclesiasticalTitles] = useState<{ id: string; name: string; abbreviation?: string | null; level: number }[]>([]);
@@ -187,6 +191,27 @@ export function MemberProfile() {
       .catch(() => setHistory([]))
       .finally(() => setHistoryLoading(false));
   }, [id]);
+
+  // Funções ativas do membro (para o cabeçalho)
+  useEffect(() => {
+    if (!id) return;
+    authFetch(`${apiBase}/members/${id}/functions`)
+      .then((r) => r.json())
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setActiveFunctions(
+          list
+            .filter((f: { isActive?: boolean }) => f.isActive)
+            .map((f: { id: string; isCampoWide?: boolean; function?: { name?: string | null } | null }) => ({
+              id: f.id,
+              name: f.function?.name || '',
+              isCampoWide: !!f.isCampoWide,
+            }))
+            .filter((f: { name: string }) => f.name)
+        );
+      })
+      .catch(() => setActiveFunctions([]));
+  }, [id, functionsRefreshKey]);
 
   // ── Attendance analytics (hooks must be before any early return) ─────────
   const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -434,6 +459,19 @@ export function MemberProfile() {
                     )}
                     <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${sCls}`}>{sLabel}</span>
                   </div>
+                  {activeFunctions.length > 0 && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {activeFunctions.map((f) => (
+                        <span
+                          key={f.id}
+                          title={f.isCampoWide ? 'Função com alcance de campo' : 'Função na igreja do membro'}
+                          className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        >
+                          {f.name}{f.isCampoWide ? ' · Campo' : ''}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm transition-colors">
@@ -726,7 +764,14 @@ export function MemberProfile() {
           {activeTab === "titulos" && member && (
             <TitulosTab memberId={member.id} refreshKey={titleRefreshKey} />
           )}
-          {activeTab === "funcoes" && <PlaceholderTab label="Funções e ministérios" />}
+          {activeTab === "funcoes" && member && (
+            <FuncoesTab
+              memberId={member.id}
+              churchName={member.church?.name}
+              canManage={canManageHistory}
+              onChanged={() => setFunctionsRefreshKey((k) => k + 1)}
+            />
+          )}
           {activeTab === "familia" && <PlaceholderTab label="Núcleo familiar" />}
         </div>
       </div>
@@ -889,6 +934,385 @@ function PlaceholderTab({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
       {label} — em breve
+    </div>
+  );
+}
+
+// ─── Funções do membro ────────────────────────────────────────────────────────
+// Grava na mesma tabela da aba "Funcoes" de Editar Igreja (church_function_history),
+// então o que é criado aqui aparece lá e vice-versa.
+
+type MemberFunctionRow = {
+  id: string;
+  department: string | null;
+  startDate: string;
+  endDate: string | null;
+  notes: string | null;
+  isActive: boolean;
+  isCampoWide: boolean;
+  church?: { id: string; name: string } | null;
+  function?: { id: string; name: string | null; isLeaderRole: boolean | null } | null;
+};
+
+type FunctionCatalogItem = { id: string; name: string | null; isLeaderRole?: boolean | null };
+
+const emptyFunctionForm = {
+  id: '',
+  functionId: '',
+  department: '',
+  startDate: new Date().toISOString().slice(0, 10),
+  endDate: '',
+  notes: '',
+  isActive: true,
+  isCampoWide: false,
+};
+
+function FuncoesTab({
+  memberId,
+  churchName,
+  canManage,
+  onChanged,
+}: {
+  memberId: string;
+  churchName?: string | null;
+  canManage: boolean;
+  onChanged?: () => void;
+}) {
+  const [rows, setRows] = useState<MemberFunctionRow[]>([]);
+  const [catalog, setCatalog] = useState<FunctionCatalogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState(emptyFunctionForm);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<MemberFunctionRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    authFetch(`${apiBase}/members/${memberId}/functions`)
+      .then((r) => r.json())
+      .then((data) => setRows(Array.isArray(data) ? data : []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+    authFetch(`${apiBase}/church-functions/catalog`)
+      .then((r) => r.json())
+      .then((data) => setCatalog(Array.isArray(data) ? data : []))
+      .catch(() => setCatalog([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberId]);
+
+  const openCreate = () => {
+    setForm(emptyFunctionForm);
+    setFormError('');
+    setModalOpen(true);
+  };
+
+  const openEdit = (row: MemberFunctionRow) => {
+    setForm({
+      id: row.id,
+      functionId: row.function?.id || '',
+      department: row.department || '',
+      startDate: row.startDate ? String(row.startDate).slice(0, 10) : '',
+      endDate: row.endDate ? String(row.endDate).slice(0, 10) : '',
+      notes: row.notes || '',
+      isActive: row.isActive,
+      isCampoWide: row.isCampoWide,
+    });
+    setFormError('');
+    setModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.functionId || !form.startDate) {
+      setFormError('Informe a função e a data de início.');
+      return;
+    }
+    setSaving(true);
+    setFormError('');
+    try {
+      const payload = {
+        functionId: form.functionId,
+        department: form.department || undefined,
+        startDate: form.startDate,
+        endDate: form.endDate || null,
+        notes: form.notes || undefined,
+        isActive: form.isActive,
+        isCampoWide: form.isCampoWide,
+      };
+      const res = form.id
+        ? await authFetch(`${apiBase}/church-function-history/${form.id}`, {
+            method: 'PATCH', body: JSON.stringify(payload),
+          })
+        : await authFetch(`${apiBase}/members/${memberId}/functions`, {
+            method: 'POST', body: JSON.stringify(payload),
+          });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Falha ao salvar a função.');
+      }
+      setModalOpen(false);
+      load();
+      onChanged?.();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Falha ao salvar a função.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await authFetch(`${apiBase}/church-function-history/${deleteTarget.id}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 204) throw new Error('Falha ao excluir a função.');
+      setDeleteTarget(null);
+      load();
+      onChanged?.();
+    } catch {
+      /* mantém o diálogo aberto em caso de erro */
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const active = rows.filter((r) => r.isActive);
+  const history = rows.filter((r) => !r.isActive);
+
+  const renderRow = (r: MemberFunctionRow) => (
+    <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+      <td className="py-3 pr-4">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-slate-800">{r.function?.name || '—'}</span>
+          {r.isActive && (
+            <span className="text-xs rounded-full px-2 py-0.5 font-medium bg-green-100 text-green-700">Ativa</span>
+          )}
+          {r.isCampoWide && (
+            <span className="text-xs rounded-full px-2 py-0.5 font-medium bg-indigo-100 text-indigo-700">Campo</span>
+          )}
+        </div>
+      </td>
+      <td className="py-3 pr-4 text-slate-600 text-xs">{r.department || '—'}</td>
+      <td className="py-3 pr-4 text-slate-600 text-xs">{r.church?.name || '—'}</td>
+      <td className="py-3 pr-4 text-slate-500 text-xs whitespace-nowrap">{fmtDate(r.startDate)}</td>
+      <td className="py-3 pr-4 text-slate-500 text-xs whitespace-nowrap">{r.endDate ? fmtDate(r.endDate) : '—'}</td>
+      <td className="py-3 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => canManage && openEdit(r)}
+            disabled={!canManage}
+            title={canManage ? 'Editar' : 'Sem permissão'}
+            className={`p-1 rounded transition-colors ${canManage ? 'hover:bg-slate-200 text-slate-500 hover:text-slate-700' : 'text-slate-300 cursor-not-allowed'}`}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => canManage && setDeleteTarget(r)}
+            disabled={!canManage}
+            title={canManage ? 'Excluir' : 'Sem permissão'}
+            className={`p-1 rounded transition-colors ${canManage ? 'hover:bg-red-100 text-slate-500 hover:text-red-600' : 'text-slate-300 cursor-not-allowed'}`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-slate-400">
+          Funções exercidas pelo membro. Também aparecem na aba Funções da igreja.
+        </p>
+        <button
+          onClick={openCreate}
+          disabled={!canManage}
+          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Plus className="w-4 h-4" /> Nova função
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-100 rounded-lg animate-pulse" />)}
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
+          Nenhuma função registrada para este membro.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-slate-400 uppercase tracking-wide border-b border-slate-100">
+                <th className="text-left pb-3 pr-4">Função</th>
+                <th className="text-left pb-3 pr-4">Departamento</th>
+                <th className="text-left pb-3 pr-4">Igreja</th>
+                <th className="text-left pb-3 pr-4">Início</th>
+                <th className="text-left pb-3 pr-4">Término</th>
+                <th className="text-right pb-3">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {active.map(renderRow)}
+              {history.length > 0 && (
+                <tr>
+                  <td colSpan={6} className="pt-5 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Histórico
+                  </td>
+                </tr>
+              )}
+              {history.map(renderRow)}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal nova/editar função */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">
+                  {form.id ? 'Editar função' : 'Nova função'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Igreja: {churchName || 'igreja do membro'}
+                </p>
+              </div>
+              <button onClick={() => setModalOpen(false)} className="rounded-lg p-1 hover:bg-slate-100">
+                <X className="h-5 w-5 text-slate-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+              {formError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>
+              )}
+
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Função *</label>
+                <select
+                  value={form.functionId}
+                  onChange={(e) => setForm((p) => ({ ...p, functionId: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Selecione a função...</option>
+                  {catalog.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Departamento</label>
+                <input
+                  value={form.department}
+                  onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))}
+                  placeholder="Opcional"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Início *</label>
+                  <input
+                    type="date"
+                    value={form.startDate}
+                    onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Término</label>
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
+                  className="h-4 w-4 accent-green-600"
+                />
+                <span className="text-sm text-slate-700">
+                  Função ativa
+                  <span className="block text-xs text-slate-400">Só as ativas aparecem no perfil e na listagem.</span>
+                </span>
+              </label>
+
+              <label className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={form.isCampoWide}
+                  onChange={(e) => setForm((p) => ({ ...p, isCampoWide: e.target.checked }))}
+                  className="h-4 w-4 accent-indigo-600"
+                />
+                <span className="text-sm text-slate-700">
+                  Abrange todo o campo
+                  <span className="block text-xs text-slate-400">
+                    Por padrão a função vale só para a igreja do membro.
+                  </span>
+                </span>
+              </label>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+                  rows={2}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Excluir função?"
+        message={`A função "${deleteTarget?.function?.name ?? ''}" será removida do histórico do membro. Não é possível desfazer.`}
+        confirmLabel="Excluir"
+        variant="danger"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
