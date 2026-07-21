@@ -292,6 +292,13 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
       { master: true, admin: false, campo: false, church: false },
     ),
   },
+  // Listas auxiliares (dropdowns) — CRUD genérico, ver src/lib/lookupRegistry.ts
+  { group: 'Configurações', name: 'Plano de Contas',        key: 'settings_chart_of_accounts',      permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Formas de Pagamento',    key: 'settings_payment_methods',        permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Tipos de Documento',     key: 'settings_document_types',         permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Centros de Custo',       key: 'settings_cost_centers',           permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Funções da Igreja',      key: 'settings_church_functions',       permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Títulos Eclesiásticos',  key: 'settings_ecclesiastical_titles',  permissions: mkPerms(admin(), admin(), none(), none()) },
   // Documentação Técnica
   {
     group: 'Configurações',

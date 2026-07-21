@@ -6,8 +6,9 @@ import {
   Mail, 
   Webhook, 
   Key, 
-  Database, 
-  Palette, 
+  Database,
+  List,
+  Palette,
   Globe,
   Building,
   CreditCard,
@@ -128,6 +129,21 @@ const settingsSections: SettingsSection[] = [
       { id: 'integrations', name: 'Integrações', description: 'Conectar apps externos',   path: '/app-ui/system/integrations', permKey: 'integrations' },
       { id: 'webhooks',     name: 'Webhooks',    description: 'Eventos e callbacks',       path: '/app-ui/system/webhooks',     permKey: 'settings_webhooks' },
       { id: 'api',          name: 'API',         description: 'Documentação e acesso',     path: '/app-ui/system/api',          permKey: 'settings_api' },
+    ]
+  },
+  {
+    // Listas que alimentam os dropdowns do sistema — CRUD genérico.
+    // Para adicionar uma lista nova basta registrá-la em src/lib/lookupRegistry.ts.
+    category: 'Listas e Cadastros Auxiliares',
+    icon: List,
+    color: 'bg-teal-500',
+    items: [
+      { id: 'chart-of-accounts',      name: 'Plano de Contas',       description: 'Categorias de receita e despesa',   path: '/app-ui/config/chart-of-accounts',      permKey: 'settings_chart_of_accounts' },
+      { id: 'payment-methods',        name: 'Formas de Pagamento',   description: 'PIX, dinheiro, cartão...',          path: '/app-ui/config/payment-methods',        permKey: 'settings_payment_methods' },
+      { id: 'document-types',         name: 'Tipos de Documento',    description: 'Recibo, nota fiscal, fatura...',    path: '/app-ui/config/document-types',         permKey: 'settings_document_types' },
+      { id: 'cost-centers',           name: 'Centros de Custo',      description: 'Classificação de lançamentos',      path: '/app-ui/config/cost-centers',           permKey: 'settings_cost_centers' },
+      { id: 'church-functions',       name: 'Funções da Igreja',     description: 'Dirigente, líder, secretário...',   path: '/app-ui/config/church-functions',       permKey: 'settings_church_functions' },
+      { id: 'ecclesiastical-titles',  name: 'Títulos Eclesiásticos', description: 'Membro, diácono, presbítero...',    path: '/app-ui/config/ecclesiastical-titles',  permKey: 'settings_ecclesiastical_titles' },
     ]
   },
   {
