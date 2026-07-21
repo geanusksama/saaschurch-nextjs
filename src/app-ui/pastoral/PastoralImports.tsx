@@ -9,9 +9,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   FileSpreadsheet, Loader2, RefreshCw, ArrowLeft, CheckCircle2, XCircle,
-  Clock, Download, Search,
+  Clock, Download, Search, Trash2,
 } from 'lucide-react';
 import { exportRows } from './exportUtils';
+import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
+import { toast } from 'sonner';
 
 interface Batch {
   id: string;
@@ -79,16 +81,71 @@ export default function PastoralImports() {
   const [loadingRows, setLoadingRows] = useState(false);
   const [filter, setFilter] = useState<'all' | 'sent' | 'skipped'>('all');
   const [q, setQ] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
 
   const loadBatches = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/whatsapp/imports', { headers: authHeaders() });
       if (res.ok) setBatches((await res.json()).batches ?? []);
+      setSelected(new Set());
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const allSelected = batches.length > 0 && selected.size === batches.length;
+  const toggleSelectAll = () => setSelected(allSelected ? new Set() : new Set(batches.map(b => b.id)));
+  const toggleSelectBatch = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const deleteSelected = async () => {
+    if (!selected.size || deleting) return;
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/whatsapp/imports', {
+        method: 'DELETE',
+        headers: authHeaders(),
+        body: JSON.stringify({ batchIds: Array.from(selected) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao excluir lotes');
+      setConfirmDeleteSelected(false);
+      await loadBatches();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir lotes');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const clearAllBatches = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/whatsapp/imports', {
+        method: 'DELETE',
+        headers: authHeaders(),
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao limpar importações');
+      setConfirmClearAll(false);
+      await loadBatches();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao limpar importações');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // carga inicial da lista de lotes (mesmo padrão das outras abas do hub)
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -258,15 +315,54 @@ export default function PastoralImports() {
   // ── lista de lotes ─────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-3 h-full">
-      <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-2 flex-wrap">
+        <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+          disabled={!batches.length} className="w-4 h-4 rounded border-slate-300" />
         <FileSpreadsheet className="w-4 h-4 text-slate-400" />
         <span className="font-semibold text-slate-700 text-sm">
           {batches.length} lote{batches.length === 1 ? '' : 's'} importado{batches.length === 1 ? '' : 's'}
         </span>
-        <button onClick={loadBatches} className="ml-auto p-1.5 rounded hover:bg-slate-100">
-          <RefreshCw className="w-4 h-4 text-slate-400" />
-        </button>
+        {selected.size > 0 && (
+          <span className="text-xs text-violet-600 font-medium">{selected.size} selecionado(s)</span>
+        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => setConfirmDeleteSelected(true)} disabled={!selected.size || deleting}
+            title="Excluir lotes selecionados"
+            className="h-8 px-2.5 rounded-lg border border-red-200 text-red-600 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-red-50 disabled:opacity-30">
+            <Trash2 className="w-3.5 h-3.5" /> Excluir selecionados
+          </button>
+          <button onClick={() => setConfirmClearAll(true)} disabled={!batches.length || deleting}
+            title="Excluir todos os lotes importados"
+            className="h-8 px-2.5 rounded-lg bg-red-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-red-700 disabled:opacity-30">
+            <Trash2 className="w-3.5 h-3.5" /> Limpar tudo
+          </button>
+          <button onClick={loadBatches} className="p-1.5 rounded hover:bg-slate-100">
+            <RefreshCw className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDeleteSelected}
+        title={`Excluir ${selected.size} lote(s) importado(s)?`}
+        message="Exclusão permanente do(s) lote(s) e de todas as linhas importadas neles. Lotes com envio em andamento são preservados automaticamente. Não é possível desfazer."
+        confirmLabel="Excluir"
+        variant="danger"
+        loading={deleting}
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmDeleteSelected(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmClearAll}
+        title="Limpar todas as importações?"
+        message={`Todos os ${batches.length} lote(s) importado(s) e suas linhas serão excluídos permanentemente. Lotes com envio em andamento são preservados automaticamente. Não é possível desfazer.`}
+        confirmLabel="Limpar tudo"
+        variant="danger"
+        loading={deleting}
+        onConfirm={clearAllBatches}
+        onCancel={() => setConfirmClearAll(false)}
+      />
 
       <div className="flex-1 bg-white rounded-xl border border-slate-200 overflow-auto">
         {loading && <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>}
@@ -276,8 +372,10 @@ export default function PastoralImports() {
           </div>
         )}
         {!loading && batches.map(b => (
-          <button key={b.id} onClick={() => openDetail(b)}
-            className="w-full px-4 py-3 flex flex-wrap items-center gap-3 text-left border-b border-slate-50 hover:bg-slate-50">
+          <div key={b.id} onClick={() => openDetail(b)}
+            className="w-full px-4 py-3 flex flex-wrap items-center gap-3 text-left border-b border-slate-50 hover:bg-slate-50 cursor-pointer">
+            <input type="checkbox" checked={selected.has(b.id)} onChange={() => toggleSelectBatch(b.id)}
+              onClick={e => e.stopPropagation()} className="w-4 h-4 rounded border-slate-300 flex-shrink-0" />
             <FileSpreadsheet className="w-4 h-4 text-emerald-500 flex-shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="font-medium text-slate-700 truncate">{b.filename ?? 'Arquivo importado'}</div>
@@ -297,7 +395,7 @@ export default function PastoralImports() {
                 : 'bg-slate-100 text-slate-500'}`}>
               {BATCH_STATUS[b.status] ?? b.status}
             </span>
-          </button>
+          </div>
         ))}
       </div>
     </div>

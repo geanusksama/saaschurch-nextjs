@@ -17,13 +17,32 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
     const cardIds = [...new Set(history.map((h) => h.cardId).filter(Boolean))] as string[];
     const userIds = [...new Set(history.map((h) => h.createdBy).filter(Boolean))] as string[];
-    const [cards, users] = await Promise.all([
+    // Igrejas de origem (churchId do próprio evento) e de destino (metadata.destinationChurchId)
+    // — necessárias para ocorrências rápidas (transferência) que NÃO criam card.
+    const destChurchId = (h: (typeof history)[number]) =>
+      (h.metadata as Record<string, unknown> | null)?.destinationChurchId as string | undefined;
+    const churchIds = [...new Set([
+      ...history.map((h) => h.churchId).filter(Boolean),
+      ...history.map(destChurchId).filter(Boolean),
+    ])] as string[];
+    const [cards, users, churches] = await Promise.all([
       cardIds.length ? prisma.kanCard.findMany({ where: { id: { in: cardIds } }, select: { id: true, protocol: true, church: { select: { name: true } }, openedAt: true, createdAt: true } }) : [],
       userIds.length ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true } }) : [],
+      churchIds.length ? prisma.church.findMany({ where: { id: { in: churchIds } }, select: { id: true, name: true } }) : [],
     ]);
     const cardMap = Object.fromEntries(cards.map((c) => [c.id, c]));
     const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
-    const enriched = history.map((h) => ({ ...h, card: h.cardId ? cardMap[h.cardId] || null : null, createdByUser: h.createdBy ? userMap[h.createdBy] || null : null }));
+    const churchMap = Object.fromEntries(churches.map((c) => [c.id, c]));
+    const enriched = history.map((h) => {
+      const destId = destChurchId(h);
+      return {
+        ...h,
+        card: h.cardId ? cardMap[h.cardId] || null : null,
+        createdByUser: h.createdBy ? userMap[h.createdBy] || null : null,
+        church: h.churchId ? churchMap[h.churchId] || null : null,
+        destinationChurch: destId ? churchMap[destId] || null : null,
+      };
+    });
     return NextResponse.json(serializeBigInts(enriched));
   });
 }

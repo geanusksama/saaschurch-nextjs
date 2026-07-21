@@ -1409,6 +1409,12 @@ export default function LancamentoNew() {
   const accentBar = isReceita ? 'bg-[#10b981]' : 'bg-red-500';
 
   async function searchPJ(q: string) {
+    // Escopo por PERFIL (mesma regra da busca de membros):
+    //   • igreja  → só a própria igreja;
+    //   • campo   → todas as igrejas do campo;
+    //   • admin/master → sem restrição.
+    // Só o perfil igreja fica preso à própria igreja; campo/admin não têm essa
+    // restrição.
     const allowedChurchIds = await resolveAllowedChurchIds();
 
     let membersQuery = supabase

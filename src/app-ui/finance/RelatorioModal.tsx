@@ -136,6 +136,7 @@ function generateHtml(
   const qtdDizimos   = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).length;
   const qtdOfertas   = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).length;
   const liquido      = totalReceita - totalDespesa;
+  const movimentos   = rows.length;
 
   const valorIdx = cols.indexOf('valor');
 
@@ -206,11 +207,10 @@ function generateHtml(
     h1{font-size:22px;font-weight:900;letter-spacing:1px;}
     .sub{font-size:11px;color:#666;margin-bottom:10px;}
     .hdr{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #ddd;}
-    .totals{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px;}
-    .totals2{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px;}
+    .totals{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:4px;}
+    .totals2{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px;padding-top:4px;border-top:1px solid #ddd;}
     .tlbl{font-size:8px;font-weight:700;text-transform:uppercase;color:#666;}
     .tval{font-size:13px;font-weight:700;}
-    .liquido{text-align:right;font-size:14px;font-weight:900;margin-bottom:10px;padding-top:4px;border-top:1px solid #ddd;}
     table{width:100%;border-collapse:collapse;}
     @media print{
       body{padding:0;}
@@ -234,18 +234,19 @@ function generateHtml(
     </div>
   </div>
   <div class="totals">
+    <div><div class="tlbl">Líquido</div><div class="tval" style="${liquido < 0 ? 'color:#c00' : 'color:#0f172a'}">R$ ${fmt(liquido)}</div></div>
     <div><div class="tlbl">Total Receita</div><div class="tval" style="color:#166534">R$ ${fmt(totalReceita)}</div></div>
     <div><div class="tlbl">Total Despesa</div><div class="tval" style="color:#991b1b">R$ ${fmt(totalDespesa)}</div></div>
     <div><div class="tlbl">Total Dízimos</div><div class="tval">R$ ${fmt(totalDizimos)}</div></div>
     <div><div class="tlbl">Total Ofertas</div><div class="tval">R$ ${fmt(totalOfertas)}</div></div>
   </div>
   <div class="totals2">
+    <div><div class="tlbl">Movimentos</div><div class="tval" style="font-size:13px">${movimentos}</div></div>
     <div><div class="tlbl">Qtd. Receitas</div><div class="tval" style="font-size:13px">${qtdReceitas}</div></div>
     <div><div class="tlbl">Qtd. Despesas</div><div class="tval" style="font-size:13px">${qtdDespesas}</div></div>
     <div><div class="tlbl">Qtd. Dízimos</div><div class="tval" style="font-size:13px">${qtdDizimos}</div></div>
     <div><div class="tlbl">Qtd. Ofertas</div><div class="tval" style="font-size:13px">${qtdOfertas}</div></div>
   </div>
-  <div class="liquido" style="${liquido < 0 ? 'color:#c00;' : ''}">Líquido: R$ ${fmt(liquido)}</div>
   <table>
     <thead><tr>${headerCells}</tr></thead>
     ${bodySections}
@@ -303,6 +304,7 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
   const qtdDizimos   = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).length;
   const qtdOfertas   = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).length;
   const liquido      = totalReceita - totalDespesa;
+  const movimentos   = rows.length;
 
   function toggleCol(col: ColKey) {
     setCols(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]);
@@ -418,19 +420,32 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
     const totalDespesa = rows.filter(r => r.tipo === 'DESPESA').reduce((s, r) => s + Number(r.valor), 0);
     const totalDizimos = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).reduce((s, r) => s + Number(r.valor), 0);
     const totalOfertas = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).reduce((s, r) => s + Number(r.valor), 0);
+    const qtdReceitas  = rows.filter(r => r.tipo === 'RECEITA').length;
+    const qtdDespesas  = rows.filter(r => r.tipo === 'DESPESA').length;
+    const qtdDizimos   = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).length;
+    const qtdOfertas   = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).length;
     const liquido = totalReceita - totalDespesa;
+    const movimentos = rows.length;
 
-    // Totals grid
+    // Totals grid — valores (R$): Líquido, Receita, Despesa, Dízimos, Ofertas
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8.5);
-    doc.text(`Total Receita: R$ ${fmtNum(totalReceita)}`, startX, y);
-    doc.text(`Total Despesa: R$ ${fmtNum(totalDespesa)}`, startX + usableWidth / 4, y);
-    doc.text(`Total Dízimos: R$ ${fmtNum(totalDizimos)}`, startX + 2 * usableWidth / 4, y);
-    doc.text(`Total Ofertas: R$ ${fmtNum(totalOfertas)}`, startX + 3 * usableWidth / 4, y);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Líquido: R$ ${fmtNum(liquido)}`, startX, y);
+    doc.text(`Total Receita: R$ ${fmtNum(totalReceita)}`, startX + usableWidth / 5, y);
+    doc.text(`Total Despesa: R$ ${fmtNum(totalDespesa)}`, startX + 2 * usableWidth / 5, y);
+    doc.text(`Total Dízimos: R$ ${fmtNum(totalDizimos)}`, startX + 3 * usableWidth / 5, y);
+    doc.text(`Total Ofertas: R$ ${fmtNum(totalOfertas)}`, startX + 4 * usableWidth / 5, y);
 
     y += 5;
-    doc.setTextColor(liquido < 0 ? 153 : 22, liquido < 0 ? 27 : 101, liquido < 0 ? 27 : 52); // green or red
-    doc.text(`Língua / Líquido: R$ ${fmtNum(liquido)}`, pageWidth - margin, y, { align: 'right' });
+    // Quantidades: Movimentos, Qtd. Receitas/Despesas/Dízimos/Ofertas
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Movimentos: ${movimentos}`, startX, y);
+    doc.text(`Qtd. Receitas: ${qtdReceitas}`, startX + usableWidth / 5, y);
+    doc.text(`Qtd. Despesas: ${qtdDespesas}`, startX + 2 * usableWidth / 5, y);
+    doc.text(`Qtd. Dízimos: ${qtdDizimos}`, startX + 3 * usableWidth / 5, y);
+    doc.text(`Qtd. Ofertas: ${qtdOfertas}`, startX + 4 * usableWidth / 5, y);
     y += 4;
     doc.line(startX, y, pageWidth - margin, y);
     y += 6;
@@ -755,9 +770,10 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
               </div>
             </div>
 
-            {/* Totals summary */}
-            <div className="grid grid-cols-4 gap-4 mb-2">
+            {/* Totals summary — valores (R$) */}
+            <div className="grid grid-cols-5 gap-4 mb-2">
               {[
+                { l: 'Líquido',       v: `R$ ${fmt(liquido)}`,      c: liquido < 0 ? 'text-red-600' : 'text-slate-900' },
                 { l: 'Total Receita', v: `R$ ${fmt(totalReceita)}`, c: 'text-green-700' },
                 { l: 'Total Despesa', v: `R$ ${fmt(totalDespesa)}`, c: 'text-red-700' },
                 { l: 'Total Dízimos', v: `R$ ${fmt(totalDizimos)}`, c: '' },
@@ -769,8 +785,10 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-4 gap-4 mb-3">
+            {/* Totals summary — quantidades */}
+            <div className="grid grid-cols-5 gap-4 mb-5 pt-2 border-t border-slate-200">
               {[
+                { l: 'Movimentos',    v: movimentos },
                 { l: 'Qtd. Receitas', v: qtdReceitas },
                 { l: 'Qtd. Despesas', v: qtdDespesas },
                 { l: 'Qtd. Dízimos',  v: qtdDizimos },
@@ -781,9 +799,6 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
                   <p className="text-sm font-bold text-slate-700">{t.v}</p>
                 </div>
               ))}
-            </div>
-            <div className={`text-right text-base font-black mb-5 pt-2 border-t border-slate-200 ${liquido < 0 ? 'text-red-600' : 'text-slate-900'}`}>
-              Líquido: R$ {fmt(liquido)}
             </div>
 
             {/* Table preview container */}

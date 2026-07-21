@@ -65,6 +65,15 @@ export function useWhatsAppInstances() {
     return data
   }, [])
 
+  const getInstanceDetails = useCallback(async (id: string) => {
+    const token = localStorage.getItem('mrm_token') ?? ''
+    const res = await fetch(`/api/whatsapp/instances/${id}?action=details`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error('Falha ao buscar dados da instância')
+    return res.json() as Promise<WhatsAppInstance>
+  }, [])
+
   const getQrCode = useCallback(async (id: string): Promise<string | null> => {
     const token = localStorage.getItem('mrm_token') ?? ''
     const res = await fetch(`/api/whatsapp/instances/${id}?action=qr-code`, {
@@ -84,5 +93,23 @@ export function useWhatsAppInstances() {
     setInstances(prev => prev.map(i => i.id === id ? { ...i, status: 'disconnected' } : i))
   }, [])
 
-  return { instances, isLoading, error, refetch: fetchInstances, createInstance, deleteInstance, getStatus, getQrCode, disconnectInstance }
+  const updateInstance = useCallback(async (id: string, data: {
+    name?: string; instance_id?: string; token?: string; client_token?: string; is_active?: boolean
+  }) => {
+    const token = localStorage.getItem('mrm_token') ?? ''
+    const res = await fetch(`/api/whatsapp/instances/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error ?? 'Falha ao atualizar instância')
+    }
+    const updated = await res.json()
+    setInstances(prev => prev.map(i => i.id === id ? { ...i, ...updated } : i))
+    return updated as WhatsAppInstance
+  }, [])
+
+  return { instances, isLoading, error, refetch: fetchInstances, createInstance, deleteInstance, getStatus, getQrCode, disconnectInstance, updateInstance, getInstanceDetails }
 }

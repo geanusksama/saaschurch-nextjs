@@ -1206,8 +1206,19 @@ export function AppUI() {
                     value={sidebarSearchQuery}
                     onChange={(event) => setSidebarSearchQuery(event.target.value)}
                     placeholder="Buscar atalho ou módulo"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-purple-200 focus:bg-white focus:ring-2 focus:ring-purple-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:border-purple-500/40 dark:focus:bg-slate-800 dark:focus:ring-purple-500/10"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-9 text-sm text-slate-700 outline-none transition focus:border-purple-200 focus:bg-white focus:ring-2 focus:ring-purple-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:border-purple-500/40 dark:focus:bg-slate-800 dark:focus:ring-purple-500/10"
                   />
+                  {sidebarSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSidebarSearchQuery('')}
+                      title="Limpar busca"
+                      aria-label="Limpar busca"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 

@@ -27,6 +27,7 @@ import {
   MessageCircle,
   CheckCircle2,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import { ATTENDANCE_TYPE_LABELS, type AttendanceType } from '../../lib/pastoralKanbanService';
 import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
@@ -34,6 +35,7 @@ import DateRangeFilter, { currentMonthRange } from './DateRangeFilter';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { usePermissions } from '../../lib/usePermissions';
 import { exportRows } from './exportUtils';
+import { toast } from 'sonner';
 
 function currentProfileType(): string {
   try {
@@ -265,7 +267,7 @@ export default function PastoralSendHistory() {
       await updateAi(conversationIdsFor(Array.from(selected)), agentId);
       setAiModalOpen(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao atualizar IA');
+      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar IA');
     } finally {
       setAiApplying(false);
     }
@@ -278,7 +280,7 @@ export default function PastoralSendHistory() {
     try {
       await updateAi([conversationId], null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao remover IA');
+      toast.error(err instanceof Error ? err.message : 'Erro ao remover IA');
     } finally {
       setRemovingAiId(null);
     }
@@ -297,9 +299,60 @@ export default function PastoralSendHistory() {
       await updateAi(aiConversationIds, null);
       setConfirmRemoveAllAi(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao remover IA');
+      toast.error(err instanceof Error ? err.message : 'Erro ao remover IA');
     } finally {
       setRemovingAllAi(false);
+    }
+  };
+
+  // ── Exclusão de envios (permanente) ──────────────────────────────────────────
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+
+  const deleteSelected = async () => {
+    if (!selected.size || deleting) return;
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/whatsapp/sends', {
+        method: 'DELETE',
+        headers: authHeaders(),
+        body: JSON.stringify({ recipientIds: Array.from(selected) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao excluir envios');
+      setConfirmDeleteSelected(false);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir envios');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const clearAllSends = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      const params = new URLSearchParams();
+      if (q.trim()) params.set('q', q.trim());
+      if (category) params.set('category', category);
+      if (origin) params.set('origin', origin);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
+      const res = await fetch(`/api/whatsapp/sends?${params}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+        body: JSON.stringify({ clearAll: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao limpar envios');
+      setConfirmClearAll(false);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao limpar envios');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -325,7 +378,7 @@ export default function PastoralSendHistory() {
   const sendReply = async (text?: string) => {
     const content = (text ?? replyText).trim();
     if (!openSend || !content || replySending) return;
-    if (!instanceId) { alert('Selecione uma instância para o reenvio.'); return; }
+    if (!instanceId) { toast.warning('Selecione uma instância para o reenvio.'); return; }
     setReplySending(true);
     try {
       const res = await fetch('/api/whatsapp/send-direct', {
@@ -350,7 +403,7 @@ export default function PastoralSendHistory() {
       }]);
       setReplyText('');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Falha no envio');
+      toast.error(err instanceof Error ? err.message : 'Falha no envio');
     } finally {
       setReplySending(false);
     }
@@ -371,7 +424,7 @@ export default function PastoralSendHistory() {
       if (!res.ok) throw new Error(data.error ?? 'Erro ao gerar resumo');
       setSmart(data);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao gerar resumo');
+      toast.error(err instanceof Error ? err.message : 'Erro ao gerar resumo');
     } finally {
       setSmartLoading(false);
     }
@@ -467,6 +520,20 @@ export default function PastoralSendHistory() {
           {removingAllAi ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
           Remover IA de todos
         </button>
+
+        {/* Exclusão de envios */}
+        <button onClick={() => setConfirmDeleteSelected(true)} disabled={!selected.size || deleting || !canManageAi}
+          title={!canManageAi ? 'Sem permissão para excluir envios' : 'Excluir envios selecionados'}
+          className="h-9 px-3 rounded-lg border border-red-200 text-red-600 text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-50 disabled:opacity-40">
+          <Trash2 className="w-4 h-4" />
+          Excluir selecionados
+        </button>
+        <button onClick={() => setConfirmClearAll(true)} disabled={!sends.length || deleting || !canManageAi}
+          title={!canManageAi ? 'Sem permissão para excluir envios' : 'Excluir todos os envios que batem com o filtro atual'}
+          className="h-9 px-3 rounded-lg bg-red-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-700 disabled:opacity-40">
+          <Trash2 className="w-4 h-4" />
+          Limpar tudo
+        </button>
       </div>
 
       <ConfirmDialog
@@ -478,6 +545,28 @@ export default function PastoralSendHistory() {
         loading={removingAllAi}
         onConfirm={removeAllAi}
         onCancel={() => setConfirmRemoveAllAi(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteSelected}
+        title={`Excluir ${selected.size} envio(s)?`}
+        message="Exclusão permanente do histórico de envio selecionado. Campanhas em execução são preservadas automaticamente. Não é possível desfazer."
+        confirmLabel="Excluir"
+        variant="danger"
+        loading={deleting}
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmDeleteSelected(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmClearAll}
+        title="Limpar todos os envios deste filtro?"
+        message={`Todos os ${sends.length} envio(s) que batem com o período e filtros atuais serão excluídos permanentemente. Campanhas em execução são preservadas automaticamente. Não é possível desfazer.`}
+        confirmLabel="Limpar tudo"
+        variant="danger"
+        loading={deleting}
+        onConfirm={clearAllSends}
+        onCancel={() => setConfirmClearAll(false)}
       />
 
       {/* ── Lista ── */}

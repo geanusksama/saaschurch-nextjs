@@ -154,6 +154,19 @@ const getWeeklyBehavior = (memberRecords: FacePresenceRecord[], deDateStr: strin
 export function AttendanceModule() {
   const token = localStorage.getItem('mrm_token');
 
+  // Campo (field) ativo — usado para escopar igrejas/regionais/membros pelo campo
+  // do usuário logado. Master enxerga todo o sistema, mas por padrão usamos o
+  // campo selecionado no seletor da barra lateral (mrm_active_field_id); ao trocar
+  // de campo a página recarrega, então ler no mount é suficiente.
+  const activeFieldId = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+      return localStorage.getItem('mrm_active_field_id') || u.campoId || '';
+    } catch {
+      return localStorage.getItem('mrm_active_field_id') || '';
+    }
+  })();
+
   // Navigation tabs (5 Tabs)
   const [activeTab, setActiveTab] = useState<'general' | 'member_history' | 'insights' | 'report' | 'devices'>('general');
 
@@ -179,7 +192,7 @@ export function AttendanceModule() {
   const [rol, setRol] = useState('');
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState('');
   const [page, setPage] = useState(1);
-  const pageSize = 15;
+  const [pageSize, setPageSize] = useState(15);
   const [generalData, setGeneralData] = useState<FacePresenceRecord[]>([]);
   const [generalTotal, setGeneralTotal] = useState(0);
   const [loadingGeneral, setLoadingGeneral] = useState(false);
@@ -372,8 +385,8 @@ export function AttendanceModule() {
       
       const fetchInitialData = async () => {
         try {
-          // Fetch churches
-          const res = await fetch('/api/churches', {
+          // Fetch churches (escopadas pelo campo ativo)
+          const res = await fetch(`/api/churches${activeFieldId ? `?fieldId=${activeFieldId}` : ''}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
           if (res.ok) {
@@ -391,8 +404,8 @@ export function AttendanceModule() {
             }
           }
 
-          // Fetch regionais
-          const resRegionals = await fetch('/api/regionais', {
+          // Fetch regionais (escopadas pelo campo ativo)
+          const resRegionals = await fetch(`/api/regionais${activeFieldId ? `?campoId=${activeFieldId}` : ''}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
           if (resRegionals.ok) {
@@ -457,8 +470,11 @@ export function AttendanceModule() {
     try {
       const params = new URLSearchParams();
       params.set("q", text);
+      params.set("memberType", "MEMBRO"); // apenas membros reais (exclui PF/PJ)
       if (selectedChurchId && selectedChurchId !== 'all') {
         params.set("churchId", selectedChurchId);
+      } else if (activeFieldId) {
+        params.set("campoId", activeFieldId);
       }
       const res = await fetch(`/api/members?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -531,8 +547,11 @@ export function AttendanceModule() {
       // Load list of members to match who is absent
       const memberParams = new URLSearchParams();
       memberParams.set("pageSize", "150");
+      memberParams.set("memberType", "MEMBRO"); // apenas membros reais (exclui PF/PJ)
       if (selectedChurchId && selectedChurchId !== 'all') {
         memberParams.set("churchId", selectedChurchId);
+      } else if (activeFieldId) {
+        memberParams.set("campoId", activeFieldId);
       }
       const resMembers = await fetch(`/api/members?${memberParams.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -558,17 +577,23 @@ export function AttendanceModule() {
     try {
       const memberParams = new URLSearchParams();
       memberParams.set("pageSize", "3000");
-      
+      memberParams.set("memberType", "MEMBRO"); // apenas membros reais (exclui PF/PJ)
+
       if (selectedRegionalId && selectedRegionalId !== 'all') {
         memberParams.set("regionalId", selectedRegionalId);
       }
-      
+
       if (selectedChurchIds.length > 0) {
         memberParams.set("churchIds", selectedChurchIds.join(','));
       }
-      
+
       if (selectedTitleIds.length > 0) {
         memberParams.set("titleId", selectedTitleIds.join(','));
+      }
+
+      // Escopo por campo ativo quando nenhuma regional/igreja específica foi escolhida
+      if (activeFieldId && (!selectedRegionalId || selectedRegionalId === 'all') && selectedChurchIds.length === 0) {
+        memberParams.set("campoId", activeFieldId);
       }
 
       const resMembers = await fetch(`/api/members?${memberParams.toString()}`, {
@@ -674,7 +699,7 @@ export function AttendanceModule() {
     } else if (activeTab === 'devices') {
       loadDevices();
     }
-  }, [activeTab, page, selectedChurchId]);
+  }, [activeTab, page, pageSize, selectedChurchId]);
 
   const handleGeneralSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -846,11 +871,40 @@ export function AttendanceModule() {
     return generalData.filter(r => getDayOfWeek(r.horario) === selectedDayOfWeek);
   }, [generalData, selectedDayOfWeek]);
 
-  // General Excel Export
-  const exportToExcel = () => {
-    if (generalData.length === 0) return;
-    
-    const data = generalData.map((r, i) => ({
+  // Busca TODOS os registros de presença que batem com os filtros atuais
+  // (ignora a paginação da tela) — usado por exportações e impressão.
+  const [exportingAll, setExportingAll] = useState(false);
+  const fetchAllGeneral = async (): Promise<FacePresenceRecord[]> => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (rol) params.set("rol", rol);
+    if (de) params.set("de", de);
+    if (ate) params.set("ate", ate);
+    if (selectedChurchId) params.set("churchId", selectedChurchId);
+    params.set("page", "1");
+    params.set("pageSize", "100000"); // traz tudo de uma vez
+
+    const res = await fetch(`/api/face-presence?${params.toString()}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error("Erro ao buscar registros para exportação");
+    const json = await res.json();
+    let all: FacePresenceRecord[] = json.data || [];
+    // aplica o mesmo filtro de dia da semana (client-side) usado na tabela
+    if (selectedDayOfWeek) {
+      all = all.filter((r) => getDayOfWeek(r.horario) === selectedDayOfWeek);
+    }
+    return all;
+  };
+
+  // General Excel Export (todos os registros do filtro)
+  const exportToExcel = async () => {
+    setExportingAll(true);
+    try {
+      const allRecords = await fetchAllGeneral();
+      if (allRecords.length === 0) { alert("Nenhum registro para exportar."); return; }
+
+    const data = allRecords.map((r, i) => ({
       'ROL': r.rol || '',
       'Nome': r.nome,
       'Cargo': r.cargo || '',
@@ -880,6 +934,11 @@ export function AttendanceModule() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Presenças');
     XLSX.writeFile(wb, `presencas-${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao exportar Excel");
+    } finally {
+      setExportingAll(false);
+    }
   };
 
   // Report Frequency Excel Export
@@ -935,32 +994,59 @@ export function AttendanceModule() {
     XLSX.writeFile(wb, `relatorio-presenca-${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // General CSV Export
-  const exportToCSV = () => {
-    if (generalData.length === 0) return;
-    const headers = ["ROL", "Nome", "Cargo", "Dia da Semana", "Periodo", "Horario", "Confianca", "Camera", "Igreja Regional", "Campo"];
-    const rows = generalData.map((r) => [
-      r.rol || "",
-      r.nome,
-      r.cargo || "",
-      getDayOfWeek(r.horario),
-      getPeriod(r.horario),
-      new Date(r.horario).toLocaleString("pt-BR"),
-      r.confianca ? `${Math.round(r.confianca * 100)}%` : "",
-      r.camera || "",
-      r.igrejaRegional || "",
-      r.campo || "",
-    ]);
+  // General CSV Export (todos os registros do filtro)
+  const exportToCSV = async () => {
+    setExportingAll(true);
+    try {
+      const allRecords = await fetchAllGeneral();
+      if (allRecords.length === 0) { alert("Nenhum registro para exportar."); return; }
+      const headers = ["ROL", "Nome", "Cargo", "Dia da Semana", "Periodo", "Horario", "Confianca", "Camera", "Igreja Regional", "Campo"];
+      const rows = allRecords.map((r) => [
+        r.rol || "",
+        r.nome,
+        r.cargo || "",
+        getDayOfWeek(r.horario),
+        getPeriod(r.horario),
+        new Date(r.horario).toLocaleString("pt-BR"),
+        r.confianca ? `${Math.round(r.confianca * 100)}%` : "",
+        r.camera || "",
+        r.igrejaRegional || "",
+        r.campo || "",
+      ]);
 
-    const csvContent = [headers.join(","), ...rows.map((e) => e.map(val => `"${val}"`).join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `presencas-${new Date().toISOString().split("T")[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const csvContent = [headers.join(","), ...rows.map((e) => e.map(val => `"${val}"`).join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `presencas-${new Date().toISOString().split("T")[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao exportar CSV");
+    } finally {
+      setExportingAll(false);
+    }
+  };
+
+  // Impressão de TODOS os registros do filtro: carrega tudo na tabela e imprime.
+  const printAllGeneral = async () => {
+    setExportingAll(true);
+    try {
+      const allRecords = await fetchAllGeneral();
+      if (allRecords.length === 0) { alert("Nenhum registro para imprimir."); return; }
+      // Carrega todos na tabela (pageSize grande, página 1) e imprime após render.
+      setPageSize(prev => Math.max(prev, allRecords.length));
+      setPage(1);
+      setGeneralData(allRecords);
+      setGeneralTotal(prev => Math.max(prev, allRecords.length));
+      setTimeout(() => window.print(), 300);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao preparar impressão");
+    } finally {
+      setExportingAll(false);
+    }
   };
 
   // Delete presence record from general list
@@ -1260,32 +1346,32 @@ export function AttendanceModule() {
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={exportToCSV}
-                  disabled={filteredGeneralData.length === 0}
+                  disabled={generalTotal === 0 || exportingAll}
                   className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
-                  title="Exportar CSV"
+                  title="Exportar todos os registros do filtro (CSV)"
                 >
                   <Download className="w-4 h-4" />
                   CSV
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={exportToExcel}
-                  disabled={filteredGeneralData.length === 0}
+                  disabled={generalTotal === 0 || exportingAll}
                   className="flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white text-sm px-4 py-2 rounded-lg border border-green-800 transition-colors disabled:opacity-40 h-[38px]"
-                  title="Exportar Excel"
+                  title="Exportar todos os registros do filtro (Excel)"
                 >
                   <Download className="w-4 h-4" />
                   Excel
                 </button>
-                <button 
+                <button
                   type="button"
-                  onClick={() => window.print()}
-                  disabled={filteredGeneralData.length === 0}
+                  onClick={printAllGeneral}
+                  disabled={generalTotal === 0 || exportingAll}
                   className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
-                  title="Imprimir Relatório"
+                  title="Imprimir todos os registros do filtro"
                 >
                   <Printer className="w-4 h-4" />
                   Imprimir
@@ -1312,11 +1398,25 @@ export function AttendanceModule() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between no-print">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 flex-wrap no-print">
               <h3 className="font-bold text-slate-900 dark:text-white">Registros Gerais</h3>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Exibindo <strong>{filteredGeneralData.length}</strong> de <strong>{generalTotal}</strong> registros
-              </span>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  Exibir:
+                  <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    className="border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  >
+                    {[5, 10, 20, 50, 100, 500, 1000, 5000].map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </label>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Exibindo <strong>{filteredGeneralData.length}</strong> de <strong>{generalTotal}</strong> registros
+                </span>
+              </div>
             </div>
 
             <div className="overflow-x-auto">

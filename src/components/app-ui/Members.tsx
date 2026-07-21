@@ -533,10 +533,11 @@ export function Members() {
   const [serverChurchCount, setServerChurchCount] = useState(0);
   const [error, setError] = useState('');
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [preparingPrint, setPreparingPrint] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [isNavigatingNew, setIsNavigatingNew] = useState(false);
   const isLoadingScreen = loadingFilters || loadingMembers;
-  const isAnyActionActive = printModalOpen || exportingExcel || (quickCreateType !== null) || isNavigatingNew;
+  const isAnyActionActive = printModalOpen || preparingPrint || exportingExcel || (quickCreateType !== null) || isNavigatingNew;
 
   const filteredRegionais = useMemo(() => {
     if (hasFixedChurchScope && storedUser.regionalId) {
@@ -792,6 +793,10 @@ export function Members() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Refetch em background (trocou regional/igreja/filtro) — dados antigos ainda
+  // na tela: mostra uma caixa de "Atualizando..." sem sumir com a lista.
+  const isRefetching = membersQuery.isFetching && !loadingFilters && !loadingMembers;
+
   // Sync query result back to local state
   useEffect(() => {
     if (membersQuery.data) {
@@ -819,13 +824,51 @@ export function Members() {
 
   // ── Legacy loadMembers useEffect (removed — replaced by TanStack Query above) ─
 
+  // Busca TODOS os membros que batem com os filtros atuais (ignora a paginação
+  // da tela), paginando a API. Usado por Exportar Excel e Imprimir — que devem
+  // sempre trazer o total retornado pela query, não só a página exibida.
+  const fetchAllMembers = useCallback(async (): Promise<MemberRecord[]> => {
+    if (!token) throw new Error('Sessão expirada.');
+    const FETCH_PAGE_SIZE = 5000;
+    const baseParams = new URLSearchParams();
+    Object.entries(memberQueryFilters).forEach(([k, v]) => {
+      if (k === 'page' || k === 'pageSize') return;
+      if (v !== undefined && v !== null && v !== '') baseParams.set(k, String(v));
+    });
+    baseParams.set('pageSize', String(FETCH_PAGE_SIZE));
+    const all: MemberRecord[] = [];
+    let pageNum = 1;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const params = new URLSearchParams(baseParams);
+      params.set('page', String(pageNum));
+      const res = await fetch(`${apiBase}/members?${params.toString()}`, { headers: buildAuthHeaders(token) });
+      if (!res.ok) throw new Error('Falha ao carregar membros.');
+      const data = await res.json();
+      const pageRows: MemberRecord[] = (Array.isArray(data) ? data : (data.data ?? [])).map((member: MemberRecord) => ({
+        ...member,
+        ecclesiasticalTitleId: member.ecclesiasticalTitleRef?.id || member.ecclesiasticalTitleId || '',
+        churchName: member.church?.name || '',
+        churchCode: member.church?.code || '',
+        regionalName: member.church?.regional?.name || member.regional?.name || '',
+        fieldName: member.church?.regional?.campo?.name || '',
+      }));
+      all.push(...pageRows);
+      const total = typeof data.total === 'number' ? data.total : all.length;
+      if (pageRows.length < FETCH_PAGE_SIZE || all.length >= total) break;
+      pageNum++;
+    }
+    return all;
+  }, [token, memberQueryFilters]);
+
   const handleExportExcel = useCallback(async () => {
     try {
       setExportingExcel(true);
       setError('');
       logClientAudit('read', 'Exportou lista de membros para planilha Excel', 'Lista de Membros');
+      const allMembers = await fetchAllMembers();
       const XLSX = await import('xlsx');
-      const rows = visibleMembers.map((m) => ({
+      const rows = allMembers.map((m) => ({
         'Nome': m.fullName,
         'ROL': m.rol ?? '',
         'Tipo': getMemberTypeLabel(m.memberType),
@@ -856,7 +899,7 @@ export function Members() {
     } finally {
       setExportingExcel(false);
     }
-  }, [visibleMembers]);
+  }, [fetchAllMembers]);
 
   const qc = useQueryClient();
 
@@ -1001,12 +1044,12 @@ export function Members() {
             onClick={() => setPrintModalOpen(true)}
             disabled={isAnyActionActive}
           >
-            {printModalOpen ? (
+            {(printModalOpen || preparingPrint) ? (
               <Loader2 className="h-4 w-4 animate-spin text-slate-600 dark:text-slate-400" />
             ) : (
               <Download className="h-4 w-4" />
             )}
-            {printModalOpen ? 'Carregando...' : 'Imprimir'}
+            {preparingPrint ? 'Gerando...' : printModalOpen ? 'Carregando...' : 'Imprimir'}
           </button>
           <button
             className="flex items-center gap-2 rounded-lg border border-green-300 dark:border-green-800/40 bg-green-50 dark:bg-green-950/20 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/40 hover:border-green-400 dark:hover:border-green-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
@@ -1238,7 +1281,15 @@ export function Members() {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      <div className="relative rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+        {isRefetching && (
+          <div className="absolute inset-0 z-20 flex items-start justify-center rounded-xl bg-white/60 pt-24 backdrop-blur-[1px] dark:bg-slate-900/60">
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-md dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Atualizando lista...
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1380px]">
             <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
@@ -1545,9 +1596,21 @@ export function Members() {
           { value: 'addressZipcode', label: 'CEP', defaultChecked: false },
         ]}
         defaultSort="fullName"
-        onPrint={(orientation, sortBy, selectedColumns, groupByChurch) => {
+        onPrint={async (orientation, sortBy, selectedColumns, groupByChurch) => {
           logClientAudit('read', 'Imprimiu relatório ou ficha de membros', 'Lista de Membros');
-          const sorted = [...visibleMembers].sort((a, b) =>
+          // Imprime TODOS os membros do filtro atual (não só a página exibida).
+          let allMembers: MemberRecord[];
+          setPreparingPrint(true);
+          try {
+            allMembers = await fetchAllMembers();
+          } catch (err) {
+            console.error(err);
+            setError('Erro ao preparar a impressão de todos os membros.');
+            return;
+          } finally {
+            setPreparingPrint(false);
+          }
+          const sorted = [...allMembers].sort((a, b) =>
             String(a[sortBy as keyof typeof a] ?? '').localeCompare(String(b[sortBy as keyof typeof b] ?? ''), 'pt-BR')
           );
           const allCols = [

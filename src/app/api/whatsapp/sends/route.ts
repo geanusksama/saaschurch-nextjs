@@ -123,3 +123,103 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ sends })
   })
 }
+
+/**
+ * DELETE /api/whatsapp/sends — exclui envios permanentemente.
+ *
+ * Body: { recipientIds: string[] } para excluir selecionados, ou
+ *       { clearAll: true, ...mesmos filtros do GET } para excluir tudo que
+ *       bate com o filtro atual da tela.
+ *
+ * Envios cujas campanhas estejam com status "running" são ignorados (não é
+ * seguro apagar um destinatário que pode estar sendo processado agora).
+ * Campanhas que ficam sem nenhum destinatário após a exclusão são removidas
+ * junto, para não deixar registro vazio no banco.
+ */
+export async function DELETE(req: NextRequest) {
+  return withAuth(req, async (user) => {
+    const body = await req.json().catch(() => ({}))
+    const { recipientIds, clearAll } = body as { recipientIds?: string[]; clearAll?: boolean }
+
+    // campanhas visíveis ao usuário
+    let campQuery = supabaseAdmin.from('whatsapp_campaigns').select('id, status')
+    if (user.profileType !== 'master') campQuery = campQuery.eq('owner_user_id', String(user.id))
+    const { data: campaigns } = await campQuery
+    if (!campaigns?.length) return NextResponse.json({ deleted: 0, skippedRunning: 0 })
+
+    const runningIds = new Set(campaigns.filter(c => c.status === 'running').map(c => c.id))
+    const campaignIds = campaigns.map(c => c.id)
+
+    let targetIds: string[] = []
+    let affectedCampaignIds: string[] = []
+
+    if (Array.isArray(recipientIds) && recipientIds.length) {
+      const { data: rows } = await supabaseAdmin
+        .from('whatsapp_campaign_recipients')
+        .select('id, campaign_id')
+        .in('id', recipientIds)
+        .in('campaign_id', campaignIds)
+      const eligible = (rows ?? []).filter(r => !runningIds.has(r.campaign_id))
+      targetIds = eligible.map(r => r.id)
+      affectedCampaignIds = Array.from(new Set(eligible.map(r => r.campaign_id)))
+    } else if (clearAll) {
+      const sp = new URL(req.url).searchParams
+      const dateFrom = sp.get('dateFrom')
+      const dateTo = sp.get('dateTo')
+      const q = (sp.get('q') ?? '').trim().toLowerCase()
+      const category = sp.get('category') ?? ''
+      const source = sp.get('source') ?? ''
+
+      const eligibleCampaignIds = campaignIds.filter(id => !runningIds.has(id))
+      if (!eligibleCampaignIds.length) return NextResponse.json({ deleted: 0, skippedRunning: runningIds.size })
+
+      let recQuery = supabaseAdmin
+        .from('whatsapp_campaign_recipients')
+        .select('id, campaign_id, name, phone')
+        .in('campaign_id', eligibleCampaignIds)
+        .eq('status', 'sent')
+
+      if (dateFrom) recQuery = recQuery.gte('sent_at', `${dateFrom}T00:00:00`)
+      if (dateTo) recQuery = recQuery.lte('sent_at', `${dateTo}T23:59:59`)
+      if (category) recQuery = recQuery.eq('variables->>tipo', category)
+      if (source) recQuery = recQuery.eq('source', source)
+
+      const { data: rows } = await recQuery
+      let filtered = rows ?? []
+      if (q) {
+        const qDigits = q.replace(/\D/g, '')
+        filtered = filtered.filter(r =>
+          (r.name ?? '').toLowerCase().includes(q) ||
+          (qDigits && String(r.phone).includes(qDigits))
+        )
+      }
+      targetIds = filtered.map(r => r.id)
+      affectedCampaignIds = Array.from(new Set(filtered.map(r => r.campaign_id)))
+    } else {
+      return NextResponse.json({ error: 'Informe recipientIds ou clearAll' }, { status: 400 })
+    }
+
+    if (!targetIds.length) return NextResponse.json({ deleted: 0, skippedRunning: runningIds.size })
+
+    const { error: delErr } = await supabaseAdmin
+      .from('whatsapp_campaign_recipients')
+      .delete()
+      .in('id', targetIds)
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+
+    // remove campanhas afetadas que ficaram sem nenhum destinatário
+    if (affectedCampaignIds.length) {
+      const { data: remaining } = await supabaseAdmin
+        .from('whatsapp_campaign_recipients')
+        .select('campaign_id')
+        .in('campaign_id', affectedCampaignIds)
+      const stillHasRecipients = new Set((remaining ?? []).map(r => r.campaign_id))
+      const emptyCampaignIds = affectedCampaignIds.filter(id => !stillHasRecipients.has(id))
+      if (emptyCampaignIds.length) {
+        await supabaseAdmin.from('whatsapp_campaigns').delete().in('id', emptyCampaignIds)
+      }
+    }
+
+    return NextResponse.json({ deleted: targetIds.length, skippedRunning: runningIds.size })
+  })
+}

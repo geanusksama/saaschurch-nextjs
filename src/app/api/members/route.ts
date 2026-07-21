@@ -147,7 +147,14 @@ export async function GET(req: NextRequest) {
       } else if (memberTypeParam === "PJ") {
         filterConditions.push({ memberType: { equals: "PJ", mode: "insensitive" } });
       } else {
-        filterConditions.push({ NOT: { memberType: { in: ["PF", "pf", "PJ", "pj"] } } });
+        // "MEMBRO" (ou qualquer valor != PF/PJ): membros reais, excluindo PF/PJ.
+        // Inclui registros com memberType nulo (legado) para não perdê-los.
+        filterConditions.push({
+          OR: [
+            { memberType: null },
+            { NOT: { memberType: { in: ["PF", "pf", "PJ", "pj"] } } },
+          ],
+        });
       }
     }
 

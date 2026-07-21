@@ -354,7 +354,28 @@ export async function printRecibo(row: ReciboRow, incluirComprovante: boolean, f
   printWindow.document.close();
   if (!isMobile) {
     printWindow.addEventListener('afterprint', () => printWindow.close());
-    setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
+    let printed = false;
+    const doPrint = () => {
+      if (printed) return;
+      printed = true;
+      // A janela pode ter sido fechada antes do disparo (cliques repetidos) —
+      // evita exceção ao chamar focus()/print() num window já fechado.
+      try {
+        if (printWindow.closed) return;
+        printWindow.focus();
+        printWindow.print();
+      } catch { /* janela indisponível: ignora */ }
+    };
+    // Se há comprovante em imagem, só imprime DEPOIS que ela carregar — senão o
+    // recibo saía sem o anexo na 1ª abertura (a imagem ainda não tinha baixado).
+    const img = printWindow.document.querySelector('img.comp-img') as HTMLImageElement | null;
+    if (img && !img.complete) {
+      img.addEventListener('load', doPrint, { once: true });
+      img.addEventListener('error', doPrint, { once: true }); // imprime mesmo se a imagem falhar
+      setTimeout(doPrint, 6000); // fallback caso o load nunca dispare
+    } else {
+      setTimeout(doPrint, 300);
+    }
   }
 }
 

@@ -96,6 +96,8 @@ type HistoryRow = {
   createdAt?: string | null;
   card?: { id: string; protocol?: string | null; church?: { name: string } | null; createdAt?: string | null } | null;
   createdByUser?: { id: string; fullName: string } | null;
+  church?: { id: string; name: string } | null; // igreja de origem do evento (fallback quando não há card)
+  destinationChurch?: { id: string; name: string } | null; // igreja de destino (transferência)
 };
 
 type Tab = "historico" | "titulos" | "funcoes" | "familia";
@@ -1309,10 +1311,15 @@ function HistoricoTab({
                   <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
                     {h.createdAt ? new Date(h.createdAt).toLocaleDateString("pt-BR") : "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{h.card?.church?.name || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{h.card?.church?.name || h.church?.name || "—"}</td>
                   <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{h.memberCity || "—"}</td>
                   <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{h.memberCountry || "—"}</td>
-                  <td className="px-4 py-3 text-slate-700">{h.serviceName || h.notes || h.action || "—"}</td>
+                  <td className="px-4 py-3 text-slate-700">
+                    {h.serviceName || h.notes || h.action || "—"}
+                    {h.destinationChurch?.name && (
+                      <span className="text-slate-500"> → {h.destinationChurch.name}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button

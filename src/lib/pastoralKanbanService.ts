@@ -394,6 +394,23 @@ export async function updatePastoralAttendance(
   if (error) throw error;
 }
 
+/**
+ * Exclui atendimentos permanentemente (cascade nativo do banco cobre
+ * activities/notes/timeline/files). Como whatsapp_campaign_recipients e
+ * whatsapp_import_rows guardam o attendance_id sem FK, essas referências são
+ * zeradas antes para não sobrar ponteiro morto.
+ */
+export async function bulkDeletePastoralAttendances(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+
+  await supabase.from('whatsapp_campaign_recipients').update({ attendance_id: null }).in('attendance_id', ids);
+  await supabase.from('whatsapp_import_rows').update({ matched_attendance_id: null }).in('matched_attendance_id', ids);
+  await supabase.from('whatsapp_import_rows').update({ created_attendance_id: null }).in('created_attendance_id', ids);
+
+  const { error } = await supabase.from('pastoral_attendances').delete().in('id', ids);
+  if (error) throw error;
+}
+
 export async function getPastoralAttendanceById(attendanceId: string): Promise<PastoralAttendance | null> {
   const { data, error } = await supabase
     .from('pastoral_attendances')

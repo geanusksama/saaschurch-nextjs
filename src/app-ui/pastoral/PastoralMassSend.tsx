@@ -41,6 +41,7 @@ import DateRangeFilter, { currentMonthRange } from './DateRangeFilter';
 import { usePermissions } from '../../lib/usePermissions';
 import { exportRows } from './exportUtils';
 import ImportCsvModal, { downloadTemplate } from './ImportCsvModal';
+import { toast } from 'sonner';
 
 function currentProfileType(): string {
   try {
@@ -415,7 +416,7 @@ export default function PastoralMassSend() {
       await refreshCampaign(data.campaign.id);
       runLoop(data.campaign.id);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao iniciar campanha');
+      toast.error(err instanceof Error ? err.message : 'Erro ao iniciar campanha');
     } finally {
       setStarting(false);
     }

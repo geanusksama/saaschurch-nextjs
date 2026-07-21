@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Save, User, Phone, MapPin, Heart, Users, X, Search, CheckCircle, UserCircle, Droplets, Star, ArrowRight, AlertTriangle } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Save, User, Phone, MapPin, Heart, Users, X, Search, CheckCircle, UserCircle, Droplets, Star, ArrowRight, AlertTriangle, Camera, Trash2 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { apiBase } from '../../lib/apiBase';
+import { supabase } from '../../lib/supabaseClient';
 
 const BRAZIL_STATES = [
   { value: 'AC', label: 'Acre' },
@@ -296,6 +297,28 @@ export function MemberRegistration() {
   const [lookingUpCep, setLookingUpCep] = useState(false);
   const [savedMember, setSavedMember] = useState<SavedMemberSummary | null>(null);
   const [cityOptions, setCityOptions] = useState<{ field: 'city' | 'naturalityCity'; options: Array<{ city: string; state: string }> } | null>(null);
+
+  // Foto: só em memória até salvar (upload ao storage acontece no submit).
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Selecione um arquivo de imagem.'); return; }
+    if (file.size > 5 * 1024 * 1024) { setError('A imagem deve ter no máximo 5MB.'); return; }
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(typeof reader.result === 'string' ? reader.result : null);
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  };
   const [duplicateMember, setDuplicateMember] = useState<{ exists: boolean; type: 'cpf' | 'name' | 'rol'; sameCampo: boolean; member: any } | null>(null);
 
   const handleCheckDuplicate = async () => {
@@ -655,6 +678,18 @@ export function MemberRegistration() {
         throw new Error('Informe o nome do membro.');
       }
 
+      // Upload da foto só agora (ao salvar). Path temporário por não existir id
+      // ainda; a URL pública vai junto no payload de criação.
+      if (photoFile) {
+        const uid = (globalThis.crypto?.randomUUID?.() ?? String(Date.now()));
+        const path = `fotos_membros/novos/${uid}.jpg`;
+        const { error: upErr } = await supabase.storage
+          .from('dados')
+          .upload(path, photoFile, { upsert: true, contentType: photoFile.type || 'image/jpeg' });
+        if (upErr) throw new Error('Falha ao enviar a foto: ' + upErr.message);
+        (payload as Record<string, unknown>).photoUrl = supabase.storage.from('dados').getPublicUrl(path).data.publicUrl;
+      }
+
       const response = await fetch(`${apiBase}/churches/${formData.churchId}/members`, {
         method: 'POST',
         headers: {
@@ -693,6 +728,8 @@ export function MemberRegistration() {
         churchId: prev.churchId,
         ecclesiasticalTitleId: defaultTitle?.id || '',
       }));
+      setPhotoFile(null);
+      setPhotoPreview(null);
     } catch (err) {
       setError(err.message || 'Falha ao salvar membro.');
     } finally {
@@ -824,6 +861,39 @@ export function MemberRegistration() {
               <User className="w-5 h-5 text-purple-600" />
             </div>
             <h2 className="text-xl font-bold text-slate-900">Informações Pessoais</h2>
+          </div>
+
+          {/* Foto do membro (só sobe ao salvar) */}
+          <div className="mb-6 flex items-center gap-4">
+            <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+              {photoPreview ? (
+                <img src={photoPreview} alt="Foto do membro" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-slate-400">
+                  <User className="h-8 w-8" />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoPick} />
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <Camera className="h-4 w-4" /> {photoPreview ? 'Trocar foto' : 'Adicionar foto'}
+              </button>
+              {photoPreview && (
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" /> Remover foto
+                </button>
+              )}
+              <p className="text-xs text-slate-400">A foto só é salva ao clicar em “Salvar”.</p>
+            </div>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">

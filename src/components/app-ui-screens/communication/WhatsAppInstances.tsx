@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Smartphone, Plus, Trash2, RefreshCw, QrCode, CheckCircle,
   XCircle, Loader2, Wifi, WifiOff, AlertCircle, Users, Shield,
-  MoreVertical, PowerOff
+  MoreVertical, PowerOff, Pencil
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWhatsAppInstances } from '@/hooks/useWhatsAppInstances'
@@ -290,6 +291,104 @@ function UsersModal({
   )
 }
 
+// ── Edit Modal ────────────────────────────────────────────────────────────────
+
+function EditInstanceModal({
+  instance,
+  onClose,
+  onSave,
+  onLoadDetails,
+}: {
+  instance: WhatsAppInstance
+  onClose: () => void
+  onSave: (data: { name: string; instance_id: string; token: string; client_token: string }) => Promise<void>
+  onLoadDetails: () => Promise<WhatsAppInstance>
+}) {
+  const [form, setForm] = useState({ name: instance.name, instance_id: '', token: '', client_token: '' })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    onLoadDetails()
+      .then(details => {
+        if (cancelled) return
+        setForm({
+          name: details.name ?? '',
+          instance_id: details.instance_id ?? '',
+          token: details.token ?? '',
+          client_token: details.client_token ?? '',
+        })
+      })
+      .catch(() => toast.error('Erro ao carregar dados da instância'))
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instance.id])
+
+  const handleSave = async () => {
+    if (!form.name || !form.instance_id || !form.token || !form.client_token) return
+    setSaving(true)
+    try {
+      await onSave(form)
+      onClose()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="p-5 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <Pencil className="w-5 h-5 text-purple-600" />
+            <h3 className="font-bold text-slate-900">Editar instância</h3>
+          </div>
+        </div>
+        {loading ? (
+          <div className="py-10 flex flex-col items-center gap-2 text-slate-400">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span className="text-sm">Carregando...</span>
+          </div>
+        ) : (
+          <div className="p-5 grid grid-cols-1 gap-4">
+            {[
+              { label: 'Nome da instância',    key: 'name',         placeholder: 'Ex: Suporte, Vendas...', mono: false },
+              { label: 'Instance ID (Z-API)',  key: 'instance_id',  placeholder: 'Ex: 3C16B27...',         mono: true  },
+              { label: 'Token (Z-API)',         key: 'token',        placeholder: 'Token da instância',      mono: true  },
+              { label: 'Client Token (Z-API)', key: 'client_token', placeholder: 'Security Token Z-API',    mono: true  },
+            ].map(({ label, key, placeholder, mono }) => (
+              <div key={key}>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+                <input
+                  value={form[key as keyof typeof form]}
+                  onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${mono ? 'font-mono' : ''}`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="p-5 border-t border-slate-100 flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50">
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={loading || !form.name || !form.instance_id || !form.token || !form.client_token || saving}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saving ? 'Salvando...' : 'Salvar alterações'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Row menu ──────────────────────────────────────────────────────────────────
 
 function RowMenu({
@@ -299,6 +398,7 @@ function RowMenu({
   onDisconnect,
   onDelete,
   onManageUsers,
+  onEdit,
 }: {
   instance: WhatsAppInstance
   onGetQr: () => void
@@ -306,17 +406,47 @@ function RowMenu({
   onDisconnect: () => void
   onDelete: () => void
   onManageUsers: () => void
+  onEdit: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [coords, setCoords] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  useEffect(() => {
+    if (!open) return
+    const reposition = () => {
+      if (!btnRef.current) return
+      const rect = btnRef.current.getBoundingClientRect()
+      setCoords({ top: rect.bottom + 4, left: rect.right - 180 })
+    }
+    reposition()
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  }, [open])
+
+  const toggleOpen = () => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setCoords({ top: rect.bottom + 4, left: rect.right - 180 })
+    }
+    setOpen(v => !v)
+  }
 
   const item = (cb: () => void, label: string, Icon: React.FC<{ className?: string }>, cls = 'text-slate-700') => (
     <button
@@ -328,22 +458,29 @@ function RowMenu({
   )
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={btnRef}
+        onClick={toggleOpen}
         className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400"
       >
         <MoreVertical className="w-4 h-4" />
       </button>
-      {open && (
-        <div className="absolute right-0 top-8 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 min-w-[180px]">
+      {open && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'fixed', top: coords.top, left: coords.left }}
+          className="bg-white border border-slate-200 rounded-xl shadow-lg z-[999] py-1 min-w-[180px]"
+        >
+          {item(onEdit, 'Editar instância', Pencil)}
           {item(onManageUsers, 'Gerenciar usuários', Users)}
           {item(onRefreshStatus, 'Verificar status', RefreshCw)}
           {instance.status !== 'connected' && item(onGetQr, 'Obter QR Code', QrCode)}
           {instance.status === 'connected' && item(onDisconnect, 'Desconectar', PowerOff, 'text-yellow-600')}
           <hr className="my-1 border-slate-100" />
           {item(onDelete, 'Excluir instância', Trash2, 'text-red-600')}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -352,7 +489,7 @@ function RowMenu({
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function WhatsAppInstances() {
-  const { instances, isLoading, createInstance, deleteInstance, getStatus, getQrCode, disconnectInstance } =
+  const { instances, isLoading, createInstance, deleteInstance, getStatus, getQrCode, disconnectInstance, updateInstance, getInstanceDetails } =
     useWhatsAppInstances()
 
   const [showForm, setShowForm]   = useState(false)
@@ -361,6 +498,7 @@ export default function WhatsAppInstances() {
   const [qrCode, setQrCode]       = useState<string | null>(null)
   const [pollingId, setPollingId] = useState<string | null>(null)
   const [usersInst, setUsersInst] = useState<WhatsAppInstance | null>(null)
+  const [editInst, setEditInst]   = useState<WhatsAppInstance | null>(null)
   const pollingRef                = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // stats
@@ -413,10 +551,27 @@ export default function WhatsAppInstances() {
     }
   }
 
+  const handleEditSave = async (id: string, data: { name: string; instance_id: string; token: string; client_token: string }) => {
+    try {
+      await updateInstance(id, data)
+      toast.success('Instância atualizada!')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao atualizar instância')
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       {qrCode && <QrCodeModal qrCode={qrCode} onClose={() => { setQrCode(null); setPollingId(null) }} />}
       {usersInst && <UsersModal instance={usersInst} onClose={() => setUsersInst(null)} />}
+      {editInst && (
+        <EditInstanceModal
+          instance={editInst}
+          onClose={() => setEditInst(null)}
+          onSave={data => handleEditSave(editInst.id, data)}
+          onLoadDetails={() => getInstanceDetails(editInst.id)}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -601,6 +756,7 @@ export default function WhatsAppInstances() {
                         onDisconnect={() => disconnectInstance(inst.id)}
                         onDelete={() => handleDelete(inst.id, inst.name)}
                         onManageUsers={() => setUsersInst(inst)}
+                        onEdit={() => setEditInst(inst)}
                       />
                     </div>
                   </td>

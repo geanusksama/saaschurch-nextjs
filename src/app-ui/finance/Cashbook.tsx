@@ -1367,7 +1367,7 @@ export default function Cashbook() {
                 label={loading ? 'Consultando' : 'Consultar Livro Caixa'}
                 onClick={() => { void buscar(); }}
                 disabled={loading}
-                className="w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
+                className="w-full md:w-auto !bg-green-600 !text-white hover:!bg-green-700 shadow-md"
               />
               <RibbonButton
                 size="lg"
@@ -1375,7 +1375,7 @@ export default function Cashbook() {
                 icon={<Filter className="h-4 w-4" />}
                 label="Consultar Lançamento"
                 onClick={() => setShowSearchModal(true)}
-                className="w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
+                className="w-full md:w-auto !bg-orange-500 !text-white hover:!bg-orange-600 shadow-md"
               />
             </RibbonGroup>
 

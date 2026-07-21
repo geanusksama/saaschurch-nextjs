@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Save, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Save, X, Camera, Trash2, User } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
+import { supabase } from '../../lib/supabaseClient';
 
 type EcclesiasticalTitleOption = {
   id: string;
@@ -230,6 +231,31 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
   const [churches, setChurches] = useState<ChurchOption[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState('');
 
+  // Foto: mantida só em memória (preview/arquivo) até salvar. O upload para o
+  // storage e a gravação no banco só acontecem no handleSave.
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null); // foto já salva
+  const [photoFile, setPhotoFile] = useState<File | null>(null); // nova foto (memória)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null); // dataURL local
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite re-selecionar o mesmo arquivo
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Selecione um arquivo de imagem.'); return; }
+    if (file.size > 5 * 1024 * 1024) { setError('A imagem deve ter no máximo 5MB.'); return; }
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(typeof reader.result === 'string' ? reader.result : null);
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setPhotoUrl(null); // marca para limpar no banco ao salvar
+  };
+
   useEffect(() => {
     if (!open || !canChooseChurch) return;
     const token = localStorage.getItem('mrm_token');
@@ -267,6 +293,9 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
         const data = await response.json();
         if (cancelled) return;
         setSelectedFieldId(data.church?.regional?.campo?.id || '');
+        setPhotoUrl(data.photoUrl || null);
+        setPhotoFile(null);
+        setPhotoPreview(null);
         setForm({
           churchId: data.churchId || '',
           regionalId: data.regionalId || '',
@@ -402,7 +431,19 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
       setSaving(true);
       setError('');
 
+      // Upload da foto só agora (ao salvar). Se removeu, photoUrl vai null.
+      let finalPhotoUrl: string | null = photoUrl;
+      if (photoFile) {
+        const path = `fotos_membros/${memberId}/${Date.now()}.jpg`;
+        const { error: upErr } = await supabase.storage
+          .from('dados')
+          .upload(path, photoFile, { upsert: true, contentType: photoFile.type || 'image/jpeg' });
+        if (upErr) throw new Error('Falha ao enviar a foto: ' + upErr.message);
+        finalPhotoUrl = supabase.storage.from('dados').getPublicUrl(path).data.publicUrl;
+      }
+
       const payload: Record<string, any> = {
+        photoUrl: finalPhotoUrl,
         ...(canChooseChurch && form.churchId ? { churchId: form.churchId, regionalId: form.regionalId || undefined } : {}),
         memberType: form.memberType,
         fullName: form.fullName,
@@ -495,6 +536,42 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
               ) : null}
 
+              {/* Foto do membro (só sobe ao salvar) */}
+              <section>
+                <h3 className="mb-3 text-sm font-semibold text-slate-800">Foto do Membro</h3>
+                <div className="flex items-center gap-4">
+                  <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                    {(photoPreview || photoUrl) ? (
+                      <img src={photoPreview || photoUrl || ''} alt="Foto do membro" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-slate-400">
+                        <User className="h-8 w-8" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoPick} />
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      <Camera className="h-4 w-4" /> {(photoPreview || photoUrl) ? 'Trocar foto' : 'Adicionar foto'}
+                    </button>
+                    {(photoPreview || photoUrl) && (
+                      <button
+                        type="button"
+                        onClick={removePhoto}
+                        className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" /> Remover foto
+                      </button>
+                    )}
+                    <p className="text-xs text-slate-400">A foto só é salva ao clicar em “Salvar alterações”.</p>
+                  </div>
+                </div>
+              </section>
+
               {canChooseChurch ? (
                 <section>
                   <h3 className="mb-3 text-sm font-semibold text-slate-800">Vínculo com Igreja</h3>
@@ -557,14 +634,18 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                     <label className={labelClass}>Nome completo *</label>
                     <input type="text" value={form.fullName} onChange={(e) => update('fullName', e.target.value)} className={inputClass} />
                   </div>
-                  <div>
-                    <label className={labelClass}>CNPJ</label>
-                    <input type="text" value={form.cnpj} onChange={(e) => update('cnpj', formatCnpj(e.target.value))} placeholder="00.000.000/0000-00" className={inputClass} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Nome fantasia</label>
-                    <input type="text" value={form.fantasyName} onChange={(e) => update('fantasyName', e.target.value)} className={inputClass} />
-                  </div>
+                  {form.memberType === 'PJ' && (
+                    <>
+                      <div>
+                        <label className={labelClass}>CNPJ</label>
+                        <input type="text" value={form.cnpj} onChange={(e) => update('cnpj', formatCnpj(e.target.value))} placeholder="00.000.000/0000-00" className={inputClass} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Nome fantasia</label>
+                        <input type="text" value={form.fantasyName} onChange={(e) => update('fantasyName', e.target.value)} className={inputClass} />
+                      </div>
+                    </>
+                  )}
                   <div>
                     <label className={labelClass}>Nome preferido</label>
                     <input type="text" value={form.preferredName} onChange={(e) => update('preferredName', e.target.value)} className={inputClass} />

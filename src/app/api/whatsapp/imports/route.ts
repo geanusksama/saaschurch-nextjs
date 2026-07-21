@@ -121,3 +121,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ batch, summary, rows: saved ?? [] }, { status: 201 })
   })
 }
+
+/**
+ * DELETE /api/whatsapp/imports — exclui lotes importados permanentemente.
+ *
+ * Body: { batchIds?: string[] } — se omitido, exclui todos os lotes visíveis
+ * ao usuário (mesmo escopo do GET). Lotes com status "sending" são ignorados
+ * por segurança. O cascade do banco (whatsapp_import_rows.batch_id) já remove
+ * as linhas do lote junto.
+ */
+export async function DELETE(req: NextRequest) {
+  return withAuth(req, async (user) => {
+    const body = await req.json().catch(() => ({}))
+    const { batchIds } = body as { batchIds?: string[] }
+
+    let query = supabaseAdmin.from('whatsapp_import_batches').select('id, status')
+    if (user.profileType !== 'master') query = query.eq('owner_user_id', String(user.id))
+    if (Array.isArray(batchIds) && batchIds.length) query = query.in('id', batchIds)
+
+    const { data: batches, error } = await query
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!batches?.length) return NextResponse.json({ deleted: 0, skippedSending: 0 })
+
+    const eligibleIds = batches.filter(b => b.status !== 'sending').map(b => b.id)
+    const skippedSending = batches.length - eligibleIds.length
+    if (!eligibleIds.length) return NextResponse.json({ deleted: 0, skippedSending })
+
+    const { error: delErr } = await supabaseAdmin
+      .from('whatsapp_import_batches')
+      .delete()
+      .in('id', eligibleIds)
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+
+    return NextResponse.json({ deleted: eligibleIds.length, skippedSending })
+  })
+}

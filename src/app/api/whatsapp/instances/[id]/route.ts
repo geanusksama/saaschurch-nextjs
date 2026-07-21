@@ -47,6 +47,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ qrCode: json.qrcode ?? json.qrCode ?? json.value ?? null })
     }
 
+    if (action === 'details') {
+      return NextResponse.json({
+        id: instance.id,
+        name: instance.name,
+        instance_id: instance.instance_id,
+        token: instance.token,
+        client_token: instance.client_token,
+        is_active: instance.is_active,
+      })
+    }
+
     return NextResponse.json({ error: 'Ação inválida' }, { status: 400 })
   })
 }
@@ -66,7 +77,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (fetchErr || !instance) return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
 
-    const { action, name, is_active } = body
+    const { action, name, is_active, instance_id, token, client_token } = body
 
     if (action === 'disconnect' || action === 'restart') {
       const base = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}`
@@ -82,12 +93,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const updates: Record<string, unknown> = {}
     if (name !== undefined) updates.name = name
     if (is_active !== undefined) updates.is_active = is_active
+    if (instance_id !== undefined) updates.instance_id = instance_id
+    if (token !== undefined) updates.token = token
+    if (client_token !== undefined) updates.client_token = client_token
 
     const { data, error } = await supabaseAdmin
       .from('whatsapp_instances')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select('id, name, status, is_active')
+      .select('id, name, status, is_active, instance_id, token, client_token')
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

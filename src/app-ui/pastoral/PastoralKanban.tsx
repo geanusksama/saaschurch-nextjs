@@ -33,6 +33,7 @@ import {
   Check,
   X,
   Printer,
+  Trash2,
 } from 'lucide-react';
 import {
   type PastoralPipelineColumn,
@@ -53,8 +54,11 @@ import {
   listPastoralNotes,
   listPastoralActivities,
   listPastoralTimeline,
+  bulkDeletePastoralAttendances,
 } from '../../lib/pastoralKanbanService';
 import { supabase } from '../../lib/supabaseClient';
+import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
+import { toast } from 'sonner';
 import { PastoralAttendanceDetail } from './PastoralAttendanceDetail';
 import { PastoralAttendanceNew } from './PastoralAttendanceNew';
 
@@ -427,6 +431,20 @@ export default function PastoralKanban() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-cards'] }),
   });
 
+  // Seleção em massa (visão de tabela) + exclusão em cascata
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<string[] | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: bulkDeletePastoralAttendances,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-cards'] });
+      void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-summary'] });
+      setSelectedIds(new Set());
+      setDeleteTarget(null);
+    },
+  });
+
   const isLoading = loadingColumns || loadingCards;
 
   // Apply date + regional filter client-side (kanban + table)
@@ -441,9 +459,31 @@ export default function PastoralKanban() {
   });
   const tableCards = dateFilteredCards;
 
+  // Limpa a seleção quando os filtros mudam a lista de cards visíveis na tabela
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const visibleIds = new Set(tableCards.map((c) => c.id));
+      const next = new Set(Array.from(prev).filter((id) => visibleIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableCards]);
+
+  const allTableSelected = tableCards.length > 0 && selectedIds.size === tableCards.length;
+  const toggleSelectAll = () => {
+    setSelectedIds(allTableSelected ? new Set() : new Set(tableCards.map((c) => c.id)));
+  };
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
   async function handlePrintPipeline() {
     if (dateFilteredCards.length === 0) {
-      alert("Não há atendimentos para imprimir com os filtros aplicados.");
+      toast.warning("Não há atendimentos para imprimir com os filtros aplicados.");
       return;
     }
 
@@ -716,7 +756,7 @@ export default function PastoralKanban() {
       fw.print();
     } catch (error) {
       console.error("Failed to generate pipeline printout:", error);
-      alert("Erro ao gerar a visualização de impressão. Tente novamente.");
+      toast.error("Erro ao gerar a visualização de impressão. Tente novamente.");
     } finally {
       setIsPrinting(false);
     }
@@ -1010,11 +1050,38 @@ export default function PastoralKanban() {
           <>
             {/* ── Table View ── */}
             <div className="p-5">
+              {selectedIds.size > 0 && (
+                <div className="mb-3 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
+                  <span className="text-sm font-medium text-red-700">
+                    {selectedIds.size} selecionado{selectedIds.size === 1 ? '' : 's'}
+                  </span>
+                  <button
+                    onClick={() => setDeleteTarget(Array.from(selectedIds))}
+                    className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" /> Excluir selecionados
+                  </button>
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
               <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-[900px] w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50">
+                        <th className="w-10 px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={allTableSelected}
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 accent-red-600"
+                          />
+                        </th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Pessoa</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Tipo</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Etapa</th>
@@ -1028,7 +1095,7 @@ export default function PastoralKanban() {
                     <tbody>
                       {tableCards.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="text-center py-12 text-slate-400">
+                          <td colSpan={9} className="text-center py-12 text-slate-400">
                             Nenhum atendimento encontrado.
                           </td>
                         </tr>
@@ -1041,6 +1108,14 @@ export default function PastoralKanban() {
                         return (
                           <tr key={card.id} onClick={() => setSelectedCard(card)}
                             className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors last:border-0">
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(card.id)}
+                                onChange={() => toggleSelectRow(card.id)}
+                                className="w-4 h-4 accent-red-600"
+                              />
+                            </td>
                             <td className="px-4 py-3">
                               <p className="font-bold text-slate-800 uppercase text-sm">{personName}</p>
                               {card.title && card.title !== personName && <p className="text-xs text-slate-400 truncate max-w-[200px]">{card.title}</p>}
@@ -1072,9 +1147,13 @@ export default function PastoralKanban() {
                                 {PRIORITY_LABELS[card.priority]}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
-                              <button className="p-1 rounded hover:bg-slate-100 text-slate-400">
-                                <MoreHorizontal className="w-4 h-4" />
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => setDeleteTarget([card.id])}
+                                title="Excluir atendimento"
+                                className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </td>
                           </tr>
@@ -1115,6 +1194,18 @@ export default function PastoralKanban() {
           }}
         />
       )}
+
+      {/* ── Confirmação de exclusão ── */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={`Excluir ${deleteTarget?.length === 1 ? 'atendimento' : `${deleteTarget?.length ?? 0} atendimentos`}?`}
+        message="Essa ação é permanente e remove todo o histórico (notas, atividades, timeline) do(s) atendimento(s) selecionado(s). Não é possível desfazer."
+        variant="danger"
+        confirmLabel="Excluir"
+        loading={deleteMutation.isPending}
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
