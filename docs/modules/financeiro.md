@@ -176,6 +176,27 @@ ORDER BY nome
 
 ---
 
+### 2.5b Manutenção das listas (plano de contas, formas, tipos, centro de custo)
+
+Essas tabelas de apoio têm **CRUD próprio** em
+**Configurações → Listas e Cadastros Auxiliares** (`/app-ui/config/:lookupKey`),
+via um CRUD genérico dirigido por configuração.
+Detalhes completos em [`configuracoes-listas.md`](./configuracoes-listas.md).
+
+| Lista | Rota da tela | Tabela |
+|---|---|---|
+| Plano de Contas | `/app-ui/config/chart-of-accounts` | `plano_de_contas` |
+| Formas de Pagamento | `/app-ui/config/payment-methods` | `forma_pagamento` |
+| Tipos de Documento | `/app-ui/config/document-types` | `tipo_documento` |
+| Centros de Custo | `/app-ui/config/cost-centers` | `centro_de_custo` |
+
+> ⚠️ **Renomear quebra o histórico.** Como `livro_caixa` grava `plano_de_conta` e
+> `forma_pg` **pelo nome** (VARCHAR, não FK), renomear um item **não** atualiza os
+> lançamentos já registrados. A recomendação — exibida como aviso fixo nas telas —
+> é **desativar** o item antigo e **criar um novo**.
+
+---
+
 ### 2.6 `financial_accounts` — Contas Bancárias/Caixa
 
 ```sql

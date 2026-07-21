@@ -494,6 +494,128 @@ updated_at      TIMESTAMPTZ DEFAULT now()
 
 ---
 
+### 2.14 `church_function_history` — Funções Exercidas pelo Membro
+
+Tabela **compartilhada** entre a aba "Funcoes" da tela de Editar Igreja e a aba
+"Funções" do perfil do membro. Como as duas telas gravam aqui, o que é criado de
+um lado aparece automaticamente no outro — não há sincronização.
+
+O catálogo de funções (`church_function_catalog`) é **global** (uma lista para todo
+o sistema) e tem CRUD em Configurações → Listas Auxiliares.
+
+```sql
+CREATE TABLE church_function_history (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  church_id     UUID NOT NULL REFERENCES churches(id) ON DELETE CASCADE,
+  member_id     UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  function_id   UUID NOT NULL REFERENCES church_function_catalog(id) ON DELETE RESTRICT,
+  department    VARCHAR(150),        -- texto livre, sem tabela de apoio
+  start_date    DATE NOT NULL,
+  end_date      DATE,                -- preenchida = função encerrada
+  notes         TEXT,
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  is_campo_wide BOOLEAN NOT NULL DEFAULT false,  -- alcance de campo (ver abaixo)
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL,
+  deleted_at    TIMESTAMPTZ          -- exclusão lógica
+);
+
+CREATE INDEX ON church_function_history(church_id, function_id);
+CREATE INDEX ON church_function_history(member_id);
+
+-- Impede duas funções ATIVAS iguais na mesma igreja/departamento.
+CREATE UNIQUE INDEX church_function_history_active_department_unique
+  ON church_function_history (church_id, function_id, COALESCE(department, ''))
+  WHERE deleted_at IS NULL AND end_date IS NULL AND is_active = true;
+```
+
+**Regras de negócio:**
+
+| Regra | Comportamento |
+|---|---|
+| Múltiplas ativas | Um membro **pode** ter várias funções ativas ao mesmo tempo. |
+| Unicidade (dirigente) | Se o catálogo tem `is_leader_role`, só pode haver **uma** ativa por `(church_id, function_id)`, ignorando departamento. |
+| Unicidade (demais) | Considera também o departamento: `(church_id, function_id, department)`. |
+| `is_campo_wide` | A função é sempre gravada numa igreja (`church_id`). A flag apenas indica que o **alcance** é todo o campo, não só aquela igreja. Por padrão `false`. |
+| Encerramento | Preencher `end_date` força `is_active = false` (a função vai para o histórico). |
+| Exclusão | Lógica (`deleted_at`), com `is_active = false` e `end_date` preenchida. |
+
+A regra de unicidade está centralizada em `src/lib/churchFunctions.ts`
+(`findActiveFunctionConflict`) e é usada por todas as rotas de escrita.
+
+---
+
+### 2.15 `member_family_relationships` — Núcleo Familiar
+
+Guarda filhos, cônjuge, pais e irmãos. O familiar **não precisa ser um membro
+cadastrado**: quando `related_member_id` é nulo, os dados da pessoa ficam nas
+colunas `related_*` (caso comum de filhos pequenos).
+
+```sql
+CREATE TABLE member_family_relationships (
+  id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  member_id          UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  related_member_id  UUID REFERENCES members(id) ON DELETE CASCADE,  -- NULL = não é membro
+  relationship_type  VARCHAR(30) NOT NULL,  -- 'FILHO'|'CONJUGE'|'PAI_MAE'|'IRMAO'
+  related_name       VARCHAR(255),          -- usado quando related_member_id IS NULL
+  related_birth_date DATE,
+  related_gender     VARCHAR(20),
+  notes              TEXT,
+  created_by         UUID,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL,
+  deleted_at         TIMESTAMPTZ            -- exclusão lógica
+);
+
+CREATE INDEX ON member_family_relationships(member_id);
+CREATE INDEX ON member_family_relationships(related_member_id);
+```
+
+> **Histórico:** a tabela existia desde o init mas nunca foi usada, e exigia
+> `related_member_id NOT NULL` — o que impedia cadastrar filho sem cadastro de
+> membro. A restrição foi removida e o `UNIQUE(member_id, related_member_id,
+> relationship_type)` original foi trocado por índices simples, porque com valores
+> `NULL` o Postgres não deduplica e um membro pode ter vários filhos avulsos.
+
+**Validação na API:** é obrigatório informar `related_member_id` **ou**
+`related_name`. Quando há membro vinculado, `related_name` é gravado como `NULL`
+(o nome vem do cadastro do membro).
+
+---
+
+### 2.16 `face_presencas` — Presença Facial (origem dos gráficos do perfil)
+
+Tabela de check-ins por reconhecimento facial. **Não tem FK para `members`** — o
+casamento membro↔presença é feito por `rol` **OU** por `nome` (maiúsculas, sem
+espaços nas pontas), mesmo critério usado no módulo de Presença Facial.
+
+```sql
+-- Colunas relevantes (tabela criada fora das migrations do Prisma):
+id              UUID PRIMARY KEY
+rol             INT                 -- casa com members.rol (pode ser NULL)
+nome            VARCHAR(255) NOT NULL
+cargo           VARCHAR(100)
+horario         TIMESTAMP NOT NULL  -- momento do check-in
+confianca       FLOAT
+camera          VARCHAR(100)
+igreja_regional VARCHAR(255)
+campo           VARCHAR(255)
+church_id       UUID
+data_registro   TIMESTAMP NOT NULL DEFAULT now()
+
+-- Índices adicionados para a agregação por membro:
+CREATE INDEX face_presencas_rol_idx        ON face_presencas (rol);
+CREATE INDEX face_presencas_horario_idx    ON face_presencas (horario);
+CREATE INDEX face_presencas_nome_upper_idx ON face_presencas (UPPER(TRIM(nome)));
+```
+
+**Convenção de período (importante):** o sistema usa **dois** períodos com corte
+às **13h** — `Manhã` (< 13h) e `Noite` (>= 13h). Essa é a regra de `getPeriod` em
+`AttendanceModule.tsx` e deve ser seguida em qualquer tela nova, senão os números
+não batem entre o perfil do membro e o módulo de Presença Facial.
+
+---
+
 ## 3. TELAS E FLUXOS DO MÓDULO
 
 ### 3.1 Lista de Membros (`/app-ui/members`)
@@ -568,13 +690,62 @@ updated_at      TIMESTAMPTZ DEFAULT now()
 }
 ```
 
-**Abas do perfil:**
-- Dados pessoais
-- Endereço
-- Informações eclesiásticas
-- Histórico (ocorrências e eventos)
-- Histórico de títulos
-- Ministérios
+**Abas do perfil:** Histórico · Títulos · **Funções** · **Família**
+
+**Cabeçalho:** além do título eclesiástico, exibe as **funções ativas** do membro
+(selo verde; com sufixo "· Campo" quando `is_campo_wide`).
+
+#### 3.2.1 Aba Funções
+
+- `GET /api/members/:id/functions` — todas as funções do membro (ativas primeiro).
+- `POST /api/members/:id/functions` — cria. `churchId` assume a igreja do membro
+  quando não informado; aceita `isCampoWide`.
+- `PATCH` / `DELETE` reaproveitam `/api/church-function-history/:id`.
+- Catálogo do dropdown: `GET /api/church-functions/catalog`.
+
+Campos do formulário: função, departamento, início, término, switch **Ativa** e
+switch **Abrange todo o campo**. Ver regras em §2.14.
+
+#### 3.2.2 Aba Família
+
+- `GET /api/members/:id/family` — vínculos agrupados por tipo.
+- `POST /api/members/:id/family` — exige `relationshipType` e (`relatedMemberId`
+  **ou** `relatedName`).
+- `PATCH` / `DELETE /api/members/:id/family/:relId` — exclusão lógica.
+
+A tela permite cadastrar familiar **avulso** (nome, nascimento, sexo) ou
+**vincular um membro existente** via busca; nesse caso mostra link para o perfil
+dele. A idade é calculada a partir da data de nascimento (do membro vinculado ou
+do cadastro avulso).
+
+> A tela `FamilyRelationships.tsx` (rota `/app-ui/members/:id/family`) é um
+> **mockup legado** com nomes fixos e botão sem ação. A implementação real é a
+> aba Família do perfil.
+
+#### 3.2.3 Card de Presença
+
+`GET /api/members/:id/attendance-stats` (aceita `de` e `ate`) retorna:
+
+```typescript
+{
+  byDay: number[],                    // 7 posições, Dom..Sáb
+  byPeriod: { manha: number, noite: number },
+  total: number,                      // total de detecções
+  distinctDays: number,               // dias distintos com presença
+  lastPresence: { horario, igrejaRegional } | null,
+  matchedBy: 'rol+nome' | 'nome'
+}
+```
+
+A agregação é feita **no servidor** (`GROUP BY` sobre `face_presencas`) porque
+`/api/face-presence` limita `pageSize` a 100 — somar no cliente truncaria
+silenciosamente quem tem mais de 100 presenças.
+
+> **Correção importante:** até a versão anterior esses gráficos liam
+> `/api/members/:id/event-history`, que é a **trilha de auditoria do CRM**. Os
+> números mostravam "dia da semana em que alguém editou o cadastro", não presença.
+> Um membro que nunca frequentou, mas cujo registro foi editado três vezes numa
+> terça, aparecia com pico na terça.
 
 ---
 

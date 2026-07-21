@@ -21,6 +21,7 @@ Bem-vindo ao centro de documentação unificado do **SaasChurch**. Este reposit�
 * [Módulo Financeiro e Tesouraria](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/financeiro.md) — Engenharia reversa completa do Livro Caixa, status de caixas mensais, relatórios analíticos e dashboards.
 * [Módulo de Secretaria Eclesiástica](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/secretaria.md) — Documentação da gestão de membros, pipeline Kanban de processos, matriz de decisões e emissão de credenciais.
 * [Integração de Pagamentos com Stripe](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/strip.md) — PRD para doações recorrentes, assinaturas, fluxos de compras no app e webhooks do Stripe.
+* [Listas Auxiliares (Lookups) — CRUD Genérico](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/configuracoes-listas.md) — Manutenção das listas que alimentam dropdowns (plano de contas, formas de pagamento, tipos de documento, centros de custo, funções, títulos) e como registrar uma lista nova.
 
 ### 💬 Comunicação e WhatsApp (`docs/whatsapp-system/`)
 * [Sistema WhatsApp do SaaS Church](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/whatsapp-system/README.md) — Documentação consolidada da integração Z-API, endpoints, banco de dados, fluxos, regras críticas e resumo para outra IA.
