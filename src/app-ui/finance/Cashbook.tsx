@@ -289,6 +289,39 @@ type ChurchOption = {
 };
 type RegionalOption = { id: string; name: string; campoId?: string };
 
+// ─── Histórico das últimas igrejas consultadas ───────────────────────────────
+// Guardado por usuário para não vazar entre contas na mesma máquina.
+const RECENT_CHURCHES_LIMIT = 5;
+
+function recentChurchesKey(): string {
+  try {
+    const u = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+    return `mrm_recent_churches:${u.id ?? 'anon'}`;
+  } catch {
+    return 'mrm_recent_churches:anon';
+  }
+}
+
+function loadRecentChurches(): ChurchOption[] {
+  try {
+    const raw = localStorage.getItem(recentChurchesKey());
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list.filter((c) => c && c.id && c.name) : [];
+  } catch {
+    return [];
+  }
+}
+
+function pushRecentChurch(church: ChurchOption) {
+  try {
+    const list = loadRecentChurches().filter((c) => c.id !== church.id);
+    list.unshift(church);
+    localStorage.setItem(recentChurchesKey(), JSON.stringify(list.slice(0, RECENT_CHURCHES_LIMIT)));
+  } catch {
+    /* localStorage indisponível: histórico é opcional, segue sem ele */
+  }
+}
+
 // ─── Church Picker Modal ──────────────────────────────────────────────────────
 function ChurchPickerModal({
   onClose,
@@ -311,7 +344,19 @@ function ChurchPickerModal({
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Ao abrir, já mostra as últimas igrejas consultadas (sem precisar buscar).
+  const [recent] = useState<ChurchOption[]>(() => loadRecentChurches());
+  const showingRecent = !searched && !search.trim() && recent.length > 0;
+  // A navegação por teclado opera sobre a lista que está visível no momento.
+  const visible = showingRecent ? recent : results;
+
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Registra a escolha no histórico antes de devolver ao chamador.
+  const handleSelect = (church: ChurchOption) => {
+    pushRecentChurch(church);
+    onSelect(church);
+  };
 
   useEffect(() => {
     if (activeIndex >= 0) optionRefs.current[activeIndex]?.scrollIntoView({ block: 'nearest' });
@@ -354,9 +399,9 @@ function ChurchPickerModal({
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, results.length - 1)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, visible.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (results[activeIndex]) onSelect(results[activeIndex]); else doSearch(); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (visible[activeIndex]) handleSelect(visible[activeIndex]); else doSearch(); }
     else if (e.key === 'Escape') onClose();
   }
 
@@ -410,11 +455,16 @@ function ChurchPickerModal({
               <p className="text-sm text-slate-400">Buscando igrejas...</p>
             </div>
           )}
-          {!loading && !searched && (
+          {!loading && !searched && !showingRecent && (
             <div className="py-10 text-center">
               <Search className="w-8 h-8 text-slate-200 mx-auto mb-2" />
               <p className="text-sm text-slate-400">Digite o nome da igreja ou ID para buscar</p>
             </div>
+          )}
+          {!loading && showingRecent && (
+            <p className="px-0.5 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Últimas consultadas
+            </p>
           )}
           {!loading && searched && results.length === 0 && (
             <div className="py-8 text-center">
@@ -422,12 +472,12 @@ function ChurchPickerModal({
               <p className="text-sm text-slate-400">Nenhuma igreja encontrada.</p>
             </div>
           )}
-          {!loading && results.map((church, idx) => (
+          {!loading && visible.map((church, idx) => (
             <button
               key={church.id}
               type="button"
               ref={el => { optionRefs.current[idx] = el; }}
-              onClick={() => onSelect(church)}
+              onClick={() => handleSelect(church)}
               onMouseEnter={() => setActiveIndex(idx)}
               className={`block w-full rounded-xl border p-3.5 text-left transition-all ${activeIndex === idx ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-emerald-300 hover:bg-slate-50'}`}
             >
@@ -1248,7 +1298,9 @@ export default function Cashbook() {
       else if (sortKey === 'tipo') { av = a.tipo; bv = b.tipo; }
       else if (sortKey === 'favorecido') { av = a.favorecido || ''; bv = b.favorecido || ''; }
       else if (sortKey === 'church') { av = (a.churches as any)?.name || ''; bv = (b.churches as any)?.name || ''; }
-      if (typeof av === 'number') return sortDir === 'asc' ? av - bv : (bv as number) - av;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return sortDir === 'asc' ? av - bv : bv - av;
+      }
       return sortDir === 'asc' ? String(av).localeCompare(String(bv), 'pt-BR') : String(bv).localeCompare(String(av), 'pt-BR');
     });
   }, [searchFiltered, sortKey, sortDir]);
