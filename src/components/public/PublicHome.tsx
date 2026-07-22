@@ -490,11 +490,12 @@ export function PublicHome() {
             </div>
           </button>
 
-          {/* 2. Sou Membro — Swapped to SECOND grid position */}
+          {/* 2. Sou Membro — destaque verde pulsante para chamar atenção */}
           <button onClick={() => setShowMembroLogin(true)}
             className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left">
-            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#22c55e] transition-colors ${border}`}>
-              <User className={`w-6 h-6 group-hover:text-[#22c55e] transition-colors ${iconColor}`} />
+            <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors animate-pulse"
+              style={{ borderColor: '#22c55e', background: 'rgba(34,197,94,0.12)', boxShadow: '0 0 16px rgba(34,197,94,0.45)' }}>
+              <User className="w-6 h-6" style={{ color: '#22c55e' }} />
             </div>
             <div className="flex flex-col justify-center min-h-[3.5rem]">
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Sou Membro</h3>
