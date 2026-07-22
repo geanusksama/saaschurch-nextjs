@@ -23,6 +23,7 @@ interface StatusResponse {
   state: 'none' | 'processing' | 'done' | 'failed' | 'partial' | 'needs_approval';
   batch_id?: string;
   devices: DeviceResult[];
+  photoUrl?: string | null;
   message: string | null;
   canRetry: boolean;
   canUpdate: boolean;
@@ -34,7 +35,7 @@ const CAPTURE_SIZE = 720;
 const JPEG_QUALITY = 0.92;
 
 export default function MembroFaceId() {
-  const { session, isLoading } = useMembroSession();
+  const { session, isLoading, updateMember } = useMembroSession();
   const navigate = useNavigate();
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -184,6 +185,13 @@ export default function MembroFaceId() {
 
         setStatus(data);
 
+        // Cadastro aceito: reflete a nova foto na sessão na hora, senão a
+        // tela de perfil continuaria mostrando a foto antiga do localStorage
+        // até o membro deslogar e logar de novo.
+        if (data.photoUrl) {
+          updateMember({ photoUrl: data.photoUrl });
+        }
+
         // Parou de mexer: encerra o polling
         if (data.state !== 'processing' && pollRef.current) {
           clearInterval(pollRef.current);
@@ -193,7 +201,7 @@ export default function MembroFaceId() {
         /* rede instável — a próxima tentativa resolve */
       }
     },
-    [session]
+    [session, updateMember]
   );
 
   const submit = useCallback(

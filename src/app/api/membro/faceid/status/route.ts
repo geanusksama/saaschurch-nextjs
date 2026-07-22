@@ -70,6 +70,18 @@ export async function POST(req: NextRequest) {
   else if (statuses.every((s) => s === 'failed' || s === 'rejected')) state = 'failed'
   else state = 'partial'
 
+  // Ao concluir, devolve a foto de perfil atualizada para a tela trocar a
+  // imagem na sessão sem exigir novo login.
+  let photoUrl: string | null = null
+  if (state === 'done' || state === 'partial') {
+    const { data: m } = await supabaseAdmin
+      .from('members')
+      .select('photo_url')
+      .eq('id', payload.sub)
+      .maybeSingle()
+    photoUrl = m?.photo_url || null
+  }
+
   // Mensagem mais útil do lote: primeira falha encontrada
   const firstFailure = devices.find((d) => d.status === 'failed')
 
@@ -77,6 +89,7 @@ export async function POST(req: NextRequest) {
     state,
     batch_id: targetBatch,
     devices,
+    photoUrl,
     message: firstFailure?.message || null,
     canRetry: firstFailure?.canRetry ?? false,
     canUpdate: devices.some((d) => d.canUpdate),

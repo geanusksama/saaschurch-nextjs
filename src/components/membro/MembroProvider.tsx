@@ -40,6 +40,7 @@ interface MembroContextValue {
   isLoading: boolean;
   login: (session: MembroSession) => void;
   logout: () => void;
+  updateMember: (patch: Partial<MembroSession['member']>) => void;
 }
 
 const MembroContext = createContext<MembroContextValue>({
@@ -47,6 +48,7 @@ const MembroContext = createContext<MembroContextValue>({
   isLoading: true,
   login: () => {},
   logout: () => {},
+  updateMember: () => {},
 });
 
 const LS_KEY = 'membro_session';
@@ -73,8 +75,20 @@ export function MembroProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
   }, []);
 
+  // Atualiza campos do membro em memoria e no localStorage sem exigir novo
+  // login — usado quando o cadastro facial troca a foto de perfil, para a
+  // tela refletir a mudanca na hora em vez de so no proximo acesso.
+  const updateMember = useCallback((patch: Partial<MembroSession['member']>) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, member: { ...prev.member, ...patch } };
+      try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   return (
-    <MembroContext.Provider value={{ session, isLoading, login, logout }}>
+    <MembroContext.Provider value={{ session, isLoading, login, logout, updateMember }}>
       {children}
     </MembroContext.Provider>
   );

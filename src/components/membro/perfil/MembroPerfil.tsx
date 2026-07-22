@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Heart, ScanFace, LayoutGrid, Info, Users, Calendar, MapPin, Church, Star, X, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Heart, ScanFace, LayoutGrid, MoreHorizontal, Users, Calendar, MapPin, Church, Star, X, Sun, Moon } from 'lucide-react';
 import { useMembroSession } from '../MembroProvider';
 import { useMembroTheme } from '../MembroShell';
 
@@ -127,7 +127,7 @@ export default function MembroPerfil() {
         {/* ══════════════════════════════════════════
             BLOCK 1 — HERO (foto preenche o fundo)
         ══════════════════════════════════════════ */}
-        <div className="relative flex-shrink-0" style={{ height: '46%' }}>
+        <div className="relative flex-shrink-0" style={{ height: '38%' }}>
 
           {/* Dark background base */}
           <div className="absolute inset-0" style={{ background: BG }} />
@@ -233,25 +233,25 @@ export default function MembroPerfil() {
 
           <div className="px-5 pb-10 space-y-3 mt-1">
 
-            {/* BLOCK 2 — Quick actions */}
+            {/* BLOCK 2 — Quick actions
+                Botao principal = cadastro facial (acao mais usada aqui).
+                Detalhes virou icone de 3 pontos; menu ao lado. */}
             <div className="flex items-center gap-2.5 py-1">
               <button
-                onClick={() => setShowDetails(true)}
+                onClick={() => navigate('/membro/faceid')}
                 className="flex-1 flex items-center justify-center gap-2 font-semibold rounded-full h-12 transition-all active:scale-95"
                 style={{ background: TEAL, color: '#0d0f17', fontSize: 14, boxShadow: `0 6px 20px ${TEAL}40` }}
               >
-                <Info size={15} />
-                Detalhes
+                <ScanFace size={17} />
+                Cadastrar meu rosto (Face ID)
               </button>
-              {/* Cadastro facial e menu. Antes havia tres icones decorativos
-                  (telefone, video, chat) sem acao nenhuma. */}
               <button
-                onClick={() => navigate('/membro/faceid')}
-                title="Cadastrar meu rosto"
+                onClick={() => setShowDetails(true)}
+                title="Detalhes"
                 className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
-                style={{ background: SURFACE, boxShadow: CARD_SH, border: `1px solid ${TEAL}55` }}
+                style={{ background: SURFACE, boxShadow: CARD_SH, border: `1px solid ${BORDER}` }}
               >
-                <ScanFace size={18} color={TEAL} />
+                <MoreHorizontal size={18} color={TEXT2} />
               </button>
               <button
                 onClick={() => navigate('/membro/menu')}
