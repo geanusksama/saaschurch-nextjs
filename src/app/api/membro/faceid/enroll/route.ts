@@ -88,26 +88,42 @@ export async function POST(req: NextRequest) {
   }
 
   // ------------------------------------------------------------------
-  // Dispositivos da igreja — o cadastro vai para TODOS os leitores dela,
-  // senão o membro só seria reconhecido em uma das entradas.
+  // Dispositivos-alvo do cadastro:
+  //   { dispositivos da Sede (is_sede) }              -> todos cadastram
+  //   ∪ { vinculados à igreja do membro (primária) }
+  //   ∪ { vinculados à igreja do membro (secundária) }
+  //
+  // Assim o membro de uma congregação cadastra nos leitores da Sede E nos
+  // da própria igreja; o da Sede, só nos da Sede. Cada leitor pode ser
+  // executado por uma máquina diferente (agent_id) — os jobs se distribuem.
   // ------------------------------------------------------------------
   const { data: devices, error: devError } = await supabaseAdmin
     .from('faceid_devices')
-    .select('id, name, local_host, is_active')
-    .eq('church_id', member.church_id)
+    .select('id, name, local_host, is_active, is_sede, church_id, secondary_church_id')
     .eq('is_active', true)
+    .or(
+      `is_sede.eq.true,church_id.eq.${member.church_id},secondary_church_id.eq.${member.church_id}`
+    )
 
   if (devError) {
     console.error('faceid/enroll: erro ao buscar dispositivos', devError)
     return NextResponse.json({ error: 'Erro ao localizar os leitores.' }, { status: 500 })
   }
 
-  const usable = (devices || []).filter((d) => d.local_host)
+  // Precisa de host local (o agente alcança o aparelho por ele) e, por
+  // segurança, remove duplicatas caso um leitor case em mais de um critério.
+  const seen = new Set<string>()
+  const usable = (devices || []).filter((d) => {
+    if (!d.local_host || seen.has(d.id)) return false
+    seen.add(d.id)
+    return true
+  })
+
   if (usable.length === 0) {
     return NextResponse.json(
       {
         error:
-          'Nenhum leitor da sua igreja está configurado para cadastro remoto. Procure a secretaria.',
+          'Nenhum leitor disponível para o seu cadastro ainda. Procure a secretaria.',
       },
       { status: 409 }
     )
@@ -144,7 +160,10 @@ export async function POST(req: NextRequest) {
 
   const jobs = usable.map((d) => ({
     batch_id: batchId,
-    church_id: member.church_id,
+    // Igreja do DISPOSITIVO (não a do membro): um leitor da Sede fica na
+    // igreja Sede mesmo quando quem cadastra é de uma congregação. Cai no
+    // church do membro quando o leitor ainda não tem igreja definida.
+    church_id: d.church_id || member.church_id,
     device_id: d.id,
     member_id: member.id,
     rol: Number(member.rol),

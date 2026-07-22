@@ -195,6 +195,8 @@ model Church {
   stripePayments        StripePayment[]        @relation("ChurchStripePayments")
   stripeSubscriptions   StripeSubscription[]   @relation("ChurchStripeSubscriptions")
   faceidDevices         FaceidDevice[]         @relation("ChurchFaceidDevices")
+  faceidDevicesSecondary FaceidDevice[]        @relation("ChurchFaceidDevicesSecondary")
+  faceidAgents          FaceidAgent[]          @relation("ChurchFaceidAgents")
   presenceTickets       ChurchPresenceTicket[] @relation("ChurchPresenceTickets")
   aiAgents              AiAgent[]
   aiChatSessions        AiChatSession[]
@@ -3336,7 +3338,7 @@ model MemberLike {
 
 model FaceidDevice {
   id         String    @id @default(uuid()) @db.Uuid
-  churchId   String    @map("church_id") @db.Uuid
+  churchId   String?   @map("church_id") @db.Uuid
   serial     String    @unique @db.VarChar(100)
   name       String    @db.VarChar(255)
   username   String?   @db.VarChar(100)
@@ -3349,13 +3351,46 @@ model FaceidDevice {
   isActive   Boolean   @default(true) @map("is_active")
   lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz
 
+  // Preenchidos pelo auto-cadastro (plug and play)
+  deviceUid        String?  @unique @map("device_uid") @db.VarChar(50) // device_id numerico do webhook
+  model            String?  @db.VarChar(100)
+  firmware         String?  @db.VarChar(50)
+  mac              String?  @db.VarChar(50)
+  autoProvisioned  Boolean  @default(false) @map("auto_provisioned")
+
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  church     Church    @relation("ChurchFaceidDevices", fields: [churchId], references: [id], onDelete: Cascade)
-  enrollJobs FaceEnrollmentJob[] @relation("DeviceEnrollJobs")
+  agentId    String?   @map("agent_id") @db.Uuid
+
+  // Papéis do dispositivo no cadastro de rosto
+  isSede            Boolean @default(true) @map("is_sede")           // todos cadastram aqui
+  secondaryChurchId String? @map("secondary_church_id") @db.Uuid    // congregação (opcional)
+
+  church          Church?      @relation("ChurchFaceidDevices", fields: [churchId], references: [id], onDelete: Cascade)
+  secondaryChurch Church?      @relation("ChurchFaceidDevicesSecondary", fields: [secondaryChurchId], references: [id], onDelete: SetNull)
+  agent           FaceidAgent? @relation("AgentDevices", fields: [agentId], references: [id], onDelete: SetNull)
+  enrollJobs      FaceEnrollmentJob[] @relation("DeviceEnrollJobs")
 
   @@map("faceid_devices")
+}
+
+/// Agente (maquina) que roda na rede de uma igreja. Um token por maquina;
+/// descobre os leitores da rede e os gerencia (cadastro + presenca).
+model FaceidAgent {
+  id         String   @id @default(uuid()) @db.Uuid
+  churchId   String   @map("church_id") @db.Uuid
+  token      String   @unique @db.VarChar(100)
+  name       String?  @db.VarChar(255)
+  lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  church     Church   @relation("ChurchFaceidAgents", fields: [churchId], references: [id], onDelete: Cascade)
+  devices    FaceidDevice[] @relation("AgentDevices")
+
+  @@unique([churchId])
+  @@map("faceid_agents")
 }
 
 /// Fila de cadastro remoto no leitor Control iD.

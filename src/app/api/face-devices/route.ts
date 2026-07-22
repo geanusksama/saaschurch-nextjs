@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
     try {
       const body = await req.json();
-      const { serial, name, username, password, churchId, localHost, localPort, agentToken } = body;
+      const { serial, name, username, password, churchId, localHost, localPort, agentToken, isSede, secondaryChurchId } = body;
 
       if (!serial || !name || !churchId) {
         return NextResponse.json({ error: "Serial, Nome e Igreja são obrigatórios" }, { status: 400 });
@@ -80,7 +80,9 @@ export async function POST(req: NextRequest) {
           churchId,
           localHost: localHost ? String(localHost).trim() : null,
           localPort: localPort ? Number(localPort) : 80,
-          agentToken: agentToken ? String(agentToken).trim() : null
+          agentToken: agentToken ? String(agentToken).trim() : null,
+          isSede: isSede !== undefined ? Boolean(isSede) : true,
+          secondaryChurchId: secondaryChurchId || null
         }
       });
 

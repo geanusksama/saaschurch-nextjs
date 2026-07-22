@@ -243,6 +243,49 @@ export function AttendanceModule() {
   const [deviceLocalHost, setDeviceLocalHost] = useState('');
   const [deviceLocalPort, setDeviceLocalPort] = useState('80');
   const [deviceAgentToken, setDeviceAgentToken] = useState('');
+  // Papéis do dispositivo no cadastro de rosto
+  const [deviceIsSede, setDeviceIsSede] = useState(true);
+  const [deviceSecondaryChurchId, setDeviceSecondaryChurchId] = useState('');
+  // Token do agente (máquina) da igreja selecionada
+  const [agentToken, setAgentToken] = useState<string>('');
+  const [agentTokenLoading, setAgentTokenLoading] = useState(false);
+
+  const loadAgentToken = async (churchId: string) => {
+    if (!churchId || churchId === 'all') { setAgentToken(''); return; }
+    try {
+      const res = await fetch(`/api/face-agents?churchId=${churchId}`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
+      const data = await res.json();
+      setAgentToken(data?.token || '');
+    } catch { setAgentToken(''); }
+  };
+
+  const generateChurchAgentToken = async () => {
+    const churchId = selectedChurchId && selectedChurchId !== 'all'
+      ? selectedChurchId : (churches[0]?.id || '');
+    if (!churchId) { alert('Selecione uma igreja no filtro acima.'); return; }
+    setAgentTokenLoading(true);
+    try {
+      const res = await fetch('/api/face-agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ churchId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao gerar token');
+      setAgentToken(data.token);
+    } catch (e: any) {
+      alert(e.message || 'Erro ao gerar token');
+    } finally {
+      setAgentTokenLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'devices') loadAgentToken(selectedChurchId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedChurchId]);
 
   // Load devices list
   const loadDevices = async () => {
@@ -278,6 +321,8 @@ export function AttendanceModule() {
     // Token gerado aqui e copiado para o .env do agente daquela igreja
     setDeviceAgentToken(generateAgentToken());
     setDeviceChurchId(selectedChurchId !== 'all' ? selectedChurchId : (churches[0]?.id || ''));
+    setDeviceIsSede(true);
+    setDeviceSecondaryChurchId('');
     setShowDeviceModal(true);
   };
 
@@ -293,7 +338,9 @@ export function AttendanceModule() {
     // Dispositivos criados antes do cadastro remoto não têm token —
     // gera um na hora para não deixar o campo vazio e sem saída.
     setDeviceAgentToken(dev.agentToken || generateAgentToken());
-    setDeviceChurchId(dev.churchId);
+    setDeviceChurchId(dev.churchId || '');
+    setDeviceIsSede(dev.isSede !== false);
+    setDeviceSecondaryChurchId(dev.secondaryChurchId || '');
     setShowDeviceModal(true);
   };
 
@@ -313,7 +360,9 @@ export function AttendanceModule() {
       churchId: deviceChurchId,
       localHost: deviceLocalHost.trim() || null,
       localPort: deviceLocalPort.trim() ? Number(deviceLocalPort.trim()) : 80,
-      agentToken: deviceAgentToken.trim() || null
+      agentToken: deviceAgentToken.trim() || null,
+      isSede: deviceIsSede,
+      secondaryChurchId: deviceSecondaryChurchId || null
     };
 
     try {
@@ -2473,6 +2522,44 @@ export function AttendanceModule() {
             </button>
           </div>
 
+          {/* Token do Agente da igreja — para a máquina que detecta e
+              cadastra os leitores automaticamente (plug and play). */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base mb-1">
+              Instalação automática (Agente)
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Gere o token desta igreja e cole no arquivo <code className="font-mono">.env</code> da
+              máquina que fica na rede dela. Ao rodar, a máquina detecta os leitores da rede,
+              cadastra aqui automaticamente e passa a cuidar de presença e cadastro de rosto.
+            </p>
+            <div className="flex gap-2 items-center">
+              <input
+                readOnly
+                value={agentToken}
+                placeholder="Nenhum token gerado para a igreja selecionada"
+                className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 rounded-lg text-xs font-mono text-slate-700 dark:text-slate-200"
+              />
+              <button
+                onClick={() => navigator.clipboard?.writeText(agentToken)}
+                disabled={!agentToken}
+                className="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"
+              >
+                Copiar
+              </button>
+              <button
+                onClick={generateChurchAgentToken}
+                disabled={agentTokenLoading}
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-900 text-white disabled:opacity-50 transition-colors whitespace-nowrap"
+              >
+                {agentTokenLoading ? 'Gerando...' : (agentToken ? 'Renovar' : 'Gerar token')}
+              </button>
+            </div>
+            <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-2">
+              Baseado na igreja selecionada no filtro acima. Renovar invalida o token anterior.
+            </p>
+          </div>
+
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -2596,7 +2683,7 @@ export function AttendanceModule() {
                       />
                     </div>
 
-                    {/* Igreja Vinculada */}
+                    {/* Igreja Vinculada (primária) */}
                     <div className="space-y-1">
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Igreja Vinculada <span className="text-red-500">*</span>
@@ -2612,6 +2699,47 @@ export function AttendanceModule() {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    {/* Checkbox Sede: todos cadastram aqui */}
+                    <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={deviceIsSede}
+                        onChange={(e) => setDeviceIsSede(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 accent-blue-600"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                          Dispositivo da Sede
+                        </span>
+                        <span className="block text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                          Todos os membros cadastram o rosto aqui (é onde todos registram presença).
+                          Desmarque se for um leitor exclusivo de uma congregação.
+                        </span>
+                      </span>
+                    </label>
+
+                    {/* Igreja Secundária (congregação) */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Igreja Secundária (Congregação)
+                      </label>
+                      <select
+                        value={deviceSecondaryChurchId}
+                        onChange={(e) => setDeviceSecondaryChurchId(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 text-slate-700"
+                      >
+                        <option value="">Nenhuma</option>
+                        {churches.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-0.5">
+                        Membros desta congregação também cadastram o rosto neste leitor.
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

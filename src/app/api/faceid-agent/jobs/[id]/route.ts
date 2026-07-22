@@ -61,14 +61,33 @@ export async function PATCH(
   const token = req.headers.get('x-agent-token')?.trim()
   if (!token) return NextResponse.json({ error: 'Token do agente ausente.' }, { status: 401 })
 
-  const { data: device } = await supabaseAdmin
-    .from('faceid_devices')
-    .select('id, is_active')
-    .eq('agent_token', token)
+  // Descobre quais dispositivos este token pode reportar:
+  //   token de agente (máquina) → todos os leitores com agent_id = agente
+  //   token de dispositivo (compat) → só aquele leitor
+  const allowedDeviceIds = new Set<string>()
+
+  const { data: agent } = await supabaseAdmin
+    .from('faceid_agents')
+    .select('id')
+    .eq('token', token)
     .maybeSingle()
 
-  if (!device) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 })
-  if (!device.is_active) return NextResponse.json({ error: 'Dispositivo desativado.' }, { status: 403 })
+  if (agent) {
+    const { data: devs } = await supabaseAdmin
+      .from('faceid_devices')
+      .select('id')
+      .eq('agent_id', agent.id)
+    for (const d of devs || []) allowedDeviceIds.add(d.id)
+  } else {
+    const { data: device } = await supabaseAdmin
+      .from('faceid_devices')
+      .select('id, is_active')
+      .eq('agent_token', token)
+      .maybeSingle()
+    if (!device) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 })
+    if (!device.is_active) return NextResponse.json({ error: 'Dispositivo desativado.' }, { status: 403 })
+    allowedDeviceIds.add(device.id)
+  }
 
   const body = await req.json().catch(() => ({}))
   const status = body.status as AllowedStatus
@@ -77,7 +96,6 @@ export async function PATCH(
     return NextResponse.json({ error: 'Status inválido.' }, { status: 400 })
   }
 
-  // Um agente só pode reportar jobs do próprio dispositivo
   const { data: job } = await supabaseAdmin
     .from('face_enrollment_jobs')
     .select('id, device_id, attempts, member_id, batch_id, photo_url')
@@ -85,8 +103,8 @@ export async function PATCH(
     .maybeSingle()
 
   if (!job) return NextResponse.json({ error: 'Job não encontrado.' }, { status: 404 })
-  if (job.device_id !== device.id) {
-    return NextResponse.json({ error: 'Job não pertence a este dispositivo.' }, { status: 403 })
+  if (!allowedDeviceIds.has(job.device_id)) {
+    return NextResponse.json({ error: 'Job não pertence a este agente.' }, { status: 403 })
   }
 
   const update: Record<string, unknown> = {

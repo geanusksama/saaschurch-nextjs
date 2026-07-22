@@ -7,7 +7,7 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
   return withAuth(req, async (user) => {
     try {
       const body = await req.json();
-      const { serial, name, username, password, churchId, localHost, localPort, agentToken } = body;
+      const { serial, name, username, password, churchId, localHost, localPort, agentToken, isSede, secondaryChurchId } = body;
 
       // 1. Fetch existing device to verify existence and check permissions
       const existingDevice = await prisma.faceidDevice.findUnique({
@@ -39,7 +39,9 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
           churchId: churchId || undefined,
           localHost: localHost !== undefined ? (localHost ? String(localHost).trim() : null) : undefined,
           localPort: localPort !== undefined ? (localPort ? Number(localPort) : 80) : undefined,
-          agentToken: agentToken !== undefined ? (agentToken ? String(agentToken).trim() : null) : undefined
+          agentToken: agentToken !== undefined ? (agentToken ? String(agentToken).trim() : null) : undefined,
+          isSede: isSede !== undefined ? Boolean(isSede) : undefined,
+          secondaryChurchId: secondaryChurchId !== undefined ? (secondaryChurchId || null) : undefined
         }
       });
 
