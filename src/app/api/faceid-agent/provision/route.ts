@@ -60,20 +60,27 @@ export async function POST(req: NextRequest) {
     const port = d.port ? Number(d.port) : 80
     const physicalSerial = d.physical_serial ? String(d.physical_serial).trim() : null
 
-    // Casa por device_uid OU serial (leitores já cadastrados manualmente
-    // podem ter serial = device_id numérico e device_uid ainda nulo).
+    // Casa um leitor já cadastrado, nesta ordem de identidade estável:
+    //   device_uid = numérico  |  serial = numérico  |  serial = físico
+    // O serial físico permite reconhecer leitores cadastrados à mão (ex.
+    // "0M0200/023225") e ATUALIZÁ-LOS em vez de duplicar.
+    const orParts = [`device_uid.eq.${deviceUid}`, `serial.eq.${deviceUid}`]
+    if (physicalSerial) orParts.push(`serial.eq.${physicalSerial}`)
+
     const { data: existing } = await supabaseAdmin
       .from('faceid_devices')
       .select('id')
-      .or(`device_uid.eq.${deviceUid},serial.eq.${deviceUid}`)
+      .or(orParts.join(','))
       .maybeSingle()
 
     if (existing) {
-      // Só atualiza rede/identidade (e faz backfill do device_uid). NÃO
-      // mexe em church_id, secondary, is_sede, name — são suas definições.
+      // Atualiza rede/identidade e normaliza o serial para o device_id
+      // numérico (é o que o webhook de presença envia). NÃO mexe em
+      // church_id, secondary, is_sede, name — são suas definições na tela.
       await supabaseAdmin
         .from('faceid_devices')
         .update({
+          serial: deviceUid,
           device_uid: deviceUid,
           local_host: host,
           local_port: port,
