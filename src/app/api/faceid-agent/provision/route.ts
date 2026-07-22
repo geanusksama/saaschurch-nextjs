@@ -60,18 +60,21 @@ export async function POST(req: NextRequest) {
     const port = d.port ? Number(d.port) : 80
     const physicalSerial = d.physical_serial ? String(d.physical_serial).trim() : null
 
+    // Casa por device_uid OU serial (leitores já cadastrados manualmente
+    // podem ter serial = device_id numérico e device_uid ainda nulo).
     const { data: existing } = await supabaseAdmin
       .from('faceid_devices')
       .select('id')
-      .eq('device_uid', deviceUid)
+      .or(`device_uid.eq.${deviceUid},serial.eq.${deviceUid}`)
       .maybeSingle()
 
     if (existing) {
-      // Só atualiza rede/identidade. NÃO mexe em church_id, secondary,
-      // is_sede, name — são definições feitas por você na tela.
+      // Só atualiza rede/identidade (e faz backfill do device_uid). NÃO
+      // mexe em church_id, secondary, is_sede, name — são suas definições.
       await supabaseAdmin
         .from('faceid_devices')
         .update({
+          device_uid: deviceUid,
           local_host: host,
           local_port: port,
           model: d.model || null,
