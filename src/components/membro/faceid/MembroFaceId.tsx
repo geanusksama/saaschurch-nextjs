@@ -36,8 +36,9 @@ const JPEG_QUALITY = 0.92;
 
 // Tempo maximo de espera pelo leitor. Se o agente da igreja estiver desligado
 // ou sem rede, o lote fica em "processing" para sempre e a tela rodaria sem
-// fim — passou de 1 minuto, para tudo e mostra o erro.
-const TIMEOUT_MS = 60_000;
+// fim — passou de 35 segundos, para tudo e mostra o erro.
+const TIMEOUT_MS = 35_000;
+const TIMEOUT_TEXTO = '35 segundos';
 
 export default function MembroFaceId() {
   const { session, isLoading, updateMember } = useMembroSession();
@@ -46,6 +47,9 @@ export default function MembroFaceId() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Falso assim que o acompanhamento e encerrado. Serve para descartar
+  // resposta de consulta que estava em voo quando o timeout cortou.
+  const acompanhandoRef = useRef(false);
 
   const [step, setStep] = useState<Step>('intro');
   const [cameraReady, setCameraReady] = useState(false);
@@ -139,6 +143,7 @@ export default function MembroFaceId() {
 
   // Encerra o polling do lote (fim normal, "Refazer", timeout ou saida da tela)
   const stopTracking = useCallback(() => {
+    acompanhandoRef.current = false;
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
@@ -178,7 +183,7 @@ export default function MembroFaceId() {
               ...prev,
               state: 'failed',
               message:
-                'O leitor da sua igreja não respondeu em 1 minuto. Ele pode estar desligado ou sem internet. Tente de novo mais tarde ou procure a secretaria.',
+                `O leitor da sua igreja não respondeu em ${TIMEOUT_TEXTO}. Ele pode estar desligado ou sem internet. Tente de novo mais tarde ou procure a secretaria.`,
               canRetry: true,
               canUpdate: false,
             }
@@ -236,6 +241,11 @@ export default function MembroFaceId() {
         const data: StatusResponse = await res.json();
         if (!res.ok) return;
 
+        // Chegou depois do timeout ter cortado: descarta. Sem isto a resposta
+        // atrasada devolveria o estado para "processing", apagando o erro na
+        // tela e fazendo o relogio recomecar — a tela girava em loop.
+        if (!acompanhandoRef.current) return;
+
         setStatus(data);
 
         // Cadastro aceito: reflete a nova foto na sessão na hora, senão a
@@ -290,15 +300,16 @@ export default function MembroFaceId() {
         });
         setStep('tracking');
 
-        // O corte de 1 minuto fica no efeito do relogio, la em cima
+        // O corte por tempo fica no efeito do relogio, la em cima
         if (data.status !== 'needs_approval') {
+          acompanhandoRef.current = true;
           pollStatus(data.batch_id);
           pollRef.current = setInterval(() => pollStatus(data.batch_id), 3000);
         }
       } catch (err) {
         setError(
           (err as Error)?.name === 'AbortError'
-            ? 'O envio demorou mais de 1 minuto e foi interrompido. Verifique sua internet e tente novamente.'
+            ? `O envio demorou mais de ${TIMEOUT_TEXTO} e foi interrompido. Verifique sua internet e tente novamente.`
             : 'Falha de conexão. Verifique sua internet e tente novamente.'
         );
         setStep('preview');
@@ -539,7 +550,7 @@ export default function MembroFaceId() {
                     pela setinha do cabecalho e fica achando que travou. */}
                 {(status.state === 'done' || status.state === 'needs_approval') && (
                   <button
-                    onClick={() => navigate('/membro/menu')}
+                    onClick={() => navigate('/membro/perfil')}
                     className="w-full mt-5 py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98]"
                     style={{ background: TEAL }}
                   >
@@ -584,7 +595,7 @@ export default function MembroFaceId() {
                           className="flex-1 py-3.5 rounded-xl font-bold text-[14px] text-slate-900"
                           style={{ background: TEAL }}
                         >
-                          Tirar outra foto
+                          {status.state === 'failed' ? 'Tentar de novo' : 'Tirar outra foto'}
                         </button>
                       )}
                       {status.canUpdate && (
@@ -607,7 +618,7 @@ export default function MembroFaceId() {
                     {/* No parcial o cadastro valeu em pelo menos um leitor: o
                         membro precisa poder encerrar sem refazer a foto. */}
                     <button
-                      onClick={() => navigate('/membro/menu')}
+                      onClick={() => navigate('/membro/perfil')}
                       className={
                         status.state === 'partial'
                           ? 'w-full mt-3 py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98]'
@@ -619,7 +630,7 @@ export default function MembroFaceId() {
                           : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }
                       }
                     >
-                      {status.state === 'partial' ? 'Concluir' : 'Voltar ao menu'}
+                      {status.state === 'partial' ? 'Concluir' : 'Sair'}
                     </button>
                   </div>
                 )}

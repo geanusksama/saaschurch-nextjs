@@ -205,6 +205,7 @@ import MembroLideranca from "../components/membro/lideranca/MembroLideranca";
 import MembroPastoral from "../components/membro/pastoral/MembroPastoral";
 import MembroMembros from "../components/membro/membros/MembroMembros";
 import MembroFaceId from "../components/membro/faceid/MembroFaceId";
+import MembroEmConstrucao from "../components/membro/MembroEmConstrucao";
 import PenielDashboard from "../app-ui/peniel/PenielDashboard";
 import PenielCheckInPage from "../app-ui/peniel/PenielCheckInPage";
 
@@ -383,6 +384,14 @@ export const router = createBrowserRouter([
     path: "/membro/faceid",
     errorElement: <ErrorBoundary />,
     element: <MembroThemeProvider><MembroProvider><MembroFaceId /></MembroProvider></MembroThemeProvider>,
+  },
+  // Curinga do portal: atalhos do menu que ainda nao tem tela (biblia, igreja,
+  // ministerios, eventos, compras) caiam em "Em construcao" em vez de branco.
+  // So pega o que sobrar — as rotas acima sao mais especificas e vencem.
+  {
+    path: "/membro/*",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroEmConstrucao /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/public",
