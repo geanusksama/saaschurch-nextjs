@@ -10,7 +10,7 @@ import {
   Image as ImageIcon, Video, FileText, Mic, StopCircle,
   ChevronDown, Loader2, Volume2, Download, Trash2, Smartphone,
   ImageOff, Smile, Reply, Forward, Star, Tag, Archive,
-  BellOff, ChevronRight,
+  BellOff, ChevronRight, CheckSquare, Square, AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWhatsAppConversations } from '@/hooks/useWhatsAppConversations'
@@ -278,10 +278,13 @@ function MessageBubble({ msg, onDelete, onReply, onForward, onReact }: {
 
 type ConvAction = 'favorite' | 'label' | 'archive' | 'markUnread' | 'delete'
 
-function ConversationItem({ conv, active, onClick, onAction }: {
+function ConversationItem({ conv, active, onClick, onAction, selectionMode, checked, onToggleSelect }: {
   conv: WhatsAppConversation; active: boolean
   onClick: () => void
   onAction: (action: ConvAction, id: string) => void
+  selectionMode: boolean
+  checked: boolean
+  onToggleSelect: (id: string) => void
 }) {
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -306,8 +309,15 @@ function ConversationItem({ conv, active, onClick, onAction }: {
   ]
 
   return (
-    <div className={`group relative border-b border-slate-100 dark:border-slate-700 ${active ? 'border-l-4 border-l-blue-500 bg-blue-50 dark:bg-slate-700' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
-      <button onClick={onClick} className="w-full px-3 py-3 flex items-center gap-3 text-left">
+    <div className={`group relative border-b border-slate-100 dark:border-slate-700 ${active && !selectionMode ? 'border-l-4 border-l-blue-500 bg-blue-50 dark:bg-slate-700' : checked ? 'bg-red-50 dark:bg-red-900/15' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+      {/* No modo selecao o clique marca a conversa em vez de abri-la */}
+      <button onClick={() => (selectionMode ? onToggleSelect(conv.id) : onClick())}
+        className="w-full px-3 py-3 flex items-center gap-3 text-left">
+        {selectionMode && (
+          checked
+            ? <CheckSquare className="w-5 h-5 text-red-600 flex-shrink-0" />
+            : <Square className="w-5 h-5 text-slate-300 dark:text-slate-600 flex-shrink-0" />
+        )}
         <div className={`w-11 h-11 bg-gradient-to-br ${grad} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 relative`}>
           {initials}
           {isFav && <span className="absolute -top-0.5 -right-0.5 text-xs">⭐</span>}
@@ -330,8 +340,8 @@ function ConversationItem({ conv, active, onClick, onAction }: {
         <div className="w-5 flex-shrink-0" />
       </button>
 
-      {/* ⋮ botão da conversa */}
-      <div ref={menuRef} className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+      {/* ⋮ botão da conversa — escondido no modo selecao */}
+      <div ref={menuRef} className={`absolute right-2 top-1/2 -translate-y-1/2 z-10 ${selectionMode ? 'hidden' : ''}`}>
         <button
           onClick={e => { e.stopPropagation(); setShowMenu(v => !v) }}
           className="p-1 text-slate-300 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -428,6 +438,11 @@ export default function WhatsAppInbox() {
   const [showAttach, setShowAttach]       = useState(false)
   const [uploading, setUploading]         = useState(false)
   const [showConvMenu, setShowConvMenu]   = useState(false)
+  // Selecao multipla da lista (exclusao definitiva em lote)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set())
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+  const [bulkDeleting, setBulkDeleting]   = useState(false)
   const [replyTo, setReplyTo]             = useState<WhatsAppMessage | null>(null)
   const [forwardMsg, setForwardMsg]       = useState<WhatsAppMessage | null>(null)
   const [showForwardModal, setShowForwardModal] = useState(false)
@@ -475,6 +490,49 @@ export default function WhatsAppInbox() {
       toast.success(isFav ? 'Removido dos favoritos.' : 'Adicionado aos favoritos.')
     } else if (action === 'label') {
       toast.info('Etiquetas em breve.')
+    }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const exitSelection = () => { setSelectionMode(false); setSelectedIds(new Set()) }
+
+  // Exclusao definitiva do lote. As mensagens somem junto (FK em cascata).
+  const handleBulkDelete = async () => {
+    if (bulkDeleting || selectedIds.size === 0) return
+    setBulkDeleting(true)
+    const ids = Array.from(selectedIds)
+    try {
+      const res = await fetch('/api/whatsapp/conversations/bulk-delete', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        toast.error(data.error || 'Não foi possível excluir.')
+        return
+      }
+
+      if (selectedConvId && selectedIds.has(selectedConvId)) setSelectedConvId(null)
+      toast.success(`${data.deleted} conversa${data.deleted === 1 ? '' : 's'} excluída${data.deleted === 1 ? '' : 's'}.`)
+      if (data.deleted < data.requested) {
+        toast.warning(`${data.requested - data.deleted} não puderam ser excluídas.`)
+      }
+      setShowBulkConfirm(false)
+      exitSelection()
+      refetch()
+    } catch {
+      toast.error('Falha de conexão. Tente novamente.')
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
@@ -643,6 +701,38 @@ export default function WhatsAppInbox() {
         </div>
       )}
 
+      {/* Confirmacao da exclusao em massa — acao sem volta */}
+      {showBulkConfirm && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"
+          onClick={() => { if (!bulkDeleting) setShowBulkConfirm(false) }}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-5"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <p className="font-bold text-slate-900 dark:text-slate-100">
+                Excluir {selectedIds.size} conversa{selectedIds.size === 1 ? '' : 's'}?
+              </p>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">
+              Todas as mensagens dessas conversas serão apagadas junto.
+              <strong className="text-slate-700 dark:text-slate-200"> Não tem como desfazer.</strong>
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowBulkConfirm(false)} disabled={bulkDeleting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50">
+                Cancelar
+              </button>
+              <button onClick={handleBulkDelete} disabled={bulkDeleting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                {bulkDeleting ? <><Loader2 className="w-4 h-4 animate-spin" /> Excluindo…</> : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden min-h-0"
         onClick={() => setShowAttach(false)}>
 
@@ -659,10 +749,43 @@ export default function WhatsAppInbox() {
               </div>
             </div>
             <div className="flex gap-1">
+              <button onClick={e => { e.stopPropagation(); if (selectionMode) exitSelection(); else setSelectionMode(true) }}
+                title={selectionMode ? 'Cancelar seleção' : 'Selecionar conversas'}
+                className={`p-1.5 rounded-lg ${selectionMode ? 'bg-red-100 dark:bg-red-900/30 text-red-600' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                <CheckSquare className="w-4 h-4" />
+              </button>
               <button onClick={e => { e.stopPropagation(); refetch() }} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><RefreshCw className="w-4 h-4" /></button>
               <button onClick={e => { e.stopPropagation(); setShowNewConv(true) }} className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /></button>
             </div>
           </div>
+
+          {/* Barra do modo selecao — atua sobre a lista filtrada em exibicao */}
+          {selectionMode && (
+            <div className="px-3 py-2 border-b border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/15 flex items-center justify-between gap-2">
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  const todasMarcadas = filtered.length > 0 && filtered.every(c => selectedIds.has(c.id))
+                  setSelectedIds(todasMarcadas ? new Set() : new Set(filtered.map(c => c.id)))
+                }}
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                {filtered.length > 0 && filtered.every(c => selectedIds.has(c.id))
+                  ? <CheckSquare className="w-4 h-4 text-red-600" />
+                  : <Square className="w-4 h-4 text-slate-400" />}
+                Todas ({filtered.length})
+              </button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">{selectedIds.size} sel.</span>
+                <button
+                  onClick={e => { e.stopPropagation(); setShowBulkConfirm(true) }}
+                  disabled={selectedIds.size === 0}
+                  className="px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-40 disabled:hover:bg-red-600 flex items-center gap-1">
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-700">
             <div className="relative">
@@ -698,7 +821,8 @@ export default function WhatsAppInbox() {
               </div>
             ) : filtered.map(conv => (
               <ConversationItem key={conv.id} conv={conv} active={conv.id === selectedConvId}
-                onClick={() => handleSelectConv(conv)} onAction={handleConvAction} />
+                onClick={() => handleSelectConv(conv)} onAction={handleConvAction}
+                selectionMode={selectionMode} checked={selectedIds.has(conv.id)} onToggleSelect={toggleSelect} />
             ))}
           </div>
         </div>
