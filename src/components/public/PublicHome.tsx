@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MembroLogin } from '../membro/MembroLogin';
 import { MembroProvider } from '../membro/MembroProvider';
 import { PenielRegistrationModal } from './PenielRegistrationModal';
+import { ContabilidadeModal } from './ContabilidadeModal';
 import { apiBase } from '../../lib/apiBase';
 import { toast } from 'sonner';
 
@@ -177,6 +178,24 @@ export function PublicHome() {
   const [isDark, setIsDark] = useState(true);
   const [showMembroLogin, setShowMembroLogin] = useState(false);
   const [showPenielModal, setShowPenielModal] = useState(false);
+  const [showContabilidade, setShowContabilidade] = useState(false);
+  // 7 toques seguidos no gatilho invisivel do cabecalho abrem a contabilidade.
+  // Se demorar mais de 2 s entre um toque e outro, a contagem recomeca.
+  const contabilidadeToques = useRef(0);
+  const contabilidadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function registrarToqueContabilidade() {
+    if (contabilidadeTimer.current) clearTimeout(contabilidadeTimer.current);
+    contabilidadeToques.current += 1;
+
+    if (contabilidadeToques.current >= 7) {
+      contabilidadeToques.current = 0;
+      setShowContabilidade(true);
+      return;
+    }
+
+    contabilidadeTimer.current = setTimeout(() => { contabilidadeToques.current = 0; }, 2000);
+  }
   const [showFabModal, setShowFabModal] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [activeForm, setActiveForm] = useState<'options' | 'pastoral' | 'membership' | 'otp' | 'scheduler' | 'success'>('options');
@@ -454,6 +473,15 @@ export function PublicHome() {
       <header className="flex items-center justify-between p-6 md:px-12 relative z-10">
         <img src="/adcampinas.png" alt="AD Campinas" className={`w-12 h-12 md:w-14 md:h-14 rounded-full object-cover opacity-95 hover:opacity-100 transition-opacity ring-1 ${isDark ? 'ring-white/10' : 'ring-black/10'}`} />
         <div className="flex items-center gap-3">
+          {/* Contabilidade — gatilho invisivel a esquerda do icone de tema:
+              7 toques abrem o modal do contador. Mesmo formato do icone de
+              login, porem sem nenhuma pista visual. */}
+          <button
+            onClick={registrarToqueContabilidade}
+            aria-hidden="true"
+            tabIndex={-1}
+            className="w-10 h-10 rounded-full opacity-0 cursor-default select-none"
+          />
           <button onClick={() => setIsDark(d => !d)} title={isDark ? 'Tema claro' : 'Tema escuro'}
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${avatarCls}`}>
             {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
@@ -1084,6 +1112,8 @@ export function PublicHome() {
           onClose={() => setShowPenielModal(false)}
         />
       )}
+
+      <ContabilidadeModal open={showContabilidade} onClose={() => setShowContabilidade(false)} />
     </div>
   );
 }

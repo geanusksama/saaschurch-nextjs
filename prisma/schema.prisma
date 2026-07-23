@@ -3500,3 +3500,31 @@ model AiChatMessage {
 
   @@map("ai_chat_messages")
 }
+
+// ---------------------------------------------------------------------------
+// CONTABILIDADE — acesso externo ao relatorio contabil (CSV do livro_caixa).
+// O contador nao tem usuario no sistema: entra com telefone + hash e confirma
+// por codigo no WhatsApp. 3 tentativas erradas desativam o acesso.
+// ---------------------------------------------------------------------------
+model ContabilidadeAcesso {
+  id           String    @id @default(uuid()) @db.Uuid
+  nome         String    @db.VarChar(255)
+  campo        String    @db.VarChar(100)
+  telefone     String    @unique @db.VarChar(20)
+  hash         String    @db.VarChar(100)
+  ativo        Boolean   @default(true)
+
+  tentativas   Int       @default(0)
+  bloqueadoEm  DateTime? @map("bloqueado_em")
+  ultimoAcesso DateTime? @map("ultimo_acesso")
+
+  // Trava contra duas geracoes simultaneas do mesmo acesso
+  gerando      Boolean   @default(false)
+  gerandoDesde DateTime? @map("gerando_desde")
+
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([campo])
+  @@map("contabilidade_acessos")
+}
