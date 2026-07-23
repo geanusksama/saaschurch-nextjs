@@ -46,13 +46,13 @@ export default function MembroFaceId() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [step, setStep] = useState<Step>('intro');
   const [cameraReady, setCameraReady] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusResponse | null>(null);
+  const [esperaSegundos, setEsperaSegundos] = useState(0);
   const [batchId, setBatchId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -137,16 +137,11 @@ export default function MembroFaceId() {
     });
   }, []);
 
-  // Encerra o acompanhamento: o intervalo de polling e o relogio do timeout
-  // andam juntos, sempre param juntos.
+  // Encerra o polling do lote (fim normal, "Refazer", timeout ou saida da tela)
   const stopTracking = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
-    }
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
     }
   }, []);
 
@@ -154,6 +149,45 @@ export default function MembroFaceId() {
     stopCamera();
     stopTracking();
   }, [stopCamera, stopTracking]);
+
+  /**
+   * Relogio da espera: roda enquanto o lote estiver em "processing" e corta
+   * ao estourar TIMEOUT_MS. O corte mora aqui, e nao num setTimeout solto,
+   * porque este efeito depende do estado que a tela desenha — se o lote sair
+   * de "processing", o relogio morre junto; nao tem como ficar orfao.
+   *
+   * Mede tempo decorrido de verdade (Date.now) em vez de contar batidas: o
+   * navegador estrangula timers com a aba em segundo plano e a contagem por
+   * batida atrasaria justamente em quem deixa a tela aberta esperando.
+   */
+  useEffect(() => {
+    if (step !== 'tracking' || status?.state !== 'processing') return;
+
+    const inicio = Date.now();
+    const tick = setInterval(() => {
+      const decorrido = Date.now() - inicio;
+      setEsperaSegundos(Math.min(Math.floor(decorrido / 1000), TIMEOUT_MS / 1000));
+
+      if (decorrido < TIMEOUT_MS) return;
+
+      clearInterval(tick);
+      stopTracking();
+      setStatus((prev) =>
+        prev && prev.state === 'processing'
+          ? {
+              ...prev,
+              state: 'failed',
+              message:
+                'O leitor da sua igreja não respondeu em 1 minuto. Ele pode estar desligado ou sem internet. Tente de novo mais tarde ou procure a secretaria.',
+              canRetry: true,
+              canUpdate: false,
+            }
+          : prev
+      );
+    }, 1000);
+
+    return () => clearInterval(tick);
+  }, [step, status?.state, stopTracking]);
 
   const capture = useCallback(() => {
     const video = videoRef.current;
@@ -225,6 +259,7 @@ export default function MembroFaceId() {
       if (!session || !photo) return;
       setStep('sending');
       setError(null);
+      setEsperaSegundos(0);
 
       // Aborta o envio se o servidor nao responder dentro do limite
       const controller = new AbortController();
@@ -255,26 +290,10 @@ export default function MembroFaceId() {
         });
         setStep('tracking');
 
+        // O corte de 1 minuto fica no efeito do relogio, la em cima
         if (data.status !== 'needs_approval') {
           pollStatus(data.batch_id);
           pollRef.current = setInterval(() => pollStatus(data.batch_id), 3000);
-
-          // Leitor desligado/sem rede nunca sai de "processing": corta em 1 min
-          timeoutRef.current = setTimeout(() => {
-            stopTracking();
-            setStatus((prev) =>
-              prev && prev.state === 'processing'
-                ? {
-                    ...prev,
-                    state: 'failed',
-                    message:
-                      'O leitor da sua igreja não respondeu em 1 minuto. Ele pode estar desligado ou sem internet. Tente de novo mais tarde ou procure a secretaria.',
-                    canRetry: true,
-                    canUpdate: false,
-                  }
-                : prev
-            );
-          }, TIMEOUT_MS);
         }
       } catch (err) {
         setError(
@@ -287,7 +306,7 @@ export default function MembroFaceId() {
         clearTimeout(abortTimer);
       }
     },
-    [session, photo, pollStatus, stopTracking]
+    [session, photo, pollStatus]
   );
 
   const restart = useCallback(() => {
@@ -296,6 +315,7 @@ export default function MembroFaceId() {
     setStatus(null);
     setBatchId(null);
     setError(null);
+    setEsperaSegundos(0);
     setCameraReady(false);
     startCamera();
   }, [startCamera, stopTracking]);
@@ -478,6 +498,11 @@ export default function MembroFaceId() {
                     <p className="text-[13px] text-slate-300 font-medium">Cadastrando nos leitores…</p>
                     <p className="text-[11px] text-slate-500 text-center max-w-[240px] leading-relaxed">
                       Isso leva alguns segundos. Você pode deixar esta tela aberta.
+                    </p>
+                    {/* Mostra que a espera tem fim — e serve de prova de que o
+                        relogio do timeout esta correndo. */}
+                    <p className="text-[11px] tabular-nums" style={{ color: `${TEAL}99` }}>
+                      {esperaSegundos}s de {TIMEOUT_MS / 1000}s
                     </p>
                   </div>
                 )}
