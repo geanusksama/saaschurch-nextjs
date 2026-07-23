@@ -28,9 +28,12 @@ export const STATUS_TO_COLUMN: Record<string, number> = {
 
 /** Retorna a lista de churchIds visíveis para o usuário */
 async function resolveChurchIds(user: AuthUser): Promise<string[] | null> {
-  if (user.profileType === "master") return null; // sem filtro
+  const isMaster = user.profileType === "master";
+  // master sem campo definido continua sem filtro; com campo, respeita o campo
+  if (isMaster && !user.campoId) return null;
 
-  if (user.profileType === "church" || user.roleName) {
+  // Restricao por igreja nao se aplica ao master — ele ve o campo inteiro
+  if (!isMaster && (user.profileType === "church" || user.roleName)) {
     if (user.churchId) return [user.churchId];
   }
   if (user.campoId) {

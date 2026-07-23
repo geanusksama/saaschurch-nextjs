@@ -89,7 +89,9 @@ export async function GET(req: NextRequest) {
 
     let where: Record<string, unknown> = {};
     if (user.profileType === "master") {
-      where = {}; // master vê tudo; deduplicação por batchId aplicada abaixo
+      // master vê tudo do campo em que está logado (dedup por batchId abaixo).
+      // Sem campo definido, vê tudo — é o caso do master sem lotação.
+      where = campoFilter ? { OR: [{ userId }, campoFilter] } : {};
     } else if (user.profileType === "church") {
       // Perfil church vê apenas broadcasts manuais do campo (scope=field)
       // Não recebe notificações de sistema (pipeline, SOLCRED, etc.)

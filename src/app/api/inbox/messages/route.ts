@@ -26,7 +26,9 @@ export async function GET(req: NextRequest) {
     }
 
     if (user.profileType === "master") {
-      if (campoId) where.campoId = campoId;
+      // Fallback para o campo logado (senao o master lia mensagem de outro campo)
+      const scoped = campoId || user.campoId;
+      if (scoped) where.campoId = scoped;
     } else if (user.profileType === "admin") {
       where.campoId = user.campoId;
     }

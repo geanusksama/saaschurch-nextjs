@@ -17,7 +17,11 @@ const CreateUserSchema = z.object({
 });
 
 function getManagedCampoId(user: import("@/lib/auth").AuthUser) {
-  if ((user.profileType === "admin" || user.profileType === "campo") && user.campoId) return user.campoId;
+  // master entra aqui junto com admin/campo: ele tambem so administra o campo
+  // em que esta logado. Para ver outro campo, troca de campo (com senha).
+  // Vindo daqui, o campoId do proprio usuario tem prioridade sobre o parametro
+  // da URL — ninguem amplia o proprio escopo mandando ?campoId= na mao.
+  if (["master", "admin", "campo"].includes(user.profileType) && user.campoId) return user.campoId;
   return null;
 }
 
@@ -40,16 +44,21 @@ function buildManagedUsersWhere(user: import("@/lib/auth").AuthUser, query: Reco
   if (regionalId) where.regionalId = regionalId;
   if (isActive !== undefined) where.isActive = isActive === "true";
 
-  // Master users searching by name/email bypass the campo filter so they can
-  // find and fix orphaned accounts (no campoId/regionalId/churchId set).
-  const masterSearchingByText = user.profileType === "master" && !!search;
-
-  if (effectiveCampoId && !masterSearchingByText) {
+  if (effectiveCampoId) {
     const fieldClauses: unknown[] = [
       { campoId: effectiveCampoId },
       { regional: { is: { campoId: effectiveCampoId } } },
       { church: { is: { regional: { is: { campoId: effectiveCampoId } } } } },
     ];
+
+    // Master buscando por nome/e-mail alcanca tambem as contas orfas — as que
+    // ficaram sem campo, regional e igreja — para poder consertar a lotacao.
+    // Antes disso a busca do master ignorava o campo por completo e listava
+    // usuario de qualquer campo.
+    if (user.profileType === "master" && search) {
+      fieldClauses.push({ AND: [{ campoId: null }, { regionalId: null }, { churchId: null }] });
+    }
+
     andClauses.push({ OR: fieldClauses });
   }
 

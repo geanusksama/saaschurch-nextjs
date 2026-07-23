@@ -9,7 +9,8 @@ import { serializeBigInts } from "@/lib/helpers";
 import type { AuthUser } from "@/lib/auth";
 
 async function resolveChurchIds(user: AuthUser): Promise<string[] | null> {
-  if (user.profileType === "master") return null;
+  // master sem campo definido ve tudo; com campo, fica preso ao campo logado
+  if (user.profileType === "master" && !user.campoId) return null;
   if (user.campoId) {
     const churches = await prisma.church.findMany({ where: { regional: { campoId: user.campoId }, deletedAt: null }, select: { id: true } });
     return churches.map((c) => c.id);

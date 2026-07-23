@@ -5,7 +5,8 @@ import { serializeBigInts } from "@/lib/helpers";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
-    const isMaster = user.profileType === "master";
+    // master tambem so ve o campo em que esta logado; sem campo definido, ve tudo
+    const isMaster = user.profileType === "master" && !user.campoId;
 
     let rows: unknown[];
 

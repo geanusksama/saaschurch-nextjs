@@ -31,6 +31,12 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const churchWhere: any = { deletedAt: null };
 
+    // master e admin sao os unicos que podem trocar de campo (a senha do campo
+    // e verificada em verify-field), entao sao os unicos que enxergam a lista
+    // completa de campos. Regional e igreja continuam presas ao campo atual —
+    // ao trocar de campo, o proprio campoId do usuario muda e a lista segue.
+    const canSwitchField = user.profileType === "master" || user.profileType === "admin";
+
     if (user.profileType === "master") {
       // sees everything
     } else {
@@ -69,6 +75,11 @@ export async function GET(req: NextRequest) {
           churchWhere.id = "00000000-0000-0000-0000-000000000000";
         }
       }
+
+      // Ultimo passo de proposito: o admin pode trocar de campo, entao precisa
+      // enxergar a lista completa de campos mesmo depois das restricoes acima.
+      // Regionais e igrejas seguem presas ao campo atual.
+      if (canSwitchField) delete fieldWhere.id;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

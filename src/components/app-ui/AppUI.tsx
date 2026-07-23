@@ -919,11 +919,36 @@ export function AppUI() {
     loadNotificationCount();
   }, []);
 
-  const applyContextSelection = (item: ContextSwitcherItem) => {
+  const applyContextSelection = async (item: ContextSwitcherItem) => {
     setSelectedContext(item);
     localStorage.setItem('mrm_selected_context', JSON.stringify(item));
     localStorage.setItem('mrm_active_field_id', item.id);
     localStorage.setItem('mrm_active_field_name', item.name);
+
+    // Troca de campo: o backend ja gravou o novo campo no usuario, entao o que
+    // esta guardado no navegador precisa acompanhar. Sem isto a tela continua
+    // montando requisicao com o campo antigo e mostrando dados de outro campo.
+    if (item.level === 'field') {
+      try {
+        const user = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+        if (user.campoId !== item.id) {
+          user.campoId = item.id;
+          user.campoName = item.name;
+          // Igreja/regional do campo anterior deixam de valer (o backend zera
+          // quando nao pertencem ao campo novo)
+          user.churchId = null;
+          user.churchName = null;
+          user.regionalId = null;
+          user.regionalName = null;
+          localStorage.setItem('mrm_user', JSON.stringify(user));
+        }
+      } catch { /* noop */ }
+
+      // Caches com dados do campo anterior
+      localStorage.removeItem('mrm_permissions');
+      await del('secretaria-cache').catch(() => undefined);
+    }
+
     setFieldPassword('');
     setFieldPasswordPrompt(null);
     setChurchSwitcherOpen(false);
@@ -938,7 +963,7 @@ export function AppUI() {
       return;
     }
 
-    applyContextSelection(item);
+    void applyContextSelection(item);
   };
 
   const handleFieldPasswordSubmit = async () => {
@@ -964,7 +989,7 @@ export function AppUI() {
         throw new Error(payload.error || 'Senha do campo inválida.');
       }
 
-      applyContextSelection(fieldPasswordPrompt);
+      await applyContextSelection(fieldPasswordPrompt);
     } catch (error) {
       setSwitcherError(getRequestErrorMessage(error, 'Falha ao validar senha do campo.'));
     } finally {

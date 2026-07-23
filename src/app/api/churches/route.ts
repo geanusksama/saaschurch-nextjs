@@ -36,8 +36,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // master tambem fica preso ao campo em que esta logado: sem o fallback para
+    // user.campoId o filtro virava null e a lista trazia igreja de todo campo.
     const scopedFieldId =
-      user.profileType === "master" ? (fieldId || null) : (user.campoId || null);
+      user.profileType === "master" ? (fieldId || user.campoId || null) : (user.campoId || null);
 
     try {
       const churches = await prisma.church.findMany({

@@ -13,7 +13,9 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, any> = { deletedAt: null };
     if (user.profileType === "master") {
-      if (campoId) where.campoId = campoId;
+      // Fallback para o campo logado: sem ele a lista vazava regional de outro campo
+      const scoped = campoId || user.campoId;
+      if (scoped) where.campoId = scoped;
     } else {
       if (!user.campoId) return NextResponse.json([]);
       where.campoId = user.campoId;

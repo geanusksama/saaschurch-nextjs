@@ -6,12 +6,15 @@ import { serializeBigInts } from "@/lib/helpers";
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
     const isMaster = user.profileType === "master";
+    // master tambem se limita ao campo logado — so fica sem filtro se o usuario
+    // nao tiver campo definido. Antes o painel somava numero de todos os campos.
+    const isUnscopedMaster = isMaster && !user.campoId;
     let campoChurchIds: string[] | null = null;
-    if (!isMaster && (user.profileType === "admin" || user.profileType === "campo") && user.campoId) {
+    if (!isUnscopedMaster && user.campoId) {
       const campoChurches = await prisma.church.findMany({ where: { regional: { campoId: user.campoId }, deletedAt: null }, select: { id: true } });
       campoChurchIds = campoChurches.map((c) => c.id);
     }
-    const churchFilter = isMaster
+    const churchFilter = isUnscopedMaster
       ? {}
       : campoChurchIds
         ? { churchId: { in: campoChurchIds } }
@@ -50,7 +53,7 @@ export async function GET(req: NextRequest) {
       prisma.ministryMember.groupBy({
         by: ["ministryId"],
         _count: { memberId: true },
-        where: isMaster ? {} : (campoChurchIds ? { ministry: { churchId: { in: campoChurchIds } } } : (user.churchId ? { ministry: { churchId: user.churchId } } : { ministry: { churchId: "00000000-0000-0000-0000-000000000000" } })),
+        where: isUnscopedMaster ? {} : (campoChurchIds ? { ministry: { churchId: { in: campoChurchIds } } } : (user.churchId ? { ministry: { churchId: user.churchId } } : { ministry: { churchId: "00000000-0000-0000-0000-000000000000" } })),
         orderBy: { _count: { memberId: "desc" } }, take: 5,
       }).then(async (rows) => {
         const ids = rows.map((r) => r.ministryId);
