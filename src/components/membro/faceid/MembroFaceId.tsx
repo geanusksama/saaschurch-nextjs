@@ -34,6 +34,11 @@ interface StatusResponse {
 const CAPTURE_SIZE = 720;
 const JPEG_QUALITY = 0.92;
 
+// Tempo maximo de espera pelo leitor. Se o agente da igreja estiver desligado
+// ou sem rede, o lote fica em "processing" para sempre e a tela rodaria sem
+// fim — passou de 1 minuto, para tudo e mostra o erro.
+const TIMEOUT_MS = 60_000;
+
 export default function MembroFaceId() {
   const { session, isLoading, updateMember } = useMembroSession();
   const navigate = useNavigate();
@@ -41,6 +46,7 @@ export default function MembroFaceId() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [step, setStep] = useState<Step>('intro');
   const [cameraReady, setCameraReady] = useState(false);
@@ -131,10 +137,23 @@ export default function MembroFaceId() {
     });
   }, []);
 
+  // Encerra o acompanhamento: o intervalo de polling e o relogio do timeout
+  // andam juntos, sempre param juntos.
+  const stopTracking = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
   useEffect(() => () => {
     stopCamera();
-    if (pollRef.current) clearInterval(pollRef.current);
-  }, [stopCamera]);
+    stopTracking();
+  }, [stopCamera, stopTracking]);
 
   const capture = useCallback(() => {
     const video = videoRef.current;
@@ -193,15 +212,12 @@ export default function MembroFaceId() {
         }
 
         // Parou de mexer: encerra o polling
-        if (data.state !== 'processing' && pollRef.current) {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
-        }
+        if (data.state !== 'processing') stopTracking();
       } catch {
         /* rede instável — a próxima tentativa resolve */
       }
     },
-    [session, updateMember]
+    [session, updateMember, stopTracking]
   );
 
   const submit = useCallback(
@@ -210,11 +226,16 @@ export default function MembroFaceId() {
       setStep('sending');
       setError(null);
 
+      // Aborta o envio se o servidor nao responder dentro do limite
+      const controller = new AbortController();
+      const abortTimer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
       try {
         const res = await fetch('/api/membro/faceid/enroll', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: session.member_token, photo, allowUpdate }),
+          signal: controller.signal,
         });
         const data = await res.json();
 
@@ -237,27 +258,47 @@ export default function MembroFaceId() {
         if (data.status !== 'needs_approval') {
           pollStatus(data.batch_id);
           pollRef.current = setInterval(() => pollStatus(data.batch_id), 3000);
+
+          // Leitor desligado/sem rede nunca sai de "processing": corta em 1 min
+          timeoutRef.current = setTimeout(() => {
+            stopTracking();
+            setStatus((prev) =>
+              prev && prev.state === 'processing'
+                ? {
+                    ...prev,
+                    state: 'failed',
+                    message:
+                      'O leitor da sua igreja não respondeu em 1 minuto. Ele pode estar desligado ou sem internet. Tente de novo mais tarde ou procure a secretaria.',
+                    canRetry: true,
+                    canUpdate: false,
+                  }
+                : prev
+            );
+          }, TIMEOUT_MS);
         }
-      } catch {
-        setError('Falha de conexão. Verifique sua internet e tente novamente.');
+      } catch (err) {
+        setError(
+          (err as Error)?.name === 'AbortError'
+            ? 'O envio demorou mais de 1 minuto e foi interrompido. Verifique sua internet e tente novamente.'
+            : 'Falha de conexão. Verifique sua internet e tente novamente.'
+        );
         setStep('preview');
+      } finally {
+        clearTimeout(abortTimer);
       }
     },
-    [session, photo, pollStatus]
+    [session, photo, pollStatus, stopTracking]
   );
 
   const restart = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
+    stopTracking();
     setPhoto(null);
     setStatus(null);
     setBatchId(null);
     setError(null);
     setCameraReady(false);
     startCamera();
-  }, [startCamera]);
+  }, [startCamera, stopTracking]);
 
   if (isLoading || !session || !session.member) return null;
 
@@ -469,6 +510,18 @@ export default function MembroFaceId() {
                   </div>
                 )}
 
+                {/* Estados finais precisam de saida: sem isto o membro so sai
+                    pela setinha do cabecalho e fica achando que travou. */}
+                {(status.state === 'done' || status.state === 'needs_approval') && (
+                  <button
+                    onClick={() => navigate('/membro/menu')}
+                    className="w-full mt-5 py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98]"
+                    style={{ background: TEAL }}
+                  >
+                    Concluir
+                  </button>
+                )}
+
                 {(status.state === 'failed' || status.state === 'partial') && (
                   <div>
                     <div className="rounded-2xl p-5 mb-4"
@@ -525,6 +578,24 @@ export default function MembroFaceId() {
                         Procure a secretaria da igreja para concluir seu cadastro.
                       </p>
                     )}
+
+                    {/* No parcial o cadastro valeu em pelo menos um leitor: o
+                        membro precisa poder encerrar sem refazer a foto. */}
+                    <button
+                      onClick={() => navigate('/membro/menu')}
+                      className={
+                        status.state === 'partial'
+                          ? 'w-full mt-3 py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98]'
+                          : 'w-full mt-3 py-3.5 rounded-xl font-semibold text-[13px] text-white/70'
+                      }
+                      style={
+                        status.state === 'partial'
+                          ? { background: TEAL }
+                          : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }
+                      }
+                    >
+                      {status.state === 'partial' ? 'Concluir' : 'Voltar ao menu'}
+                    </button>
                   </div>
                 )}
               </motion.div>
