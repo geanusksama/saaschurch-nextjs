@@ -135,12 +135,8 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
     group: 'Comunicação',
     name: 'Caixa de Entrada WhatsApp',
     key: 'whatsapp_inbox',
-    permissions: mkPerms(
-      { master: true, admin: true, campo: true, church: true },
-      { master: true, admin: true, campo: true, church: true },
-      { master: true, admin: true, campo: true, church: true },
-      { master: false, admin: false, campo: false, church: false },
-    ),
+    // Exclusivo do master (espelhado de src/app-ui/system/permissionCatalog.ts)
+    permissions: mkPerms(master(), master(), master(), master()),
   },
   {
     group: 'Comunicação',
