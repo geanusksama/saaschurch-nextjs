@@ -3528,3 +3528,79 @@ model ContabilidadeAcesso {
   @@index([campo])
   @@map("contabilidade_acessos")
 }
+
+// ---------------------------------------------------------------------------
+// CONTABILIDADE — envio automatico agendado do relatorio via WhatsApp.
+// Config por contador + historico de disparos + snapshot dos lancamentos de
+// cada periodo enviado (usado para detectar registros que sumiram entre
+// reenvios do mesmo mes). Ver docs/modules/contabilidade-agendamento/SPEC.md
+// ---------------------------------------------------------------------------
+model ContabilidadeAgendamento {
+  id            String    @id @default(uuid()) @db.Uuid
+  acessoId      String    @unique @map("acesso_id") @db.Uuid
+
+  ativo         Boolean   @default(false)
+
+  frequencia    String    @default("mensal") @db.VarChar(20)
+  diaEnvio      Int       @default(1) @map("dia_envio") @db.SmallInt
+  horaEnvio     DateTime  @default("1970-01-01T08:00:00Z") @map("hora_envio") @db.Time
+  timezone      String    @default("America/Sao_Paulo") @db.VarChar(50)
+
+  tipoPeriodo   String    @default("mes_anterior") @map("tipo_periodo") @db.VarChar(20)
+  gapMeses      Int       @default(1) @map("gap_meses") @db.SmallInt
+  qtdMeses      Int       @default(1) @map("qtd_meses") @db.SmallInt
+
+  proximoEnvio  DateTime? @map("proximo_envio")
+  ultimoEnvio   DateTime? @map("ultimo_envio")
+
+  createdBy     String?   @map("created_by") @db.VarChar(255)
+  updatedBy     String?   @map("updated_by") @db.VarChar(255)
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("contabilidade_agendamentos")
+}
+
+model ContabilidadeEnvioHistorico {
+  id                   String    @id @default(uuid()) @db.Uuid
+  agendamentoId        String?   @map("agendamento_id") @db.Uuid
+  acessoId             String    @map("acesso_id") @db.Uuid
+
+  disparadoEm          DateTime  @default(now()) @map("disparado_em")
+  tipo                 String    @db.VarChar(20)
+
+  gapMeses             Int?      @map("gap_meses") @db.SmallInt
+  qtdMeses             Int?      @map("qtd_meses") @db.SmallInt
+  periodos             Json      @default("[]") @map("periodos")
+
+  status               String    @default("sucesso") @db.VarChar(20)
+  tempoProcessamentoMs Int?      @map("tempo_processamento_ms")
+  totalRegistros       Int       @default(0) @map("total_registros")
+  totalDivergencias    Int       @default(0) @map("total_divergencias")
+  erro                 String?
+  whatsappMessageId    String?   @map("whatsapp_message_id")
+
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  @@index([acessoId, disparadoEm])
+  @@map("contabilidade_envios_historico")
+}
+
+model ContabilidadePeriodoEnviado {
+  id            String   @id @default(uuid()) @db.Uuid
+  acessoId      String   @map("acesso_id") @db.Uuid
+  historicoId   String?  @map("historico_id") @db.Uuid
+
+  ano           Int      @db.SmallInt
+  mes           Int      @db.SmallInt
+  versao        Int      @default(1)
+
+  lancamentoIds Json     @default("[]") @map("lancamento_ids")
+  qtdRegistros  Int      @default(0) @map("qtd_registros")
+
+  enviadoEm     DateTime @default(now()) @map("enviado_em")
+
+  @@unique([acessoId, ano, mes, versao])
+  @@map("contabilidade_periodos_enviados")
+}

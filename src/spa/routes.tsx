@@ -107,6 +107,7 @@ import UserEdit from "../app-ui/system/UserEdit";
 import { PermissionsMatrix } from "../app-ui/system/PermissionsMatrix";
 import UserPermissions from "../app-ui/system/UserPermissions";
 import FieldPasswordAdmin from "../app-ui/system/FieldPasswordAdmin";
+import ContabilidadeAgendamentos from "../app-ui/system/ContabilidadeAgendamentos";
 import {
   ChurchInfo,
   Branding,
@@ -520,6 +521,7 @@ export const router = createBrowserRouter([
       { path: "system/whatsapp", Component: WhatsAppInstances },
       { path: "communication/whatsapp-instances", Component: WhatsAppInstances },
       { path: "system/sms", Component: SmsSettings },
+      { path: "system/contabilidade-agendamentos", Component: ContabilidadeAgendamentos },
       { path: "system/integrations", Component: Integrations },
       { path: "system/webhooks", Component: Webhooks },
       { path: "system/api", Component: Api },

@@ -40,10 +40,12 @@ import {
   BookOpen,
   Code,
   Sparkles,
-  Bot
+  Bot,
+  Calculator
 } from 'lucide-react';
 import { Link } from 'react-router';
 import { usePermissions } from '../../lib/usePermissions';
+import { podeAcessarContabilidadeAgendamento } from '../../lib/contabilidadeAgendamentoRole';
 
 type SettingsItem = {
   id: string;
@@ -113,6 +115,14 @@ const settingsSections: SettingsSection[] = [
     ]
   },
   {
+    category: 'Contabilidade',
+    icon: Calculator,
+    color: 'bg-amber-500',
+    items: [
+      { id: 'contabilidade-agendamentos', name: 'Envio Automático', description: 'Agendar relatório contábil por WhatsApp', path: '/app-ui/system/contabilidade-agendamentos', permKey: 'contabilidade_agendamentos' },
+    ]
+  },
+  {
     category: 'Inteligência Artificial (IA)',
     icon: Sparkles,
     color: 'bg-emerald-500',
@@ -177,9 +187,20 @@ export function SystemSettings() {
   const profileType: string = storedUser.profileType || '';
   const isMaster = profileType === 'master';
   const { canView } = usePermissions(profileType);
+  const roleName: string = storedUser.roleName || storedUser.role?.name || '';
 
   const visibleSections = settingsSections
-    .map((section) => ({ ...section, items: section.items.filter((item) => canView(item.permKey)) }))
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        if (!canView(item.permKey)) return false;
+        // Contabilidade — Agendamento é exclusivo da função Tesouraria (nunca Secretaria).
+        if (item.id === 'contabilidade-agendamentos') {
+          return podeAcessarContabilidadeAgendamento(profileType, roleName);
+        }
+        return true;
+      }),
+    }))
     .filter((section) => section.items.length > 0);
   return (
     <div className="p-6 text-slate-900 dark:text-slate-100">

@@ -252,6 +252,11 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Configurações', name: 'Configurações de Email',      key: 'settings_email_config',     permissions: mkPerms(admin(), none(), admin(), none()) },
   { group: 'Configurações', name: 'WhatsApp Business Config',    key: 'settings_whatsapp_config',  permissions: mkPerms(admin(), none(), admin(), none()) },
   { group: 'Configurações', name: 'SMS Config',                  key: 'settings_sms_config',       permissions: mkPerms(admin(), none(), admin(), none()) },
+  // View liberada pra todo profileType na matriz — o filtro real de quem enxerga é a
+  // FUNÇÃO (roleName): só "tesouraria" além de master/admin, "secretaria" nunca (ver
+  // podeAcessarContabilidadeAgendamento em contabilidadeAgendamentoService.ts e o filtro
+  // extra em SystemSettings.tsx).
+  { group: 'Configurações', name: 'Contabilidade — Agendamento', key: 'contabilidade_agendamentos', permissions: mkPerms(full(), none(), full(), none()) },
   // Integrações (configs)
   {
     group: 'Configurações',
