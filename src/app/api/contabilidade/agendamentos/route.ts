@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const [{ data: acessos, error: accErr }, { data: agendamentos, error: agErr }, { data: historicos, error: histErr }] = await Promise.all([
       supabaseAdmin
         .from('contabilidade_acessos')
-        .select('id, nome, campo, telefone, ativo, ultimo_acesso')
+        .select('id, nome, campo, telefone, hash, ativo, tentativas, ultimo_acesso')
         .order('nome', { ascending: true }),
       supabaseAdmin.from('contabilidade_agendamentos').select('*'),
       // Só o necessário para saber o resultado do último disparo de cada contador.

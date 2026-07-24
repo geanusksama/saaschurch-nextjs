@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Calculator, MoreVertical, Send, History, X, Loader2, AlertTriangle, Plus, Copy } from 'lucide-react';
+import { Calculator, MoreVertical, Send, History, X, Loader2, AlertTriangle, Plus, Copy, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { podeAcessarContabilidadeAgendamento } from '../../lib/contabilidadeAgendamentoRole';
@@ -10,7 +10,9 @@ type Acesso = {
   nome: string;
   campo: string;
   telefone: string;
+  hash: string;
   ativo: boolean;
+  tentativas: number;
   ultimo_acesso: string | null;
   agendamento: Agendamento | null;
   ultimo_status_envio: 'sucesso' | 'erro' | 'parcial' | null;
@@ -110,6 +112,8 @@ export default function ContabilidadeAgendamentos() {
   const [historicoTarget, setHistoricoTarget] = useState<Acesso | null>(null);
   const [previewTarget, setPreviewTarget] = useState<Acesso | null>(null);
   const [novoContadorOpen, setNovoContadorOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Acesso | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Acesso | null>(null);
 
   useEffect(() => {
     if (!openMenu) return;
@@ -204,6 +208,7 @@ export default function ContabilidadeAgendamentos() {
               <th className="px-4 py-3 font-medium">Contador</th>
               <th className="px-4 py-3 font-medium">Campo</th>
               <th className="px-4 py-3 font-medium">WhatsApp</th>
+              <th className="px-4 py-3 font-medium">Senha (acesso home)</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Último envio</th>
               <th className="px-4 py-3 font-medium">Próximo envio</th>
@@ -212,9 +217,9 @@ export default function ContabilidadeAgendamentos() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin inline" /></td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin inline" /></td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">Nenhum contador cadastrado.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400">Nenhum contador cadastrado.</td></tr>
             ) : items.map((acc) => {
               const ag = acc.agendamento;
               const ativo = !!ag?.ativo;
@@ -230,6 +235,18 @@ export default function ContabilidadeAgendamentos() {
                   <td className="px-4 py-3 font-medium">{acc.nome}</td>
                   <td className="px-4 py-3 text-slate-500">{acc.campo}</td>
                   <td className="px-4 py-3 text-slate-500">{acc.telefone}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <code className="font-mono text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800">{acc.hash}</code>
+                      <button
+                        onClick={() => { navigator.clipboard?.writeText(acc.hash); toast.success('Senha copiada.'); }}
+                        className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+                        title="Copiar senha"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     {!acc.ativo ? (
                       <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Bloqueado</span>
@@ -286,6 +303,19 @@ export default function ContabilidadeAgendamentos() {
                 <Send className="w-3.5 h-3.5" />
                 Enviar agora
               </button>
+              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+              <button
+                onClick={() => { setEditTarget(acc); setOpenMenu(null); }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Editar contador
+              </button>
+              <button
+                onClick={() => { setDeleteTarget(acc); setOpenMenu(null); }}
+                className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 flex items-center gap-2"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Excluir contador
+              </button>
             </div>
           );
         })(),
@@ -316,6 +346,22 @@ export default function ContabilidadeAgendamentos() {
         <NovoContadorModal
           onClose={() => setNovoContadorOpen(false)}
           onCreated={() => { setNovoContadorOpen(false); load(); }}
+        />
+      )}
+
+      {editTarget && (
+        <EditarContadorModal
+          acesso={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={() => { setEditTarget(null); load(); }}
+        />
+      )}
+
+      {deleteTarget && (
+        <ExcluirContadorModal
+          acesso={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => { setDeleteTarget(null); load(); }}
         />
       )}
     </div>
@@ -441,6 +487,172 @@ function NovoContadorModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Modal "Editar Contador" ──────────────────────────────────────────────────
+
+function EditarContadorModal({ acesso, onClose, onSaved }: { acesso: Acesso; onClose: () => void; onSaved: () => void }) {
+  const [campos, setCampos] = useState<CampoOption[]>([]);
+  const [nome, setNome] = useState(acesso.nome);
+  const [telefone, setTelefone] = useState(acesso.telefone);
+  const [campo, setCampo] = useState(acesso.campo);
+  const [ativo, setAtivo] = useState(acesso.ativo);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/campos/list-all`, { headers: authHeaders() });
+        const json = await res.json();
+        setCampos(Array.isArray(json) ? json : []);
+      } catch {
+        toast.error('Falha ao carregar campos.');
+      }
+    })();
+  }, []);
+
+  const salvar = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${apiBase}/contabilidade/contadores/${acesso.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ nome, telefone, campo, ativo }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `Erro ${res.status}`);
+      toast.success('Contador atualizado.');
+      onSaved();
+    } catch (err: any) {
+      toast.error(err.message || 'Falha ao salvar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const bloqueado = !acesso.ativo;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="font-bold text-lg">Editar contador</h2>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="text-sm font-semibold block mb-1">Nome do contador</label>
+            <input
+              value={nome} onChange={(e) => setNome(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-transparent"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-semibold block mb-1">Campo</label>
+            <select
+              value={campo} onChange={(e) => setCampo(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-transparent"
+            >
+              {/* mantém o valor atual mesmo que não bata exatamente com o name da lista */}
+              {!campos.some((c) => c.name === campo) && campo && <option value={campo}>{campo}</option>}
+              {campos.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">O relatório enviado será somente deste campo.</p>
+          </div>
+          <div>
+            <label className="text-sm font-semibold block mb-1">WhatsApp (com DDD)</label>
+            <input
+              value={telefone} onChange={(e) => setTelefone(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold block mb-1">Senha de acesso (home)</label>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono text-sm">{acesso.hash}</code>
+              <button
+                onClick={() => { navigator.clipboard?.writeText(acesso.hash); toast.success('Copiado.'); }}
+                className="p-2 rounded-lg border border-slate-300 dark:border-slate-700"
+                title="Copiar"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-medium text-sm">Acesso ativo</span>
+              {bloqueado && <p className="text-xs text-red-500">Bloqueado por tentativas erradas — ative para liberar de novo.</p>}
+            </div>
+            <Switch checked={ativo} onChange={setAtivo} />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700">Cancelar</button>
+          <button
+            onClick={salvar}
+            disabled={saving || !nome.trim() || !campo || !telefone.trim()}
+            className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50 flex items-center gap-2"
+          >
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal "Excluir Contador" ─────────────────────────────────────────────────
+
+function ExcluirContadorModal({ acesso, onClose, onDeleted }: { acesso: Acesso; onClose: () => void; onDeleted: () => void }) {
+  const [deleting, setDeleting] = useState(false);
+
+  const excluir = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`${apiBase}/contabilidade/contadores/${acesso.id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `Erro ${res.status}`);
+      toast.success('Contador excluído.');
+      onDeleted();
+    } catch (err: any) {
+      toast.error(err.message || 'Falha ao excluir.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-sm">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="font-bold text-lg flex items-center gap-2 text-red-600 dark:text-red-400">
+            <Trash2 className="w-5 h-5" /> Excluir contador
+          </h2>
+        </div>
+        <div className="p-4 text-sm text-slate-600 dark:text-slate-300">
+          Excluir <strong>{acesso.nome}</strong>? Isso remove também o agendamento e todo o histórico de envios deste contador. Esta ação não pode ser desfeita.
+        </div>
+        <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700">Cancelar</button>
+          <button
+            onClick={excluir}
+            disabled={deleting}
+            className="px-4 py-2 rounded-lg bg-red-600 text-white disabled:opacity-50 flex items-center gap-2"
+          >
+            {deleting && <Loader2 className="w-4 h-4 animate-spin" />} Excluir
+          </button>
+        </div>
       </div>
     </div>
   );

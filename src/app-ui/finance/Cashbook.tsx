@@ -1212,6 +1212,9 @@ export default function Cashbook() {
 
   // Table state
   const [filterType, setFilterType] = useState<'all' | 'RECEITA' | 'DESPESA'>('all');
+  // Filtro de forma de pagamento — para conferir o Livro Caixa contra o relatório
+  // contábil, que conta SOMENTE dinheiro. 'all' | 'DINHEIRO' | 'PIX'.
+  const [filterPg, setFilterPg] = useState<'all' | 'DINHEIRO' | 'PIX'>('all');
   const [tableSearch, setTableSearch] = useState('');
   const [sortKey, setSortKey]       = useState<SortKey>('plano_tipo');
   const [sortDir, setSortDir]       = useState<SortDir>('asc');
@@ -1270,7 +1273,16 @@ export default function Cashbook() {
   }
 
   // Computed values
-  const typeFiltered = filterType === 'all' ? rows : rows.filter(r => r.tipo === filterType);
+  // pgFiltered = base para TODOS os totais/cards: respeita o filtro de forma de
+  // pagamento (Todos/Dinheiro/PIX), pra os números baterem com o relatório contábil.
+  const pgFiltered = useMemo(() => {
+    if (filterPg === 'all') return rows;
+    return rows.filter(r => (r.forma_pg || '').trim().toUpperCase() === filterPg);
+  }, [rows, filterPg]);
+
+  const typeFiltered = useMemo(() => {
+    return filterType === 'all' ? pgFiltered : pgFiltered.filter(r => r.tipo === filterType);
+  }, [pgFiltered, filterType]);
 
   const searchFiltered = useMemo(() => {
     const q = tableSearch.trim().toLowerCase();
@@ -1311,15 +1323,22 @@ export default function Cashbook() {
     return sorted.slice(s, s + pageSize);
   }, [sorted, page, pageSize]);
 
-  const totalReceita = rows.filter(r => r.tipo === 'RECEITA').reduce((s, r) => s + Number(r.valor), 0);
-  const totalDespesa = rows.filter(r => r.tipo === 'DESPESA').reduce((s, r) => s + Number(r.valor), 0);
-  const totalDizimos = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).reduce((s, r) => s + Number(r.valor), 0);
-  const totalOfertas = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).reduce((s, r) => s + Number(r.valor), 0);
-  const qtdReceitas  = rows.filter(r => r.tipo === 'RECEITA').length;
-  const qtdDespesas  = rows.filter(r => r.tipo === 'DESPESA').length;
-  const qtdDizimos   = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).length;
-  const qtdOfertas   = rows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).length;
+  // Todos os cards derivam de pgFiltered — reagem ao filtro de forma de pagamento.
+  const totalReceita = pgFiltered.filter(r => r.tipo === 'RECEITA').reduce((s, r) => s + Number(r.valor), 0);
+  const totalDespesa = pgFiltered.filter(r => r.tipo === 'DESPESA').reduce((s, r) => s + Number(r.valor), 0);
+  const totalDizimos = pgFiltered.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).reduce((s, r) => s + Number(r.valor), 0);
+  const totalOfertas = pgFiltered.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).reduce((s, r) => s + Number(r.valor), 0);
+  const qtdReceitas  = pgFiltered.filter(r => r.tipo === 'RECEITA').length;
+  const qtdDespesas  = pgFiltered.filter(r => r.tipo === 'DESPESA').length;
+  const qtdDizimos   = pgFiltered.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).length;
+  const qtdOfertas   = pgFiltered.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).length;
   const liquido      = totalReceita - totalDespesa;
+  const totalMovimentos = pgFiltered.length;
+
+  // Contagem por forma de pagamento — sempre sobre todos os rows, pra o switch
+  // mostrar o total de cada forma independente do que estiver selecionado.
+  const qtdDinheiro = rows.filter(r => (r.forma_pg || '').trim().toUpperCase() === 'DINHEIRO').length;
+  const qtdPix      = rows.filter(r => (r.forma_pg || '').trim().toUpperCase() === 'PIX').length;
 
   function Th({ col, label }: { col: SortKey; label: string }) {
     return (
@@ -1551,7 +1570,7 @@ export default function Cashbook() {
               />
               <SummaryPanel
                 label="Movimentos"
-                value={`${rows.length}`}
+                value={`${totalMovimentos}`}
                 icon={<DollarSign className="h-3 w-3" />}
               />
               <SummaryPanel
@@ -1687,6 +1706,28 @@ export default function Cashbook() {
                     </span>
                   )}
                 </button>
+
+                {/* Divisor + switch triplo de forma de pagamento (para conferir com o relatório contábil, que conta só dinheiro) */}
+                <span className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-700" />
+                <div className="inline-flex rounded-full border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  {([
+                    { v: 'all', l: `Todos` },
+                    { v: 'DINHEIRO', l: `Dinheiro (${qtdDinheiro})` },
+                    { v: 'PIX', l: `PIX (${qtdPix})` },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.v}
+                      onClick={() => { setFilterPg(opt.v); setPage(1); }}
+                      className={`px-3 py-1 text-xs font-semibold transition-all ${
+                        filterPg === opt.v
+                          ? 'bg-emerald-600 text-white'
+                          : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Right: per-page + info */}
