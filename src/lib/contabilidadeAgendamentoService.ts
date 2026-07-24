@@ -265,7 +265,25 @@ function fmtMoeda(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-export function montarMensagem(nomeContador: string, relatorios: RelatorioPeriodo[], comparacoes: ComparacaoPeriodo[]): string {
+const DIAS_SEMANA_PT = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
+
+/** Descreve a configuração atual em texto, pra deixar claro no próprio WhatsApp o que está agendado (RF002). */
+function descreverAgendamento(ag: ContabilidadeAgendamento): string {
+  const hora = (ag.hora_envio || '').slice(0, 5)
+  if (ag.frequencia === 'manual') return 'Este relatório é enviado manualmente, sem agendamento automático.'
+  if (ag.frequencia === 'semanal') {
+    const dia = DIAS_SEMANA_PT[((ag.dia_envio % 7) + 7) % 7]
+    return `Este relatório é enviado automaticamente toda ${dia}, às ${hora}.`
+  }
+  return `Este relatório é enviado automaticamente todo dia ${ag.dia_envio} de cada mês, às ${hora}.`
+}
+
+export function montarMensagem(
+  nomeContador: string,
+  relatorios: RelatorioPeriodo[],
+  comparacoes: ComparacaoPeriodo[],
+  ag?: ContabilidadeAgendamento
+): string {
   const linhasResumo = relatorios.map((r) => `• ${MESES_PT[r.mes - 1]}/${r.ano}: ${r.total} lançamentos — ${fmtMoeda(r.totalValor)}`)
 
   const linhasDivergencia = comparacoes.map((c) => {
@@ -292,10 +310,59 @@ export function montarMensagem(nomeContador: string, relatorios: RelatorioPeriod
   }
 
   partes.push('', 'CSV em anexo com os lançamentos detalhados.')
+
+  if (ag) {
+    partes.push('', `_${descreverAgendamento(ag)} Para alterar a data, o horário ou o período enviado, solicite ao administrador do sistema._`)
+  }
+
   return partes.join('\n')
 }
 
 // ── Orquestração (RF005-RF010) ──────────────────────────────────────────────
+
+async function construirAnalise(ag: ContabilidadeAgendamento, acesso: ContabilidadeAcessoLite) {
+  const periodos = calcularPeriodos(ag)
+  const relatorios = await Promise.all(periodos.map((p) => gerarRelatorioPeriodo(acesso.campo, p)))
+  const comparacoes = await Promise.all(relatorios.map((r) => compararComVersaoAnterior(acesso.id, r)))
+  return { relatorios, comparacoes }
+}
+
+export interface AnalisePeriodo {
+  ano: number
+  mes: number
+  totalRegistros: number
+  totalValor: number
+  versaoAnterior: number | null
+  qtdAnterior: number | null
+  diferenca: number | null
+  ausentes: number
+}
+
+export interface AnaliseAgendamento {
+  periodos: AnalisePeriodo[]
+  mensagemPreview: string
+}
+
+/**
+ * Só analisa (RF008/RF009) — não sobe CSV, não envia WhatsApp, não grava nada.
+ * Usado pela UI pra mostrar "o que vai ser enviado" antes do usuário confirmar.
+ */
+export async function analisarAgendamento(ag: ContabilidadeAgendamento, acesso: ContabilidadeAcessoLite): Promise<AnaliseAgendamento> {
+  const { relatorios, comparacoes } = await construirAnalise(ag, acesso)
+
+  const periodos: AnalisePeriodo[] = relatorios.map((r, i) => ({
+    ano: r.ano,
+    mes: r.mes,
+    totalRegistros: r.total,
+    totalValor: r.totalValor,
+    versaoAnterior: comparacoes[i].versaoAnterior,
+    qtdAnterior: comparacoes[i].qtdAnterior,
+    diferenca: comparacoes[i].diferenca,
+    ausentes: comparacoes[i].ausentes.length,
+  }))
+
+  return { periodos, mensagemPreview: montarMensagem(acesso.nome, relatorios, comparacoes, ag) }
+}
 
 export interface ProcessarResultado {
   status: 'sucesso' | 'erro' | 'parcial'
@@ -314,9 +381,7 @@ export async function processarAgendamento(
   const inicio = Date.now()
 
   try {
-    const periodos = calcularPeriodos(ag)
-    const relatorios = await Promise.all(periodos.map((p) => gerarRelatorioPeriodo(acesso.campo, p)))
-    const comparacoes = await Promise.all(relatorios.map((r) => compararComVersaoAnterior(acesso.id, r)))
+    const { relatorios, comparacoes } = await construirAnalise(ag, acesso)
 
     const csvLinhas = [CSV_HEADER, ...relatorios.flatMap((r) => r.csvRows)]
     const csvBuffer = Buffer.from(csvLinhas.join('\n'), 'utf-8')
@@ -330,7 +395,7 @@ export async function processarAgendamento(
     if (upErr) throw new Error(`upload_csv: ${upErr.message}`)
 
     const { data: urlData } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(path)
-    const mensagem = montarMensagem(acesso.nome, relatorios, comparacoes)
+    const mensagem = montarMensagem(acesso.nome, relatorios, comparacoes, ag)
 
     const envio = await quickSendWhatsApp({
       ownerUserId: 'system-contabilidade-cron',

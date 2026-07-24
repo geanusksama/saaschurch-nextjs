@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Calculator, MoreVertical, Send, History, X, Loader2 } from 'lucide-react';
+import { Calculator, MoreVertical, Send, History, X, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { podeAcessarContabilidadeAgendamento } from '../../lib/contabilidadeAgendamentoRole';
@@ -79,11 +79,11 @@ function fmtData(iso: string | null) {
  * deu certo, amarelo = agendado mas ainda sem nenhum envio registrado, cinza = sem
  * agendamento ativo.
  */
-function statusDotClass(acc: Acesso): string {
-  if (acc.ultimo_status_envio === 'erro') return 'bg-red-500';
-  if (acc.ultimo_status_envio === 'sucesso' || acc.ultimo_status_envio === 'parcial') return 'bg-green-500';
-  if (acc.agendamento?.ativo) return 'bg-yellow-400';
-  return 'bg-slate-300 dark:bg-slate-600';
+function statusDotColor(acc: Acesso): string {
+  if (acc.ultimo_status_envio === 'erro') return '#ef4444';
+  if (acc.ultimo_status_envio === 'sucesso' || acc.ultimo_status_envio === 'parcial') return '#22c55e';
+  if (acc.agendamento?.ativo) return '#facc15';
+  return '#cbd5e1';
 }
 
 function statusDotLabel(acc: Acesso): string {
@@ -108,7 +108,7 @@ export default function ContabilidadeAgendamentos() {
   const [openMenu, setOpenMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [configTarget, setConfigTarget] = useState<Acesso | null>(null);
   const [historicoTarget, setHistoricoTarget] = useState<Acesso | null>(null);
-  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<Acesso | null>(null);
 
   useEffect(() => {
     if (!openMenu) return;
@@ -148,26 +148,17 @@ export default function ContabilidadeAgendamentos() {
   useEffect(() => { if (permitido) load(); }, []);
 
   const enviarAgora = async (acesso: Acesso) => {
-    setSendingId(acesso.id);
-    setOpenMenu(null);
-    try {
-      const res = await fetch(`${apiBase}/contabilidade/agendamentos/${acesso.id}/enviar-agora`, {
-        method: 'POST',
-        headers: authHeaders(),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || `Erro ${res.status}`);
-      if (json.resultado?.status === 'erro') {
-        toast.error(`Falha ao enviar: ${json.resultado.erro}`);
-      } else {
-        toast.success(`Relatório enviado para ${acesso.nome}`);
-      }
-      load();
-    } catch (err: any) {
-      toast.error(err.message || 'Falha ao enviar relatório.');
-    } finally {
-      setSendingId(null);
+    const res = await fetch(`${apiBase}/contabilidade/agendamentos/${acesso.id}/enviar-agora`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `Erro ${res.status}`);
+    if (json.resultado?.status === 'erro') {
+      throw new Error(json.resultado.erro || 'Falha ao enviar relatório.');
     }
+    load();
+    return json.resultado;
   };
 
   if (!permitido) {
@@ -224,7 +215,8 @@ export default function ContabilidadeAgendamentos() {
                 <tr key={acc.id} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-block w-2.5 h-2.5 rounded-full ${statusDotClass(acc)}`}
+                      className="inline-block w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: statusDotColor(acc) }}
                       title={statusDotLabel(acc)}
                     />
                   </td>
@@ -280,11 +272,11 @@ export default function ContabilidadeAgendamentos() {
                 <History className="w-3.5 h-3.5" /> Histórico de envios
               </button>
               <button
-                onClick={() => enviarAgora(acc)}
-                disabled={sendingId === acc.id || !acc.ativo}
+                onClick={() => { setPreviewTarget(acc); setOpenMenu(null); }}
+                disabled={!acc.ativo}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50"
               >
-                {sendingId === acc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                <Send className="w-3.5 h-3.5" />
                 Enviar agora
               </button>
             </div>
@@ -303,6 +295,14 @@ export default function ContabilidadeAgendamentos() {
 
       {historicoTarget && (
         <HistoricoDrawer acesso={historicoTarget} onClose={() => setHistoricoTarget(null)} />
+      )}
+
+      {previewTarget && (
+        <EnviarAgoraModal
+          acesso={previewTarget}
+          onClose={() => setPreviewTarget(null)}
+          onConfirm={() => enviarAgora(previewTarget)}
+        />
       )}
     </div>
   );
@@ -533,6 +533,147 @@ function HistoricoDrawer({ acesso, onClose }: { acesso: Acesso; onClose: () => v
               )}
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal "Enviar agora": prévia (RF008/RF009) antes de confirmar o disparo ──
+
+type AnalisePeriodo = {
+  ano: number;
+  mes: number;
+  totalRegistros: number;
+  totalValor: number;
+  versaoAnterior: number | null;
+  qtdAnterior: number | null;
+  diferenca: number | null;
+  ausentes: number;
+};
+
+function fmtMoeda(v: number) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function EnviarAgoraModal({ acesso, onClose, onConfirm }: { acesso: Acesso; onClose: () => void; onConfirm: () => Promise<any> }) {
+  const [loadingPreview, setLoadingPreview] = useState(true);
+  const [previewError, setPreviewError] = useState('');
+  const [periodos, setPeriodos] = useState<AnalisePeriodo[]>([]);
+  const [mensagemPreview, setMensagemPreview] = useState('');
+  const [sending, setSending] = useState(false);
+  const [resultado, setResultado] = useState<{ ok: boolean; texto: string } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/contabilidade/agendamentos/${acesso.id}/preview`, { headers: authHeaders() });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `Erro ${res.status}`);
+        setPeriodos(json.analise?.periodos ?? []);
+        setMensagemPreview(json.analise?.mensagemPreview ?? '');
+      } catch (err: any) {
+        setPreviewError(err.message || 'Falha ao analisar o período.');
+      } finally {
+        setLoadingPreview(false);
+      }
+    })();
+  }, [acesso.id]);
+
+  const confirmar = async () => {
+    setSending(true);
+    try {
+      await onConfirm();
+      setResultado({ ok: true, texto: `Relatório enviado para ${acesso.nome}.` });
+    } catch (err: any) {
+      setResultado({ ok: false, texto: err.message || 'Falha ao enviar relatório.' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const totalDivergencias = periodos.reduce((s, p) => s + p.ausentes, 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="font-bold text-lg">Enviar agora — {acesso.nome}</h2>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {resultado ? (
+            <div className={`p-4 rounded-lg text-sm ${resultado.ok ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300'}`}>
+              {resultado.texto}
+            </div>
+          ) : loadingPreview ? (
+            <div className="text-center py-8 text-slate-400">
+              <Loader2 className="w-5 h-5 animate-spin inline mb-2" />
+              <p>Analisando o que vai ser enviado…</p>
+            </div>
+          ) : previewError ? (
+            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" /> {previewError}
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-slate-500">
+                Baseado na configuração atual de <strong>{acesso.nome}</strong>, isto é o que vai ser enviado por WhatsApp para <strong>{acesso.telefone}</strong>:
+              </p>
+
+              <div className="space-y-2">
+                {periodos.map((p, i) => (
+                  <div key={i} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{MESES_PT[p.mes - 1]}/{p.ano}</span>
+                      <span className="text-sm text-slate-500">{p.totalRegistros} lançamentos — {fmtMoeda(p.totalValor)}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {p.versaoAnterior === null
+                        ? 'Primeiro envio deste período'
+                        : p.diferenca === 0
+                          ? 'Sem alterações desde o último envio'
+                          : `Anterior: ${p.qtdAnterior} → agora: ${p.totalRegistros} (${p.diferenca! > 0 ? '+' : ''}${p.diferenca})`}
+                    </p>
+                    {p.ausentes > 0 && (
+                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> {p.ausentes} lançamento(s) que sumiram desde o último envio
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {totalDivergencias > 0 && (
+                <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300 text-sm flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                  {totalDivergencias} lançamento(s) no total sumiram desde o(s) último(s) envio(s) — o CSV e a mensagem já avisam o contador disso.
+                </div>
+              )}
+
+              <details className="text-sm">
+                <summary className="cursor-pointer text-slate-500">Ver texto exato da mensagem</summary>
+                <pre className="whitespace-pre-wrap text-xs mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">{mensagemPreview}</pre>
+              </details>
+            </>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700">
+            {resultado ? 'Fechar' : 'Cancelar'}
+          </button>
+          {!resultado && (
+            <button
+              onClick={confirmar}
+              disabled={sending || loadingPreview || !!previewError}
+              className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50 flex items-center gap-2"
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Confirmar envio
+            </button>
+          )}
         </div>
       </div>
     </div>

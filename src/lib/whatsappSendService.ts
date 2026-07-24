@@ -10,6 +10,16 @@ import type { SendMessagePayload, SendMessageResult, WhatsAppInstance } from '@/
 const ZAPI_BASE = 'https://api.z-api.io'
 const RATE_LIMIT_MS = 5000 // NUNCA reduzir — risco de ban do número
 
+const MIME_BY_EXT: Record<string, string> = {
+  pdf: 'application/pdf',
+  csv: 'text/csv',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+}
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 // ── Busca a instância ativa de um owner ───────────────────────────────────────
@@ -167,6 +177,9 @@ export async function sendDocumentViaZApi(
   await enforceRateLimit(instance.instance_id)
 
   const ext = fileName.split('.').pop() || 'pdf'
+  // A Z-API acrescenta ".{ext}" sozinha ao nome exibido — manda sem a extensão pra não duplicar (ex: "arquivo.csv.csv").
+  const baseName = fileName.replace(new RegExp(`\\.${ext}$`, 'i'), '')
+  const mimeType = MIME_BY_EXT[ext.toLowerCase()] || 'application/pdf'
   const url = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}/send-document/${ext}`
   const res = await fetch(url, {
     method: 'POST',
@@ -177,8 +190,8 @@ export async function sendDocumentViaZApi(
     body: JSON.stringify({
       phone: to,
       document: documentUrl,
-      fileName,
-      mimeType: 'application/pdf',
+      fileName: baseName,
+      mimeType,
       caption,
     }),
   })
