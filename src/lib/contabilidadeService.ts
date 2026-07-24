@@ -160,23 +160,45 @@ const CHUNK = 1000
  * - forma_pg = DINHEIRO: a contabilidade so recebe dinheiro em especie.
  *   PIX, cartao, deposito e TED NUNCA entram.
  * - valor > 0: o modelo nao tem linha zerada.
- * - campo do contador OU campo nulo: o legado importado gravou "campinas" no
- *   campo; os lancamentos novos feitos no sistema vem com campo nulo.
+ * - ISOLAMENTO POR CAMPO via igreja: o lancamento pertence ao campo da sua
+ *   igreja (livro_caixa.church_id -> churches.regional_id -> regionais.campo_id).
+ *   NAO usamos mais a coluna texto `campo` com fallback pra NULL: como todo
+ *   lancamento novo (de QUALQUER campo) vem com `campo` nulo, o fallback fazia
+ *   o relatorio de Campinas somar dinheiro de Curitiba, Osasco, etc. A relacao
+ *   de igreja diz com precisao de qual campo e o lancamento. Todos os
+ *   lancamentos do sistema tem church_id preenchido (inclusive o legado 2025),
+ *   entao nada e perdido — e o total de 2025 (33.305) passou a bater exatamente.
  *
  * Nao filtra por situacao/deleted_at de proposito: a carga do legado marcou
  * todo o historico como excluido: filtrar por isso zera o relatorio.
  */
-/** Monta o filtro de campo sem deixar caractere de sintaxe do PostgREST passar. */
-function orCampo(campo: string): string {
-  const limpo = campo.replace(/[^\p{L}\p{N} _-]/gu, '')
-  return `campo.ilike.${limpo},campo.is.null`
+
+/** Resolve o texto do campo (ex.: 'campinas') para o UUID em `campos`, por code ou name. */
+export async function resolverCampoId(campo: string): Promise<string> {
+  const termo = (campo || '').replace(/[^\p{L}\p{N} _-]/gu, '').trim()
+  if (!termo) throw new Error('Campo do contador vazio.')
+
+  const { data, error } = await supabaseAdmin
+    .from('campos')
+    .select('id')
+    .or(`code.ilike.${termo},name.ilike.${termo}`)
+    .is('deleted_at', null)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error(`Campo "${campo}" não encontrado no cadastro de campos.`)
+  return data.id
 }
 
-function baseQuery(campo: string, inicio: string, fim: string) {
+/** Inner join obrigatorio ate o campo — descarta qualquer lancamento fora do campo do contador. */
+const CAMPO_JOIN = 'churches!inner(regionais!inner(campo_id))'
+
+function baseQuery(campoId: string, inicio: string, fim: string) {
   return supabaseAdmin
     .from('livro_caixa')
-    .select('data_lancamento,forma_pg,categoria,tipo,plano_de_conta,valor')
-    .or(orCampo(campo))
+    .select(`data_lancamento,forma_pg,categoria,tipo,plano_de_conta,valor,${CAMPO_JOIN}`)
+    .eq('churches.regionais.campo_id', campoId)
     .eq('forma_pg', 'DINHEIRO')
     .gt('valor', 0)
     .gte('data_lancamento', inicio)
@@ -184,10 +206,11 @@ function baseQuery(campo: string, inicio: string, fim: string) {
 }
 
 export async function contarLancamentos(campo: string, inicio: string, fim: string): Promise<number> {
+  const campoId = await resolverCampoId(campo)
   const { count, error } = await supabaseAdmin
     .from('livro_caixa')
-    .select('id', { count: 'exact', head: true })
-    .or(orCampo(campo))
+    .select(`id,${CAMPO_JOIN}`, { count: 'exact', head: true })
+    .eq('churches.regionais.campo_id', campoId)
     .eq('forma_pg', 'DINHEIRO')
     .gt('valor', 0)
     .gte('data_lancamento', inicio)
@@ -206,10 +229,11 @@ export async function* buscarLancamentosEmBlocos(
   inicio: string,
   fim: string
 ): AsyncGenerator<string[]> {
+  const campoId = await resolverCampoId(campo)
   let offset = 0
 
   for (;;) {
-    const { data, error } = await baseQuery(campo, inicio, fim)
+    const { data, error } = await baseQuery(campoId, inicio, fim)
       .order('data_lancamento', { ascending: true })
       .order('id', { ascending: true })
       .range(offset, offset + CHUNK - 1)

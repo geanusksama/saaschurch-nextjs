@@ -27,7 +27,7 @@ export function Register() {
   useEffect(() => {
     const loadCampos = async () => {
       try {
-        const response = await fetch(`${apiBase}/campos`);
+        const response = await fetch(`${apiBase}/campos/public`);
         if (!response.ok) {
           throw new Error(`Erro ${response.status} ao carregar campos.`);
         }

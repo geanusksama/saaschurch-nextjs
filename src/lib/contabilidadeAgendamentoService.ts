@@ -10,7 +10,7 @@
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { quickSendWhatsApp } from '@/lib/whatsappSendService'
-import { CSV_HEADER, linhaCsv, type LivroCaixaRow } from '@/lib/contabilidadeService'
+import { CSV_HEADER, linhaCsv, resolverCampoId, type LivroCaixaRow } from '@/lib/contabilidadeService'
 
 const CHUNK = 1000
 const STORAGE_BUCKET = 'dados'
@@ -155,19 +155,19 @@ interface LivroCaixaRowComId extends LivroCaixaRow {
   id: string
 }
 
-function orCampo(campo: string): string {
-  const limpo = campo.replace(/[^\p{L}\p{N} _-]/gu, '')
-  return `campo.ilike.${limpo},campo.is.null`
-}
+// Isolamento por campo via igreja — mesma regra de contabilidadeService (ver
+// resolverCampoId lá). Não usa mais a coluna texto `campo`/fallback nulo, que
+// misturava lançamentos de outros campos no relatório de Campinas.
+const CAMPO_JOIN = 'churches!inner(regionais!inner(campo_id))'
 
 /** Mesmos filtros de contabilidadeService.baseQuery, com o id incluso para comparacao de versoes. */
-async function* buscarLancamentosComId(campo: string, inicio: string, fim: string): AsyncGenerator<LivroCaixaRowComId[]> {
+async function* buscarLancamentosComId(campoId: string, inicio: string, fim: string): AsyncGenerator<LivroCaixaRowComId[]> {
   let offset = 0
   for (;;) {
     const { data, error } = await supabaseAdmin
       .from('livro_caixa')
-      .select('id,data_lancamento,forma_pg,categoria,tipo,plano_de_conta,valor')
-      .or(orCampo(campo))
+      .select(`id,data_lancamento,forma_pg,categoria,tipo,plano_de_conta,valor,${CAMPO_JOIN}`)
+      .eq('churches.regionais.campo_id', campoId)
       .eq('forma_pg', 'DINHEIRO')
       .gt('valor', 0)
       .gte('data_lancamento', inicio)
@@ -198,11 +198,12 @@ export async function gerarRelatorioPeriodo(campo: string, { ano, mes }: Periodo
   const inicio = `${ano}-${String(mes).padStart(2, '0')}-01`
   const fim = `${ano}-${String(mes).padStart(2, '0')}-${String(lastDayOfMonth(ano, mes)).padStart(2, '0')}`
 
+  const campoId = await resolverCampoId(campo)
   const csvRows: string[] = []
   const ids: string[] = []
   let totalValor = 0
 
-  for await (const bloco of buscarLancamentosComId(campo, inicio, fim)) {
+  for await (const bloco of buscarLancamentosComId(campoId, inicio, fim)) {
     for (const row of bloco) {
       csvRows.push(linhaCsv(row))
       ids.push(row.id)

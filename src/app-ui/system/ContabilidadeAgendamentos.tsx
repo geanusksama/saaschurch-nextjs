@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Calculator, MoreVertical, Send, History, X, Loader2, AlertTriangle } from 'lucide-react';
+import { Calculator, MoreVertical, Send, History, X, Loader2, AlertTriangle, Plus, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { podeAcessarContabilidadeAgendamento } from '../../lib/contabilidadeAgendamentoRole';
@@ -109,6 +109,7 @@ export default function ContabilidadeAgendamentos() {
   const [configTarget, setConfigTarget] = useState<Acesso | null>(null);
   const [historicoTarget, setHistoricoTarget] = useState<Acesso | null>(null);
   const [previewTarget, setPreviewTarget] = useState<Acesso | null>(null);
+  const [novoContadorOpen, setNovoContadorOpen] = useState(false);
 
   useEffect(() => {
     if (!openMenu) return;
@@ -179,12 +180,18 @@ export default function ContabilidadeAgendamentos() {
         <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
           <Calculator className="w-6 h-6 text-slate-600 dark:text-slate-300" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold">Contabilidade — Envio Automático</h1>
           <p className="text-slate-600 dark:text-slate-400">
             Agende o envio periódico do relatório contábil por WhatsApp aos contadores cadastrados.
           </p>
         </div>
+        <button
+          onClick={() => setNovoContadorOpen(true)}
+          className="px-4 py-2 rounded-lg bg-slate-900 dark:bg-purple-600 text-white flex items-center gap-2 shrink-0"
+        >
+          <Plus className="w-4 h-4" /> Novo Contador
+        </button>
       </div>
 
       {error && <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">{error}</div>}
@@ -304,6 +311,137 @@ export default function ContabilidadeAgendamentos() {
           onConfirm={() => enviarAgora(previewTarget)}
         />
       )}
+
+      {novoContadorOpen && (
+        <NovoContadorModal
+          onClose={() => setNovoContadorOpen(false)}
+          onCreated={() => { setNovoContadorOpen(false); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Modal "Novo Contador" (cadastro de contabilidade_acessos) ────────────────
+
+type CampoOption = { id: string; name: string };
+
+function NovoContadorModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [campos, setCampos] = useState<CampoOption[]>([]);
+  const [nome, setNome] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [campo, setCampo] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [hashGerado, setHashGerado] = useState<{ hash: string; nome: string } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/campos/list-all`, { headers: authHeaders() });
+        const json = await res.json();
+        setCampos(Array.isArray(json) ? json : []);
+      } catch {
+        toast.error('Falha ao carregar campos.');
+      }
+    })();
+  }, []);
+
+  const salvar = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${apiBase}/contabilidade/contadores`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ nome, telefone, campo }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `Erro ${res.status}`);
+      setHashGerado({ hash: json.contador.hash, nome: json.contador.nome });
+      toast.success('Contador cadastrado.');
+    } catch (err: any) {
+      toast.error(err.message || 'Falha ao cadastrar contador.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="font-bold text-lg">Novo Contador</h2>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+
+        {hashGerado ? (
+          <div className="p-4 space-y-4">
+            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 text-sm">
+              <strong>{hashGerado.nome}</strong> cadastrado com sucesso.
+            </div>
+            <div>
+              <p className="text-sm font-semibold mb-1">Senha de acesso do contador (hash)</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono text-sm">{hashGerado.hash}</code>
+                <button
+                  onClick={() => { navigator.clipboard?.writeText(hashGerado.hash); toast.success('Copiado.'); }}
+                  className="p-2 rounded-lg border border-slate-300 dark:border-slate-700"
+                  title="Copiar"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Anote e repasse ao contador — é a senha que ele usa junto do WhatsApp para acessar o relatório. Não será mostrada de novo.
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button onClick={onCreated} className="px-4 py-2 rounded-lg bg-purple-600 text-white">Concluir</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="text-sm font-semibold block mb-1">Nome do contador</label>
+                <input
+                  value={nome} onChange={(e) => setNome(e.target.value)}
+                  placeholder="Ex.: Contabilidade Campinas"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-transparent"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold block mb-1">Campo</label>
+                <select
+                  value={campo} onChange={(e) => setCampo(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-transparent"
+                >
+                  <option value="">Selecione o campo…</option>
+                  {campos.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">O relatório enviado será somente deste campo.</p>
+              </div>
+              <div>
+                <label className="text-sm font-semibold block mb-1">WhatsApp (com DDD)</label>
+                <input
+                  value={telefone} onChange={(e) => setTelefone(e.target.value)}
+                  placeholder="Ex.: 19992126683"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-transparent"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
+              <button onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700">Cancelar</button>
+              <button
+                onClick={salvar}
+                disabled={saving || !nome.trim() || !campo || !telefone.trim()}
+                className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50 flex items-center gap-2"
+              >
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />} Cadastrar
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

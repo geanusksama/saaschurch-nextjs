@@ -1216,7 +1216,7 @@ export default function Cashbook() {
   const [sortKey, setSortKey]       = useState<SortKey>('plano_tipo');
   const [sortDir, setSortDir]       = useState<SortDir>('asc');
   const [page, setPage]             = useState(1);
-  const [pageSize, setPageSize]     = useState(100);
+  const [pageSize, setPageSize]     = useState(1000);
   const [editRow, setEditRow]       = useState<Row | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
   const [deleting, setDeleting]     = useState(false);
@@ -1694,7 +1694,7 @@ export default function Cashbook() {
                 <span>Exibir</span>
                 <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
                   className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded text-sm bg-white dark:bg-slate-900">
-                  {[25, 50, 100, 200, 500].map(n => <option key={n} value={n}>{n}</option>)}
+                  {[1000, 2000, 3000, 4000, 5000].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
                 <span>por pagina</span>
                 <span className="text-slate-400 ml-2">{sorted.length} lançamento{sorted.length !== 1 ? 's' : ''}</span>
