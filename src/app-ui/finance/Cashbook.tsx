@@ -4,7 +4,7 @@ import {
   TrendingDown, TrendingUp, Building2, X, ChevronUp, ChevronDown,
   ChevronsUpDown, ChevronLeft, ChevronRight, MapPin, Users,
   Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet, CalendarDays, Share2,
-  BarChart3
+  BarChart3, ArrowUp, ArrowDown, UserX
 } from 'lucide-react';
 import { DateRangePicker } from '../../components/ui/DateRangePicker';
 import { Link } from 'react-router';
@@ -226,39 +226,70 @@ function activeTone(tone: 'default' | 'primary' | 'danger' | 'blue') {
   return 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700';
 }
 
+/** Variação percentual atual x mês anterior; null quando não há base de comparação. */
+function calcDelta(cur: number, prev: number | undefined): number | null {
+  if (prev === undefined) return null;
+  if (prev === 0) return cur === 0 ? 0 : 100;
+  return ((cur - prev) / Math.abs(prev)) * 100;
+}
+
 function SummaryPanel({
   label,
   value,
-  icon,
   tone = 'neutral',
+  curNum,
+  prevNum,
+  onClick,
+  alert = false,
 }: {
   label: string;
   value: string;
-  icon?: React.ReactNode;
   tone?: 'neutral' | 'positive' | 'negative';
+  curNum?: number;
+  prevNum?: number;
+  onClick?: () => void;
+  alert?: boolean;
 }) {
   const labelStyle = tone === 'positive'
-    ? { color: '#15803d' } // green-700
+    ? { color: '#15803d' }
     : tone === 'negative'
-      ? { color: '#b91c1c' } // red-700
+      ? { color: '#b91c1c' }
       : undefined;
 
   const valStyle = tone === 'positive'
-    ? { color: '#16a34a', fontWeight: 'bold' as const } // green-600
+    ? { color: '#16a34a', fontWeight: 'bold' as const }
     : tone === 'negative'
-      ? { color: '#dc2626', fontWeight: 'bold' as const } // red-600
-      : { fontWeight: '600' as const };
+      ? { color: '#dc2626', fontWeight: 'bold' as const }
+      : { fontWeight: '700' as const };
+
+  const delta = curNum !== undefined ? calcDelta(curNum, prevNum) : null;
+  const up = (delta ?? 0) >= 0;
 
   return (
-    <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 shadow-sm">
-      <div 
-        className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.18em]"
-        style={labelStyle}
-      >
-        {icon ? <span className="opacity-90">{icon}</span> : null}
-        <span>{label}</span>
+    <div
+      onClick={onClick}
+      className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 ${
+        alert
+          ? 'border-amber-300 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-950/40'
+          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+      } ${onClick ? 'cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-colors' : ''}`}
+    >
+      {/* metade 1: rótulo + valor */}
+      <div className="min-w-0">
+        <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400" style={labelStyle}>{label}</div>
+        <div className="text-[13px] leading-tight truncate" style={valStyle}>{value}</div>
       </div>
-      <div className="mt-1 text-sm leading-none" style={valStyle}>{value}</div>
+      {/* metade 2: variação vs mês anterior */}
+      {delta !== null && (
+        <div
+          className="flex items-center gap-0.5 text-[10px] font-bold shrink-0"
+          style={{ color: up ? '#16a34a' : '#dc2626' }}
+          title="Variação em relação ao mês anterior"
+        >
+          {up ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />}
+          {Math.abs(delta).toFixed(0)}%
+        </div>
+      )}
     </div>
   );
 }
@@ -1210,6 +1241,12 @@ export default function Cashbook() {
   // Summary accordion (mobile only – collapsed by default)
   const [summaryOpen, setSummaryOpen] = useState(false);
 
+  // Comparativo de dízimos: quem dizimou no mês anterior (mesmo escopo) — usado
+  // para detectar membros que ainda não dizimaram no período atual.
+  const [prevDizimoMembers, setPrevDizimoMembers] = useState<{ member_id: string; favorecido: string }[]>([]);
+  const [prevMonthRows, setPrevMonthRows] = useState<Row[]>([]);
+  const [showDizimosFaltando, setShowDizimosFaltando] = useState(false);
+
   // Table state
   const [filterType, setFilterType] = useState<'all' | 'RECEITA' | 'DESPESA'>('all');
   // Filtro de forma de pagamento — para conferir o Livro Caixa contra o relatório
@@ -1259,6 +1296,42 @@ export default function Cashbook() {
     setLoading(false);
     if (err) { setError('Erro ao buscar dados: ' + err.message); return; }
     setRows((data as unknown as Row[]) || []);
+    void fetchPrevMonth();
+  }
+
+  // Busca os lançamentos do mês anterior (mesmo escopo de igreja) para o
+  // comparativo de dízimos e as setas de variação nos cards.
+  async function fetchPrevMonth() {
+    const base = new Date(dataInicio + 'T12:00:00');
+    const first = new Date(base.getFullYear(), base.getMonth() - 1, 1);
+    const last = new Date(base.getFullYear(), base.getMonth(), 0);
+    const f = (dt: Date) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+
+    let q = supabase
+      .from('livro_caixa')
+      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, categoria, forma_pg, member_id, church_id, churches(name)')
+      .gte('data_lancamento', f(first))
+      .lte('data_lancamento', f(last))
+      .limit(5000);
+
+    if (selectedChurch?.id) q = q.eq('church_id', selectedChurch.id);
+    else if (isChurchProfile && storedUser.churchId) q = q.eq('church_id', storedUser.churchId);
+
+    const { data, error: err } = await q;
+    if (err) { setPrevMonthRows([]); setPrevDizimoMembers([]); return; }
+    const prev = (data as unknown as Row[]) || [];
+    setPrevMonthRows(prev);
+
+    // Membros distintos que dizimaram no mês anterior (com member_id).
+    const seen = new Set<string>();
+    const membros: { member_id: string; favorecido: string }[] = [];
+    for (const r of prev) {
+      if (r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo') && r.member_id && !seen.has(r.member_id)) {
+        seen.add(r.member_id);
+        membros.push({ member_id: r.member_id, favorecido: r.favorecido || '—' });
+      }
+    }
+    setPrevDizimoMembers(membros);
   }
 
   function handleRowUpdated(id: string, changes: Partial<Row>) {
@@ -1339,6 +1412,27 @@ export default function Cashbook() {
   // mostrar o total de cada forma independente do que estiver selecionado.
   const qtdDinheiro = rows.filter(r => (r.forma_pg || '').trim().toUpperCase() === 'DINHEIRO').length;
   const qtdPix      = rows.filter(r => (r.forma_pg || '').trim().toUpperCase() === 'PIX').length;
+
+  // Totais do mês anterior (para as setas de variação nos cards).
+  const prevTotalReceita = prevMonthRows.filter(r => r.tipo === 'RECEITA').reduce((s, r) => s + Number(r.valor), 0);
+  const prevTotalDespesa = prevMonthRows.filter(r => r.tipo === 'DESPESA').reduce((s, r) => s + Number(r.valor), 0);
+  const prevTotalDizimos = prevMonthRows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).reduce((s, r) => s + Number(r.valor), 0);
+  const prevTotalOfertas = prevMonthRows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).reduce((s, r) => s + Number(r.valor), 0);
+  const prevLiquido      = prevTotalReceita - prevTotalDespesa;
+  const prevMovimentos   = prevMonthRows.length;
+  const prevQtdReceitas  = prevMonthRows.filter(r => r.tipo === 'RECEITA').length;
+  const prevQtdDespesas  = prevMonthRows.filter(r => r.tipo === 'DESPESA').length;
+  const prevQtdDizimos   = prevMonthRows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo')).length;
+  const prevQtdOfertas   = prevMonthRows.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).length;
+
+  // Membros que dizimaram no mês anterior e ainda não têm dízimo no período atual.
+  const dizimoMembrosFaltando = useMemo(() => {
+    const atuais = new Set<string>();
+    for (const r of rows) {
+      if (r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo') && r.member_id) atuais.add(r.member_id);
+    }
+    return prevDizimoMembers.filter(m => !atuais.has(m.member_id));
+  }, [rows, prevDizimoMembers]);
 
   function Th({ col, label }: { col: SortKey; label: string }) {
     return (
@@ -1547,61 +1641,25 @@ export default function Cashbook() {
             </button>
 
             {/* Grid – always visible on md+, toggled on mobile */}
-            <div className={`grid gap-2 sm:grid-cols-2 xl:grid-cols-5 2xl:grid-cols-10 ${
+            <div className={`grid gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 ${
               summaryOpen ? 'mt-2' : 'hidden'
             } md:grid md:mt-2`}>
+              <SummaryPanel label="Líquido"   value={`R$ ${fmt(liquido)}`}      tone={liquido >= 0 ? 'positive' : 'negative'} curNum={liquido} prevNum={prevMonthRows.length ? prevLiquido : undefined} />
+              <SummaryPanel label="Receitas"  value={`R$ ${fmt(totalReceita)}`} tone="positive" curNum={totalReceita} prevNum={prevMonthRows.length ? prevTotalReceita : undefined} />
+              <SummaryPanel label="Despesas"  value={`R$ ${fmt(totalDespesa)}`} tone="negative" curNum={totalDespesa} prevNum={prevMonthRows.length ? prevTotalDespesa : undefined} />
+              <SummaryPanel label="Mov."      value={`${totalMovimentos}`}      curNum={totalMovimentos} prevNum={prevMonthRows.length ? prevMovimentos : undefined} />
+              <SummaryPanel label="Dízimos"   value={`R$ ${fmt(totalDizimos)}`} tone="positive" curNum={totalDizimos} prevNum={prevMonthRows.length ? prevTotalDizimos : undefined} />
+              <SummaryPanel label="Ofertas"   value={`R$ ${fmt(totalOfertas)}`} tone="positive" curNum={totalOfertas} prevNum={prevMonthRows.length ? prevTotalOfertas : undefined} />
+              <SummaryPanel label="Qtd Rec."  value={`${qtdReceitas}`}          tone="positive" curNum={qtdReceitas} prevNum={prevMonthRows.length ? prevQtdReceitas : undefined} />
+              <SummaryPanel label="Qtd Desp." value={`${qtdDespesas}`}          tone="negative" curNum={qtdDespesas} prevNum={prevMonthRows.length ? prevQtdDespesas : undefined} />
+              <SummaryPanel label="Qtd Díz."  value={`${qtdDizimos}`}           tone="positive" curNum={qtdDizimos} prevNum={prevMonthRows.length ? prevQtdDizimos : undefined} />
+              <SummaryPanel label="Qtd Ofe."  value={`${qtdOfertas}`}           tone="positive" curNum={qtdOfertas} prevNum={prevMonthRows.length ? prevQtdOfertas : undefined} />
+              {/* Card novo: membros que dizimaram mês passado e ainda não neste */}
               <SummaryPanel
-                label="Líquido"
-                value={`R$ ${fmt(liquido)}`}
-                icon={<TrendingDown className="h-3 w-3" />}
-                tone={liquido >= 0 ? 'positive' : 'negative'}
-              />
-              <SummaryPanel
-                label="Receitas"
-                value={`R$ ${fmt(totalReceita)}`}
-                icon={<TrendingUp className="h-3 w-3" />}
-                tone="positive"
-              />
-              <SummaryPanel
-                label="Despesas"
-                value={`R$ ${fmt(totalDespesa)}`}
-                icon={<TrendingDown className="h-3 w-3" />}
-                tone="negative"
-              />
-              <SummaryPanel
-                label="Movimentos"
-                value={`${totalMovimentos}`}
-                icon={<DollarSign className="h-3 w-3" />}
-              />
-              <SummaryPanel
-                label="Total dízimos"
-                value={`R$ ${fmt(totalDizimos)}`}
-                tone="positive"
-              />
-              <SummaryPanel
-                label="Total ofertas"
-                value={`R$ ${fmt(totalOfertas)}`}
-                tone="positive"
-              />
-              <SummaryPanel
-                label="Qtd. receitas"
-                value={`${qtdReceitas}`}
-                tone="positive"
-              />
-              <SummaryPanel
-                label="Qtd. despesas"
-                value={`${qtdDespesas}`}
-                tone="negative"
-              />
-              <SummaryPanel
-                label="Qtd. dízimos"
-                value={`${qtdDizimos}`}
-                tone="positive"
-              />
-              <SummaryPanel
-                label="Qtd. ofertas"
-                value={`${qtdOfertas}`}
-                tone="positive"
+                label="Díz. faltando"
+                value={`${dizimoMembrosFaltando.length}`}
+                alert={dizimoMembrosFaltando.length > 0}
+                onClick={() => setShowDizimosFaltando(true)}
               />
             </div>
           </div>
@@ -1880,6 +1938,7 @@ export default function Cashbook() {
         <RelatorioModal
           rows={rows}
           churchName={selectedChurch?.name || 'Todas as Igrejas'}
+          churchId={selectedChurch?.id || (isChurchProfile && storedUser.churchId ? storedUser.churchId : null)}
           dataInicio={dataInicio}
           dataFim={dataFim}
           onClose={() => setShowRelatorio(false)}
@@ -1906,6 +1965,40 @@ export default function Cashbook() {
           onClose={() => setChurchPickerOpen(false)}
           onSelect={church => { setSelectedChurch(church); setChurchPickerOpen(false); }}
         />
+      )}
+
+      {showDizimosFaltando && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowDizimosFaltando(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-md max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2">
+                <UserX className="w-5 h-5 text-amber-500" />
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100">Dízimos faltando</h3>
+                  <p className="text-xs text-slate-500">Dizimaram no mês anterior e ainda não no período atual</p>
+                </div>
+              </div>
+              <button onClick={() => setShowDizimosFaltando(false)}><X className="w-5 h-5 text-slate-500" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {dizimoMembrosFaltando.length === 0 ? (
+                <p className="text-center text-slate-400 py-8 text-sm">Todos os que dizimaram no mês anterior já dizimaram neste período. 🎉</p>
+              ) : (
+                <ol className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {dizimoMembrosFaltando.map((m, i) => (
+                    <li key={m.member_id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                      <span className="w-6 text-right text-slate-400 tabular-nums">{i + 1}</span>
+                      <span className="text-slate-700 dark:text-slate-200">{m.favorecido}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+            <div className="p-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-500">
+              {dizimoMembrosFaltando.length} membro(s) · comparado com o mês anterior
+            </div>
+          </div>
+        </div>
       )}
 
       {selectedRow && (

@@ -1,8 +1,57 @@
 import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
-import { Printer, X, Columns, MonitorSmartphone, Maximize2, ArrowUpDown, ArrowUp, ArrowDown, Share2, Download } from 'lucide-react';
+import { Printer, X, Columns, MonitorSmartphone, Maximize2, ArrowUpDown, ArrowUp, ArrowDown, Share2, Download, PenTool, Upload, Eraser } from 'lucide-react';
 import type { ReciboRow } from './ReciboModal';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
+import { supabase } from '../../lib/supabaseClient';
+
+// ── Assinaturas (rodapé do relatório) ────────────────────────────────────────
+type SigKey = 'dirigente' | 'tesCongreg' | 'tesSede';
+const SIG_ORDER: SigKey[] = ['dirigente', 'tesCongreg', 'tesSede'];
+const SIG_LABELS: Record<SigKey, string> = {
+  dirigente: 'Dirigente',
+  tesCongreg: 'Tesoureiro da Congregação',
+  tesSede: 'Tesoureiro da Sede',
+};
+type Signatures = Record<SigKey, string | null>;
+
+/**
+ * Remove o fundo claro de uma imagem de assinatura: pixels quase-brancos viram
+ * transparentes. Recebe um dataURL/objectURL e devolve um PNG dataURL com alfa.
+ */
+function removeWhiteBackground(src: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(src); return; }
+      ctx.drawImage(img, 0, 0);
+      try {
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const px = data.data;
+        for (let i = 0; i < px.length; i += 4) {
+          const r = px[i], g = px[i + 1], b = px[i + 2];
+          // quase-branco → transparente; tons intermediários ganham alfa proporcional
+          if (r > 235 && g > 235 && b > 235) {
+            px[i + 3] = 0;
+          } else if (r > 200 && g > 200 && b > 200) {
+            px[i + 3] = Math.min(px[i + 3], 255 - Math.round(((r + g + b) / 3 - 200) / 35 * 255));
+          }
+        }
+        ctx.putImageData(data, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch {
+        resolve(src); // canvas "tainted" (imagem cross-origin) — devolve original
+      }
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+}
 
 type Row = ReciboRow;
 type ColKey = 'igreja' | 'doc' | 'favorecido' | 'categoria' | 'tipodoc' | 'referencia' | 'formaPg' | 'data' | 'valor' | 'obs';
@@ -29,6 +78,8 @@ const UNSORTABLE: ColKey[] = ['obs'];
 export type RelatorioProps = {
   rows: Row[];
   churchName: string;
+  churchId?: string | null;
+  leaderName?: string | null;
   dataInicio: string;
   dataFim: string;
   onClose: () => void;
@@ -116,6 +167,19 @@ function sortRows(rws: Row[], sortCol: ColKey | null, sortDir: SortDir): Row[] {
 }
 
 // ─── Print HTML generator ─────────────────────────────────────────────────────
+function signaturesHtml(signatures: Signatures): string {
+  const cells = SIG_ORDER.map(k => {
+    const img = signatures[k]
+      ? `<img src="${signatures[k]}" style="max-height:60px;max-width:90%;object-fit:contain;" />`
+      : '';
+    return `<td style="width:33.33%;text-align:center;vertical-align:bottom;padding:0 10px;">
+      <div style="height:64px;display:flex;align-items:flex-end;justify-content:center;">${img}</div>
+      <div style="border-top:1px solid #000;margin-top:2px;padding-top:3px;font-size:10px;">${SIG_LABELS[k]}</div>
+    </td>`;
+  }).join('');
+  return `<table style="width:100%;margin-top:40px;page-break-inside:avoid;"><tr>${cells}</tr></table>`;
+}
+
 function generateHtml(
   rows: Row[],
   cols: ColKey[],
@@ -125,6 +189,8 @@ function generateHtml(
   dataFim: string,
   sortCol: ColKey | null,
   sortDir: SortDir,
+  leaderName: string | null,
+  signatures: Signatures,
 ): string {
   const groups = groupByPlano(rows);
   const totalReceita = rows.filter(r => r.tipo === 'RECEITA').reduce((s, r) => s + Number(r.valor), 0);
@@ -227,6 +293,8 @@ function generateHtml(
     <div>
       <div class="tlbl">Igreja</div>
       <div style="font-size:12px;font-weight:600;">${churchName || 'Todas'}</div>
+      <div class="tlbl" style="margin-top:3px;">Dirigente</div>
+      <div style="font-size:11px;font-weight:600;${leaderName ? '' : 'color:#999;font-style:italic;'}">${leaderName || 'Dirigente não atualizado no sistema'}</div>
     </div>
     <div style="text-align:right;">
       <div class="tlbl">Período de</div>
@@ -251,20 +319,143 @@ function generateHtml(
     <thead><tr>${headerCells}</tr></thead>
     ${bodySections}
   </table>
+  ${signaturesHtml(signatures)}
 </body>
 </html>`;
 }
 
+// ─── Slot de assinatura: desenhar no canvas OU subir imagem ───────────────────
+function SignatureSlot({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawing = useRef(false);
+  const [hasDrawing, setHasDrawing] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  function pos(e: React.PointerEvent<HTMLCanvasElement>) {
+    const c = canvasRef.current!;
+    const rect = c.getBoundingClientRect();
+    return { x: (e.clientX - rect.left) * (c.width / rect.width), y: (e.clientY - rect.top) * (c.height / rect.height) };
+  }
+  function start(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (value) return; // já tem imagem subida
+    drawing.current = true;
+    const ctx = canvasRef.current!.getContext('2d')!;
+    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.strokeStyle = '#0f172a';
+    const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    canvasRef.current!.setPointerCapture(e.pointerId);
+  }
+  function move(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawing.current) return;
+    const ctx = canvasRef.current!.getContext('2d')!;
+    const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); setHasDrawing(true);
+  }
+  function end() {
+    if (!drawing.current) return;
+    drawing.current = false;
+    if (hasDrawing && canvasRef.current) onChange(canvasRef.current.toDataURL('image/png'));
+  }
+  function limpar() {
+    const c = canvasRef.current;
+    if (c) c.getContext('2d')!.clearRect(0, 0, c.width, c.height);
+    setHasDrawing(false);
+    onChange(null);
+    if (fileRef.current) fileRef.current.value = '';
+  }
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const clean = await removeWhiteBackground(String(reader.result));
+        onChange(clean);
+      } catch {
+        onChange(String(reader.result));
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="border border-slate-200 rounded-xl p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-semibold text-slate-700">{label}</span>
+        <div className="flex items-center gap-1">
+          <button onClick={() => fileRef.current?.click()} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" title="Subir imagem">
+            <Upload className="w-4 h-4" />
+          </button>
+          <button onClick={limpar} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" title="Limpar">
+            <Eraser className="w-4 h-4" />
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
+        </div>
+      </div>
+      {value ? (
+        <div className="h-24 flex items-center justify-center bg-[repeating-conic-gradient(#f1f5f9_0%_25%,#fff_0%_50%)] bg-[length:16px_16px] rounded-lg">
+          <img src={value} alt={label} className="max-h-24 object-contain" />
+        </div>
+      ) : (
+        <canvas
+          ref={canvasRef}
+          width={360} height={96}
+          onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerLeave={end}
+          className="w-full h-24 border border-dashed border-slate-300 rounded-lg touch-none cursor-crosshair bg-white"
+        />
+      )}
+      <p className="text-[11px] text-slate-400 mt-1">Desenhe acima ou suba uma imagem (o fundo branco é removido).</p>
+    </div>
+  );
+}
+
+function AssinaturasModal({ initial, onClose, onSave }: { initial: Signatures; onClose: () => void; onSave: (s: Signatures) => void }) {
+  const [sig, setSig] = useState<Signatures>(initial);
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+          <h3 className="font-bold text-slate-900 flex items-center gap-2"><PenTool className="w-4 h-4" /> Assinar relatório</h3>
+          <button onClick={onClose}><X className="w-5 h-5 text-slate-500" /></button>
+        </div>
+        <div className="p-4 space-y-3">
+          {SIG_ORDER.map(k => (
+            <SignatureSlot key={k} label={SIG_LABELS[k]} value={sig[k]} onChange={(v) => setSig(prev => ({ ...prev, [k]: v }))} />
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 p-4 border-t border-slate-200">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-600">Cancelar</button>
+          <button onClick={() => onSave(sig)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold">Aplicar assinaturas</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
-export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose, autoShare }: RelatorioProps) {
+export function RelatorioModal({ rows, churchName, churchId, leaderName: leaderNameProp, dataInicio, dataFim, onClose, autoShare }: RelatorioProps) {
   const [cols, setCols]               = useState<ColKey[]>(DEFAULT_COLS);
   const [orientation, setOrientation] = useState<Orientation>('portrait');
   const [showColPicker, setShowColPicker] = useState(false);
   const [sortCol, setSortCol]         = useState<ColKey | null>(null);
   const [sortDir, setSortDir]         = useState<SortDir>('asc');
   const [isMobile, setIsMobile]       = useState(false);
+  const [signatures, setSignatures]   = useState<Signatures>({ dirigente: null, tesCongreg: null, tesSede: null });
+  const [showSignModal, setShowSignModal] = useState(false);
+  const [leaderName, setLeaderName]   = useState<string | null>(leaderNameProp ?? null);
 
   const sharedRef = useRef(false);
+
+  // Busca o dirigente da igreja (current_leader_name) se só veio o churchId.
+  useEffect(() => {
+    if (leaderNameProp || !churchId) return;
+    let ativo = true;
+    (async () => {
+      const { data } = await supabase.from('churches').select('current_leader_name').eq('id', churchId).maybeSingle();
+      if (ativo && data?.current_leader_name) setLeaderName(data.current_leader_name);
+    })();
+    return () => { ativo = false; };
+  }, [churchId, leaderNameProp]);
+
+  const temAssinatura = SIG_ORDER.some(k => signatures[k]);
 
   useEffect(() => {
     if (autoShare && !sharedRef.current) {
@@ -323,7 +514,7 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
   }
 
   function handlePrint() {
-    const html = generateHtml(rows, cols, orientation, churchName, dataInicio, dataFim, sortCol, sortDir);
+    const html = generateHtml(rows, cols, orientation, churchName, dataInicio, dataFim, sortCol, sortDir, leaderName, signatures);
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
     document.body.appendChild(iframe);
@@ -402,7 +593,8 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
       y += 5;
       doc.setFontSize(9);
       doc.setTextColor(50, 50, 50);
-      doc.text(`Igreja: ${churchName || 'Todas'}`, startX, y);
+      const igrejaTxt = `Igreja: ${churchName || 'Todas'}  —  Dirigente: ${leaderName || 'não atualizado no sistema'}`;
+      doc.text(igrejaTxt, startX, y);
       doc.text(`Período: ${fmtDt(dataInicio)} a ${fmtDt(dataFim)}`, pageWidth - margin, y, { align: 'right' });
       
       y += 3;
@@ -548,6 +740,31 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
       y += 7;
     }
 
+    // ── Assinaturas (rodapé) ──────────────────────────────────────────────────
+    const sigBlockHeight = 30;
+    if (y > pageHeight - sigBlockHeight - 10) {
+      doc.addPage();
+      y = 15;
+      pageCount++;
+      printPageHeader(pageCount);
+    }
+    y = Math.max(y + 10, pageHeight - sigBlockHeight - 10);
+    const colW = usableWidth / 3;
+    SIG_ORDER.forEach((k, i) => {
+      const cx = startX + colW * i + colW / 2;
+      const img = signatures[k];
+      if (img) {
+        try { doc.addImage(img, 'PNG', cx - 22, y - 16, 44, 16, undefined, 'FAST'); } catch { /* imagem inválida: ignora */ }
+      }
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.2);
+      doc.line(cx - colW / 2 + 6, y + 2, cx + colW / 2 - 6, y + 2);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
+      doc.text(SIG_LABELS[k], cx, y + 6, { align: 'center' });
+    });
+
     return doc;
   }
 
@@ -655,6 +872,13 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
                 )}
               </div>
 
+              <button onClick={() => setShowSignModal(true)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold shadow-sm border transition-colors ${
+                  temAssinatura ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}>
+                <PenTool className="w-4 h-4" /> {temAssinatura ? 'Assinaturas ✓' : 'Assinar'}
+              </button>
+
               <button onClick={handleShare}
                 className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
                 <Share2 className="w-4 h-4" /> Compartilhar
@@ -673,6 +897,11 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
 
             {/* Mobile Actions in Top Row */}
             <div className="flex md:hidden items-center gap-1.5">
+              <button onClick={() => setShowSignModal(true)}
+                className={`p-2 rounded-xl transition-colors ${temAssinatura ? 'text-indigo-700 bg-indigo-50' : 'text-slate-600 hover:bg-slate-100'}`}
+                title="Assinar">
+                <PenTool className="w-5 h-5" />
+              </button>
               <button onClick={handleShare}
                 className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
                 title="Compartilhar">
@@ -763,6 +992,8 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Igreja</p>
                 <p className="text-sm font-semibold">{churchName || 'Todas'}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Dirigente</p>
+                <p className={`text-sm font-semibold ${leaderName ? '' : 'text-slate-400 italic font-normal'}`}>{leaderName || 'Dirigente não atualizado no sistema'}</p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Período de</p>
@@ -883,9 +1114,29 @@ export function RelatorioModal({ rows, churchName, dataInicio, dataFim, onClose,
               </table>
             </div>
 
+            {/* Assinaturas */}
+            <div className="grid grid-cols-3 gap-6 mt-12 px-2">
+              {SIG_ORDER.map(k => (
+                <div key={k} className="text-center">
+                  <div className="h-16 flex items-end justify-center">
+                    {signatures[k] && <img src={signatures[k]!} alt={SIG_LABELS[k]} className="max-h-16 object-contain" />}
+                  </div>
+                  <div className="border-t border-slate-800 pt-1 text-[11px] text-slate-600">{SIG_LABELS[k]}</div>
+                </div>
+              ))}
+            </div>
+
           </div>
         </div>
       </div>
+
+      {showSignModal && (
+        <AssinaturasModal
+          initial={signatures}
+          onClose={() => setShowSignModal(false)}
+          onSave={(s) => { setSignatures(s); setShowSignModal(false); }}
+        />
+      )}
     </div>
   );
 }

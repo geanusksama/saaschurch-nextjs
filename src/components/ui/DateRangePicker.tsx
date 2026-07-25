@@ -8,7 +8,7 @@ import {
   startOfMonth, endOfMonth, subMonths, addMonths, subDays, startOfWeek, endOfWeek,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays, X, ChevronRight, ChevronLeft } from 'lucide-react';
+import { CalendarDays, ChevronRight, ChevronLeft } from 'lucide-react';
 
 const rdpCss = `
 .rdp-root{--rdp-accent:#1e293b;font-family:inherit;font-size:.82rem;user-select:none;width:100%}
@@ -311,12 +311,12 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
           <span
             role="button"
             tabIndex={0}
-            title="Restaurar mês atual"
+            title="Limpar filtro (restaura o mês atual)"
             onClick={handleClear}
             onKeyDown={e => { if (e.key === 'Enter') handleClear(e as unknown as React.MouseEvent); }}
-            className="flex h-4 w-4 items-center justify-center rounded text-slate-300 hover:text-slate-600"
+            className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 hover:text-slate-700 hover:bg-slate-100"
           >
-            <X className="h-3 w-3" />
+            Limpar
           </span>
         </button>
       </div>
