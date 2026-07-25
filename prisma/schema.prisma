@@ -3604,3 +3604,27 @@ model ContabilidadePeriodoEnviado {
   @@unique([acessoId, ano, mes, versao])
   @@map("contabilidade_periodos_enviados")
 }
+
+// ---------------------------------------------------------------------------
+// Assinaturas do relatorio de tesouraria (Livro Caixa), por igreja+periodo+slot.
+// Ver supabase/migrations/20260725_relatorio_assinaturas.sql
+// ---------------------------------------------------------------------------
+model ContabilidadeRelatorioAssinatura {
+  id            String   @id @default(uuid()) @db.Uuid
+  churchId      String   @map("church_id") @db.Uuid
+  periodoInicio DateTime @map("periodo_inicio") @db.Date
+  periodoFim    DateTime @map("periodo_fim") @db.Date
+  slot          String   @db.VarChar(20)
+
+  imagem        String
+  assinadoPor   String?  @map("assinado_por") @db.VarChar(255)
+  assinadoPorId String?  @map("assinado_por_id") @db.VarChar(255)
+  profileType   String?  @map("profile_type") @db.VarChar(20)
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([churchId, periodoInicio, periodoFim, slot])
+  @@index([churchId, periodoInicio, periodoFim])
+  @@map("contabilidade_relatorio_assinaturas")
+}

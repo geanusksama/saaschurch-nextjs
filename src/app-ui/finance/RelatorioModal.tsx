@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
-import { Printer, X, Columns, MonitorSmartphone, Maximize2, ArrowUpDown, ArrowUp, ArrowDown, Share2, Download, PenTool, Upload, Eraser } from 'lucide-react';
+import { Printer, X, Columns, MonitorSmartphone, Maximize2, ArrowUpDown, ArrowUp, ArrowDown, Share2, Download, PenTool, Upload, Eraser, Wand2 } from 'lucide-react';
 import type { ReciboRow } from './ReciboModal';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
@@ -325,11 +325,31 @@ function generateHtml(
 }
 
 // ─── Slot de assinatura: desenhar no canvas OU subir imagem ───────────────────
-function SignatureSlot({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
+function SignatureSlot({ label, value, onChange, locked = false, lockedMsg, autoFillName, protectedSig = false }: { label: string; value: string | null; onChange: (v: string | null) => void; locked?: boolean; lockedMsg?: string; autoFillName?: string; protectedSig?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
-  const [hasDrawing, setHasDrawing] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  // 'draw' = canvas editável (vários traços); 'image' = imagem subida (só exibe).
+  const [uploaded, setUploaded] = useState<string | null>(null);
+  const preloaded = useRef(false);
+  const PEN_COLORS = [
+    { label: 'Preta', hex: '#0f172a' },
+    { label: 'Azul', hex: '#1d4ed8' },
+    { label: 'Vermelha', hex: '#dc2626' },
+  ];
+  const [penColor, setPenColor] = useState('#0f172a');
+
+  // Pré-carrega uma assinatura já aplicada no canvas, pra poder continuar desenhando.
+  useEffect(() => {
+    if (preloaded.current || !value || uploaded) return;
+    preloaded.current = true;
+    const c = canvasRef.current;
+    if (!c) return;
+    const img = new Image();
+    img.onload = () => c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+    img.src = value;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function pos(e: React.PointerEvent<HTMLCanvasElement>) {
     const c = canvasRef.current!;
@@ -337,29 +357,48 @@ function SignatureSlot({ label, value, onChange }: { label: string; value: strin
     return { x: (e.clientX - rect.left) * (c.width / rect.width), y: (e.clientY - rect.top) * (c.height / rect.height) };
   }
   function start(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (value) return; // já tem imagem subida
+    if (uploaded) return;
     drawing.current = true;
     const ctx = canvasRef.current!.getContext('2d')!;
-    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = penColor;
     const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y);
     canvasRef.current!.setPointerCapture(e.pointerId);
   }
   function move(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!drawing.current) return;
     const ctx = canvasRef.current!.getContext('2d')!;
-    const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); setHasDrawing(true);
+    const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke();
   }
   function end() {
     if (!drawing.current) return;
     drawing.current = false;
-    if (hasDrawing && canvasRef.current) onChange(canvasRef.current.toDataURL('image/png'));
+    // Continua editável — só reporta o estado atual do desenho ao pai.
+    if (canvasRef.current) onChange(canvasRef.current.toDataURL('image/png'));
   }
   function limpar() {
     const c = canvasRef.current;
     if (c) c.getContext('2d')!.clearRect(0, 0, c.width, c.height);
-    setHasDrawing(false);
+    setUploaded(null);
     onChange(null);
     if (fileRef.current) fileRef.current.value = '';
+  }
+  /** Preenche a assinatura com o nome (dirigente/logado) em fonte cursiva. */
+  function preencher() {
+    const nome = (autoFillName || '').trim();
+    if (!nome) return;
+    setUploaded(null);
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d')!;
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.fillStyle = penColor;
+    ctx.textBaseline = 'middle';
+    let size = 42;
+    const fit = () => { ctx.font = `italic ${size}px "Segoe Script","Brush Script MT","Comic Sans MS",cursive`; };
+    fit();
+    while (ctx.measureText(nome).width > c.width - 24 && size > 14) { size -= 2; fit(); }
+    ctx.fillText(nome, 14, c.height / 2);
+    onChange(c.toDataURL('image/png'));
   }
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -368,12 +407,43 @@ function SignatureSlot({ label, value, onChange }: { label: string; value: strin
     reader.onload = async () => {
       try {
         const clean = await removeWhiteBackground(String(reader.result));
+        setUploaded(clean);
         onChange(clean);
       } catch {
+        setUploaded(String(reader.result));
         onChange(String(reader.result));
       }
     };
     reader.readAsDataURL(file);
+  }
+
+  if (locked) {
+    return (
+      <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-slate-400">{label}</span>
+        </div>
+        <div className="h-24 flex items-center justify-center rounded-lg border border-dashed border-slate-200 text-center px-3">
+          <span className="text-[11px] text-slate-400">{lockedMsg || 'Você não tem permissão para assinar aqui.'}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Assinatura já registrada e o usuário não tem nível para removê-la.
+  if (protectedSig && value) {
+    return (
+      <div className="border border-emerald-200 rounded-xl p-3 bg-emerald-50/40">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-slate-700">{label}</span>
+          <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide">Registrada 🔒</span>
+        </div>
+        <div className="h-24 flex items-center justify-center bg-[repeating-conic-gradient(#f1f5f9_0%_25%,#fff_0%_50%)] bg-[length:16px_16px] rounded-lg">
+          <img src={value} alt={label} className="max-h-24 object-contain" />
+        </div>
+        <p className="text-[11px] text-slate-400 mt-1">Assinatura registrada — somente nível campo pode remover.</p>
+      </div>
+    );
   }
 
   return (
@@ -381,6 +451,25 @@ function SignatureSlot({ label, value, onChange }: { label: string; value: strin
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-semibold text-slate-700">{label}</span>
         <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 mr-1">
+            {PEN_COLORS.map(c => (
+              <button
+                key={c.hex}
+                onClick={() => setPenColor(c.hex)}
+                title={`Caneta ${c.label.toLowerCase()}`}
+                className={`w-4 h-4 rounded-full border transition-transform ${penColor === c.hex ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'border-slate-300'}`}
+                style={{ backgroundColor: c.hex }}
+              />
+            ))}
+          </div>
+          <button
+            onClick={preencher}
+            disabled={!autoFillName}
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-indigo-500 disabled:opacity-30"
+            title={autoFillName ? `Preencher com "${autoFillName}"` : 'Nome não disponível'}
+          >
+            <Wand2 className="w-4 h-4" />
+          </button>
           <button onClick={() => fileRef.current?.click()} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" title="Subir imagem">
             <Upload className="w-4 h-4" />
           </button>
@@ -390,9 +479,9 @@ function SignatureSlot({ label, value, onChange }: { label: string; value: strin
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
         </div>
       </div>
-      {value ? (
+      {uploaded ? (
         <div className="h-24 flex items-center justify-center bg-[repeating-conic-gradient(#f1f5f9_0%_25%,#fff_0%_50%)] bg-[length:16px_16px] rounded-lg">
-          <img src={value} alt={label} className="max-h-24 object-contain" />
+          <img src={uploaded} alt={label} className="max-h-24 object-contain" />
         </div>
       ) : (
         <canvas
@@ -402,13 +491,20 @@ function SignatureSlot({ label, value, onChange }: { label: string; value: strin
           className="w-full h-24 border border-dashed border-slate-300 rounded-lg touch-none cursor-crosshair bg-white"
         />
       )}
-      <p className="text-[11px] text-slate-400 mt-1">Desenhe acima ou suba uma imagem (o fundo branco é removido).</p>
+      <p className="text-[11px] text-slate-400 mt-1">Desenhe acima (vários traços) ou suba uma imagem (o fundo branco é removido).</p>
     </div>
   );
 }
 
-function AssinaturasModal({ initial, onClose, onSave }: { initial: Signatures; onClose: () => void; onSave: (s: Signatures) => void }) {
+function AssinaturasModal({ initial, canSignSede, canRemove, leaderName, loggedName, onClose, onSave }: { initial: Signatures; canSignSede: boolean; canRemove: boolean; leaderName: string | null; loggedName: string; onClose: () => void; onSave: (s: Signatures) => void }) {
   const [sig, setSig] = useState<Signatures>(initial);
+  // Congela o que já estava assinado ao abrir — usado para proteger da remoção.
+  const initialRef = useRef<Signatures>(initial);
+  const autoName: Record<SigKey, string> = {
+    dirigente: leaderName || '',
+    tesCongreg: loggedName,
+    tesSede: loggedName,
+  };
   return (
     <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
@@ -418,7 +514,16 @@ function AssinaturasModal({ initial, onClose, onSave }: { initial: Signatures; o
         </div>
         <div className="p-4 space-y-3">
           {SIG_ORDER.map(k => (
-            <SignatureSlot key={k} label={SIG_LABELS[k]} value={sig[k]} onChange={(v) => setSig(prev => ({ ...prev, [k]: v }))} />
+            <SignatureSlot
+              key={k}
+              label={SIG_LABELS[k]}
+              value={sig[k]}
+              onChange={(v) => setSig(prev => ({ ...prev, [k]: v }))}
+              locked={k === 'tesSede' && !canSignSede}
+              lockedMsg="Somente o Tesoureiro da Sede (nível campo) pode assinar aqui."
+              autoFillName={autoName[k]}
+              protectedSig={!canRemove && !!initialRef.current[k]}
+            />
           ))}
         </div>
         <div className="flex justify-end gap-2 p-4 border-t border-slate-200">
@@ -455,7 +560,67 @@ export function RelatorioModal({ rows, churchName, churchId, leaderName: leaderN
     return () => { ativo = false; };
   }, [churchId, leaderNameProp]);
 
+  // Assinaturas persistidas por igreja+período (só quando há igreja selecionada).
+  function authHeaders(): Record<string, string> {
+    const token = localStorage.getItem('mrm_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+  async function loadSignatures() {
+    if (!churchId) return;
+    try {
+      const res = await fetch(`/api/contabilidade/assinaturas?churchId=${churchId}&inicio=${dataInicio}&fim=${dataFim}`, { headers: authHeaders() });
+      if (!res.ok) return;
+      const json = await res.json();
+      const a = json.assinaturas || {};
+      setSignatures({
+        dirigente: a.dirigente?.imagem ?? null,
+        tesCongreg: a.tesCongreg?.imagem ?? null,
+        tesSede: a.tesSede?.imagem ?? null,
+      });
+    } catch { /* rede: mantém o estado atual */ }
+  }
+  useEffect(() => { void loadSignatures(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [churchId, dataInicio, dataFim]);
+
+  async function handleSaveSignatures(next: Signatures) {
+    setShowSignModal(false);
+    // Sem igreja selecionada ("Todas"): não persiste, só mantém na sessão.
+    if (!churchId) { setSignatures(next); return; }
+    const prev = signatures;
+    setSignatures(next); // otimista
+    for (const k of SIG_ORDER) {
+      if (next[k] === prev[k]) continue;
+      try {
+        if (next[k]) {
+          const res = await fetch('/api/contabilidade/assinaturas', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ churchId, inicio: dataInicio, fim: dataFim, slot: k, imagem: next[k] }),
+          });
+          if (!res.ok) { const j = await res.json().catch(() => ({})); toast.error(j.error || 'Falha ao salvar assinatura.'); }
+        } else {
+          const res = await fetch(`/api/contabilidade/assinaturas?churchId=${churchId}&inicio=${dataInicio}&fim=${dataFim}&slot=${k}`, {
+            method: 'DELETE', headers: authHeaders(),
+          });
+          if (!res.ok) { const j = await res.json().catch(() => ({})); toast.error(j.error || 'Falha ao remover assinatura.'); }
+        }
+      } catch { toast.error('Erro de rede ao salvar assinatura.'); }
+    }
+    // Recarrega para refletir o que o servidor realmente aceitou (ex.: remoção bloqueada).
+    void loadSignatures();
+  }
+
   const temAssinatura = SIG_ORDER.some(k => signatures[k]);
+
+  // Tesoureiro da Sede tem nível de campo: só campo/admin/master podem assinar esse
+  // espaço. Tesoureiro de congregação (nível igreja) fica bloqueado nele.
+  const storedUser = (() => {
+    try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
+  })();
+  const profileType: string = storedUser.profileType || '';
+  const loggedName: string = storedUser.fullName || storedUser.name || storedUser.email || '';
+  const canSignSede = ['master', 'admin', 'campo'].includes(profileType);
+  // Remover assinatura já registrada: só nível campo (campo/admin/master).
+  const canRemove = ['master', 'admin', 'campo'].includes(profileType);
 
   useEffect(() => {
     if (autoShare && !sharedRef.current) {
@@ -1133,8 +1298,12 @@ export function RelatorioModal({ rows, churchName, churchId, leaderName: leaderN
       {showSignModal && (
         <AssinaturasModal
           initial={signatures}
+          canSignSede={canSignSede}
+          canRemove={canRemove}
+          leaderName={leaderName}
+          loggedName={loggedName}
           onClose={() => setShowSignModal(false)}
-          onSave={(s) => { setSignatures(s); setShowSignModal(false); }}
+          onSave={handleSaveSignatures}
         />
       )}
     </div>
