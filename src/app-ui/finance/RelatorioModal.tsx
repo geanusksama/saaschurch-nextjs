@@ -338,6 +338,12 @@ function SignatureSlot({ label, value, onChange, locked = false, lockedMsg, auto
     { label: 'Vermelha', hex: '#dc2626' },
   ];
   const [penColor, setPenColor] = useState('#0f172a');
+  const PEN_TIPS = [
+    { label: 'Fina', w: 1.2 },
+    { label: 'Bic', w: 2.4 },
+    { label: 'Pena', w: 4 },
+  ];
+  const [penWidth, setPenWidth] = useState(2.4);
 
   // Pré-carrega uma assinatura já aplicada no canvas, pra poder continuar desenhando.
   useEffect(() => {
@@ -360,7 +366,7 @@ function SignatureSlot({ label, value, onChange, locked = false, lockedMsg, auto
     if (uploaded) return;
     drawing.current = true;
     const ctx = canvasRef.current!.getContext('2d')!;
-    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = penColor;
+    ctx.lineWidth = penWidth; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = penColor;
     const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y);
     canvasRef.current!.setPointerCapture(e.pointerId);
   }
@@ -460,6 +466,18 @@ function SignatureSlot({ label, value, onChange, locked = false, lockedMsg, auto
                 className={`w-4 h-4 rounded-full border transition-transform ${penColor === c.hex ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'border-slate-300'}`}
                 style={{ backgroundColor: c.hex }}
               />
+            ))}
+          </div>
+          <div className="flex items-center rounded-lg border border-slate-200 overflow-hidden mr-1">
+            {PEN_TIPS.map(t => (
+              <button
+                key={t.label}
+                onClick={() => setPenWidth(t.w)}
+                title={`Tipo de caneta: ${t.label}`}
+                className={`px-1.5 py-0.5 text-[10px] font-semibold transition-colors ${penWidth === t.w ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+              >
+                {t.label}
+              </button>
             ))}
           </div>
           <button
