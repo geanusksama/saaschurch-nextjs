@@ -18,10 +18,16 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" }
       });
 
-      // Só os agentes que este usuário pode ver (master vê todos). É isto que
-      // impede, por exemplo, o agente do Financeiro de aparecer na escolha de
-      // quem não foi autorizado nele.
-      const visible = await filterAgentsForUser(agents, user.id ? String(user.id) : null, user.profileType);
+      // scope=manage é a tela "Agentes de IA": master/admin administram todos,
+      // senão marcariam um agente para outra pessoa e perderiam o próprio
+      // acesso à edição. Sem o scope (as listas de escolha), a regra é dura:
+      // só vê quem está marcado — master incluído.
+      const scope = new URL(req.url).searchParams.get("scope");
+      const isManaging = scope === "manage" && ["master", "admin"].includes(user.profileType);
+
+      const visible = isManaging
+        ? agents
+        : await filterAgentsForUser(agents, user.id ? String(user.id) : null);
 
       // A tela de gestão precisa saber quem está marcado em cada agente
       const userIds = await loadAgentUserIds(visible.map(a => a.id));

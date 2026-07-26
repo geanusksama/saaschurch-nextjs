@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { canUseAgent, loadAgentAccess } from '@/lib/aiAgentAccess'
 
 // POST /api/whatsapp/conversations/assign-ai
 // Marca/desmarca agente de IA em lote.
@@ -23,6 +24,17 @@ export async function POST(req: NextRequest) {
     if (agentId) {
       const agent = await prisma.aiAgent.findFirst({ where: { id: agentId, isActive: true } })
       if (!agent) return NextResponse.json({ error: 'Agente de IA não encontrado' }, { status: 404 })
+
+      // Anexar o agente à conversa é USO: se ele tem lista de autorizados, só
+      // quem está nela pode fazer isso — master incluído. A tela já esconde,
+      // mas a regra tem que valer aqui também.
+      const access = await loadAgentAccess(user.id ? String(user.id) : null)
+      if (!canUseAgent(agent.id, access)) {
+        return NextResponse.json(
+          { error: 'Você não está autorizado a usar este agente.' },
+          { status: 403 }
+        )
+      }
     }
 
     let query = supabaseAdmin

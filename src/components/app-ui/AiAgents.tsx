@@ -51,7 +51,10 @@ export default function AiAgents() {
     setLoading(true);
     try {
       const token = localStorage.getItem('mrm_token');
-      const res = await fetch(`${apiBase}/ai/agents`, {
+      // scope=manage: esta é a tela de administração, então master/admin veem
+      // todos os agentes mesmo sem estarem marcados neles — nas listas de
+      // escolha (Envios, chat, pastoral) a regra é só-quem-está-marcado.
+      const res = await fetch(`${apiBase}/ai/agents?scope=manage`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {

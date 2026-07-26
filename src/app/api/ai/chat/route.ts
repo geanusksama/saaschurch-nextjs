@@ -185,9 +185,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Agente inativo ou não encontrado." }, { status: 404 });
       }
 
-      // Agente com lista de autorizados só responde a quem está nela
+      // Agente com lista de autorizados só responde a quem está nela — vale
+      // para todo perfil, master inclusive
       const access = await loadAgentAccess(user.id ? String(user.id) : null);
-      if (user.profileType !== "master" && !canUseAgent(agent.id, access)) {
+      if (!canUseAgent(agent.id, access)) {
         return NextResponse.json({ error: "Você não tem acesso a este agente." }, { status: 403 });
       }
 

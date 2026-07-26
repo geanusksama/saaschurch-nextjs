@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       select: { id: true, name: true, description: true, role: true, systemPrompt: true, campoId: true },
     })
     // respeita a lista de autorizados de cada agente
-    const allowed = await filterAgentsForUser(agents, user.id ? String(user.id) : null, user.profileType)
+    const allowed = await filterAgentsForUser(agents, user.id ? String(user.id) : null)
     const agent =
       allowed.find(a => /pastoral/i.test(`${a.name} ${a.description ?? ''}`)) ??
       allowed.find(a => a.role === 'geral') ??

@@ -1,11 +1,15 @@
 /**
  * Quem pode ver/usar cada agente de IA.
  *
- * Regra (mesma ideia das instâncias de WhatsApp):
- *  - master enxerga todos;
- *  - agente COM usuários marcados só aparece para quem está marcado;
+ * Regra de USO (quem pode escolher/conversar com o agente):
+ *  - agente COM usuários marcados só aparece para quem está marcado —
+ *    inclusive para o master, que aqui NÃO tem passe livre;
  *  - agente SEM ninguém marcado continua visível para todos — é o estado dos
  *    agentes antigos, que não podem sumir da tela de um dia para o outro.
+ *
+ * A tela de GESTÃO é outra história: lá o master continua vendo tudo, senão
+ * ele marcaria um agente para outra pessoa e perderia o próprio botão de
+ * editar — só o banco desfaria.
  *
  * Server-side apenas.
  */
@@ -34,13 +38,14 @@ export function canUseAgent(agentId: string, access: AgentAccessMap): boolean {
   return !access.restricted.has(agentId) || access.mine.has(agentId)
 }
 
-/** Filtra uma lista de agentes pelo que o usuário pode ver. */
+/**
+ * Filtra a lista pelo que o usuário pode USAR. Sem exceção de perfil: master
+ * que não está marcado não vê o agente na hora de escolher.
+ */
 export async function filterAgentsForUser<T extends { id: string }>(
   agents: T[],
-  userId: string | null,
-  profileType?: string
+  userId: string | null
 ): Promise<T[]> {
-  if (profileType === 'master') return agents
   const access = await loadAgentAccess(userId)
   return agents.filter(a => canUseAgent(a.id, access))
 }
