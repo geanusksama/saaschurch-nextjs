@@ -81,7 +81,9 @@ export function buildActivityMessage(input: ActivityMessageInput): string {
  * e não abre no celular de ninguém, então cai para o domínio público.
  */
 export function resolveTimelineUrl(attendanceId: string, origin?: string | null): string {
-  const publicBase = 'https://adcampinas.org';
+  // Em produção quem manda é a origem da requisição (o domínio pelo qual o
+  // sistema está sendo acessado). O fallback só entra em ambiente local.
+  const publicBase = (process.env.NEXT_PUBLIC_APP_URL || 'https://adcampinas.org').replace(/\/+$/, '');
   const raw = (origin || '').trim().replace(/\/+$/, '');
   const isLocal = !raw || /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?$/i.test(raw);
   const base = isLocal ? publicBase : raw;

@@ -13,7 +13,7 @@
   --popover: #ffffff;
   --popover-foreground: #0f172a;
 
-  --primary: #7c8ba1;
+  --primary: #475569;
   --primary-foreground: #ffffff;
 
   --secondary: #f1f5f9;
@@ -30,18 +30,18 @@
 
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #7c8ba1;
+  --ring: #475569;
 
-  --theme-primary: #7c8ba1;
-  --theme-primary-strong: #6a778c;
-  --theme-primary-hover: #74839a;
-  --theme-primary-soft: rgba(124, 139, 161, 0.1);
-  --theme-primary-soft-strong: rgba(124, 139, 161, 0.14);
-  --theme-primary-border: rgba(124, 139, 161, 0.18);
-  --theme-primary-ring: rgba(124, 139, 161, 0.14);
-  --theme-secondary: #c7d2df;
-  --theme-secondary-hover: #b7c4d5;
-  --theme-secondary-soft: rgba(199, 210, 223, 0.12);
+  --theme-primary: #475569;
+  --theme-primary-strong: #3b4757;
+  --theme-primary-hover: #414e60;
+  --theme-primary-soft: rgba(71, 85, 105, 0.1);
+  --theme-primary-soft-strong: rgba(71, 85, 105, 0.14);
+  --theme-primary-border: rgba(71, 85, 105, 0.18);
+  --theme-primary-ring: rgba(71, 85, 105, 0.14);
+  --theme-secondary: #94a3b8;
+  --theme-secondary-hover: #8494ab;
+  --theme-secondary-soft: rgba(148, 163, 184, 0.12);
 
   --radius: 0.5rem;
 }
@@ -56,7 +56,7 @@
   --popover: #1e293b;
   --popover-foreground: #f8fafc;
 
-  --primary: #7c8ba1;
+  --primary: #475569;
   --primary-foreground: #ffffff;
 
   --secondary: #1e293b;
@@ -73,7 +73,7 @@
 
   --border: #334155;
   --input: #334155;
-  --ring: #7c8ba1;
+  --ring: #475569;
 }
 
 @theme inline {

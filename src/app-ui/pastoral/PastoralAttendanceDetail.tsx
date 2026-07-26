@@ -454,7 +454,7 @@ export function PastoralAttendanceDetail({
     return (
       <div className="fixed inset-0 z-50 flex">
         <div className="flex-1 bg-black/30" onClick={onClose} />
-        <div className="w-full max-w-xl bg-white shadow-2xl flex items-center justify-center">
+        <div className="w-full max-w-4xl bg-white shadow-2xl flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
         </div>
       </div>
@@ -480,7 +480,7 @@ export function PastoralAttendanceDetail({
       <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
 
       {/* Panel */}
-      <div className="w-full max-w-2xl bg-white shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-4xl bg-white shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex-shrink-0 border-b border-slate-200">
           {/* Color stripe */}

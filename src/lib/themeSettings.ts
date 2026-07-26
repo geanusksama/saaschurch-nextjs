@@ -11,15 +11,20 @@ export interface ThemeSettings {
   preset: ThemePreset;
 }
 
-const LEGACY_DEFAULT_THEME = {
-  primaryColor: '#334155',
-  secondaryColor: '#7b8fb3',
-};
+/**
+ * Paletas que já foram o padrão do sistema. Quem está em uma delas não
+ * escolheu a cor — só herdou o default da época —, então migra sozinho para o
+ * padrão atual. Tema customizado de verdade nunca é tocado.
+ */
+const LEGACY_DEFAULT_THEMES = [
+  { primaryColor: '#334155', secondaryColor: '#7b8fb3' },
+  { primaryColor: '#7c8ba1', secondaryColor: '#c7d2df' }, // cinza claro demais
+];
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   logoUrl: null,
-  primaryColor: '#7c8ba1',
-  secondaryColor: '#c7d2df',
+  primaryColor: '#475569',
+  secondaryColor: '#94a3b8',
   radius: 10,
   preset: 'lite-flat',
 };
@@ -62,8 +67,9 @@ export function loadThemeSettings(): ThemeSettings {
     const parsed = JSON.parse(raw);
     const parsedPrimary = sanitizeHex(parsed.primaryColor, DEFAULT_THEME_SETTINGS.primaryColor);
     const parsedSecondary = sanitizeHex(parsed.secondaryColor, DEFAULT_THEME_SETTINGS.secondaryColor);
-    const isUsingLegacyDefaultPalette = parsedPrimary === LEGACY_DEFAULT_THEME.primaryColor
-      && parsedSecondary === LEGACY_DEFAULT_THEME.secondaryColor;
+    const isUsingLegacyDefaultPalette = LEGACY_DEFAULT_THEMES.some(
+      legacy => parsedPrimary === legacy.primaryColor && parsedSecondary === legacy.secondaryColor
+    );
 
     return {
       logoUrl: typeof parsed.logoUrl === 'string' ? parsed.logoUrl : DEFAULT_THEME_SETTINGS.logoUrl,
