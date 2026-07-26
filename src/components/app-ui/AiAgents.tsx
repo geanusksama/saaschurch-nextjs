@@ -11,6 +11,16 @@ interface AiAgent {
   systemPrompt: string;
   avatarUrl: string | null;
   isActive: boolean;
+  /** usuários autorizados; vazio = visível para todos */
+  userIds?: string[];
+}
+
+interface SystemUser {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+  profileType?: string | null;
+  role?: { name?: string | null } | null;
 }
 
 export default function AiAgents() {
@@ -31,6 +41,10 @@ export default function AiAgents() {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
+  // Quem pode usar este agente. Vazio = todos (é como os agentes antigos estão).
+  const [allowedUserIds, setAllowedUserIds] = useState<Set<string>>(new Set());
+  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
+  const [userSearch, setUserSearch] = useState('');
 
   // Carregar agentes
   const loadAgents = async () => {
@@ -53,8 +67,22 @@ export default function AiAgents() {
     }
   };
 
+  // Usuários do sistema para marcar quem pode usar cada agente
+  const loadSystemUsers = async () => {
+    try {
+      const token = localStorage.getItem('mrm_token');
+      const activeFieldId = localStorage.getItem('mrm_active_field_id') || '';
+      const url = `${apiBase}/users?limit=200` + (activeFieldId ? `&campoId=${activeFieldId}` : '');
+      const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) return;
+      const data = await res.json();
+      setSystemUsers(Array.isArray(data) ? data : Array.isArray(data?.users) ? data.users : []);
+    } catch { /* lista de usuários é opcional para o resto da tela */ }
+  };
+
   useEffect(() => {
     loadAgents();
+    loadSystemUsers();
   }, []);
 
   // Abrir Modal de Criação
@@ -66,6 +94,8 @@ export default function AiAgents() {
     setSystemPrompt('');
     setAvatarUrl('');
     setIsActive(true);
+    setAllowedUserIds(new Set());
+    setUserSearch('');
     setShowModal(true);
   };
 
@@ -78,6 +108,8 @@ export default function AiAgents() {
     setSystemPrompt(agent.systemPrompt);
     setAvatarUrl(agent.avatarUrl || '');
     setIsActive(agent.isActive);
+    setAllowedUserIds(new Set(agent.userIds ?? []));
+    setUserSearch('');
     setShowModal(true);
   };
 
@@ -112,6 +144,7 @@ export default function AiAgents() {
           systemPrompt,
           avatarUrl: avatarUrl || null,
           isActive,
+          userIds: Array.from(allowedUserIds),
         }),
       });
 
@@ -390,6 +423,66 @@ export default function AiAgents() {
                   placeholder="Defina as regras do agente, personalidade, restrições e escopo. Ex: 'Você é focado em relatórios financeiros, seja formal e use formatação de tabela quando listar valores...'"
                   className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:outline-none focus:border-indigo-500 font-sans"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Quem pode usar este agente</label>
+                <p className="text-[11px] text-slate-500 mb-2">
+                  {allowedUserIds.size === 0
+                    ? 'Ninguém marcado — o agente fica visível para todos os usuários.'
+                    : `${allowedUserIds.size} usuário(s) marcado(s) — só eles verão este agente nas telas de escolha.`}
+                </p>
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Buscar por nome ou e-mail..."
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-sm mb-2 focus:outline-none focus:border-indigo-500"
+                />
+                <div className="border border-slate-200 rounded-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                  {systemUsers.length === 0 && (
+                    <p className="text-xs text-slate-400 p-3">Nenhum usuário carregado.</p>
+                  )}
+                  {systemUsers
+                    .filter((u) => {
+                      const q = userSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      return (u.fullName || '').toLowerCase().includes(q)
+                        || (u.email || '').toLowerCase().includes(q);
+                    })
+                    .map((u) => {
+                      const checked = allowedUserIds.has(u.id);
+                      return (
+                        <label key={u.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => setAllowedUserIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(u.id)) next.delete(u.id); else next.add(u.id);
+                              return next;
+                            })}
+                            className="rounded border-slate-300 accent-indigo-600"
+                          />
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-sm text-slate-700 truncate">{u.fullName || u.email || u.id}</span>
+                            <span className="block text-[10px] text-slate-400 truncate">
+                              {[u.email, u.role?.name || u.profileType].filter(Boolean).join(' · ')}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                </div>
+                {allowedUserIds.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAllowedUserIds(new Set())}
+                    className="text-[11px] text-slate-500 hover:text-slate-700 underline mt-2"
+                  >
+                    limpar seleção (voltar a visível para todos)
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">

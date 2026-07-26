@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { loadAgentUserIds, replaceAgentUsers } from "@/lib/aiAgentAccess";
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     try {
       const { id } = await context.params;
-      const { name, description, role, systemPrompt, avatarUrl, isActive } = await req.json().catch(() => ({}));
+      const { name, description, role, systemPrompt, avatarUrl, isActive, userIds } = await req.json().catch(() => ({}));
 
       const agent = await prisma.aiAgent.findUnique({
         where: { id }
@@ -34,7 +35,14 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         }
       });
 
-      return NextResponse.json(updatedAgent);
+      // Lista de autorizados: só mexe quando o cliente mandou o campo.
+      // Array vazio é intencional — devolve o agente para "visível a todos".
+      if (Array.isArray(userIds)) {
+        await replaceAgentUsers(id, userIds.map(String), user.id ? String(user.id) : null);
+      }
+
+      const current = await loadAgentUserIds([id]);
+      return NextResponse.json({ ...updatedAgent, userIds: current.get(id) ?? [] });
     } catch (e) {
       console.error("[PUT /api/ai/agents/[id]]", e);
       return NextResponse.json({ error: "Erro ao atualizar agente." }, { status: 500 });
