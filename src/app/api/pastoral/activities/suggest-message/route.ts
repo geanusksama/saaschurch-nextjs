@@ -85,6 +85,13 @@ export async function POST(req: NextRequest) {
       allowed.find(a => a.role === 'geral') ??
       allowed[0]
 
+    if (!agent) {
+      return NextResponse.json(
+        { error: 'Nenhum agente de IA liberado para você. Peça para marcarem seu usuário em um agente na tela de Agentes de IA.' },
+        { status: 403 }
+      )
+    }
+
     const churchName = (attendance as { churches?: { name?: string } | null }).churches?.name ?? 'nossa igreja'
     const typeLabel = ACTIVITY_TYPE_LABELS[String(activityType || '').toLowerCase()] || activityType || 'Atividade'
     const when = scheduledDate
@@ -123,7 +130,7 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean).join('\n')
 
     const systemPrompt = [
-      agent?.systemPrompt ?? '',
+      agent.systemPrompt,
       '',
       'Sua tarefa agora: escrever a MENSAGEM DE WHATSAPP que a igreja vai enviar para a',
       'pessoa atendida, avisando sobre a atividade registrada no atendimento pastoral dela.',
@@ -140,7 +147,7 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean).join('\n')
 
     try {
-      const text = await generateAiText(agent?.campoId ?? user.campoId, systemPrompt, [
+      const text = await generateAiText(agent.campoId ?? user.campoId, systemPrompt, [
         { role: 'user', content: contexto },
       ])
       const message = text.trim()

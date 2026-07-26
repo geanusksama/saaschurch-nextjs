@@ -432,8 +432,8 @@ export default function AiAgents() {
                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Quem pode usar este agente</label>
                 <p className="text-[11px] text-slate-500 mb-2">
                   {allowedUserIds.size === 0
-                    ? 'Ninguém marcado — o agente fica visível para todos os usuários.'
-                    : `${allowedUserIds.size} usuário(s) marcado(s) — só eles verão este agente nas telas de escolha.`}
+                    ? 'Ninguém marcado — ninguém poderá usar este agente (nem o master). Ele só aparece aqui na gestão.'
+                    : `${allowedUserIds.size} usuário(s) marcado(s) — só eles verão e usarão este agente.`}
                 </p>
                 <input
                   type="text"
@@ -483,7 +483,7 @@ export default function AiAgents() {
                     onClick={() => setAllowedUserIds(new Set())}
                     className="text-[11px] text-slate-500 hover:text-slate-700 underline mt-2"
                   >
-                    limpar seleção (voltar a visível para todos)
+                    limpar seleção (ninguém poderá usar)
                   </button>
                 )}
               </div>

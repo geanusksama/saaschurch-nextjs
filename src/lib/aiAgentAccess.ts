@@ -1,11 +1,9 @@
 /**
  * Quem pode ver/usar cada agente de IA.
  *
- * Regra de USO (quem pode escolher/conversar com o agente):
- *  - agente COM usuários marcados só aparece para quem está marcado —
- *    inclusive para o master, que aqui NÃO tem passe livre;
- *  - agente SEM ninguém marcado continua visível para todos — é o estado dos
- *    agentes antigos, que não podem sumir da tela de um dia para o outro.
+ * Regra de USO (quem pode escolher/conversar com o agente): só quem está
+ * marcado no agente. Sem exceção de perfil — master não marcado não usa — e
+ * sem exceção para agente sem ninguém marcado: se não marcou, ninguém usa.
  *
  * A tela de GESTÃO é outra história: lá o master continua vendo tudo, senão
  * ele marcaria um agente para outra pessoa e perderia o próprio botão de
@@ -17,25 +15,21 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export interface AgentAccessMap {
-  /** agentes que têm lista de autorizados definida */
-  restricted: Set<string>
-  /** agentes em que ESTE usuário está marcado */
+  /** agentes em que ESTE usuário está marcado — os únicos que ele pode usar */
   mine: Set<string>
 }
 
 export async function loadAgentAccess(userId: string | null): Promise<AgentAccessMap> {
-  const { data } = await supabaseAdmin.from('ai_agent_users').select('agent_id, user_id')
-  const restricted = new Set<string>()
-  const mine = new Set<string>()
-  for (const row of data ?? []) {
-    restricted.add(row.agent_id)
-    if (userId && row.user_id === userId) mine.add(row.agent_id)
-  }
-  return { restricted, mine }
+  if (!userId) return { mine: new Set<string>() }
+  const { data } = await supabaseAdmin
+    .from('ai_agent_users')
+    .select('agent_id')
+    .eq('user_id', userId)
+  return { mine: new Set((data ?? []).map(r => r.agent_id)) }
 }
 
 export function canUseAgent(agentId: string, access: AgentAccessMap): boolean {
-  return !access.restricted.has(agentId) || access.mine.has(agentId)
+  return access.mine.has(agentId)
 }
 
 /**
@@ -68,7 +62,8 @@ export async function loadAgentUserIds(agentIds: string[]): Promise<Map<string, 
 
 /**
  * Substitui a lista de autorizados de um agente pelo conjunto informado.
- * `userIds` vazio libera o agente para todos (volta a ser irrestrito).
+ * `userIds` vazio deixa o agente sem ninguém — e sem ninguém, ninguém usa;
+ * ele passa a existir apenas na tela de gestão.
  */
 export async function replaceAgentUsers(
   agentId: string,

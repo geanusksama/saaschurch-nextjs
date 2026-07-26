@@ -510,13 +510,13 @@ export default function PastoralSendHistory() {
         {/* IA em lote */}
         <button onClick={() => setAiModalOpen(true)} disabled={!selected.size || !canManageAi}
           title={!canManageAi ? 'Sem permissão para gerenciar agentes de IA' : 'Atribuir agente de IA aos envios selecionados'}
-          className="h-9 px-3 rounded-lg bg-violet-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-violet-500 disabled:opacity-40">
+          className="h-9 px-3 rounded-lg bg-violet-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-violet-600">
           <Bot className="w-4 h-4" />
           IA ({selected.size})
         </button>
         <button onClick={() => setConfirmRemoveAllAi(true)} disabled={removingAllAi || !aiConversationIds.length || !canManageAi}
           title={!canManageAi ? 'Sem permissão para gerenciar agentes de IA' : 'Remover o agente de IA de todas as conversas atendidas por IA nesta lista'}
-          className="h-9 px-3 rounded-lg border border-red-200 text-red-600 text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-50 disabled:opacity-40">
+          className="h-9 px-3 rounded-lg border border-red-200 text-red-600 text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
           {removingAllAi ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
           Remover IA de todos
         </button>
@@ -524,13 +524,13 @@ export default function PastoralSendHistory() {
         {/* Exclusão de envios */}
         <button onClick={() => setConfirmDeleteSelected(true)} disabled={!selected.size || deleting || !canManageAi}
           title={!canManageAi ? 'Sem permissão para excluir envios' : 'Excluir envios selecionados'}
-          className="h-9 px-3 rounded-lg border border-red-200 text-red-600 text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-50 disabled:opacity-40">
+          className="h-9 px-3 rounded-lg border border-red-200 text-red-600 text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
           <Trash2 className="w-4 h-4" />
           Excluir selecionados
         </button>
         <button onClick={() => setConfirmClearAll(true)} disabled={!sends.length || deleting || !canManageAi}
           title={!canManageAi ? 'Sem permissão para excluir envios' : 'Excluir todos os envios que batem com o filtro atual'}
-          className="h-9 px-3 rounded-lg bg-red-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-700 disabled:opacity-40">
+          className="h-9 px-3 rounded-lg bg-red-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600">
           <Trash2 className="w-4 h-4" />
           Limpar tudo
         </button>
