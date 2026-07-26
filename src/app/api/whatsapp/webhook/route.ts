@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { sendTextViaZApi, persistOutboundMessage } from '@/lib/whatsappSendService'
-import { generateAgentReply } from '@/lib/aiReplyService'
+import { enqueueReply, kickQueue } from '@/lib/aiReplyQueue'
 import type { ZApiWebhookPayload } from '@/types/whatsapp'
 
 // POST /api/whatsapp/webhook
@@ -146,26 +145,31 @@ export async function POST(req: NextRequest) {
 
     // ── Agente de IA: responde automaticamente conversas marcadas ────────────
     // (ai_enabled + ai_agent_id — atribuídos na aba Envios do módulo em massa)
+    //
+    // A resposta NÃO sai daqui. Entra numa fila com 10-15 s de espera, que é
+    // empurrada a cada mensagem nova e a cada "digitando..." do contato — assim
+    // três mensagens seguidas viram UMA resposta, e nunca respondemos por cima
+    // de quem ainda está escrevendo.
     if (msgType === 'text' && content) {
       try {
-        const reply = await generateAgentReply(conversationId)
-        if (reply) {
-          const { data: fullInstance } = await supabaseAdmin
-            .from('whatsapp_instances')
-            .select('id, instance_id, token, client_token, status')
-            .eq('id', instance.id)
-            .single()
+        const { data: conv } = await supabaseAdmin
+          .from('whatsapp_conversations')
+          .select('ai_enabled, ai_agent_id')
+          .eq('id', conversationId)
+          .single()
 
-          if (fullInstance?.status === 'connected') {
-            const result = await sendTextViaZApi(fullInstance, phone, reply)
-            if (result.status === 'sent') {
-              await persistOutboundMessage(conversationId, reply, result.messageId || undefined)
-            }
-          }
+        if (conv?.ai_enabled && conv.ai_agent_id) {
+          await enqueueReply({
+            conversationId,
+            instanceId: instance.id,
+            phone,
+            messageId: payload.messageId ?? null,
+          })
+          kickQueue()
         }
       } catch (aiErr) {
         // nunca deixar a IA derrubar o webhook (precisa sempre responder 200)
-        console.error('[whatsapp/webhook] auto-reply IA falhou', aiErr)
+        console.error('[whatsapp/webhook] enfileiramento da IA falhou', aiErr)
       }
     }
 

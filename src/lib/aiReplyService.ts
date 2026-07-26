@@ -10,6 +10,7 @@
 import { prisma } from '@/lib/prisma'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAiConfig } from '@/lib/aiConfig'
+import { CONSOLIDATION_GUIDANCE, EMOJI_GUIDANCE } from '@/lib/whatsappHumanizer'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -125,10 +126,13 @@ export async function generateAgentReply(conversationId: string): Promise<string
     'Você está respondendo uma conversa de WhatsApp em nome da igreja.',
     conv.contact_name ? `Nome do contato: ${conv.contact_name}.` : '',
     'Responda de forma curta, acolhedora e objetiva, como uma mensagem de WhatsApp.',
+    CONSOLIDATION_GUIDANCE,
     'Sempre traga uma palavra de ânimo para a pessoa, referenciando uma passagem',
     'bíblica pertinente (livro, capítulo e versículo), em tom encorajador — mas sem',
     'transformar a resposta em um texto longo; mantenha o tamanho de uma mensagem normal de WhatsApp.',
-    'Não use markdown. Não se identifique como IA a menos que perguntem.',
+    EMOJI_GUIDANCE,
+    'Escreva como uma pessoa escreve no WhatsApp: sem markdown, sem títulos, sem',
+    'listas numeradas e sem assinatura no fim. Não se identifique como IA a menos que perguntem.',
   ].filter(Boolean).join('\n')
 
   const reply = await generateAiText(agent.campoId, systemPrompt, history)

@@ -89,9 +89,19 @@ async function enforceRateLimit(instanceId: string): Promise<void> {
 export async function sendTextViaZApi(
   instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
   to: string,
-  message: string
+  message: string,
+  /**
+   * Comportamento humano (Z-API aceita 1..15 s em cada um):
+   *  - delayTyping: segundos exibindo "digitando..." ANTES da mensagem sair
+   *  - delayMessage: segundos de espera antes do envio
+   * Sem isto a resposta sai instantânea, o que denuncia o robô.
+   */
+  options?: { delayTyping?: number; delayMessage?: number }
 ): Promise<SendMessageResult> {
   await enforceRateLimit(instance.instance_id)
+
+  const clamp = (v?: number) =>
+    v === undefined ? undefined : Math.max(1, Math.min(15, Math.round(v)))
 
   const url = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}/send-text`
   const res = await fetch(url, {
@@ -100,7 +110,12 @@ export async function sendTextViaZApi(
       'Content-Type': 'application/json',
       'Client-Token': instance.client_token,
     },
-    body: JSON.stringify({ phone: to, message }),
+    body: JSON.stringify({
+      phone: to,
+      message,
+      ...(clamp(options?.delayTyping) ? { delayTyping: clamp(options?.delayTyping) } : {}),
+      ...(clamp(options?.delayMessage) ? { delayMessage: clamp(options?.delayMessage) } : {}),
+    }),
   })
 
   if (!res.ok) {
@@ -110,6 +125,34 @@ export async function sendTextViaZApi(
 
   const json = await res.json()
   return { messageId: json.messageId ?? json.id ?? '', status: 'sent' }
+}
+
+// ── Marca a mensagem do contato como lida (os dois tiques azuis) ─────────────
+/**
+ * POST /read-message da Z-API. Um atendente humano abre a conversa antes de
+ * responder — sem isto o contato vê a resposta chegar com a mensagem dele ainda
+ * "não lida". Nunca lança: falhar aqui não pode impedir a resposta.
+ */
+export async function markMessageAsRead(
+  instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
+  phone: string,
+  messageId: string
+): Promise<boolean> {
+  try {
+    const url = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}/read-message`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Client-Token': instance.client_token,
+      },
+      body: JSON.stringify({ phone, messageId }),
+    })
+    return res.ok
+  } catch (err) {
+    console.error('[whatsapp] read-message falhou', err)
+    return false
+  }
 }
 
 // ── Salva mensagem outbound no banco ──────────────────────────────────────────
