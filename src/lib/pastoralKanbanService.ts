@@ -458,6 +458,8 @@ export async function createPastoralActivity(input: {
   location?: string;
   priority?: string;
   createdBy?: string | null;
+  /** texto que vai por WhatsApp para a pessoa atendida (editado na tela) */
+  message?: string | null;
 }): Promise<PastoralActivity> {
   const { data, error } = await supabase
     .from('pastoral_attendance_activities')
@@ -491,14 +493,22 @@ export async function createPastoralActivity(input: {
   }).catch(() => {});
 
   // Trigger WhatsApp activity creation notification via backend API
+  const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') : null;
   fetch('/api/pastoral/notify-activity', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({
       attendanceId: input.attendanceId,
       churchId: input.churchId,
       activityType: input.activityType,
       title: input.title,
+      description: input.description ?? null,
+      scheduledDate: input.scheduledDate ?? null,
+      // texto editado pelo atendente; vazio = a API monta o padrão
+      message: input.message ?? null,
       origin: typeof window !== 'undefined' ? window.location.origin : 'https://adcampinas.org',
     }),
   }).catch((err) => {

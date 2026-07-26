@@ -35,7 +35,9 @@ import {
   Pencil,
   Download,
   Upload,
+  Sparkles,
 } from 'lucide-react';
+import { buildActivityMessage, resolveTimelineUrl } from '../../lib/pastoralActivityMessage';
 import {
   type PastoralPipelineColumn,
   type PastoralAttendance,
@@ -124,6 +126,18 @@ export function PastoralAttendanceDetail({
     durationMinutes: '30',
     priority: 'normal',
   });
+  // Mensagem que vai por WhatsApp para a pessoa. Nasce como rascunho e
+  // acompanha o formulário até o atendente mexer nela — a partir daí o texto
+  // é dele e nada sobrescreve.
+  const [activityMessage, setActivityMessage] = useState('');
+  const [messageTouched, setMessageTouched] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState('');
+  // Diálogo do Smart: primeiro o atendente conta o caso, depois a IA escreve.
+  const [smartOpen, setSmartOpen] = useState(false);
+  const [smartPrompt, setSmartPrompt] = useState('');
+  const [smartResult, setSmartResult] = useState('');
+  const [smartCopied, setSmartCopied] = useState(false);
 
   // Queries
   const { data: attendance, isLoading } = useQuery({
@@ -155,6 +169,74 @@ export function PastoralAttendanceDetail({
     queryFn: () => listPastoralParticipants(attendanceId),
     staleTime: 5_000,
   });
+
+  // Rascunho da mensagem: segue o formulário enquanto o atendente não editar
+  const activityPersonName = attendance?.members?.full_name || attendance?.visitor_name || '';
+  const draftActivityMessage = useMemo(
+    () => buildActivityMessage({
+      name: activityPersonName,
+      activityType: activityForm.type,
+      title: activityForm.title || '(assunto da atividade)',
+      description: activityForm.description,
+      scheduledDate: activityForm.scheduledDate || null,
+      churchName: attendance?.churches?.name ?? null,
+      timelineUrl: resolveTimelineUrl(attendanceId, typeof window !== 'undefined' ? window.location.origin : null),
+    }),
+    [activityPersonName, activityForm.type, activityForm.title, activityForm.description, activityForm.scheduledDate, attendance?.churches?.name, attendanceId],
+  );
+  const activityMessageValue = messageTouched ? activityMessage : draftActivityMessage;
+
+  const resetActivityMessage = () => {
+    setActivityMessage('');
+    setMessageTouched(false);
+    setSuggestError('');
+  };
+
+  const closeSmart = () => {
+    setSmartOpen(false);
+    setSmartPrompt('');
+    setSmartResult('');
+    setSuggestError('');
+    setSmartCopied(false);
+  };
+
+  /**
+   * Smart: a IA escreve a mensagem a partir do histórico do card MAIS o que o
+   * atendente contou no diálogo. Só gera quando ele pede — nada é escrito na
+   * mensagem sem ele mandar aplicar.
+   */
+  const suggestActivityMessage = async () => {
+    setSuggesting(true);
+    setSuggestError('');
+    setSmartCopied(false);
+    try {
+      const token = localStorage.getItem('mrm_token');
+      const res = await fetch('/api/pastoral/activities/suggest-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          attendanceId,
+          activityType: activityForm.type,
+          title: activityForm.title,
+          description: activityForm.description,
+          scheduledDate: activityForm.scheduledDate || null,
+          // o problema/pedido que o atendente descreveu no diálogo
+          instructions: smartPrompt.trim() || activityForm.description,
+          origin: window.location.origin,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.message) throw new Error(data.error || 'Não foi possível gerar a sugestão.');
+      setSmartResult(String(data.message));
+    } catch (err) {
+      setSuggestError(err instanceof Error ? err.message : 'Não foi possível gerar a sugestão.');
+    } finally {
+      setSuggesting(false);
+    }
+  };
 
   const storagePath = `pastoral/attendances/${attendanceId}`;
   const { data: uploadedFiles = [], refetch: refetchFiles } = useQuery({
@@ -244,10 +326,13 @@ export function PastoralAttendanceDetail({
         scheduledDate: activityForm.scheduledDate ? `${activityForm.scheduledDate}:00` : undefined,
         durationMinutes: Number(activityForm.durationMinutes) || undefined,
         priority: activityForm.priority,
+        // texto final que a pessoa recebe no WhatsApp
+        message: activityMessageValue,
       }),
     onSuccess: async () => {
       setShowActivityForm(false);
       setActivityForm({ type: 'ligacao', title: '', description: '', scheduledDate: '', durationMinutes: '30', priority: 'normal' });
+      resetActivityMessage();
       void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-activities', attendanceId] });
       void queryClient.invalidateQueries({ queryKey: ['pastoral-attendance-timeline', attendanceId] });
 
@@ -714,7 +799,38 @@ export function PastoralAttendanceDetail({
                     <div className="col-span-2">
                       <label className="text-xs font-medium text-slate-600 mb-1 block">Descrição</label>
                       <textarea value={activityForm.description} onChange={(e) => setActivityForm(f => ({ ...f, description: e.target.value }))}
-                        rows={2} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 resize-none" />
+                        rows={2} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 resize-none"
+                        placeholder="Uso interno: o que a equipe vai fazer" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="text-xs font-medium text-slate-600">Mensagem para a pessoa (WhatsApp)</label>
+                        <button
+                          type="button"
+                          onClick={() => { setSmartOpen(true); setSuggestError(''); }}
+                          title="Conte o caso para a IA e receba uma sugestão de mensagem"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-50 text-violet-700 text-[11px] font-semibold hover:bg-violet-100 transition-colors"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          Smart
+                        </button>
+                        {messageTouched && (
+                          <button type="button" onClick={resetActivityMessage}
+                            className="text-[11px] text-slate-500 hover:text-slate-700 underline">
+                            restaurar padrão
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        value={activityMessageValue}
+                        onChange={(e) => { setActivityMessage(e.target.value); setMessageTouched(true); }}
+                        rows={8}
+                        className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 font-mono leading-relaxed"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Texto proposto — edite à vontade. É exatamente isto que a pessoa vai receber ao salvar.
+                      </p>
+                      {!smartOpen && suggestError && <p className="text-[11px] text-red-600 mt-1">{suggestError}</p>}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -723,9 +839,92 @@ export function PastoralAttendanceDetail({
                       {addActivityMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                       Salvar
                     </button>
-                    <button onClick={() => setShowActivityForm(false)} className="px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
+                    <button onClick={() => { setShowActivityForm(false); resetActivityMessage(); }} className="px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
                       Cancelar
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {smartOpen && (
+                <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4" onClick={closeSmart}>
+                  <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+                      <Sparkles className="w-4 h-4 text-violet-600" />
+                      <h4 className="font-semibold text-slate-800 text-sm flex-1">Sugestão inteligente</h4>
+                      <button onClick={closeSmart} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="p-5 space-y-4">
+                      <div>
+                        <label className="text-xs font-medium text-slate-600 mb-1 block">
+                          Qual é o caso? O que você quer comunicar?
+                        </label>
+                        <textarea
+                          value={smartPrompt}
+                          onChange={(e) => setSmartPrompt(e.target.value)}
+                          rows={4}
+                          autoFocus
+                          placeholder="Ex.: a irmã está passando por uma perda na família e vamos visitar no sábado. Quero avisar com uma palavra de conforto."
+                          className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2"
+                        />
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          A IA já conhece as anotações, atividades e o histórico deste atendimento — conte só o que falta.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => void suggestActivityMessage()}
+                        disabled={suggesting || !smartPrompt.trim()}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                      >
+                        {suggesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                        {smartResult ? 'Gerar outra sugestão' : 'Gerar sugestão'}
+                      </button>
+
+                      {suggestError && <p className="text-xs text-red-600">{suggestError}</p>}
+
+                      {smartResult && (
+                        <div>
+                          <label className="text-xs font-medium text-slate-600 mb-1 block">
+                            Sugestão (pode ajustar antes de usar)
+                          </label>
+                          <textarea
+                            value={smartResult}
+                            onChange={(e) => setSmartResult(e.target.value)}
+                            rows={10}
+                            className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 font-mono leading-relaxed"
+                          />
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActivityMessage(smartResult);
+                                setMessageTouched(true);
+                                closeSmart();
+                              }}
+                              className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                            >
+                              Usar esta mensagem
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(smartResult)
+                                  .then(() => setSmartCopied(true))
+                                  .catch(() => setSuggestError('Não foi possível copiar.'));
+                              }}
+                              className="px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                              {smartCopied ? 'Copiado!' : 'Copiar'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
