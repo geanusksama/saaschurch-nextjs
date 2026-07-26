@@ -42,9 +42,22 @@ export async function POST(req: NextRequest) {
     // (getAuthUser recarrega o perfil do banco a cada requisicao) e o usuario
     // seguia enxergando o campo antigo — ou, no caso do master, todos eles.
     if (user.id && user.campoId !== campo.id) {
-      // Igreja/regional do campo anterior nao valem mais: se apontam para outro
-      // campo, sao zeradas para nao vazar escopo nem gravar registro no lugar
-      // errado. Se ja pertencem ao campo novo, ficam como estao.
+      // Master: a troca de campo mexe SO no campo. A igreja de lotacao dele
+      // (a sede de onde ele e) nao limita nada — o escopo do master ja vem do
+      // campo selecionado —, entao zera-la so quebrava o perfil e as telas que
+      // dependem de users.church_id.
+      if (user.profileType === "master") {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { campoId: campo.id },
+        });
+        const safeCampo = { id: campo.id, name: campo.name };
+        return NextResponse.json({ success: true, campo: serializeBigInts(safeCampo) });
+      }
+
+      // Admin: igreja/regional do campo anterior nao valem mais — se apontam
+      // para outro campo, sao zeradas para nao vazar escopo nem gravar registro
+      // no lugar errado. Se ja pertencem ao campo novo, ficam como estao.
       const currentChurch = user.churchId
         ? await prisma.church.findFirst({
             where: { id: user.churchId },

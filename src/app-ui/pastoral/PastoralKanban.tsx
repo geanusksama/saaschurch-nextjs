@@ -49,7 +49,6 @@ import {
   listPastoralColumns,
   listPastoralAttendances,
   movePastoralAttendance,
-  getPastoralKanbanSummary,
   updatePastoralAttendance,
   listPastoralNotes,
   listPastoralActivities,
@@ -277,7 +276,12 @@ export default function PastoralKanban() {
       return {};
     }
   }, []);
-  const isSecretary = user.profileType === 'church';
+  // ── Escopo desta tela (regra própria do Pipeline Pastoral) ──────────────────
+  // master  → todas as igrejas do SEU campo (mesmo estando lotado na sede);
+  //           sem campo definido, enxerga tudo.
+  // demais  → SOMENTE a própria igreja, inclusive quem tem nível campo
+  //           (ex.: secretário da sede vê só a sede).
+  const isMaster = user.profileType === 'master';
 
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<AttendanceType | 'all'>('all');
@@ -292,7 +296,8 @@ export default function PastoralKanban() {
   const [filterChurchId, setFilterChurchId] = useState<string>(() => {
     try {
       const u = JSON.parse(localStorage.getItem('mrm_user') || '{}');
-      if (u.profileType === 'church' && u.churchId) {
+      // quem não é master fica travado na própria igreja
+      if (u.profileType !== 'master' && u.churchId) {
         return u.churchId;
       }
     } catch {}
@@ -327,7 +332,9 @@ export default function PastoralKanban() {
     queryKey: ['regionais-list', user],
     queryFn: async () => {
       let q = supabase.from('regionais').select('id, name').order('name');
-      if (user.profileType === 'campo' && user.campoId) {
+      // o campo do usuário manda — inclusive para o master (ele vê o campo dele,
+      // não o sistema inteiro)
+      if (user.campoId) {
         q = q.eq('campo_id', user.campoId);
       }
       const { data } = await q;
@@ -342,7 +349,9 @@ export default function PastoralKanban() {
       let q = supabase.from('churches').select('id, name, regional_id').order('name');
       if (selectedRegionals.length > 0) {
         q = q.in('regional_id', selectedRegionals);
-      } else if (user.profileType === 'campo' && user.campoId) {
+      } else if (user.campoId) {
+        // igrejas do campo do usuário — vale também para o master, para não
+        // listar igreja de outro campo (ex.: Curitiba para quem é de Campinas)
         const { data: regionaisOfCampo } = await supabase
           .from('regionais')
           .select('id')
@@ -356,29 +365,75 @@ export default function PastoralKanban() {
     staleTime: 30_000,
   });
 
+  // Igreja de referência do quadro. O master pode não ter igreja vinculada
+  // (acontece ao trocar de campo), então caímos na igreja filtrada ou na
+  // primeira do campo — as 4 colunas são iguais em qualquer igreja.
+  const boardChurchId = filterChurchId || churchId || (isMaster ? allChurches[0]?.id : null) || null;
+  // Igrejas que o quadro pode ler: master = campo inteiro; demais = a sua.
+  const scopeChurchIds = isMaster ? allChurches.map((c) => c.id) : churchId ? [churchId] : [];
+
   // Queries
   const { data: columns = [], isLoading: loadingColumns } = useQuery({
-    queryKey: ['pastoral-kanban-columns', churchId],
-    enabled: !!churchId,
-    queryFn: () => listPastoralColumns(churchId!),
+    queryKey: ['pastoral-kanban-columns', boardChurchId],
+    enabled: !!boardChurchId,
+    queryFn: () => listPastoralColumns(boardChurchId!),
     staleTime: 30_000,
   });
 
+  // Cada igreja tem o seu próprio jogo de colunas. Como o quadro desenha as
+  // colunas de UMA igreja e pode mostrar cards de várias, o encaixe é feito
+  // pela chave da coluna (todo/doing/done/cancelled), não pelo id.
+  const { data: scopeColumns = [] } = useQuery({
+    queryKey: ['pastoral-kanban-columns-scope', scopeChurchIds],
+    enabled: scopeChurchIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('pastoral_pipeline_columns')
+        .select('id, church_id, column_key')
+        .in('church_id', scopeChurchIds);
+      return (data ?? []) as { id: string; church_id: string; column_key: ColumnKey }[];
+    },
+    staleTime: 60_000,
+  });
+
+  const columnKeyById = useMemo(
+    () => new Map(scopeColumns.map((c) => [c.id, c.column_key])),
+    [scopeColumns],
+  );
+  const columnIdByChurchKey = useMemo(
+    () => new Map(scopeColumns.map((c) => [`${c.church_id}:${c.column_key}`, c.id])),
+    [scopeColumns],
+  );
+  const STATUS_TO_COLUMN_KEY: Record<string, ColumnKey> = {
+    open: 'todo', doing: 'doing', done: 'done', cancelled: 'cancelled',
+  };
+  /** Chave da coluna onde o card deve aparecer (cai no status se a coluna sumiu). */
+  const cardColumnKey = useCallback(
+    (card: PastoralAttendance): ColumnKey | null =>
+      (card.column_id ? columnKeyById.get(card.column_id) : null) ?? STATUS_TO_COLUMN_KEY[card.status] ?? null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [columnKeyById],
+  );
+
   const { data: allCards = [], isLoading: loadingCards } = useQuery({
-    queryKey: ['pastoral-kanban-cards', churchId, filterChurchId, search, filterType, filterPriority, allChurches, user],
-    enabled: !!churchId,
+    queryKey: ['pastoral-kanban-cards', churchId, filterChurchId, search, filterType, filterPriority, scopeChurchIds, isMaster],
+    enabled: isMaster ? !!filterChurchId || scopeChurchIds.length > 0 : !!churchId,
     queryFn: () => {
-      const isCampo = user.profileType === 'campo';
-      const useMultiChurch = isCampo && !filterChurchId;
-      const churchIds = useMultiChurch ? allChurches.map((c) => c.id) : undefined;
-
-      if (useMultiChurch && (!churchIds || churchIds.length === 0)) {
-        return [];
+      // uma igreja selecionada no filtro (ou usuário comum) → busca direta
+      const single = filterChurchId || (isMaster ? '' : churchId);
+      if (single) {
+        return listPastoralAttendances({
+          churchId: single,
+          search,
+          attendanceType: filterType,
+          priority: filterPriority,
+        });
       }
-
+      // master sem filtro → todas as igrejas do campo. Lista vazia jamais pode
+      // virar "sem filtro", senão vazaria card de outro campo.
+      if (!scopeChurchIds.length) return [];
       return listPastoralAttendances({
-        churchId: filterChurchId || (useMultiChurch ? undefined : churchId!),
-        churchIds,
+        churchIds: scopeChurchIds,
         search,
         attendanceType: filterType,
         priority: filterPriority,
@@ -387,12 +442,20 @@ export default function PastoralKanban() {
     staleTime: 10_000,
   });
 
-  const { data: summary } = useQuery({
-    queryKey: ['pastoral-kanban-summary', churchId],
-    enabled: !!churchId,
-    queryFn: () => getPastoralKanbanSummary(churchId!),
-    staleTime: 15_000,
-  });
+  // Badges do topo: contadas a partir do que está em vista. Antes vinham de uma
+  // query presa a uma única igreja, o que não fecha com o master vendo o campo.
+  const summary = useMemo(() => {
+    const now = new Date();
+    const openish = (s: string) => s !== 'done' && s !== 'cancelled';
+    return {
+      open: allCards.filter((c) => c.status === 'open').length,
+      doing: allCards.filter((c) => c.status === 'doing').length,
+      done: allCards.filter((c) => c.status === 'done').length,
+      cancelled: allCards.filter((c) => c.status === 'cancelled').length,
+      overdue: allCards.filter((c) => c.sla_date && new Date(c.sla_date) < now && openish(c.status)).length,
+      urgent: allCards.filter((c) => c.priority === 'urgent' && openish(c.status)).length,
+    };
+  }, [allCards]);
 
   // Move mutation
   const moveMutation = useMutation({
@@ -600,7 +663,7 @@ export default function PastoralKanban() {
 
       cardsWithDetails.forEach((card, index) => {
         const personName = card.members?.full_name || card.visitor_name || card.title || 'Sem identificação';
-        const columnName = columns.find(c => c.id === card.column_id)?.name || 'Sem coluna';
+        const columnName = columns.find(c => c.column_key === cardColumnKey(card))?.name || 'Sem coluna';
         const typeColor = ATTENDANCE_TYPE_COLORS[card.attendance_type] ?? '#6366f1';
         const typeLabel = typeLabels[card.attendance_type] || card.attendance_type;
 
@@ -764,7 +827,7 @@ export default function PastoralKanban() {
 
   // Group cards by column (respecting date filter)
   const cardsByColumn = columns.reduce<Record<string, PastoralAttendance[]>>((acc, col) => {
-    acc[col.id] = dateFilteredCards.filter((c) => c.column_id === col.id);
+    acc[col.id] = dateFilteredCards.filter((c) => cardColumnKey(c) === col.column_key);
     return acc;
   }, {});
 
@@ -778,19 +841,26 @@ export default function PastoralKanban() {
     (e: React.DragEvent, targetColumn: PastoralPipelineColumn) => {
       e.preventDefault();
       const card = dragCardRef.current;
-      if (!card || card.column_id === targetColumn.id) return;
+      if (!card) return;
+      // o destino é a coluna equivalente NA IGREJA DO CARD, não a coluna
+      // desenhada na tela (que é de outra igreja quando o master vê o campo)
+      const targetColumnId =
+        columnIdByChurchKey.get(`${card.church_id}:${targetColumn.column_key}`) ?? targetColumn.id;
+      if (card.column_id === targetColumnId) return;
 
       moveMutation.mutate({
         attendanceId: card.id,
-        targetColumnId: targetColumn.id,
+        targetColumnId,
         targetColumnKey: targetColumn.column_key,
         targetColumnName: targetColumn.name,
-        churchId: churchId!,
+        // a igreja é a do card — com o master vendo o campo inteiro, a do
+        // usuário não serve (e pode nem existir)
+        churchId: card.church_id || boardChurchId!,
       });
 
       dragCardRef.current = null;
     },
-    [moveMutation, churchId],
+    [moveMutation, boardChurchId, columnIdByChurchKey],
   );
 
   return (
@@ -916,7 +986,7 @@ export default function PastoralKanban() {
                   className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 bg-white" />
               </div>
 
-              {!isSecretary && (
+              {isMaster && (
                 <>
                   {/* Regionais multi-select */}
                   <div className="relative" ref={regionalDropdownRef}>
@@ -1007,12 +1077,12 @@ export default function PastoralKanban() {
               )}
 
               {/* Limpar filtros */}
-              {(search || filterType !== 'all' || filterPriority !== 'all' || (isSecretary ? filterChurchId !== user.churchId : filterChurchId) || selectedRegionals.length > 0) && (
+              {(search || filterType !== 'all' || filterPriority !== 'all' || (isMaster ? filterChurchId : filterChurchId !== user.churchId) || selectedRegionals.length > 0) && (
                 <button
                   onClick={() => {
                     setSearch(''); setFilterType('all'); setFilterPriority('all');
                     setDateFrom(_firstDay); setDateTo(_lastDay);
-                    setSelectedRegionals([]); setFilterChurchId(isSecretary ? (user.churchId || '') : '');
+                    setSelectedRegionals([]); setFilterChurchId(isMaster ? '' : (user.churchId || ''));
                   }}
                   className="flex items-center gap-1 text-xs text-slate-500 hover:text-red-500 transition-colors ml-1"
                 >
@@ -1101,8 +1171,9 @@ export default function PastoralKanban() {
                         </tr>
                       ) : tableCards.map((card) => {
                         const personName = card.members?.full_name || card.visitor_name || card.title || '—';
-                        const colName = columns.find((c) => c.id === card.column_id)?.name ?? '—';
-                        const colColor = columns.find((c) => c.id === card.column_id)?.color ?? '#94a3b8';
+                        const cardColumn = columns.find((c) => c.column_key === cardColumnKey(card));
+                        const colName = cardColumn?.name ?? '—';
+                        const colColor = cardColumn?.color ?? '#94a3b8';
                         const typeColor = ATTENDANCE_TYPE_COLORS[card.attendance_type] ?? '#6366f1';
                         const isOverdue = card.sla_date && new Date(card.sla_date) < new Date() && card.status !== 'done' && card.status !== 'cancelled';
                         return (

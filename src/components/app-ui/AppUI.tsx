@@ -934,12 +934,17 @@ export function AppUI() {
         if (user.campoId !== item.id) {
           user.campoId = item.id;
           user.campoName = item.name;
-          // Igreja/regional do campo anterior deixam de valer (o backend zera
-          // quando nao pertencem ao campo novo)
-          user.churchId = null;
-          user.churchName = null;
-          user.regionalId = null;
-          user.regionalName = null;
+          // Master: so o campo muda. A igreja de lotacao dele nao limita o que
+          // ele ve (o escopo vem do campo escolhido), entao ele continua na
+          // igreja dele — o backend faz o mesmo em verify-field.
+          if (user.profileType !== 'master') {
+            // Demais perfis: igreja/regional do campo anterior deixam de valer
+            // (o backend zera quando nao pertencem ao campo novo)
+            user.churchId = null;
+            user.churchName = null;
+            user.regionalId = null;
+            user.regionalName = null;
+          }
           localStorage.setItem('mrm_user', JSON.stringify(user));
         }
       } catch { /* noop */ }
