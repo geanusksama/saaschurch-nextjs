@@ -1,14 +1,14 @@
 /**
  * Avaliação da ficha de adesão.
  *
- * Mostra tudo que a pessoa preencheu e os documentos anexados, lado a lado com
+ * Mostra tudo que a pessoa preencheu e a foto enviada, lado a lado com
  * os botões de decisão. Aprovar cria o membro e devolve o ROL por WhatsApp;
  * reprovar exige motivo, que também vai por WhatsApp — ninguém fica sem
  * resposta.
  */
 
 import { useState } from 'react';
-import { Check, X, Loader2, FileText, AlertTriangle, ExternalLink, Copy, UserPlus } from 'lucide-react';
+import { Check, X, Loader2, AlertTriangle, Copy, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface MembershipRequestFull {
@@ -62,7 +62,6 @@ export function MembershipReviewModal({
   const [erro, setErro] = useState('');
 
   const f = request.form_data ?? {};
-  const docs = request.documents ?? [];
   const preenchido = !!request.form_submitted_at;
   const decidido = request.status !== 'pending';
 
@@ -203,9 +202,18 @@ export function MembershipReviewModal({
           {preenchido && (
             <>
               <div className="flex gap-4">
-                {f.photoUrl && (
-                  <img src={f.photoUrl} alt="Foto do candidato"
-                    className="w-24 h-24 rounded-xl object-cover border border-slate-200 flex-shrink-0" />
+                {/* a foto aprovada vira a foto do membro na secretaria e nos
+                    dispositivos — clique abre em tamanho real para conferir */}
+                {f.photoUrl ? (
+                  <a href={f.photoUrl} target="_blank" rel="noreferrer" className="flex-shrink-0">
+                    <img src={f.photoUrl} alt="Foto do candidato"
+                      className="w-28 h-28 rounded-xl object-cover border border-slate-200 hover:opacity-90" />
+                  </a>
+                ) : (
+                  <div className="w-28 h-28 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 flex flex-col items-center justify-center text-amber-600 text-[11px] text-center px-2 flex-shrink-0">
+                    <AlertTriangle className="w-4 h-4 mb-1" />
+                    Sem foto
+                  </div>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 flex-1">
                   <Row label="Nome completo" value={`${f.firstName ?? ''} ${f.lastName ?? ''}`} />
@@ -245,36 +253,6 @@ export function MembershipReviewModal({
                 </div>
               )}
 
-              {/* documentos */}
-              <div className="pt-3 border-t border-slate-100">
-                <h3 className="text-xs uppercase tracking-wide text-slate-400 mb-2">
-                  Documentos anexados ({docs.length})
-                </h3>
-                {docs.length === 0 ? (
-                  <p className="text-sm text-amber-600 flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4" /> Nenhum documento anexado.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {docs.map((d, i) => (
-                      <a key={i} href={d.url} target="_blank" rel="noreferrer"
-                        title={d.nome}
-                        className="w-24 h-24 rounded-xl border border-slate-200 overflow-hidden relative group">
-                        {/\.(png|jpe?g|webp|gif)$/i.test(d.url) ? (
-                          <img src={d.url} alt={d.nome} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-400">
-                            <FileText className="w-7 h-7" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
-                          <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100" />
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
             </>
           )}
 

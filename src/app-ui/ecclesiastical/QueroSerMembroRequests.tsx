@@ -299,7 +299,6 @@ export default function QueroSerMembroRequests() {
                         >
                           <FileCheck2 size={11} />
                           FICHA ENVIADA
-                          {!!req.documents?.length && ` · ${req.documents.length} doc`}
                         </button>
                       ) : (
                         <span

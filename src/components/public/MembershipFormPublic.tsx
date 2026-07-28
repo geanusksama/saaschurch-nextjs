@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import { Loader2, Check, AlertTriangle, Upload, X, FileText, Send } from 'lucide-react';
+import { Loader2, Check, AlertTriangle, Camera, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface FormData {
@@ -35,8 +35,6 @@ const EMPTY: FormData = {
   churchEntryDate: '', baptized: '', baptismDate: '', emergencyName: '', emergencyPhone: '',
   photoUrl: '', notes: '',
 };
-
-interface DocItem { tipo: string; url: string; nome: string }
 
 function Field({ label, required, children, className = '' }: {
   label: string; required?: boolean; children: React.ReactNode; className?: string;
@@ -78,7 +76,6 @@ export default function MembershipFormPublic() {
   const [locked, setLocked] = useState(false);
   const [churchName, setChurchName] = useState('');
   const [form, setForm] = useState<FormData>(EMPTY);
-  const [documents, setDocuments] = useState<DocItem[]>([]);
   const [uploading, setUploading] = useState(false);
 
   const set = (k: keyof FormData, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -92,7 +89,6 @@ export default function MembershipFormPublic() {
         setChurchName(data.churchName ?? '');
         setLocked(!!data.locked);
         if (data.formData) setForm({ ...EMPTY, ...data.formData });
-        if (Array.isArray(data.documents)) setDocuments(data.documents);
         if (data.submittedAt) setDone(true);
         // o nome do pedido preenche o primeiro campo, se ainda estiver vazio
         if (!data.formData && data.name) {
@@ -125,7 +121,7 @@ export default function MembershipFormPublic() {
     } catch { /* CEP offline não impede o preenchimento manual */ }
   };
 
-  const uploadFile = async (file: File, tipo: string) => {
+  const uploadFile = async (file: File, _tipo: string) => {
     setUploading(true);
     try {
       const fd = new FormData();
@@ -133,10 +129,8 @@ export default function MembershipFormPublic() {
       const res = await fetch('/api/whatsapp/upload', { method: 'POST', body: fd });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error ?? 'Falha no envio do arquivo');
-      const item = { tipo, url: data.url, nome: file.name };
-      if (tipo === 'foto') setForm(f => ({ ...f, photoUrl: data.url }));
-      else setDocuments(d => [...d, item]);
-      toast.success(`${tipo === 'foto' ? 'Foto' : 'Documento'} anexado`);
+      setForm(f => ({ ...f, photoUrl: data.url }));
+      toast.success('Foto anexada');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao anexar');
     } finally {
@@ -163,7 +157,7 @@ export default function MembershipFormPublic() {
       const res = await fetch(`/api/public/membership-form/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formData: form, documents }),
+        body: JSON.stringify({ formData: form, documents: [] }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Falha ao enviar');
@@ -353,46 +347,46 @@ export default function MembershipFormPublic() {
             </div>
           </section>
 
-          {/* Anexos */}
+          {/* Foto — vira a foto do membro na secretaria e nos dispositivos */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-            <h2 className="text-sm font-bold text-emerald-400 mb-1">Foto e documentos</h2>
+            <h2 className="text-sm font-bold text-emerald-400 mb-1">Sua foto</h2>
             <p className="text-xs text-slate-500 mb-3">
-              Anexe uma foto sua e as fotos dos documentos (RG/CPF e comprovante de endereço).
+              Tire uma foto do seu rosto, de frente e com boa luz. Ela é usada na sua ficha de
+              membro e para te identificar nos dispositivos da igreja.
             </p>
 
-            <div className="flex flex-wrap gap-3 items-start">
+            <div className="flex items-center gap-3">
               <label className="cursor-pointer">
-                <div className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 hover:border-emerald-600 hover:text-emerald-400 overflow-hidden">
-                  {form.photoUrl
-                    ? <img src={form.photoUrl} alt="Foto" className="w-full h-full object-cover" />
-                    : <><Upload className="w-5 h-5 mb-1" /><span className="text-[10px]">Sua foto</span></>}
+                <div className="w-28 h-28 rounded-xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 hover:border-emerald-600 hover:text-emerald-400 overflow-hidden">
+                  {uploading ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : form.photoUrl ? (
+                    <img src={form.photoUrl} alt="Sua foto" className="w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <Camera className="w-6 h-6 mb-1" />
+                      <span className="text-[10px]">Tirar foto</span>
+                    </>
+                  )}
                 </div>
-                <input type="file" accept="image/*" className="hidden"
-                  onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0], 'foto')} />
+                {/* `capture` abre a câmera frontal direto no celular */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  className="hidden"
+                  onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0], 'foto')}
+                />
               </label>
 
-              <label className="cursor-pointer">
-                <div className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 hover:border-emerald-600 hover:text-emerald-400">
-                  {uploading ? <Loader2 className="w-5 h-5 animate-spin" />
-                    : <><FileText className="w-5 h-5 mb-1" /><span className="text-[10px]">Documento</span></>}
-                </div>
-                <input type="file" accept="image/*,application/pdf" className="hidden"
-                  onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0], 'documento')} />
-              </label>
-
-              {documents.map((d, i) => (
-                <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
-                  {/\.(png|jpe?g|webp|gif)$/i.test(d.url)
-                    ? <img src={d.url} alt={d.nome} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center text-slate-400"><FileText className="w-6 h-6" /></div>}
-                  <button
-                    onClick={() => setDocuments(list => list.filter((_, j) => j !== i))}
-                    className="absolute top-1 right-1 p-0.5 rounded-full bg-black/60 text-white hover:bg-red-600"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
+              {form.photoUrl && (
+                <button
+                  onClick={() => set('photoUrl', '')}
+                  className="text-xs text-slate-400 hover:text-red-400 underline"
+                >
+                  tirar outra
+                </button>
+              )}
             </div>
           </section>
 
