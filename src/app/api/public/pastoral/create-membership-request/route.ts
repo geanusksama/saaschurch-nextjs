@@ -171,7 +171,9 @@ export async function POST(req: NextRequest) {
       .from("new_member_requests")
       .insert({
         form_token: formToken,
-        form_sent_at: new Date().toISOString(),
+        // só marcado depois que a Z-API confirmar o envio — antes disso a
+        // secretaria veria "ficha enviada" para alguém que nunca recebeu nada
+        form_sent_at: null,
         target_church_id: targetSedeId,
         name,
         whatsapp: normalizedPhone,
@@ -236,7 +238,18 @@ export async function POST(req: NextRequest) {
 
     if (instance) {
       const formattedDate = new Date(scheduledDate + "T12:00:00").toLocaleDateString("pt-BR");
-      const message = `Olá, *${name}*! 🎉\n\nRecebemos seu pedido para se tornar membro da AD Campinas.\n\nSua entrevista foi agendada para: *${formattedDate}*.\n\nVocê está atualmente na posição *#${position}* na fila de atendimento.\n\nEm breve entraremos em contato. Deus te abençoe!`;
+      // O link da ficha vai JUNTO da confirmação, de propósito: a pessoa
+      // preenche antes da entrevista sem depender de alguém da secretaria
+      // abrir a tela de solicitações e reenviar o link na mão.
+      const message =
+        `Olá, *${name}*! 🎉\n\n` +
+        `Recebemos seu pedido para se tornar membro da AD Campinas.\n\n` +
+        `Sua entrevista foi agendada para: *${formattedDate}*.\n\n` +
+        `Você está atualmente na posição *#${position}* na fila de atendimento.\n\n` +
+        `Antes da entrevista, preencha sua ficha de cadastro e anexe os documentos ` +
+        `(RG/CPF e comprovante de endereço).\n\n` +
+        `📝 É rapidinho, por aqui:\n${formUrl}\n\n` +
+        `Em breve entraremos em contato. Deus te abençoe!`;
       try {
         const result = await sendTextViaZApi(instance, normalizedPhone, message);
         // sem isto a confirmação não aparece na Caixa de Entrada nem no
@@ -249,6 +262,12 @@ export async function POST(req: NextRequest) {
             name
           );
           await persistOutboundMessage(conversationId, message, result.messageId || undefined);
+
+          // a mensagem levava o link da ficha, então agora sim ela foi enviada
+          await supabaseAdmin
+            .from("new_member_requests")
+            .update({ form_sent_at: new Date().toISOString() })
+            .eq("id", request.id);
         }
       } catch (err) {
         console.error("[create-membership-request] Z-API send failed:", err);
