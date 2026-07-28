@@ -8,6 +8,8 @@ import { PenielRegistrationModal } from './PenielRegistrationModal';
 import { ContabilidadeModal } from './ContabilidadeModal';
 import { apiBase } from '../../lib/apiBase';
 import { toast } from 'sonner';
+import { ScrollHint } from './ScrollHint';
+import { InstallAppCard } from '../pwa/InstallAppCard';
 
 function DoveIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -228,7 +230,9 @@ export function PublicHome() {
   const [campoId, setCampoId] = useState('');
 
   useEffect(() => {
-    if (activeForm !== 'membership' || campos.length) return;
+    // os dois formulários mostram o select de campo — carregar só no de
+    // membresia deixava o do atendimento pastoral com a lista vazia
+    if ((activeForm !== 'membership' && activeForm !== 'pastoral') || campos.length) return;
     (async () => {
       try {
         const res = await fetch(`${apiBase}/campos/public`);
@@ -292,8 +296,10 @@ export function PublicHome() {
       setFormError('Por favor, preencha o seu nome e telefone.');
       return;
     }
-    // sem o campo o pedido cairia na sede padrão, provavelmente a errada
-    if (otpFlow === 'membership' && !campoId) {
+    // sem o campo o pedido cairia na sede padrão, provavelmente a errada.
+    // Só exige quando a lista carregou — se `/campos/public` falhar, é melhor
+    // aceitar o pedido na sede padrão do que travar a pessoa na tela.
+    if (campos.length > 0 && !campoId) {
       setFormError('Escolha o campo para sabermos qual igreja vai te atender.');
       return;
     }
@@ -335,6 +341,7 @@ export function PublicHome() {
             phone,
             type: attendanceType,
             notes,
+            campoId: campoId || undefined,
             otp_token: otpToken,
             code: otpCode,
           }),
@@ -487,6 +494,14 @@ export function PublicHome() {
           0%, 100% { opacity: 0; }
           50% { opacity: var(--peak, 0.2); }
         }
+        /* Seta de "role para ver mais" (mobile) */
+        @keyframes scroll-hint-bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(5px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes scroll-hint-bounce { 0%, 100% { transform: none; } }
+        }
       `}</style>
 
       {isDark && (
@@ -540,19 +555,7 @@ export function PublicHome() {
 
         <div className="w-full md:w-1/2 max-w-xl grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-7">
 
-          {/* 1. Inscrições Peniel — Swapped to FIRST grid position */}
-          <button onClick={() => setShowPenielModal(true)} className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left">
-            <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors"
-              style={{ borderColor: '#d4af37', background: 'rgba(212,175,55,0.08)' }}>
-              <DoveIcon className="w-6 h-6 transition-colors" style={{ color: '#d4af37' }} />
-            </div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Inscrições Peniel e consultar inscrições</h3>
-              <p className={`text-xs leading-relaxed ${textSub}`}>Um lugar de encontro, fé e transformação.<br />Faça sua inscrição ou consulte uma já realizada.</p>
-            </div>
-          </button>
-
-          {/* 2. Sou Membro — destaque verde pulsante para chamar atenção */}
+          {/* 1. Sou Membro — destaque verde pulsante para chamar atenção */}
           <button onClick={() => setShowMembroLogin(true)}
             className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left">
             <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors animate-pulse"
@@ -564,6 +567,22 @@ export function PublicHome() {
               <p className={`text-xs leading-relaxed ${textSub}`}>Acesse sua área exclusiva<br />de membro da igreja.</p>
             </div>
           </button>
+
+          {/* 2. Inscrições Peniel */}
+          <button onClick={() => setShowPenielModal(true)} className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left">
+            <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors"
+              style={{ borderColor: '#d4af37', background: 'rgba(212,175,55,0.08)' }}>
+              <DoveIcon className="w-6 h-6 transition-colors" style={{ color: '#d4af37' }} />
+            </div>
+            <div className="flex flex-col justify-center min-h-[3.5rem]">
+              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Inscrições Peniel e consultar inscrições</h3>
+              <p className={`text-xs leading-relaxed ${textSub}`}>Um lugar de encontro, fé e transformação.<br />Faça sua inscrição ou consulte uma já realizada.</p>
+            </div>
+          </button>
+
+          {/* 3. Instalar o app — só aparece se o navegador permitir instalar
+              e o app ainda não estiver instalado */}
+          <InstallAppCard isDark={isDark} />
 
           <a href="https://www.youtube.com/@tvadcampinas" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
             <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#ff0000] transition-colors ${border}`}><Play className={`w-6 h-6 group-hover:text-[#ff0000] transition-colors ${iconColor}`} /></div>
@@ -613,6 +632,10 @@ export function PublicHome() {
 
         </div>
       </main>
+
+      {/* Indicador de "tem mais abaixo" — mobile, onde a barra de rolagem
+          está escondida pelo CSS global desta página */}
+      <ScrollHint hidden={fabOpen || showFabModal || showMembroLogin || showPenielModal} />
 
       {/* Floating Action Button (FAB) and Menu Stack */}
       <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
@@ -956,6 +979,27 @@ export function PublicHome() {
                       placeholder="(19) 99999-9999"
                       className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'}`}
                     />
+                  </div>
+
+                  {/* Campo obrigatório: sem ele handleSendOtp bloqueia o envio e
+                      a pessoa fica sem saber onde escolher. */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Campo / Região *
+                    </label>
+                    <select
+                      value={campoId}
+                      onChange={(e) => setCampoId(e.target.value)}
+                      className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'}`}
+                    >
+                      <option value="">Selecione o campo mais próximo</option>
+                      {campos.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Sua adesão vai para a igreja sede desse campo.
+                    </p>
                   </div>
 
                   <div>
