@@ -220,12 +220,14 @@ export default function MembershipFormPublic() {
     setSaving(true);
     try {
       // A foto sobe agora, no envio — não no momento em que foi tirada.
+      // Rota pública validada pelo mesmo token: /api/whatsapp/upload é withAuth
+      // e devolvia 401 aqui, porque a ficha não tem sessão.
       let photoUrl = form.photoUrl;
       if (fotoFile) {
         const fd = new FormData();
         fd.append('file', fotoFile);
-        const up = await fetch('/api/whatsapp/upload', { method: 'POST', body: fd });
-        const dataUp = await up.json();
+        const up = await fetch(`/api/public/membership-form/${token}/photo`, { method: 'POST', body: fd });
+        const dataUp = await up.json().catch(() => ({}));
         if (!up.ok || !dataUp.url) throw new Error(dataUp.error ?? 'Falha ao enviar a foto');
         photoUrl = dataUp.url;
       }
