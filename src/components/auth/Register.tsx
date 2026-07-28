@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router';
 import { Mail, Lock, User, Phone, Eye, EyeOff, Loader, MapPinned } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 import { apiBase } from '../../lib/apiBase';
@@ -16,6 +16,8 @@ export function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [campos, setCampos] = useState<CampoOption[]>([]);
+  const [loadingCampos, setLoadingCampos] = useState(true);
+  const [camposErro, setCamposErro] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -25,23 +27,33 @@ export function Register() {
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadCampos = async () => {
+  // A lista de campos falhava de vez em quando com 500 (cold start do banco) e
+  // a tela ficava presa no erro para sempre, sem como tentar de novo. Agora
+  // tenta 3 vezes com espera crescente e, se ainda assim falhar, oferece o
+  // botão de recarregar em vez de só acusar o erro.
+  const loadCampos = useCallback(async () => {
+    setLoadingCampos(true);
+    setCamposErro('');
+    for (let tentativa = 1; tentativa <= 3; tentativa++) {
       try {
         const response = await fetch(`${apiBase}/campos/public`);
-        if (!response.ok) {
-          throw new Error(`Erro ${response.status} ao carregar campos.`);
-        }
-
+        if (!response.ok) throw new Error(`Erro ${response.status} ao carregar campos.`);
         const data = await response.json();
         setCampos(Array.isArray(data) ? data : []);
+        setLoadingCampos(false);
+        return;
       } catch (loadError: any) {
-        setError(loadError.message || 'Não foi possível carregar os campos disponíveis.');
+        if (tentativa === 3) {
+          setCamposErro(loadError?.message || 'Não foi possível carregar os campos disponíveis.');
+        } else {
+          await new Promise((r) => setTimeout(r, tentativa * 800));
+        }
       }
-    };
-
-    loadCampos();
+    }
+    setLoadingCampos(false);
   }, []);
+
+  useEffect(() => { loadCampos(); }, [loadCampos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,7 +219,9 @@ export function Register() {
                     className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm text-slate-900 transition-all bg-white appearance-none"
                     required
                   >
-                    <option value="" disabled hidden>Selecione seu campo</option>
+                    <option value="" disabled hidden>
+                      {loadingCampos ? 'Carregando campos…' : 'Selecione seu campo'}
+                    </option>
                     {campos.map((campo) => (
                       <option key={campo.id} value={campo.id}>
                         {campo.name}
@@ -215,6 +229,14 @@ export function Register() {
                     ))}
                   </select>
                 </div>
+                {camposErro && (
+                  <p className="mt-2 text-[11px] text-red-600">
+                    {camposErro}{' '}
+                    <button type="button" onClick={loadCampos} className="font-bold underline">
+                      Tentar de novo
+                    </button>
+                  </p>
+                )}
               </div>
             </div>
 

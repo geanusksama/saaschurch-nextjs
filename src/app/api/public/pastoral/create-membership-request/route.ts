@@ -246,8 +246,8 @@ export async function POST(req: NextRequest) {
         `Recebemos seu pedido para se tornar membro da AD Campinas.\n\n` +
         `Sua entrevista foi agendada para: *${formattedDate}*.\n\n` +
         `Você está atualmente na posição *#${position}* na fila de atendimento.\n\n` +
-        `Antes da entrevista, preencha sua ficha de cadastro e anexe os documentos ` +
-        `(RG/CPF e comprovante de endereço).\n\n` +
+        `Antes da entrevista, preencha sua ficha de cadastro e tire uma foto do seu rosto ` +
+        `pelo próprio formulário.\n\n` +
         `📝 É rapidinho, por aqui:\n${formUrl}\n\n` +
         `Em breve entraremos em contato. Deus te abençoe!`;
       try {

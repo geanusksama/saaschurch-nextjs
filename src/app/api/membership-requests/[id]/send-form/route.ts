@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const message =
       `Olá, *${firstName}*! 😊\n\n` +
       `Para seguir com seu pedido de membresia, precisamos que você preencha sua ficha de cadastro ` +
-      `e anexe os documentos (RG/CPF e comprovante de endereço).\n\n` +
+      `e tire uma foto do seu rosto pelo próprio formulário.\n\n` +
       `📝 É rapidinho, por aqui:\n${formUrl}\n\n` +
       `Assim que você enviar, nossa secretaria avalia e te responde por aqui mesmo. Deus abençoe!`
 
