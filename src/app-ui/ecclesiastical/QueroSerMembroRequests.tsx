@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Search, Calendar, User, Check, X, ShieldAlert, Loader2, Info } from 'lucide-react';
+import { UserPlus, Search, Calendar, User, Check, X, ShieldAlert, Loader2, Info, FileCheck2, FileClock, Eye } from 'lucide-react';
+import { MembershipReviewModal, type MembershipRequestFull } from './MembershipReviewModal';
 import { Link, useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
 import { toast } from 'sonner';
@@ -15,6 +16,13 @@ interface MembershipRequest {
   status: 'pending' | 'approved' | 'rejected';
   church_id: string;
   created_at: string;
+  // ficha de adesão (link enviado por WhatsApp ao pedir "Quero ser Membro")
+  form_token?: string | null;
+  form_submitted_at?: string | null;
+  form_data?: Record<string, string> | null;
+  documents?: Array<{ tipo: string; url: string; nome: string }> | null;
+  review_notes?: string | null;
+  member_rol?: number | null;
   churches?: {
     name: string;
   } | null;
@@ -28,6 +36,9 @@ export default function QueroSerMembroRequests() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [formStatus, setFormStatus] = useState('all');
+  // ficha aberta para avaliação documental
+  const [reviewing, setReviewing] = useState<MembershipRequestFull | null>(null);
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
@@ -43,6 +54,7 @@ export default function QueroSerMembroRequests() {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (status !== 'all') params.append('status', status);
+      if (formStatus !== 'all') params.append('formStatus', formStatus);
       if (dateFrom) params.append('dateFrom', dateFrom);
       if (dateTo) params.append('dateTo', dateTo);
 
@@ -61,7 +73,7 @@ export default function QueroSerMembroRequests() {
 
   useEffect(() => {
     fetchRequests();
-  }, [search, status, dateFrom, dateTo]);
+  }, [search, status, formStatus, dateFrom, dateTo]);
 
   const handleApprove = async (req: MembershipRequest) => {
     try {
@@ -190,6 +202,17 @@ export default function QueroSerMembroRequests() {
             <option value="rejected">Reprovado</option>
           </select>
 
+          {/* estado da FICHA — diferente do status da decisão */}
+          <select
+            value={formStatus}
+            onChange={(e) => setFormStatus(e.target.value)}
+            className="px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="all">Toda a documentação</option>
+            <option value="submitted">Documentos enviados</option>
+            <option value="awaiting">Aguardando documentos</option>
+          </select>
+
           <div className="flex items-center gap-2">
             <input
               type="date"
@@ -266,6 +289,27 @@ export default function QueroSerMembroRequests() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    {/* estado da ficha: é o que diz se há o que avaliar */}
+                    <div className="mb-1">
+                      {req.form_submitted_at ? (
+                        <button
+                          onClick={() => setReviewing(req as MembershipRequestFull)}
+                          title="Ficha preenchida — clique para avaliar os dados e documentos"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                        >
+                          <FileCheck2 size={11} />
+                          FICHA ENVIADA
+                          {!!req.documents?.length && ` · ${req.documents.length} doc`}
+                        </button>
+                      ) : (
+                        <span
+                          title="A pessoa ainda não preencheu a ficha de adesão"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200"
+                        >
+                          <FileClock size={11} /> AGUARDANDO FICHA
+                        </span>
+                      )}
+                    </div>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
                       req.status === 'approved' ? 'bg-green-50 text-green-700 border border-green-200' :
                       req.status === 'rejected' ? 'bg-red-50 text-red-700 border border-red-200' :
@@ -276,23 +320,22 @@ export default function QueroSerMembroRequests() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    {req.status === 'pending' ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleApprove(req)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
-                        >
-                          <Check size={13} /> Aprovar
-                        </button>
-                        <button
-                          onClick={() => handleReject(req)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 rounded-lg text-xs font-semibold transition-colors border border-slate-200"
-                        >
-                          <X size={13} /> Reprovar
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-slate-400 text-xs">Concluído</span>
+                    {/* a decisão passa pela avaliação da ficha, nunca solta */}
+                    <button
+                      onClick={() => setReviewing(req as MembershipRequestFull)}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        req.status === 'pending'
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      <Eye size={13} />
+                      {req.status === 'pending' ? 'Avaliar ficha' : 'Ver ficha'}
+                    </button>
+                    {req.status === 'approved' && req.member_rol && (
+                      <p className="text-[10px] text-emerald-700 font-semibold mt-1">
+                        ROL {req.member_rol}
+                      </p>
                     )}
                   </td>
                 </tr>
@@ -301,6 +344,14 @@ export default function QueroSerMembroRequests() {
           </table>
         )}
       </div>
+
+      {reviewing && (
+        <MembershipReviewModal
+          request={reviewing}
+          onClose={() => setReviewing(null)}
+          onDone={fetchRequests}
+        />
+      )}
     </div>
   );
 }

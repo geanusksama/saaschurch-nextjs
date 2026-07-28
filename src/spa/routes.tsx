@@ -189,6 +189,7 @@ import CMSDeptSettings from "../app-ui/cms/CMSDeptSettings";
 import { PortalHomePage, PortalDeptPage } from "../components/public/portal/PortalPage";
 import { PenielPublicPage } from "../components/public/PenielPublicPage";
 import PastoralTimelinePublic from "../components/public/PastoralTimelinePublic";
+import MembershipFormPublic from "../components/public/MembershipFormPublic";
 
 // Portal Membro
 import { MembroProvider } from "../components/membro/MembroProvider";
@@ -318,6 +319,13 @@ export const router = createBrowserRouter([
   {
     path: "/pastoral/timeline/:id",
     Component: PastoralTimelinePublic,
+    errorElement: <ErrorBoundary />,
+  },
+  // Ficha de adesão — link enviado por WhatsApp a quem pede "Quero ser Membro".
+  // O token na URL é a credencial; não há login.
+  {
+    path: "/membro/formulario/:token",
+    Component: MembershipFormPublic,
     errorElement: <ErrorBoundary />,
   },
   // Portal Membro — área exclusiva para membros autenticados via ROL+CPF+WhatsApp OTP

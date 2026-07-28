@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby } from 'lucide-react';
+import { User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby, Clock } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MembroLogin } from '../membro/MembroLogin';
 import { MembroProvider } from '../membro/MembroProvider';
@@ -198,7 +198,7 @@ export function PublicHome() {
   }
   const [showFabModal, setShowFabModal] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
-  const [activeForm, setActiveForm] = useState<'options' | 'pastoral' | 'membership' | 'otp' | 'scheduler' | 'success'>('options');
+  const [activeForm, setActiveForm] = useState<'options' | 'pastoral' | 'membership' | 'otp' | 'scheduler' | 'success' | 'duplicate'>('options');
   const [otpFlow, setOtpFlow] = useState<'pastoral' | 'membership'>('pastoral');
   
   // Form States
@@ -220,6 +220,9 @@ export function PublicHome() {
   const [loadingOtp, setLoadingOtp] = useState(false);
   const [formError, setFormError] = useState('');
   const [successInfo, setSuccessInfo] = useState<{ date?: string; position?: number }>({});
+  // pedido igual já vivo no pipeline — vira aviso, não erro (o dado é válido,
+  // só não faz sentido abrir um segundo card para o mesmo assunto)
+  const [duplicateInfo, setDuplicateInfo] = useState<{ message: string; stage: string } | null>(null);
 
   const navigate = useNavigate();
 
@@ -317,8 +320,13 @@ export function PublicHome() {
           }),
         });
         const data = await res.json();
+        if (res.status === 409 && data.duplicate) {
+          setDuplicateInfo({ message: data.error, stage: data.stage });
+          setActiveForm('duplicate');
+          return;
+        }
         if (!res.ok) throw new Error(data.error || 'Erro ao criar atendimento');
-        
+
         setSuccessInfo({});
         setActiveForm('success');
       } else {
@@ -352,8 +360,13 @@ export function PublicHome() {
         }),
       });
       const data = await res.json();
+      if (res.status === 409 && data.duplicate) {
+        setDuplicateInfo({ message: data.error, stage: data.stage });
+        setActiveForm('duplicate');
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Erro ao agendar');
-      
+
       setSuccessInfo({
         date: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR'),
         position: data.position,
@@ -711,6 +724,7 @@ export function PublicHome() {
                     {activeForm === 'otp' && 'Verificação de WhatsApp'}
                     {activeForm === 'scheduler' && 'Agende seu Atendimento'}
                     {activeForm === 'success' && 'Solicitação Enviada!'}
+                    {activeForm === 'duplicate' && 'Pedido já em andamento'}
                   </h2>
                 </div>
                 <button
@@ -1085,6 +1099,32 @@ export function PublicHome() {
                     className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-md"
                   >
                     Fechar
+                  </button>
+                </div>
+              )}
+
+              {activeForm === 'duplicate' && duplicateInfo && (
+                <div className="flex flex-col items-center text-center py-6 space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                    <Clock size={28} />
+                  </div>
+                  <div>
+                    <h3 className={`font-bold text-base mb-1.5 ${textPrimary}`}>
+                      Seu pedido já está conosco
+                    </h3>
+                    <p className={`text-xs leading-relaxed max-w-sm ${textSub}`}>
+                      {duplicateInfo.message}
+                    </p>
+                    <p className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-500 text-xs font-semibold">
+                      Fase atual: {duplicateInfo.stage}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowFabModal(false)}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-md"
+                  >
+                    Entendi, fechar
                   </button>
                 </div>
               )}

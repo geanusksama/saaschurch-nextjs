@@ -24,6 +24,26 @@ export async function POST(req: NextRequest) {
 
     const { phone, visitor_name } = attendance;
 
+    // Se a pessoa está sendo acompanhada pelo Cronograma, quem fala com ela é
+    // o cronograma. Sem esta guarda, mover 10 pessoas para FAZENDO e anexar a
+    // agenda mandava 10 avisos genéricos de status em rajada, por fora do
+    // ritmo e das instâncias configuradas — dois robôs falando ao mesmo tempo.
+    const { data: enrollment } = await supabaseAdmin
+      .from("pastoral_journey_enrollments")
+      .select("id")
+      .eq("attendance_id", attendanceId)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+    if (enrollment) {
+      return NextResponse.json({
+        success: true,
+        skipped: "journey_active",
+        message: "Card em acompanhamento pelo cronograma — aviso de status suprimido.",
+      });
+    }
+
     if (!phone) {
       return NextResponse.json({ success: true, message: "Card sem telefone cadastrado." });
     }

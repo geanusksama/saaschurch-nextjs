@@ -1,8 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, hashCode } from "@/lib/membroJwt";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { findLiveAttendance, duplicateMessage } from "@/lib/pastoralDuplicateCheck";
 
 const DEFAULT_SEDE_ID = "6d2688df-5249-4bd2-89cc-0cd8c324b3d8";
+
+/** Rótulo do assunto para o aviso de duplicidade. */
+const TYPE_LABELS: Record<string, string> = {
+  visita_pastoral: "Visita Pastoral",
+  aconselhamento: "Aconselhamento",
+  pedido_oracao: "Pedido de Oração",
+  emergencial: "Atendimento Emergencial",
+  reconciliacao: "Reconciliação",
+  familiar: "Atendimento Familiar",
+  jovem: "Atendimento Jovem",
+  infantil: "Atendimento Infantil",
+  financeiro: "Atendimento Financeiro",
+  ministerial: "Atendimento Ministerial",
+  online: "Atendimento Online",
+  presencial: "Atendimento Presencial",
+  casamento: "Casamento",
+  apresentacao_criancas: "Apresentação de Crianças",
+  quero_ser_membro: "Quero ser Membro",
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,6 +44,28 @@ export async function POST(req: NextRequest) {
     }
 
     const targetChurchId = churchId || DEFAULT_SEDE_ID;
+
+    // 0. Este número já tem o mesmo assunto vivo no pipeline? Então não cria
+    //    outro card — devolve em que fase o pedido dele está.
+    const existing = await findLiveAttendance({
+      churchId: targetChurchId,
+      phone: normalizedPhone,
+      attendanceType: type || null,
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        {
+          duplicate: true,
+          error: duplicateMessage(existing, TYPE_LABELS[type] || "atendimento"),
+          stage: existing.stage,
+          stageKey: existing.stageKey,
+          attendanceId: existing.attendanceId,
+          createdAt: existing.createdAt,
+        },
+        { status: 409 }
+      );
+    }
 
     // 1. Get or create pipeline
     let { data: pipeline } = await supabaseAdmin

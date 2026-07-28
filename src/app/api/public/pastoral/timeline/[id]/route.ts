@@ -38,6 +38,9 @@ export async function GET(
         event_type: t.event_type,
         description: t.description,
         created_at: t.created_at,
+        // link da ficha de adesão: é aqui que a pessoa reabre o formulário sem
+        // depender de achar a mensagem do WhatsApp
+        form_url: t.metadata?.form_url ?? null,
       }));
 
     // Get current position in column

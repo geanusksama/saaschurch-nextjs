@@ -6,18 +6,25 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { X, Save, Loader2, Search, User } from 'lucide-react';
+import { X, Save, Loader2, Search, User, CalendarClock } from 'lucide-react';
 import {
   type PastoralPipelineColumn,
+  type PastoralAttendance,
   type AttendanceType,
   type Priority,
+  type PersonProfile,
   ATTENDANCE_TYPE_LABELS,
   PRIORITY_LABELS,
   PRIORITY_COLORS,
+  PERSON_PROFILE_LABELS,
+  PERSON_PROFILE_COLORS,
   getCurrentChurchId,
   createPastoralAttendance,
 } from '../../lib/pastoralKanbanService';
 import { supabase } from '../../lib/supabaseClient';
+import { AttachJourneyModal } from './AttachJourneyModal';
+
+const PERSON_PROFILE_KEYS = Object.keys(PERSON_PROFILE_LABELS) as PersonProfile[];
 
 interface MemberOption {
   id: string;
@@ -44,6 +51,8 @@ export function PastoralAttendanceNew({
     title: '',
     attendanceType: 'visita_pastoral' as AttendanceType,
     priority: 'normal' as Priority,
+    // grupo de chegada — é o que dirige o cronograma de mensagens
+    personProfile: '' as PersonProfile | '',
     columnId: column.id,
     visitorName: '',
     phone: '',
@@ -51,6 +60,9 @@ export function PastoralAttendanceNew({
     slaDate: '',
     description: '',
   });
+  const [attachJourney, setAttachJourney] = useState(true);
+  // card recém-criado aguardando o modal de cronograma
+  const [createdCard, setCreatedCard] = useState<PastoralAttendance | null>(null);
 
   // Member search
   const { data: members = [], isLoading: searchLoading } = useQuery({
@@ -75,6 +87,7 @@ export function PastoralAttendanceNew({
         columnId: form.columnId,
         title: form.title || form.visitorName || selectedMember?.full_name || 'Sem título',
         attendanceType: form.attendanceType,
+        personProfile: form.personProfile || null,
         priority: form.priority,
         memberId: selectedMember?.id,
         visitorName: !selectedMember ? form.visitorName || undefined : undefined,
@@ -83,7 +96,13 @@ export function PastoralAttendanceNew({
         slaDate: form.slaDate || undefined,
         description: form.description || undefined,
       }),
-    onSuccess: onCreated,
+    // com o grupo classificado e o cronograma marcado, o modal de anexação
+    // abre em cima do card recém-criado; caso contrário fecha direto
+    onSuccess: (card) => {
+      const hasPhone = String(card.phone ?? '').replace(/\D/g, '').length >= 10;
+      if (attachJourney && form.personProfile && hasPhone) setCreatedCard(card);
+      else onCreated();
+    },
   });
 
   const selectMember = (m: MemberOption) => {
@@ -173,6 +192,57 @@ export function PastoralAttendanceNew({
             </div>
           </div>
 
+          {/* Grupo de chegada — define a coluna de mensagens do cronograma */}
+          <div>
+            <label className="text-xs font-semibold text-slate-700 mb-1 block">
+              Grupo da pessoa
+              <span className="font-normal text-slate-400"> · define o cronograma de mensagens</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {PERSON_PROFILE_KEYS.map((key) => {
+                const active = form.personProfile === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, personProfile: active ? '' : key }))}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+                    style={
+                      active
+                        ? {
+                            backgroundColor: `${PERSON_PROFILE_COLORS[key]}18`,
+                            borderColor: PERSON_PROFILE_COLORS[key],
+                            color: PERSON_PROFILE_COLORS[key],
+                          }
+                        : { borderColor: '#e2e8f0', color: '#64748b' }
+                    }
+                  >
+                    {PERSON_PROFILE_LABELS[key]}
+                  </button>
+                );
+              })}
+            </div>
+            {form.personProfile ? (
+              <label className="flex items-start gap-2 text-sm text-slate-600 cursor-pointer mt-2">
+                <input
+                  type="checkbox"
+                  checked={attachJourney}
+                  onChange={(e) => setAttachJourney(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 mt-0.5"
+                />
+                <span className="inline-flex items-center gap-1">
+                  <CalendarClock className="w-3.5 h-3.5 text-violet-500" />
+                  Anexar o cronograma de acompanhamento ao criar
+                </span>
+              </label>
+            ) : (
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                Sem grupo definido a pessoa não entra no cronograma automático — dá para classificar
+                depois pelo menu ⋯ do card.
+              </p>
+            )}
+          </div>
+
           {/* Coluna */}
           <div>
             <label className="text-xs font-semibold text-slate-700 mb-1 block">Coluna inicial</label>
@@ -239,6 +309,15 @@ export function PastoralAttendanceNew({
           </button>
         </div>
       </div>
+
+      {createdCard && (
+        <AttachJourneyModal
+          cards={[createdCard]}
+          title="Cronograma para o novo atendimento"
+          // fechar (ou concluir) encerra também o modal de criação
+          onClose={onCreated}
+        />
+      )}
     </div>
   );
 }

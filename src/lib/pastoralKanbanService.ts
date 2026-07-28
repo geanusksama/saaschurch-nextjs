@@ -43,6 +43,25 @@ export type AttendanceType =
 
 export type ColumnKey = 'todo' | 'doing' | 'done' | 'cancelled';
 
+/**
+ * Os 3 grupos de pessoas que chegam à igreja. É esta classificação que decide
+ * qual coluna de mensagens do Cronograma de Acompanhamento a pessoa recebe.
+ * Ver src/lib/pastoralJourneyDefault.ts.
+ */
+export type PersonProfile = 'novo_convertido' | 'reconciliado' | 'outra_igreja';
+
+export const PERSON_PROFILE_LABELS: Record<PersonProfile, string> = {
+  novo_convertido: 'Novo Convertido',
+  reconciliado: 'Reconciliado',
+  outra_igreja: 'Vindo de Outra Igreja',
+};
+
+export const PERSON_PROFILE_COLORS: Record<PersonProfile, string> = {
+  novo_convertido: '#22c55e',
+  reconciliado: '#f59e0b',
+  outra_igreja: '#3b82f6',
+};
+
 export type Priority = 'low' | 'normal' | 'high' | 'urgent';
 
 export type PastoralPipelineColumn = {
@@ -67,6 +86,8 @@ export type PastoralAttendance = {
   phone: string | null;
   email: string | null;
   attendance_type: AttendanceType;
+  /** grupo de chegada da pessoa — dirige o cronograma de mensagens */
+  person_profile: PersonProfile | null;
   responsible_user_id: string | null;
   priority: Priority;
   status: string;
@@ -262,6 +283,7 @@ export async function createPastoralAttendance(input: {
   phone?: string;
   email?: string;
   attendanceType: AttendanceType;
+  personProfile?: PersonProfile | null;
   responsibleUserId?: string | null;
   priority?: Priority;
   title?: string;
@@ -282,6 +304,7 @@ export async function createPastoralAttendance(input: {
       phone: input.phone || null,
       email: input.email || null,
       attendance_type: input.attendanceType,
+      person_profile: input.personProfile || null,
       responsible_user_id: input.responsibleUserId || null,
       priority: input.priority || 'normal',
       status: 'open',
@@ -375,6 +398,7 @@ export async function updatePastoralAttendance(
     phone: string;
     email: string;
     attendance_type: AttendanceType;
+    person_profile: PersonProfile | null;
     responsible_user_id: string | null;
     priority: Priority;
     title: string;
@@ -402,6 +426,11 @@ export async function updatePastoralAttendance(
  */
 export async function bulkDeletePastoralAttendances(ids: string[]): Promise<void> {
   if (!ids.length) return;
+
+  // Solicitações de membresia apontam para o card sem FK. Sem limpar aqui, a
+  // linha continua na tela "Quero ser Membro" apontando para um card que não
+  // existe mais — foi assim que nasceu a duplicata da Rayanne.
+  await supabase.from('new_member_requests').update({ pipeline_card_id: null }).in('pipeline_card_id', ids);
 
   await supabase.from('whatsapp_campaign_recipients').update({ attendance_id: null }).in('attendance_id', ids);
   await supabase.from('whatsapp_import_rows').update({ matched_attendance_id: null }).in('matched_attendance_id', ids);

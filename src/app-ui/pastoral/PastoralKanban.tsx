@@ -34,6 +34,7 @@ import {
   X,
   Printer,
   Trash2,
+  CalendarClock,
 } from 'lucide-react';
 import {
   type PastoralPipelineColumn,
@@ -45,6 +46,9 @@ import {
   ATTENDANCE_TYPE_COLORS,
   PRIORITY_LABELS,
   PRIORITY_COLORS,
+  PERSON_PROFILE_LABELS,
+  type PersonProfile,
+  PERSON_PROFILE_COLORS,
   getCurrentChurchId,
   listPastoralColumns,
   listPastoralAttendances,
@@ -60,6 +64,81 @@ import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { toast } from 'sonner';
 import { PastoralAttendanceDetail } from './PastoralAttendanceDetail';
 import { PastoralAttendanceNew } from './PastoralAttendanceNew';
+import { AttachJourneyModal } from './AttachJourneyModal';
+
+// ─── Menu ⋯ (card e coluna) ──────────────────────────────────────────────────
+
+/** Menuzinho ancorado que fecha ao clicar fora — usado no ⋯ do card e da coluna. */
+function DotsMenu({
+  children,
+  align = 'right',
+  title,
+}: {
+  children: (close: () => void) => React.ReactNode;
+  align?: 'left' | 'right';
+  title?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        title={title}
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className="p-0.5 rounded hover:bg-slate-100 text-slate-400"
+      >
+        <MoreHorizontal className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`absolute z-30 top-full mt-1 ${align === 'right' ? 'right-0' : 'left-0'}
+            min-w-[210px] bg-white rounded-xl border border-slate-200 shadow-lg py-1`}
+        >
+          {children(() => setOpen(false))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MenuItem({
+  icon,
+  label,
+  hint,
+  onClick,
+  disabled,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-start gap-2 disabled:opacity-40 disabled:hover:bg-transparent"
+    >
+      <span className="mt-0.5 flex-shrink-0">{icon}</span>
+      <span className="min-w-0">
+        <span className="block truncate">{label}</span>
+        {hint && <span className="block text-[11px] text-slate-400">{hint}</span>}
+      </span>
+    </button>
+  );
+}
 
 // ─── Ícone de coluna ─────────────────────────────────────────────────────────
 
@@ -73,16 +152,36 @@ function ColumnIcon({ columnKey }: { columnKey: ColumnKey }) {
 
 // ─── Card de atendimento ──────────────────────────────────────────────────────
 
+/** Andamento do cronograma de uma pessoa (vem de /api/pastoral/journeys/progress). */
+export type JourneyProgress = {
+  enrollmentId: string;
+  profile: string;
+  status: string;
+  sent: number;
+  total: number;
+  errors: number;
+  pending: number;
+  week: number | null;
+  currentStep: number | null;
+  currentLabel: string | null;
+  nextAt: string | null;
+  certificateIssued: boolean;
+};
+
 function AttendanceCard({
   card,
+  progress,
   onDragStart,
   onClick,
   onStar,
+  onAttachJourney,
 }: {
   card: PastoralAttendance;
+  progress?: JourneyProgress;
   onDragStart: (e: React.DragEvent, card: PastoralAttendance) => void;
   onClick: (card: PastoralAttendance) => void;
   onStar: (card: PastoralAttendance) => void;
+  onAttachJourney: (card: PastoralAttendance) => void;
 }) {
   const personName =
     card.members?.full_name ||
@@ -128,6 +227,21 @@ function AttendanceCard({
             >
               <Star className={`w-3 h-3 ${card.is_starred ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
             </button>
+            {/* ⋯ do card: anexar o cronograma a esta pessoa */}
+            <DotsMenu title="Ações do atendimento">
+              {(close) => (
+                <MenuItem
+                  icon={<CalendarClock className="w-4 h-4 text-violet-500" />}
+                  label="Anexar cronograma"
+                  hint={
+                    card.person_profile
+                      ? PERSON_PROFILE_LABELS[card.person_profile]
+                      : 'classificar o grupo de chegada'
+                  }
+                  onClick={() => { close(); onAttachJourney(card); }}
+                />
+              )}
+            </DotsMenu>
           </div>
         </div>
 
@@ -135,6 +249,49 @@ function AttendanceCard({
         <p className="font-bold text-slate-800 text-sm leading-tight mb-1">
           {personName.toUpperCase()}
         </p>
+
+        {/* Grupo de chegada — quando classificado, é o que rege o cronograma */}
+        {card.person_profile && PERSON_PROFILE_LABELS[card.person_profile] && (
+          <span
+            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide mb-1"
+            style={{
+              backgroundColor: `${PERSON_PROFILE_COLORS[card.person_profile]}18`,
+              color: PERSON_PROFILE_COLORS[card.person_profile],
+            }}
+          >
+            {PERSON_PROFILE_LABELS[card.person_profile]}
+          </span>
+        )}
+
+        {/* Andamento do cronograma: em que semana está e quantas já saíram */}
+        {progress && (
+          <div className="mb-1.5 mt-0.5">
+            <div className="flex items-center gap-1.5 text-[11px] mb-1">
+              <CalendarClock className="w-3 h-3 text-violet-500 flex-shrink-0" />
+              <span className="font-semibold text-violet-700">
+                {progress.week ? `Semana ${progress.week}` : 'Cronograma'}
+              </span>
+              <span className="text-slate-400">
+                {progress.sent}/{progress.total} enviadas
+              </span>
+              {progress.status === 'paused' && (
+                <span className="text-amber-600 font-semibold">· pausado</span>
+              )}
+              {progress.certificateIssued && (
+                <span title="Certificado de Acolhimento emitido" className="ml-auto">🏅</span>
+              )}
+            </div>
+            <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full bg-violet-500 rounded-full transition-all"
+                style={{ width: `${Math.round((progress.sent / Math.max(1, progress.total)) * 100)}%` }}
+              />
+            </div>
+            {progress.errors > 0 && (
+              <p className="text-[10px] text-red-500 mt-0.5">{progress.errors} falha(s) de envio</p>
+            )}
+          </div>
+        )}
 
         {/* Title/subtitle */}
         {card.title && card.title !== personName && (
@@ -197,6 +354,8 @@ function KanbanColumn({
   onCardClick,
   onStar,
   onNewCard,
+  onAttachJourney,
+  progressMap,
 }: {
   column: PastoralPipelineColumn;
   cards: PastoralAttendance[];
@@ -206,6 +365,8 @@ function KanbanColumn({
   onCardClick: (card: PastoralAttendance) => void;
   onStar: (card: PastoralAttendance) => void;
   onNewCard: (column: PastoralPipelineColumn) => void;
+  onAttachJourney: (cards: PastoralAttendance[], title: string) => void;
+  progressMap: Record<string, JourneyProgress>;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -225,9 +386,18 @@ function KanbanColumn({
         <button className="p-0.5 rounded hover:bg-slate-100 text-slate-400">
           <Search className="w-3.5 h-3.5" />
         </button>
-        <button className="p-0.5 rounded hover:bg-slate-100 text-slate-400">
-          <MoreHorizontal className="w-3.5 h-3.5" />
-        </button>
+        {/* ⋯ da coluna: anexa o cronograma a todos os cards visíveis nela */}
+        <DotsMenu title={`Ações da coluna ${column.name}`}>
+          {(close) => (
+            <MenuItem
+              icon={<CalendarClock className="w-4 h-4 text-violet-500" />}
+              label="Anexar cronograma à coluna"
+              hint={`${cards.length} atendimento(s) desta coluna`}
+              disabled={!cards.length}
+              onClick={() => { close(); onAttachJourney(cards, `Cronograma · coluna ${column.name}`); }}
+            />
+          )}
+        </DotsMenu>
       </div>
 
       {/* Cards area */}
@@ -243,9 +413,11 @@ function KanbanColumn({
           <AttendanceCard
             key={card.id}
             card={card}
+            progress={progressMap[card.id]}
             onDragStart={onDragStart}
             onClick={onCardClick}
             onStar={onStar}
+            onAttachJourney={(c) => onAttachJourney([c], 'Anexar cronograma')}
           />
         ))}
 
@@ -286,6 +458,9 @@ export default function PastoralKanban() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<AttendanceType | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<Priority | 'all'>('all');
+  // grupo de chegada e fase do cronograma — filtros do acompanhamento
+  const [filterProfile, setFilterProfile] = useState<PersonProfile | 'all' | 'none'>('all');
+  const [filterWeek, setFilterWeek] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const _now = new Date();
   const _firstDay = new Date(_now.getFullYear(), _now.getMonth(), 1).toISOString().slice(0, 10);
@@ -323,6 +498,8 @@ export default function PastoralKanban() {
   }, []);
   const [selectedCard, setSelectedCard] = useState<PastoralAttendance | null>(null);
   const [newCardColumn, setNewCardColumn] = useState<PastoralPipelineColumn | null>(null);
+  // cards a anexar ao cronograma (1 pelo ⋯ do card, N pelo ⋯ da coluna)
+  const [journeyTarget, setJourneyTarget] = useState<{ cards: PastoralAttendance[]; title: string } | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
   const dragCardRef = useRef<PastoralAttendance | null>(null);
@@ -520,7 +697,40 @@ export default function PastoralKanban() {
     if (regionalChurchIds && !filterChurchId && !regionalChurchIds.has(c.church_id)) return false;
     return true;
   });
-  const tableCards = dateFilteredCards;
+  // ── Andamento do cronograma por card (semana + nº de mensagens enviadas) ──
+  const { data: progressMap = {} } = useQuery<Record<string, JourneyProgress>>({
+    queryKey: ['pastoral-journey-progress', churchId, dateFilteredCards.length],
+    enabled: dateFilteredCards.length > 0,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const token = localStorage.getItem('mrm_token') ?? '';
+      const ids = dateFilteredCards.map((c) => c.id).join(',');
+      const res = await fetch(`/api/pastoral/journeys/progress?attendanceIds=${ids}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return {};
+      const data = await res.json();
+      return (data.progress ?? {}) as Record<string, JourneyProgress>;
+    },
+  });
+
+  // filtros do acompanhamento: grupo de chegada e fase (semana) do cronograma
+  const journeyFilteredCards = dateFilteredCards.filter((c) => {
+    if (filterProfile === 'none' && c.person_profile) return false;
+    if (filterProfile !== 'all' && filterProfile !== 'none' && c.person_profile !== filterProfile) {
+      return false;
+    }
+    if (filterWeek !== 'all') {
+      const prog = progressMap[c.id];
+      if (filterWeek === 'sem') return !prog;
+      if (filterWeek === 'concluido') return prog?.status === 'completed';
+      if (!prog) return false;
+      return String(prog.week ?? '') === filterWeek;
+    }
+    return true;
+  });
+
+  const tableCards = journeyFilteredCards;
 
   // Limpa a seleção quando os filtros mudam a lista de cards visíveis na tabela
   useEffect(() => {
@@ -825,9 +1035,9 @@ export default function PastoralKanban() {
     }
   }
 
-  // Group cards by column (respecting date filter)
+  // Group cards by column (respecting date filter + filtros do cronograma)
   const cardsByColumn = columns.reduce<Record<string, PastoralAttendance[]>>((acc, col) => {
-    acc[col.id] = dateFilteredCards.filter((c) => cardColumnKey(c) === col.column_key);
+    acc[col.id] = journeyFilteredCards.filter((c) => cardColumnKey(c) === col.column_key);
     return acc;
   }, {});
 
@@ -977,6 +1187,34 @@ export default function PastoralKanban() {
                 <option value="normal">Normal</option>
                 <option value="low">Baixa</option>
               </select>
+              {/* Grupo de chegada — os 3 tipos de pessoa do cronograma */}
+              <select
+                value={filterProfile}
+                onChange={(e) => setFilterProfile(e.target.value as PersonProfile | 'all' | 'none')}
+                title="Filtrar pelo grupo de chegada da pessoa"
+                className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
+              >
+                <option value="all">Todos os grupos</option>
+                {(Object.entries(PERSON_PROFILE_LABELS) as [PersonProfile, string][]).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+                <option value="none">Sem classificação</option>
+              </select>
+              {/* Fase do cronograma — em que semana a pessoa está */}
+              <select
+                value={filterWeek}
+                onChange={(e) => setFilterWeek(e.target.value)}
+                title="Filtrar pela fase do acompanhamento"
+                className="min-w-0 w-full sm:w-auto text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white"
+              >
+                <option value="all">Todas as fases</option>
+                <option value="1">Semana 1</option>
+                <option value="2">Semana 2</option>
+                <option value="3">Semana 3</option>
+                <option value="4">Semana 4</option>
+                <option value="concluido">Cronograma concluído</option>
+                <option value="sem">Sem cronograma</option>
+              </select>
               {/* Date range */}
               <div className="flex items-center gap-1 min-w-0">
                 <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
@@ -1113,6 +1351,8 @@ export default function PastoralKanban() {
                 onCardClick={setSelectedCard}
                 onStar={(card) => starMutation.mutate({ id: card.id, is_starred: !card.is_starred })}
                 onNewCard={setNewCardColumn}
+                onAttachJourney={(cards, title) => setJourneyTarget({ cards, title })}
+                progressMap={progressMap}
               />
             ))}
           </div>
@@ -1262,6 +1502,18 @@ export default function PastoralKanban() {
             void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-cards'] });
             void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-summary'] });
             setNewCardColumn(null);
+          }}
+        />
+      )}
+
+      {/* ── Anexar cronograma (card ou coluna inteira) ── */}
+      {journeyTarget && (
+        <AttachJourneyModal
+          cards={journeyTarget.cards}
+          title={journeyTarget.title}
+          onClose={() => setJourneyTarget(null)}
+          onDone={() => {
+            void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-cards'] });
           }}
         />
       )}

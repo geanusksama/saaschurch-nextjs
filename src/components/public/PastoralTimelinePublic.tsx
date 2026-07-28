@@ -161,6 +161,14 @@ export default function PastoralTimelinePublic() {
                           <Calendar size={11} /> {new Date(event.created_at).toLocaleDateString('pt-BR')} às{' '}
                           {new Date(event.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </p>
+                        {event.form_url && (
+                          <a
+                            href={event.form_url}
+                            className="mt-3 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors"
+                          >
+                            Abrir minha ficha de adesão
+                          </a>
+                        )}
                       </div>
                     </motion.div>
                   ))}

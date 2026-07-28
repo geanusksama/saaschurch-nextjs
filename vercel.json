@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/contabilidade", "schedule": "* * * * *" },
-    { "path": "/api/cron/whatsapp-ai", "schedule": "* * * * *" }
+    { "path": "/api/cron/whatsapp-ai", "schedule": "* * * * *" },
+    { "path": "/api/cron/pastoral-cronograma", "schedule": "* * * * *" }
   ]
 }

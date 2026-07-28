@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, hashCode } from "@/lib/membroJwt";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendTextViaZApi } from "@/lib/whatsappSendService";
+import { findLiveAttendance, duplicateMessage } from "@/lib/pastoralDuplicateCheck";
+import { randomUUID } from "crypto";
+import { resolveSedeChurchOfCampo } from "@/lib/sedeResolver";
+import { publicBaseUrl } from "@/lib/publicUrl";
 
 const DEFAULT_SEDE_ID = "6d2688df-5249-4bd2-89cc-0cd8c324b3d8";
 
@@ -18,6 +22,7 @@ export async function POST(req: NextRequest) {
       otp_token,
       code,
       churchId,
+      campoId,
     } = body;
 
     if (!name || !whatsapp || !scheduledDate || !otp_token || !code) {
@@ -34,7 +39,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Código inválido ou incorreto." }, { status: 401 });
     }
 
-    const targetChurchId = churchId || DEFAULT_SEDE_ID;
+    // Quando a pessoa escolhe o CAMPO, o pedido vai para a igreja SEDE daquele
+    // campo. Se a resolução ficar ambígua (cadastro sujo), cai na sede padrão em
+    // vez de mandar para a igreja errada — e o motivo fica no log.
+    let targetChurchId = churchId || DEFAULT_SEDE_ID;
+    let roteamentoNota = "";
+    if (!churchId && campoId) {
+      const sede = await resolveSedeChurchOfCampo(String(campoId));
+      if (sede.churchId) {
+        targetChurchId = sede.churchId;
+      } else {
+        // vários campos ainda não têm igreja sede cadastrada — isso não pode
+        // derrubar o pedido; ele entra na sede padrão com o motivo registrado,
+        // para a secretaria redirecionar quando o campo for configurado
+        roteamentoNota =
+          `Campo ${campoId} ainda sem igreja sede cadastrada — pedido roteado para a sede padrão.`;
+        console.warn(`[create-membership-request] ${roteamentoNota}`);
+      }
+    }
+
+    // 0. Já existe pedido de membresia vivo para este número? Reenviar o
+    //    formulário (ou clicar duas vezes) não pode gerar um segundo card.
+    const existing = await findLiveAttendance({
+      churchId: targetChurchId,
+      phone: normalizedPhone,
+      attendanceType: "quero_ser_membro",
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        {
+          duplicate: true,
+          error: duplicateMessage(existing, "Quero ser Membro"),
+          stage: existing.stage,
+          stageKey: existing.stageKey,
+          attendanceId: existing.attendanceId,
+          createdAt: existing.createdAt,
+        },
+        { status: 409 }
+      );
+    }
 
     // 1. Get or create pipeline
     let { data: pipeline } = await supabaseAdmin
@@ -115,9 +159,20 @@ export async function POST(req: NextRequest) {
     if (atErr) throw atErr;
 
     // 4. Create record in new_member_requests
+    // O token é a credencial do formulário de adesão: quem tem o link preenche.
+    const formToken = randomUUID().replace(/-/g, "");
+    // A adesão entra pela igreja que recebeu o pedido — no portal público isso
+    // já é a SEDE (DEFAULT_SEDE_ID). NÃO usar churches.headquarters_id aqui:
+    // aquela coluna é FK para a tabela `headquarters` (contatos/redes da sede),
+    // não para uma igreja, e quebraria a FK de `members` na aprovação.
+    const targetSedeId = targetChurchId;
+
     const { data: request, error: reqErr } = await supabaseAdmin
       .from("new_member_requests")
       .insert({
+        form_token: formToken,
+        form_sent_at: new Date().toISOString(),
+        target_church_id: targetSedeId,
         name,
         whatsapp: normalizedPhone,
         is_married: !!isMarried,
@@ -134,12 +189,29 @@ export async function POST(req: NextRequest) {
     if (reqErr) throw reqErr;
 
     // 5. Create timeline entry
-    await supabaseAdmin.from("pastoral_attendance_timeline").insert({
-      attendance_id: attendance.id,
-      church_id: targetChurchId,
-      event_type: "created",
-      description: "Agendamento de Novo Membro criado via portal público",
-    });
+    // nunca usar body.origin cru: em dev isso viraria um link localhost no WhatsApp
+    const baseOrigin = publicBaseUrl();
+    const formUrl = `${String(baseOrigin).replace(/\/$/, "")}/membro/formulario/${formToken}`;
+
+    await supabaseAdmin.from("pastoral_attendance_timeline").insert([
+      {
+        attendance_id: attendance.id,
+        church_id: targetChurchId,
+        event_type: "created",
+        description:
+          "Agendamento de Novo Membro criado via portal público" +
+          (roteamentoNota ? ` · ${roteamentoNota}` : ""),
+      },
+      {
+        // a pessoa consegue reabrir o formulário pela timeline pública do card,
+        // sem depender de achar a mensagem no WhatsApp
+        attendance_id: attendance.id,
+        church_id: targetChurchId,
+        event_type: "form",
+        description: "Formulário de adesão enviado — aguardando preenchimento",
+        metadata: { form_url: formUrl, form_token: formToken },
+      },
+    ]);
 
     // 6. Compute queue position (number of open cards of same type in POR FAZER column)
     const { count } = await supabaseAdmin
@@ -170,7 +242,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, position, attendanceId: attendance.id });
+    return NextResponse.json({
+      success: true,
+      position,
+      attendanceId: attendance.id,
+      formUrl,
+    });
   } catch (e) {
     console.error("[POST /api/public/pastoral/create-membership-request]", e);
     return NextResponse.json({ error: "Erro interno no servidor." }, { status: 500 });

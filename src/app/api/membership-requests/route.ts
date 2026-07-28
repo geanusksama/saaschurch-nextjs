@@ -49,16 +49,26 @@ export async function GET(req: NextRequest) {
         query = query.eq("status", status);
       }
 
+      // Estado da FICHA (documentação), que é diferente do status da decisão:
+      // "submitted" = já mandou os dados e há o que avaliar;
+      // "awaiting"  = ainda não preencheu, não há o que aprovar.
+      const formStatus = url.searchParams.get("formStatus") || "";
+      if (formStatus === "submitted") {
+        query = query.not("form_submitted_at", "is", null);
+      } else if (formStatus === "awaiting") {
+        query = query.is("form_submitted_at", null);
+      }
+
       if (search.trim()) {
         query = query.ilike("name", `%${search.trim()}%`);
       }
 
       if (dateFrom) {
-        query = query.gte("scheduled_date", dateFrom);
+        query = query.gte("created_at", `${dateFrom}T00:00:00`);
       }
 
       if (dateTo) {
-        query = query.lte("scheduled_date", dateTo);
+        query = query.lte("created_at", `${dateTo}T23:59:59`);
       }
 
       const { data: requests, error } = await query;

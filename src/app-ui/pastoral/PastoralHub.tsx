@@ -3,6 +3,8 @@
  *  - Pipeline: quadro Kanban de atendimento (PastoralKanban, inalterado)
  *  - Envio em Massa: campanhas de WhatsApp (PastoralMassSend)
  *  - Envios: histórico de envios + conversas + agente de IA (PastoralSendHistory)
+ *  - Cronograma: matriz do acompanhamento de 1º mês + resultado dos disparos
+ *    automáticos (PastoralCronograma)
  *
  * As duas últimas abas são gated pela permissão 'whatsapp_campaigns' (grupo
  * Comunicação no permissionCatalog) — perfis sem view nessa chave só veem Pipeline.
@@ -11,14 +13,16 @@
  */
 
 import { useState, useEffect } from 'react';
-import { LayoutGrid, Send, MessagesSquare, FileSpreadsheet } from 'lucide-react';
+import { LayoutGrid, Send, MessagesSquare, FileSpreadsheet, CalendarClock, LayoutDashboard } from 'lucide-react';
 import PastoralKanban from './PastoralKanban';
 import PastoralMassSend from './PastoralMassSend';
 import PastoralSendHistory from './PastoralSendHistory';
 import PastoralImports from './PastoralImports';
+import PastoralCronograma from './PastoralCronograma';
+import PastoralDashboard from './PastoralDashboard';
 import { usePermissions } from '../../lib/usePermissions';
 
-type HubTab = 'pipeline' | 'mass-send' | 'sends' | 'imports';
+type HubTab = 'pipeline' | 'mass-send' | 'sends' | 'imports' | 'cronograma' | 'dashboard';
 
 function currentProfileType(): string {
   try {
@@ -75,6 +79,22 @@ export default function PastoralHub() {
               <FileSpreadsheet className="w-4 h-4" />
               Importações
             </button>
+            <button
+              onClick={() => setTab('cronograma')}
+              className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
+                ${tab === 'cronograma' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <CalendarClock className="w-4 h-4" />
+              Cronograma
+            </button>
+            <button
+              onClick={() => setTab('dashboard')}
+              className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
+                ${tab === 'dashboard' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Dashboard
+            </button>
           </>
         )}
       </div>
@@ -92,10 +112,21 @@ export default function PastoralHub() {
           <div className={tab === 'sends' ? 'flex-1 min-h-0' : 'hidden'}>
             <PastoralSendHistory />
           </div>
-          {/* Importações é montada só quando aberta — a consulta é sob demanda */}
+          {/* Importações e Cronograma são montadas só quando abertas — as
+              consultas dessas telas são sob demanda */}
           {tab === 'imports' && (
             <div className="flex-1 min-h-0">
               <PastoralImports />
+            </div>
+          )}
+          {tab === 'cronograma' && (
+            <div className="flex-1 min-h-0">
+              <PastoralCronograma />
+            </div>
+          )}
+          {tab === 'dashboard' && (
+            <div className="flex-1 min-h-0">
+              <PastoralDashboard />
             </div>
           )}
         </>
