@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 import { apiBase } from '../../lib/apiBase';
+import { ModulesShowcase } from './ModulesShowcase';
 
 type CampoOption = {
   id: string;
@@ -107,21 +108,7 @@ export function Register() {
               Gerencie membros, congregações, financeiro e acompanhe sua igreja em tempo real.
             </p>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors">
-                <p className="text-white font-extrabold text-2xl mb-1 tracking-tight">+1k</p>
-                <p className="text-slate-400 text-xs font-semibold tracking-wide uppercase">Membros Ativos</p>
-              </div>
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors">
-                <p className="text-white font-extrabold text-2xl mb-1 tracking-tight">R$ 4.2M</p>
-                <p className="text-slate-400 text-xs font-semibold tracking-wide uppercase">Gestão Financeira</p>
-              </div>
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors">
-                <p className="text-white font-extrabold text-2xl mb-1 tracking-tight">100%</p>
-                <p className="text-slate-400 text-xs font-semibold tracking-wide uppercase">Integrado</p>
-              </div>
-            </div>
+            <ModulesShowcase />
           </div>
 
           {/* Footer */}
