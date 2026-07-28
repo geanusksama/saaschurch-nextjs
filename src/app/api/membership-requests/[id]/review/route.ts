@@ -105,6 +105,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const body = await req.json().catch(() => ({}))
     const decision = body.decision
     const notes = String(body.notes ?? '').trim()
+    /**
+     * Aprovar conclui o CADASTRO, não o processo de acolhimento: por padrão o
+     * card FICA onde está e a pessoa segue recebendo o cronograma do 1º mês.
+     * `closeProcess` é a exceção — encerra o acolhimento junto com a aprovação.
+     */
+    const closeProcess = body.closeProcess === true
 
     if (!['approved', 'rejected'].includes(decision)) {
       return NextResponse.json({ error: 'Decisão inválida.' }, { status: 400 })
@@ -236,26 +242,38 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       })
       .eq('id', id)
 
-    // ── move o card do pipeline ──
+    // ── card do pipeline ──
+    // Reprovar cancela o card. Aprovar NÃO: o cadastro foi concluído, mas o
+    // acolhimento continua — a pessoa segue no pipeline recebendo o cronograma.
+    // Só `closeProcess` (a exceção) encerra os dois de uma vez.
+    const moverCard = decision === 'rejected' || closeProcess
     if (request.pipeline_card_id) {
-      const targetKey = decision === 'approved' ? 'done' : 'cancelled'
-      const { data: cols } = await supabaseAdmin
-        .from('pastoral_pipeline_columns')
-        .select('id, column_key')
-        .eq('church_id', request.church_id)
-      const targetCol = cols?.find(c => c.column_key === targetKey)
+      if (moverCard) {
+        const targetKey = decision === 'rejected' ? 'cancelled' : 'done'
+        const { data: cols } = await supabaseAdmin
+          .from('pastoral_pipeline_columns')
+          .select('id, column_key')
+          .eq('church_id', request.church_id)
+        const targetCol = cols?.find(c => c.column_key === targetKey)
 
-      if (targetCol) {
+        if (targetCol) {
+          await supabaseAdmin
+            .from('pastoral_attendances')
+            .update({
+              status: targetKey,
+              column_id: targetCol.id,
+              member_id: memberId,
+              completed_at: targetKey === 'done' ? now : null,
+              cancelled_at: targetKey === 'cancelled' ? now : null,
+              cancel_reason: decision === 'rejected' ? notes : null,
+            })
+            .eq('id', request.pipeline_card_id)
+        }
+      } else {
+        // vincula o membro ao card sem tirá-lo da coluna atual
         await supabaseAdmin
           .from('pastoral_attendances')
-          .update({
-            status: targetKey,
-            column_id: targetCol.id,
-            member_id: memberId,
-            completed_at: decision === 'approved' ? now : null,
-            cancelled_at: decision === 'rejected' ? now : null,
-            cancel_reason: decision === 'rejected' ? notes : null,
-          })
+          .update({ member_id: memberId })
           .eq('id', request.pipeline_card_id)
       }
 
@@ -264,9 +282,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         church_id: request.church_id,
         event_type: decision === 'approved' ? 'approved' : 'rejected',
         description:
-          decision === 'approved'
-            ? `Adesão aprovada — membro cadastrado com ROL ${rol}`
-            : `Adesão reprovada — ${notes}`,
+          decision === 'rejected'
+            ? `Adesão reprovada — ${notes}`
+            : closeProcess
+              ? `Adesão aprovada com ROL ${rol} — acolhimento encerrado junto`
+              : `Cadastro aprovado com ROL ${rol} — acolhimento segue em andamento`,
         created_by: user.id ? String(user.id) : null,
       })
     }
@@ -303,6 +323,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       rol,
       churchId,
       notified,
+      closeProcess,
     })
   })
 }

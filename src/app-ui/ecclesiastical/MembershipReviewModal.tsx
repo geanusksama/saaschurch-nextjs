@@ -57,7 +57,7 @@ export function MembershipReviewModal({
   onDone: () => void;
 }) {
   const [notes, setNotes] = useState(request.review_notes ?? '');
-  const [saving, setSaving] = useState<'approved' | 'rejected' | null>(null);
+  const [saving, setSaving] = useState<'approved' | 'rejected' | 'closed' | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -91,26 +91,34 @@ export function MembershipReviewModal({
     }
   };
 
-  const decide = async (decision: 'approved' | 'rejected') => {
+  /**
+   * `closeProcess` só no caso específico: aprovar conclui o CADASTRO, e por
+   * padrão a pessoa continua no pipeline recebendo o cronograma do 1º mês.
+   */
+  const decide = async (decision: 'approved' | 'rejected', closeProcess = false) => {
     if (saving) return;
     if (decision === 'rejected' && !notes.trim()) {
       setErro('Descreva o motivo — ele é enviado para a pessoa no WhatsApp.');
       return;
     }
     setErro('');
-    setSaving(decision);
+    setSaving(closeProcess ? 'closed' : decision);
     try {
       const token = localStorage.getItem('mrm_token') ?? '';
       const res = await fetch(`/api/membership-requests/${request.id}/review`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, notes: notes.trim() }),
+        body: JSON.stringify({ decision, notes: notes.trim(), closeProcess }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Falha ao registrar a decisão');
 
       if (decision === 'approved') {
-        toast.success(`Aprovado! Membro cadastrado com ROL ${data.rol}.`);
+        toast.success(
+          closeProcess
+            ? `Aprovado com ROL ${data.rol} e acolhimento encerrado.`
+            : `Cadastro aprovado! ROL ${data.rol}. O acolhimento continua no pipeline.`
+        );
         if (!data.notified) toast.warning('O membro foi criado, mas o aviso no WhatsApp falhou.');
       } else {
         toast.success('Reprovado. O motivo foi enviado para a pessoa.');
@@ -284,6 +292,12 @@ export function MembershipReviewModal({
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               {erro && <p className="text-xs text-red-600 mt-1">{erro}</p>}
+              {preenchido && (
+                <p className="text-[11px] text-slate-400 mt-2">
+                  Aprovar conclui o <b>cadastro</b>, não o acolhimento: a pessoa vira membro com ROL
+                  e continua no pipeline recebendo o cronograma do 1º mês.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -301,14 +315,26 @@ export function MembershipReviewModal({
               {saving === 'rejected' ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
               Reprovar
             </button>
+            {/* exceção: aprova E encerra o acolhimento de uma vez */}
+            <button
+              onClick={() => decide('approved', true)}
+              disabled={!!saving || !preenchido}
+              title="Aprova o cadastro e encerra o acompanhamento do 1º mês junto — use só quando a pessoa não precisa passar pelo processo"
+              className="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium inline-flex items-center gap-1.5 hover:bg-slate-100 disabled:opacity-50"
+            >
+              {saving === 'closed' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Aprovar e encerrar acolhimento
+            </button>
             <button
               onClick={() => decide('approved')}
               disabled={!!saving || !preenchido}
-              title={!preenchido ? 'A ficha precisa estar preenchida para aprovar' : undefined}
+              title={!preenchido
+                ? 'A ficha precisa estar preenchida para aprovar'
+                : 'Cria o membro com ROL. O card segue no pipeline e a pessoa continua recebendo o cronograma.'}
               className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
             >
               {saving === 'approved' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Aprovar e cadastrar membro
+              Aprovar cadastro
             </button>
           </div>
         )}
