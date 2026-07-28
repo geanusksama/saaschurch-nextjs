@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, hashCode } from "@/lib/membroJwt";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { sendTextViaZApi } from "@/lib/whatsappSendService";
+import { sendTextViaZApi, ensureConversation, persistOutboundMessage } from "@/lib/whatsappSendService";
 import { findLiveAttendance, duplicateMessage } from "@/lib/pastoralDuplicateCheck";
 import { randomUUID } from "crypto";
 import { resolveSedeChurchOfCampo } from "@/lib/sedeResolver";
@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
     // 7. Get first active connected WhatsApp instance (instancia zero) and send confirmation
     const { data: instance } = await supabaseAdmin
       .from("whatsapp_instances")
-      .select("instance_id, token, client_token")
+      .select("id, instance_id, token, client_token, owner_user_id")
       .eq("is_active", true)
       .eq("status", "connected")
       .order("created_at", { ascending: true })
@@ -237,9 +237,22 @@ export async function POST(req: NextRequest) {
     if (instance) {
       const formattedDate = new Date(scheduledDate + "T12:00:00").toLocaleDateString("pt-BR");
       const message = `Olá, *${name}*! 🎉\n\nRecebemos seu pedido para se tornar membro da AD Campinas.\n\nSua entrevista foi agendada para: *${formattedDate}*.\n\nVocê está atualmente na posição *#${position}* na fila de atendimento.\n\nEm breve entraremos em contato. Deus te abençoe!`;
-      await sendTextViaZApi(instance, normalizedPhone, message).catch((err) => {
+      try {
+        const result = await sendTextViaZApi(instance, normalizedPhone, message);
+        // sem isto a confirmação não aparece na Caixa de Entrada nem no
+        // histórico da pessoa — some do sistema apesar de ter sido enviada
+        if (result.status === "sent") {
+          const conversationId = await ensureConversation(
+            instance.id,
+            instance.owner_user_id,
+            normalizedPhone,
+            name
+          );
+          await persistOutboundMessage(conversationId, message, result.messageId || undefined);
+        }
+      } catch (err) {
         console.error("[create-membership-request] Z-API send failed:", err);
-      });
+      }
     }
 
     return NextResponse.json({
