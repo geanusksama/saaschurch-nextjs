@@ -1,9 +1,27 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: "AD Campinas",
   description: "Plataforma de gestão eclesiástica",
+  manifest: "/manifest.webmanifest",
+  applicationName: "AD Campinas",
+  appleWebApp: {
+    capable: true,
+    title: "AD Campinas",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a0a0a",
+  // a home instalada encosta na barra de status do iPhone
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -19,7 +37,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body suppressHydrationWarning className="min-h-full bg-background text-foreground">{children}</body>
+      <body suppressHydrationWarning className="min-h-full bg-background text-foreground">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
