@@ -223,6 +223,21 @@ export function PublicHome() {
   // pedido igual já vivo no pipeline — vira aviso, não erro (o dado é válido,
   // só não faz sentido abrir um segundo card para o mesmo assunto)
   const [duplicateInfo, setDuplicateInfo] = useState<{ message: string; stage: string } | null>(null);
+  // campo escolhido pela pessoa — decide para qual igreja SEDE o pedido vai
+  const [campos, setCampos] = useState<Array<{ id: string; name: string }>>([]);
+  const [campoId, setCampoId] = useState('');
+
+  useEffect(() => {
+    if (activeForm !== 'membership' || campos.length) return;
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/campos/public`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setCampos(Array.isArray(data) ? data : []);
+      } catch { /* sem lista, o pedido cai na sede padrão */ }
+    })();
+  }, [activeForm, campos.length]);
 
   const navigate = useNavigate();
 
@@ -275,6 +290,11 @@ export function PublicHome() {
   const handleSendOtp = async () => {
     if (!visitorName.trim() || !phone.trim()) {
       setFormError('Por favor, preencha o seu nome e telefone.');
+      return;
+    }
+    // sem o campo o pedido cairia na sede padrão, provavelmente a errada
+    if (otpFlow === 'membership' && !campoId) {
+      setFormError('Escolha o campo para sabermos qual igreja vai te atender.');
       return;
     }
     setFormError('');
@@ -355,6 +375,7 @@ export function PublicHome() {
           pastChurches: pastChurchesStr,
           afroBackground: afroBackgrounds.length > 0,
           scheduledDate: dateStr,
+          campoId: campoId || undefined,
           otp_token: otpToken,
           code: otpCode,
         }),
@@ -806,6 +827,25 @@ export function PublicHome() {
                       placeholder="Nome completo"
                       className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'}`}
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Campo / Região *
+                    </label>
+                    <select
+                      value={campoId}
+                      onChange={(e) => setCampoId(e.target.value)}
+                      className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'}`}
+                    >
+                      <option value="">Selecione o campo mais próximo</option>
+                      {campos.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Seu pedido vai para a igreja sede desse campo.
+                    </p>
                   </div>
 
                   <div>
