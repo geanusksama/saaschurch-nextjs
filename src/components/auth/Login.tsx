@@ -6,6 +6,7 @@ import { del, get, set } from 'idb-keyval';
 
 import { apiBase } from '../../lib/apiBase';
 import { ModulesShowcase } from './ModulesShowcase';
+import { CADASTRO_PUBLICO_HABILITADO } from './authFlags';
 
 export function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -167,14 +168,16 @@ export function Login() {
           <h2 className="text-3xl lg:text-4xl font-extrabold text-[#0f172a] mb-2 tracking-tight">Bem-vindo de volta</h2>
           <p className="text-sm text-slate-500 mb-10">Entre com suas credenciais para acessar o painel.</p>
 
-          {/* Tabs */}
+          {/* Tabs — "Criar conta" some com o cadastro público desligado */}
           <div className="flex gap-2 mb-10">
             <div className="px-5 py-2 bg-slate-950 text-white text-xs font-bold rounded-full cursor-default tracking-wide shadow-sm shadow-slate-950/20">
               ENTRAR
             </div>
-            <Link to="/auth/register" className="px-5 py-2 bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200 text-xs font-bold rounded-full transition-colors tracking-wide">
-              CRIAR CONTA
-            </Link>
+            {CADASTRO_PUBLICO_HABILITADO && (
+              <Link to="/auth/register" className="px-5 py-2 bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200 text-xs font-bold rounded-full transition-colors tracking-wide">
+                CRIAR CONTA
+              </Link>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 
 import { apiBase } from '../../lib/apiBase';
 import { ModulesShowcase } from './ModulesShowcase';
+import { CADASTRO_PUBLICO_HABILITADO } from './authFlags';
 
 type CampoOption = {
   id: string;
@@ -57,6 +58,8 @@ export function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // trava também aqui: esconder o botão não impede um submit forçado
+    if (!CADASTRO_PUBLICO_HABILITADO) return;
     setLoading(true);
     setError('');
     setSuccess('');
@@ -90,6 +93,33 @@ export function Register() {
     setLoading(false);
     setTimeout(() => navigate('/pending-activation'), 1200);
   };
+
+  // Quem chega por link antigo vê o motivo em vez de um formulário que não
+  // funciona. Fica depois dos hooks de propósito — a ordem deles não pode mudar.
+  if (!CADASTRO_PUBLICO_HABILITADO) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white px-6 font-sans">
+        <div className="max-w-sm text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+            <Lock className="h-5 w-5 text-slate-500" />
+          </div>
+          <h1 className="mb-2 text-xl font-extrabold tracking-tight text-slate-900">
+            Cadastro indisponível
+          </h1>
+          <p className="mb-6 text-sm leading-relaxed text-slate-500">
+            O painel é de uso restrito à liderança. As contas são criadas por um administrador —
+            fale com a secretaria da sua igreja para receber o seu acesso.
+          </p>
+          <Link
+            to="/auth/login"
+            className="inline-flex rounded-xl bg-slate-950 px-5 py-3 text-xs font-bold uppercase tracking-widest text-white"
+          >
+            Ir para o login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
