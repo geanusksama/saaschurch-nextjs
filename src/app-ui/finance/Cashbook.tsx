@@ -1431,7 +1431,15 @@ export default function Cashbook() {
     for (const r of rows) {
       if (r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('dizimo') && r.member_id) atuais.add(r.member_id);
     }
-    return prevDizimoMembers.filter(m => !atuais.has(m.member_id));
+    // ordem alfabética: a lista é lida nome a nome para cobrar quem faltou,
+    // e sem ordenar ela sai na ordem em que os lançamentos foram feitos
+    return prevDizimoMembers
+      .filter(m => !atuais.has(m.member_id))
+      .sort((a, b) =>
+        String(a.favorecido ?? '').localeCompare(String(b.favorecido ?? ''), 'pt-BR', {
+          sensitivity: 'base',
+        })
+      );
   }, [rows, prevDizimoMembers]);
 
   function Th({ col, label }: { col: SortKey; label: string }) {
