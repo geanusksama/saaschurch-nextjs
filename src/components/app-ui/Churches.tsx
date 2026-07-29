@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Filter,
   Image as ImageIcon,
+  Link2,
   MapPinned,
   Pencil,
   Plus,
@@ -80,6 +81,9 @@ const initialFilters = {
   campoId: '',
   regionalId: '',
   state: '',
+  zone: '',
+  /** '' | 'host' (hospedeiras) | 'hosted' (anexas) | 'unlinked' (sem vinculo) */
+  hosting: '',
 };
 
 const initialChurchForm = {
@@ -108,9 +112,13 @@ const initialChurchForm = {
   latitude: '',
   longitude: '',
   hasOwnTemple: false,
+  isHost: false,
+  zone: '',
+  hostChurchId: '',
   notes: '',
   status: 'active',
 };
+
 
 const initialContactForm = {
   id: '',
@@ -171,6 +179,8 @@ const defaultVisibleColumns = {
   campo: true,
   regional: true,
   leader: true,
+  zone: true,
+  hostingLabel: true,
   city: true,
   state: true,
   status: true,
@@ -406,6 +416,8 @@ const fieldClass = 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text
 const mutedPanelClass = 'rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60';
 const secondaryButtonClass = 'rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900';
 const dialogContentClass = 'border border-slate-200 bg-white p-0 dark:border-slate-800 dark:bg-slate-950';
+/** Botão com a mesma caixa das abas da tela, para as ações do cabeçalho combinarem. */
+const tabStyleButtonClass = 'inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900';
 
 export function Churches() {
   const token = localStorage.getItem('mrm_token');
@@ -418,11 +430,17 @@ export function Churches() {
   const [regionais, setRegionais] = useState<any[]>([]);
   const [headquarters, setHeadquarters] = useState<any[]>([]);
   const [functionCatalog, setFunctionCatalog] = useState<any[]>([]);
+  const [zonas, setZonas] = useState<any[]>([]);
   const [churchMembers, setChurchMembers] = useState<any[]>([]);
   const [churchContacts, setChurchContacts] = useState<any[]>([]);
   const [churchFunctions, setChurchFunctions] = useState<any[]>([]);
   const [leaderHistory, setLeaderHistory] = useState<any[]>([]);
   const [churchPhotos, setChurchPhotos] = useState<any[]>([]);
+  // Hospedagem: anexas da igreja aberta e o seletor de filhas.
+  const [hostedChurches, setHostedChurches] = useState<any[]>([]);
+  const [hostedPicker, setHostedPicker] = useState<{ open: boolean; search: string; selected: string[]; saving: boolean }>({
+    open: false, search: '', selected: [], saving: false,
+  });
   const [rentRecords, setRentRecords] = useState<any[]>([]);
   const [filters, setFilters] = useState(() => ({ ...initialFilters, campoId: selectedFieldId }));
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
@@ -568,16 +586,21 @@ export function Churches() {
 
       if (token) {
         requests.push(fetchJson('/church-functions/catalog', {}, { requiresAuth: true, allowUnauthorized: true }));
+        requests.push(fetchJson('/lookups/zonas', {}, { requiresAuth: true, allowUnauthorized: true }));
       } else {
+        requests.push(Promise.resolve([]));
         requests.push(Promise.resolve([]));
       }
 
-      const [churchesData, camposData, regionaisData, headquartersData, functionCatalogData] = await Promise.all(requests);
+      const [churchesData, camposData, regionaisData, headquartersData, functionCatalogData, zonasData] = await Promise.all(requests);
       setChurches(churchesData);
       setCampos(camposData);
       setRegionais(regionaisData);
       setHeadquarters(headquartersData || []);
       setFunctionCatalog(functionCatalogData || []);
+      // Só as ativas entram no dropdown; as inativas seguem visíveis nas igrejas
+      // que já as usam, via zoneOptions.
+      setZonas((zonasData || []).filter((item) => item.is_active !== false));
     } catch (loadError: any) {
       setError(loadError.message || 'Falha ao carregar a base de igrejas.');
     } finally {
@@ -593,6 +616,7 @@ export function Churches() {
       setLeaderHistory([]);
       setChurchPhotos([]);
       setRentRecords([]);
+      setHostedChurches([]);
       return;
     }
 
@@ -600,7 +624,7 @@ export function Churches() {
       setDetailLoading(true);
       setDetailError('');
 
-      const [churchDetail, contactsData, functionsData, leaderHistoryData, membersData, photosData, rentData] = await Promise.all([
+      const [churchDetail, contactsData, functionsData, leaderHistoryData, membersData, photosData, rentData, hostedData] = await Promise.all([
         fetchJson(`/churches/${churchId}/detail`, {}, { requiresAuth: true }),
         fetchJson(`/churches/${churchId}/contacts`, {}, { requiresAuth: true }),
         fetchJson(`/churches/${churchId}/functions`, {}, { requiresAuth: true }),
@@ -610,6 +634,7 @@ export function Churches() {
         fetchJson(`/churches/${churchId}/members?slim=1`, {}, { requiresAuth: true }),
         fetchJson(`/churches/${churchId}/photos`, {}, { requiresAuth: true, allowUnauthorized: true }),
         fetchJson(`/churches/${churchId}/rent-records`, {}, { requiresAuth: true, allowUnauthorized: true }),
+        fetchJson(`/churches/${churchId}/hosted`, {}, { requiresAuth: true, allowUnauthorized: true }),
       ]);
 
       setForm({
@@ -638,6 +663,9 @@ export function Churches() {
         latitude: churchDetail.latitude ? String(churchDetail.latitude) : '',
         longitude: churchDetail.longitude ? String(churchDetail.longitude) : '',
         hasOwnTemple: Boolean(churchDetail.hasOwnTemple),
+        isHost: Boolean(churchDetail.isHost),
+        zone: churchDetail.zone || '',
+        hostChurchId: churchDetail.hostChurchId || '',
         notes: churchDetail.notes || '',
         status: churchDetail.status || 'active',
       });
@@ -647,6 +675,7 @@ export function Churches() {
       setChurchMembers(membersData);
       setChurchPhotos(photosData || []);
       setRentRecords(rentData || []);
+      setHostedChurches(hostedData || []);
     } catch (workspaceError: any) {
       setDetailError(workspaceError.message || 'Falha ao carregar os dados da igreja.');
     } finally {
@@ -851,6 +880,9 @@ export function Churches() {
         campoId: campo?.id || '',
         regionalName: regional?.name || '-',
         headquartersName: church.headquarters?.churchName || '-',
+        zone: church.zone || '',
+        hostChurchName: church.hostChurch?.name || '',
+        hostingLabel: church.isHost ? 'Hospedeira' : church.hostChurch?.name ? `Anexa · ${church.hostChurch.name}` : '-',
         city: church.addressCity || '-',
         state: church.addressState || '-',
         leader: church.currentLeaderName || '-',
@@ -872,11 +904,23 @@ export function Churches() {
       if (filters.state && normalizeText(church.state) !== normalizeText(filters.state)) {
         return false;
       }
+      if (filters.zone && normalizeText(church.zone) !== normalizeText(filters.zone)) {
+        return false;
+      }
+      if (filters.hosting === 'host' && !church.isHost) {
+        return false;
+      }
+      if (filters.hosting === 'hosted' && !church.hostChurchId) {
+        return false;
+      }
+      if (filters.hosting === 'unlinked' && (church.isHost || church.hostChurchId)) {
+        return false;
+      }
       if (!query) {
         return true;
       }
 
-      return [church.code, church.name, church.campoName, church.regionalName, church.leader, church.city, church.state]
+      return [church.code, church.name, church.campoName, church.regionalName, church.leader, church.city, church.state, church.zone, church.hostChurchName]
         .map(normalizeText)
         .join(' ')
         .includes(query);
@@ -959,6 +1003,10 @@ export function Churches() {
         latitude: form.latitude ? Number(form.latitude) : null,
         longitude: form.longitude ? Number(form.longitude) : null,
         hasOwnTemple: form.hasOwnTemple,
+        isHost: form.isHost,
+        zone: form.zone || null,
+        // Hospedeira não fica anexada a ninguém; a API também garante isso.
+        hostChurchId: form.isHost ? null : form.hostChurchId || null,
         notes: form.notes || null,
         status: form.status,
       };
@@ -1374,6 +1422,36 @@ export function Churches() {
     [functionCatalog],
   );
 
+  /** Hospedeiras disponíveis para anexar (mesmo campo, exceto a própria igreja). */
+  const hostOptions = useMemo(
+    () => churches.filter((item) => item.isHost && item.id !== form.id).sort((left, right) => String(left.name).localeCompare(String(right.name), 'pt-BR')),
+    [churches, form.id],
+  );
+
+  /**
+   * Zonas do cadastro (Listas e Cadastros Auxiliares) somadas às que já estão
+   * gravadas nas igrejas — assim uma zona desativada no cadastro não some do
+   * dropdown das igrejas que ainda a usam.
+   */
+  const zoneOptions = useMemo(
+    () => Array.from(new Set([...zonas.map((item) => item.name), ...churches.map((item) => item.zone).filter(Boolean)]))
+      .sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [zonas, churches],
+  );
+
+  /**
+   * Candidatas a anexa: mesma igreja não entra, hospedeira não entra (viraria
+   * corrente) e quem já é anexa de OUTRA hospedeira aparece marcada como tal,
+   * para o usuário saber que vai roubar o vínculo.
+   */
+  const hostedCandidates = useMemo(() => {
+    const query = normalizeText(hostedPicker.search).trim();
+    return churches
+      .filter((item) => item.id !== form.id && !item.isHost)
+      .filter((item) => !query || [item.name, item.code, item.zone, item.currentLeaderName].some((value) => normalizeText(value || '').includes(query)))
+      .sort((left, right) => String(left.name).localeCompare(String(right.name), 'pt-BR'));
+  }, [churches, form.id, hostedPicker.search]);
+
   const departmentOptions = useMemo(
     () => Array.from(new Set([...departmentSuggestions, ...churchFunctions.map((item) => item.department).filter(Boolean)])).sort((left, right) => left.localeCompare(right, 'pt-BR')),
     [churchFunctions],
@@ -1599,6 +1677,81 @@ export function Churches() {
     setLeaderModalOpen(true);
   };
 
+  /**
+   * Relatório da hospedeira: o cabeçalho identifica a igreja hospedeira e o
+   * corpo lista as anexas dela, agrupadas por zona.
+   */
+  const printHostedReport = () => {
+    printReport({
+      title: `Hospedeira: ${form.name}`,
+      subtitle: [
+        form.code ? `Codigo ${form.code}` : '',
+        form.zone ? `Zona ${form.zone}` : '',
+        regionais.find((item) => item.id === form.regionalId)?.name || '',
+        `${hostedChurches.length} igreja(s) anexa(s)`,
+      ].filter(Boolean).join(' · '),
+      orientation: 'portrait',
+      columns: [
+        { key: 'code', label: 'Codigo', width: '14%' },
+        { key: 'name', label: 'Igreja', width: '30%' },
+        { key: 'regional', label: 'Regional', width: '16%' },
+        { key: 'leader', label: 'Dirigente', width: '22%' },
+        { key: 'city', label: 'Cidade/UF', width: '18%' },
+      ],
+      groupByKey: 'zone',
+      groupByLabel: 'Zona',
+      rows: hostedChurches.map((item) => ({
+        code: item.code || '—',
+        name: item.name,
+        regional: item.regional?.name || '—',
+        leader: item.currentLeaderName || '—',
+        city: [item.addressCity, item.addressState].filter(Boolean).join('/') || '—',
+        zone: item.zone || 'Sem zona',
+      })),
+    });
+  };
+
+  const openHostedPicker = () => {
+    setHostedPicker({ open: true, search: '', selected: hostedChurches.map((item) => item.id), saving: false });
+  };
+
+  const toggleHostedSelection = (churchId) => {
+    setHostedPicker((current) => ({
+      ...current,
+      selected: current.selected.includes(churchId)
+        ? current.selected.filter((id) => id !== churchId)
+        : [...current.selected, churchId],
+    }));
+  };
+
+  /** Grava a lista completa de anexas; a API reconcilia quem entrou e quem saiu. */
+  const saveHostedChurches = async (churchIds = hostedPicker.selected) => {
+    if (!form.id) return;
+    try {
+      setHostedPicker((current) => ({ ...current, saving: true }));
+      const updated = await fetchJson(
+        `/churches/${form.id}/hosted`,
+        { method: 'PUT', body: JSON.stringify({ churchIds }) },
+        { requiresAuth: true }
+      );
+      setHostedChurches(updated || []);
+      setHostedPicker({ open: false, search: '', selected: [], saving: false });
+      await loadBaseData();
+      toast.success('Igrejas anexas atualizadas.');
+    } catch (hostedError) {
+      setHostedPicker((current) => ({ ...current, saving: false }));
+      toast.error(hostedError.message || 'Falha ao atualizar as igrejas anexas.');
+    }
+  };
+
+  const detachHostedChurch = (item) => {
+    setPendingConfirm({
+      title: 'Desanexar igreja',
+      message: `Remover "${item.name}" da lista de anexas desta hospedeira?`,
+      onConfirm: () => saveHostedChurches(hostedChurches.filter((row) => row.id !== item.id).map((row) => row.id)),
+    });
+  };
+
   const removeLeaderHistoryItem = (item) => {
     setPendingConfirm({
       title: 'Excluir histórico de dirigente',
@@ -1650,6 +1803,8 @@ export function Churches() {
     { key: 'campo', label: 'Campo' },
     { key: 'regional', label: 'Regional' },
     { key: 'leader', label: 'Dirigente' },
+    { key: 'zone', label: 'Zona' },
+    { key: 'hostingLabel', label: 'Hospedagem' },
     { key: 'city', label: 'Cidade' },
     { key: 'state', label: 'UF' },
     { key: 'status', label: 'Status' },
@@ -1657,6 +1812,7 @@ export function Churches() {
 
   const visibleColumnsList = columnDefinitions.filter((column) => visibleColumns[column.key]);
   const uniqueStates = Array.from(new Set(enrichedChurches.map((item) => item.state).filter((item) => item && item !== '-')));
+  const uniqueZones = Array.from(new Set(enrichedChurches.map((item) => item.zone).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR'));
   const listFrom = sortedChurches.length ? (page - 1) * pageSize + 1 : 0;
   const listTo = sortedChurches.length ? Math.min(page * pageSize, sortedChurches.length) : 0;
   const resetFilters = () => setFilters({ ...initialFilters, campoId: selectedFieldId });
@@ -1693,7 +1849,7 @@ export function Churches() {
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
           <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
             <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               <Search className="h-3.5 w-3.5" />
@@ -1762,6 +1918,42 @@ export function Churches() {
                   {state}
                 </option>
               ))}
+            </select>
+          </label>
+
+          <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
+            <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+              <Filter className="h-3.5 w-3.5" />
+              Zona
+            </span>
+            <select
+              value={filters.zone}
+              onChange={(event) => setFilters((current) => ({ ...current, zone: event.target.value }))}
+              className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100"
+            >
+              <option value="">Todas as zonas</option>
+              {uniqueZones.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
+            <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+              <Link2 className="h-3.5 w-3.5" />
+              Hospedagem
+            </span>
+            <select
+              value={filters.hosting}
+              onChange={(event) => setFilters((current) => ({ ...current, hosting: event.target.value }))}
+              className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100"
+            >
+              <option value="">Todas as igrejas</option>
+              <option value="host">Somente hospedeiras</option>
+              <option value="hosted">Somente anexas</option>
+              <option value="unlinked">Sem vinculo</option>
             </select>
           </label>
 
@@ -2067,10 +2259,90 @@ export function Churches() {
           <input value={form.addressNeighborhood} onChange={(event) => setForm((current) => ({ ...current, addressNeighborhood: event.target.value }))} className={fieldClass} />
         </label>
 
-        <label className={`${labelClass} xl:col-span-2`}>
-          Logradouro
-          <input value={form.addressStreet} onChange={(event) => setForm((current) => ({ ...current, addressStreet: event.target.value }))} className={fieldClass} />
-        </label>
+        {/* Coluna da esquerda: logradouro e o bloco de zona/hospedagem empilhados,
+            ocupando o vazio que sobrava ao lado do painel de Posicao Geografica. */}
+        <div className="flex flex-col gap-4 xl:col-span-2">
+          <label className={labelClass}>
+            Logradouro
+            <input value={form.addressStreet} onChange={(event) => setForm((current) => ({ ...current, addressStreet: event.target.value }))} className={fieldClass} />
+          </label>
+
+          <label className={labelClass}>
+            Zona
+            <input
+              list="church-zone-options"
+              value={form.zone}
+              onChange={(event) => setForm((current) => ({ ...current, zone: event.target.value }))}
+              placeholder="Zona Leste, Zona Sul..."
+              className={fieldClass}
+            />
+            <datalist id="church-zone-options">
+              {zoneOptions.map((item) => <option key={item} value={item} />)}
+            </datalist>
+          </label>
+
+          <div className={mutedPanelClass}>
+            <SwitchField
+              checked={form.isHost}
+              onChange={(checked) => {
+                setForm((current) => ({ ...current, isHost: checked, hostChurchId: checked ? '' : current.hostChurchId }));
+                if (checked && form.id) openHostedPicker();
+              }}
+              label="E uma igreja hospedeira"
+            />
+          </div>
+
+          {/* Anexas e templo proprio dividem a ultima linha da coluna. */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Anexa só faz sentido quando a própria igreja não é hospedeira. */}
+            {form.isHost ? (
+            <div className={labelClass}>
+              Igrejas anexas
+              <div className={`flex h-full w-full items-center justify-between gap-3 ${mutedPanelClass}`}>
+                <span className="min-w-0 truncate text-sm text-slate-700 dark:text-slate-200">
+                  {hostedChurches.length
+                    ? `${hostedChurches.length} igreja${hostedChurches.length > 1 ? 's' : ''} anexa${hostedChurches.length > 1 ? 's' : ''} a esta hospedeira.`
+                    : 'Nenhuma igreja anexada ainda.'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openHostedPicker()}
+                  disabled={!form.id}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"
+                >
+                  <Link2 className="h-4 w-4" />
+                  Selecionar igrejas filhas
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label className={labelClass}>
+              Anexa à hospedeira
+              <select
+                value={form.hostChurchId}
+                onChange={(event) => setForm((current) => ({ ...current, hostChurchId: event.target.value }))}
+                className={fieldClass}
+              >
+                <option value="">Nao anexada a nenhuma hospedeira</option>
+                {hostOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}{item.zone ? ` — ${item.zone}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            )}
+
+            {/* Sobe a altura do rotulo do vizinho para os dois paineis ficarem
+                do mesmo tamanho e alinhados na linha. */}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-transparent select-none" aria-hidden="true">.</span>
+              <div className={`flex h-full w-full items-center ${mutedPanelClass}`}>
+                <SwitchField checked={form.hasOwnTemple} onChange={(checked) => setForm((current) => ({ ...current, hasOwnTemple: checked }))} label="Possui um templo proprio" />
+              </div>
+            </div>
+          </div>
+        </div>
         <label className={`${labelClass} xl:col-span-2`}>
           Posicao Geografica
           <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
@@ -2093,10 +2365,6 @@ export function Churches() {
             </div>
           </div>
         </label>
-
-        <div className={`xl:col-span-4 ${mutedPanelClass}`}>
-          <SwitchField checked={form.hasOwnTemple} onChange={(checked) => setForm((current) => ({ ...current, hasOwnTemple: checked }))} label="Possui um templo proprio" />
-        </div>
 
         <label className={`${labelClass} xl:col-span-4`}>
           Observacoes
@@ -2145,6 +2413,7 @@ export function Churches() {
           <TabsTrigger value="contatos" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Contatos</TabsTrigger>
           <TabsTrigger value="trocar-dirigente" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Trocar Dirigente</TabsTrigger>
           <TabsTrigger value="funcoes" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Funcoes</TabsTrigger>
+          <TabsTrigger value="hospedeira" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Hospedeira</TabsTrigger>
           <TabsTrigger value="imagens" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Imagens</TabsTrigger>
           <TabsTrigger value="aluguel" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Aluguel</TabsTrigger>
           <TabsTrigger value="mapa" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Mapa</TabsTrigger>
@@ -2238,6 +2507,94 @@ export function Churches() {
                   </PaginationContent>
                 </Pagination>
               </div>
+            </SectionCard>
+          ) : renderSaveGate()}
+        </TabsContent>
+
+        <TabsContent value="hospedeira">
+          {form.id ? (
+            <SectionCard
+              title="Hospedeira e igrejas anexas"
+              description="A hospedeira é a igreja central da regional; as anexas ficam vinculadas a ela."
+              actions={
+                form.isHost ? (
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => printHostedReport()} className={tabStyleButtonClass}>
+                      <Printer className="h-4 w-4" />Imprimir
+                    </button>
+                    <button type="button" onClick={openHostedPicker} className={`${tabStyleButtonClass} border-slate-900 bg-slate-900 text-white hover:bg-slate-800 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900`}>
+                      <Link2 className="h-4 w-4" />Selecionar igrejas filhas
+                    </button>
+                  </div>
+                ) : null
+              }
+            >
+              {form.isHost ? (
+                <>
+                  <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                    <div className={mutedPanelClass}>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Hospedeira</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{form.name || '-'}</div>
+                    </div>
+                    <div className={mutedPanelClass}>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Zona</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{form.zone || 'Nao informada'}</div>
+                    </div>
+                    <div className={mutedPanelClass}>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Igrejas anexas</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{hostedChurches.length}</div>
+                    </div>
+                  </div>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-slate-200">
+                        <TableHead>Codigo</TableHead>
+                        <TableHead>Igreja</TableHead>
+                        <TableHead>Zona</TableHead>
+                        <TableHead>Regional</TableHead>
+                        <TableHead>Dirigente</TableHead>
+                        <TableHead>Cidade/UF</TableHead>
+                        <TableHead className="text-right">Acoes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {hostedChurches.length ? hostedChurches.map((item) => (
+                        <TableRow key={item.id} className="border-slate-200">
+                          <TableCell>{item.code || '-'}</TableCell>
+                          <TableCell>
+                            <button type="button" onClick={() => openChurchDetail(item.id)} className="text-left font-medium text-slate-900 underline-offset-2 hover:text-purple-700 hover:underline dark:text-slate-100">
+                              {item.name}
+                            </button>
+                          </TableCell>
+                          <TableCell>{item.zone || '-'}</TableCell>
+                          <TableCell>{item.regional?.name || '-'}</TableCell>
+                          <TableCell>{item.currentLeaderName || '-'}</TableCell>
+                          <TableCell>{[item.addressCity, item.addressState].filter(Boolean).join('/') || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <button type="button" onClick={() => detachHostedChurch(item)} className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-700 hover:bg-red-100" title="Desanexar">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      )) : (
+                        <TableRow>
+                          <TableCell colSpan={7} className="py-10 text-center text-sm text-slate-500">Nenhuma igreja anexada. Use &quot;Selecionar igrejas filhas&quot;.</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </>
+              ) : (
+                <div className={`${mutedPanelClass} text-sm text-slate-700 dark:text-slate-300`}>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">Esta igreja não é hospedeira.</p>
+                  <p className="mt-1">
+                    {form.hostChurchId
+                      ? <>Ela está anexada a <strong>{hostOptions.find((item) => item.id === form.hostChurchId)?.name || 'uma hospedeira'}</strong>.</>
+                      : 'Marque "É uma igreja hospedeira" na aba Dados para vincular igrejas filhas, ou escolha ali a hospedeira à qual ela pertence.'}
+                  </p>
+                </div>
+              )}
             </SectionCard>
           ) : renderSaveGate()}
         </TabsContent>
@@ -2987,6 +3344,65 @@ export function Churches() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={hostedPicker.open} onOpenChange={(open) => { if (!open) setHostedPicker((current) => ({ ...current, open: false })); }}>
+        <DialogContent className={`flex max-h-[90vh] w-[min(96vw,860px)] max-w-[860px] flex-col overflow-hidden ${dialogContentClass}`}>
+          <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+            <DialogHeader>
+              <DialogTitle>Igrejas filhas de {form.name || 'esta hospedeira'}</DialogTitle>
+              <DialogDescription>Marque as igrejas que ficam anexas a esta hospedeira. Hospedeiras não aparecem na lista.</DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+            <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+              <Search className="h-4 w-4 text-slate-400" />
+              <input
+                value={hostedPicker.search}
+                onChange={(event) => setHostedPicker((current) => ({ ...current, search: event.target.value }))}
+                placeholder="Buscar por nome, codigo, zona ou dirigente"
+                className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100"
+              />
+              <span className="whitespace-nowrap text-xs font-semibold text-slate-500">{hostedPicker.selected.length} selecionada(s)</span>
+            </label>
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 py-3">
+            {hostedCandidates.length ? (
+              <div className="space-y-1">
+                {hostedCandidates.map((item) => {
+                  const checked = hostedPicker.selected.includes(item.id);
+                  // Já anexa a outra hospedeira: marcar aqui transfere o vínculo.
+                  const takenBy = item.hostChurchId && item.hostChurchId !== form.id
+                    ? churches.find((row) => row.id === item.hostChurchId)?.name
+                    : null;
+                  return (
+                    <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-2 hover:border-slate-200 hover:bg-slate-50 dark:hover:border-slate-700 dark:hover:bg-slate-900">
+                      <input type="checkbox" checked={checked} onChange={() => toggleHostedSelection(item.id)} className="rounded border-slate-300 accent-purple-600" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {item.code || 'sem codigo'}
+                          {item.zone ? ` · ${item.zone}` : ''}
+                          {item.regional?.name ? ` · ${item.regional.name}` : ''}
+                          {takenBy ? ` · hoje anexa a ${takenBy}` : ''}
+                        </div>
+                      </div>
+                      {takenBy ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-700">vinculada</span> : null}
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="py-10 text-center text-sm text-slate-500">Nenhuma igreja disponivel para anexar.</p>
+            )}
+          </div>
+          <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+            <button type="button" onClick={() => setHostedPicker((current) => ({ ...current, open: false }))} className={secondaryButtonClass}>Cancelar</button>
+            <button type="button" onClick={() => saveHostedChurches()} disabled={hostedPicker.saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+              {hostedPicker.saving ? 'Salvando...' : 'Salvar vinculos'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {leaderReport.open ? (
         <LeaderReportModal
           onClose={() => setLeaderReport((current) => ({ ...current, open: false }))}
@@ -3345,6 +3761,8 @@ export function Churches() {
           { value: 'campoName', label: 'Campo' },
           { value: 'regionalName', label: 'Regional' },
           { value: 'leader', label: 'Dirigente' },
+          { value: 'zone', label: 'Zona' },
+          { value: 'hostingLabel', label: 'Hospedagem' },
           { value: 'city', label: 'Cidade' },
           { value: 'state', label: 'UF' },
           { value: 'statusLabel', label: 'Status' },
@@ -3355,6 +3773,8 @@ export function Churches() {
           { value: 'campoName', label: 'Campo' },
           { value: 'regionalName', label: 'Regional' },
           { value: 'leader', label: 'Dirigente' },
+          { value: 'zone', label: 'Zona' },
+          { value: 'hostingLabel', label: 'Hospedagem' },
           { value: 'city', label: 'Cidade' },
           { value: 'state', label: 'UF' },
           { value: 'statusLabel', label: 'Status' },
@@ -3370,6 +3790,8 @@ export function Churches() {
             { label: 'Campo', key: 'campoName', width: '100px' },
             { label: 'Regional', key: 'regionalName', width: '100px' },
             { label: 'Dirigente', key: 'leader' },
+            { label: 'Zona', key: 'zone', width: '90px' },
+            { label: 'Hospedagem', key: 'hostingLabel', width: '120px' },
             { label: 'Cidade', key: 'city', width: '90px' },
             { label: 'UF', key: 'state', width: '40px' },
             { label: 'Status', key: 'statusLabel', width: '60px' },
@@ -3385,6 +3807,8 @@ export function Churches() {
               campoName: c.campoName,
               regionalName: c.regionalName,
               leader: c.leader,
+              zone: c.zone || '—',
+              hostingLabel: c.hostingLabel,
               city: c.city,
               state: c.state,
               statusLabel: c.statusLabel,

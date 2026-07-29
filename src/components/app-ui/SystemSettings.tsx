@@ -154,6 +154,7 @@ const settingsSections: SettingsSection[] = [
       { id: 'cost-centers',           name: 'Centros de Custo',      description: 'Classificação de lançamentos',      path: '/app-ui/config/cost-centers',           permKey: 'settings_cost_centers' },
       { id: 'church-functions',       name: 'Funções da Igreja',     description: 'Dirigente, líder, secretário...',   path: '/app-ui/config/church-functions',       permKey: 'settings_church_functions' },
       { id: 'ecclesiastical-titles',  name: 'Títulos Eclesiásticos', description: 'Membro, diácono, presbítero...',    path: '/app-ui/config/ecclesiastical-titles',  permKey: 'settings_ecclesiastical_titles' },
+      { id: 'zonas',                  name: 'Zonas',                 description: 'Zona Leste, Zona Sul, Centro...',   path: '/app-ui/config/zonas',                  permKey: 'settings_zonas' },
     ]
   },
   {

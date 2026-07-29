@@ -57,8 +57,10 @@ export async function GET(req: NextRequest) {
             id: true, name: true, code: true, status: true, regionalId: true,
             addressCity: true, addressState: true, documentNumber: true,
             currentLeaderName: true, leaderRoll: true,
+            isHost: true, zone: true, hostChurchId: true,
             regional: { select: { id: true, name: true, campoId: true } },
             headquarters: { select: { id: true, churchName: true } },
+            hostChurch: { select: { id: true, name: true, code: true } },
           },
           orderBy: [{ name: "asc" }],
         });

@@ -35,21 +35,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
     }
 
-    const { currentLeaderRoleDate, entryDate, exitDate, foundedAt, ...rest } = body;
+    const { currentLeaderRoleDate, entryDate, exitDate, foundedAt, isHost, zone, hostChurchId, ...rest } = body;
 
     const toDateOrNull = (v: unknown) => (v ? new Date(v as string) : null);
     const toDateOrUndefined = (v: unknown) => (v === undefined ? undefined : toDateOrNull(v));
+    // O formulário manda string vazia em campo não preenchido; coluna UUID não aceita.
+    const toIdOrNull = (v: unknown) => (v === undefined ? undefined : (v ? String(v) : null));
+
+    const host = isHost === undefined ? undefined : Boolean(isHost);
+    // Hospedeira não pode estar anexada a outra — bate com o CHECK do banco e
+    // evita devolver um 500 cru quando as duas coisas chegam marcadas juntas.
+    const nextHostChurchId = host === true ? null : toIdOrNull(hostChurchId);
+    if (nextHostChurchId && nextHostChurchId === id) {
+      return NextResponse.json({ error: "Uma igreja não pode ser hospedeira dela mesma." }, { status: 400 });
+    }
 
     try {
-      const church = await prisma.church.update({
-        where: { id },
-        data: {
-          ...rest,
-          currentLeaderRoleDate: toDateOrUndefined(currentLeaderRoleDate),
-          entryDate: toDateOrNull(entryDate),
-          exitDate: toDateOrNull(exitDate),
-          foundedAt: toDateOrNull(foundedAt),
-        },
+      const church = await prisma.$transaction(async (tx) => {
+        const updated = await tx.church.update({
+          where: { id },
+          data: {
+            ...rest,
+            currentLeaderRoleDate: toDateOrUndefined(currentLeaderRoleDate),
+            entryDate: toDateOrNull(entryDate),
+            exitDate: toDateOrNull(exitDate),
+            foundedAt: toDateOrNull(foundedAt),
+            ...(host === undefined ? {} : { isHost: host }),
+            ...(zone === undefined ? {} : { zone: zone || null }),
+            ...(nextHostChurchId === undefined ? {} : { hostChurchId: nextHostChurchId }),
+          },
+        });
+        // Deixou de ser hospedeira: as anexas ficam soltas em vez de apontar
+        // para uma igreja que não hospeda mais ninguém.
+        if (host === false) {
+          await tx.church.updateMany({ where: { hostChurchId: id }, data: { hostChurchId: null } });
+        }
+        return updated;
       });
       return NextResponse.json(serializeBigInts(church));
     } catch (e) {

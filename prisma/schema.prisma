@@ -111,6 +111,13 @@ model Church {
   hasOwnTemple          Boolean   @default(false) @map("has_own_temple")
   notes                 String?   @db.Text
 
+  /// Igreja central da regional que recebe as demais como anexas.
+  isHost        Boolean @default(false) @map("is_host")
+  /// Zona geográfica (Zona Leste, Zona Sul, ...), usada em filtro e relatório.
+  zone          String? @db.VarChar(60)
+  /// Preenchido nas anexas, apontando para a hospedeira.
+  hostChurchId  String? @map("host_church_id") @db.Uuid
+
   email    String? @db.VarChar(255)
   phone    String? @db.VarChar(20)
   whatsapp String? @db.VarChar(20)
@@ -149,6 +156,8 @@ model Church {
   leadPastor    User?                     @relation("ChurchLeadPastor", fields: [leadPastorId], references: [id])
   parentChurch  Church?                   @relation("ChurchParent", fields: [parentChurchId], references: [id])
   childChurches Church[]                  @relation("ChurchParent")
+  hostChurch    Church?                   @relation("ChurchHost", fields: [hostChurchId], references: [id], onDelete: SetNull)
+  hostedChurches Church[]                 @relation("ChurchHost")
   headquarters  LegacyChurchHeadquarters? @relation("ChurchHeadquarters", fields: [headquartersId], references: [id])
 
   users                  User[]                  @relation("ChurchUsers")
@@ -203,6 +212,8 @@ model Church {
 
   @@unique([regionalId, code])
   @@index([headquartersId])
+  @@index([hostChurchId])
+  @@index([zone])
   @@map("churches")
 }
 

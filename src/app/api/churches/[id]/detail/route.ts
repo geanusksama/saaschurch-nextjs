@@ -11,6 +11,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       include: {
         regional: { include: { campo: true } },
         parentChurch: { select: { id: true, name: true, code: true } },
+        hostChurch: { select: { id: true, name: true, code: true, zone: true } },
+        _count: { select: { hostedChurches: true } },
         headquarters: { select: { id: true, churchName: true, fieldId: true, fieldName: true, regionalName: true, city: true, state: true } },
       },
     });

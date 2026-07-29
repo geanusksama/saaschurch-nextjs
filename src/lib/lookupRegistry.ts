@@ -157,6 +157,24 @@ export const LOOKUPS: Record<string, LookupConfig> = {
       { key: "allow_women", label: "Permite mulheres", type: "boolean" },
     ],
   },
+
+  zonas: {
+    key: "zonas",
+    table: "zonas",
+    label: "Zonas",
+    description: "Zonas geográficas das igrejas: Zona Leste, Zona Sul, Centro...",
+    orderBy: "display_order NULLS LAST, name",
+    permKey: "settings_zonas",
+    activeField: "is_active",
+    softDelete: true,
+    warning: "A igreja guarda o NOME da zona. Renomear aqui não renomeia nas igrejas já cadastradas.",
+    fields: [
+      { key: "name", label: "Nome", type: "text", required: true, inList: true },
+      { key: "abbreviation", label: "Abreviação", type: "text", inList: true },
+      { key: "display_order", label: "Ordem", type: "text", inList: true, help: "Define a posição no dropdown." },
+      { key: "is_active", label: "Ativa", type: "boolean", inList: true },
+    ],
+  },
 };
 
 export const LOOKUP_LIST = Object.values(LOOKUPS);
