@@ -263,6 +263,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Importação de Membros',  path: '/app-ui/members/import',                 icon: UserPlus,    permKey: 'member_import' },
       { name: 'Batismo',                path: '/app-ui/baptism',                        icon: Droplets,    permKey: 'baptism' },
       { name: 'Consagração',            path: '/app-ui/consecration',                   icon: Crown,       permKey: 'consecration' },
+      { name: 'Ler QR Code',            path: '/app-ui/qr-reader',                      icon: QrCode,      permKey: 'qr_reader' },
       { name: 'Transferência',          path: '/app-ui/transfer',                       icon: UserCheck,   permKey: 'transfer' },
       { name: 'Credenciais',            path: '/app-ui/credentials',                    icon: Shield,      permKey: 'credentials' },
       { name: 'Modelos de Credencial',  path: '/app-ui/secretariat/credential-models',  icon: CreditCard,  permKey: 'credential_models' },

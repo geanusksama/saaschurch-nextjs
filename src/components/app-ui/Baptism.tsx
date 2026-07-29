@@ -8,6 +8,8 @@ import { apiBase } from '../../lib/apiBase';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
+import { printQrList } from '../../lib/printQrList';
+import { buildScanQrValue } from '../../lib/scanQr';
 
 type CampoOption = {
   id: string;
@@ -1415,6 +1417,7 @@ export function Baptism() {
           { value: 'baptismDate', label: 'Data Batismo' },
           { value: 'openedAt', label: 'Aberto em' },
           { value: 'notes', label: 'Obs', defaultChecked: false },
+          { value: 'qrcode', label: 'QR Code', defaultChecked: false },
         ]}
         defaultSort="member"
         onPrint={(orientation, sortBy, selectedColumns) => {
@@ -1432,6 +1435,36 @@ export function Baptism() {
             { label: 'Aberto em', key: 'openedAt', width: '80px' },
             { label: 'Obs', key: 'notes' },
           ];
+
+          const rowValue = (row: BaptismQueueItem, key: string) => {
+            if (key === 'member') return row.member?.fullName || row.protocol;
+            if (key === 'church') return row.church?.name || '—';
+            if (key === 'service') return row.service?.description || '—';
+            if (key === 'status') return row.statusLabel;
+            if (key === 'baptismDate') return formatDate(row.baptismDate || row.nextBaptism?.scheduledDate);
+            if (key === 'openedAt') return formatDate(row.openedAt);
+            return row.notes || '';
+          };
+
+          // Com QR Code marcado o relatório vira canhoto recortável, um por linha.
+          if (selectedColumns.includes('qrcode')) {
+            const fieldCols = allCols.filter((c) => selectedColumns.includes(c.key));
+            void printQrList({
+              title: 'Batismos — Canhotos com QR Code',
+              subtitle: 'Recorte na linha pontilhada e entregue ao candidato',
+              orientation,
+              items: sorted.map((row) => ({
+                qrValue: buildScanQrValue(row.id),
+                caption: row.protocol,
+                fields: (fieldCols.length ? fieldCols : [{ label: 'Membro', key: 'member' }]).map((col) => ({
+                  label: col.label,
+                  value: rowValue(row, col.key),
+                })),
+              })),
+            }).catch(() => toast.error('Falha ao gerar os QR Codes para impressão.'));
+            return;
+          }
+
           printReport({
             title: 'Batismos',
             orientation,

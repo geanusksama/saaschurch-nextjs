@@ -88,6 +88,7 @@ import { Automation } from "../components/app-ui/Automation";
 import { AutomationBuilderComponent } from "../components/app-ui/AutomationBuilder";
 import { EventDetail } from "../components/app-ui/EventDetail";
 import { Baptism } from "../components/app-ui/Baptism";
+import { QrScanReader } from "../components/app-ui/QrScanReader";
 import { BaptismEventDetail } from "../components/app-ui/BaptismEventDetail";
 import { CellGroups } from "../components/app-ui/CellGroups";
 import { CellReports } from "../components/app-ui/CellReports";
@@ -494,6 +495,7 @@ export const router = createBrowserRouter([
       { path: "pastoral/visit-detail", Component: VisitDetail },
       { path: "pastoral/prayer-requests", Component: PrayerWall },
       { path: "baptism", Component: Baptism },
+      { path: "qr-reader", Component: QrScanReader },
       { path: "baptism/new", Component: BaptismNew },
       { path: "baptism/events/:id", Component: BaptismEventDetail },
       { path: "cells", Component: CellGroups },
