@@ -59,6 +59,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
+import { LeaderReportModal } from './churches/LeaderReportModal';
 
 import { apiBase } from '../../lib/apiBase';
 
@@ -138,6 +139,9 @@ const initialLeaderChangeForm = {
   indicatedBy: '',
   changeReason: '',
   entryDate: '',
+  // Datas de saída são manuais e opcionais: em branco = mandato em aberto.
+  exitDate: '',
+  previousExitDate: '',
   currentCash: '',
   averageIncome: '',
   averageExpense: '',
@@ -457,6 +461,13 @@ export function Churches() {
   const [leaderPage, setLeaderPage] = useState(1);
   const [leaderPageSize, setLeaderPageSize] = useState(5);
   const [leaderHistoryDetails, setLeaderHistoryDetails] = useState(null);
+  const [leaderReport, setLeaderReport] = useState<{
+    open: boolean; loading: boolean; error: string; data: any; recordId: string; kind: 'change' | 'history';
+  }>({ open: false, loading: false, error: '', data: null, recordId: '', kind: 'change' });
+  // Aviso antes de encerrar o mandato deixando a igreja sem dirigente.
+  const [leaderExitWarningOpen, setLeaderExitWarningOpen] = useState(false);
+  // Perfil do membro aberto direto da aba (sem sair da tela de igreja).
+  const [memberPreview, setMemberPreview] = useState<null | { id: string; loading: boolean; data: any; error: string }>(null);
   const [functionSearch, setFunctionSearch] = useState('');
   const [functionDateFrom, setFunctionDateFrom] = useState('');
   const [functionDateTo, setFunctionDateTo] = useState('');
@@ -537,8 +548,14 @@ export function Churches() {
 
       const queryString = selectedFieldId ? `?fieldId=${encodeURIComponent(selectedFieldId)}` : '';
 
+      // A listagem só renderiza código/nome/campo/regional/dirigente/cidade/UF/status;
+      // o cadastro completo vem depois, por igreja, ao abrir o registro.
+      const churchesQuery = selectedFieldId
+        ? `?slim=1&fieldId=${encodeURIComponent(selectedFieldId)}`
+        : '?slim=1';
+
       const requests = [
-        fetchJson(`/churches${queryString}`, {}, { requiresAuth: true }),
+        fetchJson(`/churches${churchesQuery}`, {}, { requiresAuth: true }),
         fetchJson('/campos', {}, { requiresAuth: true }),
         fetchJson(`/regionais${queryString}`, {}, { requiresAuth: true }),
       ];
@@ -588,7 +605,9 @@ export function Churches() {
         fetchJson(`/churches/${churchId}/contacts`, {}, { requiresAuth: true }),
         fetchJson(`/churches/${churchId}/functions`, {}, { requiresAuth: true }),
         fetchJson(`/churches/${churchId}/leader-history`, {}, { requiresAuth: true }),
-        fetchJson(`/churches/${churchId}/members`, {}, { requiresAuth: true }),
+        // slim=1: aqui a lista serve só para resolver o nome do membro escolhido.
+        // Sem isso a SEDE baixava 3,5 MB de cadastro completo a cada abertura.
+        fetchJson(`/churches/${churchId}/members?slim=1`, {}, { requiresAuth: true }),
         fetchJson(`/churches/${churchId}/photos`, {}, { requiresAuth: true, allowUnauthorized: true }),
         fetchJson(`/churches/${churchId}/rent-records`, {}, { requiresAuth: true, allowUnauthorized: true }),
       ]);
@@ -1391,6 +1410,34 @@ export function Churches() {
     });
   }, [leaderHistory, leaderSearch, leaderDateFrom, leaderDateTo, leaderSortConfig]);
 
+  // Movimentação vigente: a mais recente que ainda não tem data de saída.
+  const currentLeaderMovement = useMemo(
+    () => leaderHistory.filter((item) => !item.exitDate).sort((left, right) => String(right.entryDate || '').localeCompare(String(left.entryDate || '')))[0] || null,
+    [leaderHistory],
+  );
+
+  // Nome do dirigente com ROL, clicável para abrir o perfil sem sair da tela.
+  const renderLeaderCell = (member, subtitle = '') => {
+    if (!member?.fullName) return <span className="text-slate-400">-</span>;
+    return (
+      <div className="flex flex-col gap-0.5">
+        <button
+          type="button"
+          onClick={() => openMemberPreview(member.id)}
+          className="text-left text-sm font-medium text-slate-900 underline-offset-2 hover:text-purple-700 hover:underline dark:text-slate-100 dark:hover:text-purple-300"
+          title="Ver perfil do membro"
+        >
+          {member.fullName}
+        </button>
+        <span className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          {member.rol ? `ROL ${member.rol}` : 'Sem ROL'}
+          {member.ecclesiasticalTitle ? ` · ${member.ecclesiasticalTitle}` : ''}
+          {subtitle ? ` · ${subtitle}` : ''}
+        </span>
+      </div>
+    );
+  };
+
   const filteredFunctions = useMemo(() => {
     const query = normalizeText(functionSearch).trim();
     const rows = churchFunctions.filter((item) => {
@@ -1434,7 +1481,22 @@ export function Churches() {
   useEffect(() => setFunctionPage(1), [functionSearch, functionDateFrom, functionDateTo, functionStatusFilter, functionPageSize, churchFunctions.length]);
   useEffect(() => setRentPage(1), [rentSearch, rentDateFrom, rentDateTo, rentPageSize, rentRecords.length]);
 
-  const saveLeaderChange = async () => {
+  // Encerrar o mandato sem que outra movimentação siga aberta deixa a igreja sem
+  // dirigente — situação legítima, mas que precisa ser uma escolha consciente.
+  const leaderChangeLeavesChurchVacant = useMemo(() => {
+    if (!leaderChangeForm.exitDate) return false;
+    if (!leaderChangeForm.id) return true; // troca nova encerra todas as anteriores
+    return !leaderHistory.some((item) => item.id !== leaderChangeForm.id && !item.exitDate);
+  }, [leaderChangeForm.exitDate, leaderChangeForm.id, leaderHistory]);
+
+  /** Nome de quem estava na função antes desta movimentação (só existe ao editar). */
+  const leaderChangePreviousName = useMemo(() => {
+    if (!leaderChangeForm.id) return '';
+    const record = leaderHistory.find((item) => item.id === leaderChangeForm.id);
+    return record?.previousLeaderMember?.fullName || '';
+  }, [leaderChangeForm.id, leaderHistory]);
+
+  const saveLeaderChange = async ({ acceptVacancy = false } = {}) => {
     try {
       setSavingLeaderChange(true);
       setDetailError('');
@@ -1452,6 +1514,18 @@ export function Churches() {
         throw new Error('Funcao, novo dirigente, quem indicou, motivo e data de entrada sao obrigatorios.');
       }
 
+      if (leaderChangeForm.exitDate && leaderChangeForm.exitDate < leaderChangeForm.entryDate) {
+        throw new Error('A data de saída do dirigente não pode ser anterior à data de entrada.');
+      }
+      if (leaderChangeForm.previousExitDate && leaderChangeForm.previousExitDate > leaderChangeForm.entryDate) {
+        throw new Error('A saída do dirigente anterior não pode ser posterior à entrada do novo.');
+      }
+
+      if (leaderChangeLeavesChurchVacant && !acceptVacancy) {
+        setLeaderExitWarningOpen(true);
+        return;
+      }
+
       await fetchJson(
         leaderChangeForm.id ? `/church-leader-history/${leaderChangeForm.id}` : `/churches/${form.id}/leader-change`,
         {
@@ -1461,11 +1535,16 @@ export function Churches() {
         { requiresAuth: true }
       );
 
+      setLeaderExitWarningOpen(false);
       setLeaderModalOpen(false);
       setLeaderChangeForm({ ...initialLeaderChangeForm });
       setSelectedLeaderMemberState(null);
       await loadChurchWorkspace(form.id);
-      toast.success('Dirigente atualizado com sucesso.');
+      toast.success(
+        leaderChangeLeavesChurchVacant
+          ? 'Mandato encerrado. A igreja está sem dirigente em exercício.'
+          : 'Dirigente atualizado com sucesso.'
+      );
     } catch (leaderError) {
       setDetailError(leaderError.message || 'Falha ao trocar dirigente.');
       toast.error(leaderError.message || 'Falha ao trocar dirigente.');
@@ -1485,6 +1564,8 @@ export function Churches() {
             indicatedBy: item.indicatedBy || '',
             changeReason: item.changeReason || '',
             entryDate: toDateInputValue(item.entryDate),
+            exitDate: toDateInputValue(item.exitDate),
+            previousExitDate: toDateInputValue(item.previousExitDate),
             currentCash: item.currentCash == null ? '' : String(item.currentCash),
             averageIncome: item.averageIncome == null ? '' : String(item.averageIncome),
             averageExpense: item.averageExpense == null ? '' : String(item.averageExpense),
@@ -1501,6 +1582,23 @@ export function Churches() {
     setLeaderModalOpen(true);
   };
 
+  /**
+   * Do aviso de vacância para a troca de dirigente: descarta a edição e abre uma
+   * movimentação nova já com as datas casadas — a saída do atual vira a entrada
+   * do sucessor, que é o que o encerramento sozinho não resolve.
+   */
+  const switchToLeaderChangeFlow = () => {
+    const handoverDate = leaderChangeForm.exitDate;
+    setLeaderExitWarningOpen(false);
+    setSelectedLeaderMemberState(null);
+    setLeaderChangeForm({
+      ...initialLeaderChangeForm,
+      entryDate: handoverDate,
+      previousExitDate: handoverDate,
+    });
+    setLeaderModalOpen(true);
+  };
+
   const removeLeaderHistoryItem = (item) => {
     setPendingConfirm({
       title: 'Excluir histórico de dirigente',
@@ -1514,6 +1612,36 @@ export function Churches() {
         }
       },
     });
+  };
+
+  /**
+   * Abre o modal de relatórios de dirigente. Um endpoint só alimenta os dois
+   * layouts (card da troca e histórico), então a escolha de tipo, campos e
+   * imagens acontece toda dentro do modal, sem nova ida ao servidor.
+   */
+  const openLeaderReport = async ({ recordId = '', kind = 'change' } = {}) => {
+    if (!form.id) return;
+    setLeaderReport({ open: true, loading: true, error: '', data: null, recordId, kind });
+    try {
+      const data = await fetchJson(`/churches/${form.id}/leader-report`, {}, { requiresAuth: true });
+      setLeaderReport({ open: true, loading: false, error: '', data, recordId, kind });
+    } catch (reportError) {
+      setLeaderReport({
+        open: true, loading: false, data: null, recordId, kind,
+        error: reportError.message || 'Falha ao carregar os dados do relatório.',
+      });
+    }
+  };
+
+  const openMemberPreview = async (memberId) => {
+    if (!memberId) return;
+    setMemberPreview({ id: memberId, loading: true, data: null, error: '' });
+    try {
+      const data = await fetchJson(`/members/${memberId}`, {}, { requiresAuth: true });
+      setMemberPreview({ id: memberId, loading: false, data, error: '' });
+    } catch (memberError) {
+      setMemberPreview({ id: memberId, loading: false, data: null, error: memberError.message || 'Falha ao carregar o membro.' });
+    }
   };
 
   const columnDefinitions = [
@@ -2120,8 +2248,21 @@ export function Churches() {
               <div className="mb-5 grid gap-3 xl:grid-cols-[minmax(280px,1.35fr)_minmax(320px,1.8fr)_180px_180px_auto]">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
                   <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Dirigente Atual</div>
-                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{form.currentLeaderName || 'Sem dados'}</div>
+                  {currentLeaderMovement?.newLeaderMember?.id ? (
+                    <button
+                      type="button"
+                      onClick={() => openMemberPreview(currentLeaderMovement.newLeaderMember.id)}
+                      className="mt-2 text-left text-sm font-semibold text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
+                    >
+                      {form.currentLeaderName || currentLeaderMovement.newLeaderMember.fullName}
+                    </button>
+                  ) : (
+                    <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{form.currentLeaderName || 'Sem dirigente em exercício'}</div>
+                  )}
                   <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Rol {form.leaderRoll || 'Sem dados'} · {leaderHistory.length} movimentações</div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Entrada {currentLeaderMovement ? formatDateLabel(currentLeaderMovement.entryDate) : '-'} · Saída {currentLeaderMovement?.exitDate ? formatDateLabel(currentLeaderMovement.exitDate) : 'em aberto'}
+                  </div>
                 </div>
                 <label className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
                   <span className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400"><Search className="h-3.5 w-3.5" />Buscar dirigente</span>
@@ -2135,7 +2276,10 @@ export function Churches() {
                   <span className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400"><CalendarDays className="h-3.5 w-3.5" />Até</span>
                   <input type="date" value={leaderDateTo} onChange={(event) => setLeaderDateTo(event.target.value)} className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100" />
                 </label>
-                <button type="button" onClick={() => openLeaderChangeModal()} className="inline-flex h-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"><Plus className="h-4 w-4" />Trocar Dirigente</button>
+                <div className="flex h-full flex-col gap-2 sm:flex-row">
+                  <button type="button" onClick={() => openLeaderReport({ kind: 'history' })} className="inline-flex h-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"><Printer className="h-4 w-4" />Relatórios</button>
+                  <button type="button" onClick={() => openLeaderChangeModal()} className="inline-flex h-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"><Plus className="h-4 w-4" />Trocar Dirigente</button>
+                </div>
               </div>
 
               <Table>
@@ -2145,6 +2289,7 @@ export function Churches() {
                     <TableHead><button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'newLeader', direction: current.key === 'newLeader' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Novo Dirigente <ArrowUpDown className="h-3.5 w-3.5" /></button></TableHead>
                     <TableHead><button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'functionName', direction: current.key === 'functionName' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Funcao <ArrowUpDown className="h-3.5 w-3.5" /></button></TableHead>
                     <TableHead><button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'entryDate', direction: current.key === 'entryDate' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Entrada <ArrowUpDown className="h-3.5 w-3.5" /></button></TableHead>
+                    <TableHead><button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'exitDate', direction: current.key === 'exitDate' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Saída <ArrowUpDown className="h-3.5 w-3.5" /></button></TableHead>
                     <TableHead>Indicacao</TableHead>
                     <TableHead>Membros</TableHead>
                     <TableHead>Obreiros</TableHead>
@@ -2154,15 +2299,26 @@ export function Churches() {
                 <TableBody>
                   {paginatedLeaderHistory.length ? paginatedLeaderHistory.map((item) => (
                     <TableRow key={item.id} className="border-slate-200">
-                      <TableCell>{item.previousLeaderMember?.fullName || '-'}</TableCell>
-                      <TableCell>{item.newLeaderMember?.fullName || '-'}</TableCell>
+                      <TableCell>{renderLeaderCell(item.previousLeaderMember, item.previousExitDate ? `Saída ${formatDateLabel(item.previousExitDate)}` : 'Sem data de saída')}</TableCell>
+                      <TableCell>{renderLeaderCell(item.newLeaderMember)}</TableCell>
                       <TableCell>{item.function?.name || '-'}</TableCell>
                       <TableCell>{formatDateLabel(item.entryDate)}</TableCell>
+                      <TableCell>
+                        {item.exitDate ? formatDateLabel(item.exitDate) : <span className="text-xs font-medium uppercase tracking-wide text-emerald-600">Em exercício</span>}
+                      </TableCell>
                       <TableCell>{item.indicatedBy || '-'}</TableCell>
                       <TableCell>{item.totalMembers ?? '-'}</TableCell>
                       <TableCell>{item.totalWorkers ?? '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openLeaderReport({ recordId: item.id, kind: 'change' })}
+                            className="rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"
+                            title="Relatório de troca de dirigente"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => openLeaderChangeModal(item)}
@@ -2192,7 +2348,7 @@ export function Churches() {
                     </TableRow>
                   )) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-10 text-center text-sm text-slate-500">Nenhuma troca de dirigente encontrada.</TableCell>
+                      <TableCell colSpan={9} className="py-10 text-center text-sm text-slate-500">Nenhuma troca de dirigente encontrada.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -2600,7 +2756,11 @@ export function Churches() {
               <div className={`${mutedPanelClass} text-sm text-slate-700 dark:text-slate-300`}>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Novo dirigente</div>
                 <div className="mt-2 font-semibold text-slate-900 dark:text-slate-100">{selectedLeaderMember?.fullName || 'Selecione um membro'}</div>
-                <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">A saída do dirigente anterior será atualizada automaticamente quando a troca for salva.</div>
+                <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  {leaderChangeForm.id
+                    ? 'As datas de saída são opcionais: em branco, o mandato segue em aberto.'
+                    : 'O dirigente atual é encerrado na data de entrada informada abaixo.'}
+                </div>
               </div>
             </div>
 
@@ -2625,6 +2785,24 @@ export function Churches() {
                 Data de entrada
                 <input type="date" value={leaderChangeForm.entryDate} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, entryDate: event.target.value }))} className={fieldClass} />
               </label>
+              {/* Só na edição: numa posse nova a entrada já define tudo — o anterior
+                  sai nessa data e o novo entra em exercício sem prazo. */}
+              {leaderChangeForm.id ? (
+                <>
+                  <label className={labelClass}>
+                    Término do mandato de {selectedLeaderMember?.fullName || 'quem assumiu'} <span className="text-slate-400">(opcional)</span>
+                    <input type="date" value={leaderChangeForm.exitDate} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, exitDate: event.target.value }))} className={fieldClass} />
+                    <span className="mt-1 block text-[11px] font-normal text-slate-500 dark:text-slate-400">Em branco = continua em exercício.</span>
+                  </label>
+                  {leaderChangePreviousName ? (
+                    <label className={labelClass}>
+                      Saída de {leaderChangePreviousName} <span className="text-slate-400">(opcional)</span>
+                      <input type="date" value={leaderChangeForm.previousExitDate} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, previousExitDate: event.target.value }))} className={fieldClass} />
+                      <span className="mt-1 block text-[11px] font-normal text-slate-500 dark:text-slate-400">Data em que ele deixou a função.</span>
+                    </label>
+                  ) : null}
+                </>
+              ) : null}
               <label className={labelClass}>
                 Quem indicou o dirigente
                 <input value={leaderChangeForm.indicatedBy} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, indicatedBy: event.target.value }))} className={fieldClass} />
@@ -2671,7 +2849,47 @@ export function Churches() {
           </div>
           <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
             <button type="button" onClick={() => setLeaderModalOpen(false)} className={secondaryButtonClass}>Cancelar</button>
-            <button type="button" onClick={saveLeaderChange} disabled={savingLeaderChange} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">{savingLeaderChange ? 'Salvando...' : leaderChangeForm.id ? 'Salvar alterações' : 'Trocar dirigente'}</button>
+            <button type="button" onClick={() => saveLeaderChange()} disabled={savingLeaderChange} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">{savingLeaderChange ? 'Salvando...' : leaderChangeForm.id ? 'Salvar alterações' : 'Trocar dirigente'}</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={leaderExitWarningOpen} onOpenChange={setLeaderExitWarningOpen}>
+        <DialogContent className={`max-w-lg ${dialogContentClass}`}>
+          <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+            <DialogHeader>
+              <DialogTitle>Encerrar sem substituto?</DialogTitle>
+              <DialogDescription>Confirme como esta movimentação deve ser registrada.</DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="space-y-3 px-5 py-5 text-sm text-slate-700 dark:text-slate-300">
+            <p>
+              Definindo <strong>{formatDateLabel(leaderChangeForm.exitDate)}</strong> como término, a igreja{' '}
+              <strong>{form.name || 'selecionada'}</strong> fica <strong>sem dirigente em exercício</strong>.
+            </p>
+            <p>
+              Se já existe quem vai assumir, use <strong>Trocar Dirigente</strong>: ele encerra o atual nessa mesma data
+              e empossa o novo de uma vez, gerando as ocorrências dos dois no perfil.
+            </p>
+          </div>
+          <DialogFooter className="flex-col gap-2 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end dark:border-slate-800">
+            <button type="button" onClick={() => setLeaderExitWarningOpen(false)} className={secondaryButtonClass}>Cancelar</button>
+            <button
+              type="button"
+              onClick={() => saveLeaderChange({ acceptVacancy: true })}
+              disabled={savingLeaderChange}
+              className={secondaryButtonClass}
+            >
+              {savingLeaderChange ? 'Salvando...' : 'Encerrar mesmo assim'}
+            </button>
+            <button
+              type="button"
+              onClick={switchToLeaderChangeFlow}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              <UserRound className="h-4 w-4" />
+              Ir para Trocar Dirigente
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2688,11 +2906,11 @@ export function Churches() {
             <div className="grid gap-4 px-5 py-5 md:grid-cols-2">
               <div className={mutedPanelClass}>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Anterior</div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{leaderHistoryDetails.previousLeaderMember?.fullName || '-'}</div>
+                <div className="mt-2">{renderLeaderCell(leaderHistoryDetails.previousLeaderMember)}</div>
               </div>
               <div className={mutedPanelClass}>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Novo dirigente</div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{leaderHistoryDetails.newLeaderMember?.fullName || '-'}</div>
+                <div className="mt-2">{renderLeaderCell(leaderHistoryDetails.newLeaderMember)}</div>
               </div>
               <div className={mutedPanelClass}>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Função</div>
@@ -2703,12 +2921,18 @@ export function Churches() {
                 <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{formatDateLabel(leaderHistoryDetails.entryDate)}</div>
               </div>
               <div className={mutedPanelClass}>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Saída</div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {leaderHistoryDetails.exitDate ? formatDateLabel(leaderHistoryDetails.exitDate) : 'Em exercício'}
+                </div>
+              </div>
+              <div className={mutedPanelClass}>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Quem indicou</div>
                 <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{leaderHistoryDetails.indicatedBy || '-'}</div>
               </div>
               <div className={mutedPanelClass}>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Saída anterior</div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{formatDateLabel(leaderHistoryDetails.previousExitDate)}</div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{leaderHistoryDetails.previousExitDate ? formatDateLabel(leaderHistoryDetails.previousExitDate) : 'Sem data definida'}</div>
               </div>
               <div className={`${mutedPanelClass} md:col-span-2`}>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Motivo</div>
@@ -2746,6 +2970,96 @@ export function Churches() {
           ) : null}
           <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
             <button type="button" onClick={() => setLeaderHistoryDetails(null)} className={secondaryButtonClass}>Fechar</button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!leaderHistoryDetails) return;
+                setLeaderHistoryDetails(null);
+                openLeaderReport({ recordId: leaderHistoryDetails.id, kind: 'change' });
+              }}
+              disabled={!leaderHistoryDetails}
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              <Printer className="h-4 w-4" />
+              Relatório
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {leaderReport.open ? (
+        <LeaderReportModal
+          onClose={() => setLeaderReport((current) => ({ ...current, open: false }))}
+          loading={leaderReport.loading}
+          error={leaderReport.error}
+          data={leaderReport.data}
+          initialRecordId={leaderReport.recordId}
+          initialKind={leaderReport.kind}
+          resolveImageUrl={getImageUrl}
+        />
+      ) : null}
+
+      <Dialog open={Boolean(memberPreview)} onOpenChange={(open) => { if (!open) setMemberPreview(null); }}>
+        <DialogContent className={`max-w-2xl ${dialogContentClass}`}>
+          <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+            <DialogHeader>
+              <DialogTitle>Perfil do membro</DialogTitle>
+              <DialogDescription>Dados principais do membro envolvido na movimentação.</DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="px-5 py-5">
+            {memberPreview?.loading ? (
+              <div className="py-8 text-center text-sm text-slate-500">Carregando perfil...</div>
+            ) : memberPreview?.error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{memberPreview.error}</div>
+            ) : memberPreview?.data ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  {memberPreview.data.photoUrl ? (
+                    <img src={getImageUrl(memberPreview.data.photoUrl)} alt="" className="h-16 w-16 rounded-xl object-cover" />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-800"><UserRound className="h-7 w-7" /></div>
+                  )}
+                  <div>
+                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{memberPreview.data.fullName}</div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {memberPreview.data.ecclesiasticalTitle || 'Sem título'} · ROL {memberPreview.data.rol ?? '-'} · {memberPreview.data.membershipStatus || '-'}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['Igreja', memberPreview.data.church?.name],
+                    ['Regional', memberPreview.data.church?.regional?.name || memberPreview.data.regional?.name],
+                    ['Campo', memberPreview.data.church?.regional?.campo?.name],
+                    ['CPF', memberPreview.data.cpf],
+                    ['Contato', memberPreview.data.phone || memberPreview.data.mobile],
+                    ['E-mail', memberPreview.data.email],
+                    ['Membro desde', formatDateLabel(memberPreview.data.membershipDate)],
+                    ['Batismo', formatDateLabel(memberPreview.data.baptismDate)],
+                  ].map(([label, value]) => (
+                    <div key={label} className={mutedPanelClass}>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</div>
+                      <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">{value || '-'}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+            <button type="button" onClick={() => setMemberPreview(null)} className={secondaryButtonClass}>Fechar</button>
+            {memberPreview?.data ? (
+              <a
+                href={`/app-ui/members/${memberPreview.data.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Abrir perfil completo
+              </a>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -42,11 +42,31 @@ export async function GET(req: NextRequest) {
       user.profileType === "master" ? (fieldId || user.campoId || null) : (user.campoId || null);
 
     try {
+      const where = {
+        deletedAt: null,
+        ...(scopedFieldId ? { regional: { campoId: scopedFieldId } } : {}),
+      };
+
+      // Opt-in: a listagem só renderiza um punhado de colunas, mas o payload
+      // completo arrasta todos os campos de cadastro de cada igreja. O detalhe
+      // continua vindo inteiro por /churches/[id]/detail ao abrir o registro.
+      if (new URL(req.url).searchParams.get("slim") === "1") {
+        const slim = await prisma.church.findMany({
+          where,
+          select: {
+            id: true, name: true, code: true, status: true, regionalId: true,
+            addressCity: true, addressState: true, documentNumber: true,
+            currentLeaderName: true, leaderRoll: true,
+            regional: { select: { id: true, name: true, campoId: true } },
+            headquarters: { select: { id: true, churchName: true } },
+          },
+          orderBy: [{ name: "asc" }],
+        });
+        return NextResponse.json(slim);
+      }
+
       const churches = await prisma.church.findMany({
-        where: {
-          deletedAt: null,
-          ...(scopedFieldId ? { regional: { campoId: scopedFieldId } } : {}),
-        },
+        where,
         include: {
           regional: {
             select: {

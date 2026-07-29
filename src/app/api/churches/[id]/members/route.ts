@@ -58,11 +58,37 @@ async function applyMatrixRule({ card, serviceId, columnIndex, user }: { card: R
   } catch (e) { console.error("applyMatrixRule error:", e); }
 }
 
+/**
+ * Colunas mínimas para telas que só precisam identificar o membro (seletores,
+ * autocompletes). A SEDE tem +2.600 membros: o payload completo passa de 3,5 MB
+ * e domina o tempo de abertura da tela; o enxuto fica em ~150 KB.
+ */
+const SLIM_MEMBER_SELECT = {
+  id: true,
+  fullName: true,
+  rol: true,
+  photoUrl: true,
+  ecclesiasticalTitle: true,
+  membershipStatus: true,
+  cpf: true,
+} as const;
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const churchId = (await params).id;
     const ok = await assertChurchAccess(user, churchId, prisma);
     if (!ok) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
+
+    // Opt-in: os consumidores antigos continuam recebendo o payload completo.
+    if (new URL(req.url).searchParams.get("slim") === "1") {
+      const slim = await prisma.member.findMany({
+        where: { churchId, deletedAt: null },
+        select: SLIM_MEMBER_SELECT,
+        orderBy: { fullName: "asc" },
+      });
+      return NextResponse.json(serializeBigInts(slim));
+    }
+
     const members = await prisma.member.findMany({
       where: { churchId, deletedAt: null },
       include: {

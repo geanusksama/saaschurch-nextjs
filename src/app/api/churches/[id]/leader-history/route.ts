@@ -11,8 +11,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const records = await prisma.churchLeaderHistory.findMany({
       where: { churchId },
       include: {
-        previousLeaderMember: { select: { id: true, fullName: true } },
-        newLeaderMember: { select: { id: true, fullName: true } },
+        previousLeaderMember: { select: { id: true, fullName: true, rol: true, ecclesiasticalTitle: true, photoUrl: true } },
+        newLeaderMember: { select: { id: true, fullName: true, rol: true, ecclesiasticalTitle: true, photoUrl: true } },
         function: { select: { id: true, name: true } },
       },
       orderBy: { entryDate: "desc" },

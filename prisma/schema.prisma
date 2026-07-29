@@ -311,6 +311,7 @@ model ChurchLeaderHistory {
   changeReason           String    @map("change_reason") @db.Text
   entryDate              DateTime  @map("entry_date") @db.Date
   previousExitDate       DateTime? @map("previous_exit_date") @db.Date
+  exitDate               DateTime? @map("exit_date") @db.Date
   currentCash            Decimal?  @map("current_cash") @db.Decimal(12, 2)
   averageIncome          Decimal?  @map("average_income") @db.Decimal(12, 2)
   averageExpense         Decimal?  @map("average_expense") @db.Decimal(12, 2)
