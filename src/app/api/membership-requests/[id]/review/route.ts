@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendTextViaZApi, ensureConversation, persistOutboundMessage } from '@/lib/whatsappSendService'
+import { openAdmissionCard } from '@/lib/memberAdmission'
 import { randomUUID } from 'crypto'
 
 /**
@@ -150,6 +151,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     let memberId: string | null = null
     let rol: number | null = null
+    let admission: Awaited<ReturnType<typeof openAdmissionCard>> = null
 
     // ── APROVAR: cria o membro ──
     if (decision === 'approved') {
@@ -225,6 +227,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         )
       }
       memberId = member.id
+
+      /**
+       * Aprovar a ficha equivale a mover o card de Cadastro de "Pendente" para
+       * "Aprovado" no pipeline: a matriz é quem troca o título eclesiástico,
+       * ativa a situação e grava a ocorrência no perfil.
+       *
+       * Antes o membro nascia com `ATIVO` na mão e sem histórico nenhum, o que
+       * deixava o perfil dele diferente do de quem entrou pelo botão Novo
+       * Membro. O card não existia porque este fluxo cria o membro por outro
+       * caminho — agora ele é aberto aqui.
+       */
+      admission = await openAdmissionCard({
+        member: { id: member.id, churchId, fullName },
+        user,
+        upToColumnIndex: 2,
+        note: 'Adesão aprovada pela ficha do "Quero ser Membro".',
+      })
     }
 
     // ── atualiza a solicitação ──
@@ -324,6 +343,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       churchId,
       notified,
       closeProcess,
+      admissionCard: admission,
     })
   })
 }
