@@ -13,6 +13,7 @@ import {
   Filter,
   Image as ImageIcon,
   Link2,
+  MapPin,
   MapPinned,
   Pencil,
   Plus,
@@ -63,6 +64,7 @@ import { printReport } from '../../lib/printReport';
 import { LeaderReportModal } from './churches/LeaderReportModal';
 
 import { apiBase } from '../../lib/apiBase';
+import { buildAddressLabel, buildRouteEmbedUrl, buildRouteLink, formatKm, hasCoords, haversineKm } from '../../lib/geo';
 
 const getImageUrl = (photoUrl?: string) => {
   if (!photoUrl) return '';
@@ -156,6 +158,9 @@ const initialLeaderChangeForm = {
   maxIncome: '',
   totalMembers: '',
   totalWorkers: '',
+  // Distância membro→igreja, em km. Editável: o cálculo é em linha reta e a
+  // secretaria pode trocar pela rodoviária real.
+  distanceKm: '',
   notes: '',
 };
 
@@ -513,6 +518,9 @@ export function Churches() {
   const [memberSearchResults, setMemberSearchResults] = useState<any[]>([]);
   const [activeMemberIndex, setActiveMemberIndex] = useState(0);
   const [selectedLeaderMemberState, setSelectedLeaderMemberState] = useState<any>(null);
+  // Detalhe completo do novo dirigente — a lista da busca não traz coordenadas
+  const [leaderMemberGeo, setLeaderMemberGeo] = useState<any>(null);
+  const [leaderGeoLoading, setLeaderGeoLoading] = useState(false);
   const [selectedFunctionMemberState, setSelectedFunctionMemberState] = useState<any>(null);
   const [zipcodeLookupLoading, setZipcodeLookupLoading] = useState(false);
   const [locationHelperOpen, setLocationHelperOpen] = useState(false);
@@ -1412,6 +1420,42 @@ export function Churches() {
     [churchMembers, leaderChangeForm.memberId, memberSearchResults, selectedLeaderMemberState],
   );
 
+  /**
+   * Busca o cadastro completo do novo dirigente e calcula a distância até a
+   * igreja. A lista da busca vem enxuta (sem coordenadas), então o detalhe só dá
+   * para saber aqui.
+   *
+   * A distância só é preenchida sozinha quando o campo está vazio: numa edição
+   * de movimentação antiga, o valor gravado na época tem que ser preservado.
+   */
+  useEffect(() => {
+    const memberId = leaderChangeForm.memberId;
+    if (!leaderModalOpen || !memberId) {
+      setLeaderMemberGeo(null);
+      return;
+    }
+    let cancelado = false;
+    setLeaderGeoLoading(true);
+    fetchJson(`/members/${memberId}`, {}, { requiresAuth: true })
+      .then((detalhe) => {
+        if (cancelado) return;
+        setLeaderMemberGeo(detalhe);
+        const km = haversineKm(detalhe, form);
+        if (km !== null) {
+          setLeaderChangeForm((current) => (current.distanceKm ? current : { ...current, distanceKm: String(km) }));
+        }
+      })
+      .catch(() => { if (!cancelado) setLeaderMemberGeo(null); })
+      .finally(() => { if (!cancelado) setLeaderGeoLoading(false); });
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaderChangeForm.memberId, leaderModalOpen, form.latitude, form.longitude]);
+
+  const leaderDistanceAuto = useMemo(
+    () => (leaderMemberGeo ? haversineKm(leaderMemberGeo, form) : null),
+    [leaderMemberGeo, form],
+  );
+
   const selectedFunctionMember = useMemo(
     () => selectedFunctionMemberState || churchMembers.find((member) => member.id === functionForm.memberId) || memberSearchResults.find((member) => member.id === functionForm.memberId) || null,
     [churchMembers, functionForm.memberId, memberSearchResults, selectedFunctionMemberState],
@@ -1631,7 +1675,7 @@ export function Churches() {
     }
   };
 
-  const openLeaderChangeModal = (item = null) => {
+  const openLeaderChangeModal = (item: any = null) => {
     setSelectedLeaderMemberState(item?.newLeaderMember || null);
     setLeaderChangeForm(
       item
@@ -1650,6 +1694,7 @@ export function Churches() {
             maxIncome: item.maxIncome == null ? '' : String(item.maxIncome),
             totalMembers: item.totalMembers == null ? '' : String(item.totalMembers),
             totalWorkers: item.totalWorkers == null ? '' : String(item.totalWorkers),
+            distanceKm: item.distanceKm == null ? '' : String(item.distanceKm),
             notes: item.notes || '',
           }
         : {
@@ -3097,110 +3142,207 @@ export function Churches() {
       </Dialog>
 
       <Dialog open={leaderModalOpen} onOpenChange={setLeaderModalOpen}>
-        <DialogContent className={`flex max-h-[90vh] w-[min(96vw,1180px)] max-w-[1180px] flex-col overflow-hidden ${dialogContentClass}`}>
+        {/* O primitivo do Dialog impõe `sm:max-w-lg`; os max-w com valor
+            arbitrário abaixo são o que vence essa regra e dá a largura real. */}
+        <DialogContent className={`flex max-h-[92vh] w-[95vw] max-w-[95vw] flex-col overflow-hidden sm:max-w-[95vw] xl:w-[70vw] xl:max-w-[70vw] ${dialogContentClass}`}>
           <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
             <DialogHeader>
               <DialogTitle>{leaderChangeForm.id ? 'Editar Troca de Dirigente' : 'Novo Dirigente'}</DialogTitle>
               <DialogDescription>{leaderChangeForm.id ? 'Atualize os dados da movimentação selecionada.' : 'Encerra o dirigente atual e cria um novo registro historico.'}</DialogDescription>
             </DialogHeader>
           </div>
-          <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className={`${mutedPanelClass} text-sm text-slate-700 dark:text-slate-300`}>
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Dirigente atual</div>
-                <div className="mt-2 font-semibold text-slate-900 dark:text-slate-100">{form.currentLeaderName || 'Sem dados'}</div>
-              </div>
-              <div className={`${mutedPanelClass} text-sm text-slate-700 dark:text-slate-300`}>
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Novo dirigente</div>
-                <div className="mt-2 font-semibold text-slate-900 dark:text-slate-100">{selectedLeaderMember?.fullName || 'Selecione um membro'}</div>
-                <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+
+          {/* Três colunas: quem/quando · números da transição · localização.
+              Espalhar na largura evita a rolagem que existia no layout de uma coluna só. */}
+          <div className="flex-1 overflow-y-auto px-5 py-5">
+            <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+
+              {/* ── Coluna 1: a movimentação ── */}
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className={`${mutedPanelClass} text-sm`}>
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Dirigente atual</div>
+                    <div className="mt-2 font-semibold text-slate-900 dark:text-slate-100">{form.currentLeaderName || 'Sem dados'}</div>
+                  </div>
+                  <div className={`${mutedPanelClass} text-sm`}>
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Novo dirigente</div>
+                    <div className="mt-2 font-semibold text-slate-900 dark:text-slate-100">{selectedLeaderMember?.fullName || 'Selecione um membro'}</div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {leaderChangeForm.id
                     ? 'As datas de saída são opcionais: em branco, o mandato segue em aberto.'
                     : 'O dirigente atual é encerrado na data de entrada informada abaixo.'}
+                </p>
+
+                <div className={labelClass}>
+                  Novo dirigente (membro)
+                  <button type="button" onClick={() => openMemberPicker('leader')} className="mt-2 flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800">
+                    <span>{selectedLeaderMember ? selectedLeaderMember.fullName : 'Buscar e selecionar membro'}</span>
+                    <UserRound className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <label className={labelClass}>
+                  Funcao
+                  <select value={leaderChangeForm.functionId} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, functionId: event.target.value }))} className={fieldClass}>
+                    <option value="">Selecione a funcao</option>
+                    {(leaderRoleOptions.length ? leaderRoleOptions : functionCatalog).map((item) => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className={labelClass}>
+                    Data de entrada
+                    <input type="date" value={leaderChangeForm.entryDate} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, entryDate: event.target.value }))} className={fieldClass} />
+                  </label>
+                  <label className={labelClass}>
+                    Quem indicou o dirigente
+                    <input value={leaderChangeForm.indicatedBy} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, indicatedBy: event.target.value }))} className={fieldClass} />
+                  </label>
+                  {/* Só na edição: numa posse nova a entrada já define tudo — o anterior
+                      sai nessa data e o novo entra em exercício sem prazo. */}
+                  {leaderChangeForm.id ? (
+                    <>
+                      <label className={labelClass}>
+                        Término do mandato <span className="text-slate-400">(opcional)</span>
+                        <input type="date" value={leaderChangeForm.exitDate} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, exitDate: event.target.value }))} className={fieldClass} />
+                        <span className="mt-1 block text-[11px] font-normal text-slate-500 dark:text-slate-400">Em branco = continua em exercício.</span>
+                      </label>
+                      {leaderChangePreviousName ? (
+                        <label className={labelClass}>
+                          Saída de {leaderChangePreviousName} <span className="text-slate-400">(opcional)</span>
+                          <input type="date" value={leaderChangeForm.previousExitDate} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, previousExitDate: event.target.value }))} className={fieldClass} />
+                        </label>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+
+                <label className={labelClass}>
+                  Motivo da troca
+                  <textarea value={leaderChangeForm.changeReason} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, changeReason: event.target.value }))} rows={4} className={fieldClass} />
+                </label>
+              </div>
+
+              {/* ── Coluna 2: números da transição ── */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Resumo da transição</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className={labelClass}>
+                    Caixa atual
+                    <input value={leaderChangeForm.currentCash} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, currentCash: event.target.value }))} className={fieldClass} />
+                  </label>
+                  <label className={labelClass}>
+                    Maior valor de entrada
+                    <input value={leaderChangeForm.maxIncome} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, maxIncome: event.target.value }))} className={fieldClass} />
+                  </label>
+                  <label className={labelClass}>
+                    Media de entrada
+                    <input value={leaderChangeForm.averageIncome} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, averageIncome: event.target.value }))} className={fieldClass} />
+                  </label>
+                  <label className={labelClass}>
+                    Media de saida
+                    <input value={leaderChangeForm.averageExpense} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, averageExpense: event.target.value }))} className={fieldClass} />
+                  </label>
+                  <label className={labelClass}>
+                    Total de membros
+                    <input value={leaderChangeForm.totalMembers} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, totalMembers: event.target.value }))} className={fieldClass} />
+                  </label>
+                  <label className={labelClass}>
+                    Total de obreiros
+                    <input value={leaderChangeForm.totalWorkers} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, totalWorkers: event.target.value }))} className={fieldClass} />
+                  </label>
+                  <label className={`${labelClass} sm:col-span-2`}>
+                    Observacoes
+                    <textarea value={leaderChangeForm.notes} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, notes: event.target.value }))} rows={5} className={fieldClass} />
+                  </label>
                 </div>
               </div>
-            </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className={labelClass}>
-                Funcao
-                <select value={leaderChangeForm.functionId} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, functionId: event.target.value }))} className={fieldClass}>
-                  <option value="">Selecione a funcao</option>
-                  {(leaderRoleOptions.length ? leaderRoleOptions : functionCatalog).map((item) => (
-                    <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
-                </select>
-              </label>
-              <div className={labelClass}>
-                Novo dirigente (membro)
-                <button type="button" onClick={() => openMemberPicker('leader')} className="mt-2 flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800">
-                  <span>{selectedLeaderMember ? selectedLeaderMember.fullName : 'Buscar e selecionar membro'}</span>
-                  <UserRound className="h-4 w-4" />
-                </button>
-              </div>
-              <label className={labelClass}>
-                Data de entrada
-                <input type="date" value={leaderChangeForm.entryDate} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, entryDate: event.target.value }))} className={fieldClass} />
-              </label>
-              {/* Só na edição: numa posse nova a entrada já define tudo — o anterior
-                  sai nessa data e o novo entra em exercício sem prazo. */}
-              {leaderChangeForm.id ? (
-                <>
-                  <label className={labelClass}>
-                    Término do mandato de {selectedLeaderMember?.fullName || 'quem assumiu'} <span className="text-slate-400">(opcional)</span>
-                    <input type="date" value={leaderChangeForm.exitDate} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, exitDate: event.target.value }))} className={fieldClass} />
-                    <span className="mt-1 block text-[11px] font-normal text-slate-500 dark:text-slate-400">Em branco = continua em exercício.</span>
-                  </label>
-                  {leaderChangePreviousName ? (
-                    <label className={labelClass}>
-                      Saída de {leaderChangePreviousName} <span className="text-slate-400">(opcional)</span>
-                      <input type="date" value={leaderChangeForm.previousExitDate} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, previousExitDate: event.target.value }))} className={fieldClass} />
-                      <span className="mt-1 block text-[11px] font-normal text-slate-500 dark:text-slate-400">Data em que ele deixou a função.</span>
-                    </label>
-                  ) : null}
-                </>
-              ) : null}
-              <label className={labelClass}>
-                Quem indicou o dirigente
-                <input value={leaderChangeForm.indicatedBy} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, indicatedBy: event.target.value }))} className={fieldClass} />
-              </label>
-              <label className={`${labelClass} md:col-span-2`}>
-                Motivo da troca
-                <textarea value={leaderChangeForm.changeReason} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, changeReason: event.target.value }))} rows={3} className={fieldClass} />
-              </label>
-            </div>
+              {/* ── Coluna 3: distância e trajeto ── */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                  <MapPin className="h-4 w-4 text-blue-600" />
+                  Distância até a igreja
+                </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
-              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Resumo da transição</div>
-              <div className="grid gap-4 md:grid-cols-2">
                 <label className={labelClass}>
-                  Caixa atual
-                  <input value={leaderChangeForm.currentCash} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, currentCash: event.target.value }))} className={fieldClass} />
+                  Distância (km)
+                  <input
+                    inputMode="decimal"
+                    value={leaderChangeForm.distanceKm}
+                    onChange={(event) => setLeaderChangeForm((current) => ({ ...current, distanceKm: event.target.value.replace(',', '.') }))}
+                    placeholder={leaderGeoLoading ? 'Calculando...' : '0.00'}
+                    className={fieldClass}
+                  />
+                  <span className="mt-1 block text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                    Calculada em linha reta. Pode ser corrigida para a distância rodoviária.
+                  </span>
                 </label>
-                <label className={labelClass}>
-                  Maior valor de entrada
-                  <input value={leaderChangeForm.maxIncome} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, maxIncome: event.target.value }))} className={fieldClass} />
-                </label>
-                <label className={labelClass}>
-                  Media de entrada
-                  <input value={leaderChangeForm.averageIncome} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, averageIncome: event.target.value }))} className={fieldClass} />
-                </label>
-                <label className={labelClass}>
-                  Media de saida
-                  <input value={leaderChangeForm.averageExpense} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, averageExpense: event.target.value }))} className={fieldClass} />
-                </label>
-                <label className={labelClass}>
-                  Total de membros
-                  <input value={leaderChangeForm.totalMembers} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, totalMembers: event.target.value }))} className={fieldClass} />
-                </label>
-                <label className={labelClass}>
-                  Total de obreiros
-                  <input value={leaderChangeForm.totalWorkers} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, totalWorkers: event.target.value }))} className={fieldClass} />
-                </label>
-                <label className={`${labelClass} md:col-span-2`}>
-                  Observacoes
-                  <textarea value={leaderChangeForm.notes} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, notes: event.target.value }))} rows={4} className={fieldClass} />
-                </label>
+
+                {leaderDistanceAuto !== null ? (
+                  <button
+                    type="button"
+                    onClick={() => setLeaderChangeForm((current) => ({ ...current, distanceKm: String(leaderDistanceAuto) }))}
+                    className="mt-2 text-xs font-semibold text-purple-600 hover:underline dark:text-purple-400"
+                  >
+                    Recalcular ({formatKm(leaderDistanceAuto)})
+                  </button>
+                ) : null}
+
+                <div className="mt-4 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                  <div>
+                    <div className="font-semibold uppercase tracking-wide text-slate-500">Endereço do membro</div>
+                    <div className="mt-0.5">{buildAddressLabel(leaderMemberGeo) || (leaderChangeForm.memberId ? 'Membro sem endereço cadastrado' : 'Selecione o novo dirigente')}</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold uppercase tracking-wide text-slate-500">Endereço da igreja</div>
+                    <div className="mt-0.5">{buildAddressLabel(form) || 'Igreja sem endereço cadastrado'}</div>
+                  </div>
+                </div>
+
+                {(() => {
+                  const rota = buildRouteEmbedUrl(leaderMemberGeo, form);
+                  if (rota) {
+                    return (
+                      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                        <iframe
+                          title="Trajeto do membro até a igreja"
+                          src={rota}
+                          className="h-[260px] w-full bg-slate-100"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                        <a
+                          href={buildRouteLink(leaderMemberGeo, form)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 border-t border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:underline dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Ver trajeto no Google Maps
+                        </a>
+                      </div>
+                    );
+                  }
+                  const faltaMembro = leaderChangeForm.memberId && !hasCoords(leaderMemberGeo) && !buildAddressLabel(leaderMemberGeo);
+                  const faltaIgreja = !hasCoords(form) && !buildAddressLabel(form);
+                  return (
+                    <div className="mt-4 rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                      {!leaderChangeForm.memberId
+                        ? 'Selecione o novo dirigente para ver o trajeto.'
+                        : faltaMembro
+                          ? 'Este membro não tem endereço nem localidade no cadastro. Edite o membro para definir.'
+                          : faltaIgreja
+                            ? 'Esta igreja não tem endereço nem localidade cadastrados.'
+                            : 'Sem dados suficientes para montar o trajeto.'}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

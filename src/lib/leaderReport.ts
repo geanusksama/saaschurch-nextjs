@@ -38,6 +38,8 @@ export interface LeaderReportRecord {
   maxIncome?: number | null;
   totalMembers?: number | null;
   totalWorkers?: number | null;
+  /** Distância membro→igreja congelada na posse, em km. */
+  distanceKm?: number | null;
   function?: { name?: string | null } | null;
   previousLeaderMember?: LeaderReportMember | null;
   newLeaderMember?: LeaderReportMember | null;
@@ -77,7 +79,7 @@ export interface LeaderReportData {
 
 /** Blocos de dados que o usuário liga/desliga no card de troca. */
 export type ChangeFieldKey =
-  | 'codigoRegional' | 'entradaSaida' | 'caixaAtual' | 'maiorEntrada'
+  | 'codigoRegional' | 'entradaSaida' | 'caixaAtual' | 'maiorEntrada' | 'distancia'
   | 'totalMembros' | 'templo' | 'obreirosSugeridos' | 'rolDirigente'
   | 'datasMandato' | 'indicante' | 'dirigenteAnterior' | 'motivo'
   | 'congregacoesRegional' | 'endereco' | 'documento' | 'contato'
@@ -95,6 +97,7 @@ export const CHANGE_FIELDS: { key: ChangeFieldKey; label: string; group: 'card' 
   { key: 'congregacoesRegional', label: 'Congregações da regional', group: 'card' },
   { key: 'caixaAtual', label: 'Caixa atual', group: 'igreja' },
   { key: 'maiorEntrada', label: 'Maior valor de entrada', group: 'igreja' },
+  { key: 'distancia', label: 'Distância do dirigente até a igreja', group: 'igreja' },
   { key: 'rolDirigente', label: 'ROL e função do dirigente', group: 'igreja' },
   { key: 'datasMandato', label: 'Datas de entrada e saída', group: 'igreja' },
   { key: 'endereco', label: 'Endereço da igreja', group: 'igreja' },
@@ -114,7 +117,8 @@ export const DEFAULT_CHANGE_FIELDS: ChangeFieldKey[] = [
 export type HistoryColumnKey =
   | 'newLeader' | 'rol' | 'functionName' | 'entryDate' | 'exitDate' | 'duration'
   | 'previousLeader' | 'previousExitDate' | 'indicatedBy' | 'changeReason'
-  | 'totalMembers' | 'totalWorkers' | 'currentCash' | 'averageIncome' | 'averageExpense' | 'maxIncome';
+  | 'totalMembers' | 'totalWorkers' | 'currentCash' | 'averageIncome' | 'averageExpense' | 'maxIncome'
+  | 'distanceKm';
 
 export const HISTORY_COLUMNS: { key: HistoryColumnKey; label: string; align?: 'right' }[] = [
   { key: 'newLeader', label: 'Dirigente' },
@@ -133,6 +137,7 @@ export const HISTORY_COLUMNS: { key: HistoryColumnKey; label: string; align?: 'r
   { key: 'averageIncome', label: 'Méd. entrada', align: 'right' },
   { key: 'averageExpense', label: 'Méd. saída', align: 'right' },
   { key: 'maxIncome', label: 'Maior entrada', align: 'right' },
+  { key: 'distanceKm', label: 'Distância', align: 'right' },
 ];
 
 export const DEFAULT_HISTORY_COLUMNS: HistoryColumnKey[] = [
@@ -164,6 +169,12 @@ export function esc(value: unknown) {
 function money(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
   return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/** Distância em km. Vazio vira travessão para não imprimir "0,00 km" à toa. */
+function km(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  return `${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km`;
 }
 
 export function dateLabel(value: string | null | undefined) {
@@ -234,6 +245,7 @@ function renderChangeCard(data: LeaderReportData, options: LeaderReportOptions) 
   }
   if (has('caixaAtual')) centerBlocks.push(`<p class="line">Caixa atual: <b>${money(record.currentCash)}</b></p>`);
   if (has('maiorEntrada')) centerBlocks.push(`<p class="line">Maior entrada: <b>${money(record.maxIncome)}</b></p>`);
+  if (has('distancia')) centerBlocks.push(`<p class="line">Distância até a igreja: <b>${km(record.distanceKm)}</b></p>`);
   if (has('documento')) centerBlocks.push(`<p class="line">${esc(church.documentType || 'CNPJ')}: <b>${esc(church.documentNumber || church.cnpj) || '—'}</b></p>`);
   if (has('endereco')) centerBlocks.push(`<p class="line">Endereço: <b>${esc(addressLine(church)) || '—'}</b></p>`);
   if (has('contato')) centerBlocks.push(`<p class="line">Contato: <b>${esc(church.phone || church.whatsapp) || '—'}</b>${church.email ? ` · <b>${esc(church.email)}</b>` : ''}</p>`);
@@ -336,6 +348,7 @@ function historyCell(record: LeaderReportRecord, key: HistoryColumnKey, data: Le
     case 'averageIncome': return money(record.averageIncome);
     case 'averageExpense': return money(record.averageExpense);
     case 'maxIncome': return money(record.maxIncome);
+    case 'distanceKm': return km(record.distanceKm);
     default: return '—';
   }
 }

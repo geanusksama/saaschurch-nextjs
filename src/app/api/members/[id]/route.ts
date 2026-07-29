@@ -82,6 +82,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       regionalId = nextChurch.regionalId || undefined;
     }
 
+    // Coordenadas chegam como texto do formulário. Vazio significa "limpar a
+    // localidade", e não zero — por isso vira null em vez de cair no Decimal.
+    for (const campo of ["latitude", "longitude"] as const) {
+      if (data[campo] === undefined) continue;
+      const bruto = String(data[campo] ?? "").trim();
+      const numero = bruto === "" ? null : Number(bruto);
+      if (numero !== null && !Number.isFinite(numero)) {
+        return NextResponse.json({ error: `${campo} inválida.` }, { status: 400 });
+      }
+      data[campo] = numero;
+    }
+
     const updated = await prisma.member.update({
       where: { id },
       data: {

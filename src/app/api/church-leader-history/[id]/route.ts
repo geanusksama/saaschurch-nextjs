@@ -65,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const ok = await assertChurchAccess(user, existing.churchId, prisma);
     if (!ok) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     const body = await req.json().catch(() => ({}));
-    const { functionId, memberId, indicatedBy, changeReason, entryDate, currentCash, averageIncome, averageExpense, maxIncome, totalMembers, totalWorkers, notes } = body;
+    const { functionId, memberId, indicatedBy, changeReason, entryDate, currentCash, averageIncome, averageExpense, maxIncome, totalMembers, totalWorkers, distanceKm, notes } = body;
     if (!functionId || !memberId || !indicatedBy || !changeReason || !entryDate) {
       return NextResponse.json({ error: "functionId, memberId, indicatedBy, changeReason and entryDate are required" }, { status: 400 });
     }
@@ -93,6 +93,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           averageExpense: parseNumberValue(averageExpense), maxIncome: parseNumberValue(maxIncome),
           totalMembers: totalMembers === undefined || totalMembers === "" ? null : Number(totalMembers),
           totalWorkers: totalWorkers === undefined || totalWorkers === "" ? null : Number(totalWorkers),
+          distanceKm: parseNumberValue(distanceKm),
           notes,
         },
         include: {

@@ -3,6 +3,7 @@ import { Save, X, Camera, Trash2, User } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
+import { LocationPicker } from './shared/LocationPicker';
 
 type EcclesiasticalTitleOption = {
   id: string;
@@ -82,6 +83,8 @@ type FormState = {
   addressCity: string;
   addressState: string;
   addressZipcode: string;
+  latitude: string;
+  longitude: string;
   membershipStatus: string;
   membershipDate: string;
   ecclesiasticalTitleId: string;
@@ -126,6 +129,8 @@ const emptyForm: FormState = {
   addressCity: '',
   addressState: '',
   addressZipcode: '',
+  latitude: '',
+  longitude: '',
   membershipStatus: 'AGUARDANDO ATIVACAO',
   membershipDate: '',
   ecclesiasticalTitleId: '',
@@ -325,6 +330,8 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
           addressCity: data.addressCity || '',
           addressState: data.addressState || '',
           addressZipcode: data.addressZipcode || '',
+          latitude: data.latitude != null ? String(data.latitude) : '',
+          longitude: data.longitude != null ? String(data.longitude) : '',
           membershipStatus: data.membershipStatus || 'AGUARDANDO ATIVACAO',
           membershipDate: data.membershipDate ? String(data.membershipDate).slice(0, 10) : '',
           ecclesiasticalTitleId: data.ecclesiasticalTitleRef?.id || data.ecclesiasticalTitleId || '',
@@ -471,6 +478,8 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
         addressCity: form.addressCity || undefined,
         addressState: form.addressState || undefined,
         addressZipcode: digitsOnly(form.addressZipcode) || undefined,
+        latitude: form.latitude,
+        longitude: form.longitude,
         membershipStatus: form.membershipStatus,
         membershipDate: form.membershipDate || undefined,
         ecclesiasticalTitleId: form.ecclesiasticalTitleId || undefined,
@@ -776,6 +785,30 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                   <div className="md:col-span-2">
                     <label className={labelClass}>UF</label>
                     <input type="text" maxLength={2} value={form.addressState} onChange={(e) => update('addressState', e.target.value.toUpperCase())} className={inputClass} />
+                  </div>
+                  <div className="md:col-span-6">
+                    <LocationPicker
+                      value={{ latitude: form.latitude, longitude: form.longitude }}
+                      address={{
+                        addressStreet: form.addressStreet,
+                        addressNumber: form.addressNumber,
+                        addressNeighborhood: form.addressNeighborhood,
+                        addressCity: form.addressCity,
+                        addressState: form.addressState,
+                        addressZipcode: form.addressZipcode,
+                      }}
+                      onChange={(next) => {
+                        setForm((prev) => ({
+                          ...prev,
+                          latitude: next.latitude,
+                          longitude: next.longitude,
+                          addressStreet: next.address?.addressStreet ?? prev.addressStreet,
+                          addressNeighborhood: next.address?.addressNeighborhood ?? prev.addressNeighborhood,
+                          addressCity: next.address?.addressCity ?? prev.addressCity,
+                          addressState: next.address?.addressState ?? prev.addressState,
+                        }));
+                      }}
+                    />
                   </div>
                 </div>
               </section>

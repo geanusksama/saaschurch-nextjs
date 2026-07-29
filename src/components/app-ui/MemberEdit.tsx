@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { apiBase } from '../../lib/apiBase';
 import { qk } from '../../lib/queryClient';
+import { LocationPicker } from './shared/LocationPicker';
 
 export function MemberEdit() {
   const { id } = useParams();
@@ -23,6 +24,8 @@ export function MemberEdit() {
     addressCity: '',
     addressState: '',
     addressZipcode: '',
+    latitude: '',
+    longitude: '',
     baptismStatus: '',
     baptismDate: '',
     membershipDate: '',
@@ -53,6 +56,8 @@ export function MemberEdit() {
           addressCity: data.addressCity || '',
           addressState: data.addressState || '',
           addressZipcode: data.addressZipcode || '',
+          latitude: data.latitude != null ? String(data.latitude) : '',
+          longitude: data.longitude != null ? String(data.longitude) : '',
           baptismStatus: data.baptismStatus || '',
           baptismDate: data.baptismDate ? data.baptismDate.slice(0, 10) : '',
           membershipDate: data.membershipDate ? data.membershipDate.slice(0, 10) : '',
@@ -91,6 +96,8 @@ export function MemberEdit() {
           addressCity: formData.addressCity || undefined,
           addressState: formData.addressState || undefined,
           addressZipcode: formData.addressZipcode || undefined,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
           baptismStatus: formData.baptismStatus || undefined,
           baptismDate: formData.baptismDate || undefined,
           membershipDate: formData.membershipDate || undefined,
@@ -305,6 +312,28 @@ export function MemberEdit() {
                 value={formData.addressZipcode}
                 onChange={(e) => setFormData({ ...formData, addressZipcode: e.target.value })}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <LocationPicker
+                value={{ latitude: formData.latitude, longitude: formData.longitude }}
+                address={{
+                  addressStreet: formData.addressStreet,
+                  addressCity: formData.addressCity,
+                  addressState: formData.addressState,
+                  addressZipcode: formData.addressZipcode,
+                }}
+                onChange={(next) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    latitude: next.latitude,
+                    longitude: next.longitude,
+                    addressStreet: next.address?.addressStreet ?? prev.addressStreet,
+                    addressCity: next.address?.addressCity ?? prev.addressCity,
+                    addressState: next.address?.addressState ?? prev.addressState,
+                  }));
+                }}
               />
             </div>
           </div>

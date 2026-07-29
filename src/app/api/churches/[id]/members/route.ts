@@ -4,6 +4,14 @@ import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess, isRestrictedToOwnChurch } from "@/lib/helpers";
 import { openAdmissionCard } from "@/lib/memberAdmission";
 
+/** Coordenada vinda do formulário: texto vazio vira null, não 0. */
+function parseCoord(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 /**
  * Colunas mínimas para telas que só precisam identificar o membro (seletores,
  * autocompletes). A SEDE tem +2.600 membros: o payload completo passa de 3,5 MB
@@ -60,6 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const {
       memberType, rol: rolInput, fullName, preferredName, photoUrl, cpf, rg, birthDate, gender, maritalStatus, cnpj,
       email, phone, mobile, addressStreet, addressNumber, addressComplement, addressNeighborhood, addressCity, addressState, addressZipcode,
+      latitude, longitude,
       membershipStatus, membershipDate, ecclesiasticalTitle, ecclesiasticalTitleId, baptismStatus, baptismDate,
       fatherName, motherName, spouseId, spouseName, naturalityCity, naturalityState, nationality, voterRegistration, voterZone, voterSection,
       occupation, company, notes, ministryId, ministryRole, emergencyContactName, emergencyContactPhone,
@@ -129,6 +138,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             birthDate: birthDate ? new Date(birthDate) : undefined,
             gender, maritalStatus, email, phone, mobile, addressStreet, addressNumber, addressComplement,
             addressNeighborhood, addressCity, addressState, addressZipcode,
+            // vazio = sem localidade definida; não vira 0
+            latitude: parseCoord(latitude), longitude: parseCoord(longitude),
             membershipStatus: effectiveStatus,
             ecclesiasticalTitle: normalizedMemberType === "MEMBRO" ? (resolvedTitle?.name || ecclesiasticalTitle || null) : null,
             ecclesiasticalTitleId: normalizedMemberType === "MEMBRO" ? resolvedTitle?.id || null : null,

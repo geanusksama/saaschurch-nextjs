@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
+import { LocationPicker } from './shared/LocationPicker';
 
 const BRAZIL_STATES = [
   { value: 'AC', label: 'Acre' },
@@ -65,6 +66,8 @@ const initialFormData = {
   city: '',
   state: '',
   zipCode: '',
+  latitude: '',
+  longitude: '',
   baptized: false,
   baptismDate: '',
   membershipDate: '',
@@ -659,6 +662,8 @@ export function MemberRegistration() {
         addressCity: formData.city || undefined,
         addressState: formData.state || undefined,
         addressZipcode: formData.zipCode || undefined,
+        latitude: formData.latitude || undefined,
+        longitude: formData.longitude || undefined,
         membershipStatus: formData.membershipStatus || 'AGUARDANDO ATIVACAO',
         membershipDate: formData.membershipDate || undefined,
         ecclesiasticalTitleId: formData.ecclesiasticalTitleId || undefined,
@@ -1393,6 +1398,31 @@ export function MemberRegistration() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="md:col-span-2 xl:col-span-4">
+              <LocationPicker
+                value={{ latitude: formData.latitude, longitude: formData.longitude }}
+                address={{
+                  addressStreet: formData.street,
+                  addressNumber: formData.number,
+                  addressNeighborhood: formData.neighborhood,
+                  addressCity: formData.city,
+                  addressState: formData.state,
+                  addressZipcode: formData.zipCode,
+                }}
+                onChange={(next) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    latitude: next.latitude,
+                    longitude: next.longitude,
+                    street: next.address?.addressStreet ?? prev.street,
+                    neighborhood: next.address?.addressNeighborhood ?? prev.neighborhood,
+                    city: next.address?.addressCity ?? prev.city,
+                    state: next.address?.addressState ?? prev.state,
+                  }));
+                }}
+              />
             </div>
           </div>
         </div>

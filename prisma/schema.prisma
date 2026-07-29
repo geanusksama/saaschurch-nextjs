@@ -329,6 +329,9 @@ model ChurchLeaderHistory {
   maxIncome              Decimal?  @map("max_income") @db.Decimal(12, 2)
   totalMembers           Int?      @map("total_members")
   totalWorkers           Int?      @map("total_workers")
+  /// Distância congelada na posse — o relatório antigo não pode mudar quando o
+  /// membro se muda ou a igreja troca de endereço.
+  distanceKm             Decimal?  @map("distance_km") @db.Decimal(8, 2)
   notes                  String?   @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -506,6 +509,9 @@ model Member {
   addressCity         String? @map("address_city") @db.VarChar(100)
   addressState        String? @map("address_state") @db.VarChar(50)
   addressZipcode      String? @map("address_zipcode") @db.VarChar(10)
+  /// Mesma precisão de `churches` — a distância membro↔igreja compara os dois
+  latitude            Decimal? @db.Decimal(10, 8)
+  longitude           Decimal? @db.Decimal(11, 8)
 
   membershipStatus    String?   @default("AGUARDANDO ATIVACAO") @map("membership_status") @db.VarChar(30)
   membershipDate      DateTime? @map("membership_date") @db.Date
