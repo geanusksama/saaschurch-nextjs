@@ -99,3 +99,95 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ enrolled, skipped })
   })
 }
+
+/**
+ * DELETE /api/pastoral/journeys/enroll — remove o cronograma anexado a
+ * atendimentos (um card ou a coluna inteira).
+ *
+ * body: { attendanceIds: string[] }
+ *
+ * Duas situações, porque apagar tudo destruiria o registro de mensagens que já
+ * chegaram na mão da pessoa:
+ *
+ *  - nada saiu ainda   → apaga a inscrição de vez (o CASCADE leva a fila
+ *                        pendente com ela). Fica como se nunca tivesse sido
+ *                        anexado, e o card pode receber outro cronograma.
+ *  - já saiu alguma    → cancela só a fila pendente e desliga a inscrição do
+ *                        card (attendance_id = null, status cancelled). O card
+ *                        limpa o andamento e volta a poder receber cronograma,
+ *                        mas o histórico continua na aba Envios.
+ */
+export async function DELETE(req: NextRequest) {
+  return withAuth(req, async () => {
+    const body = await req.json().catch(() => ({}))
+    const ids: string[] = Array.isArray(body.attendanceIds)
+      ? body.attendanceIds.filter((v: unknown) => typeof v === 'string' && v)
+      : []
+    if (!ids.length) {
+      return NextResponse.json({ error: 'attendanceIds obrigatório' }, { status: 400 })
+    }
+
+    const { data: enrollments, error } = await supabaseAdmin
+      .from('pastoral_journey_enrollments')
+      .select('id, attendance_id')
+      .in('attendance_id', ids)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!enrollments?.length) {
+      return NextResponse.json({ removed: 0, detached: 0, cancelledPending: 0 })
+    }
+
+    const enrollmentIds = enrollments.map(e => e.id)
+
+    // quem já recebeu mensagem tem histórico a preservar
+    const { data: sends } = await supabaseAdmin
+      .from('pastoral_journey_sends')
+      .select('enrollment_id, status')
+      .in('enrollment_id', enrollmentIds)
+
+    const jaEnviou = new Set(
+      (sends ?? [])
+        .filter(s => s.status === 'sent' || s.status === 'merged')
+        .map(s => s.enrollment_id)
+    )
+
+    const paraApagar = enrollmentIds.filter(id => !jaEnviou.has(id))
+    const paraDesligar = enrollmentIds.filter(id => jaEnviou.has(id))
+    const now = new Date().toISOString()
+    let cancelledPending = 0
+
+    if (paraDesligar.length) {
+      const { data: canceladas } = await supabaseAdmin
+        .from('pastoral_journey_sends')
+        .update({
+          status: 'cancelled',
+          error_message: 'Cronograma removido do atendimento',
+          updated_at: now,
+        })
+        .in('enrollment_id', paraDesligar)
+        .in('status', ['pending', 'sending'])
+        .select('id')
+      cancelledPending = canceladas?.length ?? 0
+
+      const { error: offErr } = await supabaseAdmin
+        .from('pastoral_journey_enrollments')
+        .update({ status: 'cancelled', attendance_id: null, updated_at: now })
+        .in('id', paraDesligar)
+      if (offErr) return NextResponse.json({ error: offErr.message }, { status: 500 })
+    }
+
+    if (paraApagar.length) {
+      const { error: delErr } = await supabaseAdmin
+        .from('pastoral_journey_enrollments')
+        .delete()
+        .in('id', paraApagar)
+      if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      removed: paraApagar.length,
+      detached: paraDesligar.length,
+      cancelledPending,
+    })
+  })
+}

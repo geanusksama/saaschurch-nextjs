@@ -35,6 +35,7 @@ import {
   Printer,
   Trash2,
   CalendarClock,
+  CalendarX,
 } from 'lucide-react';
 import {
   type PastoralPipelineColumn,
@@ -175,6 +176,7 @@ function AttendanceCard({
   onClick,
   onStar,
   onAttachJourney,
+  onRemoveJourney,
 }: {
   card: PastoralAttendance;
   progress?: JourneyProgress;
@@ -182,6 +184,7 @@ function AttendanceCard({
   onClick: (card: PastoralAttendance) => void;
   onStar: (card: PastoralAttendance) => void;
   onAttachJourney: (card: PastoralAttendance) => void;
+  onRemoveJourney: (card: PastoralAttendance) => void;
 }) {
   const personName =
     card.members?.full_name ||
@@ -227,19 +230,34 @@ function AttendanceCard({
             >
               <Star className={`w-3 h-3 ${card.is_starred ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
             </button>
-            {/* ⋯ do card: anexar o cronograma a esta pessoa */}
+            {/* ⋯ do card: anexar ou remover o cronograma desta pessoa */}
             <DotsMenu title="Ações do atendimento">
               {(close) => (
-                <MenuItem
-                  icon={<CalendarClock className="w-4 h-4 text-violet-500" />}
-                  label="Anexar cronograma"
-                  hint={
-                    card.person_profile
-                      ? PERSON_PROFILE_LABELS[card.person_profile]
-                      : 'classificar o grupo de chegada'
-                  }
-                  onClick={() => { close(); onAttachJourney(card); }}
-                />
+                <>
+                  <MenuItem
+                    icon={<CalendarClock className="w-4 h-4 text-violet-500" />}
+                    label={progress ? 'Trocar cronograma' : 'Anexar cronograma'}
+                    hint={
+                      card.person_profile
+                        ? PERSON_PROFILE_LABELS[card.person_profile]
+                        : 'classificar o grupo de chegada'
+                    }
+                    onClick={() => { close(); onAttachJourney(card); }}
+                  />
+                  {/* só faz sentido remover o que está anexado */}
+                  {progress && (
+                    <MenuItem
+                      icon={<CalendarX className="w-4 h-4 text-rose-500" />}
+                      label="Remover cronograma"
+                      hint={
+                        progress.sent > 0
+                          ? `${progress.sent} já enviada(s) · cancela o que falta`
+                          : 'nada enviado ainda'
+                      }
+                      onClick={() => { close(); onRemoveJourney(card); }}
+                    />
+                  )}
+                </>
               )}
             </DotsMenu>
           </div>
@@ -355,6 +373,7 @@ function KanbanColumn({
   onStar,
   onNewCard,
   onAttachJourney,
+  onRemoveJourney,
   progressMap,
 }: {
   column: PastoralPipelineColumn;
@@ -366,6 +385,7 @@ function KanbanColumn({
   onStar: (card: PastoralAttendance) => void;
   onNewCard: (column: PastoralPipelineColumn) => void;
   onAttachJourney: (cards: PastoralAttendance[], title: string) => void;
+  onRemoveJourney: (cards: PastoralAttendance[], label: string) => void;
   progressMap: Record<string, JourneyProgress>;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -386,17 +406,36 @@ function KanbanColumn({
         <button className="p-0.5 rounded hover:bg-slate-100 text-slate-400">
           <Search className="w-3.5 h-3.5" />
         </button>
-        {/* ⋯ da coluna: anexa o cronograma a todos os cards visíveis nela */}
+        {/* ⋯ da coluna: anexa ou remove o cronograma dos cards visíveis nela */}
         <DotsMenu title={`Ações da coluna ${column.name}`}>
-          {(close) => (
-            <MenuItem
-              icon={<CalendarClock className="w-4 h-4 text-violet-500" />}
-              label="Anexar cronograma à coluna"
-              hint={`${cards.length} atendimento(s) desta coluna`}
-              disabled={!cards.length}
-              onClick={() => { close(); onAttachJourney(cards, `Cronograma · coluna ${column.name}`); }}
-            />
-          )}
+          {(close) => {
+            const comCronograma = cards.filter((c) => progressMap[c.id]);
+            return (
+              <>
+                <MenuItem
+                  icon={<CalendarClock className="w-4 h-4 text-violet-500" />}
+                  label="Anexar cronograma à coluna"
+                  hint={`${cards.length} atendimento(s) desta coluna`}
+                  disabled={!cards.length}
+                  onClick={() => { close(); onAttachJourney(cards, `Cronograma · coluna ${column.name}`); }}
+                />
+                <MenuItem
+                  icon={<CalendarX className="w-4 h-4 text-rose-500" />}
+                  label="Remover cronograma da coluna"
+                  hint={
+                    comCronograma.length
+                      ? `${comCronograma.length} com cronograma anexado`
+                      : 'nenhum card desta coluna tem cronograma'
+                  }
+                  disabled={!comCronograma.length}
+                  onClick={() => {
+                    close();
+                    onRemoveJourney(comCronograma, `coluna ${column.name}`);
+                  }}
+                />
+              </>
+            );
+          }}
         </DotsMenu>
       </div>
 
@@ -418,6 +457,7 @@ function KanbanColumn({
             onClick={onCardClick}
             onStar={onStar}
             onAttachJourney={(c) => onAttachJourney([c], 'Anexar cronograma')}
+            onRemoveJourney={(c) => onRemoveJourney([c], 'este atendimento')}
           />
         ))}
 
@@ -500,6 +540,10 @@ export default function PastoralKanban() {
   const [newCardColumn, setNewCardColumn] = useState<PastoralPipelineColumn | null>(null);
   // cards a anexar ao cronograma (1 pelo ⋯ do card, N pelo ⋯ da coluna)
   const [journeyTarget, setJourneyTarget] = useState<{ cards: PastoralAttendance[]; title: string } | null>(null);
+  // remoção do cronograma: um card ou todos os da coluna que tenham cronograma
+  const [journeyRemoveTarget, setJourneyRemoveTarget] = useState<
+    { cards: PastoralAttendance[]; label: string } | null
+  >(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
   const dragCardRef = useRef<PastoralAttendance | null>(null);
@@ -682,6 +726,39 @@ export default function PastoralKanban() {
       void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-summary'] });
       setSelectedIds(new Set());
       setDeleteTarget(null);
+    },
+  });
+
+  // Remover o cronograma anexado: apaga a inscrição de quem ainda não recebeu
+  // nada e, para quem já recebeu, cancela a fila e desliga do card preservando o
+  // histórico (a decisão é do endpoint — ver DELETE /api/pastoral/journeys/enroll).
+  const removeJourneyMutation = useMutation({
+    mutationFn: async (cards: PastoralAttendance[]) => {
+      const token = localStorage.getItem('mrm_token') ?? '';
+      const res = await fetch('/api/pastoral/journeys/enroll', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attendanceIds: cards.map((c) => c.id) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? 'Falha ao remover o cronograma');
+      return data as { removed: number; detached: number; cancelledPending: number };
+    },
+    onSuccess: (data) => {
+      const total = data.removed + data.detached;
+      toast.success(
+        `Cronograma removido de ${total} atendimento(s)` +
+          (data.cancelledPending ? ` · ${data.cancelledPending} mensagem(ns) pendente(s) cancelada(s)` : '')
+      );
+      if (data.detached) {
+        toast.info(`${data.detached} tinha(m) mensagem já enviada — o histórico segue na aba Envios.`);
+      }
+      void queryClient.invalidateQueries({ queryKey: ['pastoral-journey-progress'] });
+      void queryClient.invalidateQueries({ queryKey: ['pastoral-kanban-cards'] });
+      setJourneyRemoveTarget(null);
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Falha ao remover o cronograma');
     },
   });
 
@@ -1352,6 +1429,7 @@ export default function PastoralKanban() {
                 onStar={(card) => starMutation.mutate({ id: card.id, is_starred: !card.is_starred })}
                 onNewCard={setNewCardColumn}
                 onAttachJourney={(cards, title) => setJourneyTarget({ cards, title })}
+                onRemoveJourney={(cards, label) => setJourneyRemoveTarget({ cards, label })}
                 progressMap={progressMap}
               />
             ))}
@@ -1517,6 +1595,42 @@ export default function PastoralKanban() {
           }}
         />
       )}
+
+      {/* ── Remover cronograma (card ou coluna) ── */}
+      <ConfirmDialog
+        open={journeyRemoveTarget !== null}
+        title={
+          journeyRemoveTarget?.cards.length === 1
+            ? 'Remover o cronograma deste atendimento?'
+            : `Remover o cronograma de ${journeyRemoveTarget?.cards.length ?? 0} atendimentos?`
+        }
+        message={(() => {
+          const alvos = journeyRemoveTarget?.cards ?? [];
+          const jaEnviaram = alvos.filter((c) => (progressMap[c.id]?.sent ?? 0) > 0).length;
+          const pendentes = alvos.reduce((acc, c) => acc + (progressMap[c.id]?.pending ?? 0), 0);
+          const partes = [
+            `A fila que ainda não saiu é cancelada${pendentes ? ` (${pendentes} mensagem(ns))` : ''} e o card volta a poder receber outro cronograma.`,
+          ];
+          if (jaEnviaram) {
+            partes.push(
+              `${jaEnviaram} pessoa(s) já receberam mensagem — esse histórico é preservado e continua na aba Envios.`
+            );
+          }
+          if (jaEnviaram < alvos.length) {
+            partes.push(
+              `${alvos.length - jaEnviaram} não receberam nada ainda: a inscrição é apagada por completo.`
+            );
+          }
+          return partes.join(' ');
+        })()}
+        variant="warning"
+        confirmLabel="Remover cronograma"
+        loading={removeJourneyMutation.isPending}
+        onConfirm={() =>
+          journeyRemoveTarget && removeJourneyMutation.mutate(journeyRemoveTarget.cards)
+        }
+        onCancel={() => setJourneyRemoveTarget(null)}
+      />
 
       {/* ── Confirmação de exclusão ── */}
       <ConfirmDialog

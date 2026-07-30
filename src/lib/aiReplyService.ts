@@ -120,10 +120,19 @@ export async function generateAgentReply(conversationId: string): Promise<string
   const history = await loadConversationHistory(conversationId)
   if (!history.length || history[history.length - 1].role !== 'user') return null
 
+  // A IA não tem noção de data: sem dizer que dia é hoje ela erra "hoje/amanhã"
+  // e convida para culto no dia errado. Cultos da igreja: domingo e quarta.
+  const agoraBrt = new Date(Date.now() - 180 * 60_000)
+  const diasDaSemana = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+
   const systemPrompt = [
     agent.systemPrompt,
     '',
     'Você está respondendo uma conversa de WhatsApp em nome da igreja.',
+    `Hoje é ${diasDaSemana[agoraBrt.getUTCDay()]}, ${agoraBrt.toISOString().slice(0, 10)} ` +
+      '(horário de Brasília). A igreja tem culto no domingo e na quarta — ' +
+      'ao falar de "hoje", "amanhã" ou de um dia da semana, use essa data como referência ' +
+      'e não invente outros dias de culto.',
     conv.contact_name ? `Nome do contato: ${conv.contact_name}.` : '',
     'Responda de forma curta, acolhedora e objetiva, como uma mensagem de WhatsApp.',
     CONSOLIDATION_GUIDANCE,

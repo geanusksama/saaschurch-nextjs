@@ -32,7 +32,8 @@ export type CampaignStatus = 'draft' | 'running' | 'paused' | 'completed' | 'can
 export type RecipientStatus = 'pending' | 'sending' | 'sent' | 'error' | 'cancelled'
 
 export interface CampaignRecipientInput {
-  source: 'member' | 'pipeline'
+  /** import = linha de uma lista CSV/Excel (whatsapp_import_rows) */
+  source: 'member' | 'pipeline' | 'import'
   sourceId: string
   name: string | null
   phone: string

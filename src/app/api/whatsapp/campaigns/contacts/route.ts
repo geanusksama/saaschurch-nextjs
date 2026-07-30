@@ -22,7 +22,7 @@ import { getAccessibleInstanceIds } from '@/lib/whatsappSendService'
 
 export interface MassContact {
   key: string
-  source: 'member' | 'pipeline'
+  source: 'member' | 'pipeline' | 'import'
   sourceId: string
   name: string
   phone: string
@@ -87,7 +87,14 @@ function fmtDate(d: string | Date | null | undefined): string {
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
     const sp = new URL(req.url).searchParams
-    const source = sp.get('source') === 'pipeline' ? 'pipeline' : 'members'
+    const sourceParam = sp.get('source')
+    const source =
+      sourceParam === 'pipeline' ? 'pipeline' : sourceParam === 'imports' ? 'imports' : 'members'
+    /** lotes de importação escolhidos; vazio = todos os lotes visíveis */
+    const batchIds = (sp.get('batchIds') ?? '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
     const q = (sp.get('q') ?? '').trim()
     const dateFrom = sp.get('dateFrom') ?? undefined
     const dateTo = sp.get('dateTo') ?? undefined
@@ -201,6 +208,95 @@ export async function GET(req: NextRequest) {
           }
         })
         .filter((c): c is BaseContact => !!c)
+
+      const contacts = await attachConversationPreview(baseContacts, String(user.id), user.profileType)
+      return NextResponse.json({ contacts })
+    }
+
+    // ── listas importadas por CSV/Excel (whatsapp_import_rows) ───────────────
+    // Serve para disparar só para o lote que a secretaria acabou de subir, em
+    // vez de para todo o pipeline. `batchIds` vazio = todos os lotes visíveis.
+    if (source === 'imports') {
+      let batchQuery = supabaseAdmin
+        .from('whatsapp_import_batches')
+        .select('id, filename, created_at, church_id')
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+      // mesmo escopo do GET /api/whatsapp/imports: só o master vê os lotes de todos
+      if (user.profileType !== 'master') batchQuery = batchQuery.eq('owner_user_id', String(user.id))
+      if (batchIds.length) batchQuery = batchQuery.in('id', batchIds)
+
+      const { data: batches } = await batchQuery
+      if (!batches?.length) return NextResponse.json({ contacts: [] })
+
+      const batchById = new Map(batches.map(b => [b.id, b]))
+
+      let rowQuery = supabaseAdmin
+        .from('whatsapp_import_rows')
+        .select('id, batch_id, name, phone, email, variables, match_status, decision, created_at')
+        .in('batch_id', batches.map(b => b.id))
+        .not('phone', 'is', null)
+        .neq('phone', '')
+        // linhas descartadas na análise (telefone inválido, duplicada) não vão
+        .neq('decision', 'skip')
+        .order('row_number', { ascending: true })
+        .limit(limit)
+
+      if (q) {
+        const digits = q.replace(/\D/g, '')
+        rowQuery = digits
+          ? rowQuery.or(`name.ilike.%${q}%,phone.ilike.%${digits}%`)
+          : rowQuery.ilike('name', `%${q}%`)
+      }
+      if (dateFrom) rowQuery = rowQuery.gte('created_at', `${dateFrom}T00:00:00`)
+      if (dateTo) rowQuery = rowQuery.lte('created_at', `${dateTo}T23:59:59`)
+
+      const { data: rows, error: rowsErr } = await rowQuery
+      if (rowsErr) return NextResponse.json({ error: rowsErr.message }, { status: 500 })
+
+      type BaseContact = Omit<MassContact, 'lastMessage' | 'lastMessageAt'>
+      const vistos = new Set<string>()
+      const baseContacts: BaseContact[] = []
+
+      for (const row of rows ?? []) {
+        const phone = String(row.phone ?? '').replace(/\D/g, '')
+        if (!phone) continue
+        // o mesmo telefone em dois lotes é uma pessoa só — não manda duas vezes
+        if (vistos.has(phone)) continue
+        vistos.add(phone)
+
+        const batch = batchById.get(row.batch_id)
+        const lista = batch?.filename ?? 'Lista importada'
+        const name = row.name ?? ''
+        const vars = (row.variables ?? {}) as Record<string, string>
+
+        baseContacts.push({
+          key: `import:${row.id}`,
+          source: 'import',
+          sourceId: String(row.id),
+          name,
+          phone,
+          church: null,
+          regional: null,
+          category: lista,
+          createdAt: row.created_at ?? batch?.created_at ?? '',
+          variables: {
+            nome: name,
+            primeiro_nome: firstName(name),
+            telefone: phone,
+            igreja: '',
+            regional: '',
+            tipo: 'Lista importada',
+            rol: '',
+            cargo: '',
+            email: row.email ?? '',
+            data_cadastro: fmtDate(row.created_at ?? batch?.created_at),
+            lista,
+            ...vars,
+          },
+        })
+      }
 
       const contacts = await attachConversationPreview(baseContacts, String(user.id), user.profileType)
       return NextResponse.json({ contacts })

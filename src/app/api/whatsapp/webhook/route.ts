@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { enqueueReply, kickQueue } from '@/lib/aiReplyQueue'
 import type { ZApiWebhookPayload } from '@/types/whatsapp'
+import { parseInbound } from '@/lib/zapiInbound'
 
 // POST /api/whatsapp/webhook
 // Chamado pela Z-API — sem autenticação (IP Z-API)
@@ -86,50 +87,25 @@ export async function POST(req: NextRequest) {
       conversationId = created!.id
     }
 
-    // Determina tipo e conteúdo da mensagem
-    let msgType = 'text'
-    let content: string | null = null
-    let mediaUrl: string | null = null
-    let mediaMime: string | null = null
-
-    if (payload.text?.message) {
-      msgType = 'text'
-      content = payload.text.message
-    } else if (payload.image?.url) {
-      msgType = 'image'
-      content = payload.image.caption ?? null
-      mediaUrl = payload.image.url
-      mediaMime = payload.image.mimeType ?? 'image/jpeg'
-    } else if (payload.document?.url) {
-      msgType = 'document'
-      content = payload.document.caption ?? payload.document.fileName ?? null
-      mediaUrl = payload.document.url
-    } else if (payload.audio?.url ?? payload.audio?.audioUrl ?? payload.ptt?.url ?? payload.ptt?.audioUrl) {
-      msgType = 'audio'
-      mediaUrl = payload.audio?.url ?? payload.audio?.audioUrl ?? payload.ptt?.url ?? payload.ptt?.audioUrl ?? null
-    } else if (payload.video?.url) {
-      msgType = 'video'
-      content = payload.video.caption ?? null
-      mediaUrl = payload.video.url
-    } else if (payload.sticker?.url) {
-      msgType = 'sticker'
-      mediaUrl = payload.sticker.url
-    }
+    // Tipo e conteúdo da mensagem — texto, mídia, localização, contato,
+    // resposta de botão/lista, reação, enquete. Ver src/lib/zapiInbound.ts.
+    const parsed = parseInbound(payload)
+    const msgType = parsed.type
 
     const messageId = payload.messageId ?? `synthetic_${Date.now()}_${crypto.randomUUID()}`
-    const preview = content ?? (msgType !== 'text' ? `[${msgType}]` : '')
+    const preview = parsed.preview
 
     // Salva mensagem inbound
     await supabaseAdmin.from('whatsapp_messages').insert({
       conversation_id: conversationId,
-      content: content ?? null,
+      content: parsed.content,
       type: msgType,
       direction: 'inbound',
       status: 'delivered',
       sender_name: payload.senderName ?? null,
-      media_url: mediaUrl ?? null,
-      media_mime_type: mediaMime ?? null,
-      metadata: { zapi_message_id: messageId },
+      media_url: parsed.mediaUrl,
+      media_mime_type: parsed.mediaMime,
+      metadata: { zapi_message_id: messageId, ...parsed.extra },
     })
 
     // Atualiza conversa
@@ -150,7 +126,13 @@ export async function POST(req: NextRequest) {
     // empurrada a cada mensagem nova e a cada "digitando..." do contato — assim
     // três mensagens seguidas viram UMA resposta, e nunca respondemos por cima
     // de quem ainda está escrevendo.
-    if (msgType === 'text' && content) {
+    // Resposta de botão e de lista também são a pessoa falando: a IA responde
+    // igual, e é o que faz um fluxo com botões continuar sozinho.
+    const pedeResposta =
+      (msgType === 'text' || msgType === 'button_reply' || msgType === 'list_reply') &&
+      !!parsed.content
+
+    if (pedeResposta) {
       try {
         const { data: conv } = await supabaseAdmin
           .from('whatsapp_conversations')

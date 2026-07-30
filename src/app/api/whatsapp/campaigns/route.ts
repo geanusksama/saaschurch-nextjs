@@ -108,7 +108,9 @@ export async function POST(req: NextRequest) {
     const rows = assignAgentsRoundRobin(
       validRecipients.map(r => ({
         campaign_id: campaign.id,
-        source: r.source === 'pipeline' ? 'pipeline' : 'member',
+        // 'import' = linha de uma lista CSV/Excel (whatsapp_import_rows)
+        source:
+          r.source === 'pipeline' ? 'pipeline' : r.source === 'import' ? 'import' : 'member',
         source_id: String(r.sourceId),
         name: r.name ?? null,
         phone: r.phone.replace(/\D/g, ''),

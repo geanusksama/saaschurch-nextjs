@@ -41,6 +41,7 @@ import DateRangeFilter, { currentMonthRange } from './DateRangeFilter';
 import { usePermissions } from '../../lib/usePermissions';
 import { exportRows } from './exportUtils';
 import ImportCsvModal, { downloadTemplate } from './ImportCsvModal';
+import ConversationModal from './ConversationModal';
 import { toast } from 'sonner';
 
 function currentProfileType(): string {
@@ -53,11 +54,20 @@ function currentProfileType(): string {
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-type ContactSource = 'members' | 'pipeline';
+type ContactSource = 'members' | 'pipeline' | 'imports';
+
+/** Lote de importação CSV/Excel, para escolher a quem a campanha vai. */
+interface ImportBatchOption {
+  id: string;
+  filename: string | null;
+  created_at: string;
+  valid_rows: number | null;
+  total_rows: number | null;
+}
 
 interface MassContact {
   key: string;
-  source: 'member' | 'pipeline';
+  source: 'member' | 'pipeline' | 'import';
   sourceId: string;
   name: string;
   phone: string;
@@ -195,6 +205,13 @@ export default function PastoralMassSend() {
   const [churchId, setChurchId] = useState('');
   const [titleId, setTitleId] = useState('');
 
+  // listas importadas (CSV/Excel): quais lotes entram na campanha.
+  // Vazio = todos os lotes visíveis — mesma leitura da aba Importações.
+  const [batches, setBatches] = useState<ImportBatchOption[]>([]);
+  const [selectedBatches, setSelectedBatches] = useState<Set<string>>(new Set());
+  const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
+  const batchDropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     (async () => {
       try {
@@ -291,6 +308,10 @@ export default function PastoralMassSend() {
       if (regionalId) params.set('regionalId', regionalId);
       if (churchId) params.set('churchId', churchId);
       if (source === 'members' && titleId) params.set('titleId', titleId);
+      // sem lote marcado o servidor considera todos os lotes visíveis
+      if (source === 'imports' && selectedBatches.size) {
+        params.set('batchIds', Array.from(selectedBatches).join(','));
+      }
       const res = await fetch(`/api/whatsapp/campaigns/contacts?${params}`, { headers: authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Erro na busca');
@@ -302,7 +323,42 @@ export default function PastoralMassSend() {
     } finally {
       setLoadingContacts(false);
     }
-  }, [source, q, typeFilter, dateFrom, dateTo, regionalId, churchId, titleId]);
+  }, [source, q, typeFilter, dateFrom, dateTo, regionalId, churchId, titleId, selectedBatches]);
+
+  // ── lotes importados, para o filtro de lista ────────────────────────────────
+  const loadBatches = useCallback(async () => {
+    try {
+      const res = await fetch('/api/whatsapp/imports', { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      setBatches((data.batches ?? []) as ImportBatchOption[]);
+    } catch { /* o filtro de lista simplesmente não aparece */ }
+  }, []);
+
+  useEffect(() => {
+    if (source === 'imports') void loadBatches();
+  }, [source, loadBatches]);
+
+  // fecha o dropdown de listas ao clicar fora
+  useEffect(() => {
+    if (!batchDropdownOpen) return;
+    const handle = (e: MouseEvent) => {
+      if (batchDropdownRef.current && !batchDropdownRef.current.contains(e.target as Node)) {
+        setBatchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [batchDropdownOpen]);
+
+  const toggleBatch = (id: string) => {
+    setSelectedBatches(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // presets de período (clique, sem Enter) já refazem a busca automaticamente
   useEffect(() => {
@@ -338,7 +394,12 @@ export default function PastoralMassSend() {
         Igreja: c.church ?? '',
         Regional: c.regional ?? '',
         Categoria: c.category ? (ATTENDANCE_TYPE_LABELS[c.category as AttendanceType] ?? c.category) : '',
-        Origem: c.source === 'member' ? 'Membro' : 'Pipeline',
+        Origem:
+          c.source === 'member'
+            ? 'Membro'
+            : c.source === 'import'
+              ? `Lista importada${c.category ? ` · ${c.category}` : ''}`
+              : 'Pipeline',
         'Data de cadastro': c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR') : '',
         'Última mensagem': c.lastMessage ?? '',
         'Última mensagem em': c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleString('pt-BR') : '',
@@ -516,8 +577,70 @@ export default function PastoralMassSend() {
             className="h-9 px-2 rounded-lg border border-slate-200 text-sm bg-white">
             <option value="pipeline">Pipeline (contatos do site)</option>
             <option value="members">Membros</option>
+            <option value="imports">Listas importadas (CSV/Excel)</option>
           </select>
         </div>
+
+        {/* Qual lista importada entra na campanha — uma, várias ou todas */}
+        {source === 'imports' && (
+          <div className="flex flex-col gap-1" ref={batchDropdownRef}>
+            <label className="text-xs font-medium text-slate-500">Lista importada</label>
+            <div className="relative">
+              <button type="button" onClick={() => setBatchDropdownOpen(o => !o)}
+                className="h-9 px-3 rounded-lg border border-slate-200 text-sm bg-white inline-flex items-center gap-2 min-w-[220px] justify-between">
+                <span className="truncate">
+                  {selectedBatches.size === 0
+                    ? `Todas as listas (${batches.length})`
+                    : selectedBatches.size === 1
+                      ? (batches.find(b => selectedBatches.has(b.id))?.filename ?? '1 lista')
+                      : `${selectedBatches.size} listas marcadas`}
+                </span>
+                <FileSpreadsheet className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              </button>
+              {batchDropdownOpen && (
+                <div className="absolute z-30 mt-1 w-[340px] max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg p-1">
+                  {!batches.length ? (
+                    <p className="px-3 py-4 text-xs text-slate-400 text-center">
+                      Nenhuma lista importada ainda. Use o botão <b>Importar CSV</b>.
+                    </p>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => setSelectedBatches(new Set())}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-50
+                          ${selectedBatches.size === 0 ? 'font-semibold text-violet-700' : 'text-slate-600'}`}>
+                        Todas as listas
+                        <span className="block text-[11px] text-slate-400">
+                          {batches.length} lote(s) importado(s)
+                        </span>
+                      </button>
+                      <div className="h-px bg-slate-100 my-1" />
+                      {batches.map(b => (
+                        <label key={b.id}
+                          className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" checked={selectedBatches.has(b.id)}
+                            onChange={() => toggleBatch(b.id)}
+                            className="mt-0.5 w-4 h-4 rounded border-slate-300" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm text-slate-700 truncate">
+                              {b.filename ?? 'Lista sem nome'}
+                            </span>
+                            <span className="block text-[11px] text-slate-400">
+                              {new Date(b.created_at).toLocaleString('pt-BR')}
+                              {b.valid_rows != null && ` · ${b.valid_rows} enviáveis`}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Categoria não se aplica a lista importada: o lote já é o recorte */}
+        {source !== 'imports' && (
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-slate-500">Categoria</label>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
@@ -534,6 +657,11 @@ export default function PastoralMassSend() {
             )}
           </select>
         </div>
+        )}
+        {/* Regional/Igreja também não filtram lista importada: a linha do CSV não
+            tem igreja — o vínculo é com o lote, não com a estrutura */}
+        {source !== 'imports' && (
+        <>
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-slate-500">Regional</label>
           <select value={regionalId} onChange={e => setRegionalId(e.target.value)}
@@ -550,6 +678,8 @@ export default function PastoralMassSend() {
             {churchesInRegional.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
+        </>
+        )}
         {source === 'members' && (
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-500">Título eclesiástico</label>
@@ -726,9 +856,19 @@ export default function PastoralMassSend() {
                         {c.lastMessage ? ` · "${c.lastMessage.slice(0, 40)}"` : ''}
                       </div>
                     </div>
-                    <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded
-                      ${c.source === 'member' ? 'bg-blue-50 text-blue-600' : 'bg-violet-50 text-violet-600'}`}>
-                      {c.source === 'member' ? 'Membro' : 'Pipeline'}
+                    <span
+                      title={c.source === 'import' ? (c.category ?? 'Lista importada') : undefined}
+                      className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded max-w-[140px] truncate
+                      ${c.source === 'member'
+                          ? 'bg-blue-50 text-blue-600'
+                          : c.source === 'import'
+                            ? 'bg-emerald-50 text-emerald-600'
+                            : 'bg-violet-50 text-violet-600'}`}>
+                      {c.source === 'member'
+                        ? 'Membro'
+                        : c.source === 'import'
+                          ? (c.category ?? 'Lista')
+                          : 'Pipeline'}
                     </span>
                     <button
                       onClick={e => { e.preventDefault(); e.stopPropagation(); openDirect(c); }}
@@ -928,53 +1068,17 @@ export default function PastoralMassSend() {
       {showImport && <ImportCsvModal onClose={() => setShowImport(false)} />}
 
       {/* ── Modal: mensagem individual ── */}
+      {/* ── Conversa completa do contato (histórico + envio) ── */}
       {directTarget && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-          onClick={() => setDirectTarget(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-4 flex flex-col gap-3"
-            onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-emerald-600" />
-              <div className="min-w-0">
-                <div className="font-semibold text-slate-800 truncate">{directTarget.name}</div>
-                <div className="text-xs text-slate-400">{fmtPhone(directTarget.phone)}</div>
-              </div>
-              <button onClick={() => setDirectTarget(null)} className="ml-auto p-1 rounded hover:bg-slate-100">
-                <X className="w-4 h-4 text-slate-400" />
-              </button>
-            </div>
-
-            {!firstInstance ? (
-              <div className="text-sm bg-amber-50 border border-amber-200 text-amber-700 rounded-lg p-3">
-                Selecione uma instância na lista à direita para enviar a mensagem individual.
-              </div>
-            ) : (
-              <>
-                <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                  <Smartphone className="w-3.5 h-3.5" />
-                  Enviando pela instância <b>{firstInstance.name}</b>
-                  {selectedInstances.size > 1 && ' (a primeira selecionada — envio individual usa apenas uma)'}
-                </div>
-                <textarea
-                  value={directMessage}
-                  onChange={e => setDirectMessage(e.target.value)}
-                  rows={4}
-                  placeholder="Digite a mensagem..."
-                  className="w-full rounded-lg border border-slate-200 p-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                  autoFocus
-                />
-                {directFeedback && <div className="text-sm">{directFeedback}</div>}
-                <button onClick={sendDirect}
-                  disabled={directSending || !directMessage.trim() || !canSendCampaign}
-                  title={!canSendCampaign ? 'Sem permissão para enviar mensagens de WhatsApp' : undefined}
-                  className="h-9 rounded-lg bg-emerald-600 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-emerald-500 disabled:opacity-50">
-                  {directSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Enviar mensagem
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+        <ConversationModal
+          phone={directTarget.phone}
+          contactName={directTarget.name}
+          instanceId={firstInstanceId}
+          instanceName={firstInstance?.name ?? null}
+          canSend={canSendCampaign}
+          onClose={() => setDirectTarget(null)}
+          onSent={() => searchContacts()}
+        />
       )}
     </div>
   );

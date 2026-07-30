@@ -26,8 +26,10 @@ import {
   DEFAULT_JOURNEY_STEPS,
   JOURNEY_PROFILES,
   JOURNEY_PROFILE_LABELS,
+  WEEKDAY_LABELS,
   type JourneyProfile,
 } from '@/lib/pastoralJourneyDefault'
+import { adjustDayReference } from '@/lib/pastoralJourneyDayRef'
 import { generateAiText } from '@/lib/aiReplyService'
 import { prisma } from '@/lib/prisma'
 import type { WhatsAppInstance } from '@/types/whatsapp'
@@ -772,6 +774,8 @@ async function polishWithAi(params: {
   profile: string
   momentLabel: string
   agentId: string | null
+  /** instante real do envio — a IA precisa saber que dia é hoje */
+  sentAt?: Date
 }): Promise<string | null> {
   try {
     let persona = ''
@@ -793,14 +797,24 @@ async function polishWithAi(params: {
       'exatamente como está, com a referência; deixe o texto mais curto e natural, no ' +
       'máximo 2 parágrafos curtos; tom acolhedor, sem formalidade excessiva e sem ' +
       'inventar informação (datas, horários e eventos só se já estiverem no original); ' +
-      'trate a pessoa pelo primeiro nome quando houver. Responda APENAS com a mensagem ' +
-      'final, sem aspas e sem comentários.' +
+      'trate a pessoa pelo primeiro nome quando houver. ' +
+      // sem isto a IA reescreve "Hoje tem culto" como "Amanhã tem culto" e a
+      // pessoa recebe convite para o dia errado — os cultos são domingo e quarta
+      'NUNCA altere a referência de dia da mensagem: se o original diz "Hoje", ' +
+      'mantenha "Hoje"; se diz "Amanhã", mantenha "Amanhã"; se nomeia um dia da ' +
+      'semana, mantenha aquele dia. Use a data de hoje informada no contexto para ' +
+      'não escrever nada que contradiga o dia do envio. ' +
+      'Responda APENAS com a mensagem final, sem aspas e sem comentários.' +
       persona
 
+    const agora = params.sentAt ?? new Date()
+    const hojeBrt = new Date(agora.getTime() - 180 * 60_000)
     const contexto = [
       `Pessoa: ${params.name ?? 'sem nome'}`,
       `Grupo: ${params.profile}`,
       `Momento do acompanhamento: ${params.momentLabel}`,
+      `Hoje é ${WEEKDAY_LABELS[hojeBrt.getUTCDay()]}, ${hojeBrt.toISOString().slice(0, 10)} ` +
+        '(horário de Brasília). A igreja tem culto domingo e quarta.',
       '',
       `Mensagem 1:\n${params.message}`,
       ...extras.map((e, i) => `Mensagem ${i + 2}:\n${e}`),
@@ -984,9 +998,34 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
       sentToday.set(instance.id, (sentToday.get(instance.id) ?? 0) + 1)
 
       const phone = String(send.phone).replace(/\D/g, '')
+      const agoraEnvio = new Date()
+
+      // ── o dia citado tem que ser verdade no dia do envio ──
+      // A etapa de véspera é agendada para o dia anterior ao culto, mas a fila
+      // pode andar só no dia seguinte (inscrição de noite, janela de horário,
+      // fila cheia). Sem esta correção a pessoa recebe "amanhã tem culto" no
+      // próprio dia do culto. Ver pastoralJourneyDayRef.ts.
+      const dayRef = adjustDayReference(send.message, {
+        scheduledAt: send.scheduled_at,
+        sentAt: agoraEnvio,
+      })
+
+      if (dayRef.stale) {
+        // o dia citado já passou — avisar de um culto que aconteceu é pior que calar
+        await supabaseAdmin
+          .from('pastoral_journey_sends')
+          .update({
+            status: 'cancelled',
+            error_message: 'Vencida: o dia citado na mensagem já passou',
+            updated_at: agoraEnvio.toISOString(),
+          })
+          .eq('id', send.id)
+        summary.skipped++
+        continue
+      }
 
       // polimento (e fusão) opcional pela IA — o texto da matriz é o plano B
-      let body: string = send.message
+      let body: string = dayRef.message
       let aiPolished = false
       const mergedIds: string[] = []
 
@@ -998,12 +1037,21 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
           .maybeSingle()
 
         const polished = await polishWithAi({
-          message: send.message,
-          extras: mergeable.map(m => m.message),
+          // o texto já corrigido, e as fundidas também — a IA não pode receber
+          // "amanhã" de uma etapa que está saindo no próprio dia do culto
+          message: dayRef.message,
+          extras: mergeable.map(
+            m =>
+              adjustDayReference(m.message, {
+                scheduledAt: send.scheduled_at,
+                sentAt: agoraEnvio,
+              }).message
+          ),
           name: send.name,
           profile: JOURNEY_PROFILE_LABELS[send.profile as JourneyProfile] ?? send.profile,
           momentLabel: stepRow?.moment_label ?? '',
           agentId: journey.ai_agent_id,
+          sentAt: agoraEnvio,
         })
         if (polished) {
           body = polished
@@ -1058,10 +1106,13 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
           conversation_id: conversationId,
           wa_message_id: waMessageId,
           // guarda o que realmente foi enviado; o texto da matriz fica em
-          // original_message para auditoria de "o que a IA mudou"
+          // original_message para auditoria de "o que a IA mudou" e de qual dia
+          // foi corrigido no envio
           ...(aiPolished
             ? { message: body, original_message: send.message, ai_polished: true }
-            : {}),
+            : dayRef.changed
+              ? { message: body, original_message: send.message }
+              : {}),
           updated_at: now,
         })
         .eq('id', send.id)
