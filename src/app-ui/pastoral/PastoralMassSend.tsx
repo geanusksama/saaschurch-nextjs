@@ -893,7 +893,7 @@ export default function PastoralMassSend() {
         </div>
 
         {/* ── Painel direito ── */}
-        <div className="w-full lg:w-[340px] flex flex-col gap-3 flex-shrink-0">
+        <div className="w-full lg:w-[420px] xl:w-[500px] 2xl:w-[560px] flex flex-col gap-3 flex-shrink-0 lg:overflow-y-auto lg:pr-1">
           {/* Mensagem */}
           <div className="bg-white rounded-xl border border-slate-200 p-3 flex flex-col gap-2">
             <div className="text-sm font-semibold text-slate-700">Mensagem</div>
@@ -901,9 +901,9 @@ export default function PastoralMassSend() {
               ref={messageRef}
               value={message}
               onChange={e => setMessage(e.target.value)}
-              rows={5}
+              rows={10}
               placeholder="Olá {{primeiro_nome}}, ..."
-              className="w-full rounded-lg border border-slate-200 p-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              className="w-full min-h-[220px] rounded-lg border border-slate-200 p-3 text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-emerald-200"
             />
             {/* variáveis: clique insere no cursor; arrastar solta no meio do texto
                 (o textarea aceita o drop nativo do navegador) */}
@@ -928,13 +928,13 @@ export default function PastoralMassSend() {
               <ImageIcon className="w-4 h-4 text-slate-400 flex-shrink-0" />
               <input value={imageUrl} onChange={e => setImageUrl(e.target.value)}
                 placeholder="URL da imagem (enviada em anexo)"
-                className="flex-1 h-8 px-2 rounded-lg border border-slate-200 text-xs" />
+                className="flex-1 h-9 px-2.5 rounded-lg border border-slate-200 text-sm" />
             </div>
             <div className="flex items-center gap-2">
               <Link2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
               <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
                 placeholder="Link (ex.: vídeo) anexado ao final"
-                className="flex-1 h-8 px-2 rounded-lg border border-slate-200 text-xs" />
+                className="flex-1 h-9 px-2.5 rounded-lg border border-slate-200 text-sm" />
             </div>
             {imageUrl.trim() && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -942,7 +942,7 @@ export default function PastoralMassSend() {
             )}
 
             {previewContact && message.trim() && (
-              <div className="text-xs bg-slate-50 rounded-lg p-2 text-slate-600 border border-slate-100">
+              <div className="text-xs bg-slate-50 rounded-lg p-3 text-slate-600 border border-slate-100 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
                 <span className="font-semibold text-slate-400 block mb-0.5">
                   Prévia · {previewContact.name}
                 </span>
