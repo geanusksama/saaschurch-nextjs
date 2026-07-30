@@ -241,7 +241,16 @@ Duas formas, que se combinam:
 - **Copiar link** — serve para qualquer canal. Quem abre precisa se identificar com **ROL + CPF**, a menos que você desmarque a exigência.
 - **Anexar pessoas** — filtro por regional, zona, igreja, título eclesiástico e situação, cada bloco com *marcar todos / desmarcar todos*. Depois de anexar, o botão **Enviar** dispara pelo WhatsApp e cada pessoa recebe o seu link individual, que já abre identificado.
 
-Escolha a instância do WhatsApp na edição da campanha. O envio respeita a pausa entre mensagens para não derrubar o número — deixe a aba aberta até terminar.
+A **instância do WhatsApp** que faz o envio é escolhida em *Editar*, na seção "Mensagem enviada por WhatsApp". Ela aparece como etiqueta no cabeçalho da campanha: se estiver faltando, a etiqueta fica amarela e leva direto para a escolha; se a instância estiver desconectada, fica vermelha.
+
+O envio respeita a pausa entre mensagens para não derrubar o número — deixe a aba aberta até terminar.
+
+## Encerrar e reabrir
+O botão **Encerrar**, no cabeçalho da campanha, fecha a entrada: o link passa a avisar que a campanha foi encerrada e não aceita mais respostas.
+
+Encerrar **não** apaga nada e é reversível — as respostas já recebidas continuam lá e podem ser aprovadas normalmente, e **Reabrir** volta a aceitar. Encerrar fecha a entrada, não a conferência.
+
+Se preferir que ela feche sozinha, use o **Prazo final** na criação ou na edição.
 
 ## Conferir e decidir
 A aba **Respostas** lista o que chegou. Ao abrir uma resposta você vê o que foi enviado e, logo abaixo, **o que muda no cadastro**, campo a campo, no formato "valor atual → valor novo", com uma caixa de seleção em cada linha.

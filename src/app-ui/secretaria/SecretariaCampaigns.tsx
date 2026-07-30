@@ -19,8 +19,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, CheckCircle2, ClipboardCopy, Clock, Loader2, Megaphone, MessageCircle,
-  Pencil, Plus, RefreshCw, Search, Send, Trash2, UserPlus, Users, XCircle,
+  ArrowLeft, CheckCircle2, ClipboardCopy, Clock, Loader2, Lock, Megaphone,
+  MessageCircle, Pencil, Plus, RefreshCw, RotateCcw, Search, Send, Smartphone,
+  Trash2, TriangleAlert, UserPlus, Users, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SecretariaCampaignField } from '@/lib/secretariaCampaignFields';
@@ -137,6 +138,8 @@ export default function SecretariaCampaigns() {
 
   const [enviando, setEnviando] = useState(false);
   const [progresso, setProgresso] = useState<{ feito: number; total: number } | null>(null);
+  const [mudandoStatus, setMudandoStatus] = useState(false);
+  const [instancias, setInstancias] = useState<{ id: string; name: string; status: string }[]>([]);
 
   // ── lista ─────────────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
@@ -163,6 +166,23 @@ export default function SecretariaCampaigns() {
         if (!vivo) return;
         toast.error(e instanceof Error ? e.message : 'Erro ao carregar campanhas');
         setLoading(false);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  // Só para exibir o nome da instância no cabeçalho e avisar quando não há
+  // nenhuma escolhida — sem isso o botão Enviar falha e ninguém sabe por quê.
+  useEffect(() => {
+    let vivo = true;
+    fetch('/api/whatsapp/instances', { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => {
+        if (vivo) setInstancias(d.instances ?? []);
+      })
+      .catch(() => {
+        if (vivo) setInstancias([]);
       });
     return () => {
       vivo = false;
@@ -270,6 +290,31 @@ export default function SecretariaCampaigns() {
     }
   };
 
+  /** Encerra ou reabre a campanha. Encerrada, o link recusa novas respostas. */
+  const mudarStatus = async (status: 'active' | 'closed') => {
+    if (!aberta || mudandoStatus) return;
+    setMudandoStatus(true);
+    try {
+      const res = await fetch(`/api/secretaria/campaigns/${aberta.id}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao mudar a situação');
+      toast.success(
+        status === 'closed'
+          ? 'Campanha encerrada. O link não aceita mais respostas.'
+          : 'Campanha reaberta. O link voltou a aceitar respostas.'
+      );
+      await recarregarTudo();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao mudar a situação');
+    } finally {
+      setMudandoStatus(false);
+    }
+  };
+
   const excluir = async () => {
     if (!confirmarExclusao) return;
     try {
@@ -342,6 +387,36 @@ export default function SecretariaCampaigns() {
                   {atual.kind === 'form' ? 'Formulário' : 'Comunicado'}
                 </span>
                 {atual.closes_at ? <span className="text-slate-400">até {fmtData(atual.closes_at)}</span> : null}
+
+                {/* A instância vive lá no fim do modal de edição; sem mostrá-la
+                    aqui, descobrir que ela falta só acontecia ao clicar Enviar
+                    e tomar o erro. */}
+                {(() => {
+                  const inst = instancias.find(i => i.id === atual.instance_id);
+                  if (!atual.instance_id) {
+                    return (
+                      <button
+                        onClick={() => editar(atual)}
+                        className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300"
+                      >
+                        <TriangleAlert className="h-3 w-3" /> Sem instância de WhatsApp — escolher
+                      </button>
+                    );
+                  }
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
+                        inst && inst.status !== 'connected'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <Smartphone className="h-3 w-3" />
+                      {inst ? inst.name : 'instância'}
+                      {inst && inst.status !== 'connected' ? ' · desconectada' : ''}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -372,6 +447,27 @@ export default function SecretariaCampaigns() {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 <Pencil className="h-4 w-4" /> Editar
+              </button>
+              {/* Encerrar é reversível: o link volta a aceitar resposta ao reabrir.
+                  As respostas já recebidas continuam lá e podem ser aprovadas
+                  normalmente — encerrar fecha a entrada, não a conferência. */}
+              <button
+                onClick={() => mudarStatus(atual.status === 'closed' ? 'active' : 'closed')}
+                disabled={mudandoStatus}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
+                  atual.status === 'closed'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                    : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                }`}
+              >
+                {mudandoStatus ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : atual.status === 'closed' ? (
+                  <RotateCcw className="h-4 w-4" />
+                ) : (
+                  <Lock className="h-4 w-4" />
+                )}
+                {atual.status === 'closed' ? 'Reabrir' : 'Encerrar'}
               </button>
               <button
                 onClick={recarregarTudo}
