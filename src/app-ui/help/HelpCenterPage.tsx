@@ -13,8 +13,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ChevronLeft, ChevronRight, FileText, FolderOpen, HeartHandshake, HelpCircle,
-  Loader2, MessagesSquare, Rocket, Search, Send, Settings, Sparkles, Wallet,
+  Bird, BookOpen, Calendar, ChevronLeft, ChevronRight, FileText, FolderOpen,
+  HeartHandshake, HelpCircle, Home, Loader2, MessagesSquare, Rocket, Search,
+  Send, Settings, Smartphone, Sparkles, Users, Wallet,
 } from 'lucide-react';
 import {
   filterHelpSections,
@@ -29,8 +30,14 @@ const ICONES: Record<string, React.ComponentType<{ className?: string }>> = {
   Rocket,
   FolderOpen,
   HeartHandshake,
+  Users,
+  Home,
   MessagesSquare,
+  Calendar,
+  Smartphone,
   Wallet,
+  BookOpen,
+  Bird,
   Settings,
 };
 

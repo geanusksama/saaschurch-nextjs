@@ -18,8 +18,43 @@ interface Props {
 
 const IMG_RE = /^!\[([^\]]*)\]\(([^)\s]+)\)$/;
 
+/**
+ * Junta as linhas que são continuação da anterior.
+ *
+ * Os artigos são escritos com quebra em ~80 colunas para caberem no código. Sem
+ * isso, a segunda linha de um item de lista virava parágrafo solto fora do
+ * marcador — era o que aparecia na tela: "batismo, consagração, transferência"
+ * pendurado embaixo do item.
+ *
+ * Quebra de bloco = linha em branco, cabeçalho, imagem ou início de item.
+ */
+function juntarLinhas(linhas: string[]): string[] {
+  const inicioDeBloco = (l: string) =>
+    !l.trim() ||
+    l.startsWith('#') ||
+    l.trim().startsWith('- ') ||
+    /^\d+\.\s/.test(l.trim()) ||
+    IMG_RE.test(l.trim());
+
+  const saida: string[] = [];
+  for (const linha of linhas) {
+    const anterior = saida[saida.length - 1];
+    if (
+      saida.length &&
+      anterior?.trim() &&
+      !inicioDeBloco(linha) &&
+      !IMG_RE.test(anterior.trim())
+    ) {
+      saida[saida.length - 1] = `${anterior.replace(/\s+$/, '')} ${linha.trim()}`;
+      continue;
+    }
+    saida.push(linha);
+  }
+  return saida;
+}
+
 export function HelpMarkdown({ text, compacto = false }: Props) {
-  const linhas = text.trim().split('\n');
+  const linhas = juntarLinhas(text.trim().split('\n'));
   const corpo = compacto ? 'text-[13px]' : 'text-sm';
 
   const inline = (s: string) =>
