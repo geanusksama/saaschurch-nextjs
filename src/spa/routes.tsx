@@ -166,6 +166,7 @@ import ConsecrationRequests from "../app-ui/ecclesiastical/ConsecrationRequests"
 import TransferRequests from "../app-ui/ecclesiastical/TransferRequests";
 import TicketPresencePage from "../app-ui/ecclesiastical/TicketPresencePage";
 import SecretariatPipeline from "../app-ui/ecclesiastical/SecretariatPipeline";
+import SecretariaCampaigns from "../app-ui/secretaria/SecretariaCampaigns";
 import ServicesMatrix from "../app-ui/ecclesiastical/ServicesMatrix";
 import PipelinesAdmin from "../app-ui/ecclesiastical/PipelinesAdmin";
 import Requerimentos from "../app-ui/ecclesiastical/Requerimentos";
@@ -191,6 +192,7 @@ import { PortalHomePage, PortalDeptPage } from "../components/public/portal/Port
 import { PenielPublicPage } from "../components/public/PenielPublicPage";
 import PastoralTimelinePublic from "../components/public/PastoralTimelinePublic";
 import MembershipFormPublic from "../components/public/MembershipFormPublic";
+import CampanhaFormPublic from "../components/public/CampanhaFormPublic";
 
 // Portal Membro
 import { MembroProvider } from "../components/membro/MembroProvider";
@@ -329,6 +331,18 @@ export const router = createBrowserRouter([
     Component: MembershipFormPublic,
     errorElement: <ErrorBoundary />,
   },
+  // Campanhas da Secretaria — o link com o token da pessoa já vem identificado;
+  // o link avulso (sem o segundo token) pede ROL + CPF antes de abrir o formulário.
+  {
+    path: "/campanha/:token",
+    Component: CampanhaFormPublic,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/campanha/:token/:targetToken",
+    Component: CampanhaFormPublic,
+    errorElement: <ErrorBoundary />,
+  },
   // Portal Membro — área exclusiva para membros autenticados via ROL+CPF+WhatsApp OTP
   {
     path: "/membro",
@@ -465,6 +479,7 @@ export const router = createBrowserRouter([
       { path: "crm/spreadsheet", Component: Spreadsheet },
       { path: "crm/pipeline", Component: CRMPipeline },
       { path: "secretariat/pipeline", Component: SecretariatPipeline },
+      { path: "secretariat/campaigns", Component: SecretariaCampaigns },
       { path: "secretariat/word", Component: WordEditor },
       { path: "secretariat/services", Component: ServicesMatrix },
       { path: "secretariat/pipelines", Component: PipelinesAdmin },

@@ -46,6 +46,9 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Secretaria', name: 'Lista de Membros',       key: 'members',           permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Perfil do Membro',       key: 'member_profile',    permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Importação de Membros',  key: 'member_import',     permissions: mkPerms(admin(), admin(), admin(), admin()) },
+  // Campanhas: formulários dinâmicos enviados aos membros. `edit` é o que
+  // libera aprovar/reprovar uma resposta (a aprovação grava no cadastro).
+  { group: 'Secretaria', name: 'Campanhas',              key: 'secretaria_campanhas', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Serviços e Ocorrências', key: 'services',          permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Requerimentos',          key: 'requirements',      permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Batismo',                key: 'baptism',           permissions: mkPerms(full(), full(), full(), admin()) },

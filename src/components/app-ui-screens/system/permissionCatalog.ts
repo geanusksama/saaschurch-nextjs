@@ -37,6 +37,7 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Secretaria', name: 'Lista de Membros', key: 'members', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Perfil do Membro', key: 'member_profile', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Importação de Membros', key: 'member_import', permissions: mkPerms(admin(), admin(), admin(), admin()) },
+  { group: 'Secretaria', name: 'Campanhas', key: 'secretaria_campanhas', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Batismo', key: 'baptism', permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Secretaria', name: 'Consagração', key: 'consecration', permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Secretaria', name: 'Ler QR Code', key: 'qr_reader', permissions: mkPerms(full(), full(), full(), admin()) },

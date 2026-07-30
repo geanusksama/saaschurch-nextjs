@@ -14,6 +14,7 @@ import {
   Bell,
   ChevronDown,
   Building2,
+  Megaphone,
   Menu,
   X,
   Heart,
@@ -108,6 +109,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { SantanderIcon } from '../ui/SantanderIcon';
 import { MobileAppOverlay } from '../public/MobileAppPreview';
 import { ChatFAB } from './ChatFAB';
+import { HelpCenter } from './HelpCenter';
 import { logClientAudit } from '../../lib/auditClient';
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from '../../lib/recentSearches';
 import { AiChatAssistant } from './shared/AiChatAssistant';
@@ -169,6 +171,7 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/notifications") return "Notificações";
   if (p === "/app-ui/inbox") return "Caixa de Entrada";
   if (p === "/app-ui/secretariat/pipeline") return "Pipeline da Secretaria";
+  if (p === "/app-ui/secretariat/campaigns") return "Campanhas da Secretaria";
   if (p === "/app-ui/secretariat/services") return "Serviços e Ocorrências";
   if (p === "/app-ui/secretariat/pipelines") return "Configurar Pipelines";
   if (p === "/app-ui/churches") return "Igrejas";
@@ -255,6 +258,7 @@ const appNavigation: NavigationSection[] = [
     section: 'Secretaria',
     items: [
       { name: 'Pipeline',               path: '/app-ui/secretariat/pipeline',          icon: TrendingUp,  permKey: 'crm_pipeline' },
+      { name: 'Campanhas',              path: '/app-ui/secretariat/campaigns',          icon: Megaphone,   permKey: 'secretaria_campanhas' },
       { name: 'Serviços e Ocorrências', path: '/app-ui/secretariat/services',           icon: List,        permKey: 'services' },
       { name: 'Configurar Pipelines',   path: '/app-ui/secretariat/pipelines',          icon: GitBranch,   permKey: 'pipeline_config' },
       { name: 'Igrejas',                path: '/app-ui/churches',                       icon: Building,    permKey: 'churches' },
@@ -615,6 +619,7 @@ export function AppUI() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [myProfileOpen, setMyProfileOpen] = useState(false);
   const [themeEditorOpen, setThemeEditorOpen] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
@@ -1780,6 +1785,17 @@ export function AppUI() {
               {darkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-slate-600" />}
             </button>
 
+            {/* Central de Ajuda — documentação do sistema + IA que responde só
+                com base nela. Diferente do Assistente de IA ao lado, que analisa
+                dados e é restrito ao perfil master. */}
+            <button
+              onClick={() => setHelpOpen(true)}
+              title="Central de Ajuda"
+              className="inline-flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors items-center justify-center"
+            >
+              <HelpCircle className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+            </button>
+
             {/* Assistente de IA */}
             <button
               onClick={() => {
@@ -2448,6 +2464,7 @@ export function AppUI() {
       </AnimatePresence>
       {canView('internal_chat') && <ChatFAB />}
       <AiChatAssistant storedUser={storedUser} isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
+      <HelpCenter open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }
