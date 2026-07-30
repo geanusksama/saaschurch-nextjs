@@ -360,11 +360,15 @@ export default function PastoralMassSend() {
     });
   };
 
-  // presets de período (clique, sem Enter) já refazem a busca automaticamente
+  // Filtros de clique (período, fonte, listas importadas) refazem a busca
+  // sozinhos: sem isso a tela fica mostrando o resultado da fonte anterior sob
+  // o filtro novo — é ler "listas importadas" e ver contato do pipeline.
+  // O campo de texto continua exigindo Enter/Buscar, para não consultar a cada
+  // tecla digitada.
   useEffect(() => {
     if (searched) searchContacts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, source, selectedBatches, typeFilter, regionalId, churchId, titleId]);
 
   const toggleContact = (key: string) => {
     setSelected(prev => {
