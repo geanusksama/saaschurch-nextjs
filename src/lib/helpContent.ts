@@ -13,8 +13,20 @@
 export interface HelpArticle {
   id: string;
   title: string;
-  /** rota do sistema que o artigo explica, quando existe */
-  path?: string;
+  /** uma linha, mostrada na lista da coleção e abaixo do título do artigo */
+  summary?: string;
+  /**
+   * Chave do permissionCatalog da tela que o artigo explica.
+   *
+   * Artigo com chave só aparece para quem tem acesso à tela — na navegação, na
+   * busca e no contexto da IA. Sem isso a Central de Ajuda virava um catálogo do
+   * que existe no sistema para quem não pode usar nada daquilo, e o botão "Abrir
+   * a tela" jogava a pessoa no redirecionamento de rota proibida, com cara de
+   * defeito.
+   *
+   * Artigo SEM chave é geral (como "Visão geral do sistema") e aparece sempre.
+   */
+  permKey?: string;
   /** termos que a busca também considera (sinônimos, nomes antigos) */
   keywords?: string[];
   /** corpo em markdown simples: ##, listas, **negrito** */
@@ -25,6 +37,8 @@ export interface HelpSection {
   id: string;
   title: string;
   description: string;
+  /** nome do ícone lucide usado no card da coleção (mapeado na tela) */
+  icon?: string;
   articles: HelpArticle[];
 }
 
@@ -32,11 +46,13 @@ export const HELP_SECTIONS: HelpSection[] = [
   // ═══════════════════════════════════════════════════════════ Primeiros passos
   {
     id: 'inicio',
+    icon: 'Rocket',
     title: 'Primeiros passos',
     description: 'Como o sistema é organizado e como se achar nele.',
     articles: [
       {
         id: 'visao-geral',
+        summary: 'Como o sistema é organizado: menu lateral, barra do topo e o que cada bloco guarda.',
         title: 'Visão geral do sistema',
         keywords: ['começar', 'introdução', 'menu', 'navegação'],
         body: `
@@ -60,6 +76,7 @@ permissão — fale com quem administra o sistema.
       },
       {
         id: 'busca-global',
+        summary: 'Achar um membro por nome ou ROL sem caçar no menu.',
         title: 'Busca global (Ctrl+K)',
         keywords: ['procurar', 'localizar membro', 'atalho'],
         body: `
@@ -72,6 +89,7 @@ A caixa no topo procura membro por **nome** ou por **número de ROL**.
       },
       {
         id: 'escopo-acesso',
+        summary: 'Por que um módulo não aparece para você: escopo e permissões.',
         title: 'Por que eu não vejo tudo',
         keywords: ['permissão', 'acesso negado', 'não aparece', 'escopo'],
         body: `
@@ -95,13 +113,15 @@ marcá-lo na matriz.
   // ═══════════════════════════════════════════════════════════════ Secretaria
   {
     id: 'secretaria',
+    icon: 'FolderOpen',
     title: 'Secretaria',
     description: 'Cadastro de membros, processos eclesiásticos e documentos.',
     articles: [
       {
         id: 'cadastro-membro',
+        summary: 'Criar e editar a ficha, o número de ROL e a checagem de duplicidade.',
+        permKey: 'members',
         title: 'Cadastrar e editar um membro',
-        path: '/app-ui/members',
         keywords: ['novo membro', 'ficha', 'rol', 'cpf'],
         body: `
 **Novo Membro** fica no botão verde da barra superior e em *Secretaria → Lista de Membros*.
@@ -120,8 +140,9 @@ consagração, pipeline).
       },
       {
         id: 'campanhas',
+        summary: 'Formulários enviados aos membros; a aprovação atualiza o cadastro.',
+        permKey: 'secretaria_campanhas',
         title: 'Campanhas',
-        path: '/app-ui/secretariat/campaigns',
         keywords: ['formulário', 'atualização de dados', 'atualizar foto', 'link', 'aprovar', 'reprovar', 'comunicado'],
         body: `
 Campanha é um pedido da secretaria a um grupo de pessoas — atualizar a foto,
@@ -181,8 +202,9 @@ Resposta aprovada não reabre: o dado já foi para o cadastro.
       },
       {
         id: 'quero-ser-membro',
+        summary: 'A ficha de adesão que vira cadastro de membro depois de aprovada.',
+        permKey: 'members',
         title: 'Quero ser Membro (ficha de adesão)',
-        path: '/app-ui/membership-requests',
         keywords: ['adesão', 'novo convertido', 'ficha', 'aprovar cadastro'],
         body: `
 Quem pede para ser membro recebe um link de ficha pelo WhatsApp. A pessoa preenche
@@ -197,8 +219,9 @@ A adesão entra sempre pela **sede** da igreja escolhida.
       },
       {
         id: 'pipeline-secretaria',
+        summary: 'O quadro dos processos e a matriz que muda título e situação.',
+        permKey: 'crm_pipeline',
         title: 'Pipeline da Secretaria',
-        path: '/app-ui/secretariat/pipeline',
         keywords: ['kanban', 'card', 'processo', 'matriz de decisão'],
         body: `
 O pipeline é o quadro dos processos eclesiásticos: batismo, transferência,
@@ -212,8 +235,9 @@ confira a coluna de destino antes.
       },
       {
         id: 'qrcode',
+        summary: 'Ler o canhoto dos documentos emitidos pelo sistema.',
+        permKey: 'qr_reader',
         title: 'Ler QR Code',
-        path: '/app-ui/qr-reader',
         keywords: ['canhoto', 'documento', 'scanner', 'consagração'],
         body: `
 Lê o QR do canhoto dos documentos emitidos pelo sistema e abre o registro
@@ -225,8 +249,9 @@ da secretaria da via do membro sem depender de carimbo.
       },
       {
         id: 'transferencia',
+        summary: 'Mover um membro de igreja preservando ROL e histórico.',
+        permKey: 'transfer',
         title: 'Transferência de membro',
-        path: '/app-ui/transfer',
         keywords: ['mudança de igreja', 'carta'],
         body: `
 A transferência move o membro de uma igreja para outra preservando o ROL e o
@@ -236,8 +261,9 @@ final, o membro continua vinculado à igreja de origem.
       },
       {
         id: 'credenciais',
+        summary: 'Emissão das carteirinhas e os modelos de layout.',
+        permKey: 'credentials',
         title: 'Credenciais',
-        path: '/app-ui/credentials',
         keywords: ['carteirinha', 'modelo', 'emissão'],
         body: `
 Emissão e controle das credenciais ministeriais. Os modelos (layout, campos, foto)
@@ -251,13 +277,15 @@ isso campanhas de atualização de foto costumam vir antes de uma emissão em lo
   // ═══════════════════════════════════════════════════════════ Gestão Pastoral
   {
     id: 'pastoral',
+    icon: 'HeartHandshake',
     title: 'Gestão Pastoral',
     description: 'Acompanhamento de visitantes, envio em massa e cronograma.',
     articles: [
       {
         id: 'pastoral-hub',
+        summary: 'As abas de acompanhamento e de que permissão elas dependem.',
+        permKey: 'whatsapp_campaigns',
         title: 'A tela de Gestão e suas abas',
-        path: '/app-ui/pastoral-kanban',
         keywords: ['pipeline pastoral', 'visitante', 'acolhimento'],
         body: `
 *Gestão Pastoral → Gestão* concentra tudo em abas:
@@ -275,6 +303,8 @@ aba nenhuma.
       },
       {
         id: 'envio-massa',
+        summary: 'Disparar WhatsApp para um grupo, com variáveis por destinatário.',
+        permKey: 'whatsapp_campaigns',
         title: 'Envio em massa por WhatsApp',
         keywords: ['disparo', 'campanha whatsapp', 'variáveis', 'instância'],
         body: `
@@ -293,6 +323,8 @@ aumenta a velocidade sem diminuir a pausa.
       },
       {
         id: 'importacao-csv',
+        summary: 'Subir uma planilha de contatos e entender o que foi descartado.',
+        permKey: 'whatsapp_campaigns',
         title: 'Importar lista de contatos (CSV/Excel)',
         keywords: ['planilha', 'lote', 'importar contatos'],
         body: `
@@ -311,13 +343,15 @@ inválido ou repetido nunca é enviado.
   // ══════════════════════════════════════════════════════════════ Comunicação
   {
     id: 'comunicacao',
+    icon: 'MessagesSquare',
     title: 'Comunicação',
     description: 'WhatsApp, instâncias e chat interno.',
     articles: [
       {
         id: 'whatsapp-instancias',
+        summary: 'Conectar um número por QR Code e o que fazer quando cai.',
+        permKey: 'whatsapp_instances',
         title: 'Instâncias do WhatsApp',
-        path: '/app-ui/system/whatsapp',
         keywords: ['qr code', 'conectar', 'desconectado', 'z-api', 'número'],
         body: `
 Cada instância é um número de WhatsApp conectado ao sistema, e a conexão é feita
@@ -335,8 +369,9 @@ envia por ela. O perfil master usa qualquer instância.
       },
       {
         id: 'whatsapp-inbox',
+        summary: 'Conversas em tempo real, atribuição e o agente de IA.',
+        permKey: 'whatsapp_inbox',
         title: 'Caixa de Entrada do WhatsApp',
-        path: '/app-ui/communication/whatsapp-inbox',
         keywords: ['conversa', 'atendimento', 'responder', 'ia'],
         body: `
 Mostra as conversas em tempo real. Dá para responder pela tela, atribuir a
@@ -349,6 +384,8 @@ respondendo a mesma pessoa ao mesmo tempo.
       },
       {
         id: 'chat-interno',
+        summary: 'O chat entre usuários do sistema.',
+        permKey: 'internal_chat',
         title: 'Chat interno',
         keywords: ['balão', 'conversa entre usuários'],
         body: `
@@ -363,13 +400,15 @@ outra pessoa depende de permissão.
   // ═══════════════════════════════════════════════════════════════ Financeiro
   {
     id: 'financeiro',
+    icon: 'Wallet',
     title: 'Financeiro',
     description: 'Livro caixa, lançamentos e relatórios.',
     articles: [
       {
         id: 'livro-caixa',
+        summary: 'Lançamentos, plano de contas e o recibo por WhatsApp.',
+        permKey: 'finance',
         title: 'Livro Caixa e lançamentos',
-        path: '/app-ui/finance',
         keywords: ['dízimo', 'oferta', 'despesa', 'receita', 'caixa'],
         body: `
 Os lançamentos são classificados pelo **plano de contas** — é ele que separa
@@ -382,6 +421,8 @@ por WhatsApp** direto da tela de confirmação.
       },
       {
         id: 'contabilidade',
+        summary: 'O arquivo do período e o envio automático agendado.',
+        permKey: 'finance',
         title: 'Relatório para a contabilidade',
         keywords: ['csv', 'envio automático', 'agendamento', 'exportar'],
         body: `
@@ -396,13 +437,15 @@ configurada, sem ninguém precisar lembrar.
   // ══════════════════════════════════════════════════════════════════ Sistema
   {
     id: 'sistema',
+    icon: 'Settings',
     title: 'Sistema',
     description: 'Usuários, permissões, listas auxiliares e o app.',
     articles: [
       {
         id: 'permissoes',
+        summary: 'A matriz de acesso e a regra de lista branca que confunde.',
+        permKey: 'system_settings',
         title: 'Matriz de permissões',
-        path: '/app-ui/system',
         keywords: ['acesso', 'função', 'role', 'liberar', 'bloquear'],
         body: `
 A matriz cruza os módulos do sistema com quatro ações: **Ver**, **Criar**,
@@ -418,6 +461,8 @@ Se alguém diz "sumiu do meu menu", comece por aqui.
       },
       {
         id: 'listas-auxiliares',
+        summary: 'Zonas, títulos e as demais listas que alimentam os seletores.',
+        permKey: 'system_settings',
         title: 'Listas e cadastros auxiliares',
         keywords: ['zonas', 'títulos eclesiásticos', 'configuração', 'lookup'],
         body: `
@@ -428,6 +473,7 @@ reescreve o histórico: registros antigos guardam o nome que valia na época.
       },
       {
         id: 'pwa',
+        summary: 'Instalar no celular e o aviso de versão nova.',
         title: 'Instalar o sistema no celular e atualizar',
         keywords: ['app', 'instalar', 'nova versão', 'atualizar', 'pwa'],
         body: `
@@ -451,6 +497,25 @@ export interface HelpHit {
   score: number;
 }
 
+/** Decide se o usuário pode ver a tela de uma chave do permissionCatalog. */
+export type CanView = (permKey: string) => boolean;
+
+/**
+ * Recorta a documentação para o que o usuário pode usar.
+ *
+ * Aplicado nas TRÊS pontas — navegação, busca e o contexto mandado para a IA —
+ * e sempre no servidor no caso da IA. Filtrar só na tela seria decoração: quem
+ * perguntasse pelo chat receberia a explicação de qualquer jeito.
+ *
+ * Seção que fica sem artigo nenhum some da lista.
+ */
+export function filterHelpSections(canView: CanView): HelpSection[] {
+  return HELP_SECTIONS.map(s => ({
+    ...s,
+    articles: s.articles.filter(a => !a.permKey || canView(a.permKey)),
+  })).filter(s => s.articles.length > 0);
+}
+
 function normalizar(texto: string): string {
   return texto
     .normalize('NFD')
@@ -463,12 +528,12 @@ function normalizar(texto: string): string {
  * palavra-chave, que vale mais que corpo. Sem fuzzy — na dúvida o usuário
  * reformula, e resultado errado com cara de certo é pior que nenhum resultado.
  */
-export function searchHelp(query: string, limit = 12): HelpHit[] {
+export function searchHelp(query: string, limit = 12, sections: HelpSection[] = HELP_SECTIONS): HelpHit[] {
   const termos = normalizar(query).split(/\s+/).filter(t => t.length > 1);
   if (!termos.length) return [];
 
   const hits: HelpHit[] = [];
-  for (const section of HELP_SECTIONS) {
+  for (const section of sections) {
     for (const article of section.articles) {
       const titulo = normalizar(article.title);
       const chaves = normalizar((article.keywords ?? []).join(' '));
@@ -487,20 +552,20 @@ export function searchHelp(query: string, limit = 12): HelpHit[] {
   return hits.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
-/** Todo o texto da ajuda, para servir de contexto à IA. */
-export function helpCorpus(): string {
-  return HELP_SECTIONS.map(s =>
+/** O texto da ajuda que serve de contexto à IA — já recortado por permissão. */
+export function helpCorpus(sections: HelpSection[] = HELP_SECTIONS): string {
+  return sections.map(s =>
     [
       `# ${s.title} — ${s.description}`,
       ...s.articles.map(a =>
-        [`## ${a.title}`, a.path ? `(tela: ${a.path})` : '', a.body.trim()].filter(Boolean).join('\n')
+        [`## ${a.title}`, a.summary ?? '', a.body.trim()].filter(Boolean).join('\n')
       ),
     ].join('\n\n')
   ).join('\n\n---\n\n');
 }
 
-export function findArticle(articleId: string): HelpHit | null {
-  for (const section of HELP_SECTIONS) {
+export function findArticle(articleId: string, sections: HelpSection[] = HELP_SECTIONS): HelpHit | null {
+  for (const section of sections) {
     const article = section.articles.find(a => a.id === articleId);
     if (article) return { section, article, score: 0 };
   }

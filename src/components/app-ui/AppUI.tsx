@@ -109,7 +109,6 @@ import { supabase } from '../../lib/supabaseClient';
 import { SantanderIcon } from '../ui/SantanderIcon';
 import { MobileAppOverlay } from '../public/MobileAppPreview';
 import { ChatFAB } from './ChatFAB';
-import { HelpCenter } from './HelpCenter';
 import { logClientAudit } from '../../lib/auditClient';
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from '../../lib/recentSearches';
 import { AiChatAssistant } from './shared/AiChatAssistant';
@@ -619,7 +618,6 @@ export function AppUI() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [myProfileOpen, setMyProfileOpen] = useState(false);
   const [themeEditorOpen, setThemeEditorOpen] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
@@ -1785,16 +1783,16 @@ export function AppUI() {
               {darkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-slate-600" />}
             </button>
 
-            {/* Central de Ajuda — documentação do sistema + IA que responde só
-                com base nela. Diferente do Assistente de IA ao lado, que analisa
-                dados e é restrito ao perfil master. */}
-            <button
-              onClick={() => setHelpOpen(true)}
+            {/* Central de Ajuda — página com a documentação do sistema e a IA
+                que responde só com base nela. Diferente do Assistente de IA ao
+                lado, que analisa dados e é restrito ao perfil master. */}
+            <Link
+              to="/app-ui/help"
               title="Central de Ajuda"
               className="inline-flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors items-center justify-center"
             >
-              <HelpCircle className="w-5 h-5 text-sky-600 dark:text-sky-400" />
-            </button>
+              <HelpCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </Link>
 
             {/* Assistente de IA */}
             <button
@@ -2464,7 +2462,6 @@ export function AppUI() {
       </AnimatePresence>
       {canView('internal_chat') && <ChatFAB />}
       <AiChatAssistant storedUser={storedUser} isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
-      <HelpCenter open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

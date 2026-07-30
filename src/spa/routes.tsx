@@ -167,6 +167,7 @@ import TransferRequests from "../app-ui/ecclesiastical/TransferRequests";
 import TicketPresencePage from "../app-ui/ecclesiastical/TicketPresencePage";
 import SecretariatPipeline from "../app-ui/ecclesiastical/SecretariatPipeline";
 import SecretariaCampaigns from "../app-ui/secretaria/SecretariaCampaigns";
+import HelpCenterPage from "../app-ui/help/HelpCenterPage";
 import ServicesMatrix from "../app-ui/ecclesiastical/ServicesMatrix";
 import PipelinesAdmin from "../app-ui/ecclesiastical/PipelinesAdmin";
 import Requerimentos from "../app-ui/ecclesiastical/Requerimentos";
@@ -480,6 +481,7 @@ export const router = createBrowserRouter([
       { path: "crm/pipeline", Component: CRMPipeline },
       { path: "secretariat/pipeline", Component: SecretariatPipeline },
       { path: "secretariat/campaigns", Component: SecretariaCampaigns },
+      { path: "help", Component: HelpCenterPage },
       { path: "secretariat/word", Component: WordEditor },
       { path: "secretariat/services", Component: ServicesMatrix },
       { path: "secretariat/pipelines", Component: PipelinesAdmin },
