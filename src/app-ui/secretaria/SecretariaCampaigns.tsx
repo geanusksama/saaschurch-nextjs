@@ -179,7 +179,8 @@ export default function SecretariaCampaigns() {
     fetch('/api/whatsapp/instances', { headers: authHeaders() })
       .then(r => r.json())
       .then(d => {
-        if (vivo) setInstancias(d.instances ?? []);
+        // a rota devolve um ARRAY puro, nao { instances: [...] }
+        if (vivo) setInstancias(Array.isArray(d) ? d : d.instances ?? []);
       })
       .catch(() => {
         if (vivo) setInstancias([]);

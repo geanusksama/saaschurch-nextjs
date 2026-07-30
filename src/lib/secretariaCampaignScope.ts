@@ -33,13 +33,29 @@ export class ScopeError extends Error {
   }
 }
 
+/**
+ * Campo ao qual o usuário está preso.
+ *
+ * O **master também entra aqui**: ele administra o campo em que está logado, e
+ * para ver outro campo troca de campo (com senha). É a mesma regra do módulo de
+ * usuários — sem isso, o filtro de público-alvo misturava regionais de campos
+ * diferentes numa lista só.
+ *
+ * Master sem campo definido (conta global) continua vendo tudo.
+ */
+function campoDoUsuario(user: AuthUser): string | null {
+  return user.campoId || null
+}
+
 /** Ids das igrejas que o usuário pode enxergar, já cruzados com o filtro pedido. */
 export async function resolveVisibleChurches(user: AuthUser, filters: AudienceFilters = {}) {
   const where: Record<string, unknown> = { deletedAt: null }
 
-  if (user.profileType !== 'master') {
-    if (!user.campoId) throw new ScopeError('Sem acesso. Campo não definido.')
-    where.regional = { campoId: user.campoId }
+  const campoId = campoDoUsuario(user)
+  if (campoId) {
+    where.regional = { campoId }
+  } else if (user.profileType !== 'master') {
+    throw new ScopeError('Sem acesso. Campo não definido.')
   }
   if (isRestrictedToOwnChurch(user)) {
     if (!user.churchId) throw new ScopeError('Sem acesso. Igreja não definida.')

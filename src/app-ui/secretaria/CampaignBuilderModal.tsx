@@ -109,7 +109,8 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
       try {
         const res = await fetch('/api/whatsapp/instances', { headers: authHeaders() });
         const d = await res.json();
-        if (ativo) setInstances(d.instances ?? []);
+        // a rota devolve um ARRAY puro; ler d.instances deixava a lista sempre vazia
+        if (ativo) setInstances(Array.isArray(d) ? d : d.instances ?? []);
       } catch {
         if (ativo) setInstances([]);
       }
@@ -467,6 +468,29 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
             <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Mensagem enviada por WhatsApp
             </h3>
+
+            {/* Primeiro campo da seção de propósito: enterrado no fim, ninguém
+                achava, e a falta dela só aparecia como erro ao clicar Enviar. */}
+            <div className="mb-4">
+              <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Instância do WhatsApp que faz o envio
+              </label>
+              <select value={draft.instanceId} onChange={e => set('instanceId', e.target.value)} className={inputCls}>
+                <option value="">Escolher na hora do envio</option>
+                {instances.map(i => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} {i.status === 'connected' ? '· conectada' : '· desconectada'}
+                  </option>
+                ))}
+              </select>
+              {!instances.length ? (
+                <p className="mt-1 text-[11px] text-amber-600">
+                  Nenhuma instância disponível para você. Conecte um número em Comunicação → WhatsApp
+                  Instâncias, ou peça acesso a uma instância existente.
+                </p>
+              ) : null}
+            </div>
+
             <textarea
               rows={5}
               value={draft.messageTemplate}
@@ -497,19 +521,6 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Vídeo / link extra (URL)</label>
                 <input value={draft.videoUrl} onChange={e => set('videoUrl', e.target.value)} className={inputCls} placeholder="https://youtu.be/..." />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  Instância do WhatsApp que faz o envio
-                </label>
-                <select value={draft.instanceId} onChange={e => set('instanceId', e.target.value)} className={inputCls}>
-                  <option value="">Escolher na hora do envio</option>
-                  {instances.map(i => (
-                    <option key={i.id} value={i.id}>
-                      {i.name} {i.status === 'connected' ? '· conectada' : '· desconectada'}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
           </section>

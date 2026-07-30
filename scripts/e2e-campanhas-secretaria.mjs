@@ -53,7 +53,8 @@ function check(label, cond, detail = '') {
 }
 const step = (n, t) => console.log(`\n${'─'.repeat(72)}\n${n}. ${t}\n${'─'.repeat(72)}`)
 
-const criado = { campoId: null, regionalId: null, churchId: null, memberIds: [], campaignIds: [] }
+const criado = { campoId: null, regionalId: null, churchId: null, memberIds: [], campaignIds: [],
+                 campoId2: null, regionalId2: null, churchId2: null }
 
 async function limpar() {
   console.log('\n🧹 limpando os dados do teste...')
@@ -67,8 +68,15 @@ async function limpar() {
     await exec(`DELETE FROM members WHERE church_id = ${c}`).catch(() => {})
     await exec(`DELETE FROM churches WHERE id = ${c}`).catch(() => {})
   }
+  if (criado.churchId2) {
+    const c2 = `'${criado.churchId2}'::uuid`
+    await exec(`DELETE FROM members WHERE church_id = ${c2}`).catch(() => {})
+    await exec(`DELETE FROM churches WHERE id = ${c2}`).catch(() => {})
+  }
   if (criado.regionalId) await exec(`DELETE FROM regionais WHERE id = '${criado.regionalId}'::uuid`).catch(() => {})
+  if (criado.regionalId2) await exec(`DELETE FROM regionais WHERE id = '${criado.regionalId2}'::uuid`).catch(() => {})
   if (criado.campoId) await exec(`DELETE FROM campos WHERE id = '${criado.campoId}'::uuid`).catch(() => {})
+  if (criado.campoId2) await exec(`DELETE FROM campos WHERE id = '${criado.campoId2}'::uuid`).catch(() => {})
   console.log('   pronto — banco no estado anterior.')
 }
 
@@ -279,6 +287,50 @@ async function main() {
     check('filtro por título eclesiástico funciona', porTitulo.members.some(m => m.memberId === ana.id))
     check('filtro por título exclui quem tem outro', !porTitulo.members.some(m => m.memberId === bruno.id))
   }
+
+  // ── isolamento por campo ───────────────────────────────────────────────
+  // O master TAMBEM fica preso ao campo em que esta logado (para ver outro,
+  // troca de campo com senha). Sem isso o filtro de publico-alvo misturava
+  // regionais de campos diferentes numa lista so.
+  const campo2 = await prisma.campo.create({
+    data: { name: '[E2E] Campo Vizinho', code: `E2EV${Date.now() % 100000}` },
+  })
+  criado.campoId2 = campo2.id
+  const regional2 = await prisma.regional.create({
+    data: { name: '[E2E] Regional Vizinha', code: `E2EW${Date.now() % 100000}`, campoId: campo2.id },
+  })
+  criado.regionalId2 = regional2.id
+  const igreja2 = await prisma.church.create({
+    data: { name: '[E2E] Igreja Vizinha', code: `E2EX${Date.now() % 100000}`, regionalId: regional2.id, zone: 'Zona Leste' },
+  })
+  criado.churchId2 = igreja2.id
+  const vizinho = await prisma.member.create({
+    data: { churchId: igreja2.id, fullName: '[E2E] Davi Vizinho', mobile: '19999990009', membershipStatus: 'ATIVO' },
+  })
+  criado.memberIds.push(vizinho.id)
+
+  const semFiltroNenhum = await resolveAudienceMembers(usuarioMaster, {})
+  check(
+    'master preso ao campo NAO ve membro de outro campo',
+    !semFiltroNenhum.members.some(m => m.memberId === vizinho.id)
+  )
+  check(
+    'e continua vendo os do proprio campo',
+    semFiltroNenhum.members.some(m => m.memberId === ana.id)
+  )
+
+  // a mesma zona existe nos dois campos: o filtro nao pode furar por ela
+  const zonaNosDois = await resolveAudienceMembers(usuarioMaster, { zones: ['Zona Leste'] })
+  check(
+    'zona compartilhada entre campos nao vaza o vizinho',
+    !zonaNosDois.members.some(m => m.memberId === vizinho.id)
+  )
+
+  // e um master do campo vizinho ve o dele, e nao o nosso
+  const masterVizinho = { ...usuarioMaster, campoId: campo2.id, churchId: igreja2.id, regionalId: regional2.id }
+  const doVizinho = await resolveAudienceMembers(masterVizinho, {})
+  check('master do campo vizinho ve o proprio membro', doVizinho.members.some(m => m.memberId === vizinho.id))
+  check('e nao ve os do nosso campo', !doVizinho.members.some(m => m.memberId === ana.id))
 
   // grava os alvos, como faz a rota de anexar
   const tokenAna = generateToken()
