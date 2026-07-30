@@ -35,6 +35,12 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Principal', name: 'Dashboard',         key: 'dashboard',    permissions: mkPerms(full(), none(), none(), none()) },
   { group: 'Principal', name: 'Notificações',      key: 'notifications', permissions: mkPerms(full(), none(), none(), none()) },
   { group: 'Principal', name: 'Caixa de Entrada',  key: 'inbox',        permissions: mkPerms(full(), none(), none(), none()) },
+  // Chat interno (ChatFAB, o balão flutuante no canto inferior direito).
+  //  view   → exibe o ícone do chat
+  //  create → pode enviar mensagem/arquivo/áudio
+  //  delete → pode excluir mensagem de OUTRA pessoa (a própria sempre pode)
+  // Está em OPT_OUT_PERMISSION_KEYS: ver comentário lá embaixo.
+  { group: 'Principal', name: 'Chat Interno',      key: 'internal_chat', permissions: mkPerms(full(), full(), none(), master()) },
 
   // ── Secretaria ───────────────────────────────────────────────────────────
   { group: 'Secretaria', name: 'Lista de Membros',       key: 'members',           permissions: mkPerms(full(), mngr(), mngr(), admin()) },
@@ -315,6 +321,23 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
     ),
   },
 ];
+
+/**
+ * Chaves com semântica "opt-out": permitidas pelo padrão do perfil até que
+ * exista uma sobrescrita EXPLÍCITA marcando vermelho.
+ *
+ * Por que existe: um usuário com FUNÇÃO (role) atribuída tem as permissões
+ * tratadas como whitelist em usePermissions — tudo que não está na lista de
+ * sobrescritas é negado. Quando uma chave nova entra no catálogo, nenhuma role
+ * antiga a contém, então o recurso desaparece para esses usuários sem ninguém
+ * ter pedido isso. Para recursos que já estavam visíveis para todos em produção
+ * (caso do chat interno) esse desaparecimento é uma regressão, não uma decisão.
+ *
+ * Só entram aqui chaves de recursos "ambientais" (não são telas/rotas do menu),
+ * que eram liberados para todo mundo antes de ganharem controle na matriz.
+ * Bloquear continua possível: basta marcar vermelho na tela do usuário.
+ */
+export const OPT_OUT_PERMISSION_KEYS = new Set<string>(['internal_chat']);
 
 /**
  * Mescla uma matriz salva (do banco/localStorage, possivelmente desatualizada)

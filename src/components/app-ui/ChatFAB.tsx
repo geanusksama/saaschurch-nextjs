@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
+import { usePermissions } from '../../lib/usePermissions';
 
 interface ChatMessage {
   id: string;
@@ -109,7 +110,14 @@ export function ChatFAB() {
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
-  const isMasterSupportOrAdmin = 
+  // Permissões do chat interno (chave 'internal_chat' no permissionCatalog).
+  // A exibição do ícone é decidida por quem monta o ChatFAB (AppUI); aqui ficam
+  // as ações: enviar mensagem e excluir mensagem de outra pessoa.
+  const { canCreate, canDelete } = usePermissions(storedUser.profileType || 'church');
+  const canSendMessage = canCreate('internal_chat');
+  const canDeleteAnyMessage = canDelete('internal_chat');
+
+  const isMasterSupportOrAdmin =
     storedUser.profileType === 'master' ||
     storedUser.profileType === 'admin' ||
     (storedUser.roleName && (
@@ -475,6 +483,10 @@ export function ChatFAB() {
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if ((!inputText.trim() && !stagedFile) || !token || !selectedContact) return;
+    if (!canSendMessage) {
+      toast.error('Você não tem permissão para enviar mensagens no chat interno.');
+      return;
+    }
 
     const bodyText = inputText;
     const currentReply = replyingTo;
@@ -654,6 +666,10 @@ export function ChatFAB() {
 
   const handleSendLocation = async () => {
     if (!gpsCoords || !token || !selectedContact) return;
+    if (!canSendMessage) {
+      toast.error('Você não tem permissão para enviar mensagens no chat interno.');
+      return;
+    }
     setLocationModalOpen(false);
     setLoading(true);
 
@@ -696,6 +712,10 @@ export function ChatFAB() {
   // Recording audio
   const startRecording = async () => {
     if (!selectedContact) return;
+    if (!canSendMessage) {
+      toast.error('Você não tem permissão para enviar mensagens no chat interno.');
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -1535,7 +1555,7 @@ export function ChatFAB() {
                         Responder
                       </button>
                       {/* Delete */}
-                      {(isSelfMsg || storedUser.profileType === 'master') && (
+                      {(isSelfMsg || canDeleteAnyMessage) && (
                         <button
                           type="button"
                           onClick={() => {

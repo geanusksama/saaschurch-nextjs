@@ -2446,7 +2446,7 @@ export function AppUI() {
           />
         )}
       </AnimatePresence>
-      <ChatFAB />
+      {canView('internal_chat') && <ChatFAB />}
       <AiChatAssistant storedUser={storedUser} isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
     </div>
   );

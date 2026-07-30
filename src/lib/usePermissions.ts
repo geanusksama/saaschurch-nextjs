@@ -21,6 +21,7 @@ import {
   type PermissionModule,
   type ProfileKey,
 } from '../app-ui/system/permissionCatalog';
+import { resolvePermission } from './resolvePermission';
 
 import { apiBase as API_BASE } from './apiBase';
 const LS_KEY = 'mrm_permissions';
@@ -163,22 +164,13 @@ export function usePermissions(profileType?: string) {
 
   const pt = (profileType ?? 'church') as ProfileKey;
 
-  // Memoized resolve — stable reference avoids unnecessary re-renders in consumers
-  const resolve = useCallback((key: string, action: string): boolean => {
-    const overrideKey = `${key}.${action}`;
-    if (overrideKey in userOverrides) return userOverrides[overrideKey];
-    // Role whitelist: if the user has a custom role AND permissions are loaded,
-    // any key absent from the map is denied (the role is a whitelist).
-    // Guard: only activate when overrides are non-empty to avoid blocking
-    // the sidebar while permissions are still loading.
-    if (userRoleId && Object.keys(userOverrides).length > 0) return false;
-    // No role, or permissions not yet loaded → profile-type catalog defaults
-    const mod = modules.find((m) => m.key === key);
-    if (!mod) return true;
-    const actionPerms = mod.permissions[action as keyof typeof mod.permissions];
-    if (!actionPerms) return false;
-    return (actionPerms as Record<string, boolean>)[pt] ?? false;
-  }, [modules, userOverrides, userRoleId, pt]);
+  // Memoized resolve — stable reference avoids unnecessary re-renders in consumers.
+  // A regra em si vive em resolvePermission.ts (função pura, testável fora do React).
+  const resolve = useCallback(
+    (key: string, action: string): boolean =>
+      resolvePermission({ key, action, profileType: pt, modules, userOverrides, userRoleId }),
+    [modules, userOverrides, userRoleId, pt],
+  );
 
   // Memoize each action helper — stable references avoid unnecessary re-renders in consumers
   const canView   = useCallback((key: string) => resolve(key, 'view'),   [resolve]);
