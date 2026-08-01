@@ -33,6 +33,8 @@ export interface PublicGfItem {
   leaderName: string | null;
   leaderPhone: string | null;
   leaderPhotoUrl: string | null;
+  /** Todos os líderes na ordem; o primeiro é o principal (recebe a mensagem). */
+  leaders: Array<{ name: string; phone: string | null; photoUrl: string | null }>;
 }
 
 export interface PublicSede {
@@ -101,6 +103,10 @@ export async function listPublicGfs(churchId: string = DEFAULT_SEDE_ID): Promise
       color: true,
       photo: true,
       leader: { select: { fullName: true, phone: true, mobile: true, photoUrl: true } },
+      leaders: {
+        orderBy: { position: 'asc' },
+        select: { member: { select: { fullName: true, phone: true, mobile: true, photoUrl: true } } },
+      },
     },
     orderBy: { name: 'asc' },
   });
@@ -125,8 +131,20 @@ export async function listPublicGfs(churchId: string = DEFAULT_SEDE_ID): Promise
     longitude: c.longitude ? Number(c.longitude) : null,
     color: c.color,
     photo: c.photo,
-    leaderName: c.leader?.fullName ?? null,
-    leaderPhone: c.leader?.mobile || c.leader?.phone || null,
+    // a lista nova manda; o campo antigo cobre GF que ainda nao foi reeditado
+    leaders: c.leaders.length
+      ? c.leaders.map((l) => ({
+          name: l.member.fullName,
+          phone: l.member.mobile || l.member.phone || null,
+          photoUrl: l.member.photoUrl ?? null,
+        }))
+      : c.leader
+        ? [{ name: c.leader.fullName, phone: c.leader.mobile || c.leader.phone || null, photoUrl: c.leader.photoUrl ?? null }]
+        : [],
+    leaderName: c.leaders[0]?.member.fullName ?? c.leader?.fullName ?? null,
+    leaderPhone: c.leaders[0]
+      ? (c.leaders[0].member.mobile || c.leaders[0].member.phone || null)
+      : (c.leader?.mobile || c.leader?.phone || null),
     leaderPhotoUrl: c.leader?.photoUrl ?? null,
   }));
 }

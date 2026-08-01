@@ -23,6 +23,7 @@ loadEnv({ path: '.env.local', override: true })
 
 import { PrismaClient } from '@prisma/client'
 import { listPublicGfs, getPublicSede, DEFAULT_SEDE_ID } from '../src/lib/gfPublicListService.ts'
+import { syncCellGroupLeaders } from '../src/lib/cellGroupService.ts'
 import { haversineKm, buildMapEmbedUrl, buildMapsLink } from '../src/lib/geo.ts'
 
 const prisma = new PrismaClient()
@@ -37,7 +38,7 @@ function check(label, cond, detail = '') {
 }
 const step = (n, t) => console.log(`\n${'─'.repeat(72)}\n${n}. ${t}\n${'─'.repeat(72)}`)
 
-const criado = { leaderId: null, cellIds: [], outraIgrejaId: null, outroCellId: null, regionalId: null, campoId: null }
+const criado = { leaderId: null, leaderId2: null, cellIds: [], outraIgrejaId: null, outroCellId: null, regionalId: null, campoId: null }
 
 async function limpar() {
   console.log('\n🧹 limpando os dados do teste...')
@@ -47,8 +48,8 @@ async function limpar() {
   if (criado.outroCellId) {
     await exec(`DELETE FROM cell_groups WHERE id = '${criado.outroCellId}'::uuid`).catch(() => {})
   }
-  if (criado.leaderId) {
-    await exec(`DELETE FROM members WHERE id = '${criado.leaderId}'::uuid`).catch(() => {})
+  for (const id of [criado.leaderId, criado.leaderId2]) {
+    if (id) await exec(`DELETE FROM members WHERE id = '${id}'::uuid`).catch(() => {})
   }
   if (criado.outraIgrejaId) {
     await exec(`DELETE FROM churches WHERE id = '${criado.outraIgrejaId}'::uuid`).catch(() => {})
@@ -180,7 +181,44 @@ async function main() {
   check('GF sem coordenadas cai para o fim da lista, não quebra a ordenação', semCoordenadas[semCoordenadas.length - 1]?.name === '[E2E] Sem coordenadas')
 
   // ── 5. mapa sem chave de API ─────────────────────────────────────────────
-  step(5, 'A SEDE que fica no centro da estrela')
+  // ── GF com casal de líderes ───────────────────────────────────────────
+  step(5, 'GF com DOIS líderes (casal): ordem, principal e troca de principal')
+
+  const esposa = await prisma.member.create({
+    data: { churchId: sede.id, fullName: '[E2E] Esposa Líder', mobile: '19999990302', membershipStatus: 'ATIVO' },
+  })
+  criado.leaderId2 = esposa.id
+
+  // mesma regra da rota: a lista manda, e o primeiro vira o leader_id
+  await syncCellGroupLeaders(gfPerto.id, [lider.id, esposa.id])
+
+  const comCasal = (await listPublicGfs()).find((g) => g.name === '[E2E] GF Centro')
+  check('os dois líderes aparecem na lista pública', comCasal?.leaders.length === 2, String(comCasal?.leaders.length))
+  check('a ordem é a que foi enviada', comCasal?.leaders[0]?.name === lider.fullName, comCasal?.leaders[0]?.name)
+  check('o principal é o primeiro da lista', comCasal?.leaderName === lider.fullName, comCasal?.leaderName)
+  check('o telefone do aviso é o do principal', comCasal?.leaderPhone === '19999990301', comCasal?.leaderPhone)
+
+  const noBanco = await prisma.cellGroup.findUnique({ where: { id: gfPerto.id }, select: { leaderId: true } })
+  check('cell_groups.leader_id acompanha o principal', noBanco?.leaderId === lider.id)
+
+  // inverter a ordem tem que trocar quem recebe a mensagem
+  await syncCellGroupLeaders(gfPerto.id, [esposa.id, lider.id])
+  const invertido = (await listPublicGfs()).find((g) => g.name === '[E2E] GF Centro')
+  check('trocar a ordem troca o principal', invertido?.leaderName === esposa.fullName, invertido?.leaderName)
+  check('e troca o telefone do aviso junto', invertido?.leaderPhone === '19999990302', invertido?.leaderPhone)
+  check('continua com os dois líderes (não duplicou)', invertido?.leaders.length === 2, String(invertido?.leaders.length))
+
+  // remover um líder não pode deixar o GF órfão
+  await syncCellGroupLeaders(gfPerto.id, [esposa.id])
+  const soUm = (await listPublicGfs()).find((g) => g.name === '[E2E] GF Centro')
+  check('remover um líder deixa só o outro', soUm?.leaders.length === 1, String(soUm?.leaders.length))
+  const aposRemocao = await prisma.cellGroup.findUnique({ where: { id: gfPerto.id }, select: { leaderId: true } })
+  check('leader_id passa a ser quem sobrou', aposRemocao?.leaderId === esposa.id)
+
+  // volta ao estado que o resto do teste espera
+  await syncCellGroupLeaders(gfPerto.id, [lider.id])
+
+  step(6, 'A SEDE que fica no centro da estrela')
 
   const sedePublica = await getPublicSede()
   check('getPublicSede() devolve a igreja sede', sedePublica?.id === DEFAULT_SEDE_ID, sedePublica?.name)
@@ -192,7 +230,7 @@ async function main() {
     sedePublica?.latitude === null || typeof sedePublica?.latitude === 'number',
     String(sedePublica?.latitude))
 
-  step(6, 'Endereço clicável abre o mapa embutido, sem chave de API')
+  step(7, 'Endereço clicável abre o mapa embutido, sem chave de API')
 
   check('mapa embed usa coordenadas e output=embed', buildMapEmbedUrl(centro).includes('output=embed') && buildMapEmbedUrl(centro).includes('-22.90556'))
   check('link "abrir no Google Maps" também sai sem chave', buildMapsLink(centro).startsWith('https://www.google.com/maps?q='))

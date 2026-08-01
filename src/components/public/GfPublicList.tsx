@@ -47,6 +47,8 @@ interface GfItem {
   leaderName: string | null;
   leaderPhone: string | null;
   leaderPhotoUrl: string | null;
+  /** todos os líderes; o primeiro é o principal (recebe a mensagem) */
+  leaders?: Array<{ name: string; phone: string | null; photoUrl: string | null }>;
   distanceKm?: number | null;
 }
 
@@ -200,8 +202,18 @@ export function GfPublicList() {
   // Onde o carrinho está parado agora, o trecho que ele vai percorrer, e o
   // balão de "andou X km" que aparece quando ele chega.
   const [carIndex, setCarIndex] = useState(0);
-  const [rota, setRota] = useState<number[]>([]);
+  const [rotaXY, setRotaXY] = useState<{ x: number; y: number }[]>([]);
   const [balao, setBalao] = useState<{ index: number; km: number } | null>(null);
+  // foto aberta em zoom
+  const [zoomFoto, setZoomFoto] = useState<{
+    src: string;
+    nome: string;
+    subtitulo?: string;
+    accent?: string;
+    lideres?: Array<{ name: string; phone: string | null; photoUrl: string | null }>;
+  } | null>(null);
+  /** GF sob o mouse — os outros desbotam para destacar este */
+  const [hoverGf, setHoverGf] = useState<string | null>(null);
   const chegadaRef = useRef<{ destino: number; km: number } | null>(null);
 
   // Esta página é clara SEMPRE. Não basta usar bg-white: o globals.css tem
@@ -309,57 +321,89 @@ export function GfPublicList() {
   // Mede a posição real dos cards no DOM pra desenhar a trilha — as pontas da
   // estrela mudam de lugar conforme a largura da tela, então não dá pra
   // calcular isso "no papel": tem que ler do layout depois que ele assenta.
+  // Paradas do carrinho: a SEDE é a parada 0 e cada GF vem em seguida. Assim
+  // clicar no pino da sede também leva o carrinho até lá.
+  const paradas = useMemo(
+    () => [
+      { key: 'sede', latitude: sede?.latitude ?? null, longitude: sede?.longitude ?? null },
+      ...sortedGroups.map((g) => ({ key: g.id, latitude: g.latitude, longitude: g.longitude })),
+    ],
+    [sede, sortedGroups],
+  );
+
   useEffect(() => {
     function medir() {
       const wrap = trailWrapRef.current;
       if (!wrap) return;
       const wrapRect = wrap.getBoundingClientRect();
-      const pontos = sortedGroups
-        .map((gf) => {
-          const el = cardRefs.current[gf.id];
-          if (!el) return null;
-          const r = el.getBoundingClientRect();
-          return { x: r.left - wrapRect.left + r.width / 2, y: r.top - wrapRect.top };
-        })
-        .filter((p): p is { x: number; y: number } => p !== null);
-      setTrailPoints(pontos);
+      const pontos = paradas.map((p) => {
+        const el = cardRefs.current[p.key];
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return {
+          x: r.left - wrapRect.left + r.width / 2,
+          y: r.top - wrapRect.top + r.height / 2,
+        };
+      });
+      // só publica quando TODAS as paradas já existem no DOM: um ponto faltando
+      // desalinharia os índices e o carrinho iria para o lugar errado
+      if (pontos.every((p) => p !== null)) setTrailPoints(pontos as { x: number; y: number }[]);
     }
     medir();
     const t = setTimeout(medir, 250); // depois das fotos/fontes assentarem o layout
     window.addEventListener('resize', medir);
     return () => { clearTimeout(t); window.removeEventListener('resize', medir); };
-  }, [sortedGroups]);
+  }, [paradas]);
 
   /**
-   * Manda o carrinho do GF onde ele está até o `destino`, passando por todos
-   * os GFs do caminho. A distância mostrada no balão é a soma real (Haversine)
-   * dos trechos percorridos — não a distância em pixels da tela.
+   * Manda o carrinho até a parada `destino`.
+   *
+   * O trajeto NÃO é uma reta: são pontos intermediários com um desvio lateral
+   * para o carrinho serpentear, como quem pega ruas. O desvio é sorteado a
+   * partir dos índices (não do Math.random) para o mesmo trecho sair sempre
+   * igual — senão a rota mudaria a cada clique e ficaria nervosa.
+   *
+   * A distância do balão é a real (Haversine) entre as paradas, não pixels.
    */
   const viajarPara = (destino: number) => {
     if (traveling || trailPoints.length < 2) return;
     if (destino < 0 || destino >= trailPoints.length || destino === carIndex) return;
 
-    const passo = destino > carIndex ? 1 : -1;
-    const caminho: number[] = [];
-    for (let i = carIndex; passo > 0 ? i <= destino : i >= destino; i += passo) caminho.push(i);
+    const de = trailPoints[carIndex];
+    const para = trailPoints[destino];
+    if (!de || !para) return;
 
-    let km = 0;
-    for (let i = 1; i < caminho.length; i++) {
-      const trecho = haversineKm(sortedGroups[caminho[i - 1]], sortedGroups[caminho[i]]);
-      if (trecho) km += trecho;
+    // desvio pseudo-aleatório porém estável para este par de paradas
+    const semente = Math.sin((carIndex + 1) * 12.9898 + (destino + 1) * 78.233) * 43758.5453;
+    const lado = semente - Math.floor(semente) > 0.5 ? 1 : -1;
+    const dx = para.x - de.x;
+    const dy = para.y - de.y;
+    const comprimento = Math.hypot(dx, dy) || 1;
+    // normal ao trecho, para empurrar o meio do caminho para um dos lados
+    const nx = -dy / comprimento;
+    const ny = dx / comprimento;
+    const curvatura = Math.min(90, comprimento * 0.22) * lado;
+
+    const PASSOS = 24;
+    const caminho: { x: number; y: number }[] = [];
+    for (let i = 0; i <= PASSOS; i++) {
+      const t = i / PASSOS;
+      // curva suave (seno) + um chacoalhar leve para não ficar robótico
+      const desvio = Math.sin(t * Math.PI) * curvatura;
+      const treme = Math.sin(t * Math.PI * 6) * 4 * Math.sin(t * Math.PI);
+      caminho.push({
+        x: de.x + dx * t + nx * (desvio + treme),
+        y: de.y + dy * t + ny * (desvio + treme),
+      });
     }
+
+    const km = haversineKm(paradas[carIndex], paradas[destino]) ?? 0;
 
     chegadaRef.current = { destino, km };
     setBalao(null);
-    setRota(caminho);
+    setRotaXY(caminho);
     setRideKey((k) => k + 1);
     setTraveling(true);
-  };
-
-  // O botão manda para a outra ponta: na ida vai até o último GF, e clicando
-  // de novo o carrinho volta para o primeiro.
-  const iniciarPasseio = () => {
-    viajarPara(carIndex === 0 ? trailPoints.length - 1 : 0);
   };
 
   const aoChegar = () => {
@@ -503,23 +547,24 @@ export function GfPublicList() {
           </div>
         )}
 
-        {!loading && !error && sortedGroups.length > 1 && (
-          <button
-            onClick={iniciarPasseio}
-            disabled={traveling}
-            className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full border-2 border-dashed border-amber-400 text-amber-700 text-xs font-bold hover:bg-amber-50 disabled:opacity-50 transition-colors"
-          >
-            <Car size={15} />
-            {traveling
-              ? 'Percorrendo os GFs...'
-              : carIndex === 0
-                ? 'Percorrer a trilha dos GFs'
-                : 'Voltar ao primeiro GF'}
-          </button>
-        )}
-
         {!loading && !error && sortedGroups.length > 0 && (
           <div ref={trailWrapRef} className="relative w-full aspect-[4/3]">
+            {/* Fundo com jeito de mapa: quarteirões e ruas desenhados. É
+                decoração, não um mapa geográfico de verdade — as posições dos
+                GFs aqui são a estrela, não a localização real deles. */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <rect x="0" y="0" width="100" height="100" fill="#FDFCF7" />
+              {[12, 30, 48, 66, 84].map((y) => (
+                <line key={`h${y}`} x1="0" y1={y} x2="100" y2={y} stroke="#E8E3D5" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />
+              ))}
+              {[14, 34, 52, 70, 88].map((x) => (
+                <line key={`v${x}`} x1={x} y1="0" x2={x} y2="100" stroke="#E8E3D5" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />
+              ))}
+              {/* uma "avenida" diagonal e um "rio" para não ficar quadriculado demais */}
+              <line x1="0" y1="96" x2="100" y2="18" stroke="#EFE9D8" strokeWidth={5} vectorEffect="non-scaling-stroke" />
+              <path d="M -2 62 Q 25 54, 46 66 T 102 58" fill="none" stroke="#DCEDF5" strokeWidth={4} vectorEffect="non-scaling-stroke" />
+            </svg>
+
             {/* raios ligando a sede a cada GF */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
               {sortedGroups.map((gf, i) => {
@@ -539,18 +584,33 @@ export function GfPublicList() {
               })}
             </svg>
 
-            {/* carrinho passeando entre os GFs */}
+            {/* rastro que o carrinho está fazendo agora */}
+            {traveling && rotaXY.length > 1 && (
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" style={{ overflow: 'visible' }}>
+                <polyline
+                  points={rotaXY.map((p) => `${p.x},${p.y}`).join(' ')}
+                  fill="none"
+                  stroke="#D97706"
+                  strokeWidth={2.5}
+                  strokeDasharray="3 7"
+                  strokeLinecap="round"
+                  opacity={0.65}
+                />
+              </svg>
+            )}
+
+            {/* carrinho passeando entre as paradas */}
             {trailPoints.length > 1 && trailPoints[carIndex] && (
               <motion.div
                 key={rideKey}
                 className="absolute z-30 w-8 h-8 -ml-4 -mt-4 rounded-full bg-amber-500 border-2 border-white shadow-lg flex items-center justify-center pointer-events-none"
                 initial={{ x: trailPoints[carIndex].x, y: trailPoints[carIndex].y }}
                 animate={
-                  traveling && rota.length > 1
-                    ? { x: rota.map((i) => trailPoints[i].x), y: rota.map((i) => trailPoints[i].y) }
+                  traveling && rotaXY.length > 1
+                    ? { x: rotaXY.map((p) => p.x), y: rotaXY.map((p) => p.y) }
                     : { x: trailPoints[carIndex].x, y: trailPoints[carIndex].y }
                 }
-                transition={traveling ? { duration: Math.max(1, rota.length * 0.9), ease: 'easeInOut' } : { duration: 0 }}
+                transition={traveling ? { duration: 2.2, ease: 'easeInOut' } : { duration: 0 }}
                 onAnimationComplete={() => { if (traveling) aoChegar(); }}
               >
                 <Car size={16} className="text-white" />
@@ -566,18 +626,36 @@ export function GfPublicList() {
                 style={{ left: trailPoints[balao.index].x, top: trailPoints[balao.index].y - 46 }}
               >
                 {balao.km > 0
-                  ? `🚗 ${balao.km.toFixed(1).replace('.', ',')} km percorridos`
+                  ? `🚗 ${balao.km.toFixed(1).replace('.', ',')} km daqui`
                   : '🚗 Chegou!'}
                 <span className="absolute left-1/2 -bottom-1 -translate-x-1/2 w-2 h-2 rotate-45 bg-slate-900" />
               </motion.div>
             )}
 
-            {/* SEDE no centro da estrela */}
-            <div className="absolute z-20 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[26%] max-w-[180px]">
-              <div className="rounded-2xl bg-white border-2 border-amber-300 shadow-lg p-3 text-center">
-                <div className="mx-auto mb-2 w-14 h-14 rounded-full overflow-hidden border-2 border-amber-200 bg-white">
+            {/* SEDE no centro da estrela — também é uma parada do carrinho */}
+            <div
+              ref={(el) => { cardRefs.current.sede = el; }}
+              className="absolute z-20 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[26%] max-w-[180px]"
+            >
+              <div className="relative rounded-2xl bg-white border-2 border-amber-300 shadow-lg p-3 text-center">
+                {/* pino: clicar traz o carrinho para a sede */}
+                <button
+                  type="button"
+                  onClick={() => viajarPara(0)}
+                  disabled={traveling || carIndex === 0}
+                  title="Trazer o carrinho para a sede"
+                  className="absolute -top-2 -left-2 z-30 w-7 h-7 rounded-full bg-amber-500 text-white border-2 border-white shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-40 disabled:hover:scale-100"
+                >
+                  <MapPin size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomFoto({ src: '/adcampinas.png', nome: sede?.name ?? 'AD Campinas' })}
+                  title="Ampliar"
+                  className="mx-auto mb-2 block w-14 h-14 rounded-full overflow-hidden border-2 border-amber-200 bg-white hover:scale-105 transition-transform"
+                >
                   <img src="/adcampinas.png" alt="" className="w-full h-full object-cover" />
-                </div>
+                </button>
                 <p className="text-[9px] font-extrabold uppercase tracking-wide text-amber-600">Igreja sede</p>
                 <p className="text-xs font-extrabold text-slate-800 leading-tight mt-0.5">
                   {sede?.name ?? 'AD Campinas'}
@@ -602,7 +680,9 @@ export function GfPublicList() {
 
               const values: Partial<Record<typeof TAGS_LAYOUT[number]['key'], React.ReactNode>> = {
                 name: gf.name,
-                leader: gf.leaderName,
+                leader: gf.leaders?.length
+                  ? gf.leaders.map((l) => l.name).join(' e ')
+                  : gf.leaderName,
                 time: [gf.meetingDay, gf.meetingTime].filter(Boolean).join(' às ') || null,
                 address: address || null,
               };
@@ -611,8 +691,19 @@ export function GfPublicList() {
                 <div
                   key={gf.id}
                   ref={(el) => { cardRefs.current[gf.id] = el; }}
-                  className="absolute z-10 -translate-x-1/2 -translate-y-1/2 w-[27%] max-w-[200px]"
-                  style={{ left: `${p.x}%`, top: `${p.y}%`, transform: `translate(-50%, -50%) rotate(${giro}deg)` }}
+                  onMouseEnter={() => setHoverGf(gf.id)}
+                  onMouseLeave={() => setHoverGf(null)}
+                  // ao passar o mouse, este quadro cresce e endireita, e os
+                  // outros desbotam — o destaque fica só no que está sob o cursor
+                  className="absolute -translate-x-1/2 -translate-y-1/2 w-[27%] max-w-[200px] transition-all duration-300"
+                  style={{
+                    left: `${p.x}%`,
+                    top: `${p.y}%`,
+                    transform: `translate(-50%, -50%) rotate(${hoverGf === gf.id ? 0 : giro}deg) scale(${hoverGf === gf.id ? 1.12 : 1})`,
+                    zIndex: hoverGf === gf.id ? 25 : 10,
+                    opacity: hoverGf && hoverGf !== gf.id ? 0.45 : 1,
+                    filter: hoverGf && hoverGf !== gf.id ? 'saturate(0.6)' : 'none',
+                  }}
                 >
                   <div className="relative aspect-[3/4]">
                     {/* mancha colorida só atrás da foto */}
@@ -661,11 +752,34 @@ export function GfPublicList() {
                       </span>
                     )}
 
-                    {/* foto pinada — clicar chama o carrinho até este GF */}
+                    {/* pino do GF: clicar leva o carrinho até aqui */}
                     <button
                       type="button"
-                      onClick={() => viajarPara(index)}
+                      onClick={() => viajarPara(index + 1)}
+                      disabled={traveling || carIndex === index + 1}
                       title="Levar o carrinho até este GF"
+                      className="absolute z-30 w-7 h-7 rounded-full text-white border-2 border-white shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-40 disabled:hover:scale-100"
+                      style={{ left: '2%', top: '2%', background: pal.accent }}
+                    >
+                      <MapPin size={13} />
+                    </button>
+
+                    {/* foto pinada — clicar amplia */}
+                    <button
+                      type="button"
+                      onClick={() => setZoomFoto({
+                        src: gf.photo || '/adcampinas.png',
+                        nome: gf.name,
+                        subtitulo: [gf.cellType, [gf.meetingDay, gf.meetingTime].filter(Boolean).join(' às ')]
+                          .filter(Boolean).join(' · '),
+                        accent: pal.accent,
+                        lideres: gf.leaders?.length
+                          ? gf.leaders
+                          : gf.leaderName
+                            ? [{ name: gf.leaderName, phone: gf.leaderPhone, photoUrl: gf.leaderPhotoUrl }]
+                            : [],
+                      })}
+                      title="Ampliar"
                       className="absolute z-10 hover:scale-105 transition-transform"
                       style={{ left: '8%', top: '10%', width: '34%' }}
                     >
@@ -696,6 +810,7 @@ export function GfPublicList() {
                       <BoardTag
                         icon={TAGS_LAYOUT[1].icon} label={TAGS_LAYOUT[1].label} box={TAGS_LAYOUT[1].box} rotate={TAGS_LAYOUT[1].rotate}
                         value={values.leader} accent={pal.accent}
+                        // o link vai para o líder PRINCIPAL (o primeiro da lista)
                         href={gf.leaderPhone ? `https://wa.me/55${gf.leaderPhone.replace(/\D/g, '')}` : undefined}
                       />
                     )}
@@ -794,6 +909,107 @@ export function GfPublicList() {
               </a>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Foto ampliada */}
+      {zoomFoto && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          onClick={() => setZoomFoto(null)}
+        >
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+            className="relative z-10 flex flex-col items-center gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* moldura de celular: a foto entra como se fosse a tela */}
+            <div
+              className="relative rounded-[2.2rem] bg-slate-900 p-2.5 shadow-2xl ring-1 ring-white/20"
+              style={{ width: 'min(20rem, 78vw)' }}
+            >
+              {/* notch */}
+              <span className="absolute top-2.5 left-1/2 z-10 h-5 w-24 -translate-x-1/2 rounded-b-2xl bg-slate-900" />
+              <div className="relative aspect-[9/19] overflow-hidden rounded-[1.7rem] bg-white flex flex-col">
+                {/* foto do GF ocupa a parte de cima da "tela" */}
+                <div className="relative h-[58%] w-full shrink-0 bg-slate-100">
+                  <img src={zoomFoto.src} alt={zoomFoto.nome} className="h-full w-full object-cover" />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-3 pt-8">
+                    <p className="text-sm font-extrabold leading-tight text-white">{zoomFoto.nome}</p>
+                    {zoomFoto.subtitulo && (
+                      <p className="text-[11px] font-medium text-white/85">{zoomFoto.subtitulo}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* líderes logo abaixo, um por linha */}
+                <div className="flex-1 overflow-y-auto px-3 py-3">
+                  {zoomFoto.lideres?.length ? (
+                    <>
+                      <p
+                        className="mb-2 text-[9px] font-extrabold uppercase tracking-wide"
+                        style={{ color: zoomFoto.accent ?? '#D97706' }}
+                      >
+                        {zoomFoto.lideres.length > 1 ? 'Líderes' : 'Líder'}
+                      </p>
+                      <div className="space-y-2">
+                        {zoomFoto.lideres.map((l, i) => (
+                          <div key={`${l.name}-${i}`} className="flex items-center gap-2.5">
+                            <div
+                              className="h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 bg-slate-100"
+                              style={{ borderColor: zoomFoto.accent ?? '#D97706' }}
+                            >
+                              {l.photoUrl ? (
+                                <img src={l.photoUrl} alt={l.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center">
+                                  <Users size={15} className="text-slate-400" />
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[11px] font-bold text-slate-800">{l.name}</p>
+                              {l.phone && <p className="truncate text-[10px] text-slate-500">{l.phone}</p>}
+                            </div>
+                            {l.phone && (
+                              <a
+                                href={`https://wa.me/55${l.phone.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={`Falar com ${l.name}`}
+                                className="shrink-0 rounded-full p-1.5 text-white"
+                                style={{ background: zoomFoto.accent ?? '#D97706' }}
+                              >
+                                <Users size={12} />
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-[11px] text-slate-400">Sem líder cadastrado.</p>
+                  )}
+                </div>
+                {/* barrinha de "home" do celular */}
+                <span className="mx-auto mb-2 block h-1 w-20 shrink-0 rounded-full bg-slate-300" />
+              </div>
+              {/* botões laterais */}
+              <span className="absolute -left-1 top-24 h-10 w-1 rounded-l bg-slate-700" />
+              <span className="absolute -right-1 top-20 h-14 w-1 rounded-r bg-slate-700" />
+            </div>
+            <p className="text-base font-bold text-white drop-shadow">{zoomFoto.nome}</p>
+          </motion.div>
+          <button
+            onClick={() => setZoomFoto(null)}
+            className="absolute top-5 right-5 z-20 p-2 rounded-full bg-white/15 text-white hover:bg-white/25"
+            title="Fechar"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
       )}
     </div>

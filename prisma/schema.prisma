@@ -576,6 +576,7 @@ model Member {
 
   cellGroupsLed         CellGroup[]             @relation("CellGroupLeader")
   cellGroupsHosted      CellGroup[]             @relation("CellGroupHost")
+  cellGroupLeaderships  CellGroupLeader[]
   ministriesLed         Ministry[]              @relation("MinistryLeader")
   churchFunctions       ChurchFunctionHistory[] @relation("ChurchFunctionMember")
   previousLeaderHistory ChurchLeaderHistory[]   @relation("ChurchLeaderHistoryPreviousMember")
@@ -1201,8 +1202,27 @@ model CellGroup {
   members  CellGroupMember[]
   meetings CellMeeting[]
   tags     MemberTag[]
+  leaders  CellGroupLeader[]
 
   @@map("cell_groups")
+}
+
+/// Líderes do GF. Na prática quase sempre é um casal, então um campo só não
+/// bastava. `cell_groups.leader_id` continua existindo e aponta para o líder
+/// PRINCIPAL (position 0) — é dele o número usado para avisar o grupo, e é o
+/// que todas as telas antigas já leem.
+model CellGroupLeader {
+  id          String   @id @default(uuid()) @db.Uuid
+  cellGroupId String   @map("cell_group_id") @db.Uuid
+  memberId    String   @map("member_id") @db.Uuid
+  position    Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  cellGroup CellGroup @relation(fields: [cellGroupId], references: [id], onDelete: Cascade)
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([cellGroupId, memberId])
+  @@map("cell_group_leaders")
 }
 
 model CellGroupMember {

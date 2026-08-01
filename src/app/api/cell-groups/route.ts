@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { cellGroupDataFromBody, ensureCellGroupTag, assignCellGroupTag } from "@/lib/cellGroupService";
+import { cellGroupDataFromBody, ensureCellGroupTag, leaderIdsFromBody, syncCellGroupLeaders } from "@/lib/cellGroupService";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
@@ -15,6 +15,10 @@ export async function GET(req: NextRequest) {
       where,
       include: {
         leader: { select: { fullName: true, mobile: true, phone: true } },
+        leaders: {
+          orderBy: { position: "asc" },
+          include: { member: { select: { id: true, fullName: true, mobile: true, phone: true } } },
+        },
         _count: { select: { members: { where: { isActive: true } } } },
       },
       orderBy: { name: "asc" },
@@ -52,10 +56,13 @@ export async function POST(req: NextRequest) {
     const churchId = body.churchId || user.churchId;
     if (!churchId) return NextResponse.json({ error: "Igreja é obrigatória" }, { status: 400 });
 
-    const newCell = await prisma.cellGroup.create({ data: { ...data, churchId } });
+    const leaderIds = leaderIdsFromBody(body);
+    const newCell = await prisma.cellGroup.create({
+      data: { ...data, churchId, leaderId: leaderIds[0] ?? null },
+    });
 
     await ensureCellGroupTag(newCell.id);
-    if (newCell.leaderId) await assignCellGroupTag(newCell.id, newCell.leaderId);
+    await syncCellGroupLeaders(newCell.id, leaderIds);
 
     return NextResponse.json(serializeBigInts(newCell), { status: 201 });
   });

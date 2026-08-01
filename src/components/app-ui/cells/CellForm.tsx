@@ -21,14 +21,24 @@ interface MemberOption {
   phone?: string | null;
 }
 
+/** Um líder do GF. O primeiro da lista é o principal (recebe os avisos). */
+export interface CellLeader {
+  id: string;
+  name: string;
+  phone: string;
+}
+
 export interface CellFormValues {
   name: string;
   network: string;
   color: string;
   photo: string;
-  leaderId: string | null;
-  leaderName: string;
-  leaderPhone: string;
+  /**
+   * Lista de líderes — o GF costuma ser dirigido por um casal, então um campo
+   * só não servia. O PRIMEIRO é o principal: é o número dele que recebe o
+   * aviso do grupo, e é ele que vai para `cell_groups.leader_id`.
+   */
+  leaders: CellLeader[];
   addressStreet: string;
   addressNumber: string;
   addressComplement: string;
@@ -47,9 +57,7 @@ export const EMPTY_CELL_FORM: CellFormValues = {
   network: 'Adultos',
   color: '#8B5CF6',
   photo: '',
-  leaderId: null,
-  leaderName: '',
-  leaderPhone: '',
+  leaders: [],
   addressStreet: '',
   addressNumber: '',
   addressComplement: '',
@@ -62,6 +70,37 @@ export const EMPTY_CELL_FORM: CellFormValues = {
   meetingDay: 'Quinta',
   meetingTime: '',
 };
+
+/**
+ * Monta a lista de líderes a partir do que a API devolve.
+ *
+ * Usa `leaders` (a tabela nova, já na ordem certa) e cai no `leader` único
+ * quando o GF ainda não passou por uma edição — assim nenhuma tela fica sem
+ * líder enquanto o dado antigo não é reescrito.
+ */
+export function leadersFromApi(cell: {
+  leaders?: Array<{ member?: { id?: string | null; fullName?: string | null; mobile?: string | null; phone?: string | null } | null }> | null;
+  leaderId?: string | null;
+  leader?: { fullName?: string | null; mobile?: string | null; phone?: string | null } | null;
+}): CellLeader[] {
+  if (Array.isArray(cell.leaders) && cell.leaders.length) {
+    return cell.leaders
+      .filter((l) => l?.member?.id)
+      .map((l) => ({
+        id: l!.member!.id!,
+        name: l!.member!.fullName ?? '',
+        phone: l!.member!.mobile || l!.member!.phone || '',
+      }));
+  }
+  if (cell.leaderId) {
+    return [{
+      id: cell.leaderId,
+      name: cell.leader?.fullName ?? '',
+      phone: cell.leader?.mobile || cell.leader?.phone || '',
+    }];
+  }
+  return [];
+}
 
 const NETWORKS = ['Jovens', 'Adultos', 'Casais', 'Kids', 'Mulheres', 'Homens'];
 const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -219,71 +258,123 @@ export function CellForm({ values, onChange, onSubmit, saving, error, submitLabe
 
       <div className="grid md:grid-cols-2 gap-6">
         <div>
-          <label className={labelClass}>Líder</label>
-          {values.leaderId ? (
-            <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-purple-600" />
+          <label className={labelClass}>
+            Líderes
+            <span className="ml-1 font-normal text-slate-500">(pode ser um casal)</span>
+          </label>
+
+          {values.leaders.length > 0 && (
+            <div className="space-y-2 mb-2">
+              {values.leaders.map((lider, i) => (
+                <div
+                  key={lider.id}
+                  className="flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {lider.name}
+                        {i === 0 && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-bold uppercase align-middle">
+                            Principal
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-slate-500">{lider.phone || 'Sem telefone'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        title="Tornar principal (recebe os avisos)"
+                        onClick={() => {
+                          const próximos = [...values.leaders];
+                          const [escolhido] = próximos.splice(i, 1);
+                          set({ leaders: [escolhido, ...próximos] });
+                        }}
+                        className="text-xs font-semibold text-purple-600 hover:text-purple-800"
+                      >
+                        Tornar principal
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      title="Remover líder"
+                      onClick={() => set({ leaders: values.leaders.filter((l) => l.id !== lider.id) })}
+                      className="text-slate-400 hover:text-red-500"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{values.leaderName}</p>
-                  <p className="text-xs text-slate-500">{values.leaderPhone || 'Sem telefone'}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => set({ leaderId: null, leaderName: '', leaderPhone: '' })}
-                className="text-slate-400 hover:text-red-500"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              ))}
             </div>
-          ) : (
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400" />
-              </div>
-              <input
-                type="text"
-                className={`${inputClass} pl-10`}
-                placeholder="Buscar membro..."
-                value={searchQuery}
-                onChange={(e) => handleSearchLeader(e.target.value)}
-              />
-              {searchQuery && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {searching ? (
-                    <div className="p-3 text-sm text-slate-500 text-center">Buscando...</div>
-                  ) : searchResults.length > 0 ? (
-                    searchResults.map((member) => (
+          )}
+
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400" />
+            </div>
+            <input
+              type="text"
+              className={`${inputClass} pl-10`}
+              placeholder={values.leaders.length ? 'Adicionar outro líder...' : 'Buscar membro...'}
+              value={searchQuery}
+              onChange={(e) => handleSearchLeader(e.target.value)}
+            />
+            {searchQuery && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {searching ? (
+                  <div className="p-3 text-sm text-slate-500 text-center">Buscando...</div>
+                ) : searchResults.length > 0 ? (
+                  searchResults.map((member) => {
+                    const jaEscolhido = values.leaders.some((l) => l.id === member.id);
+                    return (
                       <button
                         key={member.id}
                         type="button"
+                        disabled={jaEscolhido}
                         onClick={() => {
                           set({
-                            leaderId: member.id,
-                            leaderName: member.fullName,
-                            leaderPhone: member.mobile || member.phone || '',
+                            leaders: [
+                              ...values.leaders,
+                              {
+                                id: member.id,
+                                name: member.fullName,
+                                phone: member.mobile || member.phone || '',
+                              },
+                            ],
                           });
                           setSearchQuery('');
                           setSearchResults([]);
                         }}
-                        className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                        className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0 disabled:opacity-40 disabled:hover:bg-white"
                       >
                         <User className="w-5 h-5 text-slate-400" />
                         <div>
                           <p className="text-sm font-semibold text-slate-900">{member.fullName}</p>
-                          <p className="text-xs text-slate-500">{member.email || member.mobile}</p>
+                          <p className="text-xs text-slate-500">
+                            {jaEscolhido ? 'Já é líder deste GF' : member.email || member.mobile}
+                          </p>
                         </div>
                       </button>
-                    ))
-                  ) : (
-                    <div className="p-3 text-sm text-slate-500 text-center">Nenhum membro encontrado.</div>
-                  )}
-                </div>
-              )}
-            </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-3 text-sm text-slate-500 text-center">Nenhum membro encontrado.</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {values.leaders.length > 1 && (
+            <p className="mt-1.5 text-xs text-slate-500">
+              Os avisos do grupo vão para <strong>{values.leaders[0].name}</strong>, o líder principal.
+            </p>
           )}
         </div>
 

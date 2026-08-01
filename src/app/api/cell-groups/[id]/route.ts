@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { cellGroupDataFromBody, assignCellGroupTag } from "@/lib/cellGroupService";
+import { cellGroupDataFromBody, leaderIdsFromBody, syncCellGroupLeaders } from "@/lib/cellGroupService";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async () => {
@@ -12,6 +12,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where: { id },
       include: {
         leader: { select: { fullName: true, mobile: true, phone: true } },
+        leaders: {
+          orderBy: { position: "asc" },
+          include: { member: { select: { id: true, fullName: true, mobile: true, phone: true } } },
+        },
         members: {
           where: { isActive: true },
           include: { member: { select: { id: true, fullName: true, photoUrl: true, mobile: true } } },
@@ -36,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!existing) return NextResponse.json({ error: "GF não encontrado" }, { status: 404 });
 
     const updated = await prisma.cellGroup.update({ where: { id }, data });
-    if (updated.leaderId) await assignCellGroupTag(id, updated.leaderId);
+    await syncCellGroupLeaders(id, leaderIdsFromBody(body));
 
     return NextResponse.json(serializeBigInts(updated));
   });

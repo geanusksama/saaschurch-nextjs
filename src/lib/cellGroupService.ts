@@ -103,6 +103,77 @@ export async function assignCellGroupTag(cellGroupId: string, memberId: string) 
   })
 }
 
+/**
+ * Lê a lista de líderes do corpo do formulário.
+ *
+ * Aceita `leaderIds` (a lista nova) e continua aceitando `leaderId` sozinho,
+ * que é o que as telas antigas mandam. Remove repetidos e vazios preservando a
+ * ordem — a ordem importa: o PRIMEIRO é o líder principal, é o número dele que
+ * recebe o aviso do grupo.
+ */
+export function leaderIdsFromBody(body: Record<string, unknown>): string[] {
+  // `leaders` é o formato do formulário ([{ id, name, phone }]), `leaderIds` é
+  // a lista crua, e `leaderId` é o campo único das telas antigas.
+  let brutos: unknown[]
+  if (Array.isArray(body.leaders)) {
+    brutos = body.leaders.map((l) => (l && typeof l === 'object' ? (l as { id?: unknown }).id : l))
+  } else if (Array.isArray(body.leaderIds)) {
+    brutos = body.leaderIds
+  } else {
+    brutos = [body.leaderId]
+  }
+
+  const limpos: string[] = []
+  for (const item of brutos) {
+    const id = String(item ?? '').trim()
+    if (id && !limpos.includes(id)) limpos.push(id)
+  }
+  return limpos
+}
+
+/**
+ * Deixa a tabela de líderes igual à lista recebida: entra quem faltava, sai
+ * quem foi removido, e a posição reflete a ordem da tela.
+ *
+ * Também sincroniza `cell_groups.leader_id` com o primeiro da lista, porque é
+ * ele que as telas antigas e o aviso por WhatsApp usam. Devolve os ids para
+ * quem precisa marcar a tag do GF.
+ */
+export async function syncCellGroupLeaders(cellGroupId: string, leaderIds: string[]) {
+  const atuais = await prisma.cellGroupLeader.findMany({
+    where: { cellGroupId },
+    select: { memberId: true },
+  })
+  const atuaisIds = atuais.map((l) => l.memberId)
+
+  const removidos = atuaisIds.filter((id) => !leaderIds.includes(id))
+  if (removidos.length) {
+    await prisma.cellGroupLeader.deleteMany({
+      where: { cellGroupId, memberId: { in: removidos } },
+    })
+  }
+
+  for (let i = 0; i < leaderIds.length; i++) {
+    await prisma.cellGroupLeader.upsert({
+      where: { cellGroupId_memberId: { cellGroupId, memberId: leaderIds[i] } },
+      create: { cellGroupId, memberId: leaderIds[i], position: i },
+      update: { position: i },
+    })
+  }
+
+  // o campo antigo acompanha o principal (ou zera se não sobrou ninguém)
+  await prisma.cellGroup.update({
+    where: { id: cellGroupId },
+    data: { leaderId: leaderIds[0] ?? null },
+  })
+
+  // a tag do GF fica no perfil de quem lidera; quem saiu perde a tag
+  for (const id of leaderIds) await assignCellGroupTag(cellGroupId, id)
+  for (const id of removidos) await removeCellGroupTag(cellGroupId, id)
+
+  return leaderIds
+}
+
 export async function removeCellGroupTag(cellGroupId: string, memberId: string) {
   const tag = await prisma.memberTag.findFirst({ where: { cellGroupId } })
   if (!tag) return

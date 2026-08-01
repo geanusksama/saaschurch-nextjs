@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Search, Users, Calendar, TrendingUp, User, Network, X, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
-import { CellForm, EMPTY_CELL_FORM, type CellFormValues } from './cells/CellForm';
+import { CellForm, EMPTY_CELL_FORM, leadersFromApi, type CellFormValues } from './cells/CellForm';
 import { AlertDialog, ConfirmDialog } from './shared/ConfirmDialog';
 import { usePermissions } from '../../lib/usePermissions';
 
@@ -83,9 +83,7 @@ export function CellGroups() {
       network: cell.cellType ?? EMPTY_CELL_FORM.network,
       color: cell.color ?? EMPTY_CELL_FORM.color,
       photo: cell.photo ?? '',
-      leaderId: cell.leaderId ?? null,
-      leaderName: cell.leader?.fullName ?? '',
-      leaderPhone: cell.leader?.mobile ?? cell.leader?.phone ?? '',
+      leaders: leadersFromApi(cell),
       addressStreet: cell.addressStreet ?? '',
       addressNumber: cell.addressNumber ?? '',
       addressComplement: cell.addressComplement ?? '',
