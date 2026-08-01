@@ -47,6 +47,23 @@ interface Mensagem {
   sources?: { sectionId: string; articleId: string; title: string }[];
 }
 
+/**
+ * Sugestões iniciais, usadas enquanto ninguém perguntou nada ainda. Depois a
+ * tela passa a mostrar o que de fato se pergunta (vindo do cache).
+ */
+const PERGUNTAS_SUGERIDAS = [
+  'Como cadastro um novo membro?',
+  'Como coloco uma pessoa em um GF?',
+  'Por que não consigo colocar alguém em dois GFs?',
+  'Como vejo quem ainda está sem GF?',
+  'O que o líder do GF recebe quando eu anexo alguém?',
+  'Como gero o parecer de consolidação em PDF?',
+  'Como crio uma campanha de atualização de foto?',
+  'Como envio WhatsApp para uma regional inteira?',
+  'Por que um menu sumiu para um usuário?',
+  'Como fecho o caixa do mês?',
+];
+
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') ?? '' : '';
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -370,6 +387,15 @@ function ChatIa({ onAbrirArtigo }: { onAbrirArtigo: (sectionId: string, articleI
   const [pergunta, setPergunta] = useState('');
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [pensando, setPensando] = useState(false);
+  /** As que mais se pergunta, vindas do cache — evitam gastar IA de novo. */
+  const [frequentes, setFrequentes] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch('/api/help/ask', { headers: authHeaders() })
+      .then(r => (r.ok ? r.json() : { perguntas: [] }))
+      .then(d => setFrequentes(Array.isArray(d.perguntas) ? d.perguntas : []))
+      .catch(() => setFrequentes([]));
+  }, []);
   const fimRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -422,12 +448,13 @@ function ChatIa({ onAbrirArtigo }: { onAbrirArtigo: (sectionId: string, articleI
         {!mensagens.length ? (
           <div className="py-10 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">Escreva sua dúvida com suas palavras.</p>
+            {frequentes.length > 0 && (
+              <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                Mais perguntadas
+              </p>
+            )}
             <div className="mt-4 space-y-1.5">
-              {[
-                'Como crio uma campanha de atualização de foto?',
-                'Por que um menu sumiu para um usuário?',
-                'Como envio WhatsApp para uma regional inteira?',
-              ].map(ex => (
+              {(frequentes.length ? frequentes : PERGUNTAS_SUGERIDAS).map(ex => (
                 <button
                   key={ex}
                   onClick={() => setPergunta(ex)}

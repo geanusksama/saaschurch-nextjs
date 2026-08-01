@@ -5,6 +5,13 @@ import { generateAiText, type ChatTurn } from '@/lib/aiReplyService'
 import { filterHelpSections, helpCorpus, searchHelp, type HelpSection } from '@/lib/helpContent'
 import { mergeModules, type ProfileKey } from '@/app-ui/system/permissionCatalog'
 import { resolvePermission } from '@/lib/resolvePermission'
+import {
+  lookupCachedAnswer,
+  normalizeQuestion,
+  perguntasFrequentes,
+  saveAnswer,
+  scopeHash,
+} from '@/lib/helpAiCache'
 
 /**
  * POST /api/help/ask — a IA da Central de Ajuda.
@@ -32,7 +39,10 @@ const MAX_HISTORICO = 6
  * Usa a mesma resolução do menu (`resolvePermission`), com a matriz salva
  * mesclada ao catálogo do código.
  */
-async function documentacaoDoUsuario(user: AuthUser): Promise<HelpSection[]> {
+async function documentacaoDoUsuario(user: AuthUser): Promise<{
+  secoes: HelpSection[]
+  permKeys: string[]
+}> {
   let salva = null
   try {
     const row = await prisma.setting.findFirst({
@@ -46,8 +56,9 @@ async function documentacaoDoUsuario(user: AuthUser): Promise<HelpSection[]> {
   const modules = mergeModules(salva)
   const userOverrides = (user.permissions ?? {}) as Record<string, boolean>
 
-  return filterHelpSections((permKey) =>
-    resolvePermission({
+  const permKeys: string[] = []
+  const secoes = filterHelpSections((permKey) => {
+    const pode = resolvePermission({
       key: permKey,
       action: 'view',
       profileType: user.profileType as ProfileKey,
@@ -55,7 +66,11 @@ async function documentacaoDoUsuario(user: AuthUser): Promise<HelpSection[]> {
       userOverrides,
       userRoleId: user.roleId,
     })
-  )
+    if (pode) permKeys.push(permKey)
+    return pode
+  })
+
+  return { secoes, permKeys }
 }
 
 function montarPrompt(pergunta: string, secoes: HelpSection[]): string {
@@ -103,7 +118,18 @@ export async function POST(req: NextRequest) {
       .map(m => ({ role: m.role as 'user' | 'assistant', content: String(m.content).slice(0, 2000) }))
 
     // corte por permissão ANTES de montar o prompt
-    const secoes = await documentacaoDoUsuario(user)
+    const { secoes, permKeys } = await documentacaoDoUsuario(user)
+
+    // O cache vale só para a primeira pergunta da conversa: com histórico, a
+    // resposta depende do que veio antes e deixa de ser a mesma para todos.
+    const escopo = scopeHash(user.profileType, permKeys)
+    const perguntaNorm = normalizeQuestion(pergunta)
+    if (!historico.length) {
+      const cacheada = await lookupCachedAnswer(perguntaNorm, escopo).catch(() => null)
+      if (cacheada) {
+        return NextResponse.json({ ...cacheada, cached: true })
+      }
+    }
 
     try {
       const answer = await generateAiText(user.campoId, montarPrompt(pergunta, secoes), [
@@ -111,15 +137,21 @@ export async function POST(req: NextRequest) {
         { role: 'user', content: pergunta },
       ])
 
-      return NextResponse.json({
-        answer: answer.trim(),
-        // os artigos usados viram atalhos clicáveis no painel
-        sources: searchHelp(pergunta, 3, secoes).map(h => ({
-          sectionId: h.section.id,
-          articleId: h.article.id,
-          title: h.article.title,
-        })),
-      })
+      const resposta = answer.trim()
+      // os artigos usados viram atalhos clicáveis no painel
+      const sources = searchHelp(pergunta, 3, secoes).map(h => ({
+        sectionId: h.section.id,
+        articleId: h.article.id,
+        title: h.article.title,
+      }))
+
+      if (!historico.length && resposta) {
+        // gravar não pode atrasar a resposta nem derrubá-la
+        saveAnswer({ question: pergunta, questionNorm: perguntaNorm, scope: escopo, answer: resposta, sources })
+          .catch(err => console.error('[help/ask] falha ao cachear', err))
+      }
+
+      return NextResponse.json({ answer: resposta, sources })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao consultar a IA'
       // sem chave configurada não é erro do usuário: a busca por texto continua servindo
@@ -128,5 +160,18 @@ export async function POST(req: NextRequest) {
         { status: 503 }
       )
     }
+  })
+}
+
+/**
+ * GET /api/help/ask — as perguntas mais feitas por quem enxerga a mesma
+ * documentação. Alimenta os atalhos da tela, para a pessoa não precisar
+ * escrever (nem gastar IA) para uma dúvida que já foi respondida.
+ */
+export async function GET(req: NextRequest) {
+  return withAuth(req, async (user) => {
+    const { permKeys } = await documentacaoDoUsuario(user)
+    const perguntas = await perguntasFrequentes(scopeHash(user.profileType, permKeys)).catch(() => [])
+    return NextResponse.json({ perguntas })
   })
 }

@@ -22,6 +22,7 @@ Bem-vindo ao centro de documentação unificado do **SaasChurch**. Este reposit�
 * [Módulo de Secretaria Eclesiástica](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/secretaria.md) — Documentação da gestão de membros, pipeline Kanban de processos, matriz de decisões e emissão de credenciais.
 * [Integração de Pagamentos com Stripe](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/strip.md) — PRD para doações recorrentes, assinaturas, fluxos de compras no app e webhooks do Stripe.
 * [Listas Auxiliares (Lookups) — CRUD Genérico](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/configuracoes-listas.md) — Manutenção das listas que alimentam dropdowns (plano de contas, formas de pagamento, tipos de documento, centros de custo, funções, títulos) e como registrar uma lista nova.
+* [GF (Grupos Familiares)](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/modules/gf-grupos-familiares.md) — Cadastro com CEP/mapa, anexação de membros e de contatos importados com trava de um GF por pessoa, tags no perfil, aviso ao líder por WhatsApp com síntese da IA e link público, e parecer de consolidação em PDF.
 
 ### 💬 Comunicação e WhatsApp (`docs/whatsapp-system/`)
 * [Sistema WhatsApp do SaaS Church](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/whatsapp-system/README.md) — Documentação consolidada da integração Z-API, endpoints, banco de dados, fluxos, regras críticas e resumo para outra IA.

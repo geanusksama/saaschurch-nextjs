@@ -61,7 +61,7 @@ O menu da esquerda é dividido em blocos:
 - **Secretaria** — o cadastro dos membros e tudo que gira em torno dele: pipeline, batismo, consagração, transferência, credenciais, requerimentos, campanhas, presença e relatórios.
 - **Gestão Pastoral** — acompanhamento de visitantes e novos convertidos, discipulado, envio em massa e cronograma.
 - **Ministérios** — departamentos, equipes e escalas de serviço.
-- **GF (Grupos Familiares)** — as células e os relatórios de reunião.
+- **GF (Grupos Familiares)** — os grupos que se reúnem nas casas e quem participa de cada um.
 - **Comunicação** — caixa de entrada do WhatsApp e as instâncias conectadas.
 - **Eventos** — agenda, ingressos, check-in e Pão Diário.
 - **App Móvel** — tudo que alimenta o aplicativo do membro.
@@ -626,18 +626,88 @@ Serve para o rodízio não depender do grupo de WhatsApp e da memória de algué
     id: 'gf',
     icon: 'Home',
     title: 'GF (Grupos Familiares)',
-    description: 'As células, os encontros e os relatórios de reunião.',
+    description: 'Os grupos que se reúnem nas casas, quem participa e quem ainda está sem grupo.',
     articles: [
       {
         id: 'gf',
         permKey: 'cells',
-        summary: 'Os grupos, o anfitrião, o líder e os participantes.',
+        summary: 'Cadastrar o grupo, o líder e o endereço no mapa.',
         title: 'Todos os GF',
-        keywords: ['célula', 'grupo familiar', 'anfitrião', 'líder', 'encontro'],
+        keywords: ['célula', 'grupo familiar', 'líder', 'encontro', 'cep', 'mapa'],
         body: `
-Cadastro dos Grupos Familiares: onde se reúnem, em que dia, quem lidera, quem hospeda e quem participa.
+A lista mostra cada GF com o líder, a rede, o dia da reunião e **quantas pessoas** o grupo tem. Clique na linha para abrir o grupo; os ícones à direita editam ou excluem.
 
-Os participantes vêm do cadastro de membros; visitantes do grupo podem ser registrados como contatos.
+**Novo GF** abre um formulário na própria tela. O endereço se preenche pelo **CEP** — digite e clique na lupa. Depois use **Localizar no mapa** para marcar o ponto exato: é a coordenada, não o texto, que o sistema usa para calcular distância.
+
+Cor e imagem servem para o líder reconhecer o grupo de relance nas telas e no resumo que ele recebe.
+
+Excluir um GF **não apaga ninguém**: as pessoas dele voltam para a fila de quem está sem grupo.
+`,
+      },
+      {
+        id: 'gf-anexar-pessoas',
+        permKey: 'cell_group_members',
+        summary: 'Trazer gente do cadastro ou de uma lista importada para o grupo.',
+        title: 'Anexar pessoas ao GF',
+        keywords: ['participante', 'membro do gf', 'lista importada', 'csv', 'sem gf', 'transferir'],
+        body: `
+Dentro do GF, **Anexar pessoas** abre duas abas:
+
+- **Membros** — busca no cadastro pelo nome.
+- **Listas importadas** — escolhe um arquivo já importado, filtra por período e marca **"Só quem está sem GF"** para ver apenas quem ainda não foi encaminhado.
+
+**Ninguém participa de dois grupos ao mesmo tempo.** Se a pessoa já estiver em outro GF, o sistema avisa e pergunta se você quer transferir. Ao transferir, a saída do grupo anterior fica registrada — dá para saber depois por quanto tempo ela ficou em cada um.
+
+As duas origens aparecem juntas em **Pessoas do GF**, com a etiqueta dizendo de onde cada uma veio. O contato de lista importada ainda não é membro do cadastro; ele entra no grupo do mesmo jeito.
+`,
+      },
+      {
+        id: 'gf-aviso-lider',
+        permKey: 'cell_group_members',
+        summary: 'O que o líder recebe no WhatsApp quando alguém é encaminhado.',
+        title: 'O aviso que vai para o líder',
+        keywords: ['whatsapp', 'resumo', 'link', 'consolidação', 'ia'],
+        body: `
+Assim que alguém é anexado, o **líder do GF recebe uma mensagem no WhatsApp** com:
+
+- o nome e o telefone de quem está chegando;
+- um **resumo do que já foi conversado** com essa pessoa, escrito pela IA a partir do histórico do WhatsApp;
+- o aviso de "ainda não respondeu", quando for o caso, com quantas tentativas já houve;
+- um **link** para o resumo completo.
+
+O link abre sem login — quem tem o endereço vê. Ele mostra só aquela pessoa, nunca o grupo inteiro nem o cadastro da igreja. Na lista de **Pessoas do GF**, o ícone de documento ao lado de cada nome abre esse mesmo resumo.
+
+A ideia é simples: o líder não deve começar do zero uma conversa que a igreja já teve.
+
+Se o WhatsApp falhar no momento do envio, **a pessoa continua anexada** — só o aviso não chega. O link continua acessível pelo ícone na lista.
+`,
+      },
+      {
+        id: 'gf-tags',
+        permKey: 'cells',
+        summary: 'A etiqueta colorida que aparece no perfil de quem participa.',
+        title: 'Tags do GF no perfil',
+        keywords: ['tag', 'etiqueta', 'badge', 'perfil'],
+        body: `
+Cada GF tem uma tag própria, criada junto com o grupo e com a cor dele. Quem entra no grupo recebe essa etiqueta no **perfil do membro**; quem sai, perde.
+
+Serve para bater o olho no perfil e saber de que grupo a pessoa faz parte, sem abrir o módulo de GF.
+`,
+      },
+      {
+        id: 'gf-parecer-pdf',
+        permKey: 'whatsapp_campaigns',
+        summary: 'Relatório em PDF com a análise da conversa de cada contato.',
+        title: 'Parecer de consolidação (PDF)',
+        keywords: ['relatório', 'pdf', 'parecer', 'envio em massa', 'ia'],
+        body: `
+Em **Gestão Pastoral → Envio em Massa**, o botão **Parecer PDF** gera um relatório dos contatos listados (ou só dos que você marcar).
+
+Para cada pessoa o PDF traz: se está em algum GF e com qual líder, a síntese da conversa, pontos positivos e negativos, quantas tentativas de contato ficaram sem resposta, os links enviados, se o endereço da igreja já foi mandado, o que poderia ter sido feito melhor e o motivo provável de ela ainda não estar em um grupo.
+
+Vale para qualquer Fonte (Membros, Pipeline ou Listas importadas) — o que amarra a análise é o telefone, porque é por ele que se acha a conversa.
+
+**Limite de 40 contatos por relatório.** Cada pessoa é uma análise da IA, e acima disso a geração não termina a tempo. Marque em lotes.
 `,
       },
     ],
