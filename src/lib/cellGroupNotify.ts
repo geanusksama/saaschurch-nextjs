@@ -12,13 +12,23 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { quickSendWhatsApp } from '@/lib/whatsappSendService'
 import { buildGfContactReport } from '@/lib/gfContactReportService'
 
+const APP_URL_PADRAO = 'https://www.adcampinas.com.br'
+
 /**
- * `origin` vem da requisição que anexou a pessoa. Sem ele, testar no localhost
- * geraria um link para o domínio de produção — onde o resumo daquele contato
- * ainda não existe, e o líder receberia um 404.
+ * Endereço do resumo que vai para o WhatsApp do líder.
+ *
+ * `origin` (a requisição que anexou a pessoa) serve para o link nascer no
+ * domínio certo em preview. Mas quando a anexação parte de um `npm run dev`, a
+ * origem é `localhost` — e localhost NÃO abre no celular de ninguém. Nesse caso
+ * o link cai no domínio público: quem recebe é uma pessoa de verdade, e mandar
+ * um endereço que só funciona na máquina de quem anexou é pior do que não
+ * mandar link nenhum.
  */
 export function gfResumoPublicUrl(token: string, origin?: string | null): string {
-  const base = (origin || process.env.NEXT_PUBLIC_APP_URL || 'https://www.adcampinas.com.br').replace(/\/+$/, '')
+  const local = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:\d+)?$/i.test(origin ?? '')
+  const base = (
+    (!origin || local ? process.env.NEXT_PUBLIC_APP_URL || APP_URL_PADRAO : origin)
+  ).replace(/\/+$/, '')
   return `${base}/gf-resumo/${token}`
 }
 

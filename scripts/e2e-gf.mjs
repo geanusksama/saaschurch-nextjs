@@ -272,6 +272,15 @@ async function main() {
   const url = gfResumoPublicUrl(share.token)
   check('link público aponta para /gf-resumo/<token>', url.includes(`/gf-resumo/${share.token}`), url)
 
+  // Quem recebe é uma pessoa de verdade: link de localhost não abre no celular
+  // dela, então anexar rodando local tem que gerar o domínio público mesmo.
+  const deLocal = gfResumoPublicUrl(share.token, 'http://localhost:3000')
+  check('anexar pelo localhost NÃO gera link de localhost', !deLocal.includes('localhost'), deLocal)
+  check('link do localhost cai no domínio público', deLocal.startsWith('http') && deLocal.includes('/gf-resumo/'))
+
+  const dePreview = gfResumoPublicUrl(share.token, 'https://preview-abc.vercel.app')
+  check('preview mantém o próprio domínio', dePreview.startsWith('https://preview-abc.vercel.app/gf-resumo/'), dePreview)
+
   const [porToken] = await sql(`SELECT contact_phone FROM cell_group_share_links WHERE token = '${share.token}'::uuid`)
   check('token abre exatamente um contato', porToken?.contact_phone === TELEFONE)
 
