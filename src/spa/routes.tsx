@@ -196,6 +196,7 @@ import PastoralTimelinePublic from "../components/public/PastoralTimelinePublic"
 import MembershipFormPublic from "../components/public/MembershipFormPublic";
 import CampanhaFormPublic from "../components/public/CampanhaFormPublic";
 import GfResumoPublic from "../components/public/GfResumoPublic";
+import { GfPublicList } from "../components/public/GfPublicList";
 
 // Portal Membro
 import { MembroProvider } from "../components/membro/MembroProvider";
@@ -309,6 +310,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: PublicHome },
       { path: "peniel", Component: PenielPublicPage },
+      { path: "gf", Component: GfPublicList },
     ]
   },
   // Portal standalone pages (opened from CMSDashboard preview or direct link)

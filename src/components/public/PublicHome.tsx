@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby, Clock } from 'lucide-react';
+import { User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby, Clock, Home as HomeIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MembroLogin } from '../membro/MembroLogin';
 import { MembroProvider } from '../membro/MembroProvider';
@@ -580,7 +580,18 @@ export function PublicHome() {
             </div>
           </button>
 
-          {/* 3. Instalar o app — só aparece se o navegador permitir instalar
+          {/* 3. Grupos Familiares — lista pública com líder, endereço, mapa e distância */}
+          <Link to="/gf" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
+            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-emerald-400 transition-colors ${border}`}>
+              <HomeIcon className={`w-6 h-6 group-hover:text-emerald-400 transition-colors ${iconColor}`} />
+            </div>
+            <div className="flex flex-col justify-center min-h-[3.5rem]">
+              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Grupos Familiares</h3>
+              <p className={`text-xs leading-relaxed ${textSub}`}>Encontre um GF perto de você<br />e conheça o líder e o horário.</p>
+            </div>
+          </Link>
+
+          {/* 4. Instalar o app — só aparece se o navegador permitir instalar
               e o app ainda não estiver instalado */}
           <InstallAppCard isDark={isDark} />
 
