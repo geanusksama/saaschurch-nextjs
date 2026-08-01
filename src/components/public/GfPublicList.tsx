@@ -85,7 +85,7 @@ function paletteFor(gf: GfItem, index: number) {
 // preserveAspectRatio="none"), sem precisar calcular pixel nenhum.
 const PHOTO_ANCHOR = { x: 28, y: 28 };
 // `width` é % da largura do quadro (não px) para o card encolher inteiro
-// quando a estrela fica menor em telas estreitas.
+// quando a coluna fica mais estreita no celular.
 const TAGS_LAYOUT = [
   { key: 'name', icon: Tag, label: 'Nome', box: { left: 48, top: 2, width: 50 }, anchor: { x: 48, y: 8 }, rotate: -3 },
   { key: 'leader', icon: Users, label: 'Líder', box: { left: 52, top: 26, width: 50 }, anchor: { x: 52, y: 32 }, rotate: 2 },
@@ -93,28 +93,8 @@ const TAGS_LAYOUT = [
   { key: 'address', icon: MapPin, label: 'Endereço', box: { left: 24, top: 72, width: 58 }, anchor: { x: 32, y: 78 }, rotate: 3 },
 ] as const;
 
-/** Inclinação de cada quadro na estrela — dá o ar de "colado torto". */
+/** Inclinação de cada quadro — dá o ar de "colado torto" no mural. */
 const STAR_TILT = [-6, 5, -3, 7, -8, 4];
-
-/**
- * Posição (em % do container) do GF `i` de `total`, em volta da sede.
- *
- * A elipse é mais larga que alta de propósito: o quadro do GF é alto
- * (aspect 3/4), então espalhar na horizontal evita que ele cubra a sede.
- * Com 1 ou 2 GFs o círculo colocaria os quadros em cima/embaixo do centro —
- * exatamente onde eles se sobrepõem —, então esses casos vão para os lados.
- */
-function starPoint(i: number, total: number) {
-  const raioX = 34;
-  const raioY = 30;
-  if (total <= 2) {
-    // um à direita, outro à esquerda
-    const angulo = i === 0 ? 0 : Math.PI;
-    return { x: 50 + raioX * Math.cos(angulo), y: 50 };
-  }
-  const angulo = (i / total) * Math.PI * 2 - Math.PI / 2;
-  return { x: 50 + raioX * Math.cos(angulo), y: 50 + raioY * Math.sin(angulo) };
-}
 
 function BoardTag({
   icon: Icon, label, value, accent, box, rotate, onClick, href, destaque,
@@ -211,6 +191,8 @@ export function GfPublicList() {
     subtitulo?: string;
     accent?: string;
     lideres?: Array<{ name: string; phone: string | null; photoUrl: string | null }>;
+    /** o GF de origem — habilita o mapa e o "Quero participar" dentro do celular */
+    gf?: GfItem;
   } | null>(null);
   /** GF sob o mouse — os outros desbotam para destacar este */
   const [hoverGf, setHoverGf] = useState<string | null>(null);
@@ -414,6 +396,181 @@ export function GfPublicList() {
     setBalao({ index: chegada.destino, km: chegada.km });
   };
 
+  /**
+   * Um GF: o quadro com a foto pinada e as etiquetas em volta.
+   *
+   * Vive numa função (e não inline no JSX) porque as duas colunas chamam o
+   * mesmo desenho — os índices PARES vão para a esquerda e os ÍMPARES para a
+   * direita, e a lista cresce sozinha por mais GFs que existam.
+   */
+  function renderGf(gf: GfItem, index: number) {
+    const pal = paletteFor(gf, index);
+    const address = formatAddress(gf);
+    const giro = STAR_TILT[index % STAR_TILT.length];
+    const emFoco = hoverGf === gf.id;
+
+    const values: Partial<Record<typeof TAGS_LAYOUT[number]['key'], React.ReactNode>> = {
+      name: gf.name,
+      leader: gf.leaders?.length ? gf.leaders.map((l) => l.name).join(' e ') : gf.leaderName,
+      time: [gf.meetingDay, gf.meetingTime].filter(Boolean).join(' às ') || null,
+      address: address || null,
+    };
+
+    return (
+      <div
+        key={gf.id}
+        ref={(el) => { cardRefs.current[gf.id] = el; }}
+        onMouseEnter={() => setHoverGf(gf.id)}
+        onMouseLeave={() => setHoverGf(null)}
+        // ao passar o mouse o quadro endireita e cresce; os outros desbotam
+        className="w-full max-w-[210px] transition-all duration-300"
+        style={{
+          transform: `rotate(${emFoco ? 0 : giro}deg) scale(${emFoco ? 1.08 : 1})`,
+          zIndex: emFoco ? 25 : 10,
+          opacity: hoverGf && !emFoco ? 0.5 : 1,
+          filter: hoverGf && !emFoco ? 'saturate(0.6)' : 'none',
+        }}
+      >
+        <div className="relative aspect-[3/4]">
+          {/* mancha colorida só atrás da foto */}
+          <div
+            className="absolute rounded-2xl pointer-events-none"
+            style={{
+              left: '2%', top: '6%', width: '54%', height: '44%',
+              background: pal.card,
+              backgroundImage: `radial-gradient(${pal.accent}18 1px, transparent 1px)`,
+              backgroundSize: '14px 14px',
+            }}
+          />
+
+          {/* barbantes da foto até as etiquetas */}
+          <svg className="absolute inset-0 w-full h-full z-0 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {TAGS_LAYOUT.filter((t) => values[t.key]).map((t) => (
+              <line
+                key={t.key}
+                x1={PHOTO_ANCHOR.x} y1={PHOTO_ANCHOR.y}
+                x2={t.anchor.x} y2={t.anchor.y}
+                stroke={pal.accent}
+                strokeWidth={0.6}
+                strokeDasharray="1.6 1.6"
+                strokeLinecap="round"
+                opacity={0.55}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </svg>
+
+          {gf.cellType && (
+            <span
+              className="absolute top-0 right-0 z-20 -rotate-3 px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide text-white shadow-sm"
+              style={{ background: pal.accent }}
+            >
+              {gf.cellType}
+            </span>
+          )}
+
+          {gf.distanceKm !== undefined && gf.distanceKm !== null && (
+            <span
+              className="absolute bottom-0 right-0 z-20 px-2 py-0.5 rounded-full text-[9px] font-bold text-white shadow-sm"
+              style={{ background: pal.accent }}
+            >
+              {gf.distanceKm.toFixed(1).replace('.', ',')} km
+            </span>
+          )}
+
+          {/* pino: clicar leva o carrinho até este GF */}
+          <button
+            type="button"
+            onClick={() => viajarPara(index + 1)}
+            disabled={traveling || carIndex === index + 1}
+            title="Levar o carrinho até este GF"
+            className="absolute z-30 w-7 h-7 rounded-full text-white border-2 border-white shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-40 disabled:hover:scale-100"
+            style={{ left: '2%', top: '2%', background: pal.accent }}
+          >
+            <MapPin size={13} />
+          </button>
+
+          {/* foto pinada — clicar amplia no formato de celular */}
+          <button
+            type="button"
+            onClick={() => setZoomFoto({
+              src: gf.photo || '/adcampinas.png',
+              nome: gf.name,
+              subtitulo: [gf.cellType, [gf.meetingDay, gf.meetingTime].filter(Boolean).join(' às ')]
+                .filter(Boolean).join(' · '),
+              accent: pal.accent,
+              lideres: gf.leaders?.length
+                ? gf.leaders
+                : gf.leaderName
+                  ? [{ name: gf.leaderName, phone: gf.leaderPhone, photoUrl: gf.leaderPhotoUrl }]
+                  : [],
+              gf,
+            })}
+            title="Ampliar"
+            className="absolute z-10 hover:scale-105 transition-transform"
+            style={{ left: '8%', top: '10%', width: '34%' }}
+          >
+            <div className="relative aspect-square -rotate-6">
+              <div className="w-full h-full rounded-full overflow-hidden border-[3px] border-white shadow-lg bg-white">
+                {gf.photo ? (
+                  <img src={gf.photo} alt={gf.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: pal.soft }}>
+                    <ImageOff size={18} style={{ color: pal.accent, opacity: 0.6 }} />
+                  </div>
+                )}
+              </div>
+              <span
+                className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white shadow"
+                style={{ background: pal.accent }}
+              />
+            </div>
+          </button>
+
+          {values.name && (
+            <BoardTag
+              icon={TAGS_LAYOUT[0].icon} label={TAGS_LAYOUT[0].label} box={TAGS_LAYOUT[0].box} rotate={TAGS_LAYOUT[0].rotate}
+              value={values.name} accent={pal.accent}
+            />
+          )}
+          {values.leader && (
+            <BoardTag
+              icon={TAGS_LAYOUT[1].icon} label={TAGS_LAYOUT[1].label} box={TAGS_LAYOUT[1].box} rotate={TAGS_LAYOUT[1].rotate}
+              value={values.leader} accent={pal.accent}
+              // o link vai para o líder PRINCIPAL (o primeiro da lista)
+              href={gf.leaderPhone ? `https://wa.me/55${gf.leaderPhone.replace(/\D/g, '')}` : undefined}
+            />
+          )}
+          {values.time && (
+            <BoardTag
+              icon={TAGS_LAYOUT[2].icon} label={TAGS_LAYOUT[2].label} box={TAGS_LAYOUT[2].box} rotate={TAGS_LAYOUT[2].rotate}
+              value={values.time} accent={pal.accent}
+            />
+          )}
+          {values.address && (
+            <BoardTag
+              icon={TAGS_LAYOUT[3].icon} label={TAGS_LAYOUT[3].label} box={TAGS_LAYOUT[3].box} rotate={TAGS_LAYOUT[3].rotate}
+              value={values.address} accent={pal.accent} destaque onClick={() => setMapGroup(gf)}
+            />
+          )}
+        </div>
+
+        {gf.leaderPhone && (
+          <a
+            href={`https://wa.me/55${gf.leaderPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Vi o GF "${gf.name}" no site e tenho interesse em participar 🙂`)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="relative z-30 mt-2 flex items-center justify-center gap-1 w-full px-2 py-1.5 rounded-full text-[10px] font-extrabold text-white shadow hover:scale-[1.03] transition-transform"
+            style={{ background: pal.accent }}
+          >
+            <Users size={10} /> Quero participar
+          </a>
+        )}
+      </div>
+    );
+  }
+
+
   return (
     <div className="min-h-screen font-sans bg-white" style={{ colorScheme: 'light' }}>
       {/* Header */}
@@ -527,7 +684,7 @@ export function GfPublicList() {
         {/* Constelação: a SEDE no centro e os quadros dos GFs em volta, cada
             um girado num ângulo e ligado a ela. As posições saem de um
             ângulo (estrela), então serve para 1 ou para vários GFs. */}
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-7xl mx-auto">
         {loading && (
           <div className="flex justify-center py-16">
             <Loader2 className="w-7 h-7 animate-spin text-emerald-500" />
@@ -548,43 +705,43 @@ export function GfPublicList() {
         )}
 
         {!loading && !error && sortedGroups.length > 0 && (
-          <div ref={trailWrapRef} className="relative w-full aspect-[4/3]">
-            {/* Fundo com jeito de mapa: quarteirões e ruas desenhados. É
-                decoração, não um mapa geográfico de verdade — as posições dos
-                GFs aqui são a estrela, não a localização real deles. */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <rect x="0" y="0" width="100" height="100" fill="#FDFCF7" />
-              {[12, 30, 48, 66, 84].map((y) => (
-                <line key={`h${y}`} x1="0" y1={y} x2="100" y2={y} stroke="#E8E3D5" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />
+          <div ref={trailWrapRef} className="relative">
+            {/* Fundo com jeito de mapa (decoração, não é mapa geográfico:
+                as posições aqui são o layout, não a localização real). */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" preserveAspectRatio="none">
+              <rect x="0" y="0" width="100%" height="100%" fill="#FDFCF7" />
+              {Array.from({ length: 14 }).map((_, i) => (
+                <line key={`h${i}`} x1="0" y1={i * 90} x2="100%" y2={i * 90} stroke="#EDE9DC" strokeWidth={2} />
               ))}
-              {[14, 34, 52, 70, 88].map((x) => (
-                <line key={`v${x}`} x1={x} y1="0" x2={x} y2="100" stroke="#E8E3D5" strokeWidth={2.4} vectorEffect="non-scaling-stroke" />
+              {Array.from({ length: 10 }).map((_, i) => (
+                <line key={`v${i}`} x1={i * 110} y1="0" x2={i * 110} y2="100%" stroke="#EDE9DC" strokeWidth={2} />
               ))}
-              {/* uma "avenida" diagonal e um "rio" para não ficar quadriculado demais */}
-              <line x1="0" y1="96" x2="100" y2="18" stroke="#EFE9D8" strokeWidth={5} vectorEffect="non-scaling-stroke" />
-              <path d="M -2 62 Q 25 54, 46 66 T 102 58" fill="none" stroke="#DCEDF5" strokeWidth={4} vectorEffect="non-scaling-stroke" />
             </svg>
 
-            {/* raios ligando a sede a cada GF */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
-              {sortedGroups.map((gf, i) => {
-                const p = starPoint(i, sortedGroups.length);
-                return (
-                  <line
-                    key={gf.id}
-                    x1={50} y1={50} x2={p.x} y2={p.y}
-                    stroke={paletteFor(gf, i).accent}
-                    strokeWidth={1.6}
-                    strokeDasharray="3 3"
-                    strokeLinecap="round"
-                    opacity={0.45}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                );
-              })}
-            </svg>
+            {/* linhas ligando a sede a cada GF — desenhadas sobre as posições
+                MEDIDAS no DOM, então acompanham as colunas em qualquer tela */}
+            {trailPoints.length > 1 && (
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-[1]" style={{ overflow: 'visible' }}>
+                {sortedGroups.map((gf, i) => {
+                  const sedeP = trailPoints[0];
+                  const gfP = trailPoints[i + 1];
+                  if (!sedeP || !gfP) return null;
+                  return (
+                    <line
+                      key={gf.id}
+                      x1={sedeP.x} y1={sedeP.y} x2={gfP.x} y2={gfP.y}
+                      stroke={paletteFor(gf, i).accent}
+                      strokeWidth={2}
+                      strokeDasharray="4 5"
+                      strokeLinecap="round"
+                      opacity={hoverGf && hoverGf !== gf.id ? 0.15 : 0.45}
+                    />
+                  );
+                })}
+              </svg>
+            )}
 
-            {/* rastro que o carrinho está fazendo agora */}
+            {/* rastro do carrinho */}
             {traveling && rotaXY.length > 1 && (
               <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" style={{ overflow: 'visible' }}>
                 <polyline
@@ -599,7 +756,7 @@ export function GfPublicList() {
               </svg>
             )}
 
-            {/* carrinho passeando entre as paradas */}
+            {/* carrinho */}
             {trailPoints.length > 1 && trailPoints[carIndex] && (
               <motion.div
                 key={rideKey}
@@ -632,218 +789,68 @@ export function GfPublicList() {
               </motion.div>
             )}
 
-            {/* SEDE no centro da estrela — também é uma parada do carrinho */}
-            <div
-              ref={(el) => { cardRefs.current.sede = el; }}
-              className="absolute z-20 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[26%] max-w-[180px]"
-            >
-              <div className="relative rounded-2xl bg-white border-2 border-amber-300 shadow-lg p-3 text-center">
-                {/* pino: clicar traz o carrinho para a sede */}
-                <button
-                  type="button"
-                  onClick={() => viajarPara(0)}
-                  disabled={traveling || carIndex === 0}
-                  title="Trazer o carrinho para a sede"
-                  className="absolute -top-2 -left-2 z-30 w-7 h-7 rounded-full bg-amber-500 text-white border-2 border-white shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-40 disabled:hover:scale-100"
-                >
-                  <MapPin size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setZoomFoto({ src: '/adcampinas.png', nome: sede?.name ?? 'AD Campinas' })}
-                  title="Ampliar"
-                  className="mx-auto mb-2 block w-14 h-14 rounded-full overflow-hidden border-2 border-amber-200 bg-white hover:scale-105 transition-transform"
-                >
-                  <img src="/adcampinas.png" alt="" className="w-full h-full object-cover" />
-                </button>
-                <p className="text-[9px] font-extrabold uppercase tracking-wide text-amber-600">Igreja sede</p>
-                <p className="text-xs font-extrabold text-slate-800 leading-tight mt-0.5">
-                  {sede?.name ?? 'AD Campinas'}
-                </p>
-                {sedeAddress && (
+            {/* Duas colunas ao redor da sede. Os GFs vão preenchendo:
+                índice par na coluna da esquerda, ímpar na direita — então
+                cresce sozinho por mais GFs que existam. No celular vira uma
+                coluna só, com a sede em cima. */}
+            {/* `md:items-center` deixa a sede no MEIO da altura, entre todos os
+                GFs — e não colada no topo. Cada lado vira duas subcolunas nas
+                telas largas, então cabem muitos GFs sem esticar a página. */}
+            <div className="relative z-10 grid gap-x-10 gap-y-12 grid-cols-1 md:grid-cols-[1fr_auto_1fr] md:items-center px-4 py-10">
+              {/* lado esquerdo */}
+              <div className="order-2 md:order-1 grid grid-cols-1 xl:grid-cols-2 gap-x-8 gap-y-14 justify-items-center">
+                {sortedGroups.filter((_, i) => i % 2 === 0).map((gf) => renderGf(gf, sortedGroups.indexOf(gf)))}
+              </div>
+
+              {/* SEDE no centro */}
+              <div
+                ref={(el) => { cardRefs.current.sede = el; }}
+                className="order-1 md:order-2 mx-auto w-full max-w-[200px] md:self-center"
+              >
+                <div className="relative rounded-2xl bg-white border-2 border-amber-300 shadow-lg p-3 text-center">
                   <button
-                    onClick={() => setMapSede(true)}
-                    className="mt-1.5 text-[10px] font-semibold text-amber-700 hover:underline leading-snug"
+                    type="button"
+                    onClick={() => viajarPara(0)}
+                    disabled={traveling || carIndex === 0}
+                    title="Trazer o carrinho para a sede"
+                    className="absolute -top-2 -left-2 z-30 w-7 h-7 rounded-full bg-amber-500 text-white border-2 border-white shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-40 disabled:hover:scale-100"
                   >
-                    {sedeAddress}
+                    <MapPin size={13} />
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => setZoomFoto({ src: '/adcampinas.png', nome: sede?.name ?? 'AD Campinas', subtitulo: sedeAddress })}
+                    title="Ampliar"
+                    className="mx-auto mb-2 block w-14 h-14 rounded-full overflow-hidden border-2 border-amber-200 bg-white hover:scale-105 transition-transform"
+                  >
+                    <img src="/adcampinas.png" alt="" className="w-full h-full object-cover" />
+                  </button>
+                  <p className="text-[9px] font-extrabold uppercase tracking-wide text-amber-600">Igreja sede</p>
+                  <p className="text-xs font-extrabold text-slate-800 leading-tight mt-0.5">
+                    {sede?.name ?? 'AD Campinas'}
+                  </p>
+                  {sedeAddress && (
+                    <button
+                      onClick={() => setMapSede(true)}
+                      className="mt-1.5 text-[10px] font-semibold text-amber-700 hover:underline leading-snug"
+                    >
+                      {sedeAddress}
+                    </button>
+                  )}
+                  <p className="mt-2 text-[10px] font-bold text-slate-400">
+                    {sortedGroups.length} {sortedGroups.length === 1 ? 'grupo' : 'grupos'}
+                  </p>
+                </div>
+              </div>
+
+              {/* lado direito */}
+              <div className="order-3 grid grid-cols-1 xl:grid-cols-2 gap-x-8 gap-y-14 justify-items-center">
+                {sortedGroups.filter((_, i) => i % 2 === 1).map((gf) => renderGf(gf, sortedGroups.indexOf(gf)))}
               </div>
             </div>
-
-            {/* cada GF é um quadro girado numa ponta da estrela */}
-            {sortedGroups.map((gf, index) => {
-              const pal = paletteFor(gf, index);
-              const address = formatAddress(gf);
-              const p = starPoint(index, sortedGroups.length);
-              const giro = STAR_TILT[index % STAR_TILT.length];
-
-              const values: Partial<Record<typeof TAGS_LAYOUT[number]['key'], React.ReactNode>> = {
-                name: gf.name,
-                leader: gf.leaders?.length
-                  ? gf.leaders.map((l) => l.name).join(' e ')
-                  : gf.leaderName,
-                time: [gf.meetingDay, gf.meetingTime].filter(Boolean).join(' às ') || null,
-                address: address || null,
-              };
-
-              return (
-                <div
-                  key={gf.id}
-                  ref={(el) => { cardRefs.current[gf.id] = el; }}
-                  onMouseEnter={() => setHoverGf(gf.id)}
-                  onMouseLeave={() => setHoverGf(null)}
-                  // ao passar o mouse, este quadro cresce e endireita, e os
-                  // outros desbotam — o destaque fica só no que está sob o cursor
-                  className="absolute -translate-x-1/2 -translate-y-1/2 w-[27%] max-w-[200px] transition-all duration-300"
-                  style={{
-                    left: `${p.x}%`,
-                    top: `${p.y}%`,
-                    transform: `translate(-50%, -50%) rotate(${hoverGf === gf.id ? 0 : giro}deg) scale(${hoverGf === gf.id ? 1.12 : 1})`,
-                    zIndex: hoverGf === gf.id ? 25 : 10,
-                    opacity: hoverGf && hoverGf !== gf.id ? 0.45 : 1,
-                    filter: hoverGf && hoverGf !== gf.id ? 'saturate(0.6)' : 'none',
-                  }}
-                >
-                  <div className="relative aspect-[3/4]">
-                    {/* mancha colorida só atrás da foto */}
-                    <div
-                      className="absolute rounded-2xl pointer-events-none"
-                      style={{
-                        left: '2%', top: '6%', width: '54%', height: '44%',
-                        background: pal.card,
-                        backgroundImage: `radial-gradient(${pal.accent}18 1px, transparent 1px)`,
-                        backgroundSize: '14px 14px',
-                      }}
-                    />
-
-                    {/* barbantes da foto até as etiquetas */}
-                    <svg className="absolute inset-0 w-full h-full z-0 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      {TAGS_LAYOUT.filter((t) => values[t.key]).map((t) => (
-                        <line
-                          key={t.key}
-                          x1={PHOTO_ANCHOR.x} y1={PHOTO_ANCHOR.y}
-                          x2={t.anchor.x} y2={t.anchor.y}
-                          stroke={pal.accent}
-                          strokeWidth={0.6}
-                          strokeDasharray="1.6 1.6"
-                          strokeLinecap="round"
-                          opacity={0.55}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      ))}
-                    </svg>
-
-                    {gf.cellType && (
-                      <span
-                        className="absolute top-0 right-0 z-20 -rotate-3 px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide text-white shadow-sm"
-                        style={{ background: pal.accent }}
-                      >
-                        {gf.cellType}
-                      </span>
-                    )}
-
-                    {gf.distanceKm !== undefined && gf.distanceKm !== null && (
-                      <span
-                        className="absolute bottom-0 right-0 z-20 px-2 py-0.5 rounded-full text-[9px] font-bold text-white shadow-sm"
-                        style={{ background: pal.accent }}
-                      >
-                        {gf.distanceKm.toFixed(1).replace('.', ',')} km
-                      </span>
-                    )}
-
-                    {/* pino do GF: clicar leva o carrinho até aqui */}
-                    <button
-                      type="button"
-                      onClick={() => viajarPara(index + 1)}
-                      disabled={traveling || carIndex === index + 1}
-                      title="Levar o carrinho até este GF"
-                      className="absolute z-30 w-7 h-7 rounded-full text-white border-2 border-white shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-40 disabled:hover:scale-100"
-                      style={{ left: '2%', top: '2%', background: pal.accent }}
-                    >
-                      <MapPin size={13} />
-                    </button>
-
-                    {/* foto pinada — clicar amplia */}
-                    <button
-                      type="button"
-                      onClick={() => setZoomFoto({
-                        src: gf.photo || '/adcampinas.png',
-                        nome: gf.name,
-                        subtitulo: [gf.cellType, [gf.meetingDay, gf.meetingTime].filter(Boolean).join(' às ')]
-                          .filter(Boolean).join(' · '),
-                        accent: pal.accent,
-                        lideres: gf.leaders?.length
-                          ? gf.leaders
-                          : gf.leaderName
-                            ? [{ name: gf.leaderName, phone: gf.leaderPhone, photoUrl: gf.leaderPhotoUrl }]
-                            : [],
-                      })}
-                      title="Ampliar"
-                      className="absolute z-10 hover:scale-105 transition-transform"
-                      style={{ left: '8%', top: '10%', width: '34%' }}
-                    >
-                      <div className="relative aspect-square -rotate-6">
-                        <div className="w-full h-full rounded-full overflow-hidden border-[3px] border-white shadow-lg bg-white">
-                          {gf.photo ? (
-                            <img src={gf.photo} alt={gf.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center" style={{ background: pal.soft }}>
-                              <ImageOff size={18} style={{ color: pal.accent, opacity: 0.6 }} />
-                            </div>
-                          )}
-                        </div>
-                        <span
-                          className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white shadow"
-                          style={{ background: pal.accent }}
-                        />
-                      </div>
-                    </button>
-
-                    {values.name && (
-                      <BoardTag
-                        icon={TAGS_LAYOUT[0].icon} label={TAGS_LAYOUT[0].label} box={TAGS_LAYOUT[0].box} rotate={TAGS_LAYOUT[0].rotate}
-                        value={values.name} accent={pal.accent}
-                      />
-                    )}
-                    {values.leader && (
-                      <BoardTag
-                        icon={TAGS_LAYOUT[1].icon} label={TAGS_LAYOUT[1].label} box={TAGS_LAYOUT[1].box} rotate={TAGS_LAYOUT[1].rotate}
-                        value={values.leader} accent={pal.accent}
-                        // o link vai para o líder PRINCIPAL (o primeiro da lista)
-                        href={gf.leaderPhone ? `https://wa.me/55${gf.leaderPhone.replace(/\D/g, '')}` : undefined}
-                      />
-                    )}
-                    {values.time && (
-                      <BoardTag
-                        icon={TAGS_LAYOUT[2].icon} label={TAGS_LAYOUT[2].label} box={TAGS_LAYOUT[2].box} rotate={TAGS_LAYOUT[2].rotate}
-                        value={values.time} accent={pal.accent}
-                      />
-                    )}
-                    {values.address && (
-                      <BoardTag
-                        icon={TAGS_LAYOUT[3].icon} label={TAGS_LAYOUT[3].label} box={TAGS_LAYOUT[3].box} rotate={TAGS_LAYOUT[3].rotate}
-                        value={values.address} accent={pal.accent} destaque onClick={() => setMapGroup(gf)}
-                      />
-                    )}
-                  </div>
-
-                  {gf.leaderPhone && (
-                    <a
-                      href={`https://wa.me/55${gf.leaderPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Vi o GF "${gf.name}" no site e tenho interesse em participar 🙂`)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="relative z-30 mt-2 flex items-center justify-center gap-1 w-full px-2 py-1.5 rounded-full text-[10px] font-extrabold text-white shadow hover:scale-[1.03] transition-transform"
-                      style={{ background: pal.accent }}
-                    >
-                      <Users size={10} /> Quero participar
-                    </a>
-                  )}
-                </div>
-              );
-            })}
           </div>
         )}
+
         </div>
 
       </main>
@@ -994,8 +1001,52 @@ export function GfPublicList() {
                     <p className="text-[11px] text-slate-400">Sem líder cadastrado.</p>
                   )}
                 </div>
+
+                {/* endereço no mapa + entrar no grupo, sem sair da "tela" */}
+                {zoomFoto.gf && (
+                  <div className="shrink-0 border-t border-slate-100 px-3 py-2.5 space-y-2">
+                    {formatAddress(zoomFoto.gf) && (
+                      <button
+                        onClick={() => {
+                          const alvo = zoomFoto.gf!;
+                          setZoomFoto(null);
+                          setMapGroup(alvo);
+                        }}
+                        className="flex w-full items-start gap-2 text-left"
+                      >
+                        <span
+                          className="mt-0.5 shrink-0 rounded-lg p-1.5 text-white"
+                          style={{ background: zoomFoto.accent ?? '#D97706' }}
+                        >
+                          <MapPin size={12} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[9px] font-extrabold uppercase tracking-wide text-slate-400">
+                            Ver no mapa
+                          </span>
+                          <span className="block text-[10px] font-semibold leading-snug text-slate-600 line-clamp-2">
+                            {formatAddress(zoomFoto.gf)}
+                          </span>
+                        </span>
+                      </button>
+                    )}
+
+                    {zoomFoto.gf.leaderPhone && (
+                      <a
+                        href={`https://wa.me/55${zoomFoto.gf.leaderPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Vi o GF "${zoomFoto.gf.name}" no site e tenho interesse em participar 🙂`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-extrabold text-white shadow hover:brightness-105"
+                        style={{ background: zoomFoto.accent ?? '#D97706' }}
+                      >
+                        <Users size={12} /> Quero participar
+                      </a>
+                    )}
+                  </div>
+                )}
+
                 {/* barrinha de "home" do celular */}
-                <span className="mx-auto mb-2 block h-1 w-20 shrink-0 rounded-full bg-slate-300" />
+                <span className="mx-auto my-2 block h-1 w-20 shrink-0 rounded-full bg-slate-300" />
               </div>
               {/* botões laterais */}
               <span className="absolute -left-1 top-24 h-10 w-1 rounded-l bg-slate-700" />
