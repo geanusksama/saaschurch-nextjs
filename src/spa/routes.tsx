@@ -310,7 +310,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: PublicHome },
       { path: "peniel", Component: PenielPublicPage },
-      { path: "gf", Component: GfPublicList },
     ]
   },
   // Portal standalone pages (opened from CMSDashboard preview or direct link)
@@ -346,6 +345,13 @@ export const router = createBrowserRouter([
   {
     path: "/campanha/:token/:targetToken",
     Component: CampanhaFormPublic,
+    errorElement: <ErrorBoundary />,
+  },
+  // Lista pública dos Grupos Familiares. Rota própria (fora de PublicWebsite)
+  // porque aquele wrapper força bg-[#0a0a0a] e esta página é branca sempre.
+  {
+    path: "/gf",
+    Component: GfPublicList,
     errorElement: <ErrorBoundary />,
   },
   // Resumo do liderado — link que o líder do GF recebe no WhatsApp.

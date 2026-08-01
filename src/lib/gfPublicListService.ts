@@ -35,6 +35,46 @@ export interface PublicGfItem {
   leaderPhotoUrl: string | null;
 }
 
+export interface PublicSede {
+  id: string;
+  name: string;
+  phone: string | null;
+  addressStreet: string | null;
+  addressNumber: string | null;
+  addressNeighborhood: string | null;
+  addressCity: string | null;
+  addressState: string | null;
+  addressZipcode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/** A igreja sede que fica no centro do mapa dos GFs. */
+export async function getPublicSede(churchId: string = DEFAULT_SEDE_ID): Promise<PublicSede | null> {
+  const c = await prisma.church.findUnique({
+    where: { id: churchId },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      addressStreet: true,
+      addressNumber: true,
+      addressNeighborhood: true,
+      addressCity: true,
+      addressState: true,
+      addressZipcode: true,
+      latitude: true,
+      longitude: true,
+    },
+  });
+  if (!c) return null;
+  return {
+    ...c,
+    latitude: c.latitude ? Number(c.latitude) : null,
+    longitude: c.longitude ? Number(c.longitude) : null,
+  };
+}
+
 export async function listPublicGfs(churchId: string = DEFAULT_SEDE_ID): Promise<PublicGfItem[]> {
   const cells = await prisma.cellGroup.findMany({
     where: {

@@ -582,8 +582,9 @@ export function PublicHome() {
 
           {/* 3. Grupos Familiares — lista pública com líder, endereço, mapa e distância */}
           <Link to="/gf" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
-            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-emerald-400 transition-colors ${border}`}>
-              <HomeIcon className={`w-6 h-6 group-hover:text-emerald-400 transition-colors ${iconColor}`} />
+            <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors"
+              style={{ borderColor: '#f59e0b', background: 'rgba(245,158,11,0.1)' }}>
+              <HomeIcon className="w-6 h-6" style={{ color: '#f59e0b' }} />
             </div>
             <div className="flex flex-col justify-center min-h-[3.5rem]">
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Grupos Familiares</h3>

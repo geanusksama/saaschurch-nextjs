@@ -22,7 +22,7 @@ loadEnv({ path: '.env' })
 loadEnv({ path: '.env.local', override: true })
 
 import { PrismaClient } from '@prisma/client'
-import { listPublicGfs, DEFAULT_SEDE_ID } from '../src/lib/gfPublicListService.ts'
+import { listPublicGfs, getPublicSede, DEFAULT_SEDE_ID } from '../src/lib/gfPublicListService.ts'
 import { haversineKm, buildMapEmbedUrl, buildMapsLink } from '../src/lib/geo.ts'
 
 const prisma = new PrismaClient()
@@ -180,7 +180,19 @@ async function main() {
   check('GF sem coordenadas cai para o fim da lista, não quebra a ordenação', semCoordenadas[semCoordenadas.length - 1]?.name === '[E2E] Sem coordenadas')
 
   // ── 5. mapa sem chave de API ─────────────────────────────────────────────
-  step(5, 'Endereço clicável abre o mapa embutido, sem chave de API')
+  step(5, 'A SEDE que fica no centro da estrela')
+
+  const sedePublica = await getPublicSede()
+  check('getPublicSede() devolve a igreja sede', sedePublica?.id === DEFAULT_SEDE_ID, sedePublica?.name)
+  check('sede tem nome para mostrar no card central', !!sedePublica?.name)
+  // O cadastro da sede está sem endereço hoje; o front cobre isso com um
+  // fallback. O teste registra o estado real para a falta não passar batida.
+  console.log(`     · endereço da sede no banco: ${sedePublica?.addressStreet ?? '(vazio — front usa fallback)'}`)
+  check('coordenadas da sede vêm como número ou null (nunca Decimal)',
+    sedePublica?.latitude === null || typeof sedePublica?.latitude === 'number',
+    String(sedePublica?.latitude))
+
+  step(6, 'Endereço clicável abre o mapa embutido, sem chave de API')
 
   check('mapa embed usa coordenadas e output=embed', buildMapEmbedUrl(centro).includes('output=embed') && buildMapEmbedUrl(centro).includes('-22.90556'))
   check('link "abrir no Google Maps" também sai sem chave', buildMapsLink(centro).startsWith('https://www.google.com/maps?q='))
