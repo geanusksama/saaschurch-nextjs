@@ -81,7 +81,7 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
 
   // ── GF (Grupos Familiares) ────────────────────────────────────────────────
   { group: 'GF (Grupos Familiares)', name: 'Todos os GF',          key: 'cells',       permissions: mkPerms(full(), full(), full(), admin()) },
-  { group: 'GF (Grupos Familiares)', name: 'Relatórios de GF',     key: 'cell_reports', permissions: mkPerms(full(), full(), none(), none()) },
+  { group: 'GF (Grupos Familiares)', name: 'Anexar Pessoas ao GF', key: 'cell_group_members', permissions: mkPerms(full(), full(), full(), admin()) }, // edit = anexar, delete = remover
 
   // ── Comunicação ──────────────────────────────────────────────────────────
   { group: 'Comunicação', name: 'WhatsApp',                   key: 'whatsapp',              permissions: mkPerms(full(), full(), full(), admin()) },

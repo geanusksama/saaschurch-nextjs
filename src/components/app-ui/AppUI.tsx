@@ -201,7 +201,6 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/ministries") return "Todos os Ministérios";
   if (p === "/app-ui/ministry-teams") return "Equipes / Escalas de Ministério";
   if (p === "/app-ui/cells") return "Todos os Grupos Familiares (Células)";
-  if (p === "/app-ui/cells/reports") return "Relatórios de Células";
   if (p === "/app-ui/communication/whatsapp-inbox") return "WhatsApp Caixa de Entrada";
   if (p === "/app-ui/system/whatsapp") return "WhatsApp Instâncias";
   if (p === "/app-ui/events") return "Agenda de Eventos";
@@ -298,7 +297,6 @@ const appNavigation: NavigationSection[] = [
     section: 'GF (Grupos Familiares)',
     items: [
       { name: 'Todos os GF',     path: '/app-ui/cells',         icon: Users,     permKey: 'cells',       exact: true },
-      { name: 'Relatórios de GF', path: '/app-ui/cells/reports', icon: BarChart3, permKey: 'cell_reports' },
     ]
   },
   {

@@ -176,3 +176,147 @@ export function generateReportPdf(data: PdfReportData): string {
 
   return `/temp-reports/${fileName}`;
 }
+
+// ── Parecer por contato (módulo GF) ─────────────────────────────────────────
+
+export interface GfContactPdfEntry {
+  nome: string;
+  telefone: string;
+  situacao: string;
+  sintese: string;
+  pontosPositivos: string[];
+  pontosNegativos: string[];
+  tentativasSemResposta: number;
+  respondeu: boolean;
+  totalMensagens: number;
+  linksEnviados: string[];
+  enviouEndereco: boolean;
+  sugestaoMelhoria: string;
+  motivoSemGf: string;
+}
+
+/**
+ * Um bloco por contato, não uma tabela: o parecer é texto corrido e não cabe em
+ * colunas. Devolve o PDF em memória — quem chamou responde o download.
+ */
+export function generateGfContactReportPdf(titulo: string, subtitulo: string, entries: GfContactPdfEntry[]): Buffer {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const margin = 15;
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const printableWidth = pageWidth - margin * 2;
+  let y = 0;
+
+  function header() {
+    doc.setFillColor(30, 41, 59);
+    doc.rect(0, 0, pageWidth, 40, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text(titulo, margin, 18);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(203, 213, 225);
+    doc.text(subtitulo, margin, 26);
+    y = 50;
+  }
+
+  function ensureSpace(needed: number) {
+    if (y + needed > pageHeight - 20) {
+      doc.addPage();
+      y = 20;
+    }
+  }
+
+  function paragraph(label: string, text: string) {
+    if (!text) return;
+    const lines = doc.splitTextToSize(text, printableWidth - 2);
+    ensureSpace(6 + lines.length * 4.6);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(label, margin, y);
+    y += 4.5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(lines, margin, y);
+    y += lines.length * 4.6 + 2;
+  }
+
+  function bullets(label: string, items: string[]) {
+    if (!items.length) return;
+    ensureSpace(6 + items.length * 5);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(label, margin, y);
+    y += 4.5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(15, 23, 42);
+    for (const item of items) {
+      const lines = doc.splitTextToSize(`• ${item}`, printableWidth - 6);
+      ensureSpace(lines.length * 4.6);
+      doc.text(lines, margin + 2, y);
+      y += lines.length * 4.6;
+    }
+    y += 2;
+  }
+
+  header();
+
+  entries.forEach((entry, idx) => {
+    ensureSpace(30);
+    if (idx > 0) y += 4;
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y - 5, printableWidth, 12, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text(entry.nome, margin + 3, y + 2.5);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(entry.telefone, pageWidth - margin - 3, y + 2.5, { align: "right" });
+    y += 13;
+
+    paragraph("SITUAÇÃO NO GF", entry.situacao);
+    paragraph("SÍNTESE DA CONVERSA", entry.sintese);
+    bullets("PONTOS POSITIVOS", entry.pontosPositivos);
+    bullets("PONTOS NEGATIVOS", entry.pontosNegativos);
+    paragraph(
+      "INTERAÇÃO",
+      entry.respondeu
+        ? `${entry.totalMensagens} mensagens trocadas. ${entry.tentativasSemResposta} tentativa(s) sem resposta desde a última interação.`
+        : `Sem nenhuma resposta do contato após ${entry.tentativasSemResposta} tentativa(s) de conversa.`
+    );
+    bullets("LINKS ENVIADOS", entry.linksEnviados);
+    paragraph("ENDEREÇO DA IGREJA", entry.enviouEndereco ? "Já foi enviado ao contato." : "Ainda não foi enviado ao contato.");
+    paragraph("O QUE PODERIA MELHORAR", entry.sugestaoMelhoria);
+    paragraph("MOTIVO DE NÃO ESTAR EM GF", entry.motivoSemGf);
+
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, y, margin + printableWidth, y);
+    y += 4;
+  });
+
+  const todayStr = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date());
+
+  const pages = doc.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Parecer gerado em ${todayStr} por Inteligência Artificial.`, margin, pageHeight - 10);
+    doc.text(`${p}/${pages}`, pageWidth - margin, pageHeight - 10, { align: "right" });
+  }
+
+  return Buffer.from(doc.output("arraybuffer"));
+}

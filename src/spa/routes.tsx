@@ -91,8 +91,9 @@ import { Baptism } from "../components/app-ui/Baptism";
 import { QrScanReader } from "../components/app-ui/QrScanReader";
 import { BaptismEventDetail } from "../components/app-ui/BaptismEventDetail";
 import { CellGroups } from "../components/app-ui/CellGroups";
-import { CellReports } from "../components/app-ui/CellReports";
 import { CellDetail } from "../components/app-ui/CellDetail";
+import { CellNew } from "../components/app-ui/CellNew";
+import { CellEdit } from "../components/app-ui/CellEdit";
 import CellsList from "../app-ui/cells/CellsList";
 import { CheckIn } from "../components/app-ui/CheckIn";
 import CheckinHome from "../app-ui/checkin/CheckinHome";
@@ -194,6 +195,7 @@ import { PenielPublicPage } from "../components/public/PenielPublicPage";
 import PastoralTimelinePublic from "../components/public/PastoralTimelinePublic";
 import MembershipFormPublic from "../components/public/MembershipFormPublic";
 import CampanhaFormPublic from "../components/public/CampanhaFormPublic";
+import GfResumoPublic from "../components/public/GfResumoPublic";
 
 // Portal Membro
 import { MembroProvider } from "../components/membro/MembroProvider";
@@ -342,6 +344,12 @@ export const router = createBrowserRouter([
   {
     path: "/campanha/:token/:targetToken",
     Component: CampanhaFormPublic,
+    errorElement: <ErrorBoundary />,
+  },
+  // Resumo do liderado — link que o líder do GF recebe no WhatsApp.
+  {
+    path: "/gf-resumo/:token",
+    Component: GfResumoPublic,
     errorElement: <ErrorBoundary />,
   },
   // Portal Membro — área exclusiva para membros autenticados via ROL+CPF+WhatsApp OTP
@@ -517,9 +525,9 @@ export const router = createBrowserRouter([
       { path: "baptism/events/:id", Component: BaptismEventDetail },
       { path: "cells", Component: CellGroups },
       { path: "cells/list", Component: CellsList },
-      { path: "cells/reports", Component: CellReports },
-      { path: "cells/new", Component: CellNewScreen },
+      { path: "cells/new", Component: CellNew },
       { path: "cells/:id", Component: CellDetail },
+      { path: "cells/:id/edit", Component: CellEdit },
       { path: "checkin", Component: CheckIn },
       { path: "checkin/home", Component: CheckinHome },
       { path: "checkin/members", Component: MemberCheckin },

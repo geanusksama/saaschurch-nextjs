@@ -658,9 +658,12 @@ model MemberTag {
   churchId  String   @map("church_id") @db.Uuid
   name      String   @db.VarChar(100)
   color     String?  @default("#8b5cf6") @db.VarChar(7)
+  /// Preenchido nas tags criadas junto com um GF; a tag some com o GF.
+  cellGroupId String? @map("cell_group_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
   church      Church                @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  cellGroup   CellGroup?            @relation(fields: [cellGroupId], references: [id], onDelete: Cascade)
   assignments MemberTagAssignment[]
 
   @@unique([churchId, name])
@@ -1173,7 +1176,14 @@ model CellGroup {
   cellType    String?   @map("cell_type") @db.VarChar(30)
   meetingDay  String?   @map("meeting_day") @db.VarChar(20)
   meetingTime DateTime? @map("meeting_time") @db.Time(6)
-  address     String?   @db.Text
+  address             String?   @db.Text
+  addressStreet       String?   @map("address_street") @db.VarChar(255)
+  addressNumber       String?   @map("address_number") @db.VarChar(20)
+  addressComplement   String?   @map("address_complement") @db.VarChar(100)
+  addressNeighborhood String?   @map("address_neighborhood") @db.VarChar(100)
+  addressCity         String?   @map("address_city") @db.VarChar(100)
+  addressState        String?   @map("address_state") @db.VarChar(50)
+  addressZipcode      String?   @map("address_zipcode") @db.VarChar(10)
   latitude    Decimal?  @db.Decimal(10, 8)
   longitude   Decimal?  @db.Decimal(11, 8)
   maxCapacity Int?      @map("max_capacity")
@@ -1190,6 +1200,7 @@ model CellGroup {
 
   members  CellGroupMember[]
   meetings CellMeeting[]
+  tags     MemberTag[]
 
   @@map("cell_groups")
 }
@@ -1207,7 +1218,10 @@ model CellGroupMember {
   cellGroup CellGroup @relation(fields: [cellGroupId], references: [id], onDelete: Cascade)
   member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
-  @@unique([cellGroupId, memberId, isActive])
+  /// A trava de "um GF ativo por pessoa" é um índice PARCIAL no banco
+  /// (cell_group_members_active_unique, WHERE is_active) — o Prisma não sabe
+  /// declarar índice parcial, e a versão sem WHERE travava a segunda saída do
+  /// mesmo GF.
   @@map("cell_group_members")
 }
 

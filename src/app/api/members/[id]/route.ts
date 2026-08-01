@@ -17,6 +17,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         regional: { select: { id: true, name: true, code: true } },
         ecclesiasticalTitleRef: { select: { id: true, name: true, abbreviation: true, level: true } },
         ministryMemberships: { where: { isActive: true, leftAt: null }, include: { ministry: { select: { id: true, name: true } } } },
+        memberTagAssignments: { include: { tag: { select: { id: true, name: true, color: true, cellGroupId: true } } } },
+        cellGroupMemberships: { where: { isActive: true }, include: { cellGroup: { select: { id: true, name: true, color: true } } } },
       },
     });
     if (!member) return NextResponse.json({ error: "member not found" }, { status: 404 });

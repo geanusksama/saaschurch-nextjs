@@ -83,6 +83,7 @@ type Member = {
   regional?: { id: string; name: string; code?: string | null } | null;
   ecclesiasticalTitleRef?: { id: string; name: string; abbreviation?: string | null } | null;
   ministryMemberships?: Array<{ ministry: { id: string; name: string } }>;
+  memberTagAssignments?: Array<{ tag: { id: string; name: string; color?: string | null } }>;
 };
 
 type HistoryRow = {
@@ -283,6 +284,7 @@ export function MemberProfile() {
   const { label: sLabel, cls: sCls } = statusLabel(member?.membershipStatus);
   const ini = initials(member?.fullName);
   const titleName = member?.ecclesiasticalTitleRef?.name || member?.ecclesiasticalTitle || "—";
+  const memberTags = (member?.memberTagAssignments ?? []).map((a) => a.tag);
   const regionalCode = member?.regional?.code || member?.regional?.name || "—";
   const churchName = member?.church?.name || "—";
   const campoName = member?.church?.regional?.campo?.name || "—";
@@ -474,6 +476,19 @@ export function MemberProfile() {
                           className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
                         >
                           {f.name}{f.isCampoWide ? ' · Campo' : ''}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {memberTags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {memberTags.map((t) => (
+                        <span
+                          key={t.id}
+                          className="text-xs font-semibold px-2 py-0.5 rounded-full text-white"
+                          style={{ backgroundColor: t.color || '#8b5cf6' }}
+                        >
+                          {t.name}
                         </span>
                       ))}
                     </div>

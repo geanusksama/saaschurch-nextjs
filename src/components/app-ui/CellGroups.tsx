@@ -1,46 +1,175 @@
-import { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Users, MapPin, Calendar, TrendingUp, User, Phone, Network } from 'lucide-react';
-import { Link } from 'react-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Plus, Search, Users, Calendar, TrendingUp, User, Network, X, Pencil, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
+import { CellForm, EMPTY_CELL_FORM, type CellFormValues } from './cells/CellForm';
+import { AlertDialog, ConfirmDialog } from './shared/ConfirmDialog';
+import { usePermissions } from '../../lib/usePermissions';
+
+function perfilAtual(): string {
+  try {
+    return JSON.parse(localStorage.getItem('mrm_user') || '{}').profileType || 'church';
+  } catch {
+    return 'church';
+  }
+}
+
+interface CellRow {
+  id: string;
+  name: string;
+  color?: string | null;
+  photo?: string | null;
+  cellType?: string | null;
+  address?: string | null;
+  description?: string | null;
+  meetingDay?: string | null;
+  meetingTime?: string | null;
+  leader?: { fullName?: string | null; mobile?: string | null; phone?: string | null } | null;
+  leaderId?: string | null;
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  addressNeighborhood?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  addressZipcode?: string | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  peopleCount?: number;
+}
+
+function authHeaders(): HeadersInit {
+  const token = localStorage.getItem('mrm_token') ?? '';
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
 
 export function CellGroups() {
-  const [cells, setCells] = useState([]);
-  const [recentReports, setRecentReports] = useState([]);
+  const navigate = useNavigate();
+  const { canCreate, canEdit, canDelete } = usePermissions(perfilAtual());
+  const [cells, setCells] = useState<CellRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const token = localStorage.getItem('mrm_token');
-        const headers = { Authorization: `Bearer ${token}` };
+  const [showNew, setShowNew] = useState(false);
+  /** null = cadastro novo; id = edicao do GF correspondente. */
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [novo, setNovo] = useState<CellFormValues>(EMPTY_CELL_FORM);
+  const [salvando, setSalvando] = useState(false);
+  const [erroNovo, setErroNovo] = useState('');
+  const [excluindo, setExcluindo] = useState<CellRow | null>(null);
+  const [excluindoAgora, setExcluindoAgora] = useState(false);
+  const [aviso, setAviso] = useState('');
 
-        const [cellsRes, reportsRes] = await Promise.all([
-          fetch(`${apiBase}/cell-groups`, { headers }).then(r => r.json()),
-          fetch(`${apiBase}/cell-reports`, { headers }).then(r => r.json())
-        ]);
-
-        if (Array.isArray(cellsRes)) setCells(cellsRes);
-        if (Array.isArray(reportsRes)) setRecentReports(reportsRes);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+  const loadData = useCallback(async () => {
+    try {
+      const cellsRes = await fetch(`${apiBase}/cell-groups`, { headers: authHeaders() }).then((r) => r.json());
+      if (Array.isArray(cellsRes)) setCells(cellsRes);
+    } catch (err) {
+      console.error('[CellGroups]', err);
+    } finally {
+      setLoading(false);
     }
-    loadData();
   }, []);
 
-  const totalMembers = cells.reduce((sum, cell) => sum + (cell._count?.members || 0), 0);
-  
-  const filteredCells = cells.filter(c => 
-    c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.leader?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  if (loading) {
-    return <div className="p-6 text-slate-600">Carregando GFs...</div>;
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  function abrirEdicao(cell: CellRow) {
+    setEditandoId(cell.id);
+    setNovo({
+      ...EMPTY_CELL_FORM,
+      name: cell.name ?? '',
+      network: cell.cellType ?? EMPTY_CELL_FORM.network,
+      color: cell.color ?? EMPTY_CELL_FORM.color,
+      photo: cell.photo ?? '',
+      leaderId: cell.leaderId ?? null,
+      leaderName: cell.leader?.fullName ?? '',
+      leaderPhone: cell.leader?.mobile ?? cell.leader?.phone ?? '',
+      addressStreet: cell.addressStreet ?? '',
+      addressNumber: cell.addressNumber ?? '',
+      addressComplement: cell.addressComplement ?? '',
+      addressNeighborhood: cell.addressNeighborhood ?? '',
+      addressCity: cell.addressCity ?? '',
+      addressState: cell.addressState ?? '',
+      addressZipcode: cell.addressZipcode ?? '',
+      latitude: cell.latitude != null ? String(cell.latitude) : '',
+      longitude: cell.longitude != null ? String(cell.longitude) : '',
+      meetingDay: cell.meetingDay ?? EMPTY_CELL_FORM.meetingDay,
+      meetingTime: cell.meetingTime ? String(cell.meetingTime).slice(11, 16) : '',
+    });
+    setErroNovo('');
+    setShowNew(true);
   }
+
+  function fecharModal() {
+    setShowNew(false);
+    setEditandoId(null);
+    setNovo(EMPTY_CELL_FORM);
+    setErroNovo('');
+  }
+
+  async function salvarNovo() {
+    setSalvando(true);
+    setErroNovo('');
+    try {
+      const res = await fetch(
+        editandoId ? `${apiBase}/cell-groups/${editandoId}` : `${apiBase}/cell-groups`,
+        {
+          method: editandoId ? 'PATCH' : 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify(novo),
+        }
+      );
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error || 'Erro ao salvar o GF');
+      const editou = Boolean(editandoId);
+      fecharModal();
+      if (editou) loadData();
+      else navigate(`/app-ui/cells/${result.id}`);
+    } catch (err) {
+      setErroNovo(err instanceof Error ? err.message : 'Erro ao salvar o GF');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function confirmarExclusao() {
+    if (!excluindo) return;
+    setExcluindoAgora(true);
+    try {
+      const res = await fetch(`${apiBase}/cell-groups/${excluindo.id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        await loadData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setAviso(err.error ?? 'Não foi possível excluir o GF.');
+      }
+    } finally {
+      setExcluindoAgora(false);
+      setExcluindo(null);
+    }
+  }
+
+  const totalPessoas = cells.reduce((sum, c) => sum + (c.peopleCount ?? 0), 0);
+
+  const filteredCells = cells.filter(
+    (c) =>
+      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.leader?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) return <div className="p-6 text-slate-600">Carregando GFs...</div>;
+
+  const stats = [
+    { label: 'Total de GFs', value: cells.length, icon: Users, bg: 'bg-purple-100', fg: 'text-purple-600' },
+    { label: 'Pessoas em GFs', value: totalPessoas, icon: User, bg: 'bg-blue-100', fg: 'text-blue-600' },
+    { label: 'Com líder definido', value: cells.filter((c) => c.leader?.fullName).length, icon: TrendingUp, bg: 'bg-green-100', fg: 'text-green-600' },
+    { label: 'Sem líder definido', value: cells.filter((c) => !c.leader?.fullName).length, icon: Calendar, bg: 'bg-orange-100', fg: 'text-orange-600' },
+  ];
 
   return (
     <div className="p-6">
@@ -54,76 +183,41 @@ export function CellGroups() {
             <p className="text-slate-600 dark:text-slate-400">Gerencie grupos e acompanhe crescimento</p>
           </div>
         </div>
-        <Link 
-          to="/app-ui/cells/new"
+        {canCreate('cells') && (
+        <button
+          onClick={() => {
+            setEditandoId(null);
+            setNovo(EMPTY_CELL_FORM);
+            setErroNovo('');
+            setShowNew(true);
+          }}
           className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
           Novo GF
-        </Link>
+        </button>
+        )}
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Total de GFs</p>
-              <p className="text-2xl font-bold text-slate-900">{cells.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <User className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Membros em GFs</p>
-              <p className="text-2xl font-bold text-slate-900">{totalMembers}</p>
+        {stats.map((s) => (
+          <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-6">
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 ${s.bg} rounded-lg flex items-center justify-center`}>
+                <s.icon className={`w-6 h-6 ${s.fg}`} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">{s.label}</p>
+                <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Crescimento Mensal</p>
-              <p className="text-2xl font-bold text-slate-900">+15%</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Reuniões Esta Semana</p>
-              <p className="text-2xl font-bold text-slate-900">{cells.length}</p>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Cells List */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200">
+      <div className="bg-white rounded-xl border border-slate-200">
           <div className="p-6 border-b border-slate-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-900">Lista de GFs</h2>
-              <button className="p-2 hover:bg-slate-100 rounded-lg">
-                <Filter className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Lista de GFs</h2>
             <div className="relative">
               <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -136,91 +230,130 @@ export function CellGroups() {
             </div>
           </div>
 
-          <div className="p-6">
-            <div className="space-y-3">
-              {filteredCells.map((cell) => (
-                <Link
-                  key={cell.id}
-                  to={`/app-ui/cells/${cell.id}`}
-                  className="block border border-slate-200 rounded-lg p-4 hover:border-purple-300 hover:bg-slate-50 transition-all"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-semibold">
-                        <Users className="w-6 h-6" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-6 py-3 font-semibold">GF</th>
+                  <th className="px-4 py-3 font-semibold">Líder</th>
+                  <th className="px-4 py-3 font-semibold">Rede</th>
+                  <th className="px-4 py-3 font-semibold">Reunião</th>
+                  <th className="px-4 py-3 font-semibold text-right">Pessoas</th>
+                  <th className="px-4 py-3 font-semibold text-right w-24">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCells.map((cell) => (
+                  <tr
+                    key={cell.id}
+                    onClick={() => navigate(`/app-ui/cells/${cell.id}`)}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: cell.color || '#8B5CF6' }}
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 truncate">{cell.name}</p>
+                          <p className="text-xs text-slate-500 truncate">
+                            {cell.address || cell.description || 'Sem endereço'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-900">{cell.name}</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Líder: {cell.leader?.fullName || 'Não definido'}</p>
-                        <p className="text-xs text-slate-500 mt-1">{cell.leader?.mobile || cell.leader?.phone || ''}</p>
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {cell.leader?.fullName || <span className="text-slate-400">Não definido</span>}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{cell.cellType || '-'}</td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                      {cell.meetingDay || '-'} {cell.meetingTime ? String(cell.meetingTime).slice(11, 16) : ''}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-slate-900">{cell.peopleCount ?? 0}</td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        {canEdit('cells') && (
+                        <button
+                          onClick={() => abrirEdicao(cell)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-slate-100"
+                          title="Editar GF"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        )}
+                        {canDelete('cells') && (
+                        <button
+                          onClick={() => setExcluindo(cell)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-100"
+                          title="Excluir GF"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-green-600 text-sm font-semibold">
-                      <TrendingUp className="w-4 h-4" />
-                      0%
-                    </div>
-                  </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredCells.length === 0 && (
+              <p className="text-slate-500 text-center py-8">Nenhum GF encontrado.</p>
+            )}
+        </div>
+      </div>
 
-                  <div className="grid grid-cols-3 gap-3 text-sm">
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Users className="w-4 h-4" />
-                      <span>{cell._count?.members || 0} membros</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Calendar className="w-4 h-4" />
-                      <span>{cell.meetingDay || '-'} {cell.meetingTime ? new Date(cell.meetingTime).toISOString().slice(11, 16) : ''}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <MapPin className="w-4 h-4" />
-                      <span>{cell.address || cell.description || '-'}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-              {filteredCells.length === 0 && (
-                <p className="text-slate-500 text-center py-4">Nenhum GF encontrado.</p>
-              )}
+      <ConfirmDialog
+        open={!!excluindo}
+        title={excluindo ? `Excluir o GF "${excluindo.name}"?` : 'Excluir GF?'}
+        message={
+          excluindo?.peopleCount
+            ? `As ${excluindo.peopleCount} pessoa(s) do grupo voltam para a fila de quem está sem GF. O GF sai da lista, mas o histórico é preservado.`
+            : 'O GF sai da lista, mas o histórico é preservado.'
+        }
+        confirmLabel="Excluir"
+        variant="danger"
+        loading={excluindoAgora}
+        onConfirm={confirmarExclusao}
+        onCancel={() => setExcluindo(null)}
+      />
+
+      <AlertDialog
+        open={!!aviso}
+        title="Não foi possível excluir"
+        message={aviso}
+        variant="warning"
+        onClose={() => setAviso('')}
+      />
+
+      {showNew && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">{editandoId ? 'Editar GF' : 'Novo GF'}</h2>
+                <p className="text-sm text-slate-500">
+                  {editandoId ? novo.name : 'Cadastre um novo Grupo Familiar'}
+                </p>
+              </div>
+              <button onClick={fecharModal} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <CellForm
+                values={novo}
+                onChange={setNovo}
+                onSubmit={salvarNovo}
+                saving={salvando}
+                error={erroNovo}
+                submitLabel={editandoId ? 'Salvar alterações' : 'Salvar GF'}
+                onCancel={fecharModal}
+              />
             </div>
           </div>
         </div>
-
-        {/* Recent Reports */}
-        <div className="bg-white rounded-xl border border-slate-200">
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-lg font-bold text-slate-900">Relatórios Recentes</h2>
-          </div>
-          <div className="p-6 space-y-4">
-            {recentReports.slice(0, 5).map((report) => (
-              <div key={report.id} className="border border-slate-200 rounded-lg p-4">
-                <div className="font-semibold text-slate-900 mb-2">{report.cellGroup?.name}</div>
-                <div className="text-sm text-slate-600 mb-3">
-                  {new Date(report.meetingDate).toLocaleDateString('pt-BR')}
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600">Presença:</span>
-                    <span className="font-semibold text-slate-900">{report.attendanceCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600">Visitantes:</span>
-                    <span className="font-semibold text-blue-600">{report.visitorsCount}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {recentReports.length === 0 && (
-              <p className="text-slate-500 text-center py-4">Nenhum relatório recente.</p>
-            )}
-
-            <Link 
-              to="/app-ui/cells/reports"
-              className="w-full py-3 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center"
-            >
-              Ver Todos os Relatórios
-            </Link>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

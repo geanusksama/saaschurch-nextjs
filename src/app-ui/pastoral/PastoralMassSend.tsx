@@ -33,6 +33,7 @@ import {
   X,
   Download,
   FileSpreadsheet,
+  FileText,
   Upload,
 } from 'lucide-react';
 import { ATTENDANCE_TYPE_LABELS, type AttendanceType } from '../../lib/pastoralKanbanService';
@@ -133,6 +134,12 @@ const TEMPLATE_VARS = [
   'tipo', 'rol', 'cargo', 'email', 'data_cadastro', 'protocolo',
 ];
 
+const SOURCE_LABELS: Record<ContactSource, string> = {
+  members: 'Membros',
+  pipeline: 'Pipeline (contatos do site)',
+  imports: 'Listas importadas',
+};
+
 const MEMBER_STATUS_OPTIONS = [
   { value: '', label: 'Todos os status' },
   { value: 'ativ', label: 'Ativos' },
@@ -210,6 +217,7 @@ export default function PastoralMassSend() {
   const [batches, setBatches] = useState<ImportBatchOption[]>([]);
   const [selectedBatches, setSelectedBatches] = useState<Set<string>>(new Set());
   const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
+  const [gerandoParecer, setGerandoParecer] = useState(false);
   const batchDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -411,6 +419,48 @@ export default function PastoralMassSend() {
       'contatos-envio-massa',
       format
     );
+  };
+
+  // ── parecer de consolidação em PDF ──────────────────────────────────────────
+  // Vale para qualquer fonte: o que amarra o parecer é o telefone, porque é por
+  // ele que se acha a conversa. A origem só diz em que GF a pessoa está.
+  const gerarParecerPdf = async () => {
+    const list = selected.size ? selectedContacts : contacts;
+    if (!list.length) {
+      toast.error('Nenhum contato para analisar.');
+      return;
+    }
+    setGerandoParecer(true);
+    try {
+      const res = await fetch('/api/whatsapp/imports/report', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          titulo: SOURCE_LABELS[source] ?? 'Envio em Massa',
+          contatos: list.map(c => ({
+            nome: c.name,
+            telefone: c.phone,
+            memberId: c.source === 'member' ? c.sourceId : null,
+            importRowId: c.source === 'import' ? c.sourceId : null,
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Falha ao gerar o parecer');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'parecer-consolidacao.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha ao gerar o parecer');
+    } finally {
+      setGerandoParecer(false);
+    }
   };
 
   // ── campanha ────────────────────────────────────────────────────────────────
@@ -832,6 +882,12 @@ export default function PastoralMassSend() {
                     className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
                     <FileSpreadsheet className="w-3.5 h-3.5" />
                     Excel
+                  </button>
+                  <button onClick={gerarParecerPdf} disabled={!contacts.length || gerandoParecer}
+                    title={selected.size ? 'Parecer de consolidação dos selecionados (PDF)' : 'Parecer de consolidação de todos os listados (PDF)'}
+                    className="h-8 px-2.5 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+                    {gerandoParecer ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                    Parecer PDF
                   </button>
                 </div>
               </div>

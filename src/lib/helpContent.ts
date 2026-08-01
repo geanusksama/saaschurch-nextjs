@@ -640,18 +640,6 @@ Cadastro dos Grupos Familiares: onde se reúnem, em que dia, quem lidera, quem h
 Os participantes vêm do cadastro de membros; visitantes do grupo podem ser registrados como contatos.
 `,
       },
-      {
-        id: 'relatorios-gf',
-        permKey: 'cell_reports',
-        summary: 'O relatório de cada reunião e o acompanhamento por grupo.',
-        title: 'Relatórios de GF',
-        keywords: ['reunião', 'presença', 'visitantes', 'oferta do grupo'],
-        body: `
-Cada reunião gera um relatório: quem foi, quantos visitantes, o que aconteceu.
-
-A leitura útil não é o relatório isolado, mas a sequência: grupo que para de enviar relatório costuma ser grupo que parou de se reunir.
-`,
-      },
     ],
   },
 
