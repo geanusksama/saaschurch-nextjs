@@ -203,14 +203,6 @@ import { MembroProvider } from "../components/membro/MembroProvider";
 import { MembroThemeProvider } from "../components/membro/MembroShell";
 import { MembroRoot } from "../components/membro/MembroRoot";
 import MembroPerfil from "../components/membro/perfil/MembroPerfil";
-import MembroMenu from "../components/membro/menu/MembroMenu";
-import MembroFeed from "../components/membro/feed/MembroFeed";
-import MembroHistoria from "../components/membro/historia/MembroHistoria";
-import MembroPregacoes from "../components/membro/pregacoes/MembroPregacoes";
-import MembroAgenda from "../components/membro/agenda/MembroAgenda";
-import MembroPaoDiario from "../components/membro/pao-diario/MembroPaoDiario";
-import MembroTestemunhos from "../components/membro/testemunhos/MembroTestemunhos";
-import MembroLideranca from "../components/membro/lideranca/MembroLideranca";
 import MembroPastoral from "../components/membro/pastoral/MembroPastoral";
 import MembroMembros from "../components/membro/membros/MembroMembros";
 import MembroFaceId from "../components/membro/faceid/MembroFaceId";
@@ -370,46 +362,6 @@ export const router = createBrowserRouter([
     path: "/membro/perfil",
     errorElement: <ErrorBoundary />,
     element: <MembroThemeProvider><MembroProvider><MembroPerfil /></MembroProvider></MembroThemeProvider>,
-  },
-  {
-    path: "/membro/menu",
-    errorElement: <ErrorBoundary />,
-    element: <MembroThemeProvider><MembroProvider><MembroMenu /></MembroProvider></MembroThemeProvider>,
-  },
-  {
-    path: "/membro/feed",
-    errorElement: <ErrorBoundary />,
-    element: <MembroThemeProvider><MembroProvider><MembroFeed /></MembroProvider></MembroThemeProvider>,
-  },
-  {
-    path: "/membro/historia",
-    errorElement: <ErrorBoundary />,
-    element: <MembroThemeProvider><MembroProvider><MembroHistoria /></MembroProvider></MembroThemeProvider>,
-  },
-  {
-    path: "/membro/pregacoes",
-    errorElement: <ErrorBoundary />,
-    element: <MembroThemeProvider><MembroProvider><MembroPregacoes /></MembroProvider></MembroThemeProvider>,
-  },
-  {
-    path: "/membro/agenda",
-    errorElement: <ErrorBoundary />,
-    element: <MembroThemeProvider><MembroProvider><MembroAgenda /></MembroProvider></MembroThemeProvider>,
-  },
-  {
-    path: "/membro/pao-diario",
-    errorElement: <ErrorBoundary />,
-    element: <MembroThemeProvider><MembroProvider><MembroPaoDiario /></MembroProvider></MembroThemeProvider>,
-  },
-  {
-    path: "/membro/testemunhos",
-    errorElement: <ErrorBoundary />,
-    element: <MembroThemeProvider><MembroProvider><MembroTestemunhos /></MembroProvider></MembroThemeProvider>,
-  },
-  {
-    path: "/membro/lideranca",
-    errorElement: <ErrorBoundary />,
-    element: <MembroThemeProvider><MembroProvider><MembroLideranca /></MembroProvider></MembroThemeProvider>,
   },
   {
     path: "/membro/pastoral",

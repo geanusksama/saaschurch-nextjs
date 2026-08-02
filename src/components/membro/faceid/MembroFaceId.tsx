@@ -4,9 +4,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useMembroSession } from '../MembroProvider';
-import { MembroShell } from '../MembroShell';
+import { MEMBRO } from '../theme';
 
-const TEAL = '#2dd4bf';
+/**
+ * TEMA CLARO FIXO, igual ao perfil. Antes esta tela escrevia em branco sobre
+ * superficies translucidas: com o portal no tema claro o texto sumia e o teal
+ * brigava com o azul do perfil. Agora usa a paleta unica de theme.ts.
+ *
+ * Tambem saiu do MembroShell: o portal esta virando UMA tela so (o perfil), e
+ * o menu/bottom-nav do shell aponta para paginas que vao deixar de existir.
+ * Aqui o caminho de volta e sempre o perfil.
+ */
+const { ACCENT, BG, CARD, BORDER, TEXT1, TEXT2 } = MEMBRO;
 
 type Step = 'intro' | 'camera' | 'preview' | 'sending' | 'tracking';
 
@@ -62,6 +71,15 @@ export default function MembroFaceId() {
   useEffect(() => {
     if (!isLoading && !session) navigate('/membro', { replace: true });
   }, [session, isLoading, navigate]);
+
+  // Tela clara sempre, igual ao perfil: o globals.css reescreve as utilitarias
+  // de cor enquanto o <html> tiver a classe `dark`.
+  useEffect(() => {
+    const root = document.documentElement;
+    const eraEscuro = root.classList.contains('dark');
+    if (eraEscuro) root.classList.remove('dark');
+    return () => { if (eraEscuro) root.classList.add('dark'); };
+  }, []);
 
   // ------------------------------------------------------------------
   // Câmera
@@ -336,31 +354,34 @@ export default function MembroFaceId() {
   const firstName = (session.member.preferredName || session.member.fullName).split(' ')[0];
 
   return (
-    <MembroShell>
-      <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+    <div
+      className="fixed inset-0 overflow-y-auto"
+      style={{ maxWidth: 430, margin: '0 auto', background: BG, colorScheme: 'light', scrollbarWidth: 'none' }}
+    >
+      <div style={{ paddingTop: 'env(safe-area-inset-top, 44px)' }}>
         <div className="max-w-lg mx-auto px-5 py-5 pb-10">
 
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
             <button
-              onClick={() => navigate('/membro/menu')}
+              onClick={() => navigate('/membro/perfil')}
               className="w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: CARD, border: `1px solid ${BORDER}` }}
               aria-label="Voltar"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-white/60">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4" style={{ color: TEXT2 }}>
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
             <div>
-              <h1 className="text-base font-bold text-white">Cadastro Face ID</h1>
-              <p className="text-[11px] text-white/40">Registre seu rosto para marcar presença</p>
+              <h1 className="text-base font-bold" style={{ color: TEXT1 }}>Cadastro Face ID</h1>
+              <p className="text-[11px]" style={{ color: TEXT2 }}>Registre seu rosto para marcar presença</p>
             </div>
           </div>
 
           {error && (
             <div className="mb-4 rounded-xl px-4 py-3 text-[12px] leading-relaxed"
-                 style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', color: '#fca5a5' }}>
+                 style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
               {error}
             </div>
           )}
@@ -371,17 +392,17 @@ export default function MembroFaceId() {
             {step === 'intro' && (
               <motion.div key="intro" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <div className="rounded-2xl p-5 mb-5"
-                     style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[13px] text-slate-300 leading-relaxed mb-3">
-                    Olá, <span className="font-semibold text-white">{firstName}</span>. Vamos cadastrar
+                     style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: MEMBRO.SHADOW }}>
+                  <p className="text-[13px] leading-relaxed mb-3" style={{ color: TEXT1 }}>
+                    Olá, <span className="font-bold" style={{ color: ACCENT }}>{firstName}</span>. Vamos cadastrar
                     seu rosto nos leitores da sua igreja para que sua presença seja registrada
                     automaticamente.
                   </p>
-                  <p className="text-[12px] text-slate-400 leading-relaxed mb-4">
+                  <p className="text-[12px] leading-relaxed mb-4" style={{ color: TEXT2 }}>
                     Se você já tem cadastro no leitor, a foto será substituída pela nova.
                     Ela também passa a ser a foto do seu perfil.
                   </p>
-                  <p className="text-[11px] font-semibold text-white/50 mb-2 uppercase tracking-wide">
+                  <p className="text-[11px] font-extrabold mb-2 uppercase tracking-wide" style={{ color: ACCENT }}>
                     Para a foto dar certo
                   </p>
                   <ul className="space-y-2">
@@ -392,8 +413,8 @@ export default function MembroFaceId() {
                       'Deixe o rosto inteiro dentro do círculo',
                       'Segure o celular firme para a foto não sair tremida',
                     ].map((t) => (
-                      <li key={t} className="flex gap-2 text-[12px] text-slate-400 leading-relaxed">
-                        <span style={{ color: TEAL }}>•</span>
+                      <li key={t} className="flex gap-2 text-[12px] leading-relaxed" style={{ color: TEXT2 }}>
+                        <span style={{ color: ACCENT }}>•</span>
                         {t}
                       </li>
                     ))}
@@ -402,8 +423,8 @@ export default function MembroFaceId() {
 
                 <button
                   onClick={startCamera}
-                  className="w-full py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98]"
-                  style={{ background: TEAL }}
+                  className="w-full py-3.5 rounded-xl font-bold text-[14px] text-white transition-transform active:scale-[0.98]"
+                  style={{ background: ACCENT }}
                 >
                   Abrir câmera
                 </button>
@@ -430,7 +451,7 @@ export default function MembroFaceId() {
                       style={{
                         width: '68%',
                         height: '84%',
-                        border: `2px dashed ${TEAL}88`,
+                        border: `2px dashed ${ACCENT}aa`,
                         boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
                       }}
                     />
@@ -443,7 +464,7 @@ export default function MembroFaceId() {
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div
                         className="w-9 h-9 rounded-full animate-spin"
-                        style={{ border: `3px solid ${TEAL}22`, borderTopColor: TEAL }}
+                        style={{ border: `3px solid ${ACCENT}22`, borderTopColor: ACCENT }}
                       />
                     </div>
                   )}
@@ -452,8 +473,8 @@ export default function MembroFaceId() {
                 <button
                   onClick={capture}
                   disabled={!cameraReady}
-                  className="w-full py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98] disabled:opacity-40"
-                  style={{ background: TEAL }}
+                  className="w-full py-3.5 rounded-xl font-bold text-[14px] text-white transition-transform active:scale-[0.98] disabled:opacity-40"
+                  style={{ background: ACCENT }}
                 >
                   {cameraReady ? 'Tirar foto' : 'Aguarde…'}
                 </button>
@@ -466,21 +487,21 @@ export default function MembroFaceId() {
                 <div className="rounded-2xl overflow-hidden mb-5" style={{ aspectRatio: '1/1' }}>
                   <img src={photo} alt="Sua foto" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-[12px] text-slate-400 text-center mb-5">
+                <p className="text-[12px] text-center mb-5" style={{ color: TEXT2 }}>
                   Seu rosto está nítido, centralizado e bem iluminado?
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={restart}
-                    className="flex-1 py-3.5 rounded-xl font-semibold text-[14px] text-white/70"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    className="flex-1 py-3.5 rounded-xl font-semibold text-[14px]"
+                    style={{ background: CARD, border: `1px solid ${BORDER}`, color: TEXT2 }}
                   >
                     Refazer
                   </button>
                   <button
                     onClick={() => submit(false)}
-                    className="flex-1 py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98]"
-                    style={{ background: TEAL }}
+                    className="flex-1 py-3.5 rounded-xl font-bold text-[14px] text-white transition-transform active:scale-[0.98]"
+                    style={{ background: ACCENT }}
                   >
                     Enviar
                   </button>
@@ -493,8 +514,8 @@ export default function MembroFaceId() {
               <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                           className="py-16 flex flex-col items-center gap-4">
                 <div className="w-10 h-10 rounded-full animate-spin"
-                     style={{ border: `3px solid ${TEAL}22`, borderTopColor: TEAL }} />
-                <p className="text-[13px] text-slate-400">Enviando sua foto…</p>
+                     style={{ border: `3px solid ${ACCENT}22`, borderTopColor: ACCENT }} />
+                <p className="text-[13px]" style={{ color: TEXT2 }}>Enviando sua foto…</p>
               </motion.div>
             )}
 
@@ -505,14 +526,14 @@ export default function MembroFaceId() {
                 {status.state === 'processing' && (
                   <div className="py-12 flex flex-col items-center gap-4">
                     <div className="w-10 h-10 rounded-full animate-spin"
-                         style={{ border: `3px solid ${TEAL}22`, borderTopColor: TEAL }} />
-                    <p className="text-[13px] text-slate-300 font-medium">Cadastrando nos leitores…</p>
-                    <p className="text-[11px] text-slate-500 text-center max-w-[240px] leading-relaxed">
+                         style={{ border: `3px solid ${ACCENT}22`, borderTopColor: ACCENT }} />
+                    <p className="text-[13px] font-semibold" style={{ color: TEXT1 }}>Cadastrando nos leitores…</p>
+                    <p className="text-[11px] text-center max-w-[240px] leading-relaxed" style={{ color: TEXT2 }}>
                       Isso leva alguns segundos. Você pode deixar esta tela aberta.
                     </p>
                     {/* Mostra que a espera tem fim — e serve de prova de que o
                         relogio do timeout esta correndo. */}
-                    <p className="text-[11px] tabular-nums" style={{ color: `${TEAL}99` }}>
+                    <p className="text-[11px] tabular-nums" style={{ color: ACCENT }}>
                       {esperaSegundos}s de {TIMEOUT_MS / 1000}s
                     </p>
                   </div>
@@ -520,9 +541,9 @@ export default function MembroFaceId() {
 
                 {status.state === 'needs_approval' && (
                   <div className="rounded-2xl p-5 text-center"
-                       style={{ background: 'rgba(250,204,21,0.08)', border: '1px solid rgba(250,204,21,0.25)' }}>
-                    <p className="text-[14px] font-bold text-yellow-300 mb-1.5">Aguardando liberação</p>
-                    <p className="text-[12px] text-yellow-200/70 leading-relaxed">
+                       style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+                    <p className="text-[14px] font-bold mb-1.5" style={{ color: '#b45309' }}>Aguardando liberação</p>
+                    <p className="text-[12px] leading-relaxed" style={{ color: '#92400e' }}>
                       Sua solicitação foi enviada e será liberada pela secretaria da igreja.
                       Você não precisa fazer mais nada.
                     </p>
@@ -531,15 +552,15 @@ export default function MembroFaceId() {
 
                 {status.state === 'done' && (
                   <div className="rounded-2xl p-6 text-center"
-                       style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}40` }}>
+                       style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                     <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center"
-                         style={{ background: `${TEAL}22` }}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke={TEAL} strokeWidth="2.5" className="w-7 h-7">
+                         style={{ background: '#dcfce7' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke={MEMBRO.OK} strokeWidth="2.5" className="w-7 h-7">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     </div>
-                    <p className="text-[15px] font-bold text-white mb-1.5">Cadastro concluído</p>
-                    <p className="text-[12px] text-slate-400 leading-relaxed">
+                    <p className="text-[15px] font-bold mb-1.5" style={{ color: TEXT1 }}>Cadastro concluído</p>
+                    <p className="text-[12px] leading-relaxed" style={{ color: TEXT2 }}>
                       Seu rosto foi registrado. A partir do próximo culto sua presença será
                       marcada automaticamente.
                     </p>
@@ -551,8 +572,8 @@ export default function MembroFaceId() {
                 {(status.state === 'done' || status.state === 'needs_approval') && (
                   <button
                     onClick={() => navigate('/membro/perfil')}
-                    className="w-full mt-5 py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98]"
-                    style={{ background: TEAL }}
+                    className="w-full mt-5 py-3.5 rounded-xl font-bold text-[14px] text-white transition-transform active:scale-[0.98]"
+                    style={{ background: ACCENT }}
                   >
                     Concluir
                   </button>
@@ -561,11 +582,11 @@ export default function MembroFaceId() {
                 {(status.state === 'failed' || status.state === 'partial') && (
                   <div>
                     <div className="rounded-2xl p-5 mb-4"
-                         style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)' }}>
-                      <p className="text-[14px] font-bold text-red-300 mb-1.5">
+                         style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+                      <p className="text-[14px] font-bold mb-1.5" style={{ color: MEMBRO.DANGER }}>
                         {status.state === 'partial' ? 'Cadastro incompleto' : 'Não deu certo'}
                       </p>
-                      <p className="text-[12px] text-red-200/75 leading-relaxed">
+                      <p className="text-[12px] leading-relaxed" style={{ color: '#b91c1c' }}>
                         {status.message || 'Não foi possível concluir o cadastro.'}
                       </p>
                     </div>
@@ -574,13 +595,13 @@ export default function MembroFaceId() {
                         mais de uma entrada e só uma falhou */}
                     {status.devices.length > 1 && (
                       <div className="rounded-xl overflow-hidden mb-4"
-                           style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+                           style={{ border: `1px solid ${BORDER}` }}>
                         {status.devices.map((d) => (
                           <div key={d.id}
                                className="flex items-center justify-between px-4 py-2.5 text-[12px]"
-                               style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <span className="text-slate-400">{d.device}</span>
-                            <span style={{ color: d.status === 'done' ? TEAL : '#fca5a5' }}>
+                               style={{ background: CARD, borderBottom: `1px solid ${BORDER}` }}>
+                            <span style={{ color: TEXT2 }}>{d.device}</span>
+                            <span style={{ color: d.status === 'done' ? MEMBRO.OK : MEMBRO.DANGER }}>
                               {d.status === 'done' ? 'OK' : 'Falhou'}
                             </span>
                           </div>
@@ -592,8 +613,8 @@ export default function MembroFaceId() {
                       {status.canRetry && (
                         <button
                           onClick={restart}
-                          className="flex-1 py-3.5 rounded-xl font-bold text-[14px] text-slate-900"
-                          style={{ background: TEAL }}
+                          className="flex-1 py-3.5 rounded-xl font-bold text-[14px] text-white"
+                          style={{ background: ACCENT }}
                         >
                           {status.state === 'failed' ? 'Tentar de novo' : 'Tirar outra foto'}
                         </button>
@@ -601,8 +622,8 @@ export default function MembroFaceId() {
                       {status.canUpdate && (
                         <button
                           onClick={() => submit(true)}
-                          className="flex-1 py-3.5 rounded-xl font-semibold text-[13px] text-white/80"
-                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+                          className="flex-1 py-3.5 rounded-xl font-semibold text-[13px]"
+                          style={{ background: CARD, border: `1px solid ${BORDER}`, color: TEXT2 }}
                         >
                           Atualizar minha foto
                         </button>
@@ -610,7 +631,7 @@ export default function MembroFaceId() {
                     </div>
 
                     {!status.canRetry && !status.canUpdate && (
-                      <p className="text-[11px] text-slate-500 text-center mt-4 leading-relaxed">
+                      <p className="text-[11px] text-center mt-4 leading-relaxed" style={{ color: TEXT2 }}>
                         Procure a secretaria da igreja para concluir seu cadastro.
                       </p>
                     )}
@@ -621,13 +642,13 @@ export default function MembroFaceId() {
                       onClick={() => navigate('/membro/perfil')}
                       className={
                         status.state === 'partial'
-                          ? 'w-full mt-3 py-3.5 rounded-xl font-bold text-[14px] text-slate-900 transition-transform active:scale-[0.98]'
-                          : 'w-full mt-3 py-3.5 rounded-xl font-semibold text-[13px] text-white/70'
+                          ? 'w-full mt-3 py-3.5 rounded-xl font-bold text-[14px] text-white transition-transform active:scale-[0.98]'
+                          : 'w-full mt-3 py-3.5 rounded-xl font-semibold text-[13px]'
                       }
                       style={
                         status.state === 'partial'
-                          ? { background: TEAL }
-                          : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }
+                          ? { background: ACCENT }
+                          : { background: CARD, border: `1px solid ${BORDER}`, color: TEXT2 }
                       }
                     >
                       {status.state === 'partial' ? 'Concluir' : 'Sair'}
@@ -639,6 +660,6 @@ export default function MembroFaceId() {
           </AnimatePresence>
         </div>
       </div>
-    </MembroShell>
+    </div>
   );
 }

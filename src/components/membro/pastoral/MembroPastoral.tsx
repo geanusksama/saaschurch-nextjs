@@ -3,8 +3,10 @@ import { motion } from 'motion/react';
 import { CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useMembroSession } from '../MembroProvider';
 import { MembroShell } from '../MembroShell';
+import { MEMBRO } from '../theme';
 
-const TEAL = '#2dd4bf';
+/** Tema claro fixo, igual ao resto do portal (ver components/membro/theme.ts). */
+const TEAL = MEMBRO.ACCENT;
 
 const MOTIVOS = [
   'Aconselhamento pessoal',
@@ -129,8 +131,8 @@ export default function MembroPastoral() {
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-16 gap-5 text-center">
               <CheckCircle size={56} style={{ color: TEAL }} />
               <div>
-                <p className="text-lg font-bold text-white mb-2">Solicitação enviada!</p>
-                <p className="text-sm text-white/45 leading-relaxed">
+                <p className="text-lg font-bold text-slate-900 mb-2">Solicitação enviada!</p>
+                <p className="text-sm text-slate-500 leading-relaxed">
                   Recebemos sua solicitação de atendimento pastoral.<br />
                   Em breve um pastor entrará em contato.
                 </p>
@@ -139,10 +141,10 @@ export default function MembroPastoral() {
           ) : otpStep ? (
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <div className="text-center">
-                <p className="text-lg font-bold text-white mb-2">Verificação de WhatsApp</p>
-                <p className="text-sm text-white/40 leading-relaxed">
+                <p className="text-lg font-bold text-slate-900 mb-2">Verificação de WhatsApp</p>
+                <p className="text-sm text-slate-500 leading-relaxed">
                   Enviamos um código de verificação via WhatsApp para:<br />
-                  <strong className="text-white">{phone}</strong>
+                  <strong className="text-slate-900">{phone}</strong>
                 </p>
               </div>
 
@@ -153,8 +155,8 @@ export default function MembroPastoral() {
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="000000"
                   maxLength={6}
-                  className="w-full tracking-[1.5em] text-center font-bold px-4 py-3.5 rounded-xl text-xl text-white outline-none focus:ring-2 focus:ring-teal-400"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  className="w-full tracking-[1.5em] text-center font-bold px-4 py-3.5 rounded-xl text-xl text-slate-900 outline-none focus:ring-2 focus:ring-teal-400"
+                  style={{ background: MEMBRO.CARD, border: `1px solid ${MEMBRO.BORDER}` }}
                 />
               </div>
 
@@ -167,7 +169,7 @@ export default function MembroPastoral() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setOtpStep(false)}
-                  className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white/60 border border-white/10 hover:bg-white/5 active:scale-[0.98] transition-all"
+                  className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-slate-500 border border-slate-200 hover:bg-slate-50 active:scale-[0.98] transition-all"
                 >
                   Voltar
                 </button>
@@ -175,7 +177,7 @@ export default function MembroPastoral() {
                   onClick={handleVerifyAndSubmit}
                   disabled={loading || otpCode.length < 6}
                   className="flex-1 py-3.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-40"
-                  style={{ background: TEAL, color: '#0d0f17' }}
+                  style={{ background: TEAL, color: '#fff' }}
                 >
                   {loading ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar'}
                 </button>
@@ -184,15 +186,15 @@ export default function MembroPastoral() {
           ) : (
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
               <div>
-                <p className="text-lg font-bold text-white mb-1">Atendimento Pastoral</p>
-                <p className="text-sm text-white/40 leading-relaxed">
+                <p className="text-lg font-bold text-slate-900 mb-1">Atendimento Pastoral</p>
+                <p className="text-sm text-slate-500 leading-relaxed">
                   Solicite um atendimento pastoral. Sua mensagem será encaminhada com sigilo.
                 </p>
               </div>
 
               {/* Motivo */}
               <div>
-                <label className="block text-xs font-medium text-white/50 mb-2">Motivo do atendimento</label>
+                <label className="block text-xs font-medium text-slate-500 mb-2">Motivo do atendimento</label>
                 <div className="grid grid-cols-2 gap-2">
                   {MOTIVOS.map(m => (
                     <button
@@ -200,8 +202,8 @@ export default function MembroPastoral() {
                       onClick={() => setMotivo(m)}
                       className="px-3 py-2.5 rounded-xl text-xs font-medium text-left transition-all"
                       style={motivo === m
-                        ? { background: `${TEAL}22`, color: TEAL, border: `1.5px solid ${TEAL}50` }
-                        : { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
+                        ? { background: MEMBRO.ACCENT_SOFT, color: TEAL, border: `1.5px solid ${TEAL}55` }
+                        : { background: MEMBRO.CARD, color: MEMBRO.TEXT2, border: `1px solid ${MEMBRO.BORDER}` }
                       }
                     >
                       {m}
@@ -212,16 +214,16 @@ export default function MembroPastoral() {
 
               {/* Seleção de Igreja */}
               <div>
-                <label className="block text-xs font-medium text-white/50 mb-1.5">Igreja para Atendimento</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Igreja para Atendimento</label>
                 <select
                   value={selectedChurchId}
                   onChange={e => setSelectedChurchId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all cursor-pointer"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-slate-900 placeholder-slate-400 outline-none transition-all cursor-pointer"
+                  style={{ background: MEMBRO.CARD, border: `1px solid ${MEMBRO.BORDER}` }}
                 >
-                  <option value="" className="bg-slate-900 text-white">Selecione uma igreja...</option>
+                  <option value="" className="bg-white text-slate-900">Selecione uma igreja...</option>
                   {churches.map(ch => (
-                    <option key={ch.id} value={ch.id} className="bg-slate-900 text-white">
+                    <option key={ch.id} value={ch.id} className="bg-white text-slate-900">
                       {ch.name}
                     </option>
                   ))}
@@ -230,27 +232,27 @@ export default function MembroPastoral() {
 
               {/* WhatsApp */}
               <div>
-                <label className="block text-xs font-medium text-white/50 mb-1.5">Confirmar seu WhatsApp</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Confirmar seu WhatsApp</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   placeholder="(19) 99999-9999"
-                  className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                  style={{ background: MEMBRO.CARD, border: `1px solid ${MEMBRO.BORDER}` }}
                 />
               </div>
 
               {/* Mensagem */}
               <div>
-                <label className="block text-xs font-medium text-white/50 mb-1.5">Sua mensagem</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Sua mensagem</label>
                 <textarea
                   value={mensagem}
                   onChange={e => setMensagem(e.target.value)}
                   placeholder="Descreva brevemente sua situação..."
                   rows={4}
-                  className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all resize-none"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-slate-900 placeholder-slate-400 outline-none transition-all resize-none"
+                  style={{ background: MEMBRO.CARD, border: `1px solid ${MEMBRO.BORDER}` }}
                 />
               </div>
 
@@ -259,11 +261,11 @@ export default function MembroPastoral() {
                 <div
                   onClick={() => setUrgente(u => !u)}
                   className="w-5 h-5 rounded-md flex items-center justify-center transition-all flex-shrink-0"
-                  style={urgente ? { background: TEAL } : { background: 'rgba(255,255,255,0.08)', border: '1.5px solid rgba(255,255,255,0.15)' }}
+                  style={urgente ? { background: TEAL } : { background: MEMBRO.CARD, border: `1.5px solid ${MEMBRO.BORDER}` }}
                 >
-                  {urgente && <svg viewBox="0 0 24 24" fill="none" stroke="#0d0f17" strokeWidth="3" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
+                  {urgente && <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
-                <span className="text-sm text-white/55">Situação urgente</span>
+                <span className="text-sm text-slate-500">Situação urgente</span>
               </label>
 
               {error && (
@@ -276,7 +278,7 @@ export default function MembroPastoral() {
                 onClick={handleSendOtp}
                 disabled={loadingOtp}
                 className="w-full py-3.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-40"
-                style={{ background: TEAL, color: '#0d0f17' }}
+                style={{ background: TEAL, color: '#fff' }}
               >
                 {loadingOtp ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar e Avançar'}
               </button>

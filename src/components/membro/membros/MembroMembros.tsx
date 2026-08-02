@@ -5,8 +5,14 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Search, X, Church, Star, Heart, Users } from 'lucide-react';
 import { useMembroSession } from '../MembroProvider';
+import { MEMBRO } from '../theme';
 
-const TEAL = '#2dd4bf';
+/**
+ * TEMA CLARO FIXO, igual ao perfil. Esta tela nasceu escura (fundo preto,
+ * texto branco) e destoava do resto do portal depois da migracao; aqui a foto
+ * continua sendo a estrela, mas sobre fundo claro.
+ */
+const { ACCENT, BG, CARD, BORDER, TEXT1, TEXT2 } = MEMBRO;
 
 function toProper(s: string): string {
   const minor = ['da','de','do','das','dos','e','a','o'];
@@ -38,6 +44,9 @@ function isRealPerson(name: string): boolean {
   return true;
 }
 
+/** Quantos membros cada lote traz. */
+const PAGINA = 10;
+
 interface MemberCard {
   id: string;
   fullName: string;
@@ -49,17 +58,16 @@ interface MemberCard {
   church?: { id: string; name: string } | null;
 }
 
-// ── Single full-screen snap card ─────────────────────────────────
+/**
+ * Um membro por tela, no MESMO desenho do perfil: a foto ocupa a metade de
+ * cima com a base curva, e os dados vêm logo abaixo, sobre a folha clara.
+ */
 function SnapCard({ m, h, token }: { m: MemberCard; h: number; token: string }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const name  = toProper(m.preferredName || m.fullName);
   const first = name.split(' ')[0];
   const rest  = name.split(' ').slice(1).join(' ');
-
-  // photo frame: 62% of card height, 80% width, centered, starts at 12% from top
-  const photoH = Math.round(h * 0.62);
-  const photoW = Math.round(Math.min(h * 0.5, 320)); // never wider than ~320
 
   const handleLike = async () => {
     try {
@@ -75,81 +83,70 @@ function SnapCard({ m, h, token }: { m: MemberCard; h: number; token: string }) 
 
   return (
     <div
-      className="relative flex-shrink-0 w-full flex flex-col items-center"
-      style={{ height: h, scrollSnapAlign: 'start', scrollSnapStop: 'always', background: '#0d1117' }}
+      className="relative flex-shrink-0 w-full flex flex-col"
+      style={{ height: h, scrollSnapAlign: 'start', scrollSnapStop: 'always', background: BG }}
     >
-      {/* ── framed photo ── */}
-      <div style={{ marginTop: h * 0.09, width: photoW, height: photoH, position: 'relative', flexShrink: 0 }}>
+      {/* ── foto: metade de cima, base curva ── */}
+      <div
+        className="relative flex-shrink-0 overflow-hidden"
+        style={{ height: '54%', background: '#0f172a', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 }}
+      >
         {m.photoUrl ? (
           <img
             src={m.photoUrl} alt={name}
-            style={{
-              width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: 'center top',
-              borderRadius: 24,
-              border: '2.5px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 8px 48px rgba(0,0,0,0.7), 0 0 0 6px rgba(255,255,255,0.03)',
-              display: 'block',
-            }}
+            className="absolute inset-0 w-full h-full"
+            style={{ objectFit: 'cover', objectPosition: 'center top' }}
           />
         ) : (
-          <div style={{
-            width: '100%', height: '100%', borderRadius: 24,
-            background: 'linear-gradient(160deg,#1a3a4c,#0d2a38)',
-            border: '2.5px solid rgba(255,255,255,0.08)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ fontSize: 110, fontWeight: 900, color: 'rgba(255,255,255,0.08)' }}>{first.charAt(0)}</span>
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: MEMBRO.ACCENT_SOFT }}>
+            <span style={{ fontSize: 110, fontWeight: 900, color: `${ACCENT}25` }}>{first.charAt(0)}</span>
           </div>
         )}
 
-        {/* Heart button — pinned to top-right of frame */}
-        <div style={{ position: 'absolute', top: 12, right: -14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <button onClick={handleLike}
-            className="active:scale-90 transition-transform"
-            style={{
-              width: 44, height: 44, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)',
-              border: '1.5px solid rgba(255,255,255,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-            <Heart size={18} fill={liked ? '#ec4899' : 'none'} color={liked ? '#ec4899' : '#fff'} />
-          </button>
-          {likeCount > 0 && (
-            <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: 700 }}>{likeCount}</span>
-          )}
-        </div>
+        {/* curtir — sobre a foto, como no perfil */}
+        <button
+          onClick={handleLike}
+          className="absolute active:scale-90 transition-transform flex items-center gap-1.5"
+          style={{
+            top: 14, right: 14, height: 40, paddingInline: 12, borderRadius: 999,
+            background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.25)',
+          }}
+        >
+          <Heart size={16} fill={liked ? '#f43f5e' : 'none'} color={liked ? '#f43f5e' : '#fff'} />
+          <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>{likeCount}</span>
+        </button>
       </div>
 
-      {/* ── info below photo ── */}
-      <div style={{ marginTop: 20, paddingInline: 24, textAlign: 'center', width: '100%' }}>
+      {/* ── dados embaixo ── */}
+      <div className="flex-1 px-5 pt-5 text-center">
         {m.ecclesiasticalTitle && (
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
             padding: '4px 12px', borderRadius: 999, marginBottom: 10,
-            background: `${TEAL}22`, border: `1px solid ${TEAL}44`,
+            background: MEMBRO.ACCENT_SOFT, border: `1px solid ${ACCENT}33`,
           }}>
-            <Star size={8} fill={TEAL} color={TEAL} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: TEAL, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <Star size={8} fill={ACCENT} color={ACCENT} />
+            <span style={{ fontSize: 10, fontWeight: 800, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               {m.ecclesiasticalTitle}
             </span>
           </div>
         )}
-        <h2 style={{ color: '#fff', fontSize: 30, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>{first}</h2>
-        {rest && <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 18, fontWeight: 500, margin: '4px 0 0' }}>{rest}</p>}
+        <h2 style={{ color: TEXT1, fontSize: 28, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>{first}</h2>
+        {rest && <p style={{ color: TEXT2, fontSize: 17, fontWeight: 500, margin: '4px 0 0' }}>{rest}</p>}
         {m.church?.name && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 10 }}>
-            <Church size={11} color="rgba(255,255,255,0.35)" />
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{m.church.name}</span>
+            <Church size={11} color={TEXT2} />
+            <span style={{ fontSize: 12, color: TEXT2 }}>{m.church.name}</span>
           </div>
         )}
       </div>
 
-      {/* subtle swipe hint — only on first card-ish */}
-      <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5, opacity: 0.25 }}>
-        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff' }} />
-        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff' }} />
-        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff' }} />
+      {/* dica de rolagem */}
+      <div style={{ position: 'absolute', bottom: 20, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5, opacity: 0.35 }}>
+        <div style={{ width: 4, height: 4, borderRadius: '50%', background: TEXT2 }} />
+        <div style={{ width: 4, height: 4, borderRadius: '50%', background: TEXT2 }} />
+        <div style={{ width: 4, height: 4, borderRadius: '50%', background: TEXT2 }} />
       </div>
     </div>
   );
@@ -203,7 +200,8 @@ export default function MembroMembros() {
       const res = await fetch('/api/membro/membros', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: session.member_token, cursor: cursorRef.current, limit: 30 }),
+        // 10 por vez: a pessoa ve um membro por tela, entao lotes grandes so pesam
+        body: JSON.stringify({ token: session.member_token, cursor: cursorRef.current, limit: PAGINA }),
       });
       const data = await res.json();
       const newItems = (data.items || []).filter((m: MemberCard) => isRealPerson(m.fullName));
@@ -245,7 +243,7 @@ export default function MembroMembros() {
       const res = await fetch('/api/membro/membros', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: memberToken, search: q, limit: 30 }),
+        body: JSON.stringify({ token: memberToken, search: q, limit: PAGINA }),
       });
       const data = await res.json();
       setSearchResults((data.items || []).filter((m: MemberCard) => isRealPerson(m.fullName)));
@@ -259,25 +257,25 @@ export default function MembroMembros() {
   if (isLoading || !session?.member) return null;
 
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ maxWidth: 430, margin: '0 auto', background: '#000' }}>
+    <div className="fixed inset-0 flex flex-col" style={{ maxWidth: 430, margin: '0 auto', background: BG, colorScheme: 'light' }}>
 
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center gap-3 px-5 pt-12 pb-3"
-        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 100%)' }}>
+        style={{ background: 'linear-gradient(to bottom, rgba(241,245,249,0.98) 55%, rgba(241,245,249,0))' }}>
         <button onClick={() => navigate('/membro/perfil')}
           className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(8px)' }}>
-          <ArrowLeft size={16} color="#fff" />
+          style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          <ArrowLeft size={16} color={TEXT2} />
         </button>
         <div className="flex-1">
-          <h1 className="font-semibold text-[15px] text-white">Membros do Campo</h1>
-          {allItems.length > 0 && <p className="text-[10px] text-white/40">{allItems.length}{hasMore ? '+' : ''} membros</p>}
+          <h1 className="font-bold text-[15px]" style={{ color: TEXT1 }}>Membros do Campo</h1>
+          {allItems.length > 0 && <p className="text-[10px]" style={{ color: TEXT2 }}>{allItems.length}{hasMore ? '+' : ''} membros</p>}
         </div>
         {/* Simple search icon — opens modal */}
         <button onClick={() => { setShowSearch(true); setSearchResults([]); setSearchText(''); }}
           className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(8px)' }}>
-          <Search size={15} color="#fff" />
+          style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          <Search size={15} color={TEXT2} />
         </button>
       </div>
 
@@ -293,21 +291,21 @@ export default function MembroMembros() {
 
         {loading && containerH > 0 && (
           <div className="flex-shrink-0 flex items-center justify-center"
-            style={{ height: containerH, scrollSnapAlign: 'start', background: '#0a1a24' }}>
+            style={{ height: containerH, scrollSnapAlign: 'start', background: BG }}>
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-              style={{ borderColor: `${TEAL}30`, borderTopColor: TEAL }} />
+              style={{ borderColor: `${ACCENT}30`, borderTopColor: ACCENT }} />
           </div>
         )}
 
         {!hasMore && !loading && allItems.length > 0 && containerH > 0 && (
           <div className="flex-shrink-0 flex flex-col items-center justify-center gap-4"
-            style={{ height: containerH, scrollSnapAlign: 'start', background: '#0a1a24' }}>
-            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: `${TEAL}22` }}>
-              <Users size={26} color={TEAL} />
+            style={{ height: containerH, scrollSnapAlign: 'start', background: BG }}>
+            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: MEMBRO.ACCENT_SOFT }}>
+              <Users size={26} color={ACCENT} />
             </div>
-            <p className="text-white/60 font-semibold text-sm">{allItems.length} membros</p>
-            <button onClick={() => navigate('/membro/perfil')} className="mt-2 px-6 py-2.5 rounded-full font-semibold text-sm"
-              style={{ background: TEAL, color: '#0d0f17' }}>Voltar ao perfil</button>
+            <p className="font-semibold text-sm" style={{ color: TEXT2 }}>{allItems.length} membros</p>
+            <button onClick={() => navigate('/membro/perfil')} className="mt-2 px-6 py-2.5 rounded-full font-bold text-sm text-white"
+              style={{ background: ACCENT }}>Voltar ao perfil</button>
           </div>
         )}
       </div>
@@ -316,26 +314,26 @@ export default function MembroMembros() {
       <AnimatePresence>
         {showSearch && (
           <div className="fixed inset-0 z-50 flex items-end justify-center"
-            style={{ background: 'rgba(0,0,0,0.60)', backdropFilter: 'blur(8px)' }}
+            style={{ background: 'rgba(2,6,23,0.55)', backdropFilter: 'blur(8px)', colorScheme: 'light' }}
             onClick={() => setShowSearch(false)}>
             <motion.div
               initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               className="w-full max-w-sm px-5 pt-4 pb-8 rounded-t-3xl"
-              style={{ background: '#1a1d2a', maxWidth: 430 }}
+              style={{ background: CARD, maxWidth: 430 }}
               onClick={e => e.stopPropagation()}>
 
               <div className="flex justify-center mb-4">
-                <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }} />
+                <div className="w-10 h-1 rounded-full" style={{ background: '#cbd5e1' }} />
               </div>
 
-              <p className="text-white font-semibold text-[15px] mb-4">Buscar membro</p>
+              <p className="font-bold text-[15px] mb-4" style={{ color: TEXT1 }}>Buscar membro</p>
 
               {/* Input + button */}
               <div className="flex gap-2 mb-5">
                 <div className="flex-1 flex items-center gap-2 rounded-2xl px-4 h-11"
-                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}>
-                  <Search size={14} color="rgba(255,255,255,0.35)" />
+                  style={{ background: BG, border: `1px solid ${BORDER}` }}>
+                  <Search size={14} color={TEXT2} />
                   <input
                     ref={searchInputRef}
                     autoFocus
@@ -343,18 +341,18 @@ export default function MembroMembros() {
                     onChange={e => setSearchText(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSearch()}
                     placeholder="Digite o nome…"
-                    className="flex-1 bg-transparent outline-none text-[13px] placeholder-white/30"
-                    style={{ color: '#fff', caretColor: TEAL }}
+                    className="flex-1 bg-transparent outline-none text-[13px] placeholder-slate-400"
+                    style={{ color: TEXT1, caretColor: ACCENT }}
                   />
                   {searchText && (
                     <button onClick={() => { setSearchText(''); setSearchResults([]); }}>
-                      <X size={13} color="rgba(255,255,255,0.35)" />
+                      <X size={13} color={TEXT2} />
                     </button>
                   )}
                 </div>
                 <button onClick={handleSearch}
-                  className="h-11 px-4 rounded-2xl font-semibold text-[13px] flex-shrink-0"
-                  style={{ background: TEAL, color: '#0d0f17' }}>
+                  className="h-11 px-4 rounded-2xl font-bold text-[13px] flex-shrink-0 text-white"
+                  style={{ background: ACCENT }}>
                   Buscar
                 </button>
               </div>
@@ -363,12 +361,12 @@ export default function MembroMembros() {
               {searching && (
                 <div className="flex justify-center py-4">
                   <div className="w-6 h-6 rounded-full border-2 animate-spin"
-                    style={{ borderColor: `${TEAL}30`, borderTopColor: TEAL }} />
+                    style={{ borderColor: `${ACCENT}30`, borderTopColor: ACCENT }} />
                 </div>
               )}
               {!searching && searchResults.length === 0 && searchText.length >= 2 && (
-                <p className="text-center text-[12px] py-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
-                  Nenhum resultado para "{searchText}"
+                <p className="text-center text-[12px] py-4" style={{ color: TEXT2 }}>
+                  Nenhum resultado para &quot;{searchText}&quot;
                 </p>
               )}
 
@@ -378,21 +376,21 @@ export default function MembroMembros() {
                   return (
                     <div key={m.id}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-2xl cursor-pointer active:opacity-70"
-                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                      style={{ background: BG, border: `1px solid ${BORDER}` }}
                       onClick={() => { setShowSearch(false); setViewMember(m); }}>
                       {m.photoUrl ? (
                         <img src={m.photoUrl} alt={name} className="rounded-xl object-cover object-top flex-shrink-0"
                           style={{ width: 44, height: 52 }} />
                       ) : (
                         <div className="rounded-xl flex items-center justify-center font-bold flex-shrink-0"
-                          style={{ width: 44, height: 52, background: `${TEAL}18`, color: TEAL, fontSize: 18 }}>
+                          style={{ width: 44, height: 52, background: MEMBRO.ACCENT_SOFT, color: ACCENT, fontSize: 18 }}>
                           {name.charAt(0)}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[12px] truncate text-white/85">{name}</p>
-                        {m.ecclesiasticalTitle && <p className="text-[10px] font-medium" style={{ color: TEAL }}>{m.ecclesiasticalTitle}</p>}
-                        {m.church?.name && <p className="text-[10px] text-white/35 truncate">{m.church.name}</p>}
+                        <p className="font-bold text-[12px] truncate" style={{ color: TEXT1 }}>{name}</p>
+                        {m.ecclesiasticalTitle && <p className="text-[10px] font-semibold" style={{ color: ACCENT }}>{m.ecclesiasticalTitle}</p>}
+                        {m.church?.name && <p className="text-[10px] truncate" style={{ color: TEXT2 }}>{m.church.name}</p>}
                       </div>
                     </div>
                   );
@@ -410,13 +408,13 @@ export default function MembroMembros() {
           const name = toProper(m.preferredName || m.fullName);
           return (
             <div className="fixed inset-0 z-50 flex items-end justify-center"
-              style={{ background: 'rgba(0,0,0,0.70)', backdropFilter: 'blur(12px)' }}
+              style={{ background: 'rgba(2,6,23,0.6)', backdropFilter: 'blur(10px)', colorScheme: 'light' }}
               onClick={() => setViewMember(null)}>
               <motion.div
                 initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
                 transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                 className="w-full rounded-t-3xl overflow-hidden"
-                style={{ maxWidth: 430, background: '#0d1f2d' }}
+                style={{ maxWidth: 430, background: CARD }}
                 onClick={e => e.stopPropagation()}>
 
                 {/* Photo hero */}
@@ -425,17 +423,17 @@ export default function MembroMembros() {
                     <img src={m.photoUrl} alt={name} className="w-full h-full object-cover object-top" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"
-                      style={{ background: 'linear-gradient(160deg,#1a3a4c,#0d2a38)' }}>
-                      <span className="font-black text-white/10" style={{ fontSize: 120 }}>{name.charAt(0)}</span>
+                      style={{ background: MEMBRO.ACCENT_SOFT }}>
+                      <span className="font-black" style={{ fontSize: 120, color: `${ACCENT}25` }}>{name.charAt(0)}</span>
                     </div>
                   )}
                   <div className="absolute inset-x-0 bottom-0"
-                    style={{ height: '60%', background: 'linear-gradient(to top, #0d1f2d 0%, transparent 100%)' }} />
+                    style={{ height: '60%', background: `linear-gradient(to top, ${CARD} 0%, transparent 100%)` }} />
                   {/* Close */}
                   <button onClick={() => setViewMember(null)}
                     className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center"
-                    style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)' }}>
-                    <X size={15} color="#fff" />
+                    style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+                    <X size={15} color={TEXT2} />
                   </button>
                 </div>
 
@@ -443,16 +441,16 @@ export default function MembroMembros() {
                 <div className="px-5 pb-8 -mt-6 relative">
                   {m.ecclesiasticalTitle && (
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-2"
-                      style={{ background: `${TEAL}22`, border: `1px solid ${TEAL}44` }}>
-                      <Star size={8} fill={TEAL} color={TEAL} />
-                      <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: TEAL }}>{m.ecclesiasticalTitle}</span>
+                      style={{ background: MEMBRO.ACCENT_SOFT, border: `1px solid ${ACCENT}33` }}>
+                      <Star size={8} fill={ACCENT} color={ACCENT} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: ACCENT }}>{m.ecclesiasticalTitle}</span>
                     </div>
                   )}
-                  <h2 className="text-white font-bold text-xl leading-tight">{name}</h2>
+                  <h2 className="font-bold text-xl leading-tight" style={{ color: TEXT1 }}>{name}</h2>
                   {m.church?.name && (
                     <div className="flex items-center gap-1.5 mt-2">
-                      <Church size={12} color="rgba(255,255,255,0.40)" />
-                      <span className="text-[12px] text-white/40">{m.church.name}</span>
+                      <Church size={12} color={TEXT2} />
+                      <span className="text-[12px]" style={{ color: TEXT2 }}>{m.church.name}</span>
                     </div>
                   )}
                 </div>

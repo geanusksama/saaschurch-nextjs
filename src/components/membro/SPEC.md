@@ -73,24 +73,42 @@ Navega para /membro/perfil
 - Busca dados completos do membro
 - Retorna: `{ member_token, member: { id, full_name, photo_url, ecclesiastical_title, membership_status, rol, church: { name }, campo: { name } } }`
 
+### `GET /api/membro/perfil?token=<member_token>`
+- Autenticada pelo member_token — o id vem do `sub` assinado, nunca da query
+- Join eclesiástico do membro logado (`src/lib/membroPerfilService.ts`)
+- Retorna: `{ member, gf, funcoes, ministerios, batismo, temVidaEclesiastica }`
+  - `gf`: o Grupo Familiar que a pessoa **lidera** (`cell_group_leaders` ou o
+    `leader_id` antigo) ou, se não liderar nenhum, o que ela **participa**
+    (`cell_group_members` ativo). GF inativo ou excluído não conta.
+  - `funcoes`: `church_function_history` vigente (ativa e sem `end_date`)
+  - `ministerios`: `ministry_members` ativos de ministérios ativos
+  - `batismo`: tabela `baptisms` e, na falta dela, `members.baptism_date`
+- E2E: `npx tsx scripts/e2e-membro-perfil.mjs`
+
+### `GET /api/membro/atividades?token=<member_token>`
+- Autenticada igual à de cima; o que abre nos ícones da grade "Meus dados"
+- `src/lib/membroAtividadesService.ts` — buscada só no primeiro toque num ícone
+- Retorna: `{ filhos, presencas, inscricoes, totais }`
+  - `filhos`: `member_family_relationships` do tipo `FILHO`. Filho com ficha de
+    membro vem com foto e ROL; criança sem ficha vem por `related_name`
+  - `presencas`: junta `event_attendance` (check-in em evento) com
+    `face_presencas` (leitor facial). A tabela do leitor **não tem member_id**:
+    grava o ROL, então quem não tem ROL não tem essa origem
+  - `inscricoes`: `event_registrations` com status, pagamento e check-in. As
+    compras de ingresso entram aqui quando o módulo existir
+- E2E: mesmo script do perfil
+
 ---
 
 ## 4. Rotas React Router
 
 ```
 /membro                    → MembroRoot (auth guard)
-/membro/perfil             → MembroPerfil
-/membro/menu               → MembroMenu
-/membro/feed               → MembroFeed
-/membro/historia           → MembroHistoria
-/membro/pregacoes          → MembroPregacoes
-/membro/agenda             → MembroAgenda
-/membro/pao-diario         → MembroPaoDiario
-/membro/testemunhos        → MembroTestemunhos
-/membro/lideranca          → MembroLideranca
-/membro/ministerios        → MembroMinisteios
-/membro/eventos            → MembroEventos
+/membro/perfil             → MembroPerfil     (a tela do portal)
+/membro/faceid             → MembroFaceId
+/membro/membros            → MembroMembros
 /membro/pastoral           → MembroPastoral
+/membro/*                  → MembroEmConstrucao (curinga)
 ```
 
 ---
@@ -109,9 +127,20 @@ Navega para /membro/perfil
 | Bottom nav height | `64px` |
 | Safe area bottom | `env(safe-area-inset-bottom, 0px)` |
 
-**Bottom Navigation** (5 itens, centro especial):
+**Telas já migradas para o TEMA CLARO FIXO** (perfil, Face ID, Membros do Campo
+e "Em construção"): a paleta única vive em `src/components/membro/theme.ts`.
+Cada uma dessas rotas remove a classe `dark` do `<html>` enquanto está montada,
+senão o `globals.css` reescreve `bg-white`/`text-slate-*` e o texto some — foi
+exatamente o que aconteceu antes da migração. Essas telas também não usam o
+MembroShell: saem direto para o perfil.
+
+O azul `#2563eb` é o padrão. No perfil ele vira **rosa `#db2777` quando o sexo
+do cadastro é feminino**; sem sexo preenchido continua azul — a tela nunca
+"chuta" um gênero.
+
+**Bottom Navigation** do MembroShell (telas ainda não migradas):
 ```
-[Menu]  [Feed]  [❤ Teal]  [História]  [Perfil]
+[Início]  [Feed]  [❤]  [História]  [Perfil]
 ```
 
 ---
@@ -119,53 +148,65 @@ Navega para /membro/perfil
 ## 6. Telas
 
 ### 6.1 MembroPerfil (tela inicial após login)
-- Avatar grande com nome e título eclesiástico
-- Status badge (Ativo / Congregado / etc.)
-- Cards: ROL, Igreja, Campo, Data de batismo
-- Botão "Sair"
 
-### 6.2 MembroMenu (grid como Flutter app)
-Grid 3 colunas com ícones circulares:
-- Bíblia, Igreja, Pregações
-- Ministério, Site, Rádio
-- Agenda Anual, Eventos, Compras
-- Pão Diário, Testemunhos, Atend. Past.
-- Liderança
+É a **tela única** do portal: o menu foi absorvido por ela. Tema claro fixo.
 
-### 6.3 MembroFeed
-- Posts do campo (tabela `feed_posts`, filtrado por `campo_id`)
-- Pull-to-refresh
-- Card com foto do autor, texto, data, likes
+**Topo** — a foto do membro ocupa metade da tela. Só a foto DELE: a foto do GF
+é do grupo e vive no card do Grupo Familiar, nunca como retrato de pessoa. Sem
+foto, aparece a inicial do nome. Sobre a foto: voltar, curtidas e **sair da
+conta**; embaixo, título eclesiástico, situação, nome com o **ROL ao lado**,
+igreja e campo.
 
-### 6.4 MembroHistoria
-- Timeline hardcoded da história da AD Campinas (1936–atual)
-- Matching com o app Flutter
+**Ações** — botão principal `Cadastrar meu rosto (Face ID)`, mais dois ícones:
+3 pontinhos (ficha completa) e pessoas (Membros do Campo).
 
-### 6.5 MembroPregacoes
-- Lista de pregações da tabela `app_media_items`
-- Filtro: sermão, podcast, clipe
-- Link para YouTube/externo
+**Grade "Meus dados"** — 5 ícones por linha, agrupados por assunto:
 
-### 6.6 MembroAgenda
-- Calendário com eventos da tabela `tbeventos`
-- Vista por mês
+| Devocional | Igreja e pessoas | Agenda, ingressos e minha vida |
+|------------|------------------|--------------------------------|
+| Bíblia, Pão diário, Pregações, Rádio, Feed | Ministério, Liderança, Igreja, História, Atend. Past. | Agenda, Inscrições, Compras, Presenças, Filhos |
 
-### 6.7 MembroPaoDiario
-- Devocionais de hoje da tabela `app_daily_bread_entries`
-- Leitura bíblica + mensagem
+Inscrições, Presenças e Filhos abrem modais com dados reais (com selinho de
+contagem); os demais navegam. Rotas que ainda não existem caem em
+"Em construção".
 
-### 6.8 MembroTestemunhos
-- Feed de testemunhos da tabela `app_testemunhos`
+**Blocos que só aparecem se existirem** (sem card vazio):
 
-### 6.9 MembroLideranca
-- Lista de bispos, pastores, diáconos da tabela `app_lideranca`
+| Se tem GF | Se tem vida eclesiástica |
+|-----------|--------------------------|
+| Card do Grupo Familiar: nome, tipo, horário, líderes (casal) com WhatsApp, endereço no mapa e — para quem lidera — a contagem de participantes | Funções vigentes na igreja, ministérios (marcando quando é a liderança) e batismo (data, local, ministrante) |
 
-### 6.10 MembroMinisterios
-- Lista da tabela `ministries` filtrado pelo campo do membro
+O bloco do GF aparece tanto para quem **lidera** quanto para quem **participa**
+— muda o rótulo e a contagem. Os dados vêm de `/api/membro/perfil` e
+`/api/membro/atividades`; a sessão do localStorage só tem a ficha básica.
 
-### 6.11 MembroPastoral
-- Formulário de solicitação de atendimento pastoral
-- Tabela `pastoral_attendances`
+### 6.2 Telas removidas
+
+Sumiram de vez (arquivo, rota e link): **menu, feed, história, pregações,
+agenda, pão diário, testemunhos e liderança**. Eram cascas sem nenhuma consulta
+— abriam vazias e pareciam app quebrado. Os ícones delas continuam na grade
+**Menu** do perfil, mas marcados `construcao: true`: em vez de navegar, abrem um
+modal "Estamos preparando esta área". Quando a tela existir, troca-se o
+`construcao` por um `path`.
+
+A barra inferior do MembroShell também saiu, pelo mesmo motivo: apontava para
+essas rotas. Hoje o shell é só um cabeçalho com voltar, e sobrou uma única tela
+usando ele.
+
+### 6.3 MembroFaceId, MembroMembros, MembroPastoral
+
+As três seguem o tema claro. Membros do Campo tem o mesmo desenho do perfil
+(foto no topo com base curva, dados embaixo) e pagina de **10 em 10** — a
+pessoa vê um membro por tela, então lote grande só pesava.
+
+### 6.4 Trilha do membro (a construir)
+
+Na bandeja "Meu perfil" há um grupo de três atalhos que ainda não existem:
+**Treinamento de GF, Cursos e Mundo da Bíblia** (o joystick também está na linha
+de ações do perfil, em destaque). Junto deles ficam os **selos** — Líder de GF,
+Líder de ministério, funções na igreja, Batizado — que nascem do cadastro e
+crescem conforme a pessoa assume responsabilidades. É onde a gamificação de
+cursos vai entrar.
 
 ---
 
@@ -209,7 +250,12 @@ src/components/membro/MembroLogin.tsx
 src/components/membro/MembroRoot.tsx
 src/components/membro/MembroShell.tsx
 src/components/membro/perfil/MembroPerfil.tsx
-src/components/membro/menu/MembroMenu.tsx
+src/components/membro/theme.ts
+src/lib/membroPerfilService.ts
+src/lib/membroAtividadesService.ts
+src/app/api/membro/perfil/route.ts
+src/app/api/membro/atividades/route.ts
+scripts/e2e-membro-perfil.mjs
 src/components/membro/feed/MembroFeed.tsx
 src/components/membro/historia/MembroHistoria.tsx
 src/components/membro/pregacoes/MembroPregacoes.tsx
