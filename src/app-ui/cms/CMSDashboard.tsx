@@ -1,161 +1,242 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import {
-  LayoutGrid, Globe, Settings, Eye, Edit3,
-  CheckCircle, AlertCircle, PlusCircle, Layers,
+  Globe, Edit3, CheckCircle, AlertCircle, PlusCircle,
+  Layers, Loader2, ExternalLink, Copy, X,
 } from "lucide-react";
-import { DEPARTMENTS } from "../../components/public/portal/departments/deptConfig";
+import {
+  useDepartmentSites, useCriarDepartmentSite, useMinisteriosSemSite,
+} from "../../hooks/useDepartmentSite";
+import { STYLE_PRESETS, getPreset } from "../../lib/departmentSiteSchema";
 
+/**
+ * Painel do CMS: uma página por departamento (ministério) do campo.
+ *
+ * Os dados vêm de `department_sites` — antes esta tela mostrava uma lista fixa
+ * com status de publicação simulado, o que não refletia nada do banco.
+ */
 export default function CMSDashboard() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
+  const [filtro, setFiltro] = useState<"todos" | "publicados" | "rascunhos">("todos");
+  const [criando, setCriando] = useState(false);
 
-  // Simulated publish status (would come from DB in production)
-  const publishedSlugs = new Set(["cibe", "jovens", "ebd"]);
+  const { data: sites, isLoading, error } = useDepartmentSites();
 
-  const filtered = DEPARTMENTS.filter((d) => {
-    if (filter === "published") return publishedSlugs.has(d.slug);
-    if (filter === "draft")     return !publishedSlugs.has(d.slug);
-    return true;
-  });
+  const lista = useMemo(() => {
+    const base = sites ?? [];
+    if (filtro === "publicados") return base.filter((s) => s.status === "PUBLICADO");
+    if (filtro === "rascunhos") return base.filter((s) => s.status !== "PUBLICADO");
+    return base;
+  }, [sites, filtro]);
+
+  const publicados = (sites ?? []).filter((s) => s.status === "PUBLICADO").length;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+    <div className="mx-auto max-w-5xl p-6">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            CMS de Departamentos
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Gerencie os mini-sites e conteúdos de cada departamento
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">CMS de Departamentos</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Cada departamento tem sua própria página, com endereço para compartilhar.
           </p>
         </div>
         <button
-          onClick={() => navigate("/app-ui/cms/templates")}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+          onClick={() => setCriando(true)}
+          className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700"
         >
-          <PlusCircle size={15} />
-          Novo a partir de template
+          <PlusCircle size={15} /> Nova página
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {[
-          { label: "Departamentos",     value: DEPARTMENTS.length, icon: LayoutGrid,   color: "violet" },
-          { label: "Publicados",         value: publishedSlugs.size, icon: CheckCircle, color: "green" },
-          { label: "Em rascunho",        value: DEPARTMENTS.length - publishedSlugs.size, icon: AlertCircle, color: "amber" },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700"
+      <div className="mb-6 grid grid-cols-3 gap-3">
+        <Estatistica icone={Layers} rotulo="Páginas" valor={sites?.length ?? 0} />
+        <Estatistica icone={CheckCircle} rotulo="No ar" valor={publicados} cor="text-emerald-500" />
+        <Estatistica icone={AlertCircle} rotulo="Rascunhos" valor={(sites?.length ?? 0) - publicados} cor="text-amber-500" />
+      </div>
+
+      <div className="mb-5 flex gap-2">
+        {([["todos", "Todas"], ["publicados", "No ar"], ["rascunhos", "Rascunhos"]] as const).map(([v, l]) => (
+          <button
+            key={v} onClick={() => setFiltro(v)}
+            className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+              filtro === v ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 bg-${stat.color}-100 dark:bg-${stat.color}-900/30`}>
-              <stat.icon size={16} className={`text-${stat.color}-600 dark:text-${stat.color}-400`} />
-            </div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{stat.label}</p>
-          </div>
+            {l}
+          </button>
         ))}
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex items-center gap-1 mb-4 border-b border-slate-200 dark:border-slate-700">
-        {(["all", "published", "draft"] as const).map((f) => {
-          const labels = { all: "Todos", published: "Publicados", draft: "Rascunho" };
-          return (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                filter === f
-                  ? "border-violet-600 text-violet-600"
-                  : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              {labels[f]}
-            </button>
-          );
-        })}
-      </div>
+      {isLoading ? (
+        <div className="flex h-40 items-center justify-center text-slate-400">
+          <Loader2 className="animate-spin" />
+        </div>
+      ) : error ? (
+        <p className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{(error as Error).message}</p>
+      ) : lista.length === 0 ? (
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center">
+          <Globe size={32} className="mx-auto mb-3 text-slate-300" />
+          <p className="text-slate-500">
+            Nenhuma página ainda. Crie a primeira para um dos seus departamentos.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {lista.map((site, i) => {
+            const preset = getPreset(site.preset);
+            const noAr = site.status === "PUBLICADO";
+            return (
+              <motion.div
+                key={site.id}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+              >
+                <div className="h-20" style={{ background: preset.tokens.heroOverlay }} />
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold text-slate-900">{site.titulo}</h3>
+                      <p className="truncate text-xs text-slate-500">/{site.slug} · {preset.nome}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        noAr ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {noAr ? "No ar" : "Rascunho"}
+                    </span>
+                  </div>
 
-      {/* Department grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((dept, i) => {
-          const isPublished = publishedSlugs.has(dept.slug);
-          return (
-            <motion.div
-              key={dept.slug}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-              className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden group"
-            >
-              {/* Color header */}
-              <div className="h-14 relative flex items-center px-4 gap-3" style={{ background: dept.color + "18", borderBottom: `2px solid ${dept.color}40` }}>
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: dept.color }} />
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">{dept.name}</p>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => navigate(`/app-ui/cms/sites/${site.id}/builder`)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
+                    >
+                      <Edit3 size={14} /> Editar
+                    </button>
+                    {noAr && (
+                      <>
+                        <a
+                          href={`/${site.slug}`} target="_blank" rel="noreferrer"
+                          className="rounded-lg border border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50"
+                          aria-label="Abrir página"
+                        >
+                          <ExternalLink size={15} />
+                        </a>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/${site.slug}`)}
+                          className="rounded-lg border border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50"
+                          aria-label="Copiar link"
+                        >
+                          <Copy size={15} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <span
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                    isPublished
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
-                      : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {criando && <ModalNovaPagina onFechar={() => setCriando(false)} />}
+    </div>
+  );
+}
+
+function Estatistica({
+  icone: Icone, rotulo, valor, cor = "text-slate-400",
+}: { icone: React.ElementType; rotulo: string; valor: number; cor?: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <Icone size={18} className={cor} />
+      <p className="mt-2 text-2xl font-bold text-slate-900">{valor}</p>
+      <p className="text-xs text-slate-500">{rotulo}</p>
+    </div>
+  );
+}
+
+function ModalNovaPagina({ onFechar }: { onFechar: () => void }) {
+  const navigate = useNavigate();
+  const { data: ministerios, isLoading } = useMinisteriosSemSite();
+  const { data: sites } = useDepartmentSites();
+  const criar = useCriarDepartmentSite();
+
+  const [departmentId, setDepartmentId] = useState("");
+  const [preset, setPreset] = useState("midnight");
+  const [erro, setErro] = useState<string | null>(null);
+
+  // Um ministério só pode ter uma página.
+  const jaTemSite = new Set((sites ?? []).map((s) => s.department_id));
+  const disponiveis = (ministerios ?? []).filter((m) => !jaTemSite.has(m.id));
+
+  async function confirmar() {
+    setErro(null);
+    try {
+      const r = await criar.mutateAsync({ departmentId, preset });
+      onFechar();
+      navigate(`/app-ui/cms/sites/${r.site.id}/builder`);
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onFechar}>
+      <div
+        className="w-full max-w-md rounded-2xl bg-white p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-semibold text-slate-900">Nova página de departamento</h2>
+          <button onClick={onFechar} aria-label="Fechar"><X size={18} className="text-slate-400" /></button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex h-24 items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>
+        ) : disponiveis.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            Todos os departamentos do seu campo já têm página. Cadastre um novo ministério para criar outra.
+          </p>
+        ) : (
+          <>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Departamento</label>
+            <select
+              value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}
+              className="mb-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            >
+              <option value="">Escolha…</option>
+              {disponiveis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+
+            <label className="mb-1 block text-xs font-medium text-slate-600">Estilo</label>
+            <div className="mb-4 grid max-h-56 grid-cols-2 gap-2 overflow-y-auto">
+              {STYLE_PRESETS.map((p) => (
+                <button
+                  key={p.id} onClick={() => setPreset(p.id)}
+                  className={`rounded-lg border p-2 text-left transition-colors ${
+                    preset === p.id ? "border-violet-500 bg-violet-50" : "border-slate-200 hover:bg-slate-50"
                   }`}
                 >
-                  {isPublished ? "Publicado" : "Rascunho"}
-                </span>
-              </div>
+                  <span className="mb-1.5 flex h-8 overflow-hidden rounded" style={{ background: p.tokens.heroOverlay }} />
+                  <span className="block text-xs font-medium text-slate-800">{p.nome}</span>
+                </button>
+              ))}
+            </div>
 
-              {/* Content */}
-              <div className="p-4">
-                <p className="text-xs text-slate-500 line-clamp-2 mb-4">
-                  {dept.description}
-                </p>
+            {erro && <p className="mb-3 text-sm text-red-600">{erro}</p>}
 
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {dept.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate(`/app-ui/cms/departamentos/${dept.slug}/builder`)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold bg-violet-600 text-white hover:bg-violet-700 transition-colors"
-                  >
-                    <Edit3 size={12} />
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => window.open(`/portal/dept/${dept.slug}`, "_blank")}
-                    className="py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                    title="Preview"
-                  >
-                    <Eye size={14} className="text-slate-500" />
-                  </button>
-                  <button
-                    onClick={() => navigate(`/app-ui/cms/departamentos/${dept.slug}`)}
-                    className="py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                    title="Configurações"
-                  >
-                    <Settings size={14} className="text-slate-500" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
+            <button
+              onClick={confirmar} disabled={!departmentId || criar.isPending}
+              className="w-full rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {criar.isPending ? "Criando…" : "Criar e abrir o editor"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

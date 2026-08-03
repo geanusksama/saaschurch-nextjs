@@ -188,6 +188,8 @@ import MeusPagamentos from "../app-ui/stripe/MeusPagamentos";
 
 import CMSDashboard from "../app-ui/cms/CMSDashboard";
 import CMSPageBuilder from "../app-ui/cms/CMSPageBuilder";
+import CMSDeptBuilder from "../app-ui/cms/CMSDeptBuilder";
+import CMSDeptProdutos from "../app-ui/cms/CMSDeptProdutos";
 import CMSTemplates from "../app-ui/cms/CMSTemplates";
 import CMSDeptSettings from "../app-ui/cms/CMSDeptSettings";
 import { PortalHomePage, PortalDeptPage } from "../components/public/portal/PortalPage";
@@ -725,6 +727,10 @@ export const router = createBrowserRouter([
       { path: "cms",                                       Component: CMSDashboard },
       { path: "cms/templates",                             Component: CMSTemplates },
       { path: "cms/departamentos/:id",                     Component: CMSDeptSettings },
+      // Builder novo, ligado a department_sites/department_site_blocks.
+      { path: "cms/sites/:id/builder",                      Component: CMSDeptBuilder },
+      { path: "cms/sites/:id/produtos",                     Component: CMSDeptProdutos },
+      // Builder antigo (tabela dept_pages) — mantido enquanto migramos.
       { path: "cms/departamentos/:id/builder",             Component: CMSPageBuilder },
 
       // Módulo Peniel
