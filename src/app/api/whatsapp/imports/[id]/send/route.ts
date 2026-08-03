@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getAccessibleInstanceIds } from '@/lib/whatsappSendService'
+import { getAccessibleInstanceIds, normalizarNumeroBrasil } from '@/lib/whatsappSendService'
 import { assignAgentsRoundRobin } from '@/lib/whatsappCampaignService'
 
 /**
@@ -138,7 +138,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         source: 'import',
         source_id: String(r.id),
         name: r.name,
-        phone: String(r.phone).replace(/\D/g, ''),
+        // com DDI (55) — sem isso a Z-API aceita e a mensagem não chega
+        phone: normalizarNumeroBrasil(String(r.phone)) || String(r.phone).replace(/\D/g, ''),
         variables: r.variables ?? {},
         match_status: r.match_status,
         matched_member_id: r.matched_member_id,

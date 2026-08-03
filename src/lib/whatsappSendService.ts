@@ -22,6 +22,34 @@ const MIME_BY_EXT: Record<string, string> = {
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
+/**
+ * Lê a resposta de um endpoint de envio da Z-API.
+ *
+ * Ela nem sempre usa o status HTTP para reprovar o envio: número fora do
+ * WhatsApp, instância desconectada ou payload recusado voltam como 200 com
+ * `{ error: "..." }` e SEM messageId. Tratar isso como sucesso é o que produz
+ * o "o painel diz enviado e ninguém recebeu" — sem messageId, não houve envio.
+ */
+async function parseZApiSend(res: Response): Promise<SendMessageResult> {
+  if (!res.ok) {
+    const err = await res.text().catch(() => 'unknown')
+    return { messageId: '', status: 'error', error: err || `HTTP ${res.status}` }
+  }
+
+  const json = await res.json().catch(() => null) as
+    | { messageId?: string; id?: string; zaapId?: string; error?: string; message?: string }
+    | null
+
+  if (!json) return { messageId: '', status: 'error', error: 'resposta inválida da Z-API' }
+  if (json.error) return { messageId: '', status: 'error', error: json.error }
+
+  const messageId = json.messageId ?? json.id ?? json.zaapId ?? ''
+  if (!messageId) {
+    return { messageId: '', status: 'error', error: json.message ?? 'Z-API não devolveu messageId' }
+  }
+  return { messageId, status: 'sent' }
+}
+
 // ── Busca a instância ativa de um owner ───────────────────────────────────────
 // profileType 'master' pode usar qualquer instância conectada do sistema
 export async function getActiveInstance(
@@ -118,13 +146,7 @@ export async function sendTextViaZApi(
     }),
   })
 
-  if (!res.ok) {
-    const err = await res.text().catch(() => 'unknown')
-    return { messageId: '', status: 'error', error: err }
-  }
-
-  const json = await res.json()
-  return { messageId: json.messageId ?? json.id ?? '', status: 'sent' }
+  return parseZApiSend(res)
 }
 
 // ── Marca a mensagem do contato como lida (os dois tiques azuis) ─────────────
@@ -276,13 +298,7 @@ export async function sendDocumentViaZApi(
     }),
   })
 
-  if (!res.ok) {
-    const err = await res.text().catch(() => 'unknown')
-    return { messageId: '', status: 'error', error: err }
-  }
-
-  const json = await res.json()
-  return { messageId: json.messageId ?? json.id ?? '', status: 'sent' }
+  return parseZApiSend(res)
 }
 
 // ── Chama Z-API para enviar imagem ─────────────────────────────────────────────
@@ -304,13 +320,7 @@ export async function sendImageViaZApi(
     body: JSON.stringify({ phone: to, image: imageUrl, caption }),
   })
 
-  if (!res.ok) {
-    const err = await res.text().catch(() => 'unknown')
-    return { messageId: '', status: 'error', error: err }
-  }
-
-  const json = await res.json()
-  return { messageId: json.messageId ?? json.id ?? '', status: 'sent' }
+  return parseZApiSend(res)
 }
 
 // ── Função de alto nível: enviar mensagem de qualquer módulo ──────────────────

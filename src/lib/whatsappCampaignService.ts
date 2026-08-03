@@ -15,6 +15,7 @@ import {
   sendImageViaZApi,
   ensureConversation,
   persistOutboundMessage,
+  normalizarNumeroBrasil,
 } from '@/lib/whatsappSendService'
 import { createPipelineCardForSend } from '@/lib/whatsappImportService'
 import type { WhatsAppInstance } from '@/types/whatsapp'
@@ -281,7 +282,10 @@ export async function processCampaignTick(campaignId: string): Promise<TickResul
     return { progress, event: null, waitMs: 300, done: false }
   }
 
-  const phone = String(next.phone).replace(/\D/g, '')
+  // A Z-API exige DDI. Sem o 55 ela ainda devolve um messageId e a mensagem
+  // nunca chega — é o "o painel diz enviado e o celular não recebe". Mesma
+  // normalização usada no envio individual (quickSendWhatsApp).
+  const phone = normalizarNumeroBrasil(String(next.phone))
   let message = renderTemplate(campaign.message_template, next.variables ?? {})
   // link (ex.: vídeo) anexado ao final da mensagem
   if (campaign.link_url) message = `${message}\n\n${campaign.link_url}`
@@ -291,6 +295,7 @@ export async function processCampaignTick(campaignId: string): Promise<TickResul
   let attendanceId: string | null = null
 
   try {
+    if (!phone) throw new Error(`numero_invalido: ${next.phone}`)
     // imagem em anexo: mensagem vira a legenda
     const result = campaign.image_url
       ? await sendImageViaZApi(instance, phone, campaign.image_url, message)

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assignAgentsRoundRobin, type CampaignRecipientInput } from '@/lib/whatsappCampaignService'
-import { getAccessibleInstanceIds } from '@/lib/whatsappSendService'
+import { getAccessibleInstanceIds, normalizarNumeroBrasil } from '@/lib/whatsappSendService'
 
 // GET /api/whatsapp/campaigns — lista campanhas do usuário (master vê todas)
 export async function GET(req: NextRequest) {
@@ -113,7 +113,10 @@ export async function POST(req: NextRequest) {
           r.source === 'pipeline' ? 'pipeline' : r.source === 'import' ? 'import' : 'member',
         source_id: String(r.sourceId),
         name: r.name ?? null,
-        phone: r.phone.replace(/\D/g, ''),
+        // grava já com DDI (55) — a Z-API exige. Número irrecuperável fica
+        // com os dígitos crus e o tick o marca como erro, em vez de sair
+        // "enviado" para um destino que nunca recebe.
+        phone: normalizarNumeroBrasil(r.phone) || r.phone.replace(/\D/g, ''),
         variables: r.variables ?? {},
         agent_user_id: null as string | null,
       })),
