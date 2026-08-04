@@ -3,6 +3,8 @@
  *  - Pipeline: quadro Kanban de atendimento (PastoralKanban, inalterado)
  *  - Envio em Massa: campanhas de WhatsApp (PastoralMassSend)
  *  - Envios: histórico de envios + conversas + agente de IA (PastoralSendHistory)
+ *  - Distribuição: liga cada contato importado ao GF mais perto da casa dele
+ *    (PastoralDistribuicao)
  *  - Cronograma: matriz do acompanhamento de 1º mês + resultado dos disparos
  *    automáticos (PastoralCronograma)
  *
@@ -13,16 +15,17 @@
  */
 
 import { useState, useEffect } from 'react';
-import { LayoutGrid, Send, MessagesSquare, FileSpreadsheet, CalendarClock, LayoutDashboard } from 'lucide-react';
+import { LayoutGrid, Send, MessagesSquare, FileSpreadsheet, CalendarClock, LayoutDashboard, MapPin } from 'lucide-react';
 import PastoralKanban from './PastoralKanban';
 import PastoralMassSend from './PastoralMassSend';
 import PastoralSendHistory from './PastoralSendHistory';
 import PastoralImports from './PastoralImports';
+import PastoralDistribuicao from './PastoralDistribuicao';
 import PastoralCronograma from './PastoralCronograma';
 import PastoralDashboard from './PastoralDashboard';
 import { usePermissions } from '../../lib/usePermissions';
 
-type HubTab = 'pipeline' | 'mass-send' | 'sends' | 'imports' | 'cronograma' | 'dashboard';
+type HubTab = 'pipeline' | 'mass-send' | 'sends' | 'imports' | 'distribuicao' | 'cronograma' | 'dashboard';
 
 function currentProfileType(): string {
   try {
@@ -80,6 +83,14 @@ export default function PastoralHub() {
               Importações
             </button>
             <button
+              onClick={() => setTab('distribuicao')}
+              className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
+                ${tab === 'distribuicao' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <MapPin className="w-4 h-4" />
+              Distribuição
+            </button>
+            <button
               onClick={() => setTab('cronograma')}
               className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
                 ${tab === 'cronograma' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -117,6 +128,11 @@ export default function PastoralHub() {
           {tab === 'imports' && (
             <div className="flex-1 min-h-0">
               <PastoralImports />
+            </div>
+          )}
+          {tab === 'distribuicao' && (
+            <div className="flex-1 min-h-0">
+              <PastoralDistribuicao />
             </div>
           )}
           {tab === 'cronograma' && (
