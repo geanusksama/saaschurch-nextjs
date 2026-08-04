@@ -80,11 +80,23 @@ export interface AtividadeDoacao {
 
 export interface MembroAtividades {
   familia: AtividadeFamiliar[];
-  presencas: AtividadePresenca[];
   inscricoes: AtividadeInscricao[];
   doacao: AtividadeDoacao | null;
-  /** para os selinhos de contagem nos ícones do perfil */
+  /**
+   * Para os selinhos de contagem nos ícones do perfil. Presenças entram só
+   * como número: a lista é grande (uma linha por passagem no leitor) e vem
+   * paginada por getMembroPresencas.
+   */
   totais: { familia: number; presencas: number; inscricoes: number };
+}
+
+/** Uma página de presenças, já com o total do período para a tela mostrar. */
+export interface PaginaPresencas {
+  itens: AtividadePresenca[];
+  total: number;
+  pagina: number;
+  porPagina: number;
+  temMais: boolean;
 }
 
 /** Rótulo do parentesco na tela. */
@@ -95,8 +107,8 @@ const PARENTESCO: Record<string, string> = {
   IRMAO: 'Irmão(ã)',
 };
 
-/** Quantas presenças a lista devolve — a tela é um modal, não um relatório. */
-const LIMITE_PRESENCAS = 60;
+/** Tamanho padrão da página de presenças. */
+export const PRESENCAS_POR_PAGINA = 15;
 
 function idadeEm(anos: Date | null): number | null {
   if (!anos) return null;
@@ -153,7 +165,7 @@ export async function getMembroAtividades(memberId: string): Promise<MembroAtivi
   });
   if (!membro) return null;
 
-  const [familia, presencasEvento, presencasLeitor, inscricoes, doacao] = await Promise.all([
+  const [familia, totalEvento, totalLeitor, inscricoes, doacao] = await Promise.all([
     // o núcleo inteiro (filhos, cônjuge, pais, irmãos), não só os filhos
     prisma.memberFamilyRelationship.findMany({
       where: { memberId, deletedAt: null },
@@ -167,26 +179,9 @@ export async function getMembroAtividades(memberId: string): Promise<MembroAtivi
       },
       orderBy: [{ relationshipType: 'asc' }, { relatedBirthDate: 'asc' }],
     }),
-    prisma.eventAttendance.findMany({
-      where: { memberId, present: true },
-      select: {
-        id: true,
-        checkinDatetime: true,
-        checkinMethod: true,
-        event: { select: { title: true, startDatetime: true, locationName: true } },
-      },
-      orderBy: { checkinDatetime: 'desc' },
-      take: LIMITE_PRESENCAS,
-    }),
+    prisma.eventAttendance.count({ where: { memberId, present: true } }),
     // o leitor facial grava o ROL, não o id do membro
-    membro.rol
-      ? prisma.facePresenca.findMany({
-          where: { rol: membro.rol },
-          select: { id: true, horario: true, camera: true, igrejaRegional: true },
-          orderBy: { horario: 'desc' },
-          take: LIMITE_PRESENCAS,
-        })
-      : Promise.resolve([]),
+    membro.rol ? prisma.facePresenca.count({ where: { rol: membro.rol } }) : Promise.resolve(0),
     prisma.eventRegistration.findMany({
       where: { memberId },
       select: {
@@ -223,25 +218,6 @@ export async function getMembroAtividades(memberId: string): Promise<MembroAtivi
     };
   });
 
-  const presencas: AtividadePresenca[] = [
-    ...presencasEvento.map((p) => ({
-      id: p.id,
-      data: (p.checkinDatetime ?? p.event.startDatetime).toISOString(),
-      titulo: p.event.title,
-      origem: 'evento' as const,
-      detalhe: p.event.locationName || (p.checkinMethod ? `check-in: ${p.checkinMethod}` : null),
-    })),
-    ...presencasLeitor.map((p) => ({
-      id: p.id,
-      data: p.horario.toISOString(),
-      titulo: 'Presença registrada no leitor',
-      origem: 'leitor' as const,
-      detalhe: p.camera || p.igrejaRegional || null,
-    })),
-  ]
-    .sort((a, b) => (a.data < b.data ? 1 : -1))
-    .slice(0, LIMITE_PRESENCAS);
-
   const lista: AtividadeInscricao[] = inscricoes.map((i) => ({
     id: i.id,
     eventoId: i.event.id,
@@ -257,9 +233,87 @@ export async function getMembroAtividades(memberId: string): Promise<MembroAtivi
 
   return {
     familia: nucleo,
-    presencas,
     inscricoes: lista,
     doacao,
-    totais: { familia: nucleo.length, presencas: presencas.length, inscricoes: lista.length },
+    totais: { familia: nucleo.length, presencas: totalEvento + totalLeitor, inscricoes: lista.length },
+  };
+}
+
+/**
+ * Presenças de um período, paginadas.
+ *
+ * As duas origens (evento e leitor) são tabelas diferentes, sem chave comum e
+ * sem como o banco ordenar as duas juntas — então filtramos por data em cada
+ * uma, juntamos em memória e só aí cortamos a página. É correto porque o filtro
+ * de data é obrigatório na tela (um mês por vez): o volume trazido é o do
+ * período, não o histórico inteiro.
+ *
+ * `inicio` e `fim` são dias (AAAA-MM-DD) e o intervalo INCLUI os dois: o fim
+ * vira o instante final daquele dia, senão as presenças da tarde do último dia
+ * ficariam de fora.
+ */
+export async function getMembroPresencas(
+  memberId: string,
+  opcoes: { inicio?: string | null; fim?: string | null; pagina?: number; porPagina?: number } = {},
+): Promise<PaginaPresencas | null> {
+  const membro = await prisma.member.findFirst({
+    where: { id: memberId, deletedAt: null },
+    select: { id: true, rol: true },
+  });
+  if (!membro) return null;
+
+  const pagina = Math.max(1, Math.floor(opcoes.pagina ?? 1));
+  const porPagina = Math.min(100, Math.max(1, Math.floor(opcoes.porPagina ?? PRESENCAS_POR_PAGINA)));
+
+  const de = opcoes.inicio ? new Date(`${opcoes.inicio}T00:00:00`) : null;
+  const ate = opcoes.fim ? new Date(`${opcoes.fim}T23:59:59.999`) : null;
+  const periodo = de || ate ? { ...(de ? { gte: de } : {}), ...(ate ? { lte: ate } : {}) } : undefined;
+
+  const [doEvento, doLeitor] = await Promise.all([
+    prisma.eventAttendance.findMany({
+      where: { memberId, present: true, ...(periodo ? { checkinDatetime: periodo } : {}) },
+      select: {
+        id: true,
+        checkinDatetime: true,
+        checkinMethod: true,
+        event: { select: { title: true, startDatetime: true, locationName: true } },
+      },
+      orderBy: { checkinDatetime: 'desc' },
+    }),
+    membro.rol
+      ? prisma.facePresenca.findMany({
+          where: { rol: membro.rol, ...(periodo ? { horario: periodo } : {}) },
+          select: { id: true, horario: true, camera: true, igrejaRegional: true },
+          orderBy: { horario: 'desc' },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const todas: AtividadePresenca[] = [
+    ...doEvento.map((p) => ({
+      id: p.id,
+      data: (p.checkinDatetime ?? p.event.startDatetime).toISOString(),
+      titulo: p.event.title,
+      origem: 'evento' as const,
+      detalhe: p.event.locationName || (p.checkinMethod ? `check-in: ${p.checkinMethod}` : null),
+    })),
+    ...doLeitor.map((p) => ({
+      id: p.id,
+      data: p.horario.toISOString(),
+      titulo: 'Presença registrada no leitor',
+      origem: 'leitor' as const,
+      detalhe: p.camera || p.igrejaRegional || null,
+    })),
+  ].sort((a, b) => (a.data < b.data ? 1 : -1));
+
+  const inicioCorte = (pagina - 1) * porPagina;
+  const itens = todas.slice(inicioCorte, inicioCorte + porPagina);
+
+  return {
+    itens,
+    total: todas.length,
+    pagina,
+    porPagina,
+    temMais: inicioCorte + itens.length < todas.length,
   };
 }

@@ -91,12 +91,24 @@ Navega para /membro/perfil
 - Retorna: `{ filhos, presencas, inscricoes, totais }`
   - `filhos`: `member_family_relationships` do tipo `FILHO`. Filho com ficha de
     membro vem com foto e ROL; criança sem ficha vem por `related_name`
-  - `presencas`: junta `event_attendance` (check-in em evento) com
-    `face_presencas` (leitor facial). A tabela do leitor **não tem member_id**:
-    grava o ROL, então quem não tem ROL não tem essa origem
+  - presenças entram só como **contagem** em `totais` — a lista tem rota
+    própria (abaixo), porque cresce sem parar
   - `inscricoes`: `event_registrations` com status, pagamento e check-in. As
     compras de ingresso entram aqui quando o módulo existir
 - E2E: mesmo script do perfil
+
+### `GET /api/membro/presencas?token=&inicio=&fim=&pagina=`
+- Presenças do período, paginadas (15 por página)
+- Junta `event_attendance` (check-in em evento) com `face_presencas` (leitor
+  facial). A tabela do leitor **não tem member_id**: grava o ROL, então quem
+  não tem ROL não tem essa origem
+- As duas tabelas não têm chave comum nem como o banco ordená-las juntas, então
+  o filtro de data é aplicado em cada uma, a junção e o corte da página são
+  feitos em memória. Funciona porque o período é obrigatório na tela (o padrão
+  é o mês corrente): o volume trazido é o do mês, não o histórico inteiro
+- `inicio`/`fim` são dias e o intervalo **inclui os dois** — o fim vira o
+  instante final do dia, senão as presenças da tarde do último dia sumiriam
+- Retorna: `{ itens, total, pagina, porPagina, temMais }`
 
 ---
 

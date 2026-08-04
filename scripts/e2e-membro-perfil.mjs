@@ -29,7 +29,7 @@ loadEnv({ path: '.env.local', override: true })
 
 import { PrismaClient } from '@prisma/client'
 import { getMembroPerfil } from '../src/lib/membroPerfilService.ts'
-import { getMembroAtividades } from '../src/lib/membroAtividadesService.ts'
+import { getMembroAtividades, getMembroPresencas } from '../src/lib/membroAtividadesService.ts'
 import { syncCellGroupLeaders } from '../src/lib/cellGroupService.ts'
 import { DEFAULT_SEDE_ID } from '../src/lib/gfPublicListService.ts'
 import { signToken, verifyToken } from '../src/lib/membroJwt.ts'
@@ -349,17 +349,15 @@ async function main() {
   check('criança sem ficha vem pelo related_name', filhaSemFicha?.name === '[E2E] Filha Pequena', filhaSemFicha?.name)
   check('idade é calculada a partir do nascimento', filhaSemFicha?.idade !== null && filhaSemFicha?.idade >= 3, String(filhaSemFicha?.idade))
 
-  check('presenças juntam as duas origens', at?.presencas.length === 3, String(at?.presencas.length))
-  check('a mais recente vem primeiro', at?.presencas[0]?.data.startsWith('2025-12-07'), at?.presencas[0]?.data)
-  check('presença de evento traz o nome do evento', at?.presencas.some((p) => p.origem === 'evento' && p.titulo === '[E2E] Culto de Perfil'))
-  check('presença do leitor traz a câmera como detalhe', at?.presencas.some((p) => p.origem === 'leitor' && p.detalhe === 'Entrada Principal'))
+  check('atividades trazem só a CONTAGEM de presenças (a lista é paginada à parte)',
+    at?.presencas === undefined && at?.totais.presencas === 3, String(at?.totais.presencas))
 
   check('inscrição no evento aparece', at?.inscricoes.length === 1, String(at?.inscricoes.length))
   check('com título, status e pagamento', at?.inscricoes[0]?.titulo === '[E2E] Culto de Perfil' && at?.inscricoes[0]?.status === 'confirmed' && at?.inscricoes[0]?.pagamento === 'paid')
   check('valor vem como número (Decimal quebraria o JSON)', at?.inscricoes[0]?.valor === 50, String(at?.inscricoes[0]?.valor))
   check('check-in do evento vem marcado', at?.inscricoes[0]?.compareceu === true)
   check('totais batem com as listas (são os selinhos dos ícones)',
-    at?.totais.familia === at?.familia.length && at?.totais.presencas === at?.presencas.length && at?.totais.inscricoes === at?.inscricoes.length)
+    at?.totais.familia === at?.familia.length && at?.totais.inscricoes === at?.inscricoes.length)
 
   // ── dízimos e ofertas: o cadastro da sede do campo ──
   const hqDoCampo = sede.regional?.campoId
@@ -380,8 +378,48 @@ async function main() {
   check('e os selinhos ficam zerados (o ícone não mostra badge)', vazio?.totais.familia === 0 && vazio?.totais.inscricoes === 0)
   check('membro excluído não devolve atividades (rota responde 404)', (await getMembroAtividades('00000000-0000-0000-0000-000000000000')) === null)
 
-  // ── 8. o token da rota ──────────────────────────────────────────────────
-  step(8, 'member_token — o perfil vem do `sub` assinado, nunca da query')
+  // ── 8. presenças: período e paginação ──────────────────────────────────
+  step(8, 'Presenças — filtro de período e paginação (a lista cresce sem parar)')
+
+  // mais presenças no mesmo dia, para a página encher
+  await prisma.facePresenca.createMany({
+    data: Array.from({ length: 6 }).map((_, i) => ({
+      rol: rolLider,
+      nome: '[E2E] Presenca Lote',
+      horario: new Date(`2025-12-1${i} 19:0${i}:00Z`),
+      camera: 'Entrada Lateral',
+    })),
+  })
+
+  const tudo = await getMembroPresencas(lider.id, { inicio: '2025-01-01', fim: '2025-12-31', pagina: 1, porPagina: 5 })
+  check('a página respeita o tamanho pedido', tudo?.itens.length === 5, String(tudo?.itens.length))
+  check('o total é o do período inteiro, não o da página', tudo?.total === 9, String(tudo?.total))
+  check('avisa que há mais páginas', tudo?.temMais === true)
+  check('a mais recente vem primeiro', tudo?.itens[0]?.data.startsWith('2025-12-1'), tudo?.itens[0]?.data)
+
+  const pag2 = await getMembroPresencas(lider.id, { inicio: '2025-01-01', fim: '2025-12-31', pagina: 2, porPagina: 5 })
+  check('a segunda página traz o resto', pag2?.itens.length === 4, String(pag2?.itens.length))
+  check('e avisa que acabou', pag2?.temMais === false)
+  const idsPag1 = new Set(tudo?.itens.map((i) => i.id))
+  check('nenhum item se repete entre as páginas', pag2?.itens.every((i) => !idsPag1.has(i.id)))
+
+  const dezembro = await getMembroPresencas(lider.id, { inicio: '2025-12-01', fim: '2025-12-31' })
+  check('filtro de mês corta o que é de fora', dezembro?.total === 7, String(dezembro?.total))
+  check('as duas origens continuam juntas no período', dezembro?.itens.every((i) => i.data.startsWith('2025-12')))
+
+  const outubro = await getMembroPresencas(lider.id, { inicio: '2025-10-01', fim: '2025-10-31' })
+  check('mês só com presença do leitor traz só ela', outubro?.total === 1 && outubro?.itens[0]?.origem === 'leitor', String(outubro?.total))
+
+  const novembro = await getMembroPresencas(lider.id, { inicio: '2025-11-01', fim: '2025-11-30' })
+  check('o dia final entra no intervalo (check-in do dia 2 às 18:45)', novembro?.total === 1, String(novembro?.total))
+  check('e é a presença do evento', novembro?.itens[0]?.origem === 'evento' && novembro?.itens[0]?.titulo === '[E2E] Culto de Perfil')
+
+  const vazioPeriodo = await getMembroPresencas(lider.id, { inicio: '2024-01-01', fim: '2024-01-31' })
+  check('período sem nada devolve lista vazia, não erro', vazioPeriodo?.total === 0 && vazioPeriodo?.itens.length === 0)
+  check('membro inexistente não devolve página', (await getMembroPresencas('00000000-0000-0000-0000-000000000000')) === null)
+
+  // ── 9. o token da rota ──────────────────────────────────────────────────
+  step(9, 'member_token — o perfil vem do `sub` assinado, nunca da query')
 
   const token = signToken({ sub: lider.id, name: lider.fullName }, 7 * 24 * 60 * 60)
   const payload = verifyToken(token)
