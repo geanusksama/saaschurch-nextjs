@@ -209,6 +209,16 @@ import MembroPastoral from "../components/membro/pastoral/MembroPastoral";
 import MembroMembros from "../components/membro/membros/MembroMembros";
 import MembroFaceId from "../components/membro/faceid/MembroFaceId";
 import MembroEmConstrucao from "../components/membro/MembroEmConstrucao";
+import MembroPaoDiario from "../components/membro/conteudo/MembroPaoDiario";
+import MembroPregacoes from "../components/membro/conteudo/MembroPregacoes";
+import MembroAgenda from "../components/membro/conteudo/MembroAgenda";
+import MembroLideranca from "../components/membro/conteudo/MembroLideranca";
+import MembroIgreja from "../components/membro/conteudo/MembroIgreja";
+import MembroFeed from "../components/membro/conteudo/MembroFeed";
+import MembroMinisterio from "../components/membro/conteudo/MembroMinisterio";
+import MembroCompras from "../components/membro/conteudo/MembroCompras";
+import MembroHistoria from "../components/membro/conteudo/MembroHistoria";
+import MembroBiblia from "../components/membro/conteudo/MembroBiblia";
 import PenielDashboard from "../app-ui/peniel/PenielDashboard";
 import PenielCheckInPage from "../app-ui/peniel/PenielCheckInPage";
 
@@ -380,9 +390,61 @@ export const router = createBrowserRouter([
     errorElement: <ErrorBoundary />,
     element: <MembroThemeProvider><MembroProvider><MembroFaceId /></MembroProvider></MembroThemeProvider>,
   },
-  // Curinga do portal: atalhos do menu que ainda nao tem tela (biblia, igreja,
-  // ministerios, eventos, compras) caiam em "Em construcao" em vez de branco.
-  // So pega o que sobrar — as rotas acima sao mais especificas e vencem.
+  // Conteúdo do campo: todas leem GET /api/membro/conteudo, que resolve o
+  // campo pelo token — nenhuma delas escolhe campo pelo cliente.
+  {
+    path: "/membro/pao-diario",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroPaoDiario /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/pregacoes",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroPregacoes /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/agenda",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroAgenda /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/lideranca",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroLideranca /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/igreja",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroIgreja /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/feed",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroFeed /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/ministerio",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroMinisterio /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/compras",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroCompras /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/historia",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroHistoria /></MembroProvider></MembroThemeProvider>,
+  },
+  {
+    path: "/membro/biblia",
+    errorElement: <ErrorBoundary />,
+    element: <MembroThemeProvider><MembroProvider><MembroBiblia /></MembroProvider></MembroThemeProvider>,
+  },
+  // Curinga do portal: atalhos do menu que ainda nao tem tela (biblia,
+  // ministerios, EBD, historia, compras) caiam em "Em construcao" em vez de
+  // branco. So pega o que sobrar — as rotas acima sao mais especificas e vencem.
   {
     path: "/membro/*",
     errorElement: <ErrorBoundary />,

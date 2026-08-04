@@ -12,10 +12,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/membroJwt'
 import {
   getCampoDoMembro, getPaoDiario, getPregacoes,
-  getAgenda, getLideranca, getIgreja,
+  getAgenda, getLideranca, getIgreja, getFeed,
+  getMinisterios, getIngressos,
 } from '@/lib/membroConteudoService'
 
-const MODULOS = ['pao', 'pregacoes', 'agenda', 'lideranca', 'igreja'] as const
+const MODULOS = ['pao', 'pregacoes', 'agenda', 'lideranca', 'igreja', 'feed', 'ministerios', 'compras'] as const
 type Modulo = typeof MODULOS[number]
 
 export async function GET(req: NextRequest) {
@@ -51,6 +52,10 @@ export async function GET(req: NextRequest) {
       case 'agenda':    return NextResponse.json({ itens: await getAgenda(campoId) })
       case 'lideranca': return NextResponse.json({ itens: await getLideranca(campoId) })
       case 'igreja':    return NextResponse.json({ igreja: await getIgreja(campoId) })
+      case 'feed':      return NextResponse.json({ itens: await getFeed(campoId) })
+      case 'ministerios': return NextResponse.json({ itens: await getMinisterios(campoId) })
+      // compras precisa do id do membro além do campo: os ingressos são dele
+      case 'compras':   return NextResponse.json({ itens: await getIngressos(payload.sub, campoId) })
     }
   } catch (err) {
     console.error('[membro/conteudo]', (err as Error)?.message)

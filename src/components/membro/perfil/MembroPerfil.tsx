@@ -82,9 +82,9 @@ interface Doacao {
   whatsapp: string | null; contact: string | null; email: string | null;
   endereco: string | null; site: string | null; instagram: string | null;
 }
+interface PaginaPresencas { itens: Presenca[]; total: number; pagina: number; porPagina: number; temMais: boolean }
 interface AtividadesPayload {
   familia: Familiar[];
-  presencas: Presenca[];
   inscricoes: Inscricao[];
   doacao: Doacao | null;
   totais: { familia: number; presencas: number; inscricoes: number };
@@ -132,6 +132,16 @@ function accentPorSexo(gender?: string | null): { accent: string; soft: string }
   if (v.startsWith('F')) return { accent: ROSA, soft: ROSA_SOFT };            // FEMININO / F
   if (v.startsWith('M')) return { accent: ACCENT, soft: MEMBRO.ACCENT_SOFT }; // MASCULINO / M
   return { accent: ACCENT, soft: MEMBRO.ACCENT_SOFT };
+}
+
+/** Hoje e o primeiro dia do mes corrente, em AAAA-MM-DD (fuso local). */
+function hoje(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function primeiroDiaDoMes(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
 function gfAddress(gf: PerfilGf): string {
@@ -231,6 +241,15 @@ export default function MembroPerfil() {
   const [carregandoAtividades, setCarregandoAtividades] = useState(false);
   const [emConstrucao, setEmConstrucao] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  // Presenças têm tela própria: filtro de período + paginação. A lista cresce
+  // sem parar (uma linha por passagem no leitor), então nunca vem inteira.
+  const [presInicio, setPresInicio] = useState(primeiroDiaDoMes);
+  const [presFim, setPresFim] = useState(hoje);
+  const [presItens, setPresItens] = useState<Presenca[]>([]);
+  const [presTotal, setPresTotal] = useState(0);
+  const [presPagina, setPresPagina] = useState(1);
+  const [presTemMais, setPresTemMais] = useState(false);
+  const [presCarregando, setPresCarregando] = useState(false);
 
   // Esta tela é clara sempre — ver comentário do topo do arquivo.
   useEffect(() => {
@@ -269,6 +288,7 @@ export default function MembroPerfil() {
   // Filhos/presenças/inscrições: só no primeiro toque num dos ícones
   const abrirAba = (qual: Aba) => {
     setAba(qual);
+    if (qual === 'presencas') buscarPresencas(1);
     if (atividades || carregandoAtividades || !session?.member_token) return;
     setCarregandoAtividades(true);
     fetch(`/api/membro/atividades?token=${encodeURIComponent(session.member_token)}`)
@@ -276,6 +296,32 @@ export default function MembroPerfil() {
       .then(d => { if (d && !d.error) setAtividades(d); })
       .catch(() => {})
       .finally(() => setCarregandoAtividades(false));
+  };
+
+  /**
+   * Busca uma página de presenças. `pagina === 1` troca a lista; as seguintes
+   * empilham no fim (botão "carregar mais").
+   */
+  const buscarPresencas = (pagina: number) => {
+    if (!session?.member_token) return;
+    setPresCarregando(true);
+    const q = new URLSearchParams({
+      token: session.member_token,
+      inicio: presInicio,
+      fim: presFim,
+      pagina: String(pagina),
+    });
+    fetch(`/api/membro/presencas?${q}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then((d: (PaginaPresencas & { error?: string }) | null) => {
+        if (!d || d.error) return;
+        setPresItens(prev => (pagina === 1 ? d.itens : [...prev, ...d.itens]));
+        setPresTotal(d.total);
+        setPresPagina(d.pagina);
+        setPresTemMais(d.temMais);
+      })
+      .catch(() => {})
+      .finally(() => setPresCarregando(false));
   };
 
   if (isLoading || !session?.member) return null;
@@ -336,22 +382,22 @@ export default function MembroPerfil() {
     // 1) devocional  2) igreja e pessoas  3) agenda, ingressos e minha vida.
     // Fora daqui: "Minha ficha" (já é o botão de 3 pontinhos), "Site" (é de
     // onde a pessoa veio), Testemunhos e Eventos (saíram a pedido).
-    { key: 'biblia', construcao: true,      label: 'Bíblia',      Icon: BookOpen, },
-    { key: 'pao', construcao: true,         label: 'Pão diário',  Icon: Sunrise, },
-    { key: 'pregacoes', construcao: true,   label: 'Pregações',   Icon: PlayCircle, },
+    { key: 'biblia',      label: 'Bíblia',      Icon: BookOpen,      path: '/membro/biblia' },
+    { key: 'pao',         label: 'Pão diário',  Icon: Sunrise,       path: '/membro/pao-diario' },
+    { key: 'pregacoes',   label: 'Pregações',   Icon: PlayCircle,    path: '/membro/pregacoes' },
     { key: 'radio',       label: 'Rádio',       Icon: Mic,           path: '/radio', externo: true },
-    { key: 'feed', construcao: true,        label: 'Feed',        Icon: Send, },
+    { key: 'feed',        label: 'Feed',        Icon: Send,          path: '/membro/feed' },
 
-    { key: 'ministerio', construcao: true,  label: 'Ministério',  Icon: Flame, },
-    { key: 'lideranca', construcao: true,   label: 'Liderança',   Icon: Users, },
-    { key: 'igreja', construcao: true,      label: 'Igreja',      Icon: Church, },
+    { key: 'ministerio',  label: 'Ministério',  Icon: Flame,         path: '/membro/ministerio' },
+    { key: 'lideranca',   label: 'Liderança',   Icon: Users,         path: '/membro/lideranca' },
+    { key: 'igreja',      label: 'Igreja',      Icon: Church,        path: '/membro/igreja' },
     { key: 'ebd', construcao: true,         label: 'EBD',         Icon: GraduationCap, },
-    { key: 'historia', construcao: true,    label: 'História',    Icon: Clock, },
+    { key: 'historia',    label: 'História',    Icon: Clock,         path: '/membro/historia' },
     { key: 'pastoral',    label: 'Atend. Past.', Icon: HeartHandshake, path: '/membro/pastoral' },
 
-    { key: 'agenda', construcao: true,      label: 'Agenda',      Icon: Calendar, },
+    { key: 'agenda',      label: 'Agenda',      Icon: Calendar,      path: '/membro/agenda' },
     { key: 'inscricoes',  label: 'Inscrições',  Icon: Ticket,        aba: 'inscricoes', total: atividades?.totais.inscricoes },
-    { key: 'compras', construcao: true,     label: 'Compras',     Icon: ShoppingCart, },
+    { key: 'compras',     label: 'Compras',     Icon: ShoppingCart,  path: '/membro/compras' },
     { key: 'presencas',   label: 'Presenças',   Icon: CalendarCheck, aba: 'presencas',  total: atividades?.totais.presencas },
     { key: 'familia',     label: 'Família',     Icon: Baby,          aba: 'familia',    total: atividades?.totais.familia },
     { key: 'membros',     label: 'Membros',     Icon: Users,         path: '/membro/membros' },
@@ -521,28 +567,34 @@ export default function MembroPerfil() {
               </button>
             </div>
 
-            {/* ── MEUS DADOS — só os ícones, sem card por item ── */}
-            <Secao accent={accent} titulo="Menu">
-              <div className="grid grid-cols-5 gap-x-1 gap-y-3 px-3 pb-4 pt-1">
+            {/* ── MENU — só os ícones, sem título e sem card por item.
+                O rótulo "Menu" saiu: a grade é a única coisa nesta faixa, não
+                precisa de placa. Quatro por linha para o ícone e o texto
+                caberem maiores sem apertar. ── */}
+            <section
+              className="rounded-2xl px-3 py-4"
+              style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: SHADOW }}
+            >
+              <div className="grid grid-cols-4 gap-x-2 gap-y-4 justify-items-center">
                 {atalhos.map(a => (
                   <button
                     key={a.key}
                     onClick={() => tocarAtalho(a)}
-                    className="relative flex flex-col items-center gap-1 transition-transform active:scale-90"
+                    className="relative w-full flex flex-col items-center gap-1.5 transition-transform active:scale-90"
                   >
                     <span
-                      className="w-9 h-9 rounded-full flex items-center justify-center"
+                      className="w-12 h-12 rounded-full flex items-center justify-center"
                       style={{ background: soft }}
                     >
-                      <a.Icon size={16} color={accent} />
+                      <a.Icon size={21} color={accent} />
                     </span>
-                    <span className="text-[8.5px] font-semibold leading-tight text-center" style={{ color: TEXT2 }}>
+                    <span className="text-[10px] font-semibold leading-tight text-center" style={{ color: TEXT2 }}>
                       {a.label}
                     </span>
                     {a.total !== undefined && a.total > 0 && (
                       <span
-                        className="absolute -top-1 right-1.5 min-w-[15px] h-[15px] px-1 rounded-full text-[8.5px] font-extrabold text-white flex items-center justify-center"
-                        style={{ background: accent }}
+                        className="absolute -top-1 min-w-[17px] h-[17px] px-1 rounded-full text-[9px] font-extrabold text-white flex items-center justify-center"
+                        style={{ background: accent, left: 'calc(50% + 10px)' }}
                       >
                         {a.total > 99 ? '99+' : a.total}
                       </span>
@@ -550,7 +602,7 @@ export default function MembroPerfil() {
                   </button>
                 ))}
               </div>
-            </Secao>
+            </section>
 
           </div>
         </div>
@@ -619,28 +671,78 @@ export default function MembroPerfil() {
 
         {aba === 'presencas' && (
           <Bandeja titulo="Minhas presenças" onClose={() => setAba(null)}>
-            {carregandoAtividades && !atividades ? (
-              <div className="py-8 flex justify-center"><Loader2 size={18} className="animate-spin" color={accent} /></div>
-            ) : atividades?.presencas.length ? (
-              <div className="space-y-1.5">
-                {atividades.presencas.map(p => (
-                  <div key={p.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: BG }}>
-                    <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: p.origem === 'leitor' ? `${accent}14` : `${MEMBRO.OK}14` }}>
-                      {p.origem === 'leitor'
-                        ? <ScanFace size={15} color={accent} />
-                        : <CalendarCheck size={15} color={MEMBRO.OK} />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-bold truncate" style={{ color: TEXT1 }}>{p.titulo}</p>
-                      <p className="text-[10.5px] truncate" style={{ color: TEXT2 }}>
-                        {formatDateTime(p.data)}{p.detalhe ? ` · ${p.detalhe}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+            {/* Filtro de período: o padrão é o mês corrente. Sem ele a lista
+                viria com o histórico inteiro do leitor facial. */}
+            <div className="rounded-2xl p-3 mb-3" style={{ background: BG, border: `1px solid ${BORDER}` }}>
+              <p className="text-[9.5px] font-extrabold uppercase tracking-[0.12em] mb-2" style={{ color: accent }}>
+                Período
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={presInicio}
+                  onChange={e => setPresInicio(e.target.value)}
+                  className="flex-1 min-w-0 px-2.5 py-2 rounded-xl text-[12px] font-semibold outline-none"
+                  style={{ background: CARD, border: `1px solid ${BORDER}`, color: TEXT1 }}
+                />
+                <span className="text-[11px] flex-shrink-0" style={{ color: TEXT2 }}>até</span>
+                <input
+                  type="date"
+                  value={presFim}
+                  onChange={e => setPresFim(e.target.value)}
+                  className="flex-1 min-w-0 px-2.5 py-2 rounded-xl text-[12px] font-semibold outline-none"
+                  style={{ background: CARD, border: `1px solid ${BORDER}`, color: TEXT1 }}
+                />
               </div>
+              <button
+                onClick={() => buscarPresencas(1)}
+                disabled={presCarregando}
+                className="w-full mt-2.5 py-2.5 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
+                style={{ background: accent }}
+              >
+                {presCarregando ? <Loader2 size={13} className="animate-spin" /> : <CalendarCheck size={13} />}
+                Buscar
+              </button>
+            </div>
+
+            {presCarregando && presItens.length === 0 ? (
+              <div className="py-8 flex justify-center"><Loader2 size={18} className="animate-spin" color={accent} /></div>
+            ) : presItens.length ? (
+              <>
+                <p className="text-[10.5px] mb-2" style={{ color: TEXT2 }}>
+                  Mostrando {presItens.length} de {presTotal} {presTotal === 1 ? 'presença' : 'presenças'} no período
+                </p>
+                <div className="space-y-1.5">
+                  {presItens.map(p => (
+                    <div key={p.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: BG }}>
+                      <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: p.origem === 'leitor' ? `${accent}14` : `${MEMBRO.OK}14` }}>
+                        {p.origem === 'leitor'
+                          ? <ScanFace size={15} color={accent} />
+                          : <CalendarCheck size={15} color={MEMBRO.OK} />}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-bold truncate" style={{ color: TEXT1 }}>{p.titulo}</p>
+                        <p className="text-[10.5px] truncate" style={{ color: TEXT2 }}>
+                          {formatDateTime(p.data)}{p.detalhe ? ` · ${p.detalhe}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {presTemMais && (
+                  <button
+                    onClick={() => buscarPresencas(presPagina + 1)}
+                    disabled={presCarregando}
+                    className="w-full mt-3 py-2.5 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    style={{ background: soft, color: accent }}
+                  >
+                    {presCarregando && <Loader2 size={13} className="animate-spin" />}
+                    Carregar mais
+                  </button>
+                )}
+              </>
             ) : (
-              <Vazio texto="Ainda não há presenças registradas. Cadastre seu rosto no Face ID para que sua presença seja marcada automaticamente." />
+              <Vazio texto="Nenhuma presença neste período. Mude as datas acima ou cadastre seu rosto no Face ID para que sua presença seja marcada automaticamente." />
             )}
           </Bandeja>
         )}
