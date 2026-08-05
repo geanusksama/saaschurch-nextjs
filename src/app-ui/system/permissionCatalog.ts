@@ -83,6 +83,10 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'GF (Grupos Familiares)', name: 'Todos os GF',          key: 'cells',       permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'GF (Grupos Familiares)', name: 'Anexar Pessoas ao GF', key: 'cell_group_members', permissions: mkPerms(full(), full(), full(), admin()) }, // edit = anexar, delete = remover
 
+  // ── Patrimônio ───────────────────────────────────────────────────────────
+  { group: 'Patrimônio', name: 'Bens e Patrimônio',      key: 'assets',           permissions: mkPerms(full(), mngr(), mngr(), admin()) },
+  { group: 'Patrimônio', name: 'Inventário de Patrimônio', key: 'asset_inventory', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
+
   // ── Comunicação ──────────────────────────────────────────────────────────
   { group: 'Comunicação', name: 'WhatsApp',                   key: 'whatsapp',              permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Comunicação', name: 'WhatsApp Campanhas/Broadcast', key: 'whatsapp_campaigns',  permissions: mkPerms(full(), mngr(), mngr(), admin()) },

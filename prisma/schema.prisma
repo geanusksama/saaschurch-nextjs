@@ -23,39 +23,39 @@ model Campo {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  regionais          Regional[]
-  users              User[]                     @relation("CampoUsers")
-  inboxMessages      InboxMessage[]
-  legacyRegionals    LegacyRegional[]           @relation("LegacyRegionalField")
-  legacyHeadquarters LegacyChurchHeadquarters[] @relation("LegacyHeadquartersField")
-  legacyChurches     LegacyChurch[]             @relation("LegacyChurchField")
-  members            Member[]                   @relation("CampoMembers")
-  dailyBreadEntries  AppDailyBreadEntry[]       @relation("CampoDailyBread")
-  events             Event[]                    @relation("EventCampo")
-  appMembrosAuth     AppMembrosAuth[]           @relation("CampoAppAuth")
-  appCadastros       AppCadastroNew[]           @relation("CampoAppCadastro")
-  ebdTrimestres      EbdTrimestre[]             @relation("CampoEbdTrimestres")
-  ebdCategorias      EbdCategoria[]             @relation("CampoEbdCategorias")
-  ebdProdutos        EbdProduto[]               @relation("CampoEbdProdutos")
-  ebdEstoque         EbdEstoque[]               @relation("CampoEbdEstoque")
-  ebdMovimentos      EbdEstoqueMovimento[]      @relation("CampoEbdMovimentos")
-  ebdEntradas        EbdEntrada[]               @relation("CampoEbdEntradas")
-  ebdEntregas        EbdEntrega[]               @relation("CampoEbdEntregas")
-  ebdFinanceiro      EbdFinanceiro[]            @relation("CampoEbdFinanceiro")
-  ebdFinMovimentos   EbdFinanceiroMovimento[]   @relation("CampoEbdFinMovimentos")
-  ebdHistorico       EbdHistorico[]             @relation("CampoEbdHistorico")
-  ebdNegociacoes     EbdNegociacao[]            @relation("CampoEbdNegociacoes")
-  appEvents          AppEvent[]                 @relation("CampoAppEvents")
-  ministries         Ministry[]                 @relation("CampoMinistries")
-  stripeConfig       StripeConfig?              @relation("CampoStripeConfig")
-  stripePayments     StripePayment[]            @relation("CampoStripePayments")
-  stripeSubscriptions StripeSubscription[]      @relation("CampoStripeSubscriptions")
+  regionais            Regional[]
+  users                User[]                     @relation("CampoUsers")
+  inboxMessages        InboxMessage[]
+  legacyRegionals      LegacyRegional[]           @relation("LegacyRegionalField")
+  legacyHeadquarters   LegacyChurchHeadquarters[] @relation("LegacyHeadquartersField")
+  legacyChurches       LegacyChurch[]             @relation("LegacyChurchField")
+  members              Member[]                   @relation("CampoMembers")
+  dailyBreadEntries    AppDailyBreadEntry[]       @relation("CampoDailyBread")
+  events               Event[]                    @relation("EventCampo")
+  appMembrosAuth       AppMembrosAuth[]           @relation("CampoAppAuth")
+  appCadastros         AppCadastroNew[]           @relation("CampoAppCadastro")
+  ebdTrimestres        EbdTrimestre[]             @relation("CampoEbdTrimestres")
+  ebdCategorias        EbdCategoria[]             @relation("CampoEbdCategorias")
+  ebdProdutos          EbdProduto[]               @relation("CampoEbdProdutos")
+  ebdEstoque           EbdEstoque[]               @relation("CampoEbdEstoque")
+  ebdMovimentos        EbdEstoqueMovimento[]      @relation("CampoEbdMovimentos")
+  ebdEntradas          EbdEntrada[]               @relation("CampoEbdEntradas")
+  ebdEntregas          EbdEntrega[]               @relation("CampoEbdEntregas")
+  ebdFinanceiro        EbdFinanceiro[]            @relation("CampoEbdFinanceiro")
+  ebdFinMovimentos     EbdFinanceiroMovimento[]   @relation("CampoEbdFinMovimentos")
+  ebdHistorico         EbdHistorico[]             @relation("CampoEbdHistorico")
+  ebdNegociacoes       EbdNegociacao[]            @relation("CampoEbdNegociacoes")
+  appEvents            AppEvent[]                 @relation("CampoAppEvents")
+  ministries           Ministry[]                 @relation("CampoMinistries")
+  stripeConfig         StripeConfig?              @relation("CampoStripeConfig")
+  stripePayments       StripePayment[]            @relation("CampoStripePayments")
+  stripeSubscriptions  StripeSubscription[]       @relation("CampoStripeSubscriptions")
   internalChatMessages InternalChatMessage[]
-  penielConfig       PenielConfig?
-  penielEvents       PenielEvent[]
-  presenceTickets    ChurchPresenceTicket[]     @relation("CampoPresenceTickets")
-  aiAgents           AiAgent[]                  @relation("CampoAiAgents")
-  settings           Setting[]                  @relation("CampoSettings")
+  penielConfig         PenielConfig?
+  penielEvents         PenielEvent[]
+  presenceTickets      ChurchPresenceTicket[]     @relation("CampoPresenceTickets")
+  aiAgents             AiAgent[]                  @relation("CampoAiAgents")
+  settings             Setting[]                  @relation("CampoSettings")
 
   @@map("campos")
 }
@@ -74,11 +74,11 @@ model Regional {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  campo       Campo    @relation(fields: [campoId], references: [id], onDelete: Cascade)
-  coordinator User?    @relation("RegionalCoordinator", fields: [coordinatorId], references: [id])
-  churches    Church[]
-  users       User[]   @relation("RegionalUsers")
-  members     Member[]
+  campo               Campo     @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  coordinator         User?     @relation("RegionalCoordinator", fields: [coordinatorId], references: [id])
+  churches            Church[]
+  users               User[]    @relation("RegionalUsers")
+  members             Member[]
   kanCardsOrigin      KanCard[] @relation("KanCardOriginRegional")
   kanCardsDestination KanCard[] @relation("KanCardDestinationRegional")
   events              Event[]   @relation("EventRegional")
@@ -112,11 +112,11 @@ model Church {
   notes                 String?   @db.Text
 
   /// Igreja central da regional que recebe as demais como anexas.
-  isHost        Boolean @default(false) @map("is_host")
+  isHost       Boolean @default(false) @map("is_host")
   /// Zona geográfica (Zona Leste, Zona Sul, ...), usada em filtro e relatório.
-  zone          String? @db.VarChar(60)
+  zone         String? @db.VarChar(60)
   /// Preenchido nas anexas, apontando para a hospedeira.
-  hostChurchId  String? @map("host_church_id") @db.Uuid
+  hostChurchId String? @map("host_church_id") @db.Uuid
 
   email    String? @db.VarChar(255)
   phone    String? @db.VarChar(20)
@@ -152,13 +152,13 @@ model Church {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  regional      Regional                  @relation(fields: [regionalId], references: [id], onDelete: Cascade)
-  leadPastor    User?                     @relation("ChurchLeadPastor", fields: [leadPastorId], references: [id])
-  parentChurch  Church?                   @relation("ChurchParent", fields: [parentChurchId], references: [id])
-  childChurches Church[]                  @relation("ChurchParent")
-  hostChurch    Church?                   @relation("ChurchHost", fields: [hostChurchId], references: [id], onDelete: SetNull)
-  hostedChurches Church[]                 @relation("ChurchHost")
-  headquarters  LegacyChurchHeadquarters? @relation("ChurchHeadquarters", fields: [headquartersId], references: [id])
+  regional       Regional                  @relation(fields: [regionalId], references: [id], onDelete: Cascade)
+  leadPastor     User?                     @relation("ChurchLeadPastor", fields: [leadPastorId], references: [id])
+  parentChurch   Church?                   @relation("ChurchParent", fields: [parentChurchId], references: [id])
+  childChurches  Church[]                  @relation("ChurchParent")
+  hostChurch     Church?                   @relation("ChurchHost", fields: [hostChurchId], references: [id], onDelete: SetNull)
+  hostedChurches Church[]                  @relation("ChurchHost")
+  headquarters   LegacyChurchHeadquarters? @relation("ChurchHeadquarters", fields: [headquartersId], references: [id])
 
   users                  User[]                  @relation("ChurchUsers")
   roles                  Role[]
@@ -177,6 +177,8 @@ model Church {
   discipleshipTracks     DiscipleshipTrack[]
   ministries             Ministry[]
   cellGroups             CellGroup[]
+  assets                 Asset[]
+  assetInventories       AssetInventory[]
   communicationCampaigns CommunicationCampaign[]
   communicationTemplates CommunicationTemplate[]
   messages               Message[]
@@ -188,27 +190,27 @@ model Church {
   settings               Setting[]
   webhooks               Webhook[]
 
-  kanCards              KanCard[]          @relation("KanCardChurch")
-  kanCardsAsDestination KanCard[]          @relation("KanCardDestination")
-  kanCardsAsRequester   KanCard[]          @relation("KanCardRequester")
-  kanCardsAsRequested   KanCard[]          @relation("KanCardRequested")
-  memberOccurrences     MemberOccurrence[] @relation("MemberOccurrenceChurch")
+  kanCards              KanCard[]            @relation("KanCardChurch")
+  kanCardsAsDestination KanCard[]            @relation("KanCardDestination")
+  kanCardsAsRequester   KanCard[]            @relation("KanCardRequester")
+  kanCardsAsRequested   KanCard[]            @relation("KanCardRequested")
+  memberOccurrences     MemberOccurrence[]   @relation("MemberOccurrenceChurch")
   eventHistory          MemberEventHistory[] @relation("MemberEventHistoryChurch")
   titleHistory          MemberTitleHistory[] @relation("MemberTitleHistoryChurch")
 
-  livroCaixa            LivroCaixa[]
-  ebdEntregas           EbdEntrega[]           @relation("ChurchEbdEntregas")
-  ebdFinanceiro         EbdFinanceiro[]        @relation("ChurchEbdFinanceiro")
-  ebdHistorico          EbdHistorico[]         @relation("ChurchEbdHistorico")
-  ebdNegociacoes        EbdNegociacao[]        @relation("ChurchEbdNegociacoes")
-  stripePayments        StripePayment[]        @relation("ChurchStripePayments")
-  stripeSubscriptions   StripeSubscription[]   @relation("ChurchStripeSubscriptions")
-  faceidDevices         FaceidDevice[]         @relation("ChurchFaceidDevices")
-  faceidDevicesSecondary FaceidDevice[]        @relation("ChurchFaceidDevicesSecondary")
-  faceidAgents          FaceidAgent[]          @relation("ChurchFaceidAgents")
-  presenceTickets       ChurchPresenceTicket[] @relation("ChurchPresenceTickets")
-  aiAgents              AiAgent[]
-  aiChatSessions        AiChatSession[]
+  livroCaixa             LivroCaixa[]
+  ebdEntregas            EbdEntrega[]           @relation("ChurchEbdEntregas")
+  ebdFinanceiro          EbdFinanceiro[]        @relation("ChurchEbdFinanceiro")
+  ebdHistorico           EbdHistorico[]         @relation("ChurchEbdHistorico")
+  ebdNegociacoes         EbdNegociacao[]        @relation("ChurchEbdNegociacoes")
+  stripePayments         StripePayment[]        @relation("ChurchStripePayments")
+  stripeSubscriptions    StripeSubscription[]   @relation("ChurchStripeSubscriptions")
+  faceidDevices          FaceidDevice[]         @relation("ChurchFaceidDevices")
+  faceidDevicesSecondary FaceidDevice[]         @relation("ChurchFaceidDevicesSecondary")
+  faceidAgents           FaceidAgent[]          @relation("ChurchFaceidAgents")
+  presenceTickets        ChurchPresenceTicket[] @relation("ChurchPresenceTickets")
+  aiAgents               AiAgent[]
+  aiChatSessions         AiChatSession[]
 
   @@unique([regionalId, code])
   @@index([headquartersId])
@@ -263,17 +265,17 @@ model ChurchFunctionCatalog {
 }
 
 model ChurchFunctionHistory {
-  id         String    @id @default(uuid()) @db.Uuid
-  churchId   String    @map("church_id") @db.Uuid
-  memberId   String    @map("member_id") @db.Uuid
-  functionId String    @map("function_id") @db.Uuid
-  department String?   @db.VarChar(150)
-  startDate  DateTime  @map("start_date") @db.Date
-  endDate    DateTime? @map("end_date") @db.Date
-  notes      String?   @db.Text
-  isActive   Boolean   @default(true) @map("is_active")
+  id          String    @id @default(uuid()) @db.Uuid
+  churchId    String    @map("church_id") @db.Uuid
+  memberId    String    @map("member_id") @db.Uuid
+  functionId  String    @map("function_id") @db.Uuid
+  department  String?   @db.VarChar(150)
+  startDate   DateTime  @map("start_date") @db.Date
+  endDate     DateTime? @map("end_date") @db.Date
+  notes       String?   @db.Text
+  isActive    Boolean   @default(true) @map("is_active")
   /// Quando true, a função alcança todo o campo (não apenas a igreja em church_id).
-  isCampoWide Boolean  @default(false) @map("is_campo_wide")
+  isCampoWide Boolean   @default(false) @map("is_campo_wide")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -289,18 +291,18 @@ model ChurchFunctionHistory {
 }
 
 model ChurchRentRecord {
-  id                  String    @id @default(uuid()) @db.Uuid
-  churchId            String    @map("church_id") @db.Uuid
-  city                String    @db.VarChar(100)
-  address             String    @db.VarChar(255)
-  amount              Decimal   @db.Decimal(12, 2)
-  ownerName           String?   @map("owner_name") @db.VarChar(150)
-  ownerDocumentType   String?   @map("owner_document_type") @db.VarChar(10)
-  ownerDocumentNumber String?   @map("owner_document_number") @db.VarChar(20)
-  paidAt              DateTime  @map("paid_at") @db.Date
-  receiptUrl          String?   @map("receipt_url") @db.VarChar(500)
-  notes               String?   @db.Text
-  isActive            Boolean   @default(true) @map("is_active")
+  id                  String   @id @default(uuid()) @db.Uuid
+  churchId            String   @map("church_id") @db.Uuid
+  city                String   @db.VarChar(100)
+  address             String   @db.VarChar(255)
+  amount              Decimal  @db.Decimal(12, 2)
+  ownerName           String?  @map("owner_name") @db.VarChar(150)
+  ownerDocumentType   String?  @map("owner_document_type") @db.VarChar(10)
+  ownerDocumentNumber String?  @map("owner_document_number") @db.VarChar(20)
+  paidAt              DateTime @map("paid_at") @db.Date
+  receiptUrl          String?  @map("receipt_url") @db.VarChar(500)
+  notes               String?  @db.Text
+  isActive            Boolean  @default(true) @map("is_active")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -353,10 +355,10 @@ model User {
   regionalId String? @map("regional_id") @db.Uuid
   email      String  @unique @db.VarChar(255)
 
-  fullName  String  @map("full_name") @db.VarChar(255)
+  fullName    String  @map("full_name") @db.VarChar(255)
   systemEmail String? @unique @map("system_email") @db.VarChar(255)
-  avatarUrl String? @map("avatar_url") @db.VarChar(500)
-  phone     String? @db.VarChar(20)
+  avatarUrl   String? @map("avatar_url") @db.VarChar(500)
+  phone       String? @db.VarChar(20)
 
   // profileType: master | admin | campo | church
   profileType String @default("church") @map("profile_type") @db.VarChar(20)
@@ -396,9 +398,9 @@ model User {
   transactionsCreated Transaction[] @relation("TransactionCreatedBy")
   transactionsUpdated Transaction[] @relation("TransactionUpdatedBy")
 
-  livroCaixaOperado   LivroCaixa[] @relation("LivroCaixaOperador")
-  livroCaixaCreated   LivroCaixa[] @relation("LivroCaixaCreatedBy")
-  livroCaixaUpdated   LivroCaixa[] @relation("LivroCaixaUpdatedBy")
+  livroCaixaOperado LivroCaixa[] @relation("LivroCaixaOperador")
+  livroCaixaCreated LivroCaixa[] @relation("LivroCaixaCreatedBy")
+  livroCaixaUpdated LivroCaixa[] @relation("LivroCaixaUpdatedBy")
 
   communicationCampaignsCreated CommunicationCampaign[] @relation("CampaignCreatedBy")
 
@@ -411,19 +413,20 @@ model User {
   notifications    Notification[]
   notificationAcks NotificationAck[]
   auditLogs        AuditLog[]
-  settingsUpdated Setting[]      @relation("SettingUpdatedBy")
+  settingsUpdated  Setting[]         @relation("SettingUpdatedBy")
 
   sentInboxMessages     InboxMessage[]   @relation("SentInboxMessages")
   receivedInboxMessages InboxRecipient[] @relation("ReceivedInboxMessages")
 
-  userNotes       UserNote[]       @relation("UserNotes")
-  userStickyNotes UserStickyNote[] @relation("UserStickyNotes")
-  lastActiveAt DateTime? @map("last_active_at")
-  presenceStatus String @default("online") @map("presence_status") @db.VarChar(20)
-  customStatus String? @map("custom_status") @db.VarChar(255)
-  internalChatMessages InternalChatMessage[]
-  presenceTickets      ChurchPresenceTicket[] @relation("UserPresenceTickets")
-  aiChatSessions       AiChatSession[]
+  userNotes               UserNote[]             @relation("UserNotes")
+  userStickyNotes         UserStickyNote[]       @relation("UserStickyNotes")
+  lastActiveAt            DateTime?              @map("last_active_at")
+  presenceStatus          String                 @default("online") @map("presence_status") @db.VarChar(20)
+  customStatus            String?                @map("custom_status") @db.VarChar(255)
+  internalChatMessages    InternalChatMessage[]
+  presenceTickets         ChurchPresenceTicket[] @relation("UserPresenceTickets")
+  aiChatSessions          AiChatSession[]
+  assetInventoriesStarted AssetInventory[]       @relation("AssetInventoryStartedBy")
 
   @@map("users")
 }
@@ -502,13 +505,13 @@ model Member {
   phone  String? @db.VarChar(20)
   mobile String? @db.VarChar(20)
 
-  addressStreet       String? @map("address_street") @db.VarChar(255)
-  addressNumber       String? @map("address_number") @db.VarChar(20)
-  addressComplement   String? @map("address_complement") @db.VarChar(100)
-  addressNeighborhood String? @map("address_neighborhood") @db.VarChar(100)
-  addressCity         String? @map("address_city") @db.VarChar(100)
-  addressState        String? @map("address_state") @db.VarChar(50)
-  addressZipcode      String? @map("address_zipcode") @db.VarChar(10)
+  addressStreet       String?  @map("address_street") @db.VarChar(255)
+  addressNumber       String?  @map("address_number") @db.VarChar(20)
+  addressComplement   String?  @map("address_complement") @db.VarChar(100)
+  addressNeighborhood String?  @map("address_neighborhood") @db.VarChar(100)
+  addressCity         String?  @map("address_city") @db.VarChar(100)
+  addressState        String?  @map("address_state") @db.VarChar(50)
+  addressZipcode      String?  @map("address_zipcode") @db.VarChar(10)
   /// Mesma precisão de `churches` — a distância membro↔igreja compara os dois
   latitude            Decimal? @db.Decimal(10, 8)
   longitude           Decimal? @db.Decimal(11, 8)
@@ -585,14 +588,14 @@ model Member {
   sermonsPreached Sermon[]
   leadsConverted  Lead[]   @relation("LeadMember")
 
-  kanCards    KanCard[]          @relation("KanCardMember")
-  occurrences MemberOccurrence[] @relation("MemberOccurrenceMember")
-  eventHistory MemberEventHistory[] @relation("MemberEventHistoryMember")
-  titleHistory MemberTitleHistory[] @relation("MemberTitleHistoryMember")
-  appAuth      AppMembrosAuth[]     @relation("MemberAppAuth")
-  appCadastros AppCadastroNew[]     @relation("MemberAppCadastro")
-  ebdEntregasResponsavel    EbdEntrega[]             @relation("EbdEntregaResponsavel")
-  ebdFinMovResponsavel      EbdFinanceiroMovimento[] @relation("EbdFinMovResponsavel")
+  kanCards               KanCard[]                @relation("KanCardMember")
+  occurrences            MemberOccurrence[]       @relation("MemberOccurrenceMember")
+  eventHistory           MemberEventHistory[]     @relation("MemberEventHistoryMember")
+  titleHistory           MemberTitleHistory[]     @relation("MemberTitleHistoryMember")
+  appAuth                AppMembrosAuth[]         @relation("MemberAppAuth")
+  appCadastros           AppCadastroNew[]         @relation("MemberAppCadastro")
+  ebdEntregasResponsavel EbdEntrega[]             @relation("EbdEntregaResponsavel")
+  ebdFinMovResponsavel   EbdFinanceiroMovimento[] @relation("EbdFinMovResponsavel")
 
   likesGiven    MemberLike[] @relation("MemberLikeGiver")
   likesReceived MemberLike[] @relation("MemberLikeReceiver")
@@ -607,19 +610,19 @@ model Member {
 }
 
 model MemberFamilyRelationship {
-  id               String   @id @default(uuid()) @db.Uuid
-  memberId         String   @map("member_id") @db.Uuid
+  id               String    @id @default(uuid()) @db.Uuid
+  memberId         String    @map("member_id") @db.Uuid
   /// Opcional: preenchido só quando o familiar TAMBÉM é membro cadastrado.
-  relatedMemberId  String?  @map("related_member_id") @db.Uuid
-  relationshipType String   @map("relationship_type") @db.VarChar(30)
+  relatedMemberId  String?   @map("related_member_id") @db.Uuid
+  relationshipType String    @map("relationship_type") @db.VarChar(30)
   /// Dados do familiar quando ele NÃO é membro (ex.: criança pequena).
-  relatedName      String?  @map("related_name") @db.VarChar(255)
+  relatedName      String?   @map("related_name") @db.VarChar(255)
   relatedBirthDate DateTime? @map("related_birth_date") @db.Date
-  relatedGender    String?  @map("related_gender") @db.VarChar(20)
-  notes            String?  @db.Text
-  createdBy        String?  @map("created_by") @db.Uuid
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  relatedGender    String?   @map("related_gender") @db.VarChar(20)
+  notes            String?   @db.Text
+  createdBy        String?   @map("created_by") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
   deletedAt        DateTime? @map("deleted_at")
 
   member        Member  @relation("MemberFamilyMember", fields: [memberId], references: [id], onDelete: Cascade)
@@ -655,13 +658,13 @@ model Baptism {
 }
 
 model MemberTag {
-  id        String   @id @default(uuid()) @db.Uuid
-  churchId  String   @map("church_id") @db.Uuid
-  name      String   @db.VarChar(100)
-  color     String?  @default("#8b5cf6") @db.VarChar(7)
+  id          String   @id @default(uuid()) @db.Uuid
+  churchId    String   @map("church_id") @db.Uuid
+  name        String   @db.VarChar(100)
+  color       String?  @default("#8b5cf6") @db.VarChar(7)
   /// Preenchido nas tags criadas junto com um GF; a tag some com o GF.
-  cellGroupId String? @map("cell_group_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
+  cellGroupId String?  @map("cell_group_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
 
   church      Church                @relation(fields: [churchId], references: [id], onDelete: Cascade)
   cellGroup   CellGroup?            @relation(fields: [cellGroupId], references: [id], onDelete: Cascade)
@@ -800,84 +803,84 @@ model Offering {
 // Migrada do legado tblivrao com correção de tipos e relacionamentos.
 // ---------------------------------------------------------------------------
 model LivroCaixa {
-  id             String   @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
   // Igreja que registrou o lançamento (conta-caixa)
-  churchId       String   @map("church_id") @db.Uuid
+  churchId String @map("church_id") @db.Uuid
 
   // Data do lançamento — DATE nativo, sem texto, para evitar conversão em queries
   dataLancamento DateTime @map("data_lancamento") @db.Date
 
   // Referência/competência (ex: "Abril/2025")
-  referencia     String?  @db.VarChar(100)
+  referencia String? @db.VarChar(100)
 
   // Valor: positivo = receita, negativo = despesa (ou use tipo para distinguir)
-  valor          Decimal  @db.Decimal(15, 2)
+  valor Decimal @db.Decimal(15, 2)
 
   // Tipo: RECEITA | DESPESA | TRANSFERENCIA
-  tipo           String   @db.VarChar(20)
+  tipo String @db.VarChar(20)
 
   // Forma de pagamento (PIX, DINHEIRO, etc.)
-  formaPg        String?  @map("forma_pg") @db.VarChar(50)
+  formaPg String? @map("forma_pg") @db.VarChar(50)
 
   // Plano de conta e categoria gerencial
-  planoDeConta   String?  @map("plano_de_conta") @db.VarChar(100)
-  categoria      String?  @db.VarChar(100)
-  centroDeCusto  String?  @map("centro_de_custo") @db.VarChar(100)
+  planoDeConta  String? @map("plano_de_conta") @db.VarChar(100)
+  categoria     String? @db.VarChar(100)
+  centroDeCusto String? @map("centro_de_custo") @db.VarChar(100)
 
   // Documento/numeração
-  numLancamento  String?  @map("num_lancamento") @db.VarChar(50)
-  numDoc         String?  @map("num_doc") @db.VarChar(50)
-  tipoDocumento  String?  @map("tipo_documento") @db.VarChar(50)
+  numLancamento String? @map("num_lancamento") @db.VarChar(50)
+  numDoc        String? @map("num_doc") @db.VarChar(50)
+  tipoDocumento String? @map("tipo_documento") @db.VarChar(50)
 
   // Identificação do favorecido/pagador
   // tipo_pessoa: MEMBRO | NAO_MEMBRO | PJ | PF
-  tipoPessoa     String?  @map("tipo_pessoa") @db.VarChar(20)
-  favorecido     String?  @db.VarChar(255)
+  tipoPessoa String? @map("tipo_pessoa") @db.VarChar(20)
+  favorecido String? @db.VarChar(255)
 
   // FK para membro (quando o favorecido é um membro cadastrado)
-  memberId       String?  @map("member_id") @db.Uuid
+  memberId String? @map("member_id") @db.Uuid
 
   // ID externo para favorecidos não-membros (PF, PJ, fornecedor etc.)
   idFavorecidoExterno String? @map("id_favorecido_externo") @db.VarChar(100)
 
   // Operador que registrou
-  operador       String?  @db.VarChar(255)
-  operadorId     String?  @map("operador_id") @db.Uuid
-  igrejaOperador String?  @map("igreja_operador") @db.VarChar(255)
+  operador       String? @db.VarChar(255)
+  operadorId     String? @map("operador_id") @db.Uuid
+  igrejaOperador String? @map("igreja_operador") @db.VarChar(255)
 
   // Hierarquia (denormalizados para performance de relatórios)
-  regional       String?  @db.VarChar(100)
-  campo          String?  @db.VarChar(100)
+  regional String? @db.VarChar(100)
+  campo    String? @db.VarChar(100)
 
   // Hash de integridade / auditoria
-  hash           String?  @db.VarChar(255)
+  hash String? @db.VarChar(255)
 
   // Extras
-  obs            String?  @db.Text
-  foto           String?  @db.VarChar(500)     // URL do comprovante
-  identificador  String?  @db.VarChar(100)
-  contaCaixa     String?  @map("conta_caixa") @db.VarChar(100)
+  obs           String? @db.Text
+  foto          String? @db.VarChar(500) // URL do comprovante
+  identificador String? @db.VarChar(100)
+  contaCaixa    String? @map("conta_caixa") @db.VarChar(100)
 
   // Status
-  situacao       Boolean  @default(true)
-  deletadoPor    String?  @map("deletado_por") @db.VarChar(255)
-  deletedAt      DateTime? @map("deleted_at")
+  situacao    Boolean   @default(true)
+  deletadoPor String?   @map("deletado_por") @db.VarChar(255)
+  deletedAt   DateTime? @map("deleted_at")
 
   // ID do registro no sistema legado (para rastrear importação)
-  legacyId       BigInt?  @map("legacy_id")
+  legacyId BigInt? @map("legacy_id")
 
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  createdBy      String?  @map("created_by") @db.Uuid
-  updatedBy      String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
 
   // Relações
-  church         Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
-  member         Member?  @relation("LivroCaixaMember", fields: [memberId], references: [id])
-  operadorUser   User?    @relation("LivroCaixaOperador", fields: [operadorId], references: [id])
-  createdByUser  User?    @relation("LivroCaixaCreatedBy", fields: [createdBy], references: [id])
-  updatedByUser  User?    @relation("LivroCaixaUpdatedBy", fields: [updatedBy], references: [id])
+  church        Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  member        Member? @relation("LivroCaixaMember", fields: [memberId], references: [id])
+  operadorUser  User?   @relation("LivroCaixaOperador", fields: [operadorId], references: [id])
+  createdByUser User?   @relation("LivroCaixaCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User?   @relation("LivroCaixaUpdatedBy", fields: [updatedBy], references: [id])
 
   // Índices para performance de relatórios (evita full-scan em queries por período/igreja)
   @@index([churchId, dataLancamento])
@@ -928,12 +931,12 @@ model Event {
   updatedBy String?   @map("updated_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
 
-  church             Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  church             Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
   regional           Regional? @relation("EventRegional", fields: [regionalId], references: [id])
   campo              Campo?    @relation("EventCampo", fields: [campoId], references: [id])
-  organizer          User?   @relation("EventOrganizer", fields: [organizerId], references: [id])
-  recurrenceParent   Event?  @relation("EventRecurrence", fields: [recurrenceParentId], references: [id])
-  recurrenceChildren Event[] @relation("EventRecurrence")
+  organizer          User?     @relation("EventOrganizer", fields: [organizerId], references: [id])
+  recurrenceParent   Event?    @relation("EventRecurrence", fields: [recurrenceParentId], references: [id])
+  recurrenceChildren Event[]   @relation("EventRecurrence")
 
   registrations EventRegistration[]
   attendance    EventAttendance[]
@@ -1168,15 +1171,15 @@ model MinistryMember {
 }
 
 model CellGroup {
-  id          String    @id @default(uuid()) @db.Uuid
-  churchId    String    @map("church_id") @db.Uuid
-  name        String    @db.VarChar(255)
-  description String?   @db.Text
-  leaderId    String?   @map("leader_id") @db.Uuid
-  hostId      String?   @map("host_id") @db.Uuid
-  cellType    String?   @map("cell_type") @db.VarChar(30)
-  meetingDay  String?   @map("meeting_day") @db.VarChar(20)
-  meetingTime DateTime? @map("meeting_time") @db.Time(6)
+  id                  String    @id @default(uuid()) @db.Uuid
+  churchId            String    @map("church_id") @db.Uuid
+  name                String    @db.VarChar(255)
+  description         String?   @db.Text
+  leaderId            String?   @map("leader_id") @db.Uuid
+  hostId              String?   @map("host_id") @db.Uuid
+  cellType            String?   @map("cell_type") @db.VarChar(30)
+  meetingDay          String?   @map("meeting_day") @db.VarChar(20)
+  meetingTime         DateTime? @map("meeting_time") @db.Time(6)
   address             String?   @db.Text
   addressStreet       String?   @map("address_street") @db.VarChar(255)
   addressNumber       String?   @map("address_number") @db.VarChar(20)
@@ -1185,15 +1188,15 @@ model CellGroup {
   addressCity         String?   @map("address_city") @db.VarChar(100)
   addressState        String?   @map("address_state") @db.VarChar(50)
   addressZipcode      String?   @map("address_zipcode") @db.VarChar(10)
-  latitude    Decimal?  @db.Decimal(10, 8)
-  longitude   Decimal?  @db.Decimal(11, 8)
-  maxCapacity Int?      @map("max_capacity")
-  color       String?   @db.VarChar(50)
-  photo       String?   @db.Text
-  status      String?   @default("active") @db.VarChar(20)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
+  latitude            Decimal?  @db.Decimal(10, 8)
+  longitude           Decimal?  @db.Decimal(11, 8)
+  maxCapacity         Int?      @map("max_capacity")
+  color               String?   @db.VarChar(50)
+  photo               String?   @db.Text
+  status              String?   @default("active") @db.VarChar(20)
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
 
   church Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
   leader Member? @relation("CellGroupLeader", fields: [leaderId], references: [id])
@@ -1259,6 +1262,68 @@ model CellMeeting {
   cellGroup CellGroup @relation(fields: [cellGroupId], references: [id], onDelete: Cascade)
 
   @@map("cell_meetings")
+}
+
+model Asset {
+  id              String    @id @default(uuid()) @db.Uuid
+  churchId        String    @map("church_id") @db.Uuid
+  code            String    @unique @db.VarChar(30)
+  name            String    @db.VarChar(255)
+  category        String?   @db.VarChar(100)
+  sector          String?   @db.VarChar(100)
+  description     String?   @db.Text
+  photoUrl        String?   @map("photo_url") @db.Text
+  qrToken         String    @unique @default(uuid()) @map("qr_token") @db.Uuid
+  locationType    String    @map("location_type") @db.VarChar(20)
+  locationDetail  String?   @map("location_detail") @db.VarChar(255)
+  acquisitionType String?   @map("acquisition_type") @db.VarChar(20)
+  acquisitionDate DateTime? @map("acquisition_date") @db.Date
+  value           Decimal?  @db.Decimal(12, 2)
+  status          String    @default("active") @db.VarChar(20)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  church         Church               @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  inventoryItems AssetInventoryItem[]
+
+  @@index([churchId])
+  @@map("assets")
+}
+
+model AssetInventory {
+  id              String    @id @default(uuid()) @db.Uuid
+  churchId        String    @map("church_id") @db.Uuid
+  startedAt       DateTime  @default(now()) @map("started_at")
+  finishedAt      DateTime? @map("finished_at")
+  startedByUserId String    @map("started_by_user_id") @db.Uuid
+  leaderName      String?   @map("leader_name") @db.VarChar(255)
+  status          String    @default("in_progress") @db.VarChar(20)
+  observation     String?   @db.Text
+
+  church        Church               @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  startedByUser User                 @relation("AssetInventoryStartedBy", fields: [startedByUserId], references: [id])
+  items         AssetInventoryItem[]
+
+  @@index([churchId])
+  @@map("asset_inventories")
+}
+
+model AssetInventoryItem {
+  id            String   @id @default(uuid()) @db.Uuid
+  inventoryId   String   @map("inventory_id") @db.Uuid
+  assetId       String   @map("asset_id") @db.Uuid
+  scannedAt     DateTime @default(now()) @map("scanned_at")
+  locationMatch Boolean  @default(true) @map("location_match")
+  locationFound String?  @map("location_found") @db.VarChar(255)
+  observation   String?  @db.Text
+
+  inventory AssetInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  asset     Asset          @relation(fields: [assetId], references: [id])
+
+  @@unique([inventoryId, assetId])
+  @@map("asset_inventory_items")
 }
 
 model CommunicationCampaign {
@@ -1453,19 +1518,19 @@ model Notification {
   archivedAt       DateTime? @map("archived_at")
   createdAt        DateTime  @default(now()) @map("created_at")
 
-  user User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   acks NotificationAck[]
 
   @@map("notifications")
 }
 
 model NotificationAck {
-  id             String    @id @default(uuid()) @db.Uuid
-  notificationId String    @map("notification_id") @db.Uuid
-  userId         String    @map("user_id") @db.Uuid
-  batchId        String?   @map("batch_id") @db.VarChar(255)
-  ackType        String    @map("ack_type") @db.VarChar(20)
-  ackedAt        DateTime  @default(now()) @map("acked_at")
+  id             String   @id @default(uuid()) @db.Uuid
+  notificationId String   @map("notification_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  batchId        String?  @map("batch_id") @db.VarChar(255)
+  ackType        String   @map("ack_type") @db.VarChar(20)
+  ackedAt        DateTime @default(now()) @map("acked_at")
 
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1609,8 +1674,8 @@ model LegacyChurchHeadquarters {
   bank                 String?  @map("bank") @db.VarChar(255)
   fieldIcons           Json     @default("{}") @map("field_icons")
 
-  field           Campo?   @relation("LegacyHeadquartersField", fields: [fieldId], references: [id])
-  currentChurches Church[] @relation("ChurchHeadquarters")
+  field           Campo?             @relation("LegacyHeadquartersField", fields: [fieldId], references: [id])
+  currentChurches Church[]           @relation("ChurchHeadquarters")
   schedules       ChurchSchedule[]
   accessInfos     ChurchAccessInfo[]
 
@@ -1755,10 +1820,10 @@ model KanStage {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  pipeline KanPipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
-  service  KanService? @relation(fields: [serviceId], references: [id])
-  columns  KanColumn[]
-  cards    KanCard[]
+  pipeline    KanPipeline     @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  service     KanService?     @relation(fields: [serviceId], references: [id])
+  columns     KanColumn[]
+  cards       KanCard[]
   matrixRules KanMatrixRule[]
 
   @@index([pipelineId])
@@ -1837,9 +1902,9 @@ model KanCard {
   columnIndex Int    @default(1) @map("column_index")
 
   // Membro e igrejas principais
-  churchId            String  @map("church_id") @db.Uuid             // Igreja origem
+  churchId            String  @map("church_id") @db.Uuid // Igreja origem
   memberId            String? @map("member_id") @db.Uuid
-  destinationChurchId String? @map("destination_church_id") @db.Uuid  // Igreja destino (transferência)
+  destinationChurchId String? @map("destination_church_id") @db.Uuid // Igreja destino (transferência)
 
   // Regionais (para relatórios e transferências)
   originRegionalId      String? @map("origin_regional_id") @db.Uuid
@@ -1860,17 +1925,17 @@ model KanCard {
   statusLabel String? @map("status_label") @db.VarChar(120)
 
   // Textos do processo
-  subject       String? @db.VarChar(255)                // assunto
-  justification String? @db.Text                         // justificativa
-  observations  String? @db.Text                         // obs
-  description   String? @db.Text                         // descricao
+  subject       String? @db.VarChar(255) // assunto
+  justification String? @db.Text // justificativa
+  observations  String? @db.Text // obs
+  description   String? @db.Text // descricao
 
   // Aprovação
   approvedBy String?   @map("approved_by") @db.Uuid
   approvedAt DateTime? @map("approved_at")
 
-  metadata    Json?   @db.JsonB
-  attachments Json?   @db.JsonB
+  metadata    Json? @db.JsonB
+  attachments Json? @db.JsonB
 
   openedAt  DateTime  @default(now()) @map("opened_at")
   closedAt  DateTime? @map("closed_at")
@@ -1880,16 +1945,16 @@ model KanCard {
   updatedBy String?   @map("updated_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
 
-  stage             KanStage   @relation(fields: [stageId], references: [id])
-  service           KanService @relation(fields: [serviceId], references: [id])
-  column            KanColumn? @relation(fields: [columnId], references: [id])
-  church            Church     @relation("KanCardChurch", fields: [churchId], references: [id], onDelete: Cascade)
-  destinationChurch Church?    @relation("KanCardDestination", fields: [destinationChurchId], references: [id])
-  requesterChurch   Church?    @relation("KanCardRequester", fields: [requesterChurchId], references: [id])
-  requestedChurch   Church?    @relation("KanCardRequested", fields: [requestedChurchId], references: [id])
-  member            Member?    @relation("KanCardMember", fields: [memberId], references: [id])
-  originRegional    Regional?  @relation("KanCardOriginRegional", fields: [originRegionalId], references: [id])
-  destinationRegional Regional? @relation("KanCardDestinationRegional", fields: [destinationRegionalId], references: [id])
+  stage               KanStage   @relation(fields: [stageId], references: [id])
+  service             KanService @relation(fields: [serviceId], references: [id])
+  column              KanColumn? @relation(fields: [columnId], references: [id])
+  church              Church     @relation("KanCardChurch", fields: [churchId], references: [id], onDelete: Cascade)
+  destinationChurch   Church?    @relation("KanCardDestination", fields: [destinationChurchId], references: [id])
+  requesterChurch     Church?    @relation("KanCardRequester", fields: [requesterChurchId], references: [id])
+  requestedChurch     Church?    @relation("KanCardRequested", fields: [requestedChurchId], references: [id])
+  member              Member?    @relation("KanCardMember", fields: [memberId], references: [id])
+  originRegional      Regional?  @relation("KanCardOriginRegional", fields: [originRegionalId], references: [id])
+  destinationRegional Regional?  @relation("KanCardDestinationRegional", fields: [destinationRegionalId], references: [id])
 
   occurrences  MemberOccurrence[]
   eventHistory MemberEventHistory[] @relation("MemberEventHistoryCard")
@@ -1908,14 +1973,14 @@ model MemberOccurrence {
   churchId String  @map("church_id") @db.Uuid
   cardId   String? @map("card_id") @db.Uuid
 
-  name         String  @db.VarChar(160)
-  message      String? @db.VarChar(255)
-  serviceSigla String? @map("service_sigla") @db.VarChar(50)
-  serviceGroup String? @map("service_group") @db.VarChar(60)
-  action       String? @db.VarChar(120)
-  columnIndex  Int?    @map("column_index")
-  memberCity   String? @map("member_city") @db.VarChar(100)
-  memberState  String? @map("member_state") @db.VarChar(50)
+  name          String  @db.VarChar(160)
+  message       String? @db.VarChar(255)
+  serviceSigla  String? @map("service_sigla") @db.VarChar(50)
+  serviceGroup  String? @map("service_group") @db.VarChar(60)
+  action        String? @db.VarChar(120)
+  columnIndex   Int?    @map("column_index")
+  memberCity    String? @map("member_city") @db.VarChar(100)
+  memberState   String? @map("member_state") @db.VarChar(50)
   memberCountry String? @map("member_country") @db.VarChar(100)
 
   metadata Json? @db.JsonB
@@ -1961,10 +2026,10 @@ model MemberTitleHistory {
 
 /// Histórico de eventos do membro: gerado a cada ação da matriz de decisão.
 model MemberEventHistory {
-  id           String   @id @default(uuid()) @db.Uuid
-  memberId     String?  @map("member_id") @db.Uuid
-  cardId       String?  @map("card_id") @db.Uuid
-  churchId     String   @map("church_id") @db.Uuid
+  id            String   @id @default(uuid()) @db.Uuid
+  memberId      String?  @map("member_id") @db.Uuid
+  cardId        String?  @map("card_id") @db.Uuid
+  churchId      String   @map("church_id") @db.Uuid
   serviceGroup  String?  @map("service_group") @db.VarChar(60)
   serviceName   String?  @map("service_name") @db.VarChar(255)
   columnIndex   Int?     @map("column_index")
@@ -1978,7 +2043,7 @@ model MemberEventHistory {
   createdAt     DateTime @default(now()) @map("created_at")
 
   member Member?  @relation("MemberEventHistoryMember", fields: [memberId], references: [id], onDelete: SetNull)
-  card   KanCard? @relation("MemberEventHistoryCard",   fields: [cardId],   references: [id], onDelete: SetNull)
+  card   KanCard? @relation("MemberEventHistoryCard", fields: [cardId], references: [id], onDelete: SetNull)
   church Church   @relation("MemberEventHistoryChurch", fields: [churchId], references: [id], onDelete: Cascade)
 
   @@index([memberId])
@@ -2078,19 +2143,19 @@ model TbEvento {
 
 /// Departamentos organizadores de eventos do app
 model EventDepartment {
-  id          String   @id @default(uuid()) @db.Uuid
-  churchId    String   @map("church_id") @db.Uuid
-  nome        String   @db.VarChar(150)
-  descricao   String?  @db.Text
-  icone       String?  @db.VarChar(255)
-  cor         String?  @db.VarChar(50)
-  imagem      String?  @db.VarChar(500)
-  slug        String?  @db.VarChar(150)
-  ordem       Int      @default(0)
-  ativo       Boolean  @default(true)
-  createdBy   String?  @map("created_by") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id        String   @id @default(uuid()) @db.Uuid
+  churchId  String   @map("church_id") @db.Uuid
+  nome      String   @db.VarChar(150)
+  descricao String?  @db.Text
+  icone     String?  @db.VarChar(255)
+  cor       String?  @db.VarChar(50)
+  imagem    String?  @db.VarChar(500)
+  slug      String?  @db.VarChar(150)
+  ordem     Int      @default(0)
+  ativo     Boolean  @default(true)
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   appEvents AppEvent[]
 
@@ -2100,47 +2165,47 @@ model EventDepartment {
 
 /// Eventos com sistema de ingressos do app móvel
 model AppEvent {
-  id                   String   @id @default(uuid()) @db.Uuid
-  churchId             String   @map("church_id") @db.Uuid
-  headquartersId       String?  @map("headquarters_id") @db.Uuid
-  campoId              String?  @map("campo_id") @db.Uuid
-  departmentId         String?  @map("department_id") @db.Uuid
-  nome                 String   @db.VarChar(255)
-  descricao            String?  @db.Text
-  categoria            String?  @db.VarChar(100)
+  id                   String    @id @default(uuid()) @db.Uuid
+  churchId             String    @map("church_id") @db.Uuid
+  headquartersId       String?   @map("headquarters_id") @db.Uuid
+  campoId              String?   @map("campo_id") @db.Uuid
+  departmentId         String?   @map("department_id") @db.Uuid
+  nome                 String    @db.VarChar(255)
+  descricao            String?   @db.Text
+  categoria            String?   @db.VarChar(100)
   /// LIVRE | COM_ASSENTO
-  tipoEvento           String   @default("LIVRE") @map("tipo_evento") @db.VarChar(20)
-  dataInicio           DateTime @map("data_inicio") @db.Timestamptz(6)
-  dataFim              DateTime @map("data_fim") @db.Timestamptz(6)
-  local                String?  @db.VarChar(255)
-  localEndereco        String?  @map("local_endereco") @db.Text
-  latitude             Decimal? @db.Decimal(10, 8)
-  longitude            Decimal? @db.Decimal(11, 8)
-  capacidadeTotal      Int?     @map("capacidade_total")
-  quantidadeDisponivel Int?     @map("quantidade_disponivel")
-  preco                Decimal  @default(0) @db.Decimal(10, 2)
-  gratuito             Boolean  @default(true)
-  imagemUrl            String?  @map("imagem_url") @db.VarChar(500)
-  bannerUrl            String?  @map("banner_url") @db.VarChar(500)
+  tipoEvento           String    @default("LIVRE") @map("tipo_evento") @db.VarChar(20)
+  dataInicio           DateTime  @map("data_inicio") @db.Timestamptz(6)
+  dataFim              DateTime  @map("data_fim") @db.Timestamptz(6)
+  local                String?   @db.VarChar(255)
+  localEndereco        String?   @map("local_endereco") @db.Text
+  latitude             Decimal?  @db.Decimal(10, 8)
+  longitude            Decimal?  @db.Decimal(11, 8)
+  capacidadeTotal      Int?      @map("capacidade_total")
+  quantidadeDisponivel Int?      @map("quantidade_disponivel")
+  preco                Decimal   @default(0) @db.Decimal(10, 2)
+  gratuito             Boolean   @default(true)
+  imagemUrl            String?   @map("imagem_url") @db.VarChar(500)
+  bannerUrl            String?   @map("banner_url") @db.VarChar(500)
   /// RASCUNHO | PUBLICADO | ENCERRADO | CANCELADO
-  status               String   @default("RASCUNHO") @db.VarChar(20)
+  status               String    @default("RASCUNHO") @db.VarChar(20)
   /// Visível no app (equivale a status=PUBLICADO mas consultável diretamente)
-  isActive             Boolean  @default(true) @map("is_active")
+  isActive             Boolean   @default(true) @map("is_active")
   /// Visível sem login (público)
-  isPublic             Boolean  @default(true) @map("is_public")
-  permiteTransferencia Boolean  @default(false) @map("permite_transferencia")
-  permiteCancelamento  Boolean  @default(false) @map("permite_cancelamento")
-  permiteReembolso     Boolean  @default(false) @map("permite_reembolso")
-  limitePorUsuario     Int?     @map("limite_por_usuario")
+  isPublic             Boolean   @default(true) @map("is_public")
+  permiteTransferencia Boolean   @default(false) @map("permite_transferencia")
+  permiteCancelamento  Boolean   @default(false) @map("permite_cancelamento")
+  permiteReembolso     Boolean   @default(false) @map("permite_reembolso")
+  limitePorUsuario     Int?      @map("limite_por_usuario")
   /// Aparece em destaque no topo do app (banner grande)
-  isFeatured           Boolean  @default(false) @map("is_featured")
-  createdBy            String?  @map("created_by") @db.Uuid
-  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  isFeatured           Boolean   @default(false) @map("is_featured")
+  createdBy            String?   @map("created_by") @db.Uuid
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt            DateTime? @map("deleted_at")
 
-  department  EventDepartment? @relation(fields: [departmentId], references: [id])
-  campo       Campo?           @relation("CampoAppEvents", fields: [campoId], references: [id])
+  department EventDepartment? @relation(fields: [departmentId], references: [id])
+  campo      Campo?           @relation("CampoAppEvents", fields: [campoId], references: [id])
 
   sectors       EventSector[]
   orders        EventOrder[]
@@ -2153,8 +2218,8 @@ model AppEvent {
   halls         AppEventHall[]
   seatGroups    AppSeatGroup[]
   appSeats      AppSeat[]
-  appOrders     AppOrder[]  @relation("AppEventAppOrders")
-  flutterOrders Order[]     @relation("AppEventFlutterOrders")
+  appOrders     AppOrder[]          @relation("AppEventAppOrders")
+  flutterOrders Order[]             @relation("AppEventFlutterOrders")
 
   @@index([churchId, status])
   @@index([departmentId])
@@ -2164,21 +2229,21 @@ model AppEvent {
 
 /// Setores de um evento com assento
 model EventSector {
-  id        String   @id @default(uuid()) @db.Uuid
-  eventId   String   @map("event_id") @db.Uuid
-  nome      String   @db.Text
-  preco     Decimal  @default(0) @db.Decimal(10, 2)
-  quantidade Int     @default(0)
-  corHex    String?  @map("cor_hex") @db.VarChar(7)
-  ordem     Int      @default(0) @db.SmallInt
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id         String   @id @default(uuid()) @db.Uuid
+  eventId    String   @map("event_id") @db.Uuid
+  nome       String   @db.Text
+  preco      Decimal  @default(0) @db.Decimal(10, 2)
+  quantidade Int      @default(0)
+  corHex     String?  @map("cor_hex") @db.VarChar(7)
+  ordem      Int      @default(0) @db.SmallInt
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  event AppEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  rows  EventRow[]
-  seats EventSeat[]
-  carts EventCart[]
-  orderItems EventOrderItem[]
-  flutterOrderItems OrderItem[] @relation("EventSectorFlutterOrderItems")
+  event             AppEvent         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rows              EventRow[]
+  seats             EventSeat[]
+  carts             EventCart[]
+  orderItems        EventOrderItem[]
+  flutterOrderItems OrderItem[]      @relation("EventSectorFlutterOrderItems")
 
   @@index([eventId])
   @@map("event_sectors")
@@ -2202,25 +2267,25 @@ model EventRow {
 
 /// Assento individual
 model EventSeat {
-  id             String    @id @default(uuid()) @db.Uuid
-  eventId        String    @map("event_id") @db.Uuid
-  sectorId       String    @map("sector_id") @db.Uuid
-  rowId          String?   @map("row_id") @db.Uuid
-  numero         Int       @db.SmallInt
+  id            String    @id @default(uuid()) @db.Uuid
+  eventId       String    @map("event_id") @db.Uuid
+  sectorId      String    @map("sector_id") @db.Uuid
+  rowId         String?   @map("row_id") @db.Uuid
+  numero        Int       @db.SmallInt
   /// LIVRE | RESERVADO | OCUPADO | BLOQUEADO
-  status         String    @default("LIVRE") @db.VarChar(20)
-  reservadoPor   String?   @map("reservado_por") @db.Uuid
-  reservadoEm    DateTime? @map("reservado_em") @db.Timestamptz(6)
-  reservaExpira  DateTime? @map("reserva_expira") @db.Timestamptz(6)
-  orderItemId    String?   @map("order_item_id") @db.Uuid
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  status        String    @default("LIVRE") @db.VarChar(20)
+  reservadoPor  String?   @map("reservado_por") @db.Uuid
+  reservadoEm   DateTime? @map("reservado_em") @db.Timestamptz(6)
+  reservaExpira DateTime? @map("reserva_expira") @db.Timestamptz(6)
+  orderItemId   String?   @map("order_item_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  sector EventSector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
-  row    EventRow?   @relation(fields: [rowId], references: [id])
-  carts  EventCart[]
-  orderItems EventOrderItem[]
-  flutterOrderItems OrderItem[] @relation("EventSeatFlutterOrderItems")
-  qrcodes    EventQRCode[]
+  sector            EventSector      @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  row               EventRow?        @relation(fields: [rowId], references: [id])
+  carts             EventCart[]
+  orderItems        EventOrderItem[]
+  flutterOrderItems OrderItem[]      @relation("EventSeatFlutterOrderItems")
+  qrcodes           EventQRCode[]
 
   @@unique([eventId, sectorId, rowId, numero])
   @@index([eventId, status])
@@ -2286,25 +2351,25 @@ model EventOrder {
 
 /// Item de um pedido (1 ingresso ou 1 setor)
 model EventOrderItem {
-  id          String    @id @default(uuid()) @db.Uuid
-  orderId     String    @map("order_id") @db.Uuid
-  eventId     String    @map("event_id") @db.Uuid
-  seatId      String?   @map("seat_id") @db.Uuid
-  sectorId    String?   @map("sector_id") @db.Uuid
-  qty         Int       @default(1) @db.SmallInt
-  unitPrice   Decimal   @default(0) @map("unit_price") @db.Decimal(10, 2)
-  subtotal    Decimal   @default(0) @db.Decimal(10, 2)
+  id         String   @id @default(uuid()) @db.Uuid
+  orderId    String   @map("order_id") @db.Uuid
+  eventId    String   @map("event_id") @db.Uuid
+  seatId     String?  @map("seat_id") @db.Uuid
+  sectorId   String?  @map("sector_id") @db.Uuid
+  qty        Int      @default(1) @db.SmallInt
+  unitPrice  Decimal  @default(0) @map("unit_price") @db.Decimal(10, 2)
+  subtotal   Decimal  @default(0) @db.Decimal(10, 2)
   /// ATIVO | CANCELADO | REEMBOLSADO
-  status      String    @default("ATIVO") @db.Text
+  status     String   @default("ATIVO") @db.Text
   /// Snapshot desnormalizado gravado pelo app Flutter
-  sectorNome  String?   @map("sector_nome") @db.Text
-  rowNome     String?   @map("row_nome") @db.Text
-  seatNumero  Int?      @map("seat_numero")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sectorNome String?  @map("sector_nome") @db.Text
+  rowNome    String?  @map("row_nome") @db.Text
+  seatNumero Int?     @map("seat_numero")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  order   EventOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  seat    EventSeat?   @relation(fields: [seatId], references: [id])
-  sector  EventSector? @relation(fields: [sectorId], references: [id])
+  order   EventOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  seat    EventSeat?    @relation(fields: [seatId], references: [id])
+  sector  EventSector?  @relation(fields: [sectorId], references: [id])
   qrcodes EventQRCode[]
 
   @@index([orderId])
@@ -2355,19 +2420,19 @@ model EventQRCode {
 
 /// Solicitações de reembolso de pedido
 model EventRefund {
-  id               String    @id @default(uuid()) @db.Uuid
-  orderId          String    @map("order_id") @db.Uuid
-  eventId          String    @map("event_id") @db.Uuid
-  userId           String    @map("user_id") @db.Uuid
-  motivo           String?   @db.Text
-  valorSolicitado  Decimal   @default(0) @map("valor_solicitado") @db.Decimal(10, 2)
+  id              String    @id @default(uuid()) @db.Uuid
+  orderId         String    @map("order_id") @db.Uuid
+  eventId         String    @map("event_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  motivo          String?   @db.Text
+  valorSolicitado Decimal   @default(0) @map("valor_solicitado") @db.Decimal(10, 2)
   /// SOLICITADO | APROVADO | NEGADO | PROCESSADO
-  status           String    @default("SOLICITADO") @db.Text
-  notasAdmin       String?   @map("notas_admin") @db.Text
-  processedBy      String?   @map("processed_by") @db.Uuid
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  processedAt      DateTime? @map("processed_at") @db.Timestamptz(6)
+  status          String    @default("SOLICITADO") @db.Text
+  notasAdmin      String?   @map("notas_admin") @db.Text
+  processedBy     String?   @map("processed_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  processedAt     DateTime? @map("processed_at") @db.Timestamptz(6)
 
   order EventOrder @relation(fields: [orderId], references: [id])
   event AppEvent   @relation(fields: [eventId], references: [id])
@@ -2393,7 +2458,7 @@ model EventNotification {
   lidaEm       DateTime? @map("lida_em") @db.Timestamptz(6)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  event AppEvent   @relation(fields: [eventId], references: [id])
+  event AppEvent    @relation(fields: [eventId], references: [id])
   order EventOrder? @relation(fields: [orderId], references: [id])
 
   @@index([userId, lida])
@@ -2423,7 +2488,7 @@ model AppDailyBreadEntry {
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  campo Campo @relation("CampoDailyBread", fields: [campoId], references: [id])
+  campo Campo               @relation("CampoDailyBread", fields: [campoId], references: [id])
   likes AppDailyBreadLike[]
 
   @@index([campoId, publishedAt])
@@ -2493,27 +2558,27 @@ model AppMembrosAuth {
 
 /// Pedido original do app Flutter (sincronizado com event_orders via trigger)
 model Order {
-  id              String    @id @default(uuid()) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  eventId         String?   @map("event_id") @db.Uuid
-  orderNumber     String    @unique @map("order_number") @db.Text
-  buyerName       String?   @map("buyer_name") @db.Text
-  buyerEmail      String?   @map("buyer_email") @db.Text
-  buyerPhone      String?   @map("buyer_phone") @db.Text
-  total           Decimal?  @default(0) @db.Decimal(10, 2)
-  paymentMethod   String?   @default("pix") @map("payment_method") @db.Text
-  paymentRef      String?   @map("payment_ref") @db.Text
-  paymentAttempts Int       @default(0) @map("payment_attempts")
-  status          String    @default("PENDING_PAYMENT") @db.Text
-  notes           String?   @db.Text
-  refundReason    String?   @map("refund_reason") @db.Text
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  eventId         String?  @map("event_id") @db.Uuid
+  orderNumber     String   @unique @map("order_number") @db.Text
+  buyerName       String?  @map("buyer_name") @db.Text
+  buyerEmail      String?  @map("buyer_email") @db.Text
+  buyerPhone      String?  @map("buyer_phone") @db.Text
+  total           Decimal? @default(0) @db.Decimal(10, 2)
+  paymentMethod   String?  @default("pix") @map("payment_method") @db.Text
+  paymentRef      String?  @map("payment_ref") @db.Text
+  paymentAttempts Int      @default(0) @map("payment_attempts")
+  status          String   @default("PENDING_PAYMENT") @db.Text
+  notes           String?  @db.Text
+  refundReason    String?  @map("refund_reason") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   items         OrderItem[]
   qrcodes       OrderQRCode[]
   statusHistory OrderStatusHistory[]
-  event         AppEvent? @relation("AppEventFlutterOrders", fields: [eventId], references: [id])
+  event         AppEvent?            @relation("AppEventFlutterOrders", fields: [eventId], references: [id])
 
   @@index([userId, status])
   @@map("orders")
@@ -2535,8 +2600,8 @@ model OrderItem {
 
   order   Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   qrcodes OrderQRCode[]
-  seat    EventSeat?   @relation("EventSeatFlutterOrderItems", fields: [seatId], references: [id])
-  sector  EventSector? @relation("EventSectorFlutterOrderItems", fields: [sectorId], references: [id])
+  seat    EventSeat?    @relation("EventSeatFlutterOrderItems", fields: [seatId], references: [id])
+  sector  EventSector?  @relation("EventSectorFlutterOrderItems", fields: [sectorId], references: [id])
 
   @@index([orderId])
   @@map("order_items")
@@ -2594,7 +2659,7 @@ model AppEventBuilding {
   ordem     Int      @default(0) @db.SmallInt
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  event AppEvent      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event AppEvent       @relation(fields: [eventId], references: [id], onDelete: Cascade)
   halls AppEventHall[]
 
   @@index([eventId])
@@ -2632,7 +2697,7 @@ model AppSeatGroup {
   precoEspecial Decimal? @map("preco_especial") @db.Decimal(10, 2)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  event AppEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event AppEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   seats AppSeat[]
 
   @@index([eventId])
@@ -2758,10 +2823,10 @@ model EventTicketTransfer {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model EbdTrimestre {
-  id        String   @id @default(uuid()) @db.Uuid
-  campoId   String   @map("campo_id") @db.Uuid
-  nome      String   @db.VarChar(100)
-  ano       Int
+  id         String   @id @default(uuid()) @db.Uuid
+  campoId    String   @map("campo_id") @db.Uuid
+  nome       String   @db.VarChar(100)
+  ano        Int
   dataInicio DateTime @map("data_inicio") @db.Date
   dataFim    DateTime @map("data_fim") @db.Date
   ativo      Boolean  @default(true)
@@ -2771,9 +2836,9 @@ model EbdTrimestre {
   createdBy String?   @map("created_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
 
-  campo     Campo         @relation("CampoEbdTrimestres", fields: [campoId], references: [id], onDelete: Cascade)
-  produtos  EbdProduto[]
-  entregas  EbdEntrega[]  @relation("TrimestreEntregas")
+  campo      Campo           @relation("CampoEbdTrimestres", fields: [campoId], references: [id], onDelete: Cascade)
+  produtos   EbdProduto[]
+  entregas   EbdEntrega[]    @relation("TrimestreEntregas")
   financeiro EbdFinanceiro[] @relation("TrimestreFinanceiro")
 
   @@index([campoId])
@@ -2781,11 +2846,11 @@ model EbdTrimestre {
 }
 
 model EbdCategoria {
-  id        String   @id @default(uuid()) @db.Uuid
-  campoId   String   @map("campo_id") @db.Uuid
-  nome      String   @db.VarChar(100)
-  descricao String?  @db.Text
-  ordem     Int      @default(0)
+  id        String  @id @default(uuid()) @db.Uuid
+  campoId   String  @map("campo_id") @db.Uuid
+  nome      String  @db.VarChar(100)
+  descricao String? @db.Text
+  ordem     Int     @default(0)
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -2800,32 +2865,32 @@ model EbdCategoria {
 }
 
 model EbdProduto {
-  id           String  @id @default(uuid()) @db.Uuid
-  campoId      String  @map("campo_id") @db.Uuid
-  categoriaId  String  @map("categoria_id") @db.Uuid
-  trimestreId  String? @map("trimestre_id") @db.Uuid
-  codigo       String? @db.VarChar(50)
-  nome         String  @db.VarChar(255)
-  tipo         String  @db.VarChar(30)   // Revista | Livro | Material | Apoio
-  tema         String? @db.VarChar(255)
-  descricao    String? @db.Text
-  unidade      String  @default("un") @db.VarChar(20)
-  precoCusto   Decimal @default(0) @map("preco_custo") @db.Decimal(10, 2)
-  precoVenda   Decimal @default(0) @map("preco_venda") @db.Decimal(10, 2)
-  ativo        Boolean @default(true)
+  id          String  @id @default(uuid()) @db.Uuid
+  campoId     String  @map("campo_id") @db.Uuid
+  categoriaId String  @map("categoria_id") @db.Uuid
+  trimestreId String? @map("trimestre_id") @db.Uuid
+  codigo      String? @db.VarChar(50)
+  nome        String  @db.VarChar(255)
+  tipo        String  @db.VarChar(30) // Revista | Livro | Material | Apoio
+  tema        String? @db.VarChar(255)
+  descricao   String? @db.Text
+  unidade     String  @default("un") @db.VarChar(20)
+  precoCusto  Decimal @default(0) @map("preco_custo") @db.Decimal(10, 2)
+  precoVenda  Decimal @default(0) @map("preco_venda") @db.Decimal(10, 2)
+  ativo       Boolean @default(true)
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   createdBy String?   @map("created_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
 
-  campo         Campo           @relation("CampoEbdProdutos", fields: [campoId], references: [id], onDelete: Cascade)
-  categoria     EbdCategoria    @relation(fields: [categoriaId], references: [id])
-  trimestre     EbdTrimestre?   @relation(fields: [trimestreId], references: [id])
-  estoqueItens  EbdEstoque[]
-  entregaItens  EbdEntregaItem[]
-  entradaItens  EbdEntradaItem[]
-  movimentos    EbdEstoqueMovimento[]
+  campo        Campo                 @relation("CampoEbdProdutos", fields: [campoId], references: [id], onDelete: Cascade)
+  categoria    EbdCategoria          @relation(fields: [categoriaId], references: [id])
+  trimestre    EbdTrimestre?         @relation(fields: [trimestreId], references: [id])
+  estoqueItens EbdEstoque[]
+  entregaItens EbdEntregaItem[]
+  entradaItens EbdEntradaItem[]
+  movimentos   EbdEstoqueMovimento[]
 
   @@index([campoId])
   @@index([categoriaId])
@@ -2833,13 +2898,13 @@ model EbdProduto {
 }
 
 model EbdEstoque {
-  id        String  @id @default(uuid()) @db.Uuid
-  campoId   String  @map("campo_id") @db.Uuid
-  produtoId String  @map("produto_id") @db.Uuid
+  id         String @id @default(uuid()) @db.Uuid
+  campoId    String @map("campo_id") @db.Uuid
+  produtoId  String @map("produto_id") @db.Uuid
   quantidade Int    @default(0)
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   campo   Campo      @relation("CampoEbdEstoque", fields: [campoId], references: [id], onDelete: Cascade)
   produto EbdProduto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
@@ -2850,21 +2915,21 @@ model EbdEstoque {
 }
 
 model EbdEstoqueMovimento {
-  id         String   @id @default(uuid()) @db.Uuid
-  campoId    String   @map("campo_id") @db.Uuid
-  produtoId  String   @map("produto_id") @db.Uuid
-  tipo       String   @db.VarChar(20)   // entrada | saida | ajuste
-  quantidade Int
-  valorUnit  Decimal  @default(0) @map("valor_unit") @db.Decimal(10, 2)
-  referencia String?  @db.VarChar(255)  // NF, entrega_id, etc.
-  referenciaId String? @map("referencia_id") @db.Uuid
-  observacao String?  @db.Text
-  fornecedor String?  @db.VarChar(255)
-  numNf      String?  @map("num_nf") @db.VarChar(100)
+  id            String   @id @default(uuid()) @db.Uuid
+  campoId       String   @map("campo_id") @db.Uuid
+  produtoId     String   @map("produto_id") @db.Uuid
+  tipo          String   @db.VarChar(20) // entrada | saida | ajuste
+  quantidade    Int
+  valorUnit     Decimal  @default(0) @map("valor_unit") @db.Decimal(10, 2)
+  referencia    String?  @db.VarChar(255) // NF, entrega_id, etc.
+  referenciaId  String?  @map("referencia_id") @db.Uuid
+  observacao    String?  @db.Text
+  fornecedor    String?  @db.VarChar(255)
+  numNf         String?  @map("num_nf") @db.VarChar(100)
   dataMovimento DateTime @map("data_movimento") @db.Date
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  createdBy String?   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by") @db.Uuid
 
   campo   Campo      @relation("CampoEbdMovimentos", fields: [campoId], references: [id], onDelete: Cascade)
   produto EbdProduto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
@@ -2875,10 +2940,10 @@ model EbdEstoqueMovimento {
 }
 
 model EbdEntrada {
-  id         String   @id @default(uuid()) @db.Uuid
-  campoId    String   @map("campo_id") @db.Uuid
-  fornecedor String?  @db.VarChar(255)
-  numNf      String?  @map("num_nf") @db.VarChar(100)
+  id          String   @id @default(uuid()) @db.Uuid
+  campoId     String   @map("campo_id") @db.Uuid
+  fornecedor  String?  @db.VarChar(255)
+  numNf       String?  @map("num_nf") @db.VarChar(100)
   dataEntrada DateTime @map("data_entrada") @db.Date
   valorTotal  Decimal  @default(0) @map("valor_total") @db.Decimal(10, 2)
   observacao  String?  @db.Text
@@ -2888,8 +2953,8 @@ model EbdEntrada {
   createdBy String?   @map("created_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
 
-  campo  Campo            @relation("CampoEbdEntradas", fields: [campoId], references: [id], onDelete: Cascade)
-  itens  EbdEntradaItem[]
+  campo Campo            @relation("CampoEbdEntradas", fields: [campoId], references: [id], onDelete: Cascade)
+  itens EbdEntradaItem[]
 
   @@index([campoId])
   @@map("ebd_entradas")
@@ -2903,8 +2968,8 @@ model EbdEntradaItem {
   valorUnit  Decimal @map("valor_unit") @db.Decimal(10, 2)
   valorTotal Decimal @map("valor_total") @db.Decimal(10, 2)
 
-  entrada  EbdEntrada @relation(fields: [entradaId], references: [id], onDelete: Cascade)
-  produto  EbdProduto @relation(fields: [produtoId], references: [id])
+  entrada EbdEntrada @relation(fields: [entradaId], references: [id], onDelete: Cascade)
+  produto EbdProduto @relation(fields: [produtoId], references: [id])
 
   @@index([entradaId])
   @@map("ebd_entrada_itens")
@@ -2917,7 +2982,7 @@ model EbdEntrega {
   trimestreId   String?  @map("trimestre_id") @db.Uuid
   numeroDoc     String?  @map("numero_doc") @db.VarChar(50)
   dataEntrega   DateTime @map("data_entrega") @db.Date
-  status        String   @default("separando") @db.VarChar(20)  // separando | separado | entregue | cancelado
+  status        String   @default("separando") @db.VarChar(20) // separando | separado | entregue | cancelado
   responsavelId String?  @map("responsavel_id") @db.Uuid
   valorTotal    Decimal  @default(0) @map("valor_total") @db.Decimal(10, 2)
   saldoAnterior Decimal  @default(0) @map("saldo_anterior") @db.Decimal(10, 2)
@@ -2949,8 +3014,8 @@ model EbdEntregaItem {
   valorUnit  Decimal @map("valor_unit") @db.Decimal(10, 2)
   valorTotal Decimal @map("valor_total") @db.Decimal(10, 2)
 
-  entrega  EbdEntrega @relation(fields: [entregaId], references: [id], onDelete: Cascade)
-  produto  EbdProduto @relation(fields: [produtoId], references: [id])
+  entrega EbdEntrega @relation(fields: [entregaId], references: [id], onDelete: Cascade)
+  produto EbdProduto @relation(fields: [produtoId], references: [id])
 
   @@index([entregaId])
   @@map("ebd_entrega_itens")
@@ -2964,13 +3029,13 @@ model EbdFinanceiro {
   entregaId   String? @map("entrega_id") @db.Uuid
   saldo       Decimal @default(0) @db.Decimal(10, 2)
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  campo     Campo          @relation("CampoEbdFinanceiro", fields: [campoId], references: [id], onDelete: Cascade)
-  church    Church         @relation("ChurchEbdFinanceiro", fields: [churchId], references: [id])
-  trimestre EbdTrimestre?  @relation("TrimestreFinanceiro", fields: [trimestreId], references: [id])
-  entrega   EbdEntrega?    @relation(fields: [entregaId], references: [id])
+  campo      Campo                    @relation("CampoEbdFinanceiro", fields: [campoId], references: [id], onDelete: Cascade)
+  church     Church                   @relation("ChurchEbdFinanceiro", fields: [churchId], references: [id])
+  trimestre  EbdTrimestre?            @relation("TrimestreFinanceiro", fields: [trimestreId], references: [id])
+  entrega    EbdEntrega?              @relation(fields: [entregaId], references: [id])
   movimentos EbdFinanceiroMovimento[]
 
   @@unique([campoId, churchId, trimestreId])
@@ -2980,25 +3045,25 @@ model EbdFinanceiro {
 }
 
 model EbdFinanceiroMovimento {
-  id           String   @id @default(uuid()) @db.Uuid
-  financeiroId String   @map("financeiro_id") @db.Uuid
-  campoId      String   @map("campo_id") @db.Uuid
-  tipo         String   @db.VarChar(30)  // debito | pagamento | credito | desconto | correcao | transferencia | outros
-  valor        Decimal  @db.Decimal(10, 2)
-  saldoAntes   Decimal  @map("saldo_antes") @db.Decimal(10, 2)
-  saldoDepois  Decimal  @map("saldo_depois") @db.Decimal(10, 2)
-  data         DateTime @db.Date
-  descricao    String?  @db.VarChar(500)
-  responsavelId String? @map("responsavel_id") @db.Uuid
-  observacao   String?  @db.Text
-  referenciaId String?  @map("referencia_id") @db.Uuid
+  id            String   @id @default(uuid()) @db.Uuid
+  financeiroId  String   @map("financeiro_id") @db.Uuid
+  campoId       String   @map("campo_id") @db.Uuid
+  tipo          String   @db.VarChar(30) // debito | pagamento | credito | desconto | correcao | transferencia | outros
+  valor         Decimal  @db.Decimal(10, 2)
+  saldoAntes    Decimal  @map("saldo_antes") @db.Decimal(10, 2)
+  saldoDepois   Decimal  @map("saldo_depois") @db.Decimal(10, 2)
+  data          DateTime @db.Date
+  descricao     String?  @db.VarChar(500)
+  responsavelId String?  @map("responsavel_id") @db.Uuid
+  observacao    String?  @db.Text
+  referenciaId  String?  @map("referencia_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   createdBy String?  @map("created_by") @db.Uuid
 
-  financeiro   EbdFinanceiro @relation(fields: [financeiroId], references: [id], onDelete: Cascade)
-  campo        Campo         @relation("CampoEbdFinMovimentos", fields: [campoId], references: [id], onDelete: Cascade)
-  responsavel  Member?       @relation("EbdFinMovResponsavel", fields: [responsavelId], references: [id])
+  financeiro  EbdFinanceiro @relation(fields: [financeiroId], references: [id], onDelete: Cascade)
+  campo       Campo         @relation("CampoEbdFinMovimentos", fields: [campoId], references: [id], onDelete: Cascade)
+  responsavel Member?       @relation("EbdFinMovResponsavel", fields: [responsavelId], references: [id])
 
   @@index([financeiroId])
   @@index([campoId])
@@ -3006,15 +3071,15 @@ model EbdFinanceiroMovimento {
 }
 
 model EbdHistorico {
-  id         String   @id @default(uuid()) @db.Uuid
-  campoId    String   @map("campo_id") @db.Uuid
-  churchId   String?  @map("church_id") @db.Uuid
-  tipo       String   @db.VarChar(30)  // entrada_estoque | retirada | entrega | pagamento | ajuste | cancelamento
-  titulo     String   @db.VarChar(255)
-  descricao  String?  @db.Text
-  valor      Decimal? @db.Decimal(10, 2)
-  referenciaId String? @map("referencia_id") @db.Uuid
-  data       DateTime @db.Date
+  id           String   @id @default(uuid()) @db.Uuid
+  campoId      String   @map("campo_id") @db.Uuid
+  churchId     String?  @map("church_id") @db.Uuid
+  tipo         String   @db.VarChar(30) // entrada_estoque | retirada | entrega | pagamento | ajuste | cancelamento
+  titulo       String   @db.VarChar(255)
+  descricao    String?  @db.Text
+  valor        Decimal? @db.Decimal(10, 2)
+  referenciaId String?  @map("referencia_id") @db.Uuid
+  data         DateTime @db.Date
 
   createdAt DateTime @default(now()) @map("created_at")
   createdBy String?  @map("created_by") @db.Uuid
@@ -3028,25 +3093,25 @@ model EbdHistorico {
 }
 
 model EbdNegociacao {
-  id              String    @id @default(uuid()) @db.Uuid
-  campoId         String    @map("campo_id") @db.Uuid
-  churchId        String    @map("church_id") @db.Uuid
-  titulo          String    @db.VarChar(255)
-  descricao       String?   @db.Text
-  valorTotal      Decimal   @map("valor_total") @db.Decimal(10, 2)
-  numParcelas     Int       @default(1) @map("num_parcelas")
-  dataInicio      DateTime  @map("data_inicio") @db.Date
-  dataVencimento  DateTime? @map("data_vencimento") @db.Date
-  status          String    @default("aberta") @db.VarChar(20)
-  observacao      String?   @db.Text
+  id             String    @id @default(uuid()) @db.Uuid
+  campoId        String    @map("campo_id") @db.Uuid
+  churchId       String    @map("church_id") @db.Uuid
+  titulo         String    @db.VarChar(255)
+  descricao      String?   @db.Text
+  valorTotal     Decimal   @map("valor_total") @db.Decimal(10, 2)
+  numParcelas    Int       @default(1) @map("num_parcelas")
+  dataInicio     DateTime  @map("data_inicio") @db.Date
+  dataVencimento DateTime? @map("data_vencimento") @db.Date
+  status         String    @default("aberta") @db.VarChar(20)
+  observacao     String?   @db.Text
 
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  createdBy       String?   @map("created_by") @db.Uuid
-  deletedAt       DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
 
-  campo    Campo   @relation("CampoEbdNegociacoes", fields: [campoId], references: [id], onDelete: Cascade)
-  church   Church  @relation("ChurchEbdNegociacoes", fields: [churchId], references: [id])
+  campo    Campo                  @relation("CampoEbdNegociacoes", fields: [campoId], references: [id], onDelete: Cascade)
+  church   Church                 @relation("ChurchEbdNegociacoes", fields: [churchId], references: [id])
   parcelas EbdNegociacaoParcela[]
 
   @@index([campoId])
@@ -3064,9 +3129,9 @@ model EbdNegociacaoParcela {
   status         String    @default("pendente") @db.VarChar(20)
   observacao     String?   @db.Text
 
-  createdAt      DateTime  @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  negociacao     EbdNegociacao @relation(fields: [negociacaoId], references: [id], onDelete: Cascade)
+  negociacao EbdNegociacao @relation(fields: [negociacaoId], references: [id], onDelete: Cascade)
 
   @@index([negociacaoId])
   @@map("ebd_negociacao_parcelas")
@@ -3081,13 +3146,13 @@ model StripeConfig {
   id               String  @id @default(uuid()) @db.Uuid
   campoId          String  @unique @map("campo_id") @db.Uuid
   publishableKey   String  @map("publishable_key") @db.VarChar(255)
-  secretKeyEnc     String  @map("secret_key_enc") @db.Text        // criptografado AES-256
-  webhookSecretEnc String? @map("webhook_secret_enc") @db.Text    // criptografado AES-256
-  accountId        String? @map("account_id") @db.VarChar(100)    // Stripe Connect account ID
+  secretKeyEnc     String  @map("secret_key_enc") @db.Text // criptografado AES-256
+  webhookSecretEnc String? @map("webhook_secret_enc") @db.Text // criptografado AES-256
+  accountId        String? @map("account_id") @db.VarChar(100) // Stripe Connect account ID
   ativo            Boolean @default(false)
-  modoProd         Boolean @default(false) @map("modo_prod")      // false = test mode
-  pixEnabled       Boolean @default(true)  @map("pix_enabled")
-  cardEnabled      Boolean @default(true)  @map("card_enabled")
+  modoProd         Boolean @default(false) @map("modo_prod") // false = test mode
+  pixEnabled       Boolean @default(true) @map("pix_enabled")
+  cardEnabled      Boolean @default(true) @map("card_enabled")
   currency         String  @default("brl") @db.VarChar(3)
 
   createdAt DateTime  @default(now()) @map("created_at")
@@ -3095,7 +3160,7 @@ model StripeConfig {
   createdBy String?   @map("created_by") @db.Uuid
   deletedAt DateTime? @map("deleted_at")
 
-  campo         Campo              @relation("CampoStripeConfig", fields: [campoId], references: [id], onDelete: Cascade)
+  campo         Campo                @relation("CampoStripeConfig", fields: [campoId], references: [id], onDelete: Cascade)
   payments      StripePayment[]
   subscriptions StripeSubscription[]
 
@@ -3104,38 +3169,38 @@ model StripeConfig {
 
 /// Registro de cada pagamento processado via Stripe
 model StripePayment {
-  id                String   @id @default(uuid()) @db.Uuid
-  configId          String   @map("config_id") @db.Uuid
-  campoId           String   @map("campo_id") @db.Uuid
-  churchId          String?  @map("church_id") @db.Uuid
-  userId            String?  @map("user_id") @db.Uuid          // AppMembrosAuth.authUserId ou User.id
-  memberId          String?  @map("member_id") @db.Uuid
-  orderId           String?  @map("order_id") @db.Uuid         // EventOrder.id ou Order.id
-  stripePaymentIntentId String? @map("stripe_payment_intent_id") @db.VarChar(100)
-  stripeSessionId   String?  @map("stripe_session_id") @db.VarChar(100)
-  stripeCustomerId  String?  @map("stripe_customer_id") @db.VarChar(100)
-  stripeChargeId    String?  @map("stripe_charge_id") @db.VarChar(100)
-  valor             Decimal  @db.Decimal(10, 2)
-  valorRefunded     Decimal  @default(0) @map("valor_refunded") @db.Decimal(10, 2)
-  moeda             String   @default("brl") @db.VarChar(3)
-  metodo            String   @db.VarChar(30)    // pix | credit_card | debit_card | link | free
-  tipo              String   @db.VarChar(30)    // ingresso | produto | dizimo | oferta | doacao | assinatura
-  status            String   @default("pendente") @db.VarChar(30) // pendente | aprovado | falhou | reembolsado | parcialmente_reembolsado | expirado
-  descricao         String?  @db.VarChar(500)
-  pixQrCode         String?  @map("pix_qr_code") @db.Text
-  pixExpira         DateTime? @map("pix_expira")
-  receiptUrl        String?  @map("receipt_url") @db.VarChar(500)
-  metadata          Json?    @db.JsonB
-  paidAt            DateTime? @map("paid_at")
+  id                    String    @id @default(uuid()) @db.Uuid
+  configId              String    @map("config_id") @db.Uuid
+  campoId               String    @map("campo_id") @db.Uuid
+  churchId              String?   @map("church_id") @db.Uuid
+  userId                String?   @map("user_id") @db.Uuid // AppMembrosAuth.authUserId ou User.id
+  memberId              String?   @map("member_id") @db.Uuid
+  orderId               String?   @map("order_id") @db.Uuid // EventOrder.id ou Order.id
+  stripePaymentIntentId String?   @map("stripe_payment_intent_id") @db.VarChar(100)
+  stripeSessionId       String?   @map("stripe_session_id") @db.VarChar(100)
+  stripeCustomerId      String?   @map("stripe_customer_id") @db.VarChar(100)
+  stripeChargeId        String?   @map("stripe_charge_id") @db.VarChar(100)
+  valor                 Decimal   @db.Decimal(10, 2)
+  valorRefunded         Decimal   @default(0) @map("valor_refunded") @db.Decimal(10, 2)
+  moeda                 String    @default("brl") @db.VarChar(3)
+  metodo                String    @db.VarChar(30) // pix | credit_card | debit_card | link | free
+  tipo                  String    @db.VarChar(30) // ingresso | produto | dizimo | oferta | doacao | assinatura
+  status                String    @default("pendente") @db.VarChar(30) // pendente | aprovado | falhou | reembolsado | parcialmente_reembolsado | expirado
+  descricao             String?   @db.VarChar(500)
+  pixQrCode             String?   @map("pix_qr_code") @db.Text
+  pixExpira             DateTime? @map("pix_expira")
+  receiptUrl            String?   @map("receipt_url") @db.VarChar(500)
+  metadata              Json?     @db.JsonB
+  paidAt                DateTime? @map("paid_at")
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  config        StripeConfig     @relation(fields: [configId], references: [id])
-  campo         Campo            @relation("CampoStripePayments", fields: [campoId], references: [id], onDelete: Cascade)
-  church        Church?          @relation("ChurchStripePayments", fields: [churchId], references: [id])
-  refunds       StripeRefund[]
-  webhookLogs   StripeWebhookLog[]
+  config      StripeConfig       @relation(fields: [configId], references: [id])
+  campo       Campo              @relation("CampoStripePayments", fields: [campoId], references: [id], onDelete: Cascade)
+  church      Church?            @relation("ChurchStripePayments", fields: [churchId], references: [id])
+  refunds     StripeRefund[]
+  webhookLogs StripeWebhookLog[]
 
   @@index([campoId])
   @@index([churchId])
@@ -3147,33 +3212,33 @@ model StripePayment {
 
 /// Assinaturas recorrentes Stripe
 model StripeSubscription {
-  id                   String   @id @default(uuid()) @db.Uuid
-  configId             String   @map("config_id") @db.Uuid
-  campoId              String   @map("campo_id") @db.Uuid
-  churchId             String?  @map("church_id") @db.Uuid
-  userId               String?  @map("user_id") @db.Uuid
-  memberId             String?  @map("member_id") @db.Uuid
-  stripeSubscriptionId String   @unique @map("stripe_subscription_id") @db.VarChar(100)
-  stripeCustomerId     String?  @map("stripe_customer_id") @db.VarChar(100)
-  stripePriceId        String?  @map("stripe_price_id") @db.VarChar(100)
-  stripeProductId      String?  @map("stripe_product_id") @db.VarChar(100)
-  tipo                 String?  @db.VarChar(30)
-  valor                Decimal? @db.Decimal(10, 2)
-  moeda                String   @default("brl") @db.VarChar(3)
-  frequencia           String?  @db.VarChar(20)
-  status               String   @default("ativa") @db.VarChar(20)
+  id                   String    @id @default(uuid()) @db.Uuid
+  configId             String    @map("config_id") @db.Uuid
+  campoId              String    @map("campo_id") @db.Uuid
+  churchId             String?   @map("church_id") @db.Uuid
+  userId               String?   @map("user_id") @db.Uuid
+  memberId             String?   @map("member_id") @db.Uuid
+  stripeSubscriptionId String    @unique @map("stripe_subscription_id") @db.VarChar(100)
+  stripeCustomerId     String?   @map("stripe_customer_id") @db.VarChar(100)
+  stripePriceId        String?   @map("stripe_price_id") @db.VarChar(100)
+  stripeProductId      String?   @map("stripe_product_id") @db.VarChar(100)
+  tipo                 String?   @db.VarChar(30)
+  valor                Decimal?  @db.Decimal(10, 2)
+  moeda                String    @default("brl") @db.VarChar(3)
+  frequencia           String?   @db.VarChar(20)
+  status               String    @default("ativa") @db.VarChar(20)
   proximaCobranca      DateTime? @map("proxima_cobranca")
   canceladaEm          DateTime? @map("cancelada_em")
   pausadaEm            DateTime? @map("pausada_em")
-  descricao            String?  @db.VarChar(255)
-  metadata             Json?    @db.JsonB
+  descricao            String?   @db.VarChar(255)
+  metadata             Json?     @db.JsonB
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  config  StripeConfig @relation(fields: [configId], references: [id])
-  campo   Campo        @relation("CampoStripeSubscriptions", fields: [campoId], references: [id], onDelete: Cascade)
-  church  Church?      @relation("ChurchStripeSubscriptions", fields: [churchId], references: [id])
+  config StripeConfig @relation(fields: [configId], references: [id])
+  campo  Campo        @relation("CampoStripeSubscriptions", fields: [campoId], references: [id], onDelete: Cascade)
+  church Church?      @relation("ChurchStripeSubscriptions", fields: [churchId], references: [id])
 
   @@index([campoId])
   @@index([userId])
@@ -3183,20 +3248,20 @@ model StripeSubscription {
 
 /// Reembolsos processados via Stripe
 model StripeRefund {
-  id              String   @id @default(uuid()) @db.Uuid
-  paymentId       String   @map("payment_id") @db.Uuid
-  stripeRefundId  String?  @map("stripe_refund_id") @db.VarChar(100)
-  valor           Decimal  @db.Decimal(10, 2)
-  moeda           String   @default("brl") @db.VarChar(3)
-  motivo          String?  @db.Text
-  status          String   @default("solicitado") @db.VarChar(20) // solicitado | processado | rejeitado
-  stripeStatus    String?  @map("stripe_status") @db.VarChar(20)
-  solicitadoPor   String?  @map("solicitado_por") @db.Uuid
-  aprovadoPor     String?  @map("aprovado_por") @db.Uuid
-  motivoRejeicao  String?  @map("motivo_rejeicao") @db.Text
+  id             String  @id @default(uuid()) @db.Uuid
+  paymentId      String  @map("payment_id") @db.Uuid
+  stripeRefundId String? @map("stripe_refund_id") @db.VarChar(100)
+  valor          Decimal @db.Decimal(10, 2)
+  moeda          String  @default("brl") @db.VarChar(3)
+  motivo         String? @db.Text
+  status         String  @default("solicitado") @db.VarChar(20) // solicitado | processado | rejeitado
+  stripeStatus   String? @map("stripe_status") @db.VarChar(20)
+  solicitadoPor  String? @map("solicitado_por") @db.Uuid
+  aprovadoPor    String? @map("aprovado_por") @db.Uuid
+  motivoRejeicao String? @map("motivo_rejeicao") @db.Text
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   payment StripePayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
@@ -3206,15 +3271,15 @@ model StripeRefund {
 
 /// Log de todos os webhooks recebidos do Stripe
 model StripeWebhookLog {
-  id           String   @id @default(uuid()) @db.Uuid
-  campoId      String?  @map("campo_id") @db.Uuid
-  paymentId    String?  @map("payment_id") @db.Uuid
-  stripeEventId String  @unique @map("stripe_event_id") @db.VarChar(100)
-  eventType    String   @map("event_type") @db.VarChar(100)
-  payload      Json     @db.JsonB
-  processado   Boolean  @default(false)
-  erro         String?  @db.Text
-  createdAt    DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid()) @db.Uuid
+  campoId       String?  @map("campo_id") @db.Uuid
+  paymentId     String?  @map("payment_id") @db.Uuid
+  stripeEventId String   @unique @map("stripe_event_id") @db.VarChar(100)
+  eventType     String   @map("event_type") @db.VarChar(100)
+  payload       Json     @db.JsonB
+  processado    Boolean  @default(false)
+  erro          String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
 
   payment StripePayment? @relation(fields: [paymentId], references: [id])
 
@@ -3333,40 +3398,40 @@ model PenielEvent {
 }
 
 model PenielRegistration {
-  id                     String      @id @default(uuid()) @db.Uuid
-  eventId                String      @map("event_id") @db.Uuid
-  tipoParticipante       String      @map("tipo_participante") @db.VarChar(20)
-  nome                   String      @db.VarChar(255)
-  endereco               String      @db.VarChar(255)
-  dataNascimento         DateTime    @map("data_nascimento") @db.Date
-  estadoCivil            String      @map("estado_civil") @db.VarChar(50)
+  id                     String    @id @default(uuid()) @db.Uuid
+  eventId                String    @map("event_id") @db.Uuid
+  tipoParticipante       String    @map("tipo_participante") @db.VarChar(20)
+  nome                   String    @db.VarChar(255)
+  endereco               String    @db.VarChar(255)
+  dataNascimento         DateTime  @map("data_nascimento") @db.Date
+  estadoCivil            String    @map("estado_civil") @db.VarChar(50)
   idade                  Int
-  celular                String      @db.VarChar(20)
-  igrejaBase             String      @map("igreja_base") @db.VarChar(255)
-  batizadoAguas          Boolean     @map("batizado_aguas")
-  participaGrupoFamiliar Boolean     @map("participa_grupo_familiar")
-  grupoFamiliarQual      String?     @map("grupo_familiar_qual") @db.VarChar(255)
-  nomeLider              String?     @map("nome_lider") @db.VarChar(255)
-  quemMotivou            String      @map("quem_motivou") @db.VarChar(255)
-  porqueDecidiu          String      @map("porque_decidiu") @db.Text
-  expectativas           String      @db.Text
-  peso                   Decimal     @db.Decimal(5, 2)
-  altura                 Decimal     @db.Decimal(3, 2)
-  medicamentos           String?     @db.Text
-  alergiasRestricoes     String?     @map("alergias_restricoes") @db.Text
-  importantContacts      Json        @map("important_contacts") @db.JsonB
-  additionalFields       Json?       @map("additional_fields") @db.JsonB
-  status                 String      @default("inscrito") @db.VarChar(20)
-  checkInCode            String?     @unique @map("check_in_code") @db.VarChar(20)
-  qrCodeUrl              String?     @map("qr_code_url") @db.Text
-  checkedIn              Boolean     @default(false) @map("checked_in")
-  checkedInAt            DateTime?   @map("checked_in_at")
-  paymentStatus         String      @default("pendente") @map("payment_status") @db.VarChar(30)
-  paymentPromiseDate    DateTime?   @map("payment_promise_date") @db.Date
-  paymentProofUrl       String?     @map("payment_proof_url") @db.Text
-  createdAt              DateTime    @default(now()) @map("created_at")
-  updatedAt              DateTime    @updatedAt @map("updated_at")
-  deletedAt              DateTime?   @map("deleted_at")
+  celular                String    @db.VarChar(20)
+  igrejaBase             String    @map("igreja_base") @db.VarChar(255)
+  batizadoAguas          Boolean   @map("batizado_aguas")
+  participaGrupoFamiliar Boolean   @map("participa_grupo_familiar")
+  grupoFamiliarQual      String?   @map("grupo_familiar_qual") @db.VarChar(255)
+  nomeLider              String?   @map("nome_lider") @db.VarChar(255)
+  quemMotivou            String    @map("quem_motivou") @db.VarChar(255)
+  porqueDecidiu          String    @map("porque_decidiu") @db.Text
+  expectativas           String    @db.Text
+  peso                   Decimal   @db.Decimal(5, 2)
+  altura                 Decimal   @db.Decimal(3, 2)
+  medicamentos           String?   @db.Text
+  alergiasRestricoes     String?   @map("alergias_restricoes") @db.Text
+  importantContacts      Json      @map("important_contacts") @db.JsonB
+  additionalFields       Json?     @map("additional_fields") @db.JsonB
+  status                 String    @default("inscrito") @db.VarChar(20)
+  checkInCode            String?   @unique @map("check_in_code") @db.VarChar(20)
+  qrCodeUrl              String?   @map("qr_code_url") @db.Text
+  checkedIn              Boolean   @default(false) @map("checked_in")
+  checkedInAt            DateTime? @map("checked_in_at")
+  paymentStatus          String    @default("pendente") @map("payment_status") @db.VarChar(30)
+  paymentPromiseDate     DateTime? @map("payment_promise_date") @db.Date
+  paymentProofUrl        String?   @map("payment_proof_url") @db.Text
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+  deletedAt              DateTime? @map("deleted_at")
 
   event PenielEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
@@ -3379,7 +3444,7 @@ model MemberLike {
   likedId   String   @map("liked_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
-  liker Member @relation("MemberLikeGiver",    fields: [likerId], references: [id], onDelete: Cascade)
+  liker Member @relation("MemberLikeGiver", fields: [likerId], references: [id], onDelete: Cascade)
   liked Member @relation("MemberLikeReceiver", fields: [likedId], references: [id], onDelete: Cascade)
 
   @@unique([likerId, likedId])
@@ -3389,12 +3454,12 @@ model MemberLike {
 }
 
 model FaceidDevice {
-  id         String    @id @default(uuid()) @db.Uuid
-  churchId   String?   @map("church_id") @db.Uuid
-  serial     String    @unique @db.VarChar(100)
-  name       String    @db.VarChar(255)
-  username   String?   @db.VarChar(100)
-  password   String?   @db.VarChar(255)
+  id       String  @id @default(uuid()) @db.Uuid
+  churchId String? @map("church_id") @db.Uuid
+  serial   String  @unique @db.VarChar(100)
+  name     String  @db.VarChar(255)
+  username String? @db.VarChar(100)
+  password String? @db.VarChar(255)
 
   // Acesso local ao aparelho — usado pelo agente que roda na rede da igreja
   localHost  String?   @map("local_host") @db.VarChar(100)
@@ -3404,24 +3469,24 @@ model FaceidDevice {
   lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz
 
   // Preenchidos pelo auto-cadastro (plug and play)
-  deviceUid        String?  @unique @map("device_uid") @db.VarChar(50) // device_id numerico do webhook
-  model            String?  @db.VarChar(100)
-  firmware         String?  @db.VarChar(50)
-  mac              String?  @db.VarChar(50)
-  autoProvisioned  Boolean  @default(false) @map("auto_provisioned")
+  deviceUid       String? @unique @map("device_uid") @db.VarChar(50) // device_id numerico do webhook
+  model           String? @db.VarChar(100)
+  firmware        String? @db.VarChar(50)
+  mac             String? @db.VarChar(50)
+  autoProvisioned Boolean @default(false) @map("auto_provisioned")
 
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  agentId    String?   @map("agent_id") @db.Uuid
+  agentId String? @map("agent_id") @db.Uuid
 
   // Papéis do dispositivo no cadastro de rosto
-  isSede            Boolean @default(true) @map("is_sede")           // todos cadastram aqui
-  secondaryChurchId String? @map("secondary_church_id") @db.Uuid    // congregação (opcional)
+  isSede            Boolean @default(true) @map("is_sede") // todos cadastram aqui
+  secondaryChurchId String? @map("secondary_church_id") @db.Uuid // congregação (opcional)
 
-  church          Church?      @relation("ChurchFaceidDevices", fields: [churchId], references: [id], onDelete: Cascade)
-  secondaryChurch Church?      @relation("ChurchFaceidDevicesSecondary", fields: [secondaryChurchId], references: [id], onDelete: SetNull)
-  agent           FaceidAgent? @relation("AgentDevices", fields: [agentId], references: [id], onDelete: SetNull)
+  church          Church?             @relation("ChurchFaceidDevices", fields: [churchId], references: [id], onDelete: Cascade)
+  secondaryChurch Church?             @relation("ChurchFaceidDevicesSecondary", fields: [secondaryChurchId], references: [id], onDelete: SetNull)
+  agent           FaceidAgent?        @relation("AgentDevices", fields: [agentId], references: [id], onDelete: SetNull)
   enrollJobs      FaceEnrollmentJob[] @relation("DeviceEnrollJobs")
 
   @@map("faceid_devices")
@@ -3430,16 +3495,16 @@ model FaceidDevice {
 /// Agente (maquina) que roda na rede de uma igreja. Um token por maquina;
 /// descobre os leitores da rede e os gerencia (cadastro + presenca).
 model FaceidAgent {
-  id         String   @id @default(uuid()) @db.Uuid
-  churchId   String   @map("church_id") @db.Uuid
-  token      String   @unique @db.VarChar(100)
-  name       String?  @db.VarChar(255)
+  id         String    @id @default(uuid()) @db.Uuid
+  churchId   String    @map("church_id") @db.Uuid
+  token      String    @unique @db.VarChar(100)
+  name       String?   @db.VarChar(255)
   lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  church     Church   @relation("ChurchFaceidAgents", fields: [churchId], references: [id], onDelete: Cascade)
-  devices    FaceidDevice[] @relation("AgentDevices")
+  church  Church         @relation("ChurchFaceidAgents", fields: [churchId], references: [id], onDelete: Cascade)
+  devices FaceidDevice[] @relation("AgentDevices")
 
   @@unique([churchId])
   @@map("faceid_agents")
@@ -3448,33 +3513,33 @@ model FaceidAgent {
 /// Fila de cadastro remoto no leitor Control iD.
 /// Um job por (membro, dispositivo); `batchId` agrupa a solicitação.
 model FaceEnrollmentJob {
-  id           String    @id @default(uuid()) @db.Uuid
-  batchId      String    @map("batch_id") @db.Uuid
-  churchId     String    @map("church_id") @db.Uuid
-  deviceId     String    @map("device_id") @db.Uuid
-  memberId     String    @map("member_id") @db.Uuid
+  id       String @id @default(uuid()) @db.Uuid
+  batchId  String @map("batch_id") @db.Uuid
+  churchId String @map("church_id") @db.Uuid
+  deviceId String @map("device_id") @db.Uuid
+  memberId String @map("member_id") @db.Uuid
 
   // Mapeamento Control iD: rol -> user.id ("Código"),
   // nome -> user.name, cpf -> user.registration ("Matrícula")
-  rol          Int
-  nome         String    @db.VarChar(255)
-  cpf          String?   @db.VarChar(20)
-  photoUrl     String    @map("photo_url")
+  rol      Int
+  nome     String  @db.VarChar(255)
+  cpf      String? @db.VarChar(20)
+  photoUrl String  @map("photo_url")
 
   /// pending | processing | done | failed | needs_approval | rejected
-  status       String    @default("pending") @db.VarChar(20)
-  allowUpdate  Boolean   @default(false) @map("allow_update")
+  status      String  @default("pending") @db.VarChar(20)
+  allowUpdate Boolean @default(false) @map("allow_update")
 
-  errorCode    Int?      @map("error_code")
-  errorMessage String?   @map("error_message")
-  matchUserId  Int?      @map("match_user_id")
+  errorCode    Int?    @map("error_code")
+  errorMessage String? @map("error_message")
+  matchUserId  Int?    @map("match_user_id")
 
-  attempts     Int       @default(0)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  processedAt  DateTime? @map("processed_at") @db.Timestamptz
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  processedAt DateTime? @map("processed_at") @db.Timestamptz
 
-  device       FaceidDevice @relation("DeviceEnrollJobs", fields: [deviceId], references: [id], onDelete: Cascade)
+  device FaceidDevice @relation("DeviceEnrollJobs", fields: [deviceId], references: [id], onDelete: Cascade)
 
   @@index([deviceId, status])
   @@index([batchId])
@@ -3494,9 +3559,9 @@ model ChurchPresenceTicket {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   createdBy    String?  @map("created_by") @db.Uuid
 
-  campo  Campo   @relation("CampoPresenceTickets", fields: [campoId], references: [id], onDelete: Cascade)
-  church Church? @relation("ChurchPresenceTickets", fields: [churchId], references: [id], onDelete: SetNull)
-  creator User?  @relation("UserPresenceTickets", fields: [createdBy], references: [id], onDelete: SetNull)
+  campo   Campo   @relation("CampoPresenceTickets", fields: [campoId], references: [id], onDelete: Cascade)
+  church  Church? @relation("ChurchPresenceTickets", fields: [churchId], references: [id], onDelete: SetNull)
+  creator User?   @relation("UserPresenceTickets", fields: [createdBy], references: [id], onDelete: SetNull)
 
   @@index([campoId])
   @@index([churchId])
@@ -3517,9 +3582,9 @@ model AiAgent {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  church       Church?  @relation(fields: [churchId], references: [id], onDelete: Cascade)
-  campo        Campo?   @relation("CampoAiAgents", fields: [campoId], references: [id], onDelete: Cascade)
-  sessions     AiChatSession[]
+  church   Church?         @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  campo    Campo?          @relation("CampoAiAgents", fields: [campoId], references: [id], onDelete: Cascade)
+  sessions AiChatSession[]
 
   @@map("ai_agents")
 }
@@ -3533,10 +3598,10 @@ model AiChatSession {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  agent     AiAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  church    Church?  @relation(fields: [churchId], references: [id], onDelete: Cascade)
-  messages  AiChatMessage[]
+  agent    AiAgent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  church   Church?         @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  messages AiChatMessage[]
 
   @@map("ai_chat_sessions")
 }
@@ -3548,7 +3613,7 @@ model AiChatMessage {
   content   String   @db.Text
   createdAt DateTime @default(now()) @map("created_at")
 
-  session   AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@map("ai_chat_messages")
 }
@@ -3559,12 +3624,12 @@ model AiChatMessage {
 // por codigo no WhatsApp. 3 tentativas erradas desativam o acesso.
 // ---------------------------------------------------------------------------
 model ContabilidadeAcesso {
-  id           String    @id @default(uuid()) @db.Uuid
-  nome         String    @db.VarChar(255)
-  campo        String    @db.VarChar(100)
-  telefone     String    @unique @db.VarChar(20)
-  hash         String    @db.VarChar(100)
-  ativo        Boolean   @default(true)
+  id       String  @id @default(uuid()) @db.Uuid
+  nome     String  @db.VarChar(255)
+  campo    String  @db.VarChar(100)
+  telefone String  @unique @db.VarChar(20)
+  hash     String  @db.VarChar(100)
+  ativo    Boolean @default(true)
 
   tentativas   Int       @default(0)
   bloqueadoEm  DateTime? @map("bloqueado_em")
@@ -3574,8 +3639,8 @@ model ContabilidadeAcesso {
   gerando      Boolean   @default(false)
   gerandoDesde DateTime? @map("gerando_desde")
 
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([campo])
   @@map("contabilidade_acessos")
@@ -3588,70 +3653,70 @@ model ContabilidadeAcesso {
 // reenvios do mesmo mes). Ver docs/modules/contabilidade-agendamento/SPEC.md
 // ---------------------------------------------------------------------------
 model ContabilidadeAgendamento {
-  id            String    @id @default(uuid()) @db.Uuid
-  acessoId      String    @unique @map("acesso_id") @db.Uuid
+  id       String @id @default(uuid()) @db.Uuid
+  acessoId String @unique @map("acesso_id") @db.Uuid
 
-  ativo         Boolean   @default(false)
+  ativo Boolean @default(false)
 
-  frequencia    String    @default("mensal") @db.VarChar(20)
-  diaEnvio      Int       @default(1) @map("dia_envio") @db.SmallInt
-  horaEnvio     DateTime  @default("1970-01-01T08:00:00Z") @map("hora_envio") @db.Time
-  timezone      String    @default("America/Sao_Paulo") @db.VarChar(50)
+  frequencia String   @default("mensal") @db.VarChar(20)
+  diaEnvio   Int      @default(1) @map("dia_envio") @db.SmallInt
+  horaEnvio  DateTime @default("1970-01-01T08:00:00Z") @map("hora_envio") @db.Time
+  timezone   String   @default("America/Sao_Paulo") @db.VarChar(50)
 
-  tipoPeriodo   String    @default("mes_anterior") @map("tipo_periodo") @db.VarChar(20)
-  gapMeses      Int       @default(1) @map("gap_meses") @db.SmallInt
-  qtdMeses      Int       @default(1) @map("qtd_meses") @db.SmallInt
+  tipoPeriodo String @default("mes_anterior") @map("tipo_periodo") @db.VarChar(20)
+  gapMeses    Int    @default(1) @map("gap_meses") @db.SmallInt
+  qtdMeses    Int    @default(1) @map("qtd_meses") @db.SmallInt
 
-  proximoEnvio  DateTime? @map("proximo_envio")
-  ultimoEnvio   DateTime? @map("ultimo_envio")
+  proximoEnvio DateTime? @map("proximo_envio")
+  ultimoEnvio  DateTime? @map("ultimo_envio")
 
-  createdBy     String?   @map("created_by") @db.VarChar(255)
-  updatedBy     String?   @map("updated_by") @db.VarChar(255)
+  createdBy String? @map("created_by") @db.VarChar(255)
+  updatedBy String? @map("updated_by") @db.VarChar(255)
 
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("contabilidade_agendamentos")
 }
 
 model ContabilidadeEnvioHistorico {
-  id                   String    @id @default(uuid()) @db.Uuid
-  agendamentoId        String?   @map("agendamento_id") @db.Uuid
-  acessoId             String    @map("acesso_id") @db.Uuid
+  id            String  @id @default(uuid()) @db.Uuid
+  agendamentoId String? @map("agendamento_id") @db.Uuid
+  acessoId      String  @map("acesso_id") @db.Uuid
 
-  disparadoEm          DateTime  @default(now()) @map("disparado_em")
-  tipo                 String    @db.VarChar(20)
+  disparadoEm DateTime @default(now()) @map("disparado_em")
+  tipo        String   @db.VarChar(20)
 
-  gapMeses             Int?      @map("gap_meses") @db.SmallInt
-  qtdMeses             Int?      @map("qtd_meses") @db.SmallInt
-  periodos             Json      @default("[]") @map("periodos")
+  gapMeses Int? @map("gap_meses") @db.SmallInt
+  qtdMeses Int? @map("qtd_meses") @db.SmallInt
+  periodos Json @default("[]") @map("periodos")
 
-  status               String    @default("sucesso") @db.VarChar(20)
-  tempoProcessamentoMs Int?      @map("tempo_processamento_ms")
-  totalRegistros       Int       @default(0) @map("total_registros")
-  totalDivergencias    Int       @default(0) @map("total_divergencias")
+  status               String  @default("sucesso") @db.VarChar(20)
+  tempoProcessamentoMs Int?    @map("tempo_processamento_ms")
+  totalRegistros       Int     @default(0) @map("total_registros")
+  totalDivergencias    Int     @default(0) @map("total_divergencias")
   erro                 String?
-  whatsappMessageId    String?   @map("whatsapp_message_id")
+  whatsappMessageId    String? @map("whatsapp_message_id")
 
-  createdAt            DateTime  @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([acessoId, disparadoEm])
   @@map("contabilidade_envios_historico")
 }
 
 model ContabilidadePeriodoEnviado {
-  id            String   @id @default(uuid()) @db.Uuid
-  acessoId      String   @map("acesso_id") @db.Uuid
-  historicoId   String?  @map("historico_id") @db.Uuid
+  id          String  @id @default(uuid()) @db.Uuid
+  acessoId    String  @map("acesso_id") @db.Uuid
+  historicoId String? @map("historico_id") @db.Uuid
 
-  ano           Int      @db.SmallInt
-  mes           Int      @db.SmallInt
-  versao        Int      @default(1)
+  ano    Int @db.SmallInt
+  mes    Int @db.SmallInt
+  versao Int @default(1)
 
-  lancamentoIds Json     @default("[]") @map("lancamento_ids")
-  qtdRegistros  Int      @default(0) @map("qtd_registros")
+  lancamentoIds Json @default("[]") @map("lancamento_ids")
+  qtdRegistros  Int  @default(0) @map("qtd_registros")
 
-  enviadoEm     DateTime @default(now()) @map("enviado_em")
+  enviadoEm DateTime @default(now()) @map("enviado_em")
 
   @@unique([acessoId, ano, mes, versao])
   @@map("contabilidade_periodos_enviados")
@@ -3669,12 +3734,12 @@ model ContabilidadeRelatorioAssinatura {
   slot          String   @db.VarChar(20)
 
   imagem        String
-  assinadoPor   String?  @map("assinado_por") @db.VarChar(255)
-  assinadoPorId String?  @map("assinado_por_id") @db.VarChar(255)
-  profileType   String?  @map("profile_type") @db.VarChar(20)
+  assinadoPor   String? @map("assinado_por") @db.VarChar(255)
+  assinadoPorId String? @map("assinado_por_id") @db.VarChar(255)
+  profileType   String? @map("profile_type") @db.VarChar(20)
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([churchId, periodoInicio, periodoFim, slot])
   @@index([churchId, periodoInicio, periodoFim])

@@ -95,6 +95,13 @@ import { CellDetail } from "../components/app-ui/CellDetail";
 import { CellNew } from "../components/app-ui/CellNew";
 import { CellEdit } from "../components/app-ui/CellEdit";
 import CellsList from "../app-ui/cells/CellsList";
+import AssetsList from "../app-ui/assets/AssetsList";
+import AssetForm from "../app-ui/assets/AssetForm";
+import AssetDetail from "../app-ui/assets/AssetDetail";
+import AssetInventoryList from "../app-ui/assets/AssetInventoryList";
+import AssetInventoryStart from "../app-ui/assets/AssetInventoryStart";
+import AssetInventoryScan from "../app-ui/assets/AssetInventoryScan";
+import AssetInventoryReport from "../app-ui/assets/AssetInventoryReport";
 import { CheckIn } from "../components/app-ui/CheckIn";
 import CheckinHome from "../app-ui/checkin/CheckinHome";
 import MemberCheckin from "../app-ui/checkin/MemberCheckin";
@@ -552,6 +559,14 @@ export const router = createBrowserRouter([
       { path: "cells/new", Component: CellNew },
       { path: "cells/:id", Component: CellDetail },
       { path: "cells/:id/edit", Component: CellEdit },
+      { path: "assets", Component: AssetsList },
+      { path: "assets/new", Component: AssetForm },
+      { path: "assets/:id", Component: AssetDetail },
+      { path: "assets/:id/edit", Component: AssetForm },
+      { path: "asset-inventories", Component: AssetInventoryList },
+      { path: "asset-inventories/start", Component: AssetInventoryStart },
+      { path: "asset-inventories/:id/scan", Component: AssetInventoryScan },
+      { path: "asset-inventories/:id/report", Component: AssetInventoryReport },
       { path: "checkin", Component: CheckIn },
       { path: "checkin/home", Component: CheckinHome },
       { path: "checkin/members", Component: MemberCheckin },

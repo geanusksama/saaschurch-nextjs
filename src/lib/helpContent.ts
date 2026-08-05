@@ -713,6 +713,46 @@ Vale para qualquer Fonte (Membros, Pipeline ou Listas importadas) — o que amar
     ],
   },
 
+  // ═════════════════════════════════════════════════════════════ Patrimônio
+  {
+    id: 'patrimonio',
+    icon: 'Package',
+    title: 'Patrimônio',
+    description: 'Cadastro dos bens de cada igreja, etiquetas com QR Code e o inventário físico.',
+    articles: [
+      {
+        id: 'patrimonio-cadastro',
+        permKey: 'assets',
+        summary: 'Cadastrar um bem manualmente ou importar vários de uma vez por planilha.',
+        title: 'Bens e Patrimônio',
+        keywords: ['bem', 'ativo', 'móvel', 'qr code', 'código de barras', 'importar', 'csv', 'planilha', 'foto', 'etiqueta'],
+        body: `
+Cada bem é sempre de **uma igreja** — a lista mostra só os bens da igreja de quem está olhando; quem tem acesso a mais de uma igreja pode filtrar por regional, igreja, setor, categoria, status e intervalo de datas.
+
+**Novo Bem** cadastra manualmente: nome, categoria, setor, onde fica (sala, nave da igreja ou outro local, com o detalhe), se foi doação ou compra, data, valor e uma foto (tirada na hora ou enviada). Ao salvar, o sistema gera sozinho o **código** (ex.: PAT-000123) e o **QR Code** de identificação do bem — é esse QR que a etiqueta impressa carrega e que o leitor do inventário reconhece.
+
+**Importar CSV** cadastra vários bens de uma vez. Baixe o modelo de planilha, preencha e envie — a tela mostra quantos serão importados e quais linhas têm erro antes de confirmar.
+
+**Imprimir Etiquetas** abre um preview: escolha quais bens (os selecionados na lista ou todos os filtrados), se a etiqueta mostra foto e setor, e o **modelo de impressora/tamanho** (Zebra em rolo, Pimaco em folha A4, etc.). Não há conexão direta com a impressora — a etiqueta sai pela caixa de impressão normal do navegador, então funciona com qualquer impressora instalada, inclusive uma Zebra configurada como impressora do Windows.
+`,
+      },
+      {
+        id: 'patrimonio-inventario',
+        permKey: 'asset_inventory',
+        summary: 'Conferir fisicamente os bens cadastrados, item por item, com o leitor de QR.',
+        title: 'Inventário de Patrimônio',
+        keywords: ['inventário', 'conferência', 'leitor', 'qr code', 'divergência', 'localização', 'relatório'],
+        body: `
+**Iniciar Inventário** pede a igreja/campo onde a conferência vai acontecer — o dirigente é preenchido automaticamente a partir do cadastro da igreja. Ao iniciar, abre o leitor.
+
+O leitor liga a câmera e reconhece o QR Code de cada bem (também dá para digitar o código manualmente). A cada leitura, o sistema mostra o **local cadastrado** do bem e marca como conferido. Se o bem estiver em outro lugar diferente do cadastrado — por exemplo, cadastrado para a sala mas encontrado na cozinha — clique em **"Item está em outro lugar? Inserir observação"**, informe onde foi encontrado e confirme; isso fica registrado como divergência, sem precisar editar o cadastro do bem.
+
+Os contadores (esperados, encontrados, faltando, divergências) atualizam a cada leitura. **Ver relatório / Finalizar** mostra a lista de encontrados e dos que ainda faltam, permite escrever uma observação final e **finalizar o inventário** — depois de finalizado, o relatório fica pronto para **imprimir** ou **compartilhar**.
+`,
+      },
+    ],
+  },
+
   // ══════════════════════════════════════════════════════════════ Comunicação
   {
     id: 'comunicacao',

@@ -75,6 +75,8 @@ import {
   Rss,
   Globe,
   LayoutTemplate,
+  Package,
+  ClipboardList,
 } from 'lucide-react';
 
 function Dove(props: React.SVGProps<SVGSVGElement>) {
@@ -201,6 +203,14 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/ministries") return "Todos os Ministérios";
   if (p === "/app-ui/ministry-teams") return "Equipes / Escalas de Ministério";
   if (p === "/app-ui/cells") return "Todos os Grupos Familiares (Células)";
+  if (p === "/app-ui/assets") return "Bens e Patrimônio";
+  if (p === "/app-ui/assets/new") return "Novo Bem Patrimonial";
+  if (p.startsWith("/app-ui/assets/") && p.endsWith("/edit")) return "Edição de Bem Patrimonial";
+  if (p.startsWith("/app-ui/assets/")) return "Ficha do Bem Patrimonial";
+  if (p === "/app-ui/asset-inventories") return "Inventários de Patrimônio";
+  if (p === "/app-ui/asset-inventories/start") return "Iniciar Inventário de Patrimônio";
+  if (p.startsWith("/app-ui/asset-inventories/") && p.endsWith("/scan")) return "Leitor de Inventário";
+  if (p.startsWith("/app-ui/asset-inventories/") && p.endsWith("/report")) return "Relatório de Inventário";
   if (p === "/app-ui/communication/whatsapp-inbox") return "WhatsApp Caixa de Entrada";
   if (p === "/app-ui/system/whatsapp") return "WhatsApp Instâncias";
   if (p === "/app-ui/events") return "Agenda de Eventos";
@@ -297,6 +307,13 @@ const appNavigation: NavigationSection[] = [
     section: 'GF (Grupos Familiares)',
     items: [
       { name: 'Todos os GF',     path: '/app-ui/cells',         icon: Users,     permKey: 'cells',       exact: true },
+    ]
+  },
+  {
+    section: 'Patrimônio',
+    items: [
+      { name: 'Bens e Patrimônio', path: '/app-ui/assets',                    icon: Package,       permKey: 'assets',         exact: true },
+      { name: 'Inventário',        path: '/app-ui/asset-inventories',         icon: ClipboardList, permKey: 'asset_inventory' },
     ]
   },
   {
