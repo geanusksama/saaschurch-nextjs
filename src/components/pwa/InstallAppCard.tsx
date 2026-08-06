@@ -44,18 +44,31 @@ export function InstallAppCard({ isDark }: { isDark: boolean }) {
     setInstalado(estaInstalado());
     setIos(ehIOS());
 
+    // O layout já pode ter capturado o evento antes deste componente montar
+    // (script inline no <head>, veja src/app/layout.tsx) — se capturou, usa.
+    const jaCapturado = (window as unknown as { __pwaInstallPrompt?: PromptDeInstalacao }).__pwaInstallPrompt;
+    if (jaCapturado) setPrompt(jaCapturado);
+
+    const aoFicarPronto = () => {
+      const e = (window as unknown as { __pwaInstallPrompt?: PromptDeInstalacao }).__pwaInstallPrompt;
+      if (e) setPrompt(e);
+    };
     const aoPoderInstalar = (e: Event) => {
       e.preventDefault(); // sem isso o Chrome mostra o banner dele por cima
+      (window as unknown as { __pwaInstallPrompt?: Event }).__pwaInstallPrompt = e;
       setPrompt(e as PromptDeInstalacao);
     };
     const aoInstalar = () => {
       setInstalado(true);
       setPrompt(null);
+      (window as unknown as { __pwaInstallPrompt?: Event }).__pwaInstallPrompt = undefined;
     };
 
+    window.addEventListener('pwa-install-ready', aoFicarPronto);
     window.addEventListener('beforeinstallprompt', aoPoderInstalar);
     window.addEventListener('appinstalled', aoInstalar);
     return () => {
+      window.removeEventListener('pwa-install-ready', aoFicarPronto);
       window.removeEventListener('beforeinstallprompt', aoPoderInstalar);
       window.removeEventListener('appinstalled', aoInstalar);
     };
@@ -78,6 +91,7 @@ export function InstallAppCard({ isDark }: { isDark: boolean }) {
     const { outcome } = await prompt.userChoice;
     if (outcome === 'accepted') setInstalado(true);
     setPrompt(null); // o evento é de uso único
+    (window as unknown as { __pwaInstallPrompt?: Event }).__pwaInstallPrompt = undefined;
   };
 
   return (

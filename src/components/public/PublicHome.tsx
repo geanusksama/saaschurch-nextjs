@@ -42,7 +42,7 @@ interface FloatingItem {
 }
 
 // Total de símbolos bíblicos disponíveis (0..TOTAL-1)
-const BIBLICAL_SYMBOL_COUNT = 12;
+const BIBLICAL_SYMBOL_COUNT = 15;
 
 // Paleta de cores suaves para os símbolos (alternam entre os elementos)
 const BIBLICAL_COLORS = [
@@ -62,17 +62,17 @@ function BiblicalFloatingElements({ isDark }: { isDark: boolean }) {
   useEffect(() => {
     const generated: FloatingItem[] = [];
     // Mais elementos para uma amostragem maior alternando na tela
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 24; i++) {
       generated.push({
         id: i,
         type: i % BIBLICAL_SYMBOL_COUNT,
         left: Math.random() * 85 + 5,
         top: Math.random() * 80 + 10,
         size: Math.floor(Math.random() * 30) + 38,
-        duration: Math.floor(Math.random() * 15) + 20,
+        duration: Math.floor(Math.random() * 12) + 16,
         delay: Math.floor(Math.random() * 8),
         // Ciclo de aparecer/sumir (fade) defasado por elemento
-        fadeDuration: Math.floor(Math.random() * 8) + 9,
+        fadeDuration: Math.floor(Math.random() * 6) + 7,
         fadeDelay: Math.floor(Math.random() * 10),
         color: BIBLICAL_COLORS[i % BIBLICAL_COLORS.length],
         // Opacidade de pico (mais visível que antes, mas sem competir com o texto)
@@ -108,6 +108,12 @@ function BiblicalFloatingElements({ isDark }: { isDark: boolean }) {
         return <path d="M50 14 L72 58 L28 58 Z M50 86 L28 42 L72 42 Z" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
       case 11: // Candle / light
         return <path d="M44 46 L56 46 L56 82 L44 82 Z M38 82 L62 82 M50 46 C46 38, 50 28, 50 28 C50 28, 54 38, 50 46 Z M50 22 L50 28" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
+      case 12: // Lion (Leão de Judá)
+        return <path d="M28 62 C22 62 16 56 18 48 C14 44 16 36 24 36 C24 28 32 22 40 24 C42 18 50 16 56 20 C62 18 68 22 66 30 C74 28 80 34 76 42 C82 44 82 52 74 54 C76 60 70 65 62 62 C58 66 46 66 42 62 Z M30 62 L28 76 M44 62 L44 76 M56 60 L58 76 M40 40 L42 43 M52 40 L54 43 M44 50 Q48 53 52 50 M76 42 C86 40 92 48 88 56 C85 62 78 60 76 54" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
+      case 13: // Candelabro (Menorá)
+        return <path d="M50 85 L50 28 M50 60 L38 60 L38 28 M50 60 L62 60 L62 28 M50 68 L26 68 L26 28 M50 68 L74 68 L74 28 M50 76 L14 76 L14 28 M50 76 L86 76 L86 28 M35 85 L65 85 M40 91 L60 91 M50 28 C47 22 47 18 50 14 C53 18 53 22 50 28 M38 28 C36 24 36 22 38 19 C40 22 40 24 38 28 M62 28 C60 24 60 22 62 19 C64 22 64 24 62 28 M26 28 C24 24 24 22 26 19 C28 22 28 24 26 28 M74 28 C72 24 72 22 74 19 C76 22 76 24 74 28 M14 28 C12 24 12 22 14 19 C16 22 16 24 14 28 M86 28 C84 24 84 22 86 19 C88 22 88 24 86 28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
+      case 14: // Templo de Salomão
+        return <path d="M50 15 L15 40 L85 40 Z M15 40 L85 40 M20 40 L20 71 M30 40 L30 71 M40 40 L40 71 M60 40 L60 71 M70 40 L70 71 M80 40 L80 71 M25 71 L75 71 M20 78 L80 78 M15 85 L85 85 M45 71 L45 60 L55 60 L55 71" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />;
       default:
         return null;
     }
@@ -180,6 +186,7 @@ export function PublicHome() {
   const [isDark, setIsDark] = useState(true);
   const [showMembroLogin, setShowMembroLogin] = useState(false);
   const [showPenielModal, setShowPenielModal] = useState(false);
+  const [showVerseModal, setShowVerseModal] = useState(false);
   const [showContabilidade, setShowContabilidade] = useState(false);
   // 7 toques seguidos no gatilho invisivel do cabecalho abrem a contabilidade.
   // Se demorar mais de 2 s entre um toque e outro, a contagem recomeca.
@@ -550,7 +557,16 @@ export function PublicHome() {
             Restaurando vidas através do ensino da Palavra, investindo em pessoas,
             nutrindo o conhecimento, para alcançar a cidade e estabelecer o Reino dos Céus.
           </p>
-          <p className={`text-xs tracking-wide ${textMuted}`}>João 3:16</p>
+          <div className="flex items-center gap-2">
+            <p className={`text-xs tracking-wide ${textMuted}`}>João 3:16</p>
+            <button
+              onClick={() => setShowVerseModal(true)}
+              className="text-xs font-semibold tracking-wide underline decoration-dotted underline-offset-4 hover:opacity-70 transition-opacity"
+              style={{ color: '#d4af37' }}
+            >
+              Leia
+            </button>
+          </div>
         </div>
 
         <div className="w-full md:w-1/2 max-w-xl grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-7">
@@ -1250,6 +1266,48 @@ export function PublicHome() {
       )}
 
       <ContabilidadeModal open={showContabilidade} onClose={() => setShowContabilidade(false)} />
+
+      {/* Modal do versículo — abre ao clicar em "Leia" ao lado de João 3:16 */}
+      <AnimatePresence>
+        {showVerseModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowVerseModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className={`relative w-full max-w-md rounded-2xl border p-7 shadow-2xl z-10 ${modalBg}`}
+            >
+              <button
+                onClick={() => setShowVerseModal(false)}
+                className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:bg-slate-500/10 transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(212,175,55,0.12)' }}>
+                  <BookOpen className="w-5 h-5" style={{ color: '#d4af37' }} />
+                </div>
+                <span className={`text-sm font-bold tracking-wide ${textPrimary}`}>João 3:16</span>
+              </div>
+
+              <p className={`text-lg md:text-xl leading-relaxed font-light italic ${textPrimary}`}>
+                &ldquo;Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito, para
+                que todo aquele que nele crê não pereça, mas tenha a vida eterna.&rdquo;
+              </p>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

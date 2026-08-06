@@ -30,6 +30,15 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning className="h-full antialiased">
       <head>
+        {/* Captura o beforeinstallprompt o mais cedo possível: se ele disparar
+            antes do React hidratar o InstallAppCard, o evento se perde para
+            sempre (é single-use e não é re-emitido). Guardamos em window e
+            avisamos via CustomEvent para quem montar depois. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__pwaInstallPrompt=e;window.dispatchEvent(new CustomEvent('pwa-install-ready'))})})()`,
+          }}
+        />
         {/* Apply dark class before first paint to avoid flash */}
         <script
           dangerouslySetInnerHTML={{
