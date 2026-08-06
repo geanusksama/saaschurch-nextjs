@@ -187,6 +187,10 @@ export function PublicHome() {
   const [showMembroLogin, setShowMembroLogin] = useState(false);
   const [showPenielModal, setShowPenielModal] = useState(false);
   const [showVerseModal, setShowVerseModal] = useState(false);
+  // Círculo que se expande a partir do ponto clicado até cobrir a tela,
+  // antes de ir para /gf. A navegação só dispara ao fim da animação.
+  const [gfSliding, setGfSliding] = useState(false);
+  const [gfOrigin, setGfOrigin] = useState({ x: 0, y: 0 });
   const [showContabilidade, setShowContabilidade] = useState(false);
   // 7 toques seguidos no gatilho invisivel do cabecalho abrem a contabilidade.
   // Se demorar mais de 2 s entre um toque e outro, a contagem recomeca.
@@ -596,8 +600,15 @@ export function PublicHome() {
             </div>
           </button>
 
-          {/* 3. Grupos Familiares — lista pública com líder, endereço, mapa e distância */}
-          <Link to="/gf" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
+          {/* 3. Grupos Familiares — lista pública com líder, endereço, mapa e distância.
+              Botão (não Link) porque a navegação só acontece depois do slide terminar. */}
+          <button
+            onClick={(e) => {
+              setGfOrigin({ x: e.clientX, y: e.clientY });
+              setGfSliding(true);
+            }}
+            className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left"
+          >
             <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors"
               style={{ borderColor: '#f59e0b', background: 'rgba(245,158,11,0.1)' }}>
               <HomeIcon className="w-6 h-6" style={{ color: '#f59e0b' }} />
@@ -606,7 +617,7 @@ export function PublicHome() {
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Grupos Familiares</h3>
               <p className={`text-xs leading-relaxed ${textSub}`}>Encontre um GF perto de você<br />e conheça o líder e o horário.</p>
             </div>
-          </Link>
+          </button>
 
           {/* 4. Instalar o app — só aparece se o navegador permitir instalar
               e o app ainda não estiver instalado */}
@@ -1266,6 +1277,35 @@ export function PublicHome() {
       )}
 
       <ContabilidadeModal open={showContabilidade} onClose={() => setShowContabilidade(false)} />
+
+      {/* Transição para /gf — um círculo nasce no ponto clicado e se expande
+          até cobrir a tela ("bola abrindo"). A página de Grupos Familiares
+          também é branca, então a navegação no fim da animação não gera
+          nenhum "salto" de cor. Raio final em px (não %) para garantir que
+          cobre até o canto mais distante do clique, em qualquer tamanho de tela. */}
+      <AnimatePresence>
+        {gfSliding && (() => {
+          const raioFinal = Math.hypot(
+            Math.max(gfOrigin.x, window.innerWidth - gfOrigin.x),
+            Math.max(gfOrigin.y, window.innerHeight - gfOrigin.y),
+          );
+          return (
+            <motion.div
+              key="gf-slide"
+              initial={{ clipPath: `circle(0px at ${gfOrigin.x}px ${gfOrigin.y}px)` }}
+              animate={{ clipPath: `circle(${raioFinal}px at ${gfOrigin.x}px ${gfOrigin.y}px)` }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+              onAnimationComplete={() => navigate('/gf')}
+              className="fixed inset-0 z-[100] bg-white flex items-center justify-center"
+            >
+              <div className="w-14 h-14 rounded-full border-2 flex items-center justify-center animate-pulse"
+                style={{ borderColor: '#f59e0b', background: 'rgba(245,158,11,0.1)' }}>
+                <HomeIcon className="w-6 h-6" style={{ color: '#f59e0b' }} />
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* Modal do versículo — abre ao clicar em "Leia" ao lado de João 3:16 */}
       <AnimatePresence>
