@@ -431,7 +431,9 @@ export function Consecration() {
     if (churchId) {
       params.set('churchId', churchId);
     } else {
-      const activeCampo = modalFieldScopeId;
+      // O campo escolhido no filtro da tela manda na busca; so cai no contexto
+      // global (localStorage/campo do usuario) quando nenhum filtro esta aplicado.
+      const activeCampo = selectedFieldId || modalFieldScopeId;
       if (activeCampo) params.set('campoId', activeCampo);
     }
     params.set('query', normalizedQuery);
@@ -687,7 +689,9 @@ export function Consecration() {
     setMemberSearchPerformed(true);
     setActiveMemberIndex(-1);
     try {
-      await loadMembers(canPickRequestChurch ? undefined : (requestForm.churchId || storedUser.churchId || ''), query);
+      // Busca ampla (campo inteiro) para master/admin/regional; apenas perfis presos a
+      // uma igreja (profileType church, secretaria e tesouraria) ficam restritos a ela.
+      await loadMembers(hasFixedChurchScope ? (storedUser.churchId || requestForm.churchId || '') : '', query);
     } finally {
       setMemberSearchLoading(false);
     }
