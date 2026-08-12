@@ -76,8 +76,19 @@ export async function POST(req: NextRequest) {
     const ok = await assertChurchAccess(user, member.churchId, prisma);
     if (!ok) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
 
-    // Find baptism service
-    const service = await prisma.kanService.findFirst({ where: { isActive: true, serviceGroup: "BATISMO" } });
+    // Find baptism service.
+    // O grupo BATISMO tem mais de um servico ativo (BATISMO = "Batismo em Aguas" e
+    // BAT = "Batismo (em outro Ministerio)"). Este modulo trata sempre do batismo em
+    // aguas, entao a busca e explicita pela sigla — um findFirst sem criterio pegava
+    // o servico errado e os cards saiam rotulados como "em outro Ministerio".
+    const service =
+      (await prisma.kanService.findFirst({
+        where: { isActive: true, serviceGroup: "BATISMO", sigla: "BATISMO" },
+      })) ||
+      (await prisma.kanService.findFirst({
+        where: { isActive: true, serviceGroup: "BATISMO" },
+        orderBy: { id: "asc" },
+      }));
     if (!service) return NextResponse.json({ error: "baptism service not configured" }, { status: 404 });
 
     // Find stage — by serviceId first, fallback to name
