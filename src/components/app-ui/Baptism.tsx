@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '../../lib/secretariaHooks';
 import { qk } from '../../lib/queryClient';
-import { ArrowUpDown, Building2, Calendar, CheckCircle2, Clock3, Download, Droplets, Pencil, Plus, Printer, Search, Trash2, UserRound, X, XCircle } from 'lucide-react';
+import { ArrowUpDown, Building2, Calendar, CheckCircle2, Clock3, Download, Droplets, Loader2, Pencil, Plus, Printer, Search, Trash2, UserRound, X, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { ConfirmDialog } from './shared/ConfirmDialog';
+import { RowCheckbox, runInBatches, useRowSelection } from './shared/rowSelection';
 import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
 import { printQrList } from '../../lib/printQrList';
@@ -302,6 +303,10 @@ export function Baptism() {
   const [selectedMember, setSelectedMember] = useState<MemberOption | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'schedule' | 'request'; id: string; label: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  // Nome em processamento: fica na tela desde o envio ate a linha aparecer na lista.
+  const [insertingLabel, setInsertingLabel] = useState<string | null>(null);
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const churchOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const memberOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -523,6 +528,12 @@ export function Baptism() {
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(visibleRows.length / pageSize)), [visibleRows.length, pageSize]);
 
+  const selectableIds = useMemo(() => visibleRows.map((row) => row.id), [visibleRows]);
+  const selection = useRowSelection(selectableIds);
+  const pageIds = useMemo(() => paginatedRows.map((row) => row.id), [paginatedRows]);
+  const pageAllSelected = pageIds.length > 0 && pageIds.every((id) => selection.selectedSet.has(id));
+  const pageSomeSelected = pageIds.some((id) => selection.selectedSet.has(id));
+
   const stats = useMemo(() => {
     return {
       pending: visibleRows.filter((row) => row.columnIndex === 1).length,
@@ -740,12 +751,29 @@ export function Baptism() {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error || 'Falha ao salvar o batismo.');
       }
+      const saved = await response.json().catch(() => ({}));
+      const savedId = saved?.card?.id || saved?.id || editingRequest?.id || null;
+      const wasEditing = Boolean(editingRequest);
+      const label = selectedMember?.fullName || editingRequest?.member?.fullName || 'registro';
+
       setEditingRequest(null);
       setSelectedMember(null);
       setRequestModalOpen(false);
       setRequestForm({ ...EMPTY_REQUEST_FORM });
-      toast.success(editingRequest ? 'Registro de batismo atualizado.' : 'Processo de batismo iniciado.');
-      await loadDashboard();
+
+      // Mantem o indicador na tela ate a lista ser recarregada com o registro.
+      setInsertingLabel(label);
+      try {
+        await loadDashboard();
+        const fresh = qc.getQueryData<DashboardPayload>(qk.baptism(dashboardScopeKey));
+        const landed = !savedId || (fresh?.queue || []).some((row) => row.id === savedId);
+        toast.success(wasEditing ? 'Registro de batismo atualizado.' : 'Processo de batismo iniciado.');
+        if (!landed) {
+          toast.info('O registro foi criado, mas esta fora dos filtros atuais da tela.');
+        }
+      } finally {
+        setInsertingLabel(null);
+      }
     } catch (submitError) {
       setModalError(submitError instanceof Error ? submitError.message : 'Falha ao salvar o registro.');
     } finally {
@@ -789,6 +817,53 @@ export function Baptism() {
       toast.error(deleteError instanceof Error ? deleteError.message : 'Falha ao excluir.');
     } finally {
       setDeleteLoading(false);
+    }
+  }
+
+  async function handleBulkDeleteConfirm() {
+    const ids = selection.selected;
+    if (!ids.length) return;
+
+    const queryKey = qk.baptism(dashboardScopeKey);
+    const snapshot = qc.getQueryData<DashboardPayload>(queryKey);
+    const removing = new Set(ids);
+
+    // Otimista: some da lista enquanto as exclusoes acontecem em lote.
+    qc.setQueryData<DashboardPayload>(queryKey, (prev) => (
+      prev ? { ...prev, queue: prev.queue.filter((row) => !removing.has(row.id)) } : prev
+    ));
+    setBulkConfirmOpen(false);
+    setBulkDeleting(true);
+
+    try {
+      const failed = await runInBatches(ids, async (id) => {
+        const response = await authFetch(`${apiBase}/kan/cards/${id}`, { method: 'DELETE' });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'Falha ao excluir registro.');
+        }
+      });
+
+      const deleted = ids.length - failed.length;
+      if (failed.length) {
+        // Restaura os que nao foram excluidos, mantendo removidos os que foram.
+        const failedSet = new Set(failed);
+        qc.setQueryData<DashboardPayload>(queryKey, (prev) => {
+          if (!prev || !snapshot) return prev;
+          const restored = snapshot.queue.filter((row) => failedSet.has(row.id));
+          return { ...prev, queue: [...prev.queue, ...restored] };
+        });
+        toast.error(`${deleted} registro(s) excluido(s), ${failed.length} falhou(aram).`);
+      } else {
+        toast.success(`${deleted} registro(s) de batismo excluido(s).`);
+      }
+      selection.clear();
+      void qc.invalidateQueries({ queryKey });
+    } catch (bulkError) {
+      if (snapshot) qc.setQueryData<DashboardPayload>(queryKey, snapshot);
+      toast.error(bulkError instanceof Error ? bulkError.message : 'Falha ao excluir registros.');
+    } finally {
+      setBulkDeleting(false);
     }
   }
 
@@ -973,10 +1048,61 @@ export function Baptism() {
       ) : null}
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+        {insertingLabel ? (
+          <div className="flex items-center gap-3 border-b border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600" />
+            <span>
+              Incluindo <strong className="font-semibold uppercase">{insertingLabel}</strong> no batismo e atualizando a lista...
+            </span>
+          </div>
+        ) : null}
+        {selection.count > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-purple-50 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+              <span className="font-semibold text-purple-700">
+                {selection.count} registro(s) selecionado(s)
+              </span>
+              {selection.count < visibleRows.length ? (
+                <button
+                  type="button"
+                  onClick={() => selection.setMany(selectableIds, true)}
+                  className="font-medium text-purple-700 underline underline-offset-2 hover:text-purple-900"
+                >
+                  Selecionar todos os {visibleRows.length} filtrados
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={selection.clear}
+                className="font-medium text-slate-500 underline underline-offset-2 hover:text-slate-700"
+              >
+                Limpar selecao
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBulkConfirmOpen(true)}
+              disabled={bulkDeleting}
+              className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Trash2 className="h-4 w-4" />
+              {bulkDeleting ? 'Excluindo...' : 'Excluir selecionados'}
+            </button>
+          </div>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1380px]">
             <thead className="border-b border-slate-200 bg-slate-50">
               <tr>
+                <th className="w-10 px-4 py-3 text-left">
+                  <RowCheckbox
+                    checked={pageAllSelected}
+                    indeterminate={pageSomeSelected}
+                    onChange={(checked) => selection.setMany(pageIds, checked)}
+                    label="Selecionar todos os registros desta pagina"
+                    disabled={!pageIds.length}
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
                   <button type="button" onClick={() => handleSort('member')} className="inline-flex items-center gap-2">
                     Membro
@@ -1018,11 +1144,43 @@ export function Baptism() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {loading || loadingFilters ? <TableLoadingRows columns={8} /> : null}
+              {loading || loadingFilters ? <TableLoadingRows columns={9} /> : null}
+              {insertingLabel && !loading && !loadingFilters ? (
+                <tr className="bg-blue-50/60">
+                  <td className="px-4 py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 animate-pulse rounded-full bg-blue-100" />
+                      <div>
+                        <p className="font-semibold uppercase text-blue-900">{insertingLabel}</p>
+                        <p className="text-xs text-blue-700">Gerando protocolo...</p>
+                      </div>
+                    </div>
+                  </td>
+                  {Array.from({ length: 7 }).map((_, columnIndex) => (
+                    <td key={columnIndex} className="px-4 py-4">
+                      <div className="h-4 animate-pulse rounded bg-blue-100" />
+                    </td>
+                  ))}
+                </tr>
+              ) : null}
               {!loading && !loadingFilters ? paginatedRows.map((item) => {
                 const churchMeta = churches.find((church) => church.id === item.church?.id);
+                const rowSelected = selection.selectedSet.has(item.id);
                 return (
-                  <tr key={item.id} className="transition-colors hover:bg-slate-50">
+                  <tr
+                    key={item.id}
+                    className={`transition-colors ${rowSelected ? 'bg-purple-50' : 'hover:bg-slate-50'}`}
+                  >
+                    <td className="px-4 py-4 align-top">
+                      <RowCheckbox
+                        checked={rowSelected}
+                        onChange={() => selection.toggle(item.id)}
+                        label={`Selecionar ${item.member?.fullName || item.protocol}`}
+                      />
+                    </td>
                     <td className="px-4 py-4 align-top">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-700">
@@ -1386,6 +1544,19 @@ export function Baptism() {
           </div>
         </ModalShell>
       ) : null}
+
+      <ConfirmDialog
+        open={bulkConfirmOpen}
+        title="Excluir registros selecionados"
+        message={`Confirma a exclusao de ${selection.count} registro(s) de batismo? Esta acao nao pode ser desfeita.`}
+        confirmLabel={`Excluir ${selection.count}`}
+        cancelLabel="Cancelar"
+        loading={bulkDeleting}
+        onConfirm={handleBulkDeleteConfirm}
+        onCancel={() => {
+          if (!bulkDeleting) setBulkConfirmOpen(false);
+        }}
+      />
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
