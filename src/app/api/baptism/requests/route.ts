@@ -62,10 +62,33 @@ async function applyMatrixRule({
   }
 }
 
+/**
+ * Batismo em águas acontece UMA vez por pessoa, então o membro entra no fluxo
+ * uma vez só — nunca dois cards para o mesmo ROL.
+ *
+ * Se ele já entrou e o batismo não se concretizou (perdeu a data, ficou
+ * pendente), o certo não é criar um card novo: é REINICIAR o que existe —
+ * volta para a primeira coluna, recebe a data de batismo vigente e tem a data
+ * de criação renovada, para reaparecer na lista dos próximos batizandos.
+ *
+ * Card cancelado ou reprovado não bloqueia: aquele processo foi encerrado e a
+ * pessoa pode ser incluída de novo normalmente.
+ */
+const STATUS_QUE_NAO_BLOQUEIAM = new Set(["cancelado", "reprovado"]);
+
+async function batismoExistente(memberId: string, serviceGroup = "BATISMO") {
+  const cards = await prisma.kanCard.findMany({
+    where: { memberId, deletedAt: null, service: { serviceGroup } },
+    include: { service: { select: { id: true, sigla: true, description: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  return cards.find((c) => !STATUS_QUE_NAO_BLOQUEIAM.has(String(c.status || "").toLowerCase())) ?? null;
+}
+
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
     const body = await req.json().catch(() => ({}));
-    const { memberId, baptismDate, notes } = body;
+    const { memberId, baptismDate, notes, reiniciar } = body;
     if (!memberId) return NextResponse.json({ error: "memberId is required" }, { status: 400 });
 
     const member = await prisma.member.findFirst({
@@ -113,6 +136,96 @@ export async function POST(req: NextRequest) {
     if (!stage) return NextResponse.json({ error: "baptism stage not configured" }, { status: 404 });
     const firstColumn = stage.columns[0];
     if (!firstColumn) return NextResponse.json({ error: "stage has no first column" }, { status: 400 });
+
+    // ── Duplicidade: um membro só entra no batismo uma vez ────────────────────
+    const jaExiste = await batismoExistente(member.id);
+    if (jaExiste && !reiniciar) {
+      return NextResponse.json(
+        {
+          error: `${member.fullName} já está no processo de batismo.`,
+          duplicado: true,
+          existente: serializeBigInts({
+            id: jaExiste.id,
+            protocol: jaExiste.protocol,
+            status: jaExiste.status,
+            statusLabel: jaExiste.statusLabel,
+            columnIndex: jaExiste.columnIndex,
+            createdAt: jaExiste.createdAt,
+            baptismDate: (jaExiste.metadata as Record<string, unknown> | null)?.baptismDate ?? null,
+            serviceName: jaExiste.service?.description ?? jaExiste.service?.sigla ?? null,
+          }),
+        },
+        { status: 409 }
+      );
+    }
+
+    // ── Reiniciar: reaproveita o card em vez de criar outro ───────────────────
+    if (jaExiste && reiniciar) {
+      // A data vem do que foi informado ou da data de batismo vigente da igreja.
+      const agendada = await prisma.$queryRaw<Array<{ scheduledDate: Date }>>`
+        SELECT scheduled_date AS "scheduledDate"
+        FROM baptism_schedules
+        WHERE church_id = ${member.churchId}::uuid AND is_active = TRUE
+        ORDER BY scheduled_date DESC
+        LIMIT 1
+      `;
+      const dataFinal =
+        baptismDate ||
+        (agendada[0]?.scheduledDate ? agendada[0].scheduledDate.toISOString().slice(0, 10) : null);
+
+      const metadataAtual = (jaExiste.metadata as Record<string, unknown> | null) ?? {};
+      const reinicioAnterior = Number(metadataAtual.reinicios ?? 0);
+
+      const reiniciado = await prisma.kanCard.update({
+        where: { id: jaExiste.id },
+        data: {
+          stageId: stage.id,
+          columnId: firstColumn.id,
+          columnIndex: 1,
+          status: "pendente",
+          statusLabel: firstColumn.name,
+          observations: notes || jaExiste.observations,
+          // Renova a data de criação: é o que faz o card voltar a aparecer na
+          // lista dos próximos batizandos, ordenada por inclusão.
+          createdAt: new Date(),
+          metadata: {
+            ...metadataAtual,
+            flowType: "batismo",
+            baptismDate: dataFinal,
+            reinicios: reinicioAnterior + 1,
+            reiniciadoEm: new Date().toISOString(),
+            reiniciadoPor: user.id || null,
+          },
+        },
+        include: {
+          church: { select: { id: true, name: true, code: true } },
+          member: { select: { id: true, fullName: true, ecclesiasticalTitle: true } },
+          service: { select: { id: true, sigla: true, description: true, serviceGroup: true } },
+        },
+      });
+
+      // Fica no histórico do membro: reinício não é inclusão nova, mas também
+      // não pode passar em branco na prestação de contas da secretaria.
+      await prisma.memberEventHistory.create({
+        data: {
+          memberId: member.id,
+          churchId: member.churchId,
+          serviceGroup: "BATISMO",
+          serviceName: service.description || service.sigla,
+          columnIndex: 1,
+          action: "Batismo reiniciado",
+          notes: dataFinal ? `Nova data de batismo: ${dataFinal}` : "Sem data de batismo definida",
+          metadata: { source: "BATISMO_REINICIO", cardId: reiniciado.id },
+          cardId: reiniciado.id,
+          createdBy: user.id || null,
+        },
+      }).catch(() => null);
+
+      return NextResponse.json(
+        serializeBigInts({ ok: true, card: reiniciado, reiniciado: true }),
+        { status: 200 }
+      );
+    }
 
     const card = await prisma.kanCard.create({
       data: {

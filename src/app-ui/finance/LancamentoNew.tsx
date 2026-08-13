@@ -162,6 +162,13 @@ type TipoPessoa = 'MEMBRO' | 'IGREJA' | 'NAO_MEMBRO' | 'PJ';
 type Church = { id: string; name: string };
 type PlanoDeContas = { id: string; nome: string; codigo: string | null };
 type FormaPagamento = { id: string; nome: string };
+type Banco = { id: string; nome: string; codigo: string | null; is_default: boolean | null };
+type Departamento = { id: string; nome: string; codigo: string | null; is_default: boolean | null };
+
+/** "01 - Bradesco" quando há código; só o nome quando não há. */
+function rotuloComCodigo(item: { codigo?: string | null; nome: string }) {
+  return item.codigo ? `${item.codigo} - ${item.nome}` : item.nome;
+}
 type TipoDocumento = { id: string; nome: string; sigla: string | null };
 type Member = { id: string; nome: string; church?: string };
 
@@ -862,6 +869,8 @@ export default function LancamentoNew() {
   const [planos, setPlanos] = useState<PlanoDeContas[]>([]);
   const [formas, setFormas] = useState<FormaPagamento[]>([]);
   const [tiposDocs, setTiposDocs] = useState<TipoDocumento[]>([]);
+  const [bancos, setBancos] = useState<Banco[]>([]);
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [lancamentosRecentes, setLancamentosRecentes] = useState<LancamentoRecente[]>([]);
 
   // ── Form ──────────────────────────────────────────────────────────────────
@@ -875,6 +884,11 @@ export default function LancamentoNew() {
   const [planoId, setPlanoId] = useState('');
   const [tipoDocId, setTipoDocId] = useState('');
   const [formaId, setFormaId] = useState('');
+  // Banco de onde sai/entra o dinheiro e departamento a que ele se destina.
+  // Nascem no cadastro marcado como padrão, para que lançamento novo nunca
+  // fique sem essa classificação (o histórico anterior fica "Não informado").
+  const [bancoId, setBancoId] = useState('');
+  const [departamentoId, setDepartamentoId] = useState('');
   const [numDoc, setNumDoc] = useState('');
   const [valor, setValor] = useState('');
   const [dataLancamento, setDataLancamento] = useState(new Date().toISOString().split('T')[0]);
@@ -1013,12 +1027,32 @@ export default function LancamentoNew() {
           churchQuery = churchQuery.eq('id', profileChurchId);
         }
       }
-      const [c, f] = await Promise.all([
+      // Banco e departamento são isolados por campo — o cadastro de um campo
+      // não pode aparecer no lançamento de outro.
+      const campoDoLancamento = localStorage.getItem('mrm_active_field_id') || userCampoId || null;
+      let bancoQuery = supabase.from('bancos').select('id, nome, codigo, is_default').eq('ativo', true).order('codigo').order('nome');
+      let deptoQuery = supabase.from('departamentos').select('id, nome, codigo, is_default').eq('ativo', true).order('codigo').order('ordem').order('nome');
+      if (campoDoLancamento) {
+        bancoQuery = bancoQuery.eq('campo_id', campoDoLancamento);
+        deptoQuery = deptoQuery.eq('campo_id', campoDoLancamento);
+      }
+
+      const [c, f, b, d] = await Promise.all([
         churchQuery,
         supabase.from('forma_pagamento').select('id, nome').eq('mostrar', true).order('nome'),
+        bancoQuery,
+        deptoQuery,
       ]);
       if (c.data) setChurches(c.data);
       if (f.data) setFormas(f.data);
+      if (b.data) {
+        setBancos(b.data);
+        setBancoId((atual) => atual || b.data.find((x: Banco) => x.is_default)?.id || '');
+      }
+      if (d.data) {
+        setDepartamentos(d.data);
+        setDepartamentoId((atual) => atual || d.data.find((x: Departamento) => x.is_default)?.id || '');
+      }
     })();
   }, []);
 
@@ -1349,6 +1383,8 @@ export default function LancamentoNew() {
       obs: obsTrimmed || null,
       foto: fotoUrl,
       id_favorecido_externo: tipoPessoa === 'PJ' && pjDoc ? pjDoc : null,
+      banco_id: bancoId || null,
+      departamento_id: departamentoId || null,
       operador: operadorNome,
     }).select('id, legacy_id').single();
     setSaving(false);
@@ -1682,6 +1718,27 @@ export default function LancamentoNew() {
                 <option value="">Selecione a forma...</option>
                 {formas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
+            </div>
+
+            {/* Banco e Departamento — de onde sai o dinheiro e para onde ele vai.
+                Cadastrados em Configurações › Bancos / Departamentos. */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Banco / Caixa</label>
+                <select value={bancoId} onChange={e => setBancoId(e.target.value)}
+                  className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
+                  <option value="">Não informado</option>
+                  {bancos.map(b => <option key={b.id} value={b.id}>{rotuloComCodigo(b)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Departamento</label>
+                <select value={departamentoId} onChange={e => setDepartamentoId(e.target.value)}
+                  className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
+                  <option value="">Não informado</option>
+                  {departamentos.map(d => <option key={d.id} value={d.id}>{rotuloComCodigo(d)}</option>)}
+                </select>
+              </div>
             </div>
 
             {/* Datas */}

@@ -127,6 +127,13 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Finanças', name: 'Fluxo de Caixa',         key: 'cash_flow',       permissions: mkPerms(full(), mngr(), none(), none()) },
   { group: 'Finanças', name: 'Planilhas',               key: 'spreadsheets',    permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Finanças', name: 'Tesouraria (geral)',      key: 'finance',         permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  // Contas a Pagar. `view` abre a tela e os relatórios; `create` lança conta;
+  // `edit` altera dados cadastrais; `delete` cancela a conta.
+  { group: 'Finanças', name: 'Contas a Pagar',          key: 'contas_pagar',           permissions: mkPerms(full(), full(), mngr(), mngr()) },
+  // Aprovar conta acima da alçada e registrar/estornar pagamento são da
+  // tesouraria — separados de quem só lança a conta.
+  { group: 'Finanças', name: 'Aprovar Contas a Pagar',  key: 'contas_pagar_aprovar',   permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+  { group: 'Finanças', name: 'Pagar Contas a Pagar',    key: 'contas_pagar_pagar',     permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
   { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(mngr(), mngr(), none(), none()) },
   { group: 'Finanças', name: 'Painel Executivo Financeiro', key: 'finance_executive', permissions: mkPerms(mngr(), mngr(), none(), none()) },
 
@@ -313,6 +320,12 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Configurações', name: 'Formas de Pagamento',    key: 'settings_payment_methods',        permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Configurações', name: 'Tipos de Documento',     key: 'settings_document_types',         permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Configurações', name: 'Centros de Custo',       key: 'settings_cost_centers',           permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Bancos',                 key: 'settings_bancos',                 permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Departamentos',          key: 'settings_departamentos',          permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Tipos de Credor',        key: 'settings_tipos_credor',           permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Naturezas de Despesa',   key: 'settings_naturezas_despesa',      permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Tipos de Departamento',  key: 'settings_tipos_departamento',     permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Tipos de Conta Bancária', key: 'settings_tipos_conta_bancaria',  permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Configurações', name: 'Funções da Igreja',      key: 'settings_church_functions',       permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Configurações', name: 'Títulos Eclesiásticos',  key: 'settings_ecclesiastical_titles',  permissions: mkPerms(admin(), admin(), none(), none()) },
   // Documentação Técnica

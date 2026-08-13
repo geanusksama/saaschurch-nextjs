@@ -2,11 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
-import { getLookup } from "@/lib/lookupRegistry";
-import { buildWritableValues } from "../route";
+import { getLookup, type LookupConfig } from "@/lib/lookupRegistry";
+import { buildWritableValues, campoDoUsuario, erroLegivel } from "../route";
+import type { AuthUser } from "@/lib/auth";
 
 function canManage(user: { profileType: string }) {
   return user.profileType === "master" || user.profileType === "admin";
+}
+
+/**
+ * Numa lista isolada por campo, editar/excluir só vale para item do próprio
+ * campo. Sem esta checagem, bastaria conhecer o id para mexer no cadastro de
+ * outro campo — o filtro da listagem sozinho não protege a escrita.
+ */
+async function itemForaDoCampo(cfg: LookupConfig, id: string, user: AuthUser) {
+  if (!cfg.campoField) return false;
+  if (user.profileType === "master") return false;
+  const campoId = campoDoUsuario(user, null);
+  if (!campoId) return true;
+  const linhas = await prisma.$queryRawUnsafe<Array<{ existe: boolean }>>(
+    `SELECT true AS existe FROM "${cfg.table}" WHERE id = $1::uuid AND "${cfg.campoField}" = $2::uuid LIMIT 1`,
+    id,
+    campoId
+  );
+  return linhas.length === 0;
 }
 
 // PATCH /api/lookups/[key]/[id] — atualiza item
@@ -17,11 +36,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ke
     if (!cfg) return NextResponse.json({ error: "Lista não encontrada." }, { status: 404 });
     if (!canManage(user)) return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
 
+    if (await itemForaDoCampo(cfg, id, user)) {
+      return NextResponse.json({ error: "Este item pertence a outro campo." }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => ({}));
-    const { cols, values } = buildWritableValues(cfg, body);
+    const { cols, values, casts } = buildWritableValues(cfg, body);
     if (!cols.length) return NextResponse.json({ error: "Nada para atualizar." }, { status: 400 });
 
-    const setClause = cols.map((c, i) => `"${c}" = $${i + 1}`).join(", ");
+    const setClause = cols.map((c, i) => `"${c}" = $${i + 1}${casts[i]}`).join(", ");
     try {
       const updated = await prisma.$queryRawUnsafe(
         `UPDATE "${cfg.table}" SET ${setClause} WHERE id = $${cols.length + 1}::uuid RETURNING id`,
@@ -33,8 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ke
       }
       return NextResponse.json(serializeBigInts(updated));
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Erro ao atualizar item.";
-      return NextResponse.json({ error: msg }, { status: 500 });
+      return NextResponse.json(erroLegivel(e, "Erro ao atualizar item."), { status: 400 });
     }
   });
 }
@@ -46,6 +68,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ k
     const cfg = getLookup(key);
     if (!cfg) return NextResponse.json({ error: "Lista não encontrada." }, { status: 404 });
     if (!canManage(user)) return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
+
+    if (await itemForaDoCampo(cfg, id, user)) {
+      return NextResponse.json({ error: "Este item pertence a outro campo." }, { status: 403 });
+    }
 
     try {
       if (cfg.softDelete) {

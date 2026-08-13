@@ -307,6 +307,19 @@ export function Baptism() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   // Nome em processamento: fica na tela desde o envio ate a linha aparecer na lista.
   const [insertingLabel, setInsertingLabel] = useState<string | null>(null);
+  /**
+   * Membro que já está no fluxo de batismo. Batismo acontece uma vez só, então
+   * a inclusão repetida não cria card novo — abre este aviso, oferecendo
+   * reiniciar o processo existente com a data de batismo vigente.
+   */
+  const [duplicadoBatismo, setDuplicadoBatismo] = useState<{
+    nome: string;
+    memberId: string;
+    notes: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    existente: any;
+  } | null>(null);
+  const [reiniciandoBatismo, setReiniciandoBatismo] = useState(false);
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const churchOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const memberOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -749,6 +762,18 @@ export function Baptism() {
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
+        // 409 com `duplicado`: o membro já está no fluxo. Em vez de barrar seco,
+        // oferece reiniciar o processo que já existe.
+        if (response.status === 409 && payload.duplicado) {
+          setDuplicadoBatismo({
+            nome: selectedMember?.fullName || 'Este membro',
+            memberId: requestForm.memberId,
+            notes: requestForm.notes || '',
+            existente: payload.existente || null,
+          });
+          setModalError('');
+          return;
+        }
         throw new Error(payload.error || 'Falha ao salvar o batismo.');
       }
       const saved = await response.json().catch(() => ({}));
@@ -778,6 +803,48 @@ export function Baptism() {
       setModalError(submitError instanceof Error ? submitError.message : 'Falha ao salvar o registro.');
     } finally {
       setRequestSubmitting(false);
+    }
+  }
+
+  /**
+   * Reinicia o batismo do membro que já está no fluxo: reaproveita o card
+   * existente, joga de volta para a primeira coluna com a data de batismo
+   * vigente e renova a data de inclusão, para ele reaparecer entre os próximos
+   * batizandos. Não cria registro novo — o histórico do membro é um só.
+   */
+  async function confirmarReinicioBatismo() {
+    if (!duplicadoBatismo) return;
+    setReiniciandoBatismo(true);
+    try {
+      const response = await authFetch(`${apiBase}/baptism/requests`, {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: duplicadoBatismo.memberId,
+          notes: duplicadoBatismo.notes,
+          reiniciar: true,
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Falha ao reiniciar o batismo.');
+      }
+      const label = duplicadoBatismo.nome;
+      setDuplicadoBatismo(null);
+      setEditingRequest(null);
+      setSelectedMember(null);
+      setRequestModalOpen(false);
+      setRequestForm({ ...EMPTY_REQUEST_FORM });
+      setInsertingLabel(label);
+      try {
+        await loadDashboard();
+        toast.success(`Batismo de ${label} reiniciado com a data vigente.`);
+      } finally {
+        setInsertingLabel(null);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao reiniciar o batismo.');
+    } finally {
+      setReiniciandoBatismo(false);
     }
   }
 
@@ -1544,6 +1611,34 @@ export function Baptism() {
           </div>
         </ModalShell>
       ) : null}
+
+      {/* Batismo acontece uma vez: incluir de novo não duplica, reinicia. */}
+      <ConfirmDialog
+        open={Boolean(duplicadoBatismo)}
+        title="Membro já está no batismo"
+        message={
+          duplicadoBatismo
+            ? [
+                `${duplicadoBatismo.nome} já entrou no processo de batismo`,
+                duplicadoBatismo.existente?.statusLabel
+                  ? ` (situação atual: ${duplicadoBatismo.existente.statusLabel})`
+                  : '',
+                duplicadoBatismo.existente?.createdAt
+                  ? `, incluído em ${new Date(duplicadoBatismo.existente.createdAt).toLocaleDateString('pt-BR')}`
+                  : '',
+                '. Batismo em águas acontece uma vez só, então não é criado um registro novo.',
+                '\n\nReiniciar o batismo devolve o registro para o início da fila, com a data de batismo vigente da igreja, e ele volta a aparecer entre os próximos batizandos.',
+              ].join('')
+            : ''
+        }
+        confirmLabel="Reiniciar batismo"
+        cancelLabel="Cancelar"
+        loading={reiniciandoBatismo}
+        onConfirm={confirmarReinicioBatismo}
+        onCancel={() => {
+          if (!reiniciandoBatismo) setDuplicadoBatismo(null);
+        }}
+      />
 
       <ConfirmDialog
         open={bulkConfirmOpen}

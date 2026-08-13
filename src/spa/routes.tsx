@@ -61,6 +61,7 @@ import Cashbook from "../app-ui/finance/Cashbook";
 import LancamentoNew from "../app-ui/finance/LancamentoNew";
 import SantanderPage from "../app-ui/finance/SantanderPage";
 import Diretoria from "../app-ui/finance/Diretoria";
+import ContasPagar from "../app-ui/finance/ContasPagar";
 import { Events } from "../components/app-ui/Events";
 import { Communication } from "../components/app-ui/Communication";
 import WhatsAppInbox from "../app-ui/communication/WhatsAppInbox";
@@ -531,6 +532,7 @@ export const router = createBrowserRouter([
       { path: "finance/new", Component: FinanceNew },
       { path: "finance/cashbook", Component: Cashbook },
       { path: "finance/diretoria", Component: Diretoria },
+      { path: "finance/contas-a-pagar", Component: ContasPagar },
       { path: "finance/santander", Component: SantanderPage },
       { path: "finance/income/new", Component: LancamentoNew },
       { path: "finance/expense/new", Component: LancamentoNew },

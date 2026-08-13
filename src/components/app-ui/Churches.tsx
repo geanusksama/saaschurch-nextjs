@@ -521,6 +521,11 @@ export function Churches() {
   // Detalhe completo do novo dirigente — a lista da busca não traz coordenadas
   const [leaderMemberGeo, setLeaderMemberGeo] = useState<any>(null);
   const [leaderGeoLoading, setLeaderGeoLoading] = useState(false);
+  // Retrato da igreja na data da posse, vindo de /churches/[id]/leader-snapshot.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [leaderSnapshot, setLeaderSnapshot] = useState<any>(null);
+  const [leaderSnapshotLoading, setLeaderSnapshotLoading] = useState(false);
+  const [obreirosModalOpen, setObreirosModalOpen] = useState(false);
   const [selectedFunctionMemberState, setSelectedFunctionMemberState] = useState<any>(null);
   const [zipcodeLookupLoading, setZipcodeLookupLoading] = useState(false);
   const [locationHelperOpen, setLocationHelperOpen] = useState(false);
@@ -1455,6 +1460,62 @@ export function Churches() {
     () => (leaderMemberGeo ? haversineKm(leaderMemberGeo, form) : null),
     [leaderMemberGeo, form],
   );
+
+  /**
+   * Resumo da transição preenchido pelo sistema.
+   *
+   * Os seis números (caixa, maior entrada, médias, membros, obreiros) já existem
+   * no banco — eram digitados à mão. `/leader-snapshot` devolve o retrato da
+   * igreja na data de entrada informada, e mudar a data recalcula: é um retrato
+   * DAQUELA data, não de hoje.
+   *
+   * Só vale para posse nova. Na edição de uma movimentação antiga os valores
+   * gravados são o retrato congelado da época e não podem ser sobrescritos por
+   * números de hoje — mesma razão pela qual `distance_km` é congelado.
+   */
+  useEffect(() => {
+    if (!leaderModalOpen || leaderChangeForm.id) return;
+    const churchId = form.id;
+    const data = leaderChangeForm.entryDate;
+    if (!churchId || !data) return;
+
+    let cancelado = false;
+    setLeaderSnapshotLoading(true);
+    fetchJson(`/churches/${churchId}/leader-snapshot?date=${data}`, {}, { requiresAuth: true })
+      .then((snap) => {
+        if (cancelado) return;
+        setLeaderSnapshot(snap);
+        const texto = (valor: unknown) => (valor === null || valor === undefined ? '' : String(valor));
+        setLeaderChangeForm((current) => ({
+          ...current,
+          currentCash: texto(snap.currentCash),
+          maxIncome: texto(snap.maxIncome),
+          averageIncome: texto(snap.averageIncome),
+          averageExpense: texto(snap.averageExpense),
+          totalMembers: texto(snap.totalMembers),
+          totalWorkers: texto(snap.totalWorkers),
+        }));
+      })
+      .catch(() => { if (!cancelado) setLeaderSnapshot(null); })
+      .finally(() => { if (!cancelado) setLeaderSnapshotLoading(false); });
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaderModalOpen, leaderChangeForm.id, leaderChangeForm.entryDate, form.id]);
+
+  /** Devolve os campos do resumo aos valores calculados pelo sistema. */
+  const aplicarLeaderSnapshot = () => {
+    if (!leaderSnapshot) return;
+    const texto = (valor: unknown) => (valor === null || valor === undefined ? '' : String(valor));
+    setLeaderChangeForm((current) => ({
+      ...current,
+      currentCash: texto(leaderSnapshot.currentCash),
+      maxIncome: texto(leaderSnapshot.maxIncome),
+      averageIncome: texto(leaderSnapshot.averageIncome),
+      averageExpense: texto(leaderSnapshot.averageExpense),
+      totalMembers: texto(leaderSnapshot.totalMembers),
+      totalWorkers: texto(leaderSnapshot.totalWorkers),
+    }));
+  };
 
   const selectedFunctionMember = useMemo(
     () => selectedFunctionMemberState || churchMembers.find((member) => member.id === functionForm.memberId) || memberSearchResults.find((member) => member.id === functionForm.memberId) || null,
@@ -3230,31 +3291,66 @@ export function Churches() {
 
               {/* ── Coluna 2: números da transição ── */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
-                <div className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Resumo da transição</div>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Resumo da transição</div>
+                  {!leaderChangeForm.id && leaderSnapshot ? (
+                    <button
+                      type="button"
+                      onClick={aplicarLeaderSnapshot}
+                      className="text-xs font-semibold text-purple-600 hover:underline dark:text-purple-400"
+                    >
+                      Recalcular
+                    </button>
+                  ) : null}
+                </div>
+                {/* Numa posse nova os números vêm do sistema; numa edição, o que
+                    está gravado é o retrato congelado da época e fica como está. */}
+                <p className="mb-4 text-[11px] text-slate-500 dark:text-slate-400">
+                  {leaderChangeForm.id
+                    ? 'Valores registrados na época desta movimentação.'
+                    : leaderSnapshotLoading
+                      ? 'Calculando com base no Livro Caixa e no cadastro...'
+                      : leaderSnapshot
+                        ? `Calculado até ${formatDateLabel(leaderChangeForm.entryDate)}. Todos os campos são editáveis.`
+                        : 'Preencha manualmente — sem lançamentos no período.'}
+                </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className={labelClass}>
                     Caixa atual
-                    <input value={leaderChangeForm.currentCash} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, currentCash: event.target.value }))} className={fieldClass} />
+                    <input value={leaderChangeForm.currentCash} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, currentCash: event.target.value }))} placeholder={leaderSnapshotLoading ? 'Calculando...' : ''} className={fieldClass} />
                   </label>
                   <label className={labelClass}>
                     Maior valor de entrada
-                    <input value={leaderChangeForm.maxIncome} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, maxIncome: event.target.value }))} className={fieldClass} />
+                    <input value={leaderChangeForm.maxIncome} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, maxIncome: event.target.value }))} placeholder={leaderSnapshotLoading ? 'Calculando...' : ''} className={fieldClass} />
                   </label>
                   <label className={labelClass}>
                     Media de entrada
-                    <input value={leaderChangeForm.averageIncome} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, averageIncome: event.target.value }))} className={fieldClass} />
+                    <input value={leaderChangeForm.averageIncome} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, averageIncome: event.target.value }))} placeholder={leaderSnapshotLoading ? 'Calculando...' : ''} className={fieldClass} />
                   </label>
                   <label className={labelClass}>
                     Media de saida
-                    <input value={leaderChangeForm.averageExpense} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, averageExpense: event.target.value }))} className={fieldClass} />
+                    <input value={leaderChangeForm.averageExpense} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, averageExpense: event.target.value }))} placeholder={leaderSnapshotLoading ? 'Calculando...' : ''} className={fieldClass} />
                   </label>
                   <label className={labelClass}>
                     Total de membros
-                    <input value={leaderChangeForm.totalMembers} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, totalMembers: event.target.value }))} className={fieldClass} />
+                    <input value={leaderChangeForm.totalMembers} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, totalMembers: event.target.value }))} placeholder={leaderSnapshotLoading ? 'Calculando...' : ''} className={fieldClass} />
                   </label>
                   <label className={labelClass}>
-                    Total de obreiros
-                    <input value={leaderChangeForm.totalWorkers} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, totalWorkers: event.target.value }))} className={fieldClass} />
+                    <span className="flex items-center justify-between gap-2">
+                      Total de obreiros
+                      {/* O número sozinho não diz nada para quem assina a posse:
+                          o detalhamento por título é o que a secretaria confere. */}
+                      {leaderSnapshot?.obreirosPorTitulo?.length ? (
+                        <button
+                          type="button"
+                          onClick={() => setObreirosModalOpen(true)}
+                          className="text-[11px] font-semibold normal-case tracking-normal text-purple-600 hover:underline dark:text-purple-400"
+                        >
+                          Ver por título
+                        </button>
+                      ) : null}
+                    </span>
+                    <input value={leaderChangeForm.totalWorkers} onChange={(event) => setLeaderChangeForm((current) => ({ ...current, totalWorkers: event.target.value }))} placeholder={leaderSnapshotLoading ? 'Calculando...' : ''} className={fieldClass} />
                   </label>
                   <label className={`${labelClass} sm:col-span-2`}>
                     Observacoes
@@ -3349,6 +3445,94 @@ export function Churches() {
           <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
             <button type="button" onClick={() => setLeaderModalOpen(false)} className={secondaryButtonClass}>Cancelar</button>
             <button type="button" onClick={() => saveLeaderChange()} disabled={savingLeaderChange} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">{savingLeaderChange ? 'Salvando...' : leaderChangeForm.id ? 'Salvar alterações' : 'Trocar dirigente'}</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detalhamento do "Total de obreiros": quem são, por título eclesiástico.
+          Também expõe os títulos digitados fora do catálogo — eles não entram
+          no total, e escondê-los esconderia um erro de cadastro. */}
+      <Dialog open={obreirosModalOpen} onOpenChange={setObreirosModalOpen}>
+        <DialogContent className={`max-w-lg ${dialogContentClass}`}>
+          <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+            <DialogHeader>
+              <DialogTitle>Obreiros por título eclesiástico</DialogTitle>
+              <DialogDescription>
+                {form.name} · {leaderSnapshot?.totalWorkers ?? 0} obreiro(s) de {leaderSnapshot?.totalMembers ?? 0} membro(s)
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wide text-slate-500">
+                  <th className="pb-2 text-left">Título</th>
+                  <th className="pb-2 text-right">Quantidade</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {(leaderSnapshot?.obreirosPorTitulo ?? []).map((item: { titulo: string; total: number }) => (
+                  <tr key={item.titulo}>
+                    <td className="py-2 font-medium text-slate-800 dark:text-slate-100">{item.titulo}</td>
+                    <td className="py-2 text-right font-semibold text-slate-900 dark:text-white">{item.total}</td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 border-slate-300 dark:border-slate-700">
+                  <td className="py-2 font-bold text-slate-900 dark:text-white">Total de obreiros</td>
+                  <td className="py-2 text-right font-bold text-slate-900 dark:text-white">{leaderSnapshot?.totalWorkers ?? 0}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            {(leaderSnapshot?.naoObreirosPorTitulo ?? []).length > 0 ? (
+              <div className="mt-5">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Não contam como obreiro
+                </div>
+                <table className="w-full text-sm">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {(leaderSnapshot?.naoObreirosPorTitulo ?? []).map((item: { titulo: string; total: number }) => (
+                      <tr key={item.titulo}>
+                        <td className="py-1.5 text-slate-600 dark:text-slate-400">{item.titulo}</td>
+                        <td className="py-1.5 text-right text-slate-600 dark:text-slate-400">{item.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            {(leaderSnapshot?.titulosForaDoCatalogo ?? []).length > 0 ? (
+              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/30">
+                <div className="mb-1 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                  Títulos fora do catálogo
+                </div>
+                <p className="mb-2 text-[11px] text-amber-700 dark:text-amber-400">
+                  Estes membros têm um título que não existe em Títulos Eclesiásticos, então
+                  não entraram no total. Corrija o cadastro do membro ou inclua o título no catálogo.
+                </p>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {(leaderSnapshot?.titulosForaDoCatalogo ?? []).map((item: { titulo: string; total: number }) => (
+                      <tr key={item.titulo}>
+                        <td className="py-1 text-amber-900 dark:text-amber-200">{item.titulo}</td>
+                        <td className="py-1 text-right text-amber-900 dark:text-amber-200">{item.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            <p className="mt-4 text-[11px] text-slate-500 dark:text-slate-400">
+              Critério: título eclesiástico de nível 1 ou maior (cooperador, diácono, presbítero,
+              evangelista, missionário, pastor, bispo). Membro e congregado são nível 0.
+            </p>
+          </div>
+
+          <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+            <button type="button" onClick={() => setObreirosModalOpen(false)} className={secondaryButtonClass}>Fechar</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

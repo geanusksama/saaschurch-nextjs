@@ -9,15 +9,29 @@
  * Nada que venha do cliente é interpolado em SQL.
  */
 
-export type LookupFieldType = "text" | "boolean" | "select";
+/**
+ * `number` existe porque o Postgres recusa gravar texto em coluna integer
+ * ("column ordem is of type integer but expression is of type text"). Campo
+ * numérico é enviado com cast explícito na query.
+ */
+export type LookupFieldType = "text" | "boolean" | "select" | "number";
 
 export type LookupField = {
   key: string;
   label: string;
   type: LookupFieldType;
   required?: boolean;
-  /** Opções para type: 'select'. */
+  /** Opções fixas para type: 'select'. Prefira `optionsFrom`. */
   options?: { value: string; label: string }[];
+  /**
+   * Opções vindas de OUTRA lista cadastrada (também registrada aqui).
+   *
+   * É o caminho preferido: nenhum dropdown do sistema deve ter opção fixa no
+   * código — a igreja precisa poder criar, renomear e desativar item sem
+   * depender de deploy. `valueField` é o que fica gravado no registro (em geral
+   * `codigo`, estável) e `labelField` é o que o usuário lê.
+   */
+  optionsFrom?: { lookupKey: string; valueField?: string; labelField?: string };
   /** Mostrar como coluna na listagem. */
   inList?: boolean;
   help?: string;
@@ -40,6 +54,14 @@ export type LookupConfig = {
   warning?: string;
   /** Chave de permissão. */
   permKey: string;
+  /**
+   * Coluna de isolamento por campo (normalmente `campo_id`).
+   *
+   * Quando presente, a listagem só devolve os itens do campo ativo do usuário e
+   * a criação carimba esse campo — o banco de um campo não aparece para outro.
+   * Lista sem esta coluna é global (plano de contas, formas de pagamento).
+   */
+  campoField?: string;
 };
 
 const TIPO_OPTIONS = [
@@ -118,6 +140,143 @@ export const LOOKUPS: Record<string, LookupConfig> = {
     ],
   },
 
+  bancos: {
+    key: "bancos",
+    table: "bancos",
+    label: "Bancos",
+    description:
+      "Contas bancárias e caixas da igreja. Usados no lançamento do Livro Caixa e no pagamento de contas.",
+    orderBy: "codigo NULLS LAST, nome",
+    permKey: "settings_bancos",
+    activeField: "ativo",
+    campoField: "campo_id",
+    warning:
+      "Marque apenas UM banco como padrão — é ele que vem pré-selecionado nos lançamentos novos. O código é único dentro do campo.",
+    fields: [
+      { key: "codigo", label: "Código", type: "text", inList: true, help: "Código curto de busca: 01, 02... Aparece no dropdown como \"01 - Bradesco\"." },
+      { key: "nome", label: "Nome", type: "text", required: true, inList: true, help: "Ex.: Banco do Brasil — C/C 12345-6" },
+      { key: "codigo_febraban", label: "Código FEBRABAN", type: "text", help: "Número da instituição: 001 (BB), 033 (Santander), 341 (Itaú)." },
+      { key: "agencia", label: "Agência", type: "text", inList: true },
+      { key: "conta", label: "Conta", type: "text", inList: true },
+      {
+        key: "tipo_conta",
+        label: "Tipo de conta",
+        type: "select",
+        inList: true,
+        optionsFrom: { lookupKey: "tipos-conta-bancaria" },
+      },
+      { key: "chave_pix", label: "Chave PIX", type: "text" },
+      { key: "titular", label: "Titular", type: "text" },
+      { key: "ativo", label: "Ativo", type: "boolean", inList: true },
+      { key: "is_default", label: "Padrão", type: "boolean", inList: true, help: "Pré-selecionado em lançamentos novos." },
+    ],
+  },
+
+  departamentos: {
+    key: "departamentos",
+    table: "departamentos",
+    label: "Departamentos",
+    description:
+      "Para onde o dinheiro vai: Missões, campanhas, obra do templo, infantil. Classifica lançamentos e contas a pagar.",
+    orderBy: "codigo NULLS LAST, ordem, nome",
+    permKey: "settings_departamentos",
+    activeField: "ativo",
+    campoField: "campo_id",
+    warning:
+      "Lançamentos anteriores a este cadastro ficam sem departamento e aparecem como \"Não informado\" nos relatórios — é dado histórico, não erro. O código é único dentro do campo.",
+    fields: [
+      { key: "codigo", label: "Código", type: "text", inList: true, help: "Código curto de busca: 01, 02... Aparece no dropdown como \"01 - Missões\"." },
+      { key: "nome", label: "Nome", type: "text", required: true, inList: true },
+      {
+        key: "tipo",
+        label: "Tipo",
+        type: "select",
+        inList: true,
+        optionsFrom: { lookupKey: "tipos-departamento" },
+      },
+      { key: "descricao", label: "Descrição", type: "text" },
+      { key: "cor", label: "Cor", type: "text", help: "Hex usado nos gráficos, ex.: #8b5cf6" },
+      { key: "ordem", label: "Ordem", type: "number", help: "Define a posição no dropdown." },
+      { key: "ativo", label: "Ativo", type: "boolean", inList: true },
+      { key: "is_default", label: "Padrão", type: "boolean", inList: true, help: "Pré-selecionado em lançamentos novos." },
+    ],
+  },
+
+  // ── Listas que alimentam os selects do módulo Contas a Pagar ───────────────
+  // Existem para que nenhum dropdown tenha opção fixa no código. O `codigo` é o
+  // que fica gravado no registro de negócio; o `nome` é só rótulo, e pode ser
+  // renomeado sem afetar o que já foi lançado.
+
+  "tipos-credor": {
+    key: "tipos-credor",
+    table: "tipos_credor",
+    label: "Tipos de Credor",
+    description: "Classificação de quem recebe: pastor, obreiro, fornecedor, prestador, órgão público.",
+    orderBy: "ordem, nome",
+    permKey: "settings_tipos_credor",
+    activeField: "ativo",
+    warning: "O código é gravado nos credores. Renomeie o nome à vontade; mudar o código não altera cadastros existentes.",
+    fields: [
+      { key: "codigo", label: "Código", type: "text", required: true, inList: true, help: "Sem espaços, ex.: PASTOR." },
+      { key: "nome", label: "Nome", type: "text", required: true, inList: true },
+      { key: "ordem", label: "Ordem", type: "number", inList: true },
+      { key: "ativo", label: "Ativo", type: "boolean", inList: true },
+      { key: "is_default", label: "Padrão", type: "boolean", inList: true },
+    ],
+  },
+
+  "naturezas-despesa": {
+    key: "naturezas-despesa",
+    table: "naturezas_despesa",
+    label: "Naturezas de Despesa",
+    description: "Fixa, variável, eventual — usada na classificação dos tipos de despesa.",
+    orderBy: "ordem, nome",
+    permKey: "settings_naturezas_despesa",
+    activeField: "ativo",
+    fields: [
+      { key: "codigo", label: "Código", type: "text", required: true, inList: true },
+      { key: "nome", label: "Nome", type: "text", required: true, inList: true },
+      { key: "descricao", label: "Descrição", type: "text" },
+      { key: "ordem", label: "Ordem", type: "number", inList: true },
+      { key: "ativo", label: "Ativo", type: "boolean", inList: true },
+      { key: "is_default", label: "Padrão", type: "boolean", inList: true },
+    ],
+  },
+
+  "tipos-departamento": {
+    key: "tipos-departamento",
+    table: "tipos_departamento",
+    label: "Tipos de Departamento",
+    description: "Ministério, campanha, setor, obra, missões — classifica os departamentos.",
+    orderBy: "ordem, nome",
+    permKey: "settings_tipos_departamento",
+    activeField: "ativo",
+    fields: [
+      { key: "codigo", label: "Código", type: "text", required: true, inList: true },
+      { key: "nome", label: "Nome", type: "text", required: true, inList: true },
+      { key: "ordem", label: "Ordem", type: "number", inList: true },
+      { key: "ativo", label: "Ativo", type: "boolean", inList: true },
+      { key: "is_default", label: "Padrão", type: "boolean", inList: true },
+    ],
+  },
+
+  "tipos-conta-bancaria": {
+    key: "tipos-conta-bancaria",
+    table: "tipos_conta_bancaria",
+    label: "Tipos de Conta Bancária",
+    description: "Conta corrente, poupança, caixa em espécie, aplicação.",
+    orderBy: "ordem, nome",
+    permKey: "settings_tipos_conta_bancaria",
+    activeField: "ativo",
+    fields: [
+      { key: "codigo", label: "Código", type: "text", required: true, inList: true },
+      { key: "nome", label: "Nome", type: "text", required: true, inList: true },
+      { key: "ordem", label: "Ordem", type: "number", inList: true },
+      { key: "ativo", label: "Ativo", type: "boolean", inList: true },
+      { key: "is_default", label: "Padrão", type: "boolean", inList: true },
+    ],
+  },
+
   "church-functions": {
     key: "church-functions",
     table: "church_function_catalog",
@@ -171,7 +330,7 @@ export const LOOKUPS: Record<string, LookupConfig> = {
     fields: [
       { key: "name", label: "Nome", type: "text", required: true, inList: true },
       { key: "abbreviation", label: "Abreviação", type: "text", inList: true },
-      { key: "display_order", label: "Ordem", type: "text", inList: true, help: "Define a posição no dropdown." },
+      { key: "display_order", label: "Ordem", type: "number", inList: true, help: "Define a posição no dropdown." },
       { key: "is_active", label: "Ativa", type: "boolean", inList: true },
     ],
   },

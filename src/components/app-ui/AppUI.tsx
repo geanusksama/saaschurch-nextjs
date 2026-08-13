@@ -37,6 +37,7 @@ import {
   Contact,
   Target,
   Wallet,
+  Receipt,
   TrendingDown,
   Home,
   MessageCircle,
@@ -220,6 +221,7 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/cms") return "CMS Departamentos";
   if (p === "/app-ui/finance/cashbook") return "Livro Caixa";
   if (p === "/app-ui/finance/lancamento/new") return "Novo Lançamento Financeiro";
+  if (p === "/app-ui/finance/contas-a-pagar") return "Contas a Pagar";
   if (p === "/app-ui/finance/cash-flow") return "Fluxo de Caixa";
   if (p === "/app-ui/finance/santander") return "Banco / Santander";
   if (p === "/app-ui/finance/diretoria") return "Painel Diretoria";
@@ -357,6 +359,7 @@ const appNavigation: NavigationSection[] = [
     items: [
       { name: 'Livro Caixa',      path: '/app-ui/finance/cashbook',       icon: BookOpen,        permKey: 'cashbook' },
       { name: 'Lançamento',       path: '/app-ui/finance/lancamento/new', icon: TrendingUp,      permKey: 'finance_entries' },
+      { name: 'Contas a Pagar',   path: '/app-ui/finance/contas-a-pagar', icon: Receipt,         permKey: 'contas_pagar' },
       { name: 'Fluxo de Caixa',   path: '/app-ui/finance/cash-flow',      icon: Wallet,          permKey: 'cash_flow' },
       { name: 'Banco / Santander',path: '/app-ui/finance/santander',      icon: SantanderIcon,   permKey: 'santander_view' },
       { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },

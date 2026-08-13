@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Artefatos locais — dumps, exportações e material de apoio.
+# Ficam fora do versionamento: têm dado real (lançamentos financeiros,
+# policies do banco) que não deve entrar no histórico do git.
+/backups/
+/docs/*.csv
+/docs/*.pdf

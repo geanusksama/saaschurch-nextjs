@@ -45,6 +45,47 @@ export default function LookupCrud() {
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  /**
+   * Opções dos selects que vêm de outra lista cadastrada (`optionsFrom`).
+   * Nenhum dropdown daqui tem opção fixa: o conteúdo é sempre o que está
+   * cadastrado, e some da lista assim que o item é desativado.
+   */
+  const [opcoesDinamicas, setOpcoesDinamicas] = useState<Record<string, { value: string; label: string }[]>>({});
+
+  useEffect(() => {
+    if (!cfg) return;
+    const comOrigem = cfg.fields.filter((f) => f.optionsFrom);
+    if (!comOrigem.length) return;
+    (async () => {
+      const resultado: Record<string, { value: string; label: string }[]> = {};
+      await Promise.all(
+        comOrigem.map(async (f) => {
+          const origem = f.optionsFrom!;
+          try {
+            const res = await fetch(`${apiBase}/lookups/${origem.lookupKey}`, { headers: authHeaders() });
+            if (!res.ok) return;
+            const linhas = (await res.json()) as Row[];
+            const origemCfg = getLookup(origem.lookupKey);
+            const campoAtivo = origemCfg?.activeField;
+            resultado[f.key] = linhas
+              .filter((l) => (campoAtivo ? l[campoAtivo] !== false : true))
+              .map((l) => ({
+                value: String(l[origem.valueField ?? 'codigo'] ?? ''),
+                label: String(l[origem.labelField ?? 'nome'] ?? ''),
+              }))
+              .filter((o) => o.value);
+          } catch { /* select fica vazio; o cadastro de origem resolve */ }
+        })
+      );
+      setOpcoesDinamicas(resultado);
+    })();
+  }, [cfg]);
+
+  const opcoesDoCampo = useCallback(
+    (f: LookupField) => (f.optionsFrom ? opcoesDinamicas[f.key] ?? [] : f.options ?? []),
+    [opcoesDinamicas]
+  );
+
   const load = useCallback(async () => {
     if (!cfg) return;
     setLoading(true);
@@ -186,7 +227,7 @@ export default function LookupCrud() {
       );
     }
     if (f.type === 'select') {
-      const opt = f.options?.find((o) => o.value === row[f.key]);
+      const opt = opcoesDoCampo(f).find((o) => o.value === row[f.key]);
       return <span className="text-slate-700">{opt?.label ?? String(row[f.key] ?? '—')}</span>;
     }
     return <span className="text-slate-700">{String(row[f.key] ?? '') || '—'}</span>;
@@ -336,12 +377,13 @@ export default function LookupCrud() {
                           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                         >
                           <option value="">Selecione...</option>
-                          {f.options?.map((o) => (
+                          {opcoesDoCampo(f).map((o) => (
                             <option key={o.value} value={o.value}>{o.label}</option>
                           ))}
                         </select>
                       ) : (
                         <input
+                          type={f.type === 'number' ? 'number' : 'text'}
                           value={String(form[f.key] ?? '')}
                           onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
                           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
