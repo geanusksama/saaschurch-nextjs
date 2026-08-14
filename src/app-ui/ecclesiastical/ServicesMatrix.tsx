@@ -54,6 +54,7 @@ type MatrixRule = {
   changeStatus: boolean;
   newStatus: string | null;
   changeTitle: boolean;
+  restorePreviousTitle?: boolean;
   newTitle: string | null;
   doesTransfer: boolean;
   insertOccurrence: boolean;
@@ -791,6 +792,8 @@ function RuleModal({
   const [changeStatus, setChangeStatus] = useState(rule?.changeStatus ?? false);
   const [newStatus, setNewStatus] = useState(rule?.newStatus || "");
   const [changeTitle, setChangeTitle] = useState(rule?.changeTitle ?? false);
+  // Readmissão: o título não vem digitado aqui, vem do histórico do membro.
+  const [restorePreviousTitle, setRestorePreviousTitle] = useState(rule?.restorePreviousTitle ?? false);
   const [newTitle, setNewTitle] = useState(rule?.newTitle || "");
   const [doesTransfer, setDoesTransfer] = useState(rule?.doesTransfer ?? false);
   const [insertOccurrence, setInsertOccurrence] = useState(rule?.insertOccurrence ?? true);
@@ -850,6 +853,7 @@ function RuleModal({
       changeStatus,
       newStatus: newStatus || null,
       changeTitle,
+      restorePreviousTitle,
       newTitle: newTitle || null,
       doesTransfer,
       insertOccurrence,
@@ -962,13 +966,29 @@ function RuleModal({
 
         <ToggleRow label="Troca Título" value={changeTitle} onChange={setChangeTitle} />
         {changeTitle && (
-          <textarea
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            rows={2}
-            className={`${INPUT} resize-none`}
-            placeholder="Novo título..."
-          />
+          <>
+            {/* Readmissão: quem já foi pastor não pode voltar como congregado.
+                Com isto ligado, o título sai do histórico do próprio membro e o
+                campo abaixo passa a valer só para quem não tem histórico. */}
+            <ToggleRow
+              label="Restaurar último título do membro"
+              value={restorePreviousTitle}
+              onChange={setRestorePreviousTitle}
+            />
+            <textarea
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              rows={2}
+              className={`${INPUT} resize-none`}
+              placeholder={restorePreviousTitle ? "Título de reserva, se o membro não tiver histórico..." : "Novo título..."}
+            />
+            {restorePreviousTitle && (
+              <p className="-mt-1 text-[11px] text-slate-500">
+                O sistema busca o último título registrado no histórico do membro e aplica esse.
+                O campo acima só é usado quando não há histórico nenhum.
+              </p>
+            )}
+          </>
         )}
 
         <ToggleRow label="Insere ocorrência" value={insertOccurrence} onChange={setInsertOccurrence} />

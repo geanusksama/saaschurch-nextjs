@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolverTituloDaRegra } from "@/lib/tituloEclesiasticoHistorico";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess } from "@/lib/helpers";
 
@@ -56,11 +57,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           appliedActions.push(`Status alterado → ${rule.newStatus}`);
         }
 
-        // Change ecclesiastical title
-        if (rule.changeTitle && rule.newTitle) {
-          memberUpdate.ecclesiasticalTitle = rule.newTitle;
+        // Change ecclesiastical title.
+        // O título pode ser fixo ou restaurado do histórico do membro, quando a
+        // regra tem restorePreviousTitle (readmissão). Ver
+        // src/lib/tituloEclesiasticoHistorico.ts
+        const { titulo: tituloDaRegra, restaurado } = await resolverTituloDaRegra(prisma, rule, id);
+        if (rule.changeTitle && tituloDaRegra) {
+          memberUpdate.ecclesiasticalTitle = tituloDaRegra;
           const titleRecord = await prisma.ecclesiasticalTitle.findFirst({
-            where: { name: { equals: rule.newTitle, mode: "insensitive" }, deletedAt: null, isActive: true },
+            where: { name: { equals: tituloDaRegra, mode: "insensitive" }, deletedAt: null, isActive: true },
           });
           if (titleRecord) {
             memberUpdate.ecclesiasticalTitleId = titleRecord.id;
@@ -70,15 +75,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 memberId: id,
                 churchId: member.churchId,
                 previousTitle: member.ecclesiasticalTitle || null,
-                newTitle: rule.newTitle,
-                source: "OCORRENCIA_RAPIDA",
+                newTitle: tituloDaRegra,
+                source: restaurado ? "OCORRENCIA_RAPIDA_RESTAURADO" : "OCORRENCIA_RAPIDA",
                 serviceGroup: service.sigla,
                 serviceName: service.description,
                 createdBy: user.id || null,
               },
             }).catch(() => null);
           }
-          appliedActions.push(`Título alterado → ${rule.newTitle}`);
+          appliedActions.push(`Título alterado → ${tituloDaRegra}${restaurado ? " (restaurado do histórico)" : ""}`);
         }
 
         // Execute transfer

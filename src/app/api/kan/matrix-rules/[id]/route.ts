@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!existing) return NextResponse.json({ error: "rule not found" }, { status: 404 });
     const body = await req.json().catch(() => ({}));
     const data: Record<string, unknown> = {};
-    const fields = ["stageId", "columnIndex", "changeStatus", "newStatus", "changeTitle", "newTitle", "doesTransfer", "insertOccurrence", "occurrenceName", "message", "allowMessage", "requireDocument", "isActive", "description"];
+    const fields = ["stageId", "columnIndex", "changeStatus", "newStatus", "changeTitle", "newTitle", "restorePreviousTitle", "doesTransfer", "insertOccurrence", "occurrenceName", "message", "allowMessage", "requireDocument", "isActive", "description"];
     for (const f of fields) {
       if (body[f] !== undefined) {
         data[f] = (f === "stageId" || f === "columnIndex") && body[f] != null ? Number(body[f]) : body[f];

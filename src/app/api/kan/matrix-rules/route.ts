@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   return withAuth(req, async () => {
     const body = await req.json().catch(() => ({}));
-    const { serviceId, columnIndex, stageId, changeStatus, newStatus, changeTitle, newTitle, doesTransfer, insertOccurrence, occurrenceName, message, allowMessage, requireDocument, description } = body;
+    const { serviceId, columnIndex, stageId, changeStatus, newStatus, changeTitle, newTitle, restorePreviousTitle, doesTransfer, insertOccurrence, occurrenceName, message, allowMessage, requireDocument, description } = body;
     if (!serviceId || !columnIndex) return NextResponse.json({ error: "serviceId and columnIndex required" }, { status: 400 });
     const rule = await prisma.kanMatrixRule.create({
       data: {
@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
         stageId: stageId ? Number(stageId) : null,
         changeStatus: changeStatus ?? false, newStatus: newStatus || null,
         changeTitle: changeTitle ?? false, newTitle: newTitle || null,
+        restorePreviousTitle: restorePreviousTitle ?? false,
         doesTransfer: doesTransfer ?? false, insertOccurrence: insertOccurrence ?? true,
         occurrenceName: occurrenceName || null, message: message || null,
         allowMessage: allowMessage ?? false, requireDocument: requireDocument ?? false,

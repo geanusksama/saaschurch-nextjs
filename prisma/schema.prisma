@@ -2141,6 +2141,11 @@ model KanMatrixRule {
   newStatus           String? @map("new_status") @db.VarChar(60)
   changeTitle         Boolean @default(false) @map("change_title")
   newTitle            String? @map("new_title") @db.VarChar(60)
+  /// Com esta flag, o título não vem de `newTitle`: vem do ÚLTIMO título do
+  /// histórico do membro. É o que faz a readmissão devolver quem já foi pastor
+  /// como pastor, em vez de congregado. `newTitle` vira só o fallback de quem
+  /// não tem histórico. Ver src/lib/tituloEclesiasticoHistorico.ts
+  restorePreviousTitle Boolean @default(false) @map("restore_previous_title")
   doesTransfer        Boolean @default(false) @map("does_transfer")
   insertOccurrence    Boolean @default(true) @map("insert_occurrence")
   occurrenceName      String? @map("occurrence_name") @db.VarChar(120)

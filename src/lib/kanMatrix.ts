@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { resolverTituloDaRegra } from "@/lib/tituloEclesiasticoHistorico";
 
 /**
  * Aplica a regra da matriz (kan_matrix_rules) ao mover um card de coluna.
@@ -33,10 +34,20 @@ export async function applyMatrixRule({
       const memberData: Record<string, unknown> = {};
       let prevMember: { ecclesiasticalTitle: string | null; addressCity: string | null; addressState: string | null; nationality: string | null } | null = null;
       if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = rule.newStatus.toUpperCase();
-      if (rule.changeTitle && rule.newTitle) {
+
+      // O título pode ser fixo (rule.newTitle) ou restaurado do histórico do
+      // membro, quando a regra tem restorePreviousTitle — é o caso da
+      // readmissão, em que quem já foi pastor não pode voltar como congregado.
+      const { titulo: tituloResolvido, restaurado } = await resolverTituloDaRegra(
+        prisma,
+        rule,
+        card.memberId as string
+      );
+
+      if (rule.changeTitle && tituloResolvido) {
         prevMember = await prisma.member.findUnique({ where: { id: card.memberId as string }, select: { ecclesiasticalTitle: true, addressCity: true, addressState: true, nationality: true } });
-        memberData.ecclesiasticalTitle = rule.newTitle;
-        const titleRecord = await prisma.ecclesiasticalTitle.findFirst({ where: { name: { equals: rule.newTitle, mode: "insensitive" }, deletedAt: null, isActive: true } });
+        memberData.ecclesiasticalTitle = tituloResolvido;
+        const titleRecord = await prisma.ecclesiasticalTitle.findFirst({ where: { name: { equals: tituloResolvido, mode: "insensitive" }, deletedAt: null, isActive: true } });
         memberData.ecclesiasticalTitleId = titleRecord?.id ?? null;
       }
       if (rule.doesTransfer && card.destinationChurchId) {
@@ -50,21 +61,25 @@ export async function applyMatrixRule({
         }
       }
       if (Object.keys(memberData).length > 0) await prisma.member.update({ where: { id: card.memberId as string }, data: memberData });
-      if (rule.changeTitle && rule.newTitle) {
+      if (rule.changeTitle && tituloResolvido) {
         await prisma.memberTitleHistory.create({
           data: {
             memberId: card.memberId as string,
             churchId: card.churchId as string,
             cardId: card.id ? card.id as string : null,
             previousTitle: prevMember?.ecclesiasticalTitle ?? null,
-            newTitle: rule.newTitle,
-            source: "MATRIZ",
+            newTitle: tituloResolvido,
+            // Deixa rastro de que o título foi restaurado, e não escolhido na
+            // regra — a secretaria precisa saber de onde veio numa conferência.
+            source: restaurado ? "MATRIZ_RESTAURADO" : "MATRIZ",
             serviceGroup,
             serviceName,
             memberCity: prevMember?.addressCity ?? null,
             memberState: prevMember?.addressState ?? null,
             memberCountry: prevMember?.nationality ?? null,
-            notes: rule.message ?? null,
+            notes: restaurado
+              ? `Título restaurado do histórico: ${restaurado.nome}${restaurado.quando ? ` (registrado em ${new Date(restaurado.quando).toLocaleDateString("pt-BR")})` : ""}`
+              : rule.message ?? null,
             createdBy: user?.id ?? null,
           },
         }).catch(() => null);
