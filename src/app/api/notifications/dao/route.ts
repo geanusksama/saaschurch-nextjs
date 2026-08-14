@@ -3,6 +3,25 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
+    // Webhook da catraca facial. Sem segredo, qualquer um com um serial de
+    // leitor e um ROL/CPF válidos injetaria presenças falsas. Quando
+    // FACEID_DAO_SECRET estiver definido, exigimos o mesmo valor no header
+    // `x-dao-secret` ou na query `?key=` (configurável no push do dispositivo).
+    // Enquanto não estiver definido, mantemos o comportamento atual para não
+    // interromper leitores já em produção — mas avisamos no log.
+    const daoSecret = process.env.FACEID_DAO_SECRET;
+    if (daoSecret) {
+      const provided =
+        req.headers.get("x-dao-secret") || new URL(req.url).searchParams.get("key");
+      if (provided !== daoSecret) {
+        return NextResponse.json({ status: "error", message: "Não autorizado." }, { status: 401 });
+      }
+    } else {
+      console.warn(
+        "[notifications/dao] FACEID_DAO_SECRET não definido — webhook aceito sem validação. Defina o segredo para bloquear injeção de presenças."
+      );
+    }
+
     const payload = await req.json();
     console.log("DEBUG: Notifications DAO received payload:", JSON.stringify(payload));
 

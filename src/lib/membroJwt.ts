@@ -1,7 +1,22 @@
 import crypto from 'crypto'
 
 function getSecret(): string {
-  return process.env.MEMBRO_JWT_SECRET || process.env.NEXTAUTH_SECRET || 'membro-dev-secret-change-in-prod'
+  const secret = process.env.MEMBRO_JWT_SECRET || process.env.NEXTAUTH_SECRET
+  if (secret) return secret
+
+  // Sem segredo configurado, qualquer pessoa forjaria um token de qualquer
+  // membro (o id vem do `sub` assinado). Fora de desenvolvimento isso é uma
+  // falha crítica — preferimos o portal indisponível a autenticação forjável.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'MEMBRO_JWT_SECRET (ou NEXTAUTH_SECRET) não configurado. Defina um segredo forte no ambiente antes de subir o portal do membro.'
+    )
+  }
+
+  console.warn(
+    '[membroJwt] MEMBRO_JWT_SECRET ausente — usando segredo de desenvolvimento. NÃO use este valor em produção.'
+  )
+  return 'membro-dev-secret-change-in-prod'
 }
 
 function b64url(input: Buffer | string): string {

@@ -263,11 +263,10 @@ export default function MembroPerfil() {
     if (!isLoading && !session) navigate('/', { replace: true });
   }, [session, isLoading, navigate]);
 
-  // Ensure table exists + load like count for own profile
+  // Load like count for own profile (a tabela member_likes vem do schema Prisma
+  // e é garantida pela própria rota /curtir — não há setup anônimo)
   useEffect(() => {
     if (!session?.member_token || !session?.member?.id) return;
-    // One-time table setup (idempotent)
-    fetch('/api/membro/setup-likes').catch(() => {});
     // Load how many people liked this member
     fetch(`/api/membro/curtir?token=${encodeURIComponent(session.member_token)}&liked_id=${session.member.id}`)
       .then(r => r.json()).then(d => { setLikeCount(d.total ?? 0); }).catch(() => {});

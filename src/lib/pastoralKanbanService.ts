@@ -376,9 +376,13 @@ export async function movePastoralAttendance(params: {
   }).catch(() => {});
 
   // Trigger WhatsApp status update notification via backend API
+  const notifyToken = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') : null;
   fetch('/api/pastoral/notify-move', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(notifyToken ? { Authorization: `Bearer ${notifyToken}` } : {}),
+    },
     body: JSON.stringify({
       attendanceId: params.attendanceId,
       targetColumnName: params.targetColumnName || params.targetColumnKey,

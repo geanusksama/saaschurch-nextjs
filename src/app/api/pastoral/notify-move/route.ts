@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendTextViaZApi } from "@/lib/whatsappSendService";
+import { withAuth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  return withAuth(req, async () => {
   try {
     const body = await req.json().catch(() => ({}));
     const { attendanceId, targetColumnName, targetColumnKey, churchId, origin } = body;
@@ -92,4 +94,5 @@ export async function POST(req: NextRequest) {
     console.error("[POST /api/pastoral/notify-move]", e);
     return NextResponse.json({ error: "Erro interno no servidor." }, { status: 500 });
   }
+  });
 }

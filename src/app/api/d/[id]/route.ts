@@ -6,18 +6,22 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  if (!id) {
+  // Só o padrão do nome gerado (recibo_<id>_<timestamp>): sem barras nem "..",
+  // para não permitir montar um caminho arbitrário dentro do bucket.
+  if (!id || !/^[A-Za-z0-9._-]+$/.test(id)) {
     return new NextResponse('ID inválido', { status: 400 })
   }
 
-  // Get the public URL of the receipt PDF
+  // URL assinada de curta duração em vez de link público permanente: o recibo
+  // deixa de ficar acessível para sempre por quem adivinhar o nome do arquivo.
   const filePath = `recibos/${id}.pdf`
-  const { data } = supabaseAdmin.storage.from('dados').getPublicUrl(filePath)
+  const { data, error } = await supabaseAdmin.storage
+    .from('dados')
+    .createSignedUrl(filePath, 60)
 
-  if (!data?.publicUrl) {
+  if (error || !data?.signedUrl) {
     return new NextResponse('Arquivo não encontrado', { status: 404 })
   }
 
-  // Redirect the user to the public URL for download
-  return NextResponse.redirect(data.publicUrl)
+  return NextResponse.redirect(data.signedUrl)
 }
