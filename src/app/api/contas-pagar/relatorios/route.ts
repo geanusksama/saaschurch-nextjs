@@ -5,6 +5,7 @@ import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
 import { escopoDeIgrejas } from "@/lib/contasPagarScope";
 import { NAO_INFORMADO } from "@/lib/contasPagarRules";
+import { lerFiltroColuna } from "@/lib/contasPagarFiltros";
 
 /**
  * GET /api/contas-pagar/relatorios — tudo o que a aba 2 da tela desenha.
@@ -50,18 +51,39 @@ export async function GET(req: NextRequest) {
     const vencAte = sp.get("vencimentoAte");
     if (vencDe) cond.push(Prisma.sql`p.data_vencimento >= ${vencDe}::date`);
     if (vencAte) cond.push(Prisma.sql`p.data_vencimento <= ${vencAte}::date`);
-    const credorId = sp.get("credorId");
-    if (credorId) cond.push(Prisma.sql`c.credor_id = ${credorId}::uuid`);
-    const planoDeContaId = sp.get("planoDeContaId");
-    if (planoDeContaId) cond.push(Prisma.sql`c.plano_de_conta_id = ${planoDeContaId}::uuid`);
-    const departamentoId = sp.get("departamentoId");
-    if (departamentoId) {
-      cond.push(
-        departamentoId === "sem"
-          ? Prisma.sql`c.departamento_id IS NULL`
-          : Prisma.sql`c.departamento_id = ${departamentoId}::uuid`
-      );
+    // Filtros de coluna: lista de ids, com "sem" para o campo não informado.
+    for (const [chave, coluna] of [
+      ["credorId", "credor_id"],
+      ["planoDeContaId", "plano_de_conta_id"],
+      ["departamentoId", "departamento_id"],
+      ["bancoId", "banco_id"],
+    ] as const) {
+      const filtro = lerFiltroColuna(sp.get(chave));
+      if (!filtro) continue;
+      const campo = Prisma.raw(`c.${coluna}`);
+      const lista = filtro.ids.length
+        ? Prisma.join(filtro.ids.map((id) => Prisma.sql`${id}::uuid`))
+        : null;
+      if (filtro.incluiSem && lista) {
+        cond.push(Prisma.sql`(${campo} IS NULL OR ${campo} IN (${lista}))`);
+      } else if (filtro.incluiSem) {
+        cond.push(Prisma.sql`${campo} IS NULL`);
+      } else if (lista) {
+        cond.push(Prisma.sql`${campo} IN (${lista})`);
+      }
     }
+    if (sp.get("parceladas") === "1") cond.push(Prisma.sql`c.numero_parcelas > 1`);
+
+    // Os CARDS do topo (total, já pago, em aberto, vencido, saldo residual)
+    // resumem o dinheiro do período — eles ignoram o filtro de status, que serve
+    // para recortar a LISTA. Sem isso, marcar o chip "Pendente" zerava o "já
+    // pago" (parcela pendente tem pago = 0 por definição) e o "vencido", mesmo
+    // com parcela paga e parcela atrasada visíveis na mesma tela.
+    //
+    // Os gráficos da aba Relatórios continuam com o filtro completo: lá a
+    // quebra por status é justamente o assunto.
+    const filtroSemStatus = Prisma.join(cond, " AND ");
+
     const status = sp.get("status");
     if (status) {
       const lista = Prisma.join(status.split(",").filter(Boolean).map((s) => Prisma.sql`${s}`));
@@ -69,7 +91,7 @@ export async function GET(req: NextRequest) {
     }
     const filtro = Prisma.join(cond, " AND ");
 
-    const [porStatus, porTipo, porDepartamento, projecao, saldoResidual, evolucao, totais] =
+    const [porStatus, porTipo, porDepartamento, projecao, saldoResidual, evolucao, totais, vencidoRows] =
       await Promise.all([
         prisma.$queryRaw`
           SELECT p.status,
@@ -161,10 +183,17 @@ export async function GET(req: NextRequest) {
                  COALESCE(SUM(p.valor_parcela), 0)::numeric AS total,
                  COALESCE(SUM(p.valor_pago), 0)::numeric    AS pago,
                  COALESCE(SUM(p.valor_saldo), 0)::numeric   AS saldo,
-                 COALESCE(SUM(p.valor_saldo) FILTER (WHERE p.data_vencimento < CURRENT_DATE), 0)::numeric AS vencido,
                  COALESCE(SUM(p.valor_saldo) FILTER (WHERE p.valor_pago > 0), 0)::numeric AS saldo_residual
           ${origem}
-          WHERE ${filtro}
+          WHERE ${filtroSemStatus}
+        `,
+        // Vencido sai numa consulta própria, sem o filtro de status.
+        prisma.$queryRaw`
+          SELECT COALESCE(SUM(p.valor_saldo), 0)::numeric AS vencido
+          ${origem}
+          WHERE ${filtroSemStatus}
+            AND p.data_vencimento < CURRENT_DATE
+            AND p.valor_saldo > 0
         `,
       ]);
 
@@ -176,7 +205,13 @@ export async function GET(req: NextRequest) {
         projecao,
         saldoResidual,
         evolucaoMensal: Array.isArray(evolucao) ? [...(evolucao as unknown[])].reverse() : [],
-        totais: Array.isArray(totais) ? ((totais as unknown[])[0] ?? null) : null,
+        // O vencido vem de fora do recorte de status (ver filtroSemStatus).
+        totais: (() => {
+          const base = Array.isArray(totais) ? ((totais as unknown[])[0] ?? null) : null;
+          if (!base) return null;
+          const linha = Array.isArray(vencidoRows) ? ((vencidoRows as unknown[])[0] as Record<string, unknown> | undefined) : undefined;
+          return { ...(base as Record<string, unknown>), vencido: linha?.vencido ?? 0 };
+        })(),
       })
     );
   });

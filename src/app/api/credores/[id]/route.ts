@@ -37,12 +37,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json().catch(() => ({}));
     const data: Record<string, unknown> = {};
     const campos = [
-      "nome", "tipoPessoa", "cpfCnpj", "tipoCredor", "memberId", "bancoId", "bancoNome",
+      "nome", "tipoPessoa", "cpfCnpj", "tipoCredor", "memberId", "favorecidoChurchId",
+      "bancoId", "bancoNome",
       "agencia", "conta", "tipoConta", "chavePix", "telefone", "email", "observacoes",
     ] as const;
     for (const campo of campos) {
       if (body[campo] !== undefined) data[campo] = body[campo] === "" ? null : body[campo];
     }
+    // Igreja e membro são excludentes: marcar igreja limpa o vínculo de membro.
+    if (data.favorecidoChurchId) data.memberId = null;
     if (body.ativo !== undefined) data.ativo = !!body.ativo;
     if (!Object.keys(data).length) {
       return NextResponse.json({ error: "Nada para atualizar." }, { status: 400 });

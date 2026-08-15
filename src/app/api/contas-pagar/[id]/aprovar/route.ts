@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { assertChurchAccess, serializeBigInts } from "@/lib/helpers";
-import { podeAprovar } from "@/lib/contasPagarScope";
+import { serializeBigInts } from "@/lib/helpers";
+import { podeAcessarIgreja, podeAprovar } from "@/lib/contasPagarScope";
 
 /**
  * POST /api/contas-pagar/[id]/aprovar
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       select: { id: true, churchId: true, statusAprovacao: true },
     });
     if (!conta) return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
-    if (!(await assertChurchAccess(user, conta.churchId, prisma))) {
+    if (!(await podeAcessarIgreja(user, conta.churchId, prisma))) {
       return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     }
     if (conta.statusAprovacao === "NAO_REQUER") {

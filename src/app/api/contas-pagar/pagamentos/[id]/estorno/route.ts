@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { assertChurchAccess, serializeBigInts } from "@/lib/helpers";
+import { serializeBigInts } from "@/lib/helpers";
+import { podeAcessarIgreja } from "@/lib/contasPagarScope";
 import { RegraContasPagarError, TX_CONTAS_PAGAR, estornarPagamento } from "@/lib/contasPagarService";
 
 /**
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       select: { id: true, churchId: true },
     });
     if (!pagamento) return NextResponse.json({ error: "Pagamento não encontrado." }, { status: 404 });
-    if (!(await assertChurchAccess(user, pagamento.churchId, prisma))) {
+    if (!(await podeAcessarIgreja(user, pagamento.churchId, prisma))) {
       return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     }
 

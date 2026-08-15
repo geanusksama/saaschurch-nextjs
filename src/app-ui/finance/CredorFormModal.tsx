@@ -24,7 +24,7 @@ type Row = any;
 const VAZIO = {
   churchId: '', nome: '', tipoPessoa: 'PF', tipoCredor: '', cpfCnpj: '',
   telefone: '', email: '', bancoId: '', agencia: '', conta: '', chavePix: '',
-  memberId: '', observacoes: '',
+  memberId: '', favorecidoChurchId: '', observacoes: '',
 };
 
 const campoCls =
@@ -272,8 +272,34 @@ export function CredorFormModal({
             </div>
           </div>
 
-          {/* Vínculo com o membro: faz o extrato do credor casar com o perfil. */}
+          {/* Igreja favorecida: repasse, ajuda e aluguel entre igrejas. Sem este
+              vínculo o livro caixa gravaria só o nome, solto. Vale um vínculo
+              por credor — igreja e membro são excludentes. */}
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+            <label className={rotuloCls}>Quem recebe é uma igreja? (opcional)</label>
+            <select
+              value={form.favorecidoChurchId}
+              onChange={(e) => {
+                const id = e.target.value;
+                const igreja = igrejas.find((c: Row) => c.id === id);
+                setForm((f) => ({
+                  ...f,
+                  favorecidoChurchId: id,
+                  nome: id ? (igreja?.name ?? f.nome) : f.nome,
+                  // Igreja e membro não convivem: escolher um limpa o outro.
+                  memberId: id ? '' : f.memberId,
+                }));
+                if (id) setMembroSelecionado(null);
+              }}
+              className={campoCls}
+            >
+              <option value="">Não — é pessoa ou empresa</option>
+              {igrejas.map((c: Row) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          {/* Vínculo com o membro: faz o extrato do credor casar com o perfil. */}
+          <div className={`rounded-xl border border-slate-200 dark:border-slate-700 p-3 ${form.favorecidoChurchId ? 'opacity-50 pointer-events-none' : ''}`}>
             <label className={rotuloCls}>Vincular a um membro (opcional)</label>
             {membroSelecionado ? (
               <div className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2">

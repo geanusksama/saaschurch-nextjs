@@ -217,6 +217,8 @@ model Church {
   bancos                 Banco[]
   departamentos          Departamento[]
   credores               Credor[]
+  /// Contas a pagar em que ESTA igreja é a favorecida (credor do tipo IGREJA).
+  credoresComoFavorecida Credor[]            @relation("CredorIgrejaFavorecida")
   contasPagar            ContaPagar[]
   parcelasContasPagar    ParcelaContaPagar[]
   pagamentosParcela      PagamentoParcela[]
@@ -922,26 +924,26 @@ model LivroCaixa {
 /// Bancos e caixas da igreja. Cadastro auxiliar global, no mesmo espírito de
 /// plano_de_contas / forma_pagamento (ver src/lib/lookupRegistry.ts).
 model Banco {
-  id        String  @id @default(uuid()) @db.Uuid
-  nome      String  @db.VarChar(150)
+  id             String  @id @default(uuid()) @db.Uuid
+  nome           String  @db.VarChar(150)
   /// Código curto de busca dentro do campo ("01", "02"). Texto, não número: o
   /// identificador de verdade é o id. Único por campo.
-  codigo    String? @db.VarChar(10)
+  codigo         String? @db.VarChar(10)
   /// Número FEBRABAN da instituição (341 = Itaú). Diferente do código de busca,
   /// que identifica a CONTA e não o banco.
   codigoFebraban String? @map("codigo_febraban") @db.VarChar(10)
-  agencia   String? @db.VarChar(20)
-  conta     String? @db.VarChar(30)
+  agencia        String? @db.VarChar(20)
+  conta          String? @db.VarChar(30)
   /// CORRENTE | POUPANCA | CAIXA_ESPECIE | APLICACAO
-  tipoConta String? @map("tipo_conta") @db.VarChar(30)
-  chavePix  String? @map("chave_pix") @db.VarChar(255)
-  titular   String? @db.VarChar(255)
-  ativo     Boolean @default(true)
+  tipoConta      String? @map("tipo_conta") @db.VarChar(30)
+  chavePix       String? @map("chave_pix") @db.VarChar(255)
+  titular        String? @db.VarChar(255)
+  ativo          Boolean @default(true)
   /// Pré-selecionado nos lançamentos novos, para que nunca nasçam sem banco.
-  isDefault Boolean @default(false) @map("is_default")
+  isDefault      Boolean @default(false) @map("is_default")
   /// Isolamento: o banco de um campo não aparece para outro.
-  campoId   String? @map("campo_id") @db.Uuid
-  churchId  String? @map("church_id") @db.Uuid
+  campoId        String? @map("campo_id") @db.Uuid
+  churchId       String? @map("church_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -980,10 +982,10 @@ model Departamento {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  campo        Campo?        @relation(fields: [campoId], references: [id], onDelete: Cascade)
-  church       Church?       @relation(fields: [churchId], references: [id], onDelete: SetNull)
-  livroCaixa   LivroCaixa[]
-  contas       ContaPagar[]
+  campo      Campo?       @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  church     Church?      @relation(fields: [churchId], references: [id], onDelete: SetNull)
+  livroCaixa LivroCaixa[]
+  contas     ContaPagar[]
 
   @@index([ativo])
   @@index([churchId])
@@ -1002,20 +1004,20 @@ model Departamento {
 /// A tabela é anterior a este módulo e continua sendo mantida pelo CRUD
 /// genérico de listas (Configurações › Plano de Contas).
 model PlanoDeConta {
-  id                String   @id @default(uuid()) @db.Uuid
-  legacyId          Int?     @map("legacy_id")
+  id               String   @id @default(uuid()) @db.Uuid
+  legacyId         Int?     @map("legacy_id")
   /// RECEITA | DESPESA
-  tipo              String?  @db.VarChar(50)
-  nome              String?  @db.VarChar(255)
-  codigo            String?  @db.VarChar(50)
-  ativo             Boolean? @default(true)
-  consideraDizimo   Boolean? @map("considera_dizimo")
-  disponivelIgreja  Boolean? @map("disponivel_igreja")
-  disponivelMembro  Boolean? @map("disponivel_membro")
-  disponivelPf      Boolean? @map("disponivel_pf")
-  disponivelPj      Boolean? @map("disponivel_pj")
-  campo             String?  @db.VarChar(255)
-  churchId          String?  @map("church_id") @db.Uuid
+  tipo             String?  @db.VarChar(50)
+  nome             String?  @db.VarChar(255)
+  codigo           String?  @db.VarChar(50)
+  ativo            Boolean? @default(true)
+  consideraDizimo  Boolean? @map("considera_dizimo")
+  disponivelIgreja Boolean? @map("disponivel_igreja")
+  disponivelMembro Boolean? @map("disponivel_membro")
+  disponivelPf     Boolean? @map("disponivel_pf")
+  disponivelPj     Boolean? @map("disponivel_pj")
+  campo            String?  @db.VarChar(255)
+  churchId         String?  @map("church_id") @db.Uuid
 
   createdAt DateTime? @default(now()) @map("created_at")
   updatedAt DateTime? @updatedAt @map("updated_at")
@@ -1027,64 +1029,70 @@ model PlanoDeConta {
 
 /// Credores/beneficiários: pastores, obreiros, fornecedores, prestadores.
 model Credor {
-  id          String  @id @default(uuid()) @db.Uuid
-  churchId    String  @map("church_id") @db.Uuid
-  nome        String  @db.VarChar(255)
+  id                 String  @id @default(uuid()) @db.Uuid
+  churchId           String  @map("church_id") @db.Uuid
+  nome               String  @db.VarChar(255)
   /// PF | PJ
-  tipoPessoa  String  @default("PF") @map("tipo_pessoa") @db.VarChar(10)
-  cpfCnpj     String? @map("cpf_cnpj") @db.VarChar(20)
+  tipoPessoa         String  @default("PF") @map("tipo_pessoa") @db.VarChar(10)
+  cpfCnpj            String? @map("cpf_cnpj") @db.VarChar(20)
   /// PASTOR | OBREIRO | FORNECEDOR | PRESTADOR | ORGAO_PUBLICO | OUTRO
-  tipoCredor  String  @default("FORNECEDOR") @map("tipo_credor") @db.VarChar(30)
+  tipoCredor         String  @default("FORNECEDOR") @map("tipo_credor") @db.VarChar(30)
   /// Preenchido quando o credor também é membro — liga o extrato ao perfil.
-  memberId    String? @map("member_id") @db.Uuid
-  bancoId     String? @map("banco_id") @db.Uuid
-  bancoNome   String? @map("banco_nome") @db.VarChar(150)
-  agencia     String? @db.VarChar(20)
-  conta       String? @db.VarChar(30)
-  tipoConta   String? @map("tipo_conta") @db.VarChar(30)
-  chavePix    String? @map("chave_pix") @db.VarChar(255)
-  telefone    String? @db.VarChar(30)
-  email       String? @db.VarChar(255)
-  observacoes String? @db.Text
-  ativo       Boolean @default(true)
+  memberId           String? @map("member_id") @db.Uuid
+  /// Preenchido quando quem recebe é uma IGREJA (repasse, ajuda, aluguel entre
+  /// igrejas). É o equivalente do `memberId` para o favorecido do tipo igreja:
+  /// sem ele o livro caixa gravaria só o nome, solto.
+  favorecidoChurchId String? @map("favorecido_church_id") @db.Uuid
+  bancoId            String? @map("banco_id") @db.Uuid
+  bancoNome          String? @map("banco_nome") @db.VarChar(150)
+  agencia            String? @db.VarChar(20)
+  conta              String? @db.VarChar(30)
+  tipoConta          String? @map("tipo_conta") @db.VarChar(30)
+  chavePix           String? @map("chave_pix") @db.VarChar(255)
+  telefone           String? @db.VarChar(30)
+  email              String? @db.VarChar(255)
+  observacoes        String? @db.Text
+  ativo              Boolean @default(true)
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  church Church       @relation(fields: [churchId], references: [id], onDelete: Cascade)
-  member Member?      @relation("CredorMember", fields: [memberId], references: [id], onDelete: SetNull)
-  banco  Banco?       @relation(fields: [bancoId], references: [id], onDelete: SetNull)
-  contas ContaPagar[]
+  church           Church       @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  member           Member?      @relation("CredorMember", fields: [memberId], references: [id], onDelete: SetNull)
+  igrejaFavorecida Church?      @relation("CredorIgrejaFavorecida", fields: [favorecidoChurchId], references: [id], onDelete: SetNull)
+  banco            Banco?       @relation(fields: [bancoId], references: [id], onDelete: SetNull)
+  contas           ContaPagar[]
 
   @@index([churchId])
   @@index([memberId])
+  @@index([favorecidoChurchId])
   @@map("credores")
 }
 
 /// O título da despesa (registro-mãe). `statusGeral` é DERIVADO das parcelas —
 /// nenhuma rota o edita à mão.
 model ContaPagar {
-  id                     String  @id @default(uuid()) @db.Uuid
-  churchId               String  @map("church_id") @db.Uuid
+  id                     String    @id @default(uuid()) @db.Uuid
+  churchId               String    @map("church_id") @db.Uuid
   /// Sequencial por igreja: CP-2026-000123
-  numero                 String  @db.VarChar(30)
-  planoDeContaId         String? @map("plano_de_conta_id") @db.Uuid
-  credorId               String? @map("credor_id") @db.Uuid
-  departamentoId         String? @map("departamento_id") @db.Uuid
-  bancoId                String? @map("banco_id") @db.Uuid
-  descricao              String  @db.VarChar(500)
-  valorTotal             Decimal @map("valor_total") @db.Decimal(15, 2)
-  dataEmissao            DateTime @map("data_emissao") @db.Date
-  formaPagamentoPrevista String? @map("forma_pagamento_prevista") @db.VarChar(30)
-  numeroDocumento        String? @map("numero_documento") @db.VarChar(100)
-  recorrente             Boolean @default(false)
-  parcelado              Boolean @default(false)
-  numeroParcelas         Int     @default(1) @map("numero_parcelas")
+  numero                 String    @db.VarChar(30)
+  planoDeContaId         String?   @map("plano_de_conta_id") @db.Uuid
+  credorId               String?   @map("credor_id") @db.Uuid
+  departamentoId         String?   @map("departamento_id") @db.Uuid
+  bancoId                String?   @map("banco_id") @db.Uuid
+  descricao              String    @db.VarChar(500)
+  valorTotal             Decimal   @map("valor_total") @db.Decimal(15, 2)
+  dataEmissao            DateTime  @map("data_emissao") @db.Date
+  formaPagamentoPrevista String?   @map("forma_pagamento_prevista") @db.VarChar(30)
+  numeroDocumento        String?   @map("numero_documento") @db.VarChar(100)
+  recorrente             Boolean   @default(false)
+  parcelado              Boolean   @default(false)
+  numeroParcelas         Int       @default(1) @map("numero_parcelas")
   /// PENDENTE | PARCIAL | PAGO | ATRASADO | CANCELADA
-  statusGeral            String  @default("PENDENTE") @map("status_geral") @db.VarChar(20)
+  statusGeral            String    @default("PENDENTE") @map("status_geral") @db.VarChar(20)
   /// NAO_REQUER | AGUARDANDO | APROVADO | REPROVADO
-  statusAprovacao        String  @default("NAO_REQUER") @map("status_aprovacao") @db.VarChar(20)
+  statusAprovacao        String    @default("NAO_REQUER") @map("status_aprovacao") @db.VarChar(20)
   aprovadoPor            String?   @map("aprovado_por") @db.Uuid
   dataAprovacao          DateTime? @map("data_aprovacao") @db.Timestamptz(6)
   motivoReprovacao       String?   @map("motivo_reprovacao") @db.Text
@@ -1145,19 +1153,19 @@ model ParcelaContaPagar {
 /// é o que permite pagar 60% do pastor num mês e o resto meses depois sem
 /// criar parcela nova. Estorno é lógico: o registro nunca some do histórico.
 model PagamentoParcela {
-  id             String   @id @default(uuid()) @db.Uuid
-  churchId       String   @map("church_id") @db.Uuid
-  parcelaId      String   @map("parcela_id") @db.Uuid
-  valorPago      Decimal  @map("valor_pago") @db.Decimal(15, 2)
-  dataPagamento  DateTime @map("data_pagamento") @db.Date
-  formaPagamento String?  @map("forma_pagamento") @db.VarChar(30)
-  bancoId        String?  @map("banco_id") @db.Uuid
-  comprovanteUrl String?  @map("comprovante_url") @db.VarChar(500)
-  observacao     String?  @db.Text
+  id             String    @id @default(uuid()) @db.Uuid
+  churchId       String    @map("church_id") @db.Uuid
+  parcelaId      String    @map("parcela_id") @db.Uuid
+  valorPago      Decimal   @map("valor_pago") @db.Decimal(15, 2)
+  dataPagamento  DateTime  @map("data_pagamento") @db.Date
+  formaPagamento String?   @map("forma_pagamento") @db.VarChar(30)
+  bancoId        String?   @map("banco_id") @db.Uuid
+  comprovanteUrl String?   @map("comprovante_url") @db.VarChar(500)
+  observacao     String?   @db.Text
   /// Lançamento gerado no livro caixa (baixa contábil). Sem FK de propósito:
   /// o lançamento pode ser removido por outro fluxo sem arrastar o histórico.
-  livroCaixaId   String?  @map("livro_caixa_id") @db.Uuid
-  registradoPor  String?  @map("registrado_por") @db.Uuid
+  livroCaixaId   String?   @map("livro_caixa_id") @db.Uuid
+  registradoPor  String?   @map("registrado_por") @db.Uuid
   estornadoEm    DateTime? @map("estornado_em") @db.Timestamptz(6)
   estornadoPor   String?   @map("estornado_por") @db.Uuid
   motivoEstorno  String?   @map("motivo_estorno") @db.Text
@@ -2137,31 +2145,31 @@ model KanMatrixRule {
   ageMax      Int     @default(0) @map("age_max")
   isActive    Boolean @default(true) @map("is_active")
 
-  changeStatus        Boolean @default(false) @map("change_status")
-  newStatus           String? @map("new_status") @db.VarChar(60)
-  changeTitle         Boolean @default(false) @map("change_title")
-  newTitle            String? @map("new_title") @db.VarChar(60)
+  changeStatus         Boolean @default(false) @map("change_status")
+  newStatus            String? @map("new_status") @db.VarChar(60)
+  changeTitle          Boolean @default(false) @map("change_title")
+  newTitle             String? @map("new_title") @db.VarChar(60)
   /// Com esta flag, o título não vem de `newTitle`: vem do ÚLTIMO título do
   /// histórico do membro. É o que faz a readmissão devolver quem já foi pastor
   /// como pastor, em vez de congregado. `newTitle` vira só o fallback de quem
   /// não tem histórico. Ver src/lib/tituloEclesiasticoHistorico.ts
   restorePreviousTitle Boolean @default(false) @map("restore_previous_title")
-  doesTransfer        Boolean @default(false) @map("does_transfer")
-  insertOccurrence    Boolean @default(true) @map("insert_occurrence")
-  occurrenceName      String? @map("occurrence_name") @db.VarChar(120)
-  message             String? @db.VarChar(255)
-  allowMessage        Boolean @default(false) @map("allow_message")
-  allowDocModel       Boolean @default(false) @map("allow_doc_model")
-  docModel            String? @map("doc_model") @db.VarChar(120)
-  allowAttachments    Boolean @default(false) @map("allow_attachments")
-  requireDocument     Boolean @default(false) @map("require_document")
-  generatesCredential Boolean @default(false) @map("generates_credential")
-  credentialKind      String? @map("credential_kind") @db.VarChar(60)
-  credentialModel     String? @map("credential_model") @db.VarChar(60)
-  credentialValidity  String? @map("credential_validity") @db.VarChar(60)
-  servicoExtra        String? @map("servico_extra") @db.VarChar(60)
-  description         String? @db.VarChar(255)
-  stageId             Int?    @map("stage_id")
+  doesTransfer         Boolean @default(false) @map("does_transfer")
+  insertOccurrence     Boolean @default(true) @map("insert_occurrence")
+  occurrenceName       String? @map("occurrence_name") @db.VarChar(120)
+  message              String? @db.VarChar(255)
+  allowMessage         Boolean @default(false) @map("allow_message")
+  allowDocModel        Boolean @default(false) @map("allow_doc_model")
+  docModel             String? @map("doc_model") @db.VarChar(120)
+  allowAttachments     Boolean @default(false) @map("allow_attachments")
+  requireDocument      Boolean @default(false) @map("require_document")
+  generatesCredential  Boolean @default(false) @map("generates_credential")
+  credentialKind       String? @map("credential_kind") @db.VarChar(60)
+  credentialModel      String? @map("credential_model") @db.VarChar(60)
+  credentialValidity   String? @map("credential_validity") @db.VarChar(60)
+  servicoExtra         String? @map("servico_extra") @db.VarChar(60)
+  description          String? @db.VarChar(255)
+  stageId              Int?    @map("stage_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

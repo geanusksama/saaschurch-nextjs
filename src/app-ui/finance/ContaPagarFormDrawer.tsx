@@ -8,11 +8,15 @@
  * Nenhum dropdown daqui tem opção fixa — credores, tipos de despesa,
  * departamentos, bancos e formas de pagamento vêm dos cadastros.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { X, Loader2, CalendarClock, UserPlus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { X, Loader2, CalendarClock, UserPlus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
-import { formatarBRL, paraCentavos, paraReais, somarMeses } from '../../lib/contasPagarRules';
+import {
+  formatarBRL, paraCentavos, paraReais, somarMeses,
+  STATUS_PARCELA_CORES, STATUS_PARCELA_LABELS,
+} from '../../lib/contasPagarRules';
+import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { CredorFormModal } from './CredorFormModal';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,6 +33,8 @@ type Props = {
   onSalvo: () => void;
   /** Avisa a tela para recarregar a lista de credores após um cadastro novo. */
   onCredorCriado?: () => void;
+  /** Mudou algo sem fechar o drawer (exclusão de parcela, por exemplo). */
+  onMudou?: () => void;
 };
 
 function hoje() { return new Date().toISOString().slice(0, 10); }
@@ -42,7 +48,7 @@ export function rotuloComCodigo(item: { codigo?: string | null; nome: string }) 
 }
 
 export function ContaPagarFormDrawer({
-  contaId, credores, planosDespesa, departamentos, bancos, igrejas, onFechar, onSalvo, onCredorCriado,
+  contaId, credores, planosDespesa, departamentos, bancos, igrejas, onFechar, onSalvo, onCredorCriado, onMudou,
 }: Props) {
   const token = localStorage.getItem('mrm_token');
   const headers = useMemo<Record<string, string>>(
@@ -50,6 +56,15 @@ export function ContaPagarFormDrawer({
     [token]
   );
   const usuario = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; } })();
+
+  /**
+   * Perfil igreja (e secretaria/tesouraria) lança sempre na própria igreja —
+   * mesma regra do resto do sistema, conferida de novo no servidor. Aqui o
+   * campo só fica travado para não oferecer o que seria recusado.
+   */
+  const papel = String(usuario.roleName || '').toLowerCase();
+  const soIgrejaPropria = usuario.profileType === 'church'
+    || papel.includes('secret') || papel.includes('tesour');
 
   const [churchId, setChurchId] = useState<string>(usuario.churchId || '');
   const [descricao, setDescricao] = useState('');
@@ -68,6 +83,10 @@ export function ContaPagarFormDrawer({
   const [observacoes, setObservacoes] = useState('');
 
   const [formas, setFormas] = useState<Row[]>([]);
+  /** Parcelas já gravadas (só na edição). A prévia do lançamento é outra coisa. */
+  const [parcelas, setParcelas] = useState<Row[]>([]);
+  const [parcelaExcluir, setParcelaExcluir] = useState<Row | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
   const [parcelasEditadas, setParcelasEditadas] = useState<{ valor: string; vencimento: string }[] | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [carregando, setCarregando] = useState(Boolean(contaId));
@@ -103,13 +122,15 @@ export function ContaPagarFormDrawer({
     })();
   }, [headers]);
 
-  useEffect(() => {
+  /** Recarrega o título — inclusive as parcelas, que a edição lista e permite excluir. */
+  const carregarConta = useCallback(async () => {
     if (!contaId) return;
-    (async () => {
+    {
       try {
         const r = await fetch(`${apiBase}/contas-pagar/${contaId}`, { headers });
         if (!r.ok) throw new Error('Não foi possível carregar a conta.');
         const c = await r.json();
+        setParcelas(c.parcelas ?? []);
         setChurchId(c.churchId);
         setDescricao(c.descricao ?? '');
         setCredorId(c.credorId ?? '');
@@ -130,8 +151,10 @@ export function ContaPagarFormDrawer({
       } finally {
         setCarregando(false);
       }
-    })();
+    }
   }, [contaId, headers]);
+
+  useEffect(() => { (async () => { await carregarConta(); })(); }, [carregarConta]);
 
   // Pré-seleciona os cadastros marcados como padrão.
   useEffect(() => {
@@ -167,6 +190,36 @@ export function ContaPagarFormDrawer({
       copia[indice] = { ...copia[indice], [campo]: valor };
       return copia;
     });
+  }
+
+  /** Pagamento não estornado trava a exclusão — o servidor repete a checagem. */
+  function temPagamento(p: Row) {
+    return (p.pagamentos ?? []).some((pg: Row) => !pg.estornadoEm);
+  }
+
+  async function excluirParcela() {
+    if (!parcelaExcluir) return;
+    setExcluindo(true);
+    try {
+      const res = await fetch(`${apiBase}/contas-pagar/parcelas/${parcelaExcluir.id}`, {
+        method: 'DELETE', headers,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Falha ao excluir a parcela.');
+      toast.success(
+        json.totalAjustado
+          ? `Parcela excluída. Restaram ${json.parcelasRestantes} parcela(s) e o total da conta passou a ${formatarBRL(json.valorTotal)}.`
+          : `Parcela excluída. O valor foi redistribuído entre as ${json.parcelasRestantes} parcelas restantes.`
+      );
+      setParcelaExcluir(null);
+      await carregarConta();
+      onMudou?.();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setExcluindo(false);
+    }
   }
 
   async function salvar() {
@@ -221,7 +274,7 @@ export function ContaPagarFormDrawer({
             </h2>
             {contaId && (
               <p className="text-xs text-slate-500">
-                Valor e parcelamento não mudam aqui — para isso, estorne os pagamentos e lance de novo.
+                O valor total não é editável aqui. Dá para excluir parcelas na lista abaixo — o valor é redistribuído nas restantes.
               </p>
             )}
           </div>
@@ -248,9 +301,16 @@ export function ContaPagarFormDrawer({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={rotulo}>Igreja *</label>
-                <select value={churchId} onChange={(e) => setChurchId(e.target.value)} className={campo} disabled={!!contaId}>
+                <select
+                  value={churchId}
+                  onChange={(e) => setChurchId(e.target.value)}
+                  className={`${campo} disabled:opacity-70`}
+                  disabled={!!contaId || soIgrejaPropria}
+                  title={soIgrejaPropria ? 'Seu perfil lança contas apenas na própria igreja' : undefined}
+                >
                   <option value="">Selecione...</option>
-                  {igrejas.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {(soIgrejaPropria ? igrejas.filter((c) => c.id === usuario.churchId) : igrejas)
+                    .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
@@ -380,6 +440,62 @@ export function ContaPagarFormDrawer({
               </>
             )}
 
+            {contaId && parcelas.length > 0 && (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 px-4 py-2">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    <CalendarClock className="h-4 w-4" /> Parcelas ({parcelas.length})
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500">
+                    Total {formatarBRL(paraReais(parcelas.reduce((s: number, p: Row) => s + paraCentavos(p.valorParcela), 0)))}
+                  </span>
+                </div>
+                <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                  {parcelas.map((p) => {
+                    const bloqueada = temPagamento(p);
+                    return (
+                      <div key={p.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+                        <span className="w-12 shrink-0 text-xs font-semibold text-slate-500">
+                          {p.numeroParcela}/{p.totalParcelas}
+                        </span>
+                        <span className="w-24 shrink-0 text-slate-600 dark:text-slate-300">
+                          {new Date(`${String(p.dataVencimento).slice(0, 10)}T00:00:00`).toLocaleDateString('pt-BR')}
+                        </span>
+                        <span className="flex-1 text-right font-semibold text-slate-900 dark:text-white">
+                          {formatarBRL(p.valorParcela)}
+                        </span>
+                        <span className="w-28 text-right text-xs text-slate-500">
+                          pago {formatarBRL(p.valorPago)}
+                        </span>
+                        <span className={`px-2 py-1 rounded text-[11px] font-semibold ${STATUS_PARCELA_CORES[p.status] ?? ''}`}>
+                          {STATUS_PARCELA_LABELS[p.status] ?? p.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setParcelaExcluir(p)}
+                          disabled={bloqueada || parcelas.length <= 1}
+                          title={
+                            bloqueada
+                              ? 'Estorne os pagamentos desta parcela antes de excluí-la'
+                              : parcelas.length <= 1
+                                ? 'Última parcela — cancele a conta inteira'
+                                : 'Excluir parcela e redistribuir o valor'
+                          }
+                          className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-30 disabled:hover:bg-transparent"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="px-4 py-2 text-[11px] text-slate-500 bg-slate-50 dark:bg-slate-800">
+                  Excluir uma parcela redistribui o valor dela entre as que sobram — o total da conta
+                  não muda. Parcelas com pagamento registrado ficam travadas: estorne o pagamento antes.
+                </p>
+              </div>
+            )}
+
             <div>
               <label className={rotulo}>Observações</label>
               <textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={3} className={campo} />
@@ -395,6 +511,24 @@ export function ContaPagarFormDrawer({
             </div>
           </div>
         )}
+      </div>
+
+      {/* O overlay do drawer fecha no clique; o diálogo precisa segurar o evento. */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <ConfirmDialog
+          open={Boolean(parcelaExcluir)}
+          title="Excluir parcela"
+          message={
+            parcelaExcluir
+              ? `Excluir a parcela ${parcelaExcluir.numeroParcela}/${parcelaExcluir.totalParcelas} (${formatarBRL(parcelaExcluir.valorParcela)})? O valor será redistribuído entre as ${parcelas.length - 1} parcelas restantes.`
+              : ''
+          }
+          confirmLabel="Excluir parcela"
+          variant="danger"
+          loading={excluindo}
+          onConfirm={excluirParcela}
+          onCancel={() => (excluindo ? null : setParcelaExcluir(null))}
+        />
       </div>
 
       {credorModalAberto && (

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
 import { escopoDeIgrejas } from "@/lib/contasPagarScope";
+import { condicaoDeColuna } from "@/lib/contasPagarFiltros";
 
 /**
  * GET /api/contas-pagar/parcelas — a visão do dia a dia da tesouraria
@@ -39,14 +40,20 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const credorId = sp.get("credorId");
-    if (credorId) contaWhere.credorId = credorId;
-    const planoDeContaId = sp.get("planoDeContaId");
-    if (planoDeContaId) contaWhere.planoDeContaId = planoDeContaId;
-    const departamentoId = sp.get("departamentoId");
-    if (departamentoId) contaWhere.departamentoId = departamentoId === "sem" ? null : departamentoId;
-    const bancoId = sp.get("bancoId");
-    if (bancoId) contaWhere.bancoId = bancoId === "sem" ? null : bancoId;
+    // Mesmos filtros de coluna da visão por título: lista de ids, com "sem"
+    // para o campo não informado.
+    const and: Record<string, unknown>[] = [];
+    for (const [chave, campo] of [
+      ["credorId", "credorId"],
+      ["planoDeContaId", "planoDeContaId"],
+      ["departamentoId", "departamentoId"],
+      ["bancoId", "bancoId"],
+    ] as const) {
+      const cond = condicaoDeColuna(sp.get(chave), campo);
+      if (cond) and.push(cond);
+    }
+    if (sp.get("parceladas") === "1") and.push({ numeroParcelas: { gt: 1 } });
+    if (and.length) contaWhere.AND = and;
     const statusAprovacao = sp.get("statusAprovacao");
     if (statusAprovacao) contaWhere.statusAprovacao = { in: statusAprovacao.split(",").filter(Boolean) };
 

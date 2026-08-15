@@ -13,6 +13,8 @@ function dadosDoCorpo(body: Record<string, unknown>) {
     cpfCnpj: texto(body.cpfCnpj),
     tipoCredor: texto(body.tipoCredor),
     memberId: texto(body.memberId),
+    // Igreja que recebe (repasse entre igrejas) — excludente com memberId.
+    favorecidoChurchId: texto(body.favorecidoChurchId),
     bancoId: texto(body.bancoId),
     bancoNome: texto(body.bancoNome),
     agencia: texto(body.agencia),
@@ -81,7 +83,8 @@ export async function POST(req: NextRequest) {
         tipoPessoa: dados.tipoPessoa ?? "PF",
         tipoCredor: dados.tipoCredor ?? "FORNECEDOR",
         cpfCnpj: dados.cpfCnpj ?? null,
-        memberId: dados.memberId ?? null,
+        memberId: dados.favorecidoChurchId ? null : (dados.memberId ?? null),
+        favorecidoChurchId: dados.favorecidoChurchId ?? null,
         bancoId: dados.bancoId ?? null,
         bancoNome: dados.bancoNome ?? null,
         agencia: dados.agencia ?? null,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Search, X, Plus, CheckCircle, AlertCircle, User, Users, Briefcase, Camera, RotateCcw, RefreshCw, Repeat2, Pencil, Check, PanelRightOpen, PanelRightClose, Sparkles } from 'lucide-react';
+import { ArrowLeft, Search, X, Plus, CheckCircle, AlertCircle, User, Users, Briefcase, Camera, RotateCcw, RefreshCw, Repeat2, Pencil, Check, PanelRightOpen, PanelRightClose, Sparkles, FileSearch, Link2, Link2Off } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
@@ -8,6 +8,7 @@ import { ReciboModal } from './ReciboModal';
 import type { ReciboRow } from './ReciboModal';
 import { MemberQuickCreateModal } from '../../components/app-ui/MemberQuickCreateModal';
 import { convertToJpeg } from '../../lib/imageConverter';
+import { PagarContaPagarModal } from './PagarContaPagarModal';
 
 // Ícone de Igreja (cruz)
 function ChurchIcon({ className }: { className?: string }) {
@@ -901,6 +902,22 @@ export default function LancamentoNew() {
   const [fotoPreview, setFotoPreview] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * Parcela do Contas a Pagar que esta despesa está quitando.
+   *
+   * Quando há parcela vinculada, o "Lançar Despesa" NÃO insere no livro caixa:
+   * manda o pagamento para a rota do Contas a Pagar, que abate a parcela e gera
+   * a baixa contábil na mesma transação. Inserir aqui também duplicaria a
+   * despesa. Várias parcelas somam no valor e são baixadas uma a uma.
+   */
+  const [vinculoCP, setVinculoCP] = useState<{
+    parcelaId: string;
+    contaNumero: string;
+    rotuloParcela: string;
+    saldo: number;
+  }[]>([]);
+  const [showContaPagarModal, setShowContaPagarModal] = useState(false);
+
   // ── UI state ──────────────────────────────────────────────────────────────
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [showChurchModal, setShowChurchModal] = useState(false);
@@ -1206,8 +1223,193 @@ export default function LancamentoNew() {
     setFotoPreview(URL.createObjectURL(f));
   }
 
+  // ── Contas a pagar ────────────────────────────────────────────────────────
+
+  /**
+   * Traz as parcelas escolhidas no modal para o formulário: tudo o que o Contas
+   * a Pagar já sabe (plano, documento, credor, banco, departamento, forma
+   * prevista, valor em aberto) chega preenchido; o operador completa o que
+   * falta e lança.
+   *
+   * Com mais de uma parcela o valor vem somado — e no pagamento cada uma é
+   * baixada individualmente, na ordem de vencimento.
+   */
+  function usarParcelaNoLancamento({ conta, parcelas }: { conta: any; parcelas: any[] }) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const saldoTotal = parcelas.reduce((s, p) => s + Number(p.valorSaldo ?? 0), 0);
+    setVinculoCP(parcelas.map((p) => ({
+      parcelaId: p.id,
+      contaNumero: conta.numero,
+      rotuloParcela: `${p.numeroParcela}/${p.totalParcelas}`,
+      saldo: Number(p.valorSaldo ?? 0),
+    })));
+
+    if (modo !== 'DESPESA') setModo('DESPESA');
+
+    // Data do lançamento: o vencimento da parcela mais antiga só entra quando
+    // já venceu — pagar hoje algo que vence em novembro é lançamento de hoje.
+    const vencimento = String(parcelas[0]?.dataVencimento ?? '').slice(0, 10);
+    if (vencimento && vencimento < dataLancamento) setDataLancamento(vencimento);
+    if (vencimento) {
+      const [ano, mes] = vencimento.split('-');
+      if (ano && mes) setReferencia(`${mes}/${ano}`);
+    }
+
+    // Tipo de documento: se a conta informou um, casa pelo nome.
+    const tipoDoc = tiposDocs.find((t) => t.nome === conta.tipoDocumento);
+    if (tipoDoc) setTipoDocId(tipoDoc.id);
+
+    const plano = planos.find((p) => p.nome === conta.planoDeConta?.nome);
+    if (plano) setPlanoId(plano.id);
+
+    const forma = formas.find((f) => f.nome === conta.formaPagamentoPrevista);
+    if (forma) setFormaId(forma.id);
+
+    // Documento: número da conta + parcela(s). É por ele que se acha o pagamento
+    // no livro caixa e se volta para o título de origem — o número do documento
+    // da nota fica na conta, não aqui.
+    const rotulos = parcelas.map((p) => `${p.numeroParcela}/${p.totalParcelas}`).join(', ');
+    setNumDoc(`${conta.numero} ${rotulos}`);
+
+    if (conta.bancoId) setBancoId(conta.bancoId);
+    if (conta.departamentoId) setDepartamentoId(conta.departamentoId);
+
+    // O credor vira o favorecido, com o mesmo vocabulário da tela: membro traz
+    // member_id, nome do cadastro e ROL (dados que o livro caixa não pode
+    // perder); pessoa jurídica traz nome e CNPJ; o resto entra como não membro.
+    const credor = conta.credor;
+    if (credor?.favorecidoChurchId) {
+      setTipoPessoa('IGREJA');
+      setFavorecidoId(credor.favorecidoChurchId);
+      setFavorecidoNome(credor.igrejaFavorecida?.name || credor.nome || '');
+      setFavorecidoRol(null);
+      setNaoMembroNome('');
+    } else if (credor?.memberId) {
+      setTipoPessoa('MEMBRO');
+      setFavorecidoId(credor.memberId);
+      setFavorecidoNome(credor.member?.fullName || credor.nome || '');
+      setFavorecidoRol(credor.member?.rol != null ? String(credor.member.rol) : null);
+      setNaoMembroNome('');
+    } else if (credor?.tipoPessoa === 'PJ') {
+      setTipoPessoa('PJ');
+      setPjNome(credor.nome ?? '');
+      setPjDoc(credor.cpfCnpj ?? '');
+      setFavorecidoId('');
+      setFavorecidoNome('');
+      setFavorecidoRol(null);
+    } else if (credor?.nome) {
+      setTipoPessoa('NAO_MEMBRO');
+      setNaoMembroNome(credor.nome);
+      setFavorecidoId('');
+      setFavorecidoNome('');
+      setFavorecidoRol(null);
+    }
+
+    setValor(saldoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    if (!obs.trim()) setObs(conta.descricao ?? '');
+    setShowContaPagarModal(false);
+    setError('');
+  }
+
+  /**
+   * Registra o pagamento das parcelas vinculadas.
+   *
+   * Quem grava é o Contas a Pagar: cada parcela recebe seu próprio pagamento,
+   * com a baixa no livro caixa feita na mesma transação. É a mesma mecânica da
+   * tela de Contas a Pagar — aqui só muda a porta de entrada.
+   *
+   * O valor digitado é distribuído em cascata, na ordem de vencimento: a
+   * primeira parcela recebe até o saldo dela, o que sobrar vai para a próxima.
+   * Digitar menos que o total é pagamento parcial e para na parcela em que o
+   * dinheiro acabar.
+   */
+  async function pagarParcelaVinculada(valorNum: number) {
+    if (!vinculoCP.length) return;
+
+    const cashStatus = await checkChurchCashStatus(caixaId, dataLancamento);
+    if (!cashStatus.canInsert) {
+      setCashClosedMessage(cashStatus.message);
+      setSaving(false);
+      return;
+    }
+
+    let comprovanteUrl: string | null = null;
+    if (fotoFile) {
+      try {
+        const convertedFile = await convertToJpeg(fotoFile);
+        const token = localStorage.getItem('mrm_token');
+        const formData = new FormData();
+        formData.append('file', convertedFile);
+        const res = await fetch(`${apiBase}/upload/foto-despesa`, {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        });
+        if (res.ok) comprovanteUrl = (await res.json()).url ?? null;
+      } catch { /* sem comprovante: o pagamento continua válido */ }
+    }
+
+    const token = localStorage.getItem('mrm_token');
+    const cabecalho = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+    let restante = valorNum;
+    const baixadas: string[] = [];
+    let sobrouNaParcela = 0;
+
+    try {
+      for (const alvo of vinculoCP) {
+        if (restante <= 0.004) break;
+        const parcela = Math.min(alvo.saldo, restante);
+
+        const res = await fetch(`${apiBase}/contas-pagar/parcelas/${alvo.parcelaId}/pagamentos`, {
+          method: 'POST',
+          headers: cabecalho,
+          body: JSON.stringify({
+            valorPago: Number(parcela.toFixed(2)),
+            dataPagamento: dataLancamento,
+            formaPagamento: formas.find((f) => f.id === formaId)?.nome ?? null,
+            bancoId: bancoId || null,
+            comprovanteUrl,
+            observacao: obs.trim() || null,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          // Parcelas já baixadas continuam válidas — cada uma é uma transação.
+          throw new Error(
+            `${json.error || 'Falha ao registrar o pagamento.'}` +
+            (baixadas.length ? ` (já baixadas: ${baixadas.join(', ')})` : '')
+          );
+        }
+
+        baixadas.push(alvo.rotuloParcela);
+        sobrouNaParcela = Number(json?.parcela?.saldoCentavos ?? 0) / 100;
+        restante -= parcela;
+      }
+
+      const conta = vinculoCP[0]?.contaNumero ?? '';
+      setSaving(false);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2500);
+      setError(sobrouNaParcela > 0
+        ? `Despesa lançada e parcela(s) ${baixadas.join(', ')} da conta ${conta} baixada(s). A última ficou parcial, ainda em aberto: ${sobrouNaParcela.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`
+        : '');
+      setVinculoCP([]);
+      limparAposSalvar();
+      loadRecentes();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      setSaving(false);
+      setError(e.message);
+      if (baixadas.length) {
+        // O que foi pago não volta atrás: recarrega o vínculo para o operador
+        // ver o que ainda falta.
+        setVinculoCP((atual) => atual.filter((a) => !baixadas.includes(a.rotuloParcela)));
+      }
+    }
+  }
+
   // ── Clear form ────────────────────────────────────────────────────────────
   function limpar() {
+    setVinculoCP([]);
     setFavorecidoId('');
     setFavorecidoNome('');
     setNaoMembroNome('');
@@ -1243,7 +1445,7 @@ export default function LancamentoNew() {
     e.preventDefault();
     // Ignora submits disparados por botões dentro dos modais (ReciboModal, etc.)
     // que ficam dentro da <form> mas não têm type="button"
-    if (reciboRow || cashClosedMessage || duplicateTransactionModal?.show || showHistoricoRepetirModal) return;
+    if (reciboRow || cashClosedMessage || duplicateTransactionModal?.show || showHistoricoRepetirModal || showContaPagarModal) return;
     setError('');
     setSaving(true);
 
@@ -1254,7 +1456,9 @@ export default function LancamentoNew() {
 
     if (!caixaId) { handleFail('Igreja caixa não definida. Selecione uma igreja.'); return; }
     if (!planoId) { handleFail('Selecione o plano de contas.'); return; }
-    if (!tipoDocId) { handleFail('Selecione o tipo de documento.'); return; }
+    // Pagando parcela do Contas a Pagar, o tipo de documento não é usado: o
+    // lançamento do livro caixa é montado no servidor a partir da conta.
+    if (!tipoDocId && !vinculoCP) { handleFail('Selecione o tipo de documento.'); return; }
     if (modo === 'DESPESA' && isBlank(numDoc)) { handleFail('Informe o número do documento para a despesa.'); return; }
     if (!formaId) { handleFail('Selecione a forma de pagamento.'); return; }
     if (isBlank(dataLancamento)) { handleFail('Informe a data do lançamento.'); return; }
@@ -1262,6 +1466,19 @@ export default function LancamentoNew() {
 
     const valorNum = Number(valor.replace(/\./g, '').replace(',', '.'));
     if (!valor || isNaN(valorNum) || valorNum <= 0) { handleFail('Informe um valor válido.'); return; }
+
+    // Pagando uma parcela do Contas a Pagar: quem grava é a rota de pagamentos,
+    // que já lança a despesa no livro caixa. Não passa pela inserção direta
+    // abaixo — sairiam dois lançamentos para o mesmo dinheiro.
+    if (vinculoCP.length) {
+      const tetoCP = vinculoCP.reduce((s, a) => s + a.saldo, 0);
+      if (valorNum > tetoCP + 0.005) {
+        handleFail(`O valor excede o saldo das parcelas selecionadas (${tetoCP.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
+        return;
+      }
+      await pagarParcelaVinculada(valorNum);
+      return;
+    }
 
     let favNome: string | null = null;
     let memId: string | null = null;
@@ -1678,6 +1895,31 @@ export default function LancamentoNew() {
             )}
           </div>
 
+          {/* Aviso de vínculo: deixa explícito que este lançamento vai abater
+              uma parcela do Contas a Pagar, e não virar uma despesa avulsa. */}
+          {vinculoCP.length > 0 && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 px-3 py-2">
+              <div className="flex items-center gap-2 text-xs text-rose-800 dark:text-rose-200">
+                <Link2 className="w-4 h-4 shrink-0" />
+                <span>
+                  Baixando {vinculoCP.length === 1 ? 'a parcela' : 'as parcelas'}{' '}
+                  <strong>{vinculoCP.map((a) => a.rotuloParcela).join(', ')}</strong> da conta{' '}
+                  <strong>{vinculoCP[0].contaNumero}</strong> · total em aberto{' '}
+                  {vinculoCP.reduce((s, a) => s + a.saldo, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
+                  Valor menor registra pagamento parcial, na ordem de vencimento.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVinculoCP([])}
+                title="Desvincular e lançar como despesa avulsa"
+                className="flex items-center gap-1 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:underline shrink-0"
+              >
+                <Link2Off className="w-3.5 h-3.5" /> Desvincular
+              </button>
+            </div>
+          )}
+
           {/* Form inputs grid */}
           <div className="space-y-3.5">
             {/* Plano de Contas */}
@@ -1704,9 +1946,23 @@ export default function LancamentoNew() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Nº do Documento</label>
-                <input type="text" value={numDoc} onChange={e => setNumDoc(e.target.value)}
-                  placeholder="Opcional"
-                  className={`w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+                <div className="relative">
+                  <input type="text" value={numDoc} onChange={e => setNumDoc(e.target.value)}
+                    placeholder="Opcional"
+                    className={`w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+                  {/* Atalho para o Contas a Pagar. Só na despesa: receita não
+                      tem conta a pagar para quitar. */}
+                  {modo === 'DESPESA' && (
+                    <button
+                      type="button"
+                      onClick={() => setShowContaPagarModal(true)}
+                      title="Buscar conta a pagar por este documento"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
+                    >
+                      <FileSearch className="w-4 h-4 text-rose-600" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1816,17 +2072,7 @@ export default function LancamentoNew() {
                 className={`w-full flex items-center justify-center gap-2 px-3 py-3 ${accentBg} ${accentHover} text-white rounded-[4px] text-sm font-bold transition-colors disabled:opacity-60 shadow-sm`}
               >
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                <span>{saving ? 'Salvando...' : isReceita ? 'Salvar Receita' : 'Salvar Despesa'}</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => fileInputAiRef.current?.click()}
-                disabled={aiReading}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-[4px] text-sm font-bold hover:bg-indigo-100 transition-colors disabled:opacity-60"
-              >
-                {aiReading ? <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" /> : <Sparkles className="w-4 h-4 text-indigo-500" />}
-                <span>{aiReading ? 'Lendo com IA...' : 'Preencher com Imagem'}</span>
+                <span>{saving ? 'Lançando...' : isReceita ? 'Lançar Receita' : vinculoCP.length ? `Lançar e baixar ${vinculoCP.length} parcela(s)` : 'Lançar Despesa'}</span>
               </button>
 
               <div className="grid grid-cols-2 gap-2">
@@ -1868,21 +2114,12 @@ export default function LancamentoNew() {
                 <span>Imagem</span>
               </button>
               <button
-                type="button"
-                onClick={() => fileInputAiRef.current?.click()}
-                disabled={aiReading}
-                className="flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-[4px] text-sm font-bold hover:bg-indigo-100 transition-colors disabled:opacity-60 animate-pulse-slow"
-              >
-                {aiReading ? <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" /> : <Sparkles className="w-4 h-4 text-indigo-500" />}
-                <span>{aiReading ? 'Lendo...' : 'IA Imagem'}</span>
-              </button>
-              <button
                 type="submit"
                 disabled={saving}
                 className={`flex items-center justify-center gap-2 px-3 py-2.5 ${accentBg} ${accentHover} text-white rounded-[4px] text-sm font-bold transition-colors disabled:opacity-60 shadow-sm`}
               >
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                <span>{saving ? 'Salvando...' : isReceita ? 'Salvar Receita' : 'Salvar Despesa'}</span>
+                <span>{saving ? 'Lançando...' : isReceita ? 'Lançar Receita' : vinculoCP.length ? `Lançar e baixar ${vinculoCP.length} parcela(s)` : 'Lançar Despesa'}</span>
               </button>
             </div>
           </div>
@@ -2041,6 +2278,15 @@ export default function LancamentoNew() {
         }}
         onClose={() => setShowPJModal(false)}
       />
+      {showContaPagarModal && (
+        <PagarContaPagarModal
+          churchId={caixaId}
+          termoInicial={numDoc}
+          onFechar={() => setShowContaPagarModal(false)}
+          onUsarNoLancamento={usarParcelaNoLancamento}
+        />
+      )}
+
       {reciboRow && (
         <ReciboModal
           row={reciboRow}

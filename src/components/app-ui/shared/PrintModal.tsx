@@ -13,23 +13,36 @@ export interface ColumnOption {
   defaultChecked?: boolean;
 }
 
+export interface GroupOption {
+  value: string;
+  label: string;
+}
+
 interface PrintModalProps {
   open: boolean;
   onClose: () => void;
-  onPrint: (orientation: PrintOrientation, sortBy: string, selectedColumns: string[], groupByChurch?: boolean) => void;
+  /**
+   * O 4º argumento é o agrupamento escolhido: `boolean` na versão antiga
+   * (`showGroupBy`, agrupa por regional/igreja) ou o `value` da opção escolhida
+   * quando a tela passa `groupOptions` — '' quando o usuário não quer agrupar.
+   */
+  onPrint: (orientation: PrintOrientation, sortBy: string, selectedColumns: string[], groupBy?: boolean | string) => void;
   sortOptions: SortOption[];
   columnOptions: ColumnOption[];
   defaultSort?: string;
   showGroupBy?: boolean;
+  /** Agrupamentos livres (credor, plano de contas, status…). Tem precedência sobre `showGroupBy`. */
+  groupOptions?: GroupOption[];
 }
 
-export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions, defaultSort, showGroupBy }: PrintModalProps) {
+export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions, defaultSort, showGroupBy, groupOptions }: PrintModalProps) {
   const [orientation, setOrientation] = useState<PrintOrientation>('portrait');
   const [sortBy, setSortBy] = useState(defaultSort || sortOptions[0]?.value || '');
   const [selectedCols, setSelectedCols] = useState<Set<string>>(
     () => new Set(columnOptions.filter((c) => c.defaultChecked !== false).map((c) => c.value))
   );
   const [groupByChurch, setGroupByChurch] = useState(false);
+  const [groupBy, setGroupBy] = useState('');
 
   if (!open) return null;
 
@@ -148,8 +161,27 @@ export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions,
             </div>
           </div>
 
+          {/* Agrupamento livre */}
+          {groupOptions?.length ? (
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                Agrupar por
+              </label>
+              <select
+                value={groupBy}
+                onChange={(e) => setGroupBy(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Sem agrupamento</option>
+                {groupOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           {/* Group by church */}
-          {showGroupBy ? (
+          {!groupOptions?.length && showGroupBy ? (
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
                 Agrupamento
@@ -180,7 +212,11 @@ export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions,
             Cancelar
           </button>
           <button
-            onClick={() => { onPrint(orientation, sortBy, [...selectedCols], showGroupBy ? groupByChurch : undefined); onClose(); }}
+            onClick={() => {
+              const agrupamento = groupOptions?.length ? groupBy : (showGroupBy ? groupByChurch : undefined);
+              onPrint(orientation, sortBy, [...selectedCols], agrupamento);
+              onClose();
+            }}
             className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 transition-colors"
           >
             <Printer className="w-4 h-4" />

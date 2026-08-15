@@ -115,6 +115,7 @@ import { ChatFAB } from './ChatFAB';
 import { logClientAudit } from '../../lib/auditClient';
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from '../../lib/recentSearches';
 import { AiChatAssistant } from './shared/AiChatAssistant';
+import { resolverActionUrl } from '../../lib/notificationLinks';
 
 
 interface ContextSwitcherItem {
@@ -1870,7 +1871,7 @@ export function AppUI() {
                           {notificationsList.slice(0, 5).map((notification) => (
                             <Link
                               key={notification.id}
-                              to={notification.actionUrl || '/app-ui/notifications'}
+                              to={resolverActionUrl(notification.actionUrl)}
                               onClick={() => setNotificationDropdownOpen(false)}
                               className={`block px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${
                                 !notification.read ? 'bg-purple-50/50 dark:bg-purple-900/10' : ''

@@ -7,7 +7,7 @@ import {
   BarChart3, ArrowUp, ArrowDown, UserX
 } from 'lucide-react';
 import { DateRangePicker } from '../../components/ui/DateRangePicker';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
@@ -138,7 +138,7 @@ function RibbonGroup({
   return (
     <div className={`flex flex-col items-center min-w-fit ${className}`.trim()}>
       <div className={`flex w-full items-end gap-1 px-1 ${bodyClassName}`.trim()}>{children}</div>
-      <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-slate-600 whitespace-nowrap">{label}</div>
+      <div className="text-[9px] uppercase tracking-[0.18em] text-slate-600 whitespace-nowrap leading-tight">{label}</div>
     </div>
   );
 }
@@ -159,7 +159,7 @@ function RibbonField({
   className?: string;
 }) {
   return (
-    <div className={`flex flex-col gap-1 px-1 py-1 ${className}`.trim()}>
+    <div className={`flex flex-col gap-0.5 px-1 py-0.5 ${className}`.trim()}>
       <div className="flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-slate-600">
         {icon ? <span className="text-slate-500">{icon}</span> : null}
         <span>{label}</span>
@@ -197,7 +197,7 @@ function RibbonButton({
         title={title}
         onClick={onClick}
         disabled={disabled}
-        className={`flex min-h-[52px] min-w-[44px] shrink-0 flex-col items-center justify-center gap-0.5 rounded px-2 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${baseTone} ${className}`.trim()}
+        className={`flex min-h-[42px] min-w-[44px] shrink-0 flex-col items-center justify-center gap-0 rounded px-2 py-0.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${baseTone} ${className}`.trim()}
       >
         {icon ? <span className="flex items-center justify-center">{icon}</span> : null}
         {label ? <span className="mt-0.5 max-w-[60px] text-center text-[10px] leading-tight">{label}</span> : null}
@@ -1221,6 +1221,8 @@ export default function Cashbook() {
   const isChurchProfile = profileType === 'church';
   const canChooseChurch = profileType === 'master' || profileType === 'admin' || profileType === 'campo';
 
+  const navigate = useNavigate();
+
   // Filters
   const [dataInicio, setDataInicio] = useState(firstDayOfMonth());
   const [dataFim, setDataFim]       = useState(lastDayOfMonth());
@@ -1240,6 +1242,17 @@ export default function Cashbook() {
 
   // Summary accordion (mobile only – collapsed by default)
   const [summaryOpen, setSummaryOpen] = useState(false);
+
+  /**
+   * Contas a pagar em aberto que vencem dentro do período consultado.
+   *
+   * O líquido do livro caixa é dinheiro que JÁ andou; conta a pagar em aberto é
+   * compromisso que ainda não saiu. Por isso ele não entra no líquido — entra
+   * ao lado, como "a pagar", e o líquido projetado (líquido − a pagar) mostra
+   * o que sobraria se tudo do período fosse quitado. Quando não há nada em
+   * aberto, o projetado some e nada muda na leitura dos cards.
+   */
+  const [aPagarAberto, setAPagarAberto] = useState(0);
 
   // Comparativo de dízimos: quem dizimou no mês anterior (mesmo escopo) — usado
   // para detectar membros que ainda não dizimaram no período atual.
@@ -1283,6 +1296,9 @@ export default function Cashbook() {
                num_doc, tipo_documento, member_id, church_id, operador, churches(name)`)
       .gte('data_lancamento', dataInicio)
       .lte('data_lancamento', dataFim)
+      // Estorno de pagamento do Contas a Pagar baixa o lançamento logicamente;
+      // sem este filtro ele continuaria somando nos cards depois de estornado.
+      .is('deleted_at', null)
       .order('data_lancamento', { ascending: false })
       .limit(5000);
 
@@ -1297,6 +1313,35 @@ export default function Cashbook() {
     if (err) { setError('Erro ao buscar dados: ' + err.message); return; }
     setRows((data as unknown as Row[]) || []);
     void fetchPrevMonth();
+    void fetchAPagar();
+  }
+
+  /**
+   * Saldo em aberto do Contas a Pagar com vencimento dentro do período — quanto
+   * ainda falta pagar, já descontando o que foi pago parcialmente. Vem pronto
+   * do endpoint de relatórios: somar parcela a parcela aqui não escala.
+   */
+  async function fetchAPagar() {
+    // Sem igreja escolhida a consulta vale para todo o escopo do usuário — é o
+    // mesmo critério do livro caixa logo acima.
+    const churchId = selectedChurch?.id || (isChurchProfile ? storedUser.churchId : '');
+    try {
+      const token = localStorage.getItem('mrm_token');
+      const qs = new URLSearchParams({
+        vencimentoDe: dataInicio,
+        vencimentoAte: dataFim,
+        status: 'PENDENTE,PARCIAL,ATRASADO',
+      });
+      if (churchId) qs.set('churchId', churchId);
+      const res = await fetch(`${apiBase}/contas-pagar/relatorios?${qs}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) { setAPagarAberto(0); return; }
+      const json = await res.json();
+      setAPagarAberto(Number(json?.totais?.saldo ?? 0));
+    } catch {
+      setAPagarAberto(0); // sem contas a pagar visível é melhor que card errado
+    }
   }
 
   // Busca os lançamentos do mês anterior (mesmo escopo de igreja) para o
@@ -1312,6 +1357,7 @@ export default function Cashbook() {
       .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, categoria, forma_pg, member_id, church_id, churches(name)')
       .gte('data_lancamento', f(first))
       .lte('data_lancamento', f(last))
+      .is('deleted_at', null)
       .limit(5000);
 
     if (selectedChurch?.id) q = q.eq('church_id', selectedChurch.id);
@@ -1407,6 +1453,8 @@ export default function Cashbook() {
   const qtdOfertas   = pgFiltered.filter(r => r.tipo === 'RECEITA' && (r.plano_de_conta || '').toLowerCase().includes('oferta')).length;
   const liquido      = totalReceita - totalDespesa;
   const totalMovimentos = pgFiltered.length;
+  // O que sobraria se todo o Contas a Pagar do período fosse quitado hoje.
+  const liquidoProjetado = liquido - aPagarAberto;
 
   // Contagem por forma de pagamento — sempre sobre todos os rows, pra o switch
   // mostrar o total de cada forma independente do que estiver selecionado.
@@ -1456,16 +1504,16 @@ export default function Cashbook() {
   return (
     <div className="flex min-h-[calc(100vh-64px)] flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <div className="px-4 pt-3 sm:px-6">
+        <div className="px-4 pt-1.5 sm:px-6">
           <div className="flex items-center justify-between gap-3 overflow-x-auto text-sm text-slate-500 dark:text-slate-400">
             <div className="flex min-w-max items-end gap-1">
-              <span className="px-4 py-2 font-semibold text-slate-700 dark:text-slate-200">Livro Caixa</span>
+              <span className="px-4 py-1 font-semibold text-slate-700 dark:text-slate-200">Livro Caixa</span>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 px-3 py-3 sm:px-4">
-          <div className="flex flex-wrap items-stretch gap-x-2 gap-y-3 md:items-center md:overflow-x-auto">
+        <div className="border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 px-3 py-1.5 sm:px-4">
+          <div className="flex flex-wrap items-stretch gap-x-2 gap-y-1.5 md:items-center md:overflow-x-auto">
             <RibbonGroup
               label="Escopo"
               className="w-full md:w-auto flex-1 min-w-[260px]"
@@ -1619,22 +1667,22 @@ export default function Cashbook() {
               bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-auto md:gap-1 md:px-1"
             >
               <Link to="/app-ui/finance/income/new" className="w-full shrink-0 md:w-auto">
-                <span className="flex min-h-[52px] min-w-[80px] w-full flex-col items-center justify-center gap-0.5 rounded px-3 py-1 text-xs text-white bg-[#059669] hover:bg-[#047857] shadow-sm transition-colors md:w-auto">
+                <span className="flex min-h-[42px] min-w-[80px] w-full flex-col items-center justify-center gap-0 rounded px-3 py-0.5 text-xs text-white bg-[#059669] hover:bg-[#047857] shadow-sm transition-colors md:w-auto">
                   <TrendingUp className="h-4 w-4" />
-                  <span className="mt-0.5 text-center text-[10px] leading-tight font-semibold">Nova Receita</span>
+                  <span className="text-center text-[10px] leading-tight font-semibold">Nova Receita</span>
                 </span>
               </Link>
               <Link to="/app-ui/finance/expense/new" className="w-full shrink-0 md:w-auto">
-                <span className="flex min-h-[52px] min-w-[80px] w-full flex-col items-center justify-center gap-0.5 rounded px-3 py-1 text-xs text-white bg-red-600 hover:bg-red-700 shadow-sm transition-colors md:w-auto">
+                <span className="flex min-h-[42px] min-w-[80px] w-full flex-col items-center justify-center gap-0 rounded px-3 py-0.5 text-xs text-white bg-red-600 hover:bg-red-700 shadow-sm transition-colors md:w-auto">
                   <TrendingDown className="h-4 w-4" />
-                  <span className="mt-0.5 text-center text-[10px] leading-tight font-semibold">Nova Despesa</span>
+                  <span className="text-center text-[10px] leading-tight font-semibold">Nova Despesa</span>
                 </span>
               </Link>
             </RibbonGroup>
           </div>
 
           {/* ── Summary accordion (mobile: collapsible / desktop: always visible) ── */}
-          <div className="mt-3">
+          <div className="mt-1.5">
             {/* Toggle button – visible only on mobile */}
             <button
               type="button"
@@ -1656,6 +1704,22 @@ export default function Cashbook() {
               <SummaryPanel label="Receitas"  value={`R$ ${fmt(totalReceita)}`} tone="positive" curNum={totalReceita} prevNum={prevMonthRows.length ? prevTotalReceita : undefined} />
               <SummaryPanel label="Despesas"  value={`R$ ${fmt(totalDespesa)}`} tone="negative" curNum={totalDespesa} prevNum={prevMonthRows.length ? prevTotalDespesa : undefined} />
               <SummaryPanel label="Mov."      value={`${totalMovimentos}`}      curNum={totalMovimentos} prevNum={prevMonthRows.length ? prevMovimentos : undefined} />
+              {/* Contas a pagar com vencimento no período. O card fica sempre
+                  visível (zerado quando não há pendência); o projetado só
+                  aparece quando há algo a descontar. */}
+              <SummaryPanel
+                label="A pagar"
+                value={`R$ ${fmt(aPagarAberto)}`}
+                tone={aPagarAberto > 0 ? 'negative' : 'neutral'}
+                onClick={() => navigate('/app-ui/finance/contas-a-pagar')}
+              />
+              {aPagarAberto > 0 && (
+                <SummaryPanel
+                  label="Líquido projetado"
+                  value={`R$ ${fmt(liquidoProjetado)}`}
+                  tone={liquidoProjetado >= 0 ? 'positive' : 'negative'}
+                />
+              )}
               <SummaryPanel label="Dízimos"   value={`R$ ${fmt(totalDizimos)}`} tone="positive" curNum={totalDizimos} prevNum={prevMonthRows.length ? prevTotalDizimos : undefined} />
               <SummaryPanel label="Ofertas"   value={`R$ ${fmt(totalOfertas)}`} tone="positive" curNum={totalOfertas} prevNum={prevMonthRows.length ? prevTotalOfertas : undefined} />
               <SummaryPanel label="Qtd Rec."  value={`${qtdReceitas}`}          tone="positive" curNum={qtdReceitas} prevNum={prevMonthRows.length ? prevQtdReceitas : undefined} />
@@ -2042,6 +2106,18 @@ export default function Cashbook() {
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Esta ação não pode ser desfeita.</p>
               </div>
             </div>
+
+            {/* Lançamento gerado por pagamento do Contas a Pagar traz a conta e
+                a parcela na referência ("CP CP-2026-000001 parcela 2/4"). */}
+            {String(deleteTarget.referencia || '').startsWith('CP ') && (
+              <div className="px-6 pb-3">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                  Este lançamento é o pagamento de <strong>{String(deleteTarget.referencia).replace(/^CP\s/, '')}</strong>.
+                  Excluir aqui <strong>estorna o pagamento</strong>: a parcela volta a ficar em aberto no Contas a Pagar
+                  e o histórico do estorno fica registrado.
+                </div>
+              </div>
+            )}
             {deleteTarget.favorecido && (
               <div className="px-6 pb-4">
                 <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
@@ -2065,11 +2141,32 @@ export default function Cashbook() {
                 onClick={async () => {
                   setDeleting(true);
                   setDeleteError('');
-                  const { error: delErr } = await supabase.from('livro_caixa').delete().eq('id', deleteTarget.id);
-                  setDeleting(false);
-                  if (delErr) { setDeleteError('Erro: ' + delErr.message); return; }
-                  setRows(prev => prev.filter(r => r.id !== deleteTarget.id));
-                  setDeleteTarget(null);
+                  try {
+                    // Passa pela API: lançamento que veio do Contas a Pagar não
+                    // pode ser apagado direto — vira estorno, senão a parcela
+                    // ficaria quitada sem a despesa correspondente.
+                    const token = localStorage.getItem('mrm_token');
+                    const res = await fetch(`${apiBase}/livro-caixa/${deleteTarget.id}`, {
+                      method: 'DELETE',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                      },
+                      body: JSON.stringify({ motivo: 'Lançamento excluído pelo Livro Caixa' }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(json.error || 'Falha ao excluir o lançamento.');
+                    setRows(prev => prev.filter(r => r.id !== deleteTarget.id));
+                    setDeleteTarget(null);
+                    if (json.estornado) {
+                      setError(`Pagamento estornado: a parcela ${json.parcela} da conta ${json.conta} voltou a ficar em aberto no Contas a Pagar.`);
+                    }
+                    void fetchAPagar();
+                  } catch (e) {
+                    setDeleteError('Erro: ' + (e instanceof Error ? e.message : 'desconhecido'));
+                  } finally {
+                    setDeleting(false);
+                  }
                 }}
                 disabled={deleting}
                 className="flex-1 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"

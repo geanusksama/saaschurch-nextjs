@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { serializeBigInts, assertChurchAccess, buildProtocol, isRestrictedToOwnChurch } from "@/lib/helpers";
+import { ROTA_PIPELINE_SECRETARIA } from "@/lib/notificationLinks";
 
 function canSeeAll(user: { profileType?: string }) {
   return user.profileType === "master" || user.profileType === "admin" || user.profileType === "campo";
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
           userId: user.id!, notificationType: "kan_action",
           title: `Novo registro criado (SOLCRED) \u2014 ${card.protocol}`,
           message: member.fullName || null,
-          actionUrl: "/admin/secretaria/pipeline", actionText: "Ver",
+          actionUrl: ROTA_PIPELINE_SECRETARIA, actionText: "Ver",
           data: { scope: "field", campoId: user.campoId || null, cardId: card.id, action: "created" },
         },
       });

@@ -585,3 +585,110 @@ select:-webkit-autofill {
     background-color: #f1f5f9 !important;
   }
 }
+
+/* ── Selos e valores semânticos (financeiro) ───────────────────────────────
+   O mapeador de tema acima repinta QUALQUER classe de fundo ou texto das
+   famílias de cor (emerald, amber, orange…) com a paleta da igreja — foi por
+   isso que o selo "Pago" aparecia marrom. Status de parcela, chips de filtro e
+   valores de saldo precisam continuar semânticos, então usam classe própria,
+   com especificidade maior que a do tema.
+
+   Semáforo: laranja = pendente, amarelo = parcial, vermelho = atrasado,
+   verde = pago. */
+.app-shell .status-pill.status-pill--pago { background-color: #d1fae5 !important; color: #047857 !important; }
+.app-shell .status-pill.status-pill--parcial { background-color: #fef9c3 !important; color: #a16207 !important; }
+.app-shell .status-pill.status-pill--pendente { background-color: #ffedd5 !important; color: #c2410c !important; }
+.app-shell .status-pill.status-pill--atrasado { background-color: #fee2e2 !important; color: #b91c1c !important; }
+.app-shell .status-pill.status-pill--cancelada { background-color: #e2e8f0 !important; color: #64748b !important; }
+
+.dark .app-shell .status-pill.status-pill--pago { background-color: rgba(16, 185, 129, .18) !important; color: #6ee7b7 !important; }
+.dark .app-shell .status-pill.status-pill--parcial { background-color: rgba(234, 179, 8, .18) !important; color: #fde047 !important; }
+.dark .app-shell .status-pill.status-pill--pendente { background-color: rgba(249, 115, 22, .18) !important; color: #fdba74 !important; }
+.dark .app-shell .status-pill.status-pill--atrasado { background-color: rgba(239, 68, 68, .2) !important; color: #fca5a5 !important; }
+.dark .app-shell .status-pill.status-pill--cancelada { background-color: rgba(148, 163, 184, .2) !important; color: #94a3b8 !important; }
+
+/* Chips do filtro de status: sempre na cor do status (assim o operador lê o
+   semáforo antes de clicar) — tingidos quando desligados, cheios quando ligados. */
+.app-shell .status-chip.status-chip--pendente { background-color: #fff7ed !important; border-color: #fed7aa !important; color: #c2410c !important; }
+.app-shell .status-chip.status-chip--parcial { background-color: #fefce8 !important; border-color: #fef08a !important; color: #a16207 !important; }
+.app-shell .status-chip.status-chip--atrasado { background-color: #fef2f2 !important; border-color: #fecaca !important; color: #b91c1c !important; }
+.app-shell .status-chip.status-chip--pago { background-color: #ecfdf5 !important; border-color: #a7f3d0 !important; color: #047857 !important; }
+
+.dark .app-shell .status-chip.status-chip--pendente { background-color: rgba(249, 115, 22, .12) !important; border-color: rgba(249, 115, 22, .4) !important; color: #fdba74 !important; }
+.dark .app-shell .status-chip.status-chip--parcial { background-color: rgba(234, 179, 8, .12) !important; border-color: rgba(234, 179, 8, .4) !important; color: #fde047 !important; }
+.dark .app-shell .status-chip.status-chip--atrasado { background-color: rgba(239, 68, 68, .12) !important; border-color: rgba(239, 68, 68, .4) !important; color: #fca5a5 !important; }
+.dark .app-shell .status-chip.status-chip--pago { background-color: rgba(16, 185, 129, .12) !important; border-color: rgba(16, 185, 129, .4) !important; color: #6ee7b7 !important; }
+
+.app-shell .status-chip.status-chip--pendente.is-ativo,
+.dark .app-shell .status-chip.status-chip--pendente.is-ativo { background-color: #f97316 !important; border-color: #f97316 !important; color: #ffffff !important; }
+.app-shell .status-chip.status-chip--parcial.is-ativo,
+.dark .app-shell .status-chip.status-chip--parcial.is-ativo { background-color: #eab308 !important; border-color: #eab308 !important; color: #422006 !important; }
+.app-shell .status-chip.status-chip--atrasado.is-ativo,
+.dark .app-shell .status-chip.status-chip--atrasado.is-ativo { background-color: #dc2626 !important; border-color: #dc2626 !important; color: #ffffff !important; }
+.app-shell .status-chip.status-chip--pago.is-ativo,
+.dark .app-shell .status-chip.status-chip--pago.is-ativo { background-color: #059669 !important; border-color: #059669 !important; color: #ffffff !important; }
+
+.app-shell .valor-pago { color: #047857 !important; }
+.app-shell .valor-devendo { color: #b91c1c !important; }
+.dark .app-shell .valor-pago { color: #34d399 !important; }
+.dark .app-shell .valor-devendo { color: #f87171 !important; }
+
+/* Cards de totais do Contas a Pagar. Mesma razão dos selos: as classes de cor
+   do Tailwind seriam repintadas pelo tema, e um "Já pago" marrom não comunica
+   nada. Cada card carrega a cor do que ele mede. */
+.app-shell .kpi-card { background-color: #ffffff; border-color: #e2e8f0; }
+.app-shell .kpi-card .kpi-valor { color: #0f172a; }
+.app-shell .kpi-card .kpi-icone { background-color: #f1f5f9; color: #475569; }
+
+.dark .app-shell .kpi-card { background-color: #1e293b; border-color: #334155; }
+.dark .app-shell .kpi-card .kpi-valor { color: #ffffff; }
+.dark .app-shell .kpi-card .kpi-icone { background-color: #334155; color: #cbd5e1; }
+
+.app-shell .kpi-card--pago { background-color: #ecfdf5; border-color: #a7f3d0; }
+.app-shell .kpi-card--pago .kpi-valor { color: #047857; }
+.app-shell .kpi-card--pago .kpi-icone { background-color: #d1fae5; color: #047857; }
+
+.app-shell .kpi-card--aberto { background-color: #fff7ed; border-color: #fed7aa; }
+.app-shell .kpi-card--aberto .kpi-valor { color: #c2410c; }
+.app-shell .kpi-card--aberto .kpi-icone { background-color: #ffedd5; color: #c2410c; }
+
+.app-shell .kpi-card--vencido { background-color: #fef2f2; border-color: #fecaca; }
+.app-shell .kpi-card--vencido .kpi-valor { color: #b91c1c; }
+.app-shell .kpi-card--vencido .kpi-icone { background-color: #fee2e2; color: #b91c1c; }
+
+.app-shell .kpi-card--residual { background-color: #fefce8; border-color: #fef08a; }
+.app-shell .kpi-card--residual .kpi-valor { color: #a16207; }
+.app-shell .kpi-card--residual .kpi-icone { background-color: #fef9c3; color: #a16207; }
+
+.dark .app-shell .kpi-card--pago { background-color: rgba(16, 185, 129, .12); border-color: rgba(16, 185, 129, .35); }
+.dark .app-shell .kpi-card--pago .kpi-valor { color: #6ee7b7; }
+.dark .app-shell .kpi-card--pago .kpi-icone { background-color: rgba(16, 185, 129, .2); color: #6ee7b7; }
+
+.dark .app-shell .kpi-card--aberto { background-color: rgba(249, 115, 22, .12); border-color: rgba(249, 115, 22, .35); }
+.dark .app-shell .kpi-card--aberto .kpi-valor { color: #fdba74; }
+.dark .app-shell .kpi-card--aberto .kpi-icone { background-color: rgba(249, 115, 22, .2); color: #fdba74; }
+
+.dark .app-shell .kpi-card--vencido { background-color: rgba(239, 68, 68, .12); border-color: rgba(239, 68, 68, .35); }
+.dark .app-shell .kpi-card--vencido .kpi-valor { color: #fca5a5; }
+.dark .app-shell .kpi-card--vencido .kpi-icone { background-color: rgba(239, 68, 68, .2); color: #fca5a5; }
+
+.dark .app-shell .kpi-card--residual { background-color: rgba(234, 179, 8, .12); border-color: rgba(234, 179, 8, .35); }
+.dark .app-shell .kpi-card--residual .kpi-valor { color: #fde047; }
+.dark .app-shell .kpi-card--residual .kpi-icone { background-color: rgba(234, 179, 8, .2); color: #fde047; }
+
+/* Cards de parcela na visão por conta: a borda e o fundo repetem o semáforo do
+   selo, para bater o olho na conta expandida e ver o que falta pagar. */
+.parcela-card { background-color: #ffffff; border-color: #e2e8f0; }
+.parcela-card--pago { background-color: #ecfdf5; border-color: #6ee7b7; }
+.parcela-card--parcial { background-color: #fefce8; border-color: #fde047; }
+.parcela-card--pendente { background-color: #fff7ed; border-color: #fdba74; }
+.parcela-card--atrasado { background-color: #fef2f2; border-color: #fca5a5; }
+.parcela-card--cancelada { background-color: #f8fafc; border-color: #e2e8f0; opacity: .7; }
+.parcela-card:hover { filter: brightness(.97); }
+
+.dark .parcela-card { background-color: #0f172a; border-color: #334155; }
+.dark .parcela-card--pago { background-color: rgba(16, 185, 129, .12); border-color: rgba(16, 185, 129, .4); }
+.dark .parcela-card--parcial { background-color: rgba(234, 179, 8, .12); border-color: rgba(234, 179, 8, .4); }
+.dark .parcela-card--pendente { background-color: rgba(249, 115, 22, .12); border-color: rgba(249, 115, 22, .4); }
+.dark .parcela-card--atrasado { background-color: rgba(239, 68, 68, .12); border-color: rgba(239, 68, 68, .4); }
+.dark .parcela-card--cancelada { background-color: #1e293b; border-color: #334155; opacity: .7; }

@@ -57,6 +57,54 @@ export class RegraContasPagarError extends Error {
 
 const dec = (centavos: number) => new Prisma.Decimal(paraReais(centavos).toFixed(2));
 
+/**
+ * Traduz o credor para os campos de favorecido do livro caixa.
+ *
+ * O livro caixa fala MEMBRO | IGREJA | PJ | NAO_MEMBRO e guarda `member_id`
+ * quando é membro — é isso que liga a despesa ao perfil e ao ROL. O cadastro de
+ * credor fala outra língua (PF/PJ + tipo de credor + vínculo opcional com
+ * membro), então a tradução mora aqui, num lugar só: a rota de pagamento e
+ * qualquer outra porta futura usam a mesma regra.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function favorecidoDoCredor(credor: any) {
+  if (!credor) {
+    return { tipoPessoa: null as string | null, nome: null as string | null, memberId: null as string | null, idExterno: null as string | null };
+  }
+
+  // Igreja favorecida (repasse, ajuda, aluguel entre igrejas).
+  if (credor.favorecidoChurchId) {
+    return {
+      tipoPessoa: "IGREJA",
+      nome: credor.igrejaFavorecida?.name || credor.nome || null,
+      memberId: null,
+      idExterno: credor.favorecidoChurchId,
+    };
+  }
+
+  // Credor ligado a membro: o nome vem do cadastro do membro, não do apelido
+  // digitado no credor — o extrato do membro precisa bater com o perfil.
+  if (credor.memberId) {
+    return {
+      tipoPessoa: "MEMBRO",
+      nome: credor.member?.fullName || credor.nome || null,
+      memberId: credor.memberId,
+      idExterno: null,
+    };
+  }
+
+  if (credor.tipoPessoa === "PJ") {
+    return {
+      tipoPessoa: "PJ",
+      nome: credor.nome ?? null,
+      memberId: null,
+      idExterno: credor.cpfCnpj || null,
+    };
+  }
+
+  return { tipoPessoa: "NAO_MEMBRO", nome: credor.nome ?? null, memberId: null, idExterno: null };
+}
+
 // ─── recálculo ───────────────────────────────────────────────────────────────
 
 /**
@@ -277,7 +325,14 @@ export async function registrarPagamento(db: Db, input: NovoPagamentoInput) {
     include: {
       contaPagar: {
         include: {
-          credor: { select: { nome: true, memberId: true } },
+          credor: {
+            select: {
+              nome: true, memberId: true, tipoPessoa: true, tipoCredor: true, cpfCnpj: true,
+              favorecidoChurchId: true,
+              member: { select: { id: true, fullName: true, rol: true } },
+              igrejaFavorecida: { select: { id: true, name: true } },
+            },
+          },
           planoDeConta: { select: { nome: true, codigo: true } },
         },
       },
@@ -312,6 +367,16 @@ export async function registrarPagamento(db: Db, input: NovoPagamentoInput) {
   // grava o plano de conta pelo NOME (é assim nos 331 mil registros antigos),
   // então usa o nome já carregado junto com a conta.
   const planoNome = conta.planoDeConta?.nome ?? null;
+
+  // O favorecido do livro caixa sai do credor, traduzido para o vocabulário da
+  // tela de lançamento (MEMBRO | PJ | NAO_MEMBRO). Credor ligado a membro grava
+  // o member_id e o nome do cadastro — é o que amarra o extrato ao perfil e o
+  // que faltava quando o pagamento entrava por outra porta.
+  const favorecido = favorecidoDoCredor(conta.credor);
+
+  // Documento: número da conta + parcela. É por ele que se acha o pagamento no
+  // livro caixa e se volta para o título de origem.
+  const numeroDocumento = `${conta.numero} ${parcela.numeroParcela}/${parcela.totalParcelas}`;
   const lancamento = await db.livroCaixa.create({
     data: {
       churchId: parcela.churchId,
@@ -322,10 +387,11 @@ export async function registrarPagamento(db: Db, input: NovoPagamentoInput) {
       formaPg: input.formaPagamento || conta.formaPagamentoPrevista || null,
       planoDeConta: planoNome,
       categoria: conta.planoDeConta?.nome ?? null,
-      numDoc: conta.numeroDocumento || null,
-      tipoPessoa: conta.credor?.memberId ? "MEMBRO" : null,
-      favorecido: conta.credor?.nome ?? null,
-      memberId: conta.credor?.memberId ?? null,
+      numDoc: numeroDocumento,
+      tipoPessoa: favorecido.tipoPessoa,
+      favorecido: favorecido.nome,
+      memberId: favorecido.memberId,
+      idFavorecidoExterno: favorecido.idExterno,
       bancoId: input.bancoId || conta.bancoId || null,
       departamentoId: conta.departamentoId || null,
       operador: input.operadorNome || null,
@@ -403,22 +469,163 @@ export async function estornarPagamento(
   return { parcela: estadoParcela, statusGeral };
 }
 
-// ─── apoio ───────────────────────────────────────────────────────────────────
+// ─── exclusão de parcela ─────────────────────────────────────────────────────
 
-/** Cancela a conta e as parcelas ainda não pagas (parcela paga não é cancelada). */
-export async function cancelarConta(db: Db, contaPagarId: string) {
-  const pagas = await db.pagamentoParcela.count({
-    where: { parcela: { contaPagarId }, estornadoEm: null },
+/**
+ * Exclui uma parcela e redistribui o valor dela entre as que sobraram.
+ *
+ * A regra que a tesouraria espera: o TÍTULO continua valendo o mesmo. Uma conta
+ * de R$ 1.000 em 4× R$ 250 que perde uma parcela vira 3× R$ 333,33 — não some
+ * R$ 250 do compromisso.
+ *
+ * Quem já recebeu pagamento não se mexe: a parcela paga fica com o valor que
+ * foi pago, senão o saldo dela mudaria por baixo do recibo já emitido. A sobra
+ * é dividida só entre as parcelas ainda intocadas, com o resíduo dos centavos
+ * na última. Se não sobrar nenhuma parcela livre para absorver, aí sim o total
+ * do título encolhe — não há onde pendurar o valor.
+ */
+export async function excluirParcela(db: Db, parcelaId: string) {
+  const parcela = await db.parcelaContaPagar.findUnique({
+    where: { id: parcelaId },
+    select: { id: true, contaPagarId: true, numeroParcela: true },
   });
-  if (pagas > 0) {
+  if (!parcela) throw new RegraContasPagarError("Parcela não encontrada.", 404);
+
+  const pagamentos = await db.pagamentoParcela.count({
+    where: { parcelaId, estornadoEm: null },
+  });
+  if (pagamentos > 0) {
     throw new RegraContasPagarError(
-      "Esta conta já tem pagamento registrado. Estorne os pagamentos antes de cancelar.",
+      "Esta parcela já tem pagamento registrado. Estorne os pagamentos antes de excluí-la.",
       409
     );
   }
+
+  const conta = await db.contaPagar.findUnique({
+    where: { id: parcela.contaPagarId },
+    select: { id: true, valorTotal: true },
+  });
+  if (!conta) throw new RegraContasPagarError("Conta a pagar não encontrada.", 404);
+
+  const todas = await db.parcelaContaPagar.findMany({
+    where: { contaPagarId: parcela.contaPagarId },
+    orderBy: { numeroParcela: "asc" },
+    select: { id: true, valorParcela: true, valorPago: true, dataVencimento: true },
+  });
+  if (todas.length <= 1) {
+    throw new RegraContasPagarError(
+      "Esta é a única parcela da conta. Cancele a conta inteira em vez de excluir a parcela.",
+      409
+    );
+  }
+
+  await db.parcelaContaPagar.delete({ where: { id: parcelaId } });
+
+  const restantes = todas.filter((p) => p.id !== parcelaId);
+  const travadas = restantes.filter((p) => paraCentavos(p.valorPago) > 0);
+  const livres = restantes.filter((p) => paraCentavos(p.valorPago) === 0);
+
+  const totalCentavos = paraCentavos(conta.valorTotal);
+  const travadoCentavos = travadas.reduce((s, p) => s + paraCentavos(p.valorParcela), 0);
+  const aDistribuir = totalCentavos - travadoCentavos;
+
+  let novoTotalCentavos = totalCentavos;
+  if (livres.length && aDistribuir > 0) {
+    const base = Math.floor(aDistribuir / livres.length);
+    for (let i = 0; i < livres.length; i++) {
+      const valor = i === livres.length - 1 ? base + (aDistribuir - base * livres.length) : base;
+      await db.parcelaContaPagar.update({
+        where: { id: livres[i].id },
+        data: { valorParcela: dec(valor), valorSaldo: dec(valor) },
+      });
+    }
+  } else {
+    // Nenhuma parcela livre (ou o pago já cobre o total): o título passa a valer
+    // a soma do que sobrou.
+    novoTotalCentavos = restantes.reduce((s, p) => s + paraCentavos(p.valorParcela), 0);
+  }
+
+  // Renumeração em duas passadas: (conta_pagar_id, numero_parcela) é único, e
+  // mover 3→2 com a 2 ainda no lugar quebraria a constraint.
+  const ordenadas = [...restantes].sort(
+    (a, b) => new Date(a.dataVencimento).getTime() - new Date(b.dataVencimento).getTime()
+  );
+  for (let i = 0; i < ordenadas.length; i++) {
+    await db.parcelaContaPagar.update({
+      where: { id: ordenadas[i].id },
+      data: { numeroParcela: -(i + 1) },
+    });
+  }
+  for (let i = 0; i < ordenadas.length; i++) {
+    await db.parcelaContaPagar.update({
+      where: { id: ordenadas[i].id },
+      data: { numeroParcela: i + 1, totalParcelas: ordenadas.length },
+    });
+  }
+
+  await db.contaPagar.update({
+    where: { id: conta.id },
+    data: {
+      numeroParcelas: ordenadas.length,
+      parcelado: ordenadas.length > 1,
+      ...(novoTotalCentavos !== totalCentavos ? { valorTotal: dec(novoTotalCentavos) } : {}),
+    },
+  });
+
+  const statusGeral = await recalcularContaCompleta(db, conta.id);
+
+  return {
+    parcelasRestantes: ordenadas.length,
+    valorTotal: paraReais(novoTotalCentavos),
+    totalAjustado: novoTotalCentavos !== totalCentavos,
+    statusGeral,
+  };
+}
+
+// ─── apoio ───────────────────────────────────────────────────────────────────
+
+/**
+ * Apaga a conta a pagar e tudo que pendura nela.
+ *
+ * Conta que NUNCA recebeu pagamento não deixou rastro contábil nenhum: some de
+ * verdade do banco, e o Postgres leva junto as parcelas e os pagamentos pelo
+ * ON DELETE CASCADE das FKs.
+ *
+ * Conta que já teve pagamento é outra história. Todo pagamento gerou um
+ * lançamento no livro caixa, e esse lançamento não tem FK para o pagamento
+ * (é assim de propósito, por causa dos 331 mil registros antigos). Apagar em
+ * cascata deixaria despesas órfãs no livro caixa, apontando para um pagamento
+ * que não existe mais — o caixa continuaria com dinheiro saindo por uma conta
+ * fantasma. Nesse caso a conta é CANCELADA logicamente, preservando a trilha.
+ * Para apagar de verdade, estorne os pagamentos primeiro (o estorno já baixa o
+ * lançamento do livro caixa) — e mesmo assim a conta fica cancelada, porque o
+ * histórico do estorno precisa continuar existindo.
+ *
+ * Devolve como a conta saiu: `{ modo: "apagada" | "cancelada" }`.
+ */
+export async function cancelarConta(db: Db, contaPagarId: string) {
+  const ativos = await db.pagamentoParcela.count({
+    where: { parcela: { contaPagarId }, estornadoEm: null },
+  });
+  if (ativos > 0) {
+    throw new RegraContasPagarError(
+      "Esta conta já tem pagamento registrado. Estorne os pagamentos antes de excluir.",
+      409
+    );
+  }
+
+  const historico = await db.pagamentoParcela.count({ where: { parcela: { contaPagarId } } });
+
+  if (historico === 0) {
+    // Cascata real: parcelas e pagamentos saem com a conta.
+    await db.contaPagar.delete({ where: { id: contaPagarId } });
+    return { modo: "apagada" as const };
+  }
+
   await db.parcelaContaPagar.updateMany({ where: { contaPagarId }, data: { status: "CANCELADA" } });
   await db.contaPagar.update({
     where: { id: contaPagarId },
     data: { statusGeral: "CANCELADA", deletedAt: new Date() },
   });
+  return { modo: "cancelada" as const };
 }

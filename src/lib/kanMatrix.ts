@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolverTituloDaRegra } from "@/lib/tituloEclesiasticoHistorico";
+import { ROTA_PIPELINE_SECRETARIA } from "@/lib/notificationLinks";
 
 /**
  * Aplica a regra da matriz (kan_matrix_rules) ao mover um card de coluna.
@@ -127,7 +128,7 @@ export async function notifyKanAction({
         notificationType: "kan_action",
         title: `${action} — ${card?.protocol || card?.id || ""}`.trim(),
         message: message || null,
-        actionUrl: "/admin/secretaria/pipeline",
+        actionUrl: ROTA_PIPELINE_SECRETARIA,
         actionText: "Ver",
         data: {
           scope: "field",

@@ -24,18 +24,27 @@ export const STATUS_PARCELA_LABELS: Record<string, string> = {
   CANCELADA: "Cancelada",
 };
 
+/**
+ * Cores dos selos de status.
+ *
+ * NÃO use classes de cor do Tailwind aqui: o tema da igreja (globals.css)
+ * repinta bg-emerald/amber/orange… com a paleta da denominação e o selo "Pago"
+ * saía marrom. Estas classes são definidas à mão em globals.css justamente
+ * para escapar desse mapeamento — laranja = pendente, amarelo = parcial,
+ * vermelho = atrasado, verde = pago.
+ */
 export const STATUS_PARCELA_CORES: Record<string, string> = {
-  PENDENTE: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  PARCIAL: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-  PAGO: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  ATRASADO: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-  CANCELADA: "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-500",
+  PENDENTE: "status-pill status-pill--pendente",
+  PARCIAL: "status-pill status-pill--parcial",
+  PAGO: "status-pill status-pill--pago",
+  ATRASADO: "status-pill status-pill--atrasado",
+  CANCELADA: "status-pill status-pill--cancelada",
 };
 
 /** Cores hex para os gráficos (recharts) — mesma semântica dos badges. */
 export const STATUS_PARCELA_HEX: Record<string, string> = {
-  PENDENTE: "#94a3b8",
-  PARCIAL: "#f59e0b",
+  PENDENTE: "#f97316",
+  PARCIAL: "#eab308",
   PAGO: "#10b981",
   ATRASADO: "#ef4444",
   CANCELADA: "#cbd5e1",

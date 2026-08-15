@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { assertChurchAccess, serializeBigInts } from "@/lib/helpers";
+import { serializeBigInts } from "@/lib/helpers";
+import { podeAcessarIgreja } from "@/lib/contasPagarScope";
 import { RegraContasPagarError, TX_CONTAS_PAGAR, cancelarConta, recalcularContaCompleta } from "@/lib/contasPagarService";
 
 const INCLUDE_DETALHE = {
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const conta = await carregar(id);
     if (!conta) return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
-    if (!(await assertChurchAccess(user, conta.churchId, prisma))) {
+    if (!(await podeAcessarIgreja(user, conta.churchId, prisma))) {
       return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     }
     return NextResponse.json(serializeBigInts(conta));
@@ -46,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const conta = await carregar(id);
     if (!conta) return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
-    if (!(await assertChurchAccess(user, conta.churchId, prisma))) {
+    if (!(await podeAcessarIgreja(user, conta.churchId, prisma))) {
       return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     }
 
@@ -75,19 +76,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 }
 
-/** DELETE — cancelamento lógico (bloqueado se já houve pagamento). */
+/**
+ * DELETE — apaga a conta.
+ *
+ * Sem histórico de pagamento, some de verdade (parcelas e pagamentos vão junto
+ * pelo cascade do banco). Com histórico, vira cancelamento lógico para não
+ * deixar despesa órfã no livro caixa. Pagamento ativo bloqueia: estorne antes.
+ * Ver cancelarConta().
+ */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
     const conta = await prisma.contaPagar.findFirst({ where: { id, deletedAt: null }, select: { id: true, churchId: true } });
     if (!conta) return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
-    if (!(await assertChurchAccess(user, conta.churchId, prisma))) {
+    if (!(await podeAcessarIgreja(user, conta.churchId, prisma))) {
       return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     }
 
     try {
-      await prisma.$transaction(async (tx) => cancelarConta(tx, id), TX_CONTAS_PAGAR);
-      return NextResponse.json({ ok: true });
+      const resultado = await prisma.$transaction(async (tx) => cancelarConta(tx, id), TX_CONTAS_PAGAR);
+      return NextResponse.json({ ok: true, ...resultado });
     } catch (e) {
       if (e instanceof RegraContasPagarError) {
         return NextResponse.json({ error: e.message }, { status: e.status });
@@ -103,7 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params;
     const conta = await prisma.contaPagar.findFirst({ where: { id, deletedAt: null }, select: { id: true, churchId: true } });
     if (!conta) return NextResponse.json({ error: "Conta não encontrada." }, { status: 404 });
-    if (!(await assertChurchAccess(user, conta.churchId, prisma))) {
+    if (!(await podeAcessarIgreja(user, conta.churchId, prisma))) {
       return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     }
     const statusGeral = await prisma.$transaction(async (tx) => recalcularContaCompleta(tx, id), TX_CONTAS_PAGAR);

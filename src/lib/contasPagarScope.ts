@@ -48,6 +48,36 @@ export function escopoDeIgrejas(
   return { ok: true, churchWhere };
 }
 
+/**
+ * Pode mexer nesta igreja? Usado nas rotas que recebem um id (abrir conta,
+ * pagar parcela, estornar, excluir).
+ *
+ * O `assertChurchAccess` genérico libera qualquer admin, sem olhar campo — o
+ * que deixaria as rotas por id mais frouxas que a listagem, que já filtra por
+ * campo em `escopoDeIgrejas`. Dinheiro não pode ter essa fresta: aqui o campo
+ * é conferido no banco.
+ */
+export async function podeAcessarIgreja(
+  user: AuthUser,
+  churchId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any
+): Promise<boolean> {
+  if (!churchId) return false;
+  if (user.profileType === "master") return true;
+
+  // Perfil igreja (e secretaria/tesouraria): só a própria igreja.
+  if (isRestrictedToOwnChurch(user)) return user.churchId === churchId;
+
+  // Campo/admin: qualquer igreja DO SEU CAMPO.
+  if (!user.campoId) return false;
+  const igreja = await db.church.findFirst({
+    where: { id: churchId, deletedAt: null, regional: { campoId: user.campoId } },
+    select: { id: true },
+  });
+  return Boolean(igreja);
+}
+
 /** Igreja em que uma criação deve cair, respeitando a restrição do perfil. */
 export function igrejaDeGravacao(user: AuthUser, churchIdPedido?: string | null) {
   const churchId = churchIdPedido || user.churchId || null;
