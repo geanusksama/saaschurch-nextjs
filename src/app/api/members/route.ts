@@ -28,6 +28,13 @@ const memberInclude = {
   },
 } as const;
 
+// Include enxuto para relatórios: sem churchFunctions (join caro e não usado nos relatórios).
+const memberIncludeSlim = {
+  church: memberInclude.church,
+  regional: memberInclude.regional,
+  ecclesiasticalTitleRef: memberInclude.ecclesiasticalTitleRef,
+} as const;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fixTitleMismatch(members: any[]) {
   for (const member of members) {
@@ -76,6 +83,10 @@ export async function GET(req: NextRequest) {
 
     const page = Math.max(1, Number(sp.get("page")) || 1);
     const pageSize = Math.min(Math.max(1, Number(sp.get("pageSize")) || 20), 5000);
+    // Modo relatório: `stats=0` pula os agregados (3 counts + groupBy) e `slim=1` remove
+    // o include de churchFunctions. Sem isso cada página custava 5 queries pesadas.
+    const withStats = sp.get("stats") !== "0";
+    const slim = sp.get("slim") === "1";
     const memberTypeParam = sp.get("memberType") ?? "ALL";
     const statusParam = sp.get("status") ?? "";
     const maritalStatusParam = sp.get("maritalStatus") ?? "";
@@ -250,7 +261,7 @@ export async function GET(req: NextRequest) {
       const effectiveLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 500) : 100;
       const members = await prisma.member.findMany({
         where: w,
-        include: memberInclude,
+        include: slim ? memberIncludeSlim : memberInclude,
         orderBy: { fullName: "asc" },
         take: effectiveLimit,
       });
@@ -265,8 +276,25 @@ export async function GET(req: NextRequest) {
       ? [{ createdAt: "desc" as const }, { fullName: "asc" as const }]
       : [{ fullName: "asc" as const }];
 
+    const findManyArgs = {
+      where: w,
+      include: slim ? memberIncludeSlim : memberInclude,
+      orderBy: memberOrderBy,
+      skip,
+      take: pageSize,
+    };
+
+    if (!withStats) {
+      const [members, total] = await Promise.all([
+        prisma.member.findMany(findManyArgs),
+        prisma.member.count({ where: w }),
+      ]);
+      fixTitleMismatch(members);
+      return NextResponse.json(serializeBigInts({ data: members, total }));
+    }
+
     const [members, total, activeCount, inactiveCount, churchGroups] = await Promise.all([
-      prisma.member.findMany({ where: w, include: memberInclude, orderBy: memberOrderBy, skip, take: pageSize }),
+      prisma.member.findMany(findManyArgs),
       prisma.member.count({ where: w }),
       prisma.member.count({ where: { AND: [w, activeFilter] } as never }),
       prisma.member.count({ where: { AND: [w, inactiveFilter] } as never }),

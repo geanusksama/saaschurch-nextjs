@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import ReactECharts from 'echarts-for-react';
 import * as XLSX from 'xlsx';
 import {
@@ -191,6 +191,27 @@ type MemberReportItem = {
   } | null;
   regional?: { id?: string; name?: string | null; code?: string | null } | null;
 };
+
+// Filtros de um builder que viram query string de /api/members.
+type MembersQueryScope = {
+  fieldIds: string[];
+  regionalIds: string[];
+  churchIds: string[];
+  memberTypes?: string[];
+};
+
+// Etapas dos pipelines por serviceGroup (BATISMO, CONSAGRACAO, TRANSFERENCIA, ...).
+type WorkflowColumnsPayload = Record<string, Array<{ id: number; name: string; columnIndex: number; color: string | null }>>;
+
+// `/api/members` responde `{ data, total }` no modo paginado e um array puro no modo legado (`limit`).
+type MembersApiPayload = MemberReportItem[] | { data?: MemberReportItem[]; total?: number };
+
+// Paginação da carga de membros dos relatórios.
+const MEMBERS_REPORT_PAGE_SIZE = 1000;
+const MEMBERS_REPORT_PAGE_BATCH = 4;
+const MEMBERS_REPORT_MAX_PAGES = 50;
+// Acima disso a lista de ids estoura o tamanho de URL — cai para filtro por campo/regional.
+const MEMBERS_REPORT_MAX_CHURCH_IDS = 300;
 
 type DashboardApiPayload = {
   stats?: {
@@ -1451,8 +1472,10 @@ function summarizeMultiSelect(options: MultiSelectDropdownOption[], selectedValu
     .map((option) => option.label);
 
   if (!selectedLabels.length) return emptyLabel;
-  if (selectedLabels.length <= 2) return selectedLabels.join(', ');
-  return `${selectedLabels.slice(0, 2).join(', ')} +${selectedLabels.length - 2}`;
+  // Nomes de igreja são longos ("01-002-042 - JD SAO FERNANDO"); concatenar dois já
+  // estourava a largura da barra de filtros e criava scroll horizontal na página.
+  if (selectedLabels.length === 1) return selectedLabels[0];
+  return `${selectedLabels.length} selecionados`;
 }
 
 function MultiSelectDropdown({
@@ -1470,11 +1493,24 @@ function MultiSelectDropdown({
   onToggle: (value: string, checked: boolean) => void;
   disabled?: boolean;
 }) {
+  // Opções travadas (escopo do perfil) ficam fora do marcar/desmarcar todos.
+  const selectableOptions = options.filter((option) => !option.disabled);
+  const allSelected = selectableOptions.length > 0
+    && selectableOptions.every((option) => selectedValues.includes(option.value));
+
+  // Reaproveita o próprio onToggle: como todos os call sites usam updater funcional
+  // (setState(current => ...)), as chamadas em sequência acumulam corretamente.
+  function handleToggleAll(checked: boolean) {
+    for (const option of selectableOptions) {
+      if (selectedValues.includes(option.value) !== checked) onToggle(option.value, checked);
+    }
+  }
+
   return (
-    <div className="space-y-2 text-sm text-slate-700">
-      <div className="flex items-center justify-between">
-        <span className="font-semibold text-slate-900">{label}</span>
-        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{selectedValues.length} marcado(s)</span>
+    <div className="min-w-0 space-y-2 text-sm text-slate-700">
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate font-semibold text-slate-900">{label}</span>
+        <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{selectedValues.length} marcado(s)</span>
       </div>
 
       <DropdownMenu modal={false}>
@@ -1484,7 +1520,7 @@ function MultiSelectDropdown({
             disabled={disabled}
             className="flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="truncate font-semibold text-slate-900">{summarizeMultiSelect(options, selectedValues, emptyLabel)}</div>
               <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">Selecione um ou mais</div>
             </div>
@@ -1495,6 +1531,29 @@ function MultiSelectDropdown({
         <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[280px] rounded-2xl border-slate-200 p-2">
           <DropdownMenuLabel className="px-2 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</DropdownMenuLabel>
           <DropdownMenuSeparator />
+          {selectableOptions.length ? (
+            <>
+              <div className="flex items-center gap-2 px-2 py-2">
+                <button
+                  type="button"
+                  onClick={() => handleToggleAll(true)}
+                  disabled={allSelected}
+                  className="flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Marcar todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleAll(false)}
+                  disabled={selectedValues.length === 0}
+                  className="flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Desmarcar todos
+                </button>
+              </div>
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
           <div className="max-h-72 overflow-y-auto py-1">
             {options.length ? options.map((option) => (
               <DropdownMenuCheckboxItem
@@ -1608,9 +1667,19 @@ function getGroupedColumnKey(field: MemberReportGroupKey): MemberReportColumnKey
   return null;
 }
 
+// A base tem o mesmo título gravado em grafias diferentes ("MEMBRO"/"Membro",
+// "DIACONO"/"DIÁCONO"). Sem canonizar, cada grafia virava um bucket próprio no
+// agrupamento e nos totais — e como a UI aplica `uppercase`, apareciam duas linhas
+// visualmente idênticas. Canoniza para MAIÚSCULAS sem acento, que é a grafia
+// dominante na base, colapsando também espaços repetidos.
+function canonicalizeMemberLabel(value?: string | null) {
+  const raw = String(value || '').trim().replace(/\s+/g, ' ');
+  if (!raw || raw === '-') return '';
+  return raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+}
+
 function normalizeMemberSummaryValue(value: string) {
-  const normalized = value.trim();
-  return normalized && normalized !== '-' ? normalized : 'Não informado';
+  return canonicalizeMemberLabel(value) || 'Não informado';
 }
 
 function isMemberSummaryColumn(column: MemberReportColumnKey) {
@@ -2266,6 +2335,107 @@ function normalizeChurchReportBuilderState(builder?: Partial<ChurchReportBuilder
     showMap: builder?.showMap ?? true,
     memberTypes: Array.isArray(builder?.memberTypes) ? builder.memberTypes.filter((value): value is string => typeof value === 'string') : ['MEMBRO'],
   };
+}
+
+/**
+ * Regras que a impressão não pode herdar do Tailwind. Os `<link rel="stylesheet">` do app
+ * são copiados para o iframe, mas carregam de forma assíncrona — o layout dos cabeçalhos
+ * de grupo e das tabelas de resumo dependia deles e saía cru no PDF.
+ */
+const REPORT_PRINT_SHARED_CSS = `
+  .report-group-title > div { display: flex !important; align-items: baseline !important; justify-content: space-between !important; gap: 12px !important; }
+  .report-summary-block { border: 0.35px solid #e1e6ed !important; background: #fafbfc !important; padding: 3px 5px !important; margin-top: 3px !important; border-radius: 0 !important; break-inside: avoid; page-break-inside: avoid; }
+  .report-summary-title { font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; margin-bottom: 2px !important; }
+  .report-summary-table { width: 100% !important; table-layout: fixed !important; border-collapse: collapse !important; }
+  .report-summary-table th, .report-summary-table td { border: 0.35px solid #e1e6ed !important; padding: 1px 4px !important; font-size: 9px !important; line-height: 1.25 !important; text-align: left !important; vertical-align: top !important; word-break: break-word !important; }
+  .report-summary-table th { background: #f1f3f5 !important; font-weight: 700 !important; text-transform: uppercase !important; }
+  .report-summary-table td { font-weight: 600 !important; }
+  /* NÃO usar break-inside:avoid em .report-group: a classe vale para todos os níveis,
+     inclusive o grupo raiz, que pode ser maior que uma página. O navegador então empurra
+     o bloco inteiro para a folha seguinte e a primeira página sai em branco.
+     Só os blocos que comprovadamente cabem numa página evitam quebra. */
+  /* Cabeçalho de grupo nunca fica órfão no pé da página. */
+  .report-group-title { break-after: avoid; page-break-after: avoid; }
+  /* Tabela longa repete o cabeçalho nas páginas seguintes. */
+  .report-table thead { display: table-header-group; }
+  .report-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .report-table td, .report-table th { word-break: break-word !important; overflow-wrap: anywhere !important; }
+  .print-meta { word-break: break-word; }
+
+  /* ---------------------------------------------------------------------------
+     O preview é uma tela: tem áreas roláveis, cartões arredondados e sombras.
+     Com o CSS do app carregando corretamente no iframe, tudo isso passou a valer
+     no PDF — daí a barra de rolagem e as últimas colunas cortadas. No papel não
+     existe rolagem: todo container rolável vira estático e mostra o conteúdo todo.
+     --------------------------------------------------------------------------- */
+  [class*="overflow-"] { overflow: visible !important; max-height: none !important; }
+  /* A tabela passa a caber na largura útil da folha em vez de ser cortada. */
+  .report-table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; }
+  /* whitespace-nowrap nos cabeçalhos impedia a tabela de encolher. */
+  .report-table th { white-space: normal !important; }
+  /* Sem cara de interface: cartões e sombras não fazem sentido impressos.
+     (rounded-full de badges fica de fora de propósito.) */
+  [class*="rounded-3xl"], [class*="rounded-2xl"], [class*="rounded-xl"] { border-radius: 0 !important; }
+  [class*="shadow"] { box-shadow: none !important; }
+`;
+
+/**
+ * Dispara a impressão só depois que os stylesheets copiados para o iframe aplicarem.
+ * Antes o print() era chamado logo após document.close(), então o PDF saía sem o CSS
+ * do app: cabeçalhos de grupo colados no contador e tabelas de resumo desalinhadas.
+ */
+function printFrameWhenStylesReady(frameWindow: Window, timeoutMs = 2000) {
+  const links = Array.from(
+    frameWindow.document.querySelectorAll('link[rel="stylesheet"]'),
+  ) as HTMLLinkElement[];
+  const pending = links.filter((link) => !link.sheet);
+
+  const runPrint = () => {
+    frameWindow.focus();
+    frameWindow.print();
+  };
+
+  if (!pending.length) {
+    runPrint();
+    return;
+  }
+
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    runPrint();
+  };
+
+  let remaining = pending.length;
+  const settle = () => {
+    remaining -= 1;
+    if (remaining <= 0) finish();
+  };
+
+  for (const link of pending) {
+    link.addEventListener('load', settle, { once: true });
+    link.addEventListener('error', settle, { once: true });
+  }
+
+  // Rede lenta ou stylesheet inacessível não pode travar a impressão.
+  window.setTimeout(finish, timeoutMs);
+}
+
+/**
+ * Nomes das igrejas selecionadas para o cabeçalho da impressão. Listar todas estourava
+ * meia página quando o filtro de regional passou a marcar as igrejas automaticamente.
+ */
+function summarizeSelectedChurchNames(
+  churchIds: string[],
+  churchLookup: Map<string, { name?: string | null }>,
+  allLabel: string,
+) {
+  if (!churchIds.length) return allLabel;
+  const names = churchIds.map((churchId) => churchLookup.get(churchId)?.name).filter(Boolean) as string[];
+  if (!names.length) return allLabel;
+  if (names.length <= 4) return names.join(', ');
+  return `${names.slice(0, 4).join(', ')} e mais ${names.length - 4} igreja(s)`;
 }
 
 function authFetch(url: string, init: RequestInit = {}) {
@@ -3359,15 +3529,23 @@ export function Reports() {
   const isAdminOrMaster = ['master', 'admin'].includes(profileType);
   const hasFixedCampoScope = !isAdminOrMaster;
 
+  // Perfil de igreja (e secretaria/tesouraria da igreja) não troca igreja nem regional:
+  // os seletores nascem travados no vínculo do usuário logado. Campo, admin e master podem alterar.
+  const churchScopeLocked = hasFixedChurchScope;
+  // Independente do perfil, os filtros já iniciam apontando para a igreja/regional do usuário.
+  const defaultRegionalIds: string[] = storedUser.regionalId ? [storedUser.regionalId] : [];
+  const defaultChurchIds: string[] = storedUser.churchId ? [storedUser.churchId] : [];
+
   const [activeTab, setActiveTab] = useState<ReportsTabKey>('reports');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fields, setFields] = useState<CampoOption[]>([]);
   const [regionais, setRegionais] = useState<RegionalOption[]>([]);
   const [churches, setChurches] = useState<ChurchOption[]>([]);
+  const [workflowColumns, setWorkflowColumns] = useState<WorkflowColumnsPayload>({});
   const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
   const [selectedRegionalId, setSelectedRegionalId] = useState(storedUser.regionalId || '');
-  const [selectedChurchId, setSelectedChurchId] = useState(hasFixedChurchScope ? (storedUser.churchId || '') : '');
+  const [selectedChurchId, setSelectedChurchId] = useState(storedUser.churchId || '');
   const [selectedDatePreset, setSelectedDatePreset] = useState<DatePresetKey>('custom');
   const { from: _defaultFrom, to: _defaultTo } = getCurrentMonthRange();
   const [dateFrom, setDateFrom] = useState<string>(_defaultFrom);
@@ -3423,6 +3601,8 @@ export function Reports() {
   const [churchReportTemplateName, setChurchReportTemplateName] = useState('');
   const [churchReportNameDialogOpen, setChurchReportNameDialogOpen] = useState(false);
   const [churchEvolutionChartImage, setChurchEvolutionChartImage] = useState('');
+  // Instância do ECharts guardada para recapturar o gráfico na hora de imprimir.
+  const churchEvolutionChartRef = useRef<{ getDataURL: (opts: Record<string, unknown>) => string } | null>(null);
   const [showChurchMembersList, setShowChurchMembersList] = useState(false);
   const [churchPhotosMap, setChurchPhotosMap] = useState<Record<string, string[]>>({});
   const [listRowOpenMembersId, setListRowOpenMembersId] = useState<string | null>(null);
@@ -3441,8 +3621,8 @@ export function Reports() {
       dateFrom: reqFrom,
       dateTo: reqTo,
       fieldIds: activeFieldId ? [activeFieldId] : [],
-      regionalIds: storedUser.regionalId ? [storedUser.regionalId] : [],
-      churchIds: hasFixedChurchScope && storedUser.churchId ? [storedUser.churchId] : [],
+      regionalIds: defaultRegionalIds,
+      churchIds: defaultChurchIds,
       memberTypes: ['MEMBRO'],
     });
   });
@@ -3461,8 +3641,8 @@ export function Reports() {
       dateFrom: credFrom,
       dateTo: credTo,
       fieldIds: activeFieldId ? [activeFieldId] : [],
-      regionalIds: storedUser.regionalId ? [storedUser.regionalId] : [],
-      churchIds: hasFixedChurchScope && storedUser.churchId ? [storedUser.churchId] : [],
+      regionalIds: defaultRegionalIds,
+      churchIds: defaultChurchIds,
     });
   });
   const [memberReportBuilder, setMemberReportBuilder] = useState<MemberReportBuilderState>(() => {
@@ -3472,8 +3652,8 @@ export function Reports() {
     dateFrom: mFrom,
     dateTo: mTo,
     fieldIds: activeFieldId ? [activeFieldId] : [],
-    regionalIds: storedUser.regionalId ? [storedUser.regionalId] : [],
-    churchIds: hasFixedChurchScope && storedUser.churchId ? [storedUser.churchId] : [],
+    regionalIds: defaultRegionalIds,
+    churchIds: defaultChurchIds,
     statuses: [],
     memberTypes: ['MEMBRO'],
     groupBy: [],
@@ -3493,8 +3673,8 @@ export function Reports() {
     dateFrom: bFrom,
     dateTo: bTo,
     fieldIds: activeFieldId ? [activeFieldId] : [],
-    regionalIds: storedUser.regionalId ? [storedUser.regionalId] : [],
-    churchIds: hasFixedChurchScope && storedUser.churchId ? [storedUser.churchId] : [],
+    regionalIds: defaultRegionalIds,
+    churchIds: defaultChurchIds,
     workflowStatuses: [],
     memberStatuses: [],
     memberTypes: ['MEMBRO'],
@@ -3515,8 +3695,8 @@ export function Reports() {
     dateFrom: cFrom,
     dateTo: cTo,
     fieldIds: activeFieldId ? [activeFieldId] : [],
-    regionalIds: storedUser.regionalId ? [storedUser.regionalId] : [],
-    churchIds: hasFixedChurchScope && storedUser.churchId ? [storedUser.churchId] : [],
+    regionalIds: defaultRegionalIds,
+    churchIds: defaultChurchIds,
     workflowStatuses: [],
     memberStatuses: [],
     memberTypes: ['MEMBRO'],
@@ -3537,8 +3717,8 @@ export function Reports() {
     dateFrom: tFrom,
     dateTo: tTo,
     fieldIds: activeFieldId ? [activeFieldId] : [],
-    regionalIds: storedUser.regionalId ? [storedUser.regionalId] : [],
-    churchIds: hasFixedChurchScope && storedUser.churchId ? [storedUser.churchId] : [],
+    regionalIds: defaultRegionalIds,
+    churchIds: defaultChurchIds,
     destinationChurchIds: [],
     workflowStatuses: [],
     memberStatuses: [],
@@ -3558,8 +3738,8 @@ export function Reports() {
     dateFrom: chFrom,
     dateTo: chTo,
     fieldIds: activeFieldId ? [activeFieldId] : [],
-    regionalIds: storedUser.regionalId ? [storedUser.regionalId] : [],
-    churchIds: hasFixedChurchScope && storedUser.churchId ? [storedUser.churchId] : [],
+    regionalIds: defaultRegionalIds,
+    churchIds: defaultChurchIds,
     mode: 'single',
     groupBy: ['field', 'regional', 'church'],
     sections: ['leaders', 'functions', 'titles', 'baptisms', 'consecrations', 'new_members', 'stats'],
@@ -3715,34 +3895,123 @@ export function Reports() {
     setChurchReportTemplates(buildInitialChurchReportTemplates(churchReportBuilder));
   }, [churchReportTemplates.length, churchReportBuilder]);
 
-  async function loadReportsData() {
+  // Consulta base de membros para relatórios: sem agregados e sem o join de funções,
+  // que não são usados aqui e custavam 5 queries pesadas por página.
+  function buildBaseMembersQuery() {
+    const params = new URLSearchParams();
+    params.set('stats', '0');
+    params.set('slim', '1');
+    params.set('pageSize', String(MEMBERS_REPORT_PAGE_SIZE));
+    return params;
+  }
+
+  // Escopo de igrejas de um builder qualquer, para a consulta já voltar filtrada do
+  // servidor em vez de trazer a base inteira.
+  function resolveScopeChurchIds(fieldIds: string[], regionalIds: string[], churchIds: string[]) {
+    if (churchIds.length) return churchIds;
+    if (!fieldIds.length && !regionalIds.length) return [];
+    return churches
+      .filter((church) => {
+        const campoId = church.regional?.campoId || church.regional?.campo?.id || '';
+        const regionalId = church.regional?.id || church.regionalId || '';
+        if (fieldIds.length && !fieldIds.includes(campoId)) return false;
+        if (regionalIds.length && !regionalIds.includes(regionalId)) return false;
+        return true;
+      })
+      .map((church) => church.id);
+  }
+
+  function buildMembersQueryForScope(scope: MembersQueryScope | null) {
+    const params = buildBaseMembersQuery();
+    if (!scope) return params;
+
+    const churchIds = resolveScopeChurchIds(scope.fieldIds, scope.regionalIds, scope.churchIds);
+    if (churchIds.length && churchIds.length <= MEMBERS_REPORT_MAX_CHURCH_IDS) {
+      params.set('churchIds', churchIds.join(','));
+    } else if (scope.regionalIds.length === 1) {
+      params.set('regionalId', scope.regionalIds[0]);
+    } else if (scope.fieldIds.length === 1) {
+      params.set('campoId', scope.fieldIds[0]);
+    }
+
+    if (scope.memberTypes && scope.memberTypes.length === 1) {
+      params.set('memberType', scope.memberTypes[0]);
+    }
+
+    return params;
+  }
+
+  function buildMembersReportQuery() {
+    return buildMembersQueryForScope(memberReportBuilder);
+  }
+
+  // A rota responde `{ data, total }` no modo paginado (padrão) e um array puro apenas no
+  // modo legado com `limit`. Antes o relatório assumia array e descartava tudo, ficando vazio.
+  async function fetchAllMembers(params: URLSearchParams): Promise<MemberReportItem[]> {
+    const requestPage = async (page: number): Promise<MembersApiPayload> => {
+      const pageParams = new URLSearchParams(params);
+      pageParams.set('page', String(page));
+      const response = await authFetch(`${apiBase}/members?${pageParams.toString()}`);
+      if (!response.ok) throw new Error('Não foi possível carregar os membros para o relatório.');
+      return response.json() as Promise<MembersApiPayload>;
+    };
+
+    const first = await requestPage(1);
+    if (Array.isArray(first)) return first;
+
+    const rows: MemberReportItem[] = Array.isArray(first.data) ? [...first.data] : [];
+    const total = Number(first.total) || rows.length;
+    const totalPages = Math.min(Math.ceil(total / MEMBERS_REPORT_PAGE_SIZE), MEMBERS_REPORT_MAX_PAGES);
+
+    // Páginas seguintes em lotes, para completar a base sem abrir dezenas de conexões de uma vez.
+    for (let page = 2; page <= totalPages; page += MEMBERS_REPORT_PAGE_BATCH) {
+      const batch: Promise<MembersApiPayload>[] = [];
+      for (let offset = 0; offset < MEMBERS_REPORT_PAGE_BATCH && page + offset <= totalPages; offset += 1) {
+        batch.push(requestPage(page + offset));
+      }
+      const payloads = await Promise.all(batch);
+      for (const payload of payloads) {
+        if (!Array.isArray(payload) && Array.isArray(payload.data)) rows.push(...payload.data);
+      }
+    }
+
+    return rows;
+  }
+
+  async function loadReportsData(options: { includeMembers?: boolean; membersScope?: MembersQueryScope } = {}) {
+    const includeMembers = options.includeMembers !== false;
     setLoading(true);
     setError('');
     try {
-      const [dashboardResponse, membersResponse, baptismResponse, consecrationResponse, transferResponse, servicesResponse] = await Promise.all([
+      // Sem escopo o relatório puxava a base inteira (dezenas de milhares de membros),
+      // mesmo quando estava filtrado numa única igreja.
+      const membersPromise = includeMembers
+        ? fetchAllMembers(buildMembersQueryForScope(options.membersScope ?? null))
+        : Promise.resolve(null);
+
+      const [dashboardResponse, baptismResponse, consecrationResponse, transferResponse, servicesResponse] = await Promise.all([
         authFetch(`${apiBase}/dashboard`),
-        authFetch(`${apiBase}/members`),
         authFetch(`${apiBase}/baptism/dashboard`),
         authFetch(`${apiBase}/consecration/dashboard`),
         authFetch(`${apiBase}/transfer/dashboard`),
         authFetch(`${apiBase}/kan/services`),
       ]);
 
-      if (!dashboardResponse.ok || !baptismResponse.ok || !consecrationResponse.ok || !transferResponse.ok || !servicesResponse.ok || !membersResponse.ok) {
+      if (!dashboardResponse.ok || !baptismResponse.ok || !consecrationResponse.ok || !transferResponse.ok || !servicesResponse.ok) {
         throw new Error('Não foi possível carregar os dados de secretaria para relatórios.');
       }
 
-      const [dashboardPayload, membersPayload, baptismPayload, consecrationPayload, transferPayload, servicesPayload] = await Promise.all([
+      const [dashboardPayload, baptismPayload, consecrationPayload, transferPayload, servicesPayload, membersPayload] = await Promise.all([
         dashboardResponse.json(),
-        membersResponse.json(),
         baptismResponse.json(),
         consecrationResponse.json(),
         transferResponse.json(),
         servicesResponse.json(),
+        membersPromise,
       ]);
 
       setDashboardData(dashboardPayload as DashboardApiPayload);
-      setMembers(Array.isArray(membersPayload) ? (membersPayload as MemberReportItem[]) : []);
+      if (membersPayload) setMembers(membersPayload);
       setBaptismData(baptismPayload as BaptismDashboardPayload);
       setConsecrationData(consecrationPayload as ConsecrationDashboardPayload);
       setTransferData(transferPayload as TransferDashboardPayload);
@@ -3750,7 +4019,7 @@ export function Reports() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar relatórios.');
       setDashboardData(null);
-      setMembers([]);
+      if (includeMembers) setMembers([]);
       setBaptismData(null);
       setConsecrationData(null);
       setTransferData(null);
@@ -3764,12 +4033,7 @@ export function Reports() {
     setLoading(true);
     setError('');
     try {
-      const membersResponse = await authFetch(`${apiBase}/members`);
-      if (!membersResponse.ok) {
-        throw new Error('Não foi possível carregar os membros para o construtor de relatórios.');
-      }
-      const membersPayload = await membersResponse.json();
-      setMembers(Array.isArray(membersPayload) ? (membersPayload as MemberReportItem[]) : []);
+      setMembers(await fetchAllMembers(buildMembersReportQuery()));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar os membros do construtor.');
       setMembers([]);
@@ -3789,10 +4053,11 @@ export function Reports() {
   useEffect(() => {
     async function loadFilterOptions() {
       try {
-        const [fieldsResponse, regionaisResponse, churchesResponse] = await Promise.all([
+        const [fieldsResponse, regionaisResponse, churchesResponse, columnsResponse] = await Promise.all([
           authFetch(`${apiBase}/campos`),
           authFetch(`${apiBase}/regionais`),
           authFetch(`${apiBase}/churches`),
+          authFetch(`${apiBase}/kan/columns`),
         ]);
 
         if (!fieldsResponse.ok || !regionaisResponse.ok || !churchesResponse.ok) return;
@@ -3806,10 +4071,17 @@ export function Reports() {
         setFields(Array.isArray(fieldsPayload) ? fieldsPayload : []);
         setRegionais(Array.isArray(regionaisPayload) ? regionaisPayload : []);
         setChurches(Array.isArray(churchesPayload) ? churchesPayload : []);
+
+        // Etapas do pipeline: independem de já ter consultado o relatório.
+        if (columnsResponse.ok) {
+          const columnsPayload = await columnsResponse.json();
+          setWorkflowColumns(columnsPayload && typeof columnsPayload === 'object' ? columnsPayload as WorkflowColumnsPayload : {});
+        }
       } catch {
         setFields([]);
         setRegionais([]);
         setChurches([]);
+        setWorkflowColumns({});
       }
     }
 
@@ -4917,6 +5189,20 @@ export function Reports() {
     }
     return result;
   }, [churches, memberReportBuilder.fieldIds, memberReportBuilder.regionalIds]);
+  // Ao marcar uma regional, as igrejas dela já entram marcadas por padrão.
+  // Sem regional marcada volta vazio, que no builder significa "todas as igrejas".
+  const churchIdsForScope = useCallback((fieldIds: string[], regionalIds: string[]) => {
+    if (!regionalIds.length) return [];
+    return churches
+      .filter((church) => {
+        const campoId = church.regional?.campoId || church.regional?.campo?.id || '';
+        const regionalId = church.regional?.id || church.regionalId || '';
+        if (fieldIds.length && !fieldIds.includes(campoId)) return false;
+        return regionalIds.includes(regionalId);
+      })
+      .map((church) => church.id);
+  }, [churches]);
+
   const baptismReportRegionais = useMemo(() => {
     if (!baptismReportBuilder.fieldIds.length) return regionais;
     return regionais.filter((regional) => baptismReportBuilder.fieldIds.includes(regional.campoId));
@@ -4978,9 +5264,15 @@ export function Reports() {
     return result;
   }, [churches, transferReportBuilder.fieldIds, transferReportBuilder.regionalIds]);
   const transferReportDestinationChurches = useMemo(() => churches, [churches]);
+  // Antes as opções saíam só dos membros já carregados, então o filtro de status ficava
+  // vazio enquanto nada tinha sido consultado. Agora parte de uma base fixa.
   const memberStatusOptions = useMemo(() => {
-    return Array.from(new Set(members.map((member) => normalizeMembershipStatusLabel(member.membershipStatus)).filter(Boolean)))
-      .sort(compareLocaleValues);
+    const options = new Set(['Ativos', 'Inativos', 'Aguardando ativação', 'Não informado']);
+    for (const member of members) {
+      const label = normalizeMembershipStatusLabel(member.membershipStatus);
+      if (label) options.add(label);
+    }
+    return Array.from(options).sort(compareLocaleValues);
   }, [members]);
   const memberPreviewRows = useMemo<MemberPreviewRow[]>(() => {
     return members.map((member) => ({
@@ -4999,7 +5291,8 @@ export function Reports() {
       church_code: toSafeLabel(member.church?.code),
       regional: toSafeLabel(member.church?.regional?.name || member.regional?.name),
       field: toSafeLabel(member.church?.regional?.campo?.name),
-      title: toSafeLabel(member.ecclesiasticalTitleRef?.name || member.ecclesiasticalTitle),
+      // Canoniza para que agrupamento, totais e a célula da tabela usem a mesma grafia.
+      title: canonicalizeMemberLabel(member.ecclesiasticalTitleRef?.name || member.ecclesiasticalTitle) || 'Não informado',
       gender: normalizeGenderLabel(member.gender),
       marital_status: normalizeMaritalStatusLabel(member.maritalStatus),
       age_range: getAgeRangeLabel(member.birthDate),
@@ -5301,9 +5594,7 @@ export function Reports() {
     activeGrouping: memberReportBuilder.groupBy.map((group) => MEMBER_REPORT_GROUP_OPTIONS.find((option) => option.value === group)?.label || group).join(' > ') || 'Sem agrupamento',
   }), [memberFilteredRows, memberPreviewGroups, memberReportBuilder.columns.length, memberReportBuilder.groupBy, memberReportBuilder.metric, memberReportBuilder.fieldIds.length, memberReportBuilder.regionalIds.length, memberReportBuilder.churchIds.length, memberReportBuilder.statuses.length]);
   const selectedChurchNames = useMemo(
-    () => (memberReportBuilder.churchIds.length
-      ? memberReportBuilder.churchIds.map((churchId) => churchLookup.get(churchId)?.name).filter(Boolean).join(', ')
-      : 'Todas as Igrejas'),
+    () => summarizeSelectedChurchNames(memberReportBuilder.churchIds, churchLookup, 'Todas as Igrejas'),
     [memberReportBuilder.churchIds, churchLookup],
   );
   const printResponsible = storedUser.fullName || storedUser.name || storedUser.churchName || 'ADMIN USER';
@@ -5311,18 +5602,38 @@ export function Reports() {
     ? `${memberReportBuilder.dateFrom ? formatLongDate(memberReportBuilder.dateFrom) : 'Início em aberto'}${memberReportBuilder.dateTo ? ` até ${formatLongDate(memberReportBuilder.dateTo)}` : ''}`
     : 'Todo o período';
   const printDate = formatDate(new Date().toISOString());
+  // Etapas do pipeline vindas da API (na ordem do fluxo) + qualquer valor extra que
+  // apareça nos cards. Antes as opções saíam só dos cards carregados, então o filtro
+  // ficava "Nenhuma opção disponível" enquanto o usuário não clicasse em Consultar.
+  const buildWorkflowStatusOptions = useCallback((serviceGroup: string, rows: Array<{ workflow_status: string }>) => {
+    const ordered = (workflowColumns[serviceGroup] || [])
+      .slice()
+      .sort((left, right) => left.columnIndex - right.columnIndex)
+      .map((column) => column.name);
+    const known = new Set(ordered.map((name) => name.toLowerCase()));
+    const extras = Array.from(new Set(
+      rows.map((row) => row.workflow_status).filter((value) => value && !known.has(value.toLowerCase())),
+    )).sort(compareLocaleValues);
+    return [...ordered, ...extras];
+  }, [workflowColumns]);
+
+  // Situação do membro tem domínio fixo; derivar dos dados deixava o filtro vazio.
+  const buildMemberStatusOptions = useCallback((rows: Array<{ member_status: string }>) => {
+    const options = new Set(['Ativos', 'Inativos', 'Aguardando ativação', 'Não informado']);
+    for (const row of rows) if (row.member_status) options.add(row.member_status);
+    return Array.from(options).sort(compareLocaleValues);
+  }, []);
+
   const baptismWorkflowStatusOptions = useMemo(
-    () => Array.from(new Set(baptismPreviewRows.map((row) => row.workflow_status).filter(Boolean))).sort(compareLocaleValues),
-    [baptismPreviewRows],
+    () => buildWorkflowStatusOptions('BATISMO', baptismPreviewRows),
+    [buildWorkflowStatusOptions, baptismPreviewRows],
   );
   const baptismMemberStatusOptions = useMemo(
-    () => Array.from(new Set(baptismPreviewRows.map((row) => row.member_status).filter(Boolean))).sort(compareLocaleValues),
-    [baptismPreviewRows],
+    () => buildMemberStatusOptions(baptismPreviewRows),
+    [buildMemberStatusOptions, baptismPreviewRows],
   );
   const baptismSelectedChurchNames = useMemo(
-    () => (baptismReportBuilder.churchIds.length
-      ? baptismReportBuilder.churchIds.map((churchId) => churchLookup.get(churchId)?.name).filter(Boolean).join(', ')
-      : 'Todas as Igrejas'),
+    () => summarizeSelectedChurchNames(baptismReportBuilder.churchIds, churchLookup, 'Todas as Igrejas'),
     [baptismReportBuilder.churchIds, churchLookup],
   );
   const baptismPrintPeriod = baptismReportBuilder.dateFrom || baptismReportBuilder.dateTo
@@ -5339,17 +5650,15 @@ export function Reports() {
     activeGrouping: baptismReportBuilder.groupBy.map((group) => BAPTISM_REPORT_GROUP_OPTIONS.find((option) => option.value === group)?.label || group).join(' > ') || 'Sem agrupamento',
   }), [baptismFilteredRows, baptismReportBuilder]);
   const consecrationWorkflowStatusOptions = useMemo(
-    () => Array.from(new Set(consecrationPreviewRows.map((row) => row.workflow_status).filter(Boolean))).sort(compareLocaleValues),
-    [consecrationPreviewRows],
+    () => buildWorkflowStatusOptions('CONSAGRACAO', consecrationPreviewRows),
+    [buildWorkflowStatusOptions, consecrationPreviewRows],
   );
   const consecrationMemberStatusOptions = useMemo(
-    () => Array.from(new Set(consecrationPreviewRows.map((row) => row.member_status).filter(Boolean))).sort(compareLocaleValues),
-    [consecrationPreviewRows],
+    () => buildMemberStatusOptions(consecrationPreviewRows),
+    [buildMemberStatusOptions, consecrationPreviewRows],
   );
   const consecrationSelectedChurchNames = useMemo(
-    () => (consecrationReportBuilder.churchIds.length
-      ? consecrationReportBuilder.churchIds.map((churchId) => churchLookup.get(churchId)?.name).filter(Boolean).join(', ')
-      : 'Todas as Igrejas'),
+    () => summarizeSelectedChurchNames(consecrationReportBuilder.churchIds, churchLookup, 'Todas as Igrejas'),
     [consecrationReportBuilder.churchIds, churchLookup],
   );
   const consecrationPrintPeriod = consecrationReportBuilder.dateFrom || consecrationReportBuilder.dateTo
@@ -5366,23 +5675,19 @@ export function Reports() {
     activeGrouping: consecrationReportBuilder.groupBy.map((group) => CONSECRATION_REPORT_GROUP_OPTIONS.find((option) => option.value === group)?.label || group).join(' > ') || 'Sem agrupamento',
   }), [consecrationFilteredRows, consecrationReportBuilder]);
   const transferWorkflowStatusOptions = useMemo(
-    () => Array.from(new Set(transferPreviewRows.map((row) => row.workflow_status).filter(Boolean))).sort(compareLocaleValues),
-    [transferPreviewRows],
+    () => buildWorkflowStatusOptions('TRANSFERENCIA', transferPreviewRows),
+    [buildWorkflowStatusOptions, transferPreviewRows],
   );
   const transferMemberStatusOptions = useMemo(
-    () => Array.from(new Set(transferPreviewRows.map((row) => row.member_status).filter(Boolean))).sort(compareLocaleValues),
-    [transferPreviewRows],
+    () => buildMemberStatusOptions(transferPreviewRows),
+    [buildMemberStatusOptions, transferPreviewRows],
   );
   const transferSelectedOriginChurchNames = useMemo(
-    () => (transferReportBuilder.churchIds.length
-      ? transferReportBuilder.churchIds.map((churchId) => churchLookup.get(churchId)?.name).filter(Boolean).join(', ')
-      : 'Todas as Igrejas'),
+    () => summarizeSelectedChurchNames(transferReportBuilder.churchIds, churchLookup, 'Todas as Igrejas'),
     [transferReportBuilder.churchIds, churchLookup],
   );
   const transferSelectedDestinationChurchNames = useMemo(
-    () => (transferReportBuilder.destinationChurchIds.length
-      ? transferReportBuilder.destinationChurchIds.map((churchId) => churchLookup.get(churchId)?.name).filter(Boolean).join(', ')
-      : 'Todas as Igrejas'),
+    () => summarizeSelectedChurchNames(transferReportBuilder.destinationChurchIds, churchLookup, 'Todas as Igrejas'),
     [transferReportBuilder.destinationChurchIds, churchLookup],
   );
   const transferPrintPeriod = transferReportBuilder.dateFrom || transferReportBuilder.dateTo
@@ -5466,7 +5771,7 @@ export function Reports() {
   }
 
   function handleLoadRequirementsReportTemplate(template: SavedRequirementsReportTemplate) {
-    setRequirementsReportBuilder(normalizeRequirementsReportBuilderState(template.builder));
+    setRequirementsReportBuilder(applyLockedScope(normalizeRequirementsReportBuilderState(template.builder)));
     setActiveRequirementsReportTemplateId(template.id);
     setRequirementsSearchTriggered(true);
     setRequirementsSearchTrigger((n) => n + 1);
@@ -5523,6 +5828,7 @@ export function Reports() {
             tr:nth-child(even) td { background: ${requirementsReportBuilder.zebraEnabled ? requirementsReportBuilder.zebraColor : 'transparent'} !important; }
             .badge { display: inline-block; border-radius: 999px; padding: 1px 6px; font-size: 9px; font-weight: 600; }
             .expand-btn, .w-10 { display: none !important; }
+            ${REPORT_PRINT_SHARED_CSS}
             @page { size: A4 ${orientationStyle}; margin: 10mm; }
           </style>
         </head>
@@ -5544,8 +5850,7 @@ export function Reports() {
       if (document.body.contains(printFrame)) printFrame.remove();
     };
     window.addEventListener('focus', cleanup, { once: true });
-    frameWindow.focus();
-    frameWindow.print();
+    printFrameWhenStylesReady(frameWindow);
   }
 
   const REQ_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
@@ -5612,7 +5917,7 @@ export function Reports() {
   function handleLoadCredentialReportTemplate(id: string) {
     const tpl = credentialReportTemplates.find((t) => t.id === id);
     if (!tpl) return;
-    setCredentialReportBuilder(normalizeCredentialReportBuilderState(tpl.builder));
+    setCredentialReportBuilder(applyLockedScope(normalizeCredentialReportBuilderState(tpl.builder)));
     setActiveCredentialReportTemplateId(id);
     setCredentialsSearchTriggered(true);
     setCredentialSearchTrigger((n) => n + 1);
@@ -5708,6 +6013,7 @@ export function Reports() {
       .cred-expand{background:#f0fdf4;border-top:.5px solid #bbf7d0;}
       [class*='grid-cols-2']{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:16px!important;}
       .cred-photo{width:60px;height:auto;border-radius:4px;border:1px solid #e2e8f0;}
+      ${REPORT_PRINT_SHARED_CSS}
       @page{size:A4 ${orient};margin:10mm;}
     </style></head><body>
     <div class="ph"><div><p class="pt">Relatório de credenciais</p><p style="font-size:10px"><strong>Data de impressão:</strong> ${printDate}</p></div><div class="pb">SISTEMA MRM</div></div>
@@ -5716,8 +6022,7 @@ export function Reports() {
     fw.document.close();
     const cleanup = () => { if (document.body.contains(printFrame)) printFrame.remove(); };
     window.addEventListener('focus', cleanup, { once: true });
-    fw.focus();
-    fw.print();
+    printFrameWhenStylesReady(fw);
   }
   // ────────────────────────────────────────────────────────────────────────
 
@@ -5802,8 +6107,8 @@ export function Reports() {
     accentClassName: string,
   ) {
     return (
-      <div className="rounded-xl bg-slate-50 px-2 py-2">
-        <div className="mb-1 text-xs font-medium uppercase tracking-[0.06em] text-slate-600">Resumo do grupo: {summaryTitle}</div>
+      <div className="report-summary-block rounded-xl bg-slate-50 px-2 py-2">
+        <div className="report-summary-title mb-1 text-xs font-medium uppercase tracking-[0.06em] text-slate-600">Resumo do grupo: {summaryTitle}</div>
         {renderCompactSummaryTable([
           { label: 'Total', value: formatMetric(total) },
           { label: 'Registros', value: formatMetric(rowCount) },
@@ -6152,6 +6457,7 @@ export function Reports() {
             .report-table { width: 100%; border-collapse: collapse; border-spacing: 0 !important; margin-top: 4px; }
             .report-table th, .report-table td { border: 0.35px solid #e1e6ed !important; padding: 2px 4px !important; font-size: 10px !important; text-align: left; vertical-align: top; }
             .report-table th { background: #f1f3f5 !important; font-weight: 700; }
+            ${REPORT_PRINT_SHARED_CSS}
             @page { size: A4 ${baptismReportBuilder.orientation === 'landscape' ? 'landscape' : 'portrait'}; margin: 10mm; }
           </style>
         </head>
@@ -6182,8 +6488,7 @@ export function Reports() {
     };
 
     window.addEventListener('focus', cleanup, { once: true });
-    frameWindow.focus();
-    frameWindow.print();
+    printFrameWhenStylesReady(frameWindow);
   }
 
   function renderBaptismPreviewGroups(nodes: BaptismPreviewGroupNode[]) {
@@ -6418,6 +6723,7 @@ export function Reports() {
             .report-table { width: 100%; border-collapse: collapse; border-spacing: 0 !important; margin-top: 4px; }
             .report-table th, .report-table td { border: 0.35px solid #e1e6ed !important; padding: 2px 4px !important; font-size: 10px !important; text-align: left; vertical-align: top; }
             .report-table th { background: #f1f3f5 !important; font-weight: 700; }
+            ${REPORT_PRINT_SHARED_CSS}
             @page { size: A4 ${consecrationReportBuilder.orientation === 'landscape' ? 'landscape' : 'portrait'}; margin: 10mm; }
           </style>
         </head>
@@ -6448,8 +6754,7 @@ export function Reports() {
     };
 
     window.addEventListener('focus', cleanup, { once: true });
-    frameWindow.focus();
-    frameWindow.print();
+    printFrameWhenStylesReady(frameWindow);
   }
 
   function renderConsecrationPreviewGroups(nodes: ConsecrationPreviewGroupNode[]) {
@@ -6685,6 +6990,7 @@ export function Reports() {
             .report-table { width: 100%; border-collapse: collapse; border-spacing: 0 !important; margin-top: 4px; }
             .report-table th, .report-table td { border: 0.35px solid #e1e6ed !important; padding: 2px 4px !important; font-size: 10px !important; text-align: left; vertical-align: top; }
             .report-table th { background: #f1f3f5 !important; font-weight: 700; }
+            ${REPORT_PRINT_SHARED_CSS}
             @page { size: A4 ${transferReportBuilder.orientation === 'landscape' ? 'landscape' : 'portrait'}; margin: 10mm; }
           </style>
         </head>
@@ -6716,8 +7022,7 @@ export function Reports() {
     };
 
     window.addEventListener('focus', cleanup, { once: true });
-    frameWindow.focus();
-    frameWindow.print();
+    printFrameWhenStylesReady(frameWindow);
   }
 
   function renderTransferPreviewGroups(nodes: TransferPreviewGroupNode[]) {
@@ -6862,35 +7167,45 @@ export function Reports() {
     setChurchReportTemplateName('');
   }
 
+  // Um modelo salvo pode carregar igreja/regional de outro escopo. Para perfil travado,
+  // reaplicamos o vínculo do usuário logado ao restaurar o modelo.
+  function applyLockedScope<T extends { regionalIds: string[]; churchIds: string[] }>(builder: T): T {
+    if (!churchScopeLocked) return builder;
+    return { ...builder, regionalIds: defaultRegionalIds, churchIds: defaultChurchIds };
+  }
+
   const handleMembersSearch = () => {
     setMembersSearchTriggered(true);
     void loadMembersPreviewData();
   };
 
+  // Estes relatórios não consomem a lista de membros — só as filas dos pipelines.
+  // Buscá-la aqui era o principal motivo da lentidão ao consultar.
   const handleBaptismSearch = () => {
     setBaptismSearchTriggered(true);
-    void loadReportsData();
+    void loadReportsData({ includeMembers: false });
   };
 
   const handleConsecrationSearch = () => {
     setConsecrationSearchTriggered(true);
-    void loadReportsData();
+    void loadReportsData({ includeMembers: false });
   };
 
   const handleTransferSearch = () => {
     setTransferSearchTriggered(true);
-    void loadReportsData();
+    void loadReportsData({ includeMembers: false });
   };
 
+  // Este precisa da lista de membros (detalhamento por igreja), mas só das igrejas filtradas.
   const handleChurchesSearch = () => {
     setChurchesSearchTriggered(true);
-    void loadReportsData();
+    void loadReportsData({ membersScope: churchReportBuilder });
   };
 
   function handleLoadMemberReportTemplate(template: SavedMemberReportTemplate) {
     setActiveMemberReportTemplateId(template.id);
     setMemberReportTemplateName(template.name);
-    setMemberReportBuilder(cloneMemberReportBuilderState(template.builder));
+    setMemberReportBuilder(applyLockedScope(cloneMemberReportBuilderState(template.builder)));
     setMembersSearchTriggered(true);
     void loadMembersPreviewData();
   }
@@ -6898,33 +7213,34 @@ export function Reports() {
   function handleLoadBaptismReportTemplate(template: SavedBaptismReportTemplate) {
     setActiveBaptismReportTemplateId(template.id);
     setBaptismReportTemplateName(template.name);
-    setBaptismReportBuilder(cloneBaptismReportBuilderState(template.builder));
+    setBaptismReportBuilder(applyLockedScope(cloneBaptismReportBuilderState(template.builder)));
     setBaptismSearchTriggered(true);
-    void loadReportsData();
+    void loadReportsData({ includeMembers: false });
   }
 
   function handleLoadConsecrationReportTemplate(template: SavedConsecrationReportTemplate) {
     setActiveConsecrationReportTemplateId(template.id);
     setConsecrationReportTemplateName(template.name);
-    setConsecrationReportBuilder(cloneConsecrationReportBuilderState(template.builder));
+    setConsecrationReportBuilder(applyLockedScope(cloneConsecrationReportBuilderState(template.builder)));
     setConsecrationSearchTriggered(true);
-    void loadReportsData();
+    void loadReportsData({ includeMembers: false });
   }
 
   function handleLoadTransferReportTemplate(template: SavedTransferReportTemplate) {
     setActiveTransferReportTemplateId(template.id);
     setTransferReportTemplateName(template.name);
-    setTransferReportBuilder(cloneTransferReportBuilderState(template.builder));
+    setTransferReportBuilder(applyLockedScope(cloneTransferReportBuilderState(template.builder)));
     setTransferSearchTriggered(true);
-    void loadReportsData();
+    void loadReportsData({ includeMembers: false });
   }
 
   function handleLoadChurchReportTemplate(template: SavedChurchReportTemplate) {
     setActiveChurchReportTemplateId(template.id);
     setChurchReportTemplateName(template.name);
-    setChurchReportBuilder(cloneChurchReportBuilderState(template.builder));
+    const nextBuilder = applyLockedScope(cloneChurchReportBuilderState(template.builder));
+    setChurchReportBuilder(nextBuilder);
     setChurchesSearchTriggered(true);
-    void loadReportsData();
+    void loadReportsData({ membersScope: nextBuilder });
   }
 
   function handleSaveMemberReportTemplate() {
@@ -7334,6 +7650,7 @@ export function Reports() {
             .rounded-2xl.bg-sky-50, .rounded-2xl.bg-slate-100 { border: 0.35px solid #e1e6ed !important; }
             .report-group > .space-y-4 { margin-top: 4px !important; }
             .report-group > .space-y-4:empty, .space-y-2:empty, .space-y-3:empty, .space-y-4:empty { display: none !important; }
+            ${REPORT_PRINT_SHARED_CSS}
             @page { size: A4 ${memberReportBuilder.orientation === 'landscape' ? 'landscape' : 'portrait'}; margin: 10mm; }
           </style>
         </head>
@@ -7364,8 +7681,7 @@ export function Reports() {
     };
 
     window.addEventListener('focus', cleanup, { once: true });
-    frameWindow.focus();
-    frameWindow.print();
+    printFrameWhenStylesReady(frameWindow);
   }
 
   function renderMemberPreviewGroups(nodes: MemberPreviewGroupNode[], depth = 0) {
@@ -7564,6 +7880,18 @@ export function Reports() {
     const previewRoot = document.getElementById('church-report-preview-root');
     if (!previewRoot) return;
 
+    // Recaptura o gráfico agora: em onChartReady a animação ainda não terminou e o
+    // dataURL saía em branco, deixando o bloco do gráfico vazio no PDF.
+    const chartInstance = churchEvolutionChartRef.current;
+    const printImage = previewRoot.querySelector('.church-evolution-print-img') as HTMLImageElement | null;
+    if (chartInstance && printImage) {
+      try {
+        printImage.src = chartInstance.getDataURL({ pixelRatio: 2, backgroundColor: '#ffffff' });
+      } catch {
+        // Mantém a captura anterior, se houver.
+      }
+    }
+
     const inheritedStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map((node) => node.outerHTML)
       .join('');
@@ -7597,6 +7925,9 @@ export function Reports() {
             .shadow-sm, .shadow-lg { box-shadow: none !important; }
             .church-evolution-screen { display: none !important; }
             .church-evolution-print-img { display: block !important; margin-top: 8px; width: 100%; }
+            /* Sem captura disponível, não deixa o ícone de imagem quebrada no PDF. */
+            .church-evolution-print-img:not([src]) { display: none !important; }
+            ${REPORT_PRINT_SHARED_CSS}
             @page { size: A4 ${churchReportBuilder.orientation === 'landscape' ? 'landscape' : 'portrait'}; margin: 10mm; }
           </style>
         </head>
@@ -7620,8 +7951,7 @@ export function Reports() {
     };
 
     window.addEventListener('focus', cleanup, { once: true });
-    frameWindow.focus();
-    frameWindow.print();
+    printFrameWhenStylesReady(frameWindow);
   }
 
   return (
@@ -7711,7 +8041,7 @@ export function Reports() {
 
       {activeTab === 'reports' ? (
         <div className="space-y-6">
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {reportLauncherCards.map((card) => {
               const Icon = card.icon;
 
@@ -7720,17 +8050,17 @@ export function Reports() {
                   key={card.key}
                   type="button"
                   onClick={() => setActiveReportModal(card.key)}
-                  className={`group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-left shadow-sm transition duration-200 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 ${card.ringClass}`}
+                  className={`group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-0 text-left shadow-sm transition duration-200 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 ${card.ringClass}`}
                 >
                   <div className={`h-full bg-gradient-to-br ${card.gradientClass} p-[1px]`}>
-                    <div className="flex h-full min-h-[170px] flex-col rounded-[15px] bg-white p-5 dark:bg-slate-950">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{card.title}</h3>
-                          <p className="mt-3 max-w-[24ch] text-sm leading-6 text-slate-600 dark:text-slate-300">{card.description}</p>
+                    <div className="flex h-full min-h-[104px] flex-col rounded-[11px] bg-white p-3.5 dark:bg-slate-950">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold leading-snug tracking-tight text-slate-900 dark:text-white">{card.title}</h3>
+                          <p className="mt-1.5 text-xs leading-5 text-slate-600 dark:text-slate-300">{card.description}</p>
                         </div>
-                        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${card.gradientClass} text-white shadow-lg shadow-slate-200/60`}>
-                          <Icon className="h-7 w-7" />
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${card.gradientClass} text-white shadow-md shadow-slate-200/60`}>
+                          <Icon className="h-4 w-4" />
                         </div>
                       </div>
                     </div>
@@ -7747,7 +8077,9 @@ export function Reports() {
           <DialogContent className={isAdvancedReport ? 'flex h-[100dvh] w-screen max-w-none flex-col overflow-hidden border-0 bg-white p-0 sm:h-[96vh] sm:w-[calc(100vw-1.5rem)] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-2xl sm:border sm:border-slate-200 2xl:w-[98vw] 2xl:max-w-[1900px]' : 'w-[calc(100%-1.5rem)] max-w-[680px] border border-slate-200 bg-white p-0 sm:max-w-[680px]'}>
             <div className={isAdvancedReport ? 'shrink-0 border-b border-slate-200 bg-white px-5 py-3' : `shrink-0 bg-gradient-to-br ${activeReportCard.gradientClass} px-6 py-5 text-white`}>
               <DialogHeader className="space-y-2 text-left">
-                <div className="flex items-start justify-between gap-4">
+                {/* pr-14: reserva espaço para o botão de fechar do DialogContent (36px + offset),
+                    que antes ficava sobreposto ao botão Imprimir. */}
+                <div className="flex items-start justify-between gap-4 pr-14">
                   <div className="flex items-center gap-3">
                     <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${isAdvancedReport ? 'bg-sky-100 text-sky-700' : 'bg-white/15 text-white'}`}>
                       <activeReportCard.icon className="h-5 w-5" />
@@ -7992,9 +8324,9 @@ export function Reports() {
                           options={memberReportRegionais.map((regional) => ({
                             value: regional.id,
                             label: regional.name,
-                            disabled: hasFixedChurchScope && Boolean(storedUser.regionalId),
+                            disabled: churchScopeLocked,
                           }))}
-                          disabled={hasFixedChurchScope && Boolean(storedUser.regionalId)}
+                          disabled={churchScopeLocked}
                           onToggle={(regionalId, checked) => setMemberReportBuilder((current) => ({
                             ...current,
                             regionalIds: checked ? Array.from(new Set([...current.regionalIds, regionalId])) : current.regionalIds.filter((item) => item !== regionalId),
@@ -8008,9 +8340,9 @@ export function Reports() {
                           options={memberReportChurches.map((church) => ({
                             value: church.id,
                             label: church.name,
-                            disabled: hasFixedChurchScope && Boolean(storedUser.churchId),
+                            disabled: churchScopeLocked,
                           }))}
-                          disabled={hasFixedChurchScope && Boolean(storedUser.churchId)}
+                          disabled={churchScopeLocked}
                           onToggle={(churchId, checked) => setMemberReportBuilder((current) => ({
                             ...current,
                             churchIds: checked ? Array.from(new Set([...current.churchIds, churchId])) : current.churchIds.filter((item) => item !== churchId),
@@ -8458,8 +8790,8 @@ export function Reports() {
                           label="Regionais"
                           emptyLabel="Todas as regionais"
                           selectedValues={churchReportBuilder.regionalIds}
-                          options={churchReportRegionais.map((regional) => ({ value: regional.id, label: regional.name, disabled: hasFixedChurchScope && Boolean(storedUser.regionalId) }))}
-                          disabled={hasFixedChurchScope && Boolean(storedUser.regionalId)}
+                          options={churchReportRegionais.map((regional) => ({ value: regional.id, label: regional.name, disabled: churchScopeLocked }))}
+                          disabled={churchScopeLocked}
                           onToggle={(regionalId, checked) => setChurchReportBuilder((current) => ({
                             ...current,
                             regionalIds: checked ? Array.from(new Set([...current.regionalIds, regionalId])) : current.regionalIds.filter((item) => item !== regionalId),
@@ -8470,8 +8802,8 @@ export function Reports() {
                           label="Igrejas"
                           emptyLabel="Todas as igrejas"
                           selectedValues={churchReportBuilder.churchIds}
-                          options={churchReportChurches.map((church) => ({ value: church.id, label: church.name, disabled: hasFixedChurchScope && Boolean(storedUser.churchId) }))}
-                          disabled={hasFixedChurchScope && Boolean(storedUser.churchId)}
+                          options={churchReportChurches.map((church) => ({ value: church.id, label: church.name, disabled: churchScopeLocked }))}
+                          disabled={churchScopeLocked}
                           onToggle={(churchId, checked) => setChurchReportBuilder((current) => ({
                             ...current,
                             churchIds: checked ? Array.from(new Set([...current.churchIds, churchId])) : current.churchIds.filter((item) => item !== churchId),
@@ -8787,6 +9119,7 @@ export function Reports() {
                                     notMerge
                                     lazyUpdate
                                     onChartReady={(chart) => {
+                                      churchEvolutionChartRef.current = chart;
                                       try {
                                         setChurchEvolutionChartImage(chart.getDataURL({ pixelRatio: 2, backgroundColor: '#ffffff' }));
                                       } catch {
@@ -8795,9 +9128,15 @@ export function Reports() {
                                     }}
                                   />
                                 </div>
-                                {churchEvolutionChartImage ? (
-                                  <img src={churchEvolutionChartImage} alt="Gráfico de evolução de membros" className="church-evolution-print-img" style={{ display: 'none' }} />
-                                ) : null}
+                                {/* O canvas do ECharts não sobrevive ao clone de innerHTML, então a
+                                    impressão usa esta imagem. O src é reescrito em handleExportChurchReportPdf
+                                    porque a captura de onChartReady acontece antes da animação terminar. */}
+                                <img
+                                  src={churchEvolutionChartImage || undefined}
+                                  alt="Gráfico de evolução de membros"
+                                  className="church-evolution-print-img"
+                                  style={{ display: 'none' }}
+                                />
                               </>
                             ) : (
                               <div className="px-6 py-4 text-sm text-slate-500">Sem dados históricos suficientes para o gráfico.</div>
@@ -9086,20 +9425,21 @@ export function Reports() {
                           label="Regionais"
                           emptyLabel="Todas as regionais"
                           selectedValues={baptismReportBuilder.regionalIds}
-                          options={baptismReportRegionais.map((regional) => ({ value: regional.id, label: regional.name, disabled: hasFixedChurchScope && Boolean(storedUser.regionalId) }))}
-                          disabled={hasFixedChurchScope && Boolean(storedUser.regionalId)}
-                          onToggle={(regionalId, checked) => setBaptismReportBuilder((current) => ({
-                            ...current,
-                            regionalIds: checked ? Array.from(new Set([...current.regionalIds, regionalId])) : current.regionalIds.filter((item) => item !== regionalId),
-                            churchIds: [],
-                          }))}
+                          options={baptismReportRegionais.map((regional) => ({ value: regional.id, label: regional.name, disabled: churchScopeLocked }))}
+                          disabled={churchScopeLocked}
+                          onToggle={(regionalId, checked) => setBaptismReportBuilder((current) => {
+                            const regionalIds = checked
+                              ? Array.from(new Set([...current.regionalIds, regionalId]))
+                              : current.regionalIds.filter((item) => item !== regionalId);
+                            return { ...current, regionalIds, churchIds: churchIdsForScope(current.fieldIds, regionalIds) };
+                          })}
                         />
                         <MultiSelectDropdown
                           label="Igrejas"
                           emptyLabel="Todas as igrejas"
                           selectedValues={baptismReportBuilder.churchIds}
-                          options={baptismReportChurches.map((church) => ({ value: church.id, label: church.name, disabled: hasFixedChurchScope && Boolean(storedUser.churchId) }))}
-                          disabled={hasFixedChurchScope && Boolean(storedUser.churchId)}
+                          options={baptismReportChurches.map((church) => ({ value: church.id, label: church.name, disabled: churchScopeLocked }))}
+                          disabled={churchScopeLocked}
                           onToggle={(churchId, checked) => setBaptismReportBuilder((current) => ({
                             ...current,
                             churchIds: checked ? Array.from(new Set([...current.churchIds, churchId])) : current.churchIds.filter((item) => item !== churchId),
@@ -9599,8 +9939,8 @@ export function Reports() {
                             churchIds: [],
                           };
                         })} />
-                        <MultiSelectDropdown label="Regionais" emptyLabel="Todas as regionais" selectedValues={consecrationReportBuilder.regionalIds} options={consecrationReportRegionais.map((regional) => ({ value: regional.id, label: regional.name, disabled: hasFixedChurchScope && Boolean(storedUser.regionalId) }))} disabled={hasFixedChurchScope && Boolean(storedUser.regionalId)} onToggle={(regionalId, checked) => setConsecrationReportBuilder((current) => ({ ...current, regionalIds: checked ? Array.from(new Set([...current.regionalIds, regionalId])) : current.regionalIds.filter((item) => item !== regionalId), churchIds: [] }))} />
-                        <MultiSelectDropdown label="Igrejas" emptyLabel="Todas as igrejas" selectedValues={consecrationReportBuilder.churchIds} options={consecrationReportChurches.map((church) => ({ value: church.id, label: church.name, disabled: hasFixedChurchScope && Boolean(storedUser.churchId) }))} disabled={hasFixedChurchScope && Boolean(storedUser.churchId)} onToggle={(churchId, checked) => setConsecrationReportBuilder((current) => ({ ...current, churchIds: checked ? Array.from(new Set([...current.churchIds, churchId])) : current.churchIds.filter((item) => item !== churchId) }))} />
+                        <MultiSelectDropdown label="Regionais" emptyLabel="Todas as regionais" selectedValues={consecrationReportBuilder.regionalIds} options={consecrationReportRegionais.map((regional) => ({ value: regional.id, label: regional.name, disabled: churchScopeLocked }))} disabled={churchScopeLocked} onToggle={(regionalId, checked) => setConsecrationReportBuilder((current) => { const regionalIds = checked ? Array.from(new Set([...current.regionalIds, regionalId])) : current.regionalIds.filter((item) => item !== regionalId); return { ...current, regionalIds, churchIds: churchIdsForScope(current.fieldIds, regionalIds) }; })} />
+                        <MultiSelectDropdown label="Igrejas" emptyLabel="Todas as igrejas" selectedValues={consecrationReportBuilder.churchIds} options={consecrationReportChurches.map((church) => ({ value: church.id, label: church.name, disabled: churchScopeLocked }))} disabled={churchScopeLocked} onToggle={(churchId, checked) => setConsecrationReportBuilder((current) => ({ ...current, churchIds: checked ? Array.from(new Set([...current.churchIds, churchId])) : current.churchIds.filter((item) => item !== churchId) }))} />
                         <MultiSelectDropdown label="Etapas do fluxo" emptyLabel="Todas as etapas" selectedValues={consecrationReportBuilder.workflowStatuses} options={consecrationWorkflowStatusOptions.map((status) => ({ value: status, label: status }))} onToggle={(status, checked) => setConsecrationReportBuilder((current) => ({ ...current, workflowStatuses: checked ? Array.from(new Set([...current.workflowStatuses, status])) : current.workflowStatuses.filter((item) => item !== status) }))} />
                         <MultiSelectDropdown label="Situação do membro" emptyLabel="Todas as situações" selectedValues={consecrationReportBuilder.memberStatuses} options={consecrationMemberStatusOptions.map((status) => ({ value: status, label: status }))} onToggle={(status, checked) => setConsecrationReportBuilder((current) => ({ ...current, memberStatuses: checked ? Array.from(new Set([...current.memberStatuses, status])) : current.memberStatuses.filter((item) => item !== status) }))} />
                         <MultiSelectDropdown
@@ -10017,8 +10357,8 @@ export function Reports() {
                             churchIds: [],
                           };
                         })} />
-                        <MultiSelectDropdown label="Regionais de origem" emptyLabel="Todas as regionais" selectedValues={transferReportBuilder.regionalIds} options={transferReportRegionais.map((regional) => ({ value: regional.id, label: regional.name, disabled: hasFixedChurchScope && Boolean(storedUser.regionalId) }))} disabled={hasFixedChurchScope && Boolean(storedUser.regionalId)} onToggle={(regionalId, checked) => setTransferReportBuilder((current) => ({ ...current, regionalIds: checked ? Array.from(new Set([...current.regionalIds, regionalId])) : current.regionalIds.filter((item) => item !== regionalId), churchIds: [] }))} />
-                        <MultiSelectDropdown label="Igrejas de origem" emptyLabel="Todas as igrejas" selectedValues={transferReportBuilder.churchIds} options={transferReportOriginChurches.map((church) => ({ value: church.id, label: church.name, disabled: hasFixedChurchScope && Boolean(storedUser.churchId) }))} disabled={hasFixedChurchScope && Boolean(storedUser.churchId)} onToggle={(churchId, checked) => setTransferReportBuilder((current) => ({ ...current, churchIds: checked ? Array.from(new Set([...current.churchIds, churchId])) : current.churchIds.filter((item) => item !== churchId) }))} />
+                        <MultiSelectDropdown label="Regionais de origem" emptyLabel="Todas as regionais" selectedValues={transferReportBuilder.regionalIds} options={transferReportRegionais.map((regional) => ({ value: regional.id, label: regional.name, disabled: churchScopeLocked }))} disabled={churchScopeLocked} onToggle={(regionalId, checked) => setTransferReportBuilder((current) => { const regionalIds = checked ? Array.from(new Set([...current.regionalIds, regionalId])) : current.regionalIds.filter((item) => item !== regionalId); return { ...current, regionalIds, churchIds: churchIdsForScope(current.fieldIds, regionalIds) }; })} />
+                        <MultiSelectDropdown label="Igrejas de origem" emptyLabel="Todas as igrejas" selectedValues={transferReportBuilder.churchIds} options={transferReportOriginChurches.map((church) => ({ value: church.id, label: church.name, disabled: churchScopeLocked }))} disabled={churchScopeLocked} onToggle={(churchId, checked) => setTransferReportBuilder((current) => ({ ...current, churchIds: checked ? Array.from(new Set([...current.churchIds, churchId])) : current.churchIds.filter((item) => item !== churchId) }))} />
                         <MultiSelectDropdown label="Igrejas de destino" emptyLabel="Todos os destinos" selectedValues={transferReportBuilder.destinationChurchIds} options={transferReportDestinationChurches.map((church) => ({ value: church.id, label: church.name }))} onToggle={(churchId, checked) => setTransferReportBuilder((current) => ({ ...current, destinationChurchIds: checked ? Array.from(new Set([...current.destinationChurchIds, churchId])) : current.destinationChurchIds.filter((item) => item !== churchId) }))} />
                         <MultiSelectDropdown label="Etapas do fluxo" emptyLabel="Todas as etapas" selectedValues={transferReportBuilder.workflowStatuses} options={transferWorkflowStatusOptions.map((status) => ({ value: status, label: status }))} onToggle={(status, checked) => setTransferReportBuilder((current) => ({ ...current, workflowStatuses: checked ? Array.from(new Set([...current.workflowStatuses, status])) : current.workflowStatuses.filter((item) => item !== status) }))} />
                         <MultiSelectDropdown label="Situação do membro" emptyLabel="Todas as situações" selectedValues={transferReportBuilder.memberStatuses} options={transferMemberStatusOptions.map((status) => ({ value: status, label: status }))} onToggle={(status, checked) => setTransferReportBuilder((current) => ({ ...current, memberStatuses: checked ? Array.from(new Set([...current.memberStatuses, status])) : current.memberStatuses.filter((item) => item !== status) }))} />
@@ -10424,7 +10764,8 @@ export function Reports() {
                           <MultiSelectDropdown
                             label="Regional"
                             emptyLabel="Todas as regionais"
-                            options={regionais.filter((r) => !requirementsReportBuilder.fieldIds.length || requirementsReportBuilder.fieldIds.includes(r.campoId)).map((r) => ({ value: r.id, label: r.name }))}
+                            options={regionais.filter((r) => !requirementsReportBuilder.fieldIds.length || requirementsReportBuilder.fieldIds.includes(r.campoId)).map((r) => ({ value: r.id, label: r.name, disabled: churchScopeLocked }))}
+                            disabled={churchScopeLocked}
                             selectedValues={requirementsReportBuilder.regionalIds}
                             onToggle={(v, checked) => setRequirementsReportBuilder((p) => ({
                               ...p,
@@ -10445,7 +10786,8 @@ export function Reports() {
                                 if (!requirementsReportBuilder.fieldIds.includes(campoId)) return false;
                               }
                               return true;
-                            }).map((c) => ({ value: c.id, label: c.name }))}
+                            }).map((c) => ({ value: c.id, label: c.name, disabled: churchScopeLocked }))}
+                            disabled={churchScopeLocked}
                             selectedValues={requirementsReportBuilder.churchIds}
                             onToggle={(v, checked) => setRequirementsReportBuilder((p) => ({
                               ...p,
@@ -10999,7 +11341,8 @@ export function Reports() {
                           <p className="mb-1.5 text-xs font-semibold text-slate-700">Regional</p>
                           <MultiSelectDropdown
                             label="Regional" emptyLabel="Todas as regionais"
-                            options={regionais.filter((r) => !credentialReportBuilder.fieldIds.length || credentialReportBuilder.fieldIds.includes(r.campoId)).map((r) => ({ value: r.id, label: r.name }))}
+                            options={regionais.filter((r) => !credentialReportBuilder.fieldIds.length || credentialReportBuilder.fieldIds.includes(r.campoId)).map((r) => ({ value: r.id, label: r.name, disabled: churchScopeLocked }))}
+                            disabled={churchScopeLocked}
                             selectedValues={credentialReportBuilder.regionalIds}
                             onToggle={(v, checked) => setCredentialReportBuilder((p) => ({
                               ...p,
@@ -11019,7 +11362,8 @@ export function Reports() {
                                 if (!credentialReportBuilder.fieldIds.includes(campoId)) return false;
                               }
                               return true;
-                            }).map((c) => ({ value: c.id, label: c.name }))}
+                            }).map((c) => ({ value: c.id, label: c.name, disabled: churchScopeLocked }))}
+                            disabled={churchScopeLocked}
                             selectedValues={credentialReportBuilder.churchIds}
                             onToggle={(v, checked) => setCredentialReportBuilder((p) => ({
                               ...p,
