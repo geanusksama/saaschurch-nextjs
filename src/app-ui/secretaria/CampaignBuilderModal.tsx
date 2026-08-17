@@ -12,16 +12,19 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ChevronDown, ChevronUp, Loader2, Megaphone, Plus, Save, Trash2, X,
+  ChevronDown, ChevronUp, ListChecks, Loader2, Megaphone, Plus, Save, Trash2, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  buildFieldFromMemberKey,
   FIELD_TYPE_LABELS,
   memberFieldsByGroup,
   slugFieldId,
   type CampaignFieldType,
+  type MemberFieldKey,
   type SecretariaCampaignField,
 } from '@/lib/secretariaCampaignFields';
+import { MemberFieldPickerModal } from './MemberFieldPickerModal';
 
 interface Instance {
   id: string;
@@ -102,6 +105,7 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [saving, setSaving] = useState(false);
   const [aberta, setAberta] = useState<string | null>(null);
+  const [seletorAberto, setSeletorAberto] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -129,6 +133,26 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
     const novo: SecretariaCampaignField = { id, type: 'text', label: '', required: false, memberField: null };
     set('formSchema', [...draft.formSchema, novo]);
     setAberta(id);
+  };
+
+  /** Campos do cadastro já ligados a alguma pergunta — o chip deles fica travado. */
+  const camposLigados = useMemo(
+    () => new Set(draft.formSchema.map(f => f.memberField).filter(Boolean) as string[]),
+    [draft.formSchema]
+  );
+
+  /** Chips escolhidos viram perguntas prontas, na ordem em que foram marcados. */
+  const addFromCatalogo = (keys: MemberFieldKey[]) => {
+    if (!keys.length) return;
+    const usados = new Set(idsUsados);
+    const novos = keys.map(k => {
+      const campo = buildFieldFromMemberKey(k, usados);
+      usados.add(campo.id);
+      return campo;
+    });
+    set('formSchema', [...draft.formSchema, ...novos]);
+    setAberta(null);
+    toast.success(`${novos.length} ${novos.length === 1 ? 'pergunta adicionada' : 'perguntas adicionadas'}.`);
   };
 
   const updateField = (id: string, patch: Partial<SecretariaCampaignField>) =>
@@ -285,18 +309,27 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
                     travado — já há respostas
                   </span>
                 ) : (
-                  <button
-                    onClick={addField}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Pergunta
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSeletorAberto(true)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+                    >
+                      <ListChecks className="h-3.5 w-3.5" /> Campos do cadastro
+                    </button>
+                    <button
+                      onClick={addField}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Pergunta livre
+                    </button>
+                  </div>
                 )}
               </div>
 
               {!draft.formSchema.length ? (
                 <p className="py-6 text-center text-xs text-slate-400">
-                  Nenhuma pergunta ainda. Clique em <strong>+ Pergunta</strong> para começar.
+                  Nenhuma pergunta ainda. Clique em <strong>Campos do cadastro</strong> e marque o
+                  que a campanha vai pedir — só aparecem colunas que existem no cadastro do membro.
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -551,6 +584,13 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
           </div>
         </div>
       </div>
+
+      <MemberFieldPickerModal
+        open={seletorAberto && !draft.schemaLocked}
+        jaUsados={camposLigados}
+        onConfirm={addFromCatalogo}
+        onClose={() => setSeletorAberto(false)}
+      />
     </div>
   );
 }

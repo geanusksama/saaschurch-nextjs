@@ -81,15 +81,39 @@ export interface MemberFieldSpec {
   accepts: readonly CampaignFieldType[]
   /** tamanho máximo da coluna, quando há */
   maxLength?: number
+  /**
+   * `false` tira o campo das campanhas. A campanha pede ao próprio membro
+   * aquilo que só ele sabe corrigir (CPF errado, celular novo, CEP, zona
+   * eleitoral). Nome civil, filiação e batismo mudam por processo da
+   * secretaria — com documento na mão — e por isso não entram aqui.
+   * Ausente = elegível.
+   */
+  campaignEligible?: boolean
+  /** opções prontas: o campo escolhido pelo chip já nasce respondível */
+  suggestedOptions?: readonly CampaignFieldOption[]
 }
 
+const OPCOES_SEXO = [
+  { value: 'MASCULINO', label: 'Masculino' },
+  { value: 'FEMININO', label: 'Feminino' },
+] as const
+
+// Mesmos valores gravados pelas telas de cadastro de membro (MemberRegistration
+// / MemberEdit). Gravar outra grafia aqui criaria mais um dialeto na coluna.
+const OPCOES_ESTADO_CIVIL = [
+  { value: 'SOLTEIRO', label: 'Solteiro(a)' },
+  { value: 'CASADO', label: 'Casado(a)' },
+  { value: 'DIVORCIADO', label: 'Divorciado(a)' },
+  { value: 'VIUVO', label: 'Viúvo(a)' },
+] as const
+
 export const MEMBER_FIELD_MAP = {
-  full_name:              { prismaField: 'fullName',              label: 'Nome completo',        group: 'Identificação', kind: 'string', accepts: ['text'], maxLength: 255 },
+  full_name:              { prismaField: 'fullName',              label: 'Nome completo',        group: 'Identificação', kind: 'string', accepts: ['text'], maxLength: 255, campaignEligible: false },
   preferred_name:         { prismaField: 'preferredName',         label: 'Como gosta de ser chamado', group: 'Identificação', kind: 'string', accepts: ['text'], maxLength: 100 },
   photo_url:              { prismaField: 'photoUrl',              label: 'Foto de perfil',       group: 'Identificação', kind: 'url',    accepts: ['image'], maxLength: 500 },
   birth_date:             { prismaField: 'birthDate',             label: 'Data de nascimento',   group: 'Identificação', kind: 'date',   accepts: ['date'] },
-  gender:                 { prismaField: 'gender',                label: 'Sexo',                 group: 'Identificação', kind: 'string', accepts: ['select', 'radio'], maxLength: 20 },
-  marital_status:         { prismaField: 'maritalStatus',         label: 'Estado civil',         group: 'Identificação', kind: 'string', accepts: ['select', 'radio'], maxLength: 20 },
+  gender:                 { prismaField: 'gender',                label: 'Sexo',                 group: 'Identificação', kind: 'string', accepts: ['select', 'radio'], maxLength: 20, suggestedOptions: OPCOES_SEXO },
+  marital_status:         { prismaField: 'maritalStatus',         label: 'Estado civil',         group: 'Identificação', kind: 'string', accepts: ['select', 'radio'], maxLength: 20, suggestedOptions: OPCOES_ESTADO_CIVIL },
 
   cpf:                    { prismaField: 'cpf',                   label: 'CPF',                  group: 'Documentos',    kind: 'digits', accepts: ['cpf', 'text'], maxLength: 14 },
   rg:                     { prismaField: 'rg',                    label: 'RG',                   group: 'Documentos',    kind: 'string', accepts: ['text'], maxLength: 20 },
@@ -111,9 +135,10 @@ export const MEMBER_FIELD_MAP = {
   address_state:          { prismaField: 'addressState',          label: 'Estado (UF)',          group: 'Endereço',      kind: 'string', accepts: ['text', 'select'], maxLength: 50 },
   address_zipcode:        { prismaField: 'addressZipcode',        label: 'CEP',                  group: 'Endereço',      kind: 'string', accepts: ['text'], maxLength: 10 },
 
-  father_name:            { prismaField: 'fatherName',            label: 'Nome do pai',          group: 'Família',       kind: 'string', accepts: ['text'], maxLength: 255 },
-  mother_name:            { prismaField: 'motherName',            label: 'Nome da mãe',          group: 'Família',       kind: 'string', accepts: ['text'], maxLength: 255 },
-  spouse_name:            { prismaField: 'spouseName',            label: 'Nome do cônjuge',      group: 'Família',       kind: 'string', accepts: ['text'], maxLength: 255 },
+  // Filiação é ficha de secretaria (entra na admissão, conferida com documento).
+  father_name:            { prismaField: 'fatherName',            label: 'Nome do pai',          group: 'Família',       kind: 'string', accepts: ['text'], maxLength: 255, campaignEligible: false },
+  mother_name:            { prismaField: 'motherName',            label: 'Nome da mãe',          group: 'Família',       kind: 'string', accepts: ['text'], maxLength: 255, campaignEligible: false },
+  spouse_name:            { prismaField: 'spouseName',            label: 'Nome do cônjuge',      group: 'Família',       kind: 'string', accepts: ['text'], maxLength: 255, campaignEligible: false },
 
   naturality_city:        { prismaField: 'naturalityCity',        label: 'Cidade de nascimento', group: 'Naturalidade',  kind: 'string', accepts: ['text'], maxLength: 100 },
   naturality_state:       { prismaField: 'naturalityState',       label: 'UF de nascimento',     group: 'Naturalidade',  kind: 'string', accepts: ['text', 'select'], maxLength: 2 },
@@ -122,7 +147,8 @@ export const MEMBER_FIELD_MAP = {
   occupation:             { prismaField: 'occupation',            label: 'Profissão',            group: 'Profissional',  kind: 'string', accepts: ['text'], maxLength: 255 },
   company:                { prismaField: 'company',               label: 'Empresa',              group: 'Profissional',  kind: 'string', accepts: ['text'], maxLength: 255 },
 
-  baptism_date:           { prismaField: 'baptismDate',           label: 'Data de batismo',      group: 'Eclesiástico',  kind: 'date',   accepts: ['date'] },
+  // Batismo é ato eclesiástico registrado pela secretaria, não autodeclaração.
+  baptism_date:           { prismaField: 'baptismDate',           label: 'Data de batismo',      group: 'Eclesiástico',  kind: 'date',   accepts: ['date'], campaignEligible: false },
   notes:                  { prismaField: 'notes',                 label: 'Observações',          group: 'Outros',        kind: 'string', accepts: ['textarea', 'text'] },
 } as const satisfies Record<string, MemberFieldSpec>
 
@@ -135,15 +161,49 @@ export function getMemberFieldSpec(key: string | null | undefined): MemberFieldS
   return (MEMBER_FIELD_MAP as Record<string, MemberFieldSpec>)[key] ?? null
 }
 
-/** Agrupa os campos disponíveis para montar o seletor do construtor. */
-export function memberFieldsByGroup(): { group: string; fields: { key: MemberFieldKey; spec: MemberFieldSpec }[] }[] {
+/** O campo pode ser pedido numa campanha? (ver `campaignEligible`) */
+export function isCampaignEligible(key: string | null | undefined): boolean {
+  const spec = getMemberFieldSpec(key)
+  return !!spec && spec.campaignEligible !== false
+}
+
+/** Só os campos que uma campanha pode atualizar. */
+export const CAMPAIGN_FIELD_KEYS = MEMBER_FIELD_KEYS.filter(isCampaignEligible)
+
+/**
+ * Agrupa os campos disponíveis para montar o seletor do construtor.
+ * Por padrão devolve só os elegíveis a campanha — é o que a tela oferece.
+ */
+export function memberFieldsByGroup(
+  { todos = false }: { todos?: boolean } = {}
+): { group: string; fields: { key: MemberFieldKey; spec: MemberFieldSpec }[] }[] {
   const byGroup = new Map<string, { key: MemberFieldKey; spec: MemberFieldSpec }[]>()
   for (const key of MEMBER_FIELD_KEYS) {
+    if (!todos && !isCampaignEligible(key)) continue
     const spec = MEMBER_FIELD_MAP[key] as MemberFieldSpec
     if (!byGroup.has(spec.group)) byGroup.set(spec.group, [])
     byGroup.get(spec.group)!.push({ key, spec })
   }
   return Array.from(byGroup, ([group, fields]) => ({ group, fields }))
+}
+
+/**
+ * Pergunta pronta a partir de uma coluna do cadastro — é o que o seletor de
+ * chips monta. O tipo é o primeiro que o campo aceita (o mais natural dele) e
+ * as opções vêm do próprio catálogo, então nada fica pela metade.
+ */
+export function buildFieldFromMemberKey(key: MemberFieldKey, taken: Set<string>): SecretariaCampaignField {
+  const spec = MEMBER_FIELD_MAP[key] as MemberFieldSpec
+  const type = spec.accepts[0]
+  const id = slugFieldId(spec.label, taken)
+  return {
+    id,
+    type,
+    label: spec.label,
+    required: false,
+    memberField: key,
+    options: spec.suggestedOptions ? spec.suggestedOptions.map(o => ({ ...o })) : undefined,
+  }
 }
 
 // ── Validação do schema (roda no servidor ao salvar a campanha) ───────────────
@@ -209,6 +269,12 @@ export function validateFormSchema(raw: unknown): SchemaValidationResult {
       const spec = getMemberFieldSpec(rawMember)
       if (!spec) {
         errors.push(`${pos}: campo do cadastro "${rawMember}" não é atualizável por campanha.`)
+        return
+      }
+      if (spec.campaignEligible === false) {
+        errors.push(
+          `${pos}: "${spec.label}" é rotina da secretaria e não pode ser pedido em campanha.`
+        )
         return
       }
       if (!spec.accepts.includes(type)) {
