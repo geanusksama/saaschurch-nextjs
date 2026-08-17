@@ -18,9 +18,15 @@ export async function GET(req: NextRequest) {
       const dateFrom = url.searchParams.get("dateFrom");
       const dateTo = url.searchParams.get("dateTo");
 
+      /**
+       * O embed precisa dizer POR QUAL chave: a tabela tem duas FKs para
+       * `churches` (church_id, quem avalia, e desired_church_id, a igreja
+       * escolhida). Sem nomear a constraint o PostgREST recusa a consulta por
+       * ambiguidade e a lista inteira volta 500.
+       */
       let query = supabaseAdmin
         .from("new_member_requests")
-        .select("*, churches(name)")
+        .select("*, churches!new_member_requests_church_id_fkey(name)")
         .order("created_at", { ascending: false });
 
       // Enforce field filter
@@ -102,7 +108,10 @@ export async function GET(req: NextRequest) {
         }))
       );
     } catch (e) {
-      console.error("[GET /api/membership-requests]", e);
+      // o erro do supabase é um objeto simples: `console.error(e)` imprimia
+      // apenas "{}" e escondia a causa (foi assim com a ambiguidade do embed)
+      const detalhe = e instanceof Error ? e.message : JSON.stringify(e);
+      console.error("[GET /api/membership-requests]", detalhe, e);
       return NextResponse.json({ error: "Erro ao buscar solicitações." }, { status: 500 });
     }
   });
