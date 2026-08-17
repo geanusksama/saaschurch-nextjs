@@ -76,6 +76,7 @@ com `supabaseAdmin`, que aplicam o escopo do usuário.
 | `src/lib/secretariaCampaignScope.ts` | Escopo de visibilidade e resolução do público-alvo |
 | `src/app-ui/secretaria/SecretariaCampaigns.tsx` | Tela principal: lista, detalhe, envio |
 | `src/app-ui/secretaria/CampaignBuilderModal.tsx` | Criar/editar campanha + construtor do formulário |
+| `src/app-ui/secretaria/MemberFieldPickerModal.tsx` | Seletor em chips dos campos do cadastro (ver abaixo) |
 | `src/app-ui/secretaria/AttachAudienceModal.tsx` | Filtro regional/zona/igreja/título/situação |
 | `src/app-ui/secretaria/CampaignResponseDrawer.tsx` | Conferência e decisão |
 | `src/components/public/CampanhaFormPublic.tsx` | O formulário que a pessoa preenche |
@@ -101,9 +102,11 @@ SPA: `/campanha/:token` e `/campanha/:token/:targetToken`.
 
 ## Regras que não podem ser violadas
 
-1. **A aprovação só escreve no que está em `MEMBER_FIELD_MAP`.** ROL, igreja, título e
-   situação de membresia estão fora da lista de propósito — essas mudanças têm processo
-   próprio (transferência, consagração, matriz do pipeline).
+1. **A aprovação só escreve no que está em `MEMBER_FIELD_MAP`**, e a campanha só pode
+   pedir o que nele está marcado como elegível. ROL, igreja, título e situação de
+   membresia nem aparecem no mapa; nome civil, filiação e batismo estão no mapa mas com
+   `campaignEligible: false`. Todas essas mudanças têm processo próprio (transferência,
+   consagração, matriz do pipeline, ficha de adesão).
 2. **A pergunta precisa estar mapeada.** Sem `memberField`, a resposta fica só na
    campanha. É o secretário que decide isso ao montar o formulário.
 3. **O formulário trava na primeira resposta.** `PATCH` com `formSchema` devolve 409 se
@@ -135,6 +138,44 @@ Variáveis do texto: `nome`, `primeiro_nome`, `telefone`, `igreja`, `regional`, 
 `cargo`, `campanha` e **`link`** — esta última vira o link individual da pessoa.
 
 Vídeo entra como link no fim da mensagem: a Z-API não envia vídeo por URL.
+
+---
+
+## Montar o formulário: chips do cadastro × pergunta livre
+
+O construtor tem dois caminhos (2026-08-17):
+
+- **Campos do cadastro** abre o `MemberFieldPickerModal`: os campos reais de
+  `MEMBER_FIELD_MAP`, agrupados, com busca sem acento. Marcou o chip, a pergunta nasce
+  pronta — título, tipo natural do campo (`spec.accepts[0]`: CPF→`cpf`, foto→`image`,
+  nascimento→`date`) e, quando é campo de escolha, já com as opções do catálogo. Campo
+  que já está no formulário aparece travado, então não dá para ligar duas perguntas na
+  mesma coluna.
+- **Pergunta livre** é a pergunta sem `memberField`, para o que não existe no cadastro
+  ("qual seu horário livre?", "confirma presença?").
+
+O modal existe porque, montando pergunta a pergunta, quem cria a campanha precisava
+adivinhar quais colunas existem em `members` — e pedia dado que a aprovação não sabia
+gravar. `buildFieldFromMemberKey()` é quem monta a pergunta a partir da chave.
+
+### Quem pode ser pedido em campanha
+
+`MemberFieldSpec.campaignEligible: false` tira o campo da lista. Hoje estão de fora
+**nome completo, nome do pai, nome da mãe, nome do cônjuge e data de batismo**: mudam
+por processo da secretaria, com documento na mão, não por autodeclaração. Não é só a
+UI — `validateFormSchema` recusa o vínculo no servidor, com a mensagem
+*"X é rotina da secretaria e não pode ser pedido em campanha"*.
+
+A campanha fica com o que só a própria pessoa sabe corrigir: CPF, RG, título/zona/seção
+eleitoral, celular e telefone, e-mail, endereço completo com CEP, foto, nascimento,
+sexo, estado civil, naturalidade, profissão, contato de emergência e observações.
+
+> Campanha antiga que tenha sido salva com um campo hoje bloqueado passa a dar erro **ao
+> ser re-salva**. As respostas já gravadas não são afetadas.
+
+`suggestedOptions` no catálogo é o que faz sexo e estado civil nascerem respondíveis, e
+usa os mesmos valores das telas de cadastro (`MASCULINO`/`FEMININO`,
+`SOLTEIRO`/`CASADO`/…) — gravar outra grafia criaria mais um dialeto na coluna.
 
 ---
 

@@ -14,6 +14,11 @@ O módulo de Secretaria do MRM cobre:
 5. **Ocorrências e Histórico** — registro de movimentos e eventos do membro
 6. **Aniversariantes** — listagem com agrupamento por hoje/semana/mês
 7. **Verificação de duplicatas** — por CPF ou nome antes de cadastrar
+8. **Quero ser Membro** — adesão vinda do portal público, avaliada e aprovada aqui; a
+   aprovação cria o membro com ROL passando pela matriz do serviço CAD.
+   Documento próprio: [quero-ser-membro.md](quero-ser-membro.md)
+9. **Campanhas** — formulários enviados aos membros para atualizar o cadastro.
+   Documento próprio: [campanhas-secretaria.md](campanhas-secretaria.md)
 
 ---
 

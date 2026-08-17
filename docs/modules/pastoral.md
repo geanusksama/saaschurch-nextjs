@@ -1,18 +1,26 @@
-# Módulo de Atendimento Pastoral & Quero ser Membro
+# Módulo de Atendimento Pastoral
 
-Este documento descreve o funcionamento, regras de negócio e arquitetura técnica do Módulo de Atendimento Pastoral e solicitações de filiação/adesão ("Quero ser Membro") implementados na plataforma AD Campinas.
+Funcionamento, regras de negócio e arquitetura técnica do Módulo de Atendimento Pastoral
+da plataforma AD Campinas.
+
+> **"Quero ser Membro" tem documento próprio:** [quero-ser-membro.md](quero-ser-membro.md).
+> A adesão é da **Secretaria** — é ela que avalia e aprova. O que o pastoral empresta é o
+> card de acompanhamento, descrito na seção 2 daquele documento e resumido aqui em
+> "Cards de adesão".
 
 ---
 
 ## 1. Visão Geral
 
-O módulo foi desenvolvido para fornecer uma ponte de comunicação direta, segura e acolhedora entre visitantes/membros e o corpo pastoral da igreja. É dividido em duas partes fundamentais:
-1. **Portal Público (Frontend de Acolhimento):** Permite a solicitação rápida de 16 tipos diferentes de atendimento pastoral, além de solicitações formais de adesão de novos membros com escolha de data de entrevista.
-2. **Painel Administrativo (Secretaria e Kanban Pastoral):** Permite que pastores e secretários acompanhem as solicitações por meio de um Kanban dedicado, agendem atividades (ligações, visitas, reuniões) e processem a aprovação/reprovação de novos membros com preenchimento automático da ficha cadastral.
+O módulo é a ponte entre visitantes/membros e o corpo pastoral. Duas partes:
+1. **Portal Público (acolhimento):** solicitação rápida de 14 tipos de atendimento
+   pastoral, com verificação de WhatsApp.
+2. **Kanban Pastoral:** pastores e secretários acompanham as solicitações num quadro
+   dedicado e agendam atividades (ligações, visitas, reuniões).
 
 ---
 
-## 2. Fluxo Público de Atendimento & Adesão
+## 2. Fluxo Público de Atendimento
 
 ### Tipos de Atendimento Disponíveis
 O portal oferece um menu stack flutuante (FAB) adaptável (2 colunas em desktop/tablet, 1 coluna em dispositivos móveis) para selecionar as seguintes opções:
@@ -26,13 +34,16 @@ Para garantir a veracidade dos dados informados:
 3. O formulário gera um token JWT criptografado contendo o hash do código e número de telefone para validação no backend.
 4. Após o solicitante digitar o código correto, a solicitação de atendimento ou adesão é inserida no banco de dados.
 
-### Solicitação de Adesão (Quero ser Membro)
-Além dos dados básicos, a solicitação de adesão exige:
-- Estado Civil (Casado/Solteiro).
-- Igreja evangélica anterior (seleção em dropdown com as igrejas mais comuns ou opção "Outra").
-- Observações adicionais (para informações sobre o histórico de fé do candidato).
-- Agendamento de data de entrevista (calendário integrado).
-- Exibição em tempo real da posição na fila de espera da coluna "POR FAZER".
+### Cards de adesão ("Quero ser Membro")
+
+O pedido de adesão abre um card aqui, com `attendance_type = 'quero_ser_membro'`: é dele
+que saem a posição na fila, a timeline pública mandada por WhatsApp e o acompanhamento do
+1º mês. Nos relatórios pastorais esses cards entram na conta de "aconselhamento"
+(`isCounseling`, em `src/lib/pastoralService.ts`).
+
+**A avaliação e a aprovação não são daqui** — são da Secretaria, em
+`/app-ui/membership-requests`. Fluxo, regras de roteamento para a sede do campo, ficha e
+matriz de admissão: [quero-ser-membro.md](quero-ser-membro.md).
 
 ---
 
@@ -62,25 +73,26 @@ O Kanban Pastoral respeita estritamente o perfil do usuário logado:
   - A visualização é restrita exclusivamente aos atendimentos associados ao `churchId` daquele usuário.
 
 ### Painel de Solicitações "Quero Ser Membro"
-A tela de administração de novos membros permite:
-- Paginação, buscas textuais por nome e filtros por status (Pendente, Aprovado, Reprovado) e período.
-- **Aprovação:** Ao clicar em "Aprovar", o status da solicitação muda para "Aprovado", o card no Kanban é automaticamente movido para a coluna final "CONCLUÍDO", e o secretário é redirecionado para a tela de registro de membros com os campos pré-preenchidos (Nome, Sobrenome, WhatsApp, Estado Civil, Notas com histórico da igreja anterior e data da entrevista realizada).
-- **Reprovação:** Ao reprovar, o status da solicitação muda para "Reprovado" e o card é movido para a coluna "CANCELADO".
+
+Fica na **Secretaria** (`/app-ui/membership-requests`), com permissão própria
+(`membership_requests`, grupo Secretaria). Não é uma tela do módulo pastoral — ver
+[quero-ser-membro.md](quero-ser-membro.md).
 
 ---
 
 ## 5. Estrutura de Arquivos e APIs Envolvidas
 
 - **Frontend / Componentes:**
-  - `src/components/public/PublicHome.tsx` - Menu FAB de 16 opções, formulários públicos e desafios de OTP.
-  - `src/components/public/PastoralTimelinePublic.tsx` - Visualização pública da timeline do atendimento.
-  - `src/app-ui/pastoral/PastoralKanban.tsx` - Quadro Kanban com regras de filtragem por papel.
-  - `src/app-ui/ecclesiastical/QueroSerMembroRequests.tsx` - Painel de aprovação das fichas de filiação.
+  - `src/components/public/PublicHome.tsx` - Menu de serviços, formulários públicos e desafio de OTP.
+  - `src/components/public/PastoralTimelinePublic.tsx` - Timeline pública do atendimento.
+  - `src/app-ui/pastoral/PastoralKanban.tsx` - Quadro Kanban com filtragem por papel.
+  - `src/app-ui/pastoral/PastoralHub.tsx` - Hub do módulo (pipeline, envios, histórico).
 - **Backend / APIs:**
   - `src/app/api/public/pastoral/send-otp/route.ts` - Geração e envio do OTP.
-  - `src/app/api/public/pastoral/create-attendance/route.ts` - Criação de cartões de atendimento via portal.
-  - `src/app/api/public/pastoral/create-membership-request/route.ts` - Criação de solicitações de membro e cálculo de fila de espera.
+  - `src/app/api/public/pastoral/create-attendance/route.ts` - Criação de cartões via portal.
   - `src/app/api/public/pastoral/timeline/[id]/route.ts` - Histórico de eventos do atendimento.
-  - `src/app/api/pastoral/notify-move/route.ts` - Gatilho de notificação de movimentação de colunas.
-  - `src/app/api/pastoral/notify-activity/route.ts` - Gatilho de notificação de nova atividade criada.
-  - `src/app/api/membership-requests/route.ts` & `[id]/route.ts` - Listagem e aprovação de novos membros.
+  - `src/app/api/pastoral/notify-move/route.ts` - Notificação de movimentação de coluna.
+  - `src/app/api/pastoral/notify-activity/route.ts` - Notificação de nova atividade.
+  - `src/lib/pastoralService.ts` - Consolidação dos relatórios pastorais.
+
+Os arquivos e rotas da adesão estão em [quero-ser-membro.md](quero-ser-membro.md).
