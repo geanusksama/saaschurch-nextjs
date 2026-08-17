@@ -188,7 +188,23 @@ const FAB_OPTIONS = [
 ];
 
 export function PublicHome() {
-  const [isDark, setIsDark] = useState(true);
+  /**
+   * Tema salvo (compartilhado com a página pública do Peniel), lido já na
+   * criação do estado. Ler num efeito não funcionava: o efeito que PERSISTE
+   * rodava antes de o estado lido ser aplicado e regravava `isDark: true` por
+   * cima — na prática o escuro voltava a cada recarga, por mais que a pessoa
+   * escolhesse o claro. O SPA é client-only (`ssr: false`), então ler o
+   * localStorage aqui não gera divergência de hidratação.
+   */
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const saved = localStorage.getItem('mrm_theme_settings');
+      return saved ? JSON.parse(saved).isDark !== false : true;
+    } catch {
+      return true;
+    }
+  });
   const [showMembroLogin, setShowMembroLogin] = useState(false);
   const [showPenielModal, setShowPenielModal] = useState(false);
   const [showVerseModal, setShowVerseModal] = useState(false);
@@ -313,24 +329,28 @@ export function PublicHome() {
 
   const navigate = useNavigate();
 
-  // Lê o tema salvo (compartilhado com a página pública do Peniel)
-  useEffect(() => {
-    const saved = localStorage.getItem("mrm_theme_settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setIsDark(parsed.isDark !== false);
-      } catch {
-        setIsDark(true);
-      }
-    }
-  }, []);
-
   // Persiste o tema escolhido para que outras páginas públicas (Peniel) o sigam
   useEffect(() => {
     try {
       localStorage.setItem("mrm_theme_settings", JSON.stringify({ isDark }));
     } catch { /* ignore */ }
+  }, [isDark]);
+
+  /**
+   * A classe `.dark` do <html> é do app da secretaria (localStorage
+   * `mrm_theme`), e ficava ligada aqui mesmo com a home no claro. Como o
+   * globals.css tem regras `.dark .text-slate-800 { color: #f8fafc !important }`
+   * — mas nenhuma equivalente para `bg-white/90` —, os rótulos do menu de
+   * serviços viravam texto branco sobre pílula branca no celular.
+   *
+   * A home passa a mandar na classe enquanto está na tela, e devolve o estado
+   * anterior ao sair, como as outras páginas públicas já fazem.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    const anterior = root.classList.contains('dark');
+    root.classList.toggle('dark', isDark);
+    return () => { root.classList.toggle('dark', anterior); };
   }, [isDark]);
 
   const bg        = isDark ? '#0a0a0a' : '#f5f4f0';
