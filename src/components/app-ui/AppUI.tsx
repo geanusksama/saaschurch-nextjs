@@ -274,7 +274,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Configurar Pipelines',   path: '/app-ui/secretariat/pipelines',          icon: GitBranch,   permKey: 'pipeline_config' },
       { name: 'Igrejas',                path: '/app-ui/churches',                       icon: Building,    permKey: 'churches' },
       { name: 'Lista de Membros',       path: '/app-ui/members',                        icon: Users,       permKey: 'members' },
-      { name: 'Quero ser Membro',       path: '/app-ui/membership-requests',            icon: UserPlus,    permKey: 'members' },
+      { name: 'Quero ser Membro',       path: '/app-ui/membership-requests',            icon: UserPlus,    permKey: 'membership_requests' },
       { name: 'Importação de Membros',  path: '/app-ui/members/import',                 icon: UserPlus,    permKey: 'member_import' },
       { name: 'Batismo',                path: '/app-ui/baptism',                        icon: Droplets,    permKey: 'baptism' },
       { name: 'Consagração',            path: '/app-ui/consecration',                   icon: Crown,       permKey: 'consecration' },

@@ -179,7 +179,7 @@ Para editar, abra o perfil e use **Editar**. Mudanças de igreja, título eclesi
       },
       {
         id: 'quero-ser-membro',
-        permKey: 'members',
+        permKey: 'membership_requests',
         summary: 'A ficha de adesão que vira cadastro depois de aprovada.',
         title: 'Quero ser Membro (ficha de adesão)',
         keywords: ['adesão', 'novo convertido', 'ficha', 'aprovar cadastro', 'solicitação'],
@@ -191,7 +191,7 @@ A secretaria avalia em *Secretaria → Quero ser Membro*:
 - **Aprovar** cria o membro com número de ROL e abre o card de admissão no pipeline, que é quem define título e situação. O acolhimento continua depois disso.
 - **Reprovar** cancela o card e devolve o motivo para a pessoa.
 
-A adesão entra sempre pela **sede** da igreja escolhida.
+Quem avalia é sempre a **sede do campo** da igreja escolhida — é ela que entrevista. Aprovada, a pessoa vira membro **da igreja que ela escolheu** no portal, não da sede; a coluna "Avalia / Destino" na lista mostra as duas.
 
 ## O que costuma dar errado
 - **CPF já cadastrado** — a aprovação para, de propósito. Confira se não é a mesma pessoa.

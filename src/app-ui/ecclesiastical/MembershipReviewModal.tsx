@@ -52,10 +52,13 @@ function Row({ label, value }: { label: string; value?: string | null }) {
 
 export function MembershipReviewModal({
   request,
+  podeDecidir = true,
   onClose,
   onDone,
 }: {
   request: MembershipRequestFull;
+  /** `edit` em `membership_requests`: sem isso a ficha é só leitura */
+  podeDecidir?: boolean;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -283,7 +286,7 @@ export function MembershipReviewModal({
             </>
           )}
 
-          {!decidido && (
+          {!decidido && podeDecidir && (
             <div className="pt-3 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-700 mb-1 block">
                 Observação da avaliação
@@ -307,7 +310,16 @@ export function MembershipReviewModal({
           )}
         </div>
 
-        {!decidido && (
+        {!decidido && !podeDecidir && (
+          <div className="px-5 py-4 border-t border-slate-200 bg-slate-50 text-xs text-slate-500 flex items-center justify-between gap-3">
+            <span>Você pode acompanhar a ficha, mas não tem permissão para aprovar ou reprovar.</span>
+            <button onClick={onClose} className="px-5 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">
+              Fechar
+            </button>
+          </div>
+        )}
+
+        {!decidido && podeDecidir && (
           <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-200 bg-slate-50">
             <button onClick={onClose} className="px-5 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">
               Fechar

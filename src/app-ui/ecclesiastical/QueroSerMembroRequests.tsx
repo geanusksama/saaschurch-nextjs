@@ -3,6 +3,7 @@ import { UserPlus, Search, Calendar, User, Check, X, ShieldAlert, Loader2, Info,
 import { MembershipReviewModal, type MembershipRequestFull } from './MembershipReviewModal';
 import { Link, useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
+import { usePermissions } from '../../lib/usePermissions';
 import { toast } from 'sonner';
 
 interface MembershipRequest {
@@ -35,6 +36,19 @@ interface MembershipRequest {
 export default function QueroSerMembroRequests() {
   const token = localStorage.getItem('mrm_token');
   const navigate = useNavigate();
+
+  /**
+   * A tela tem chave própria na matriz (`membership_requests`) — antes dividia
+   * a de `members`, então não dava para liberar a lista sem liberar o cadastro
+   * inteiro. `edit` é o que autoriza decidir a ficha: sem ele a pessoa
+   * acompanha os pedidos, mas não aprova nem reprova.
+   */
+  const perfilAtual = (): string => {
+    try { return JSON.parse(localStorage.getItem('mrm_user') || '{}').profileType || 'church'; }
+    catch { return 'church'; }
+  };
+  const { canEdit } = usePermissions(perfilAtual());
+  const podeDecidir = canEdit('membership_requests');
 
   const [requests, setRequests] = useState<MembershipRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -358,6 +372,7 @@ export default function QueroSerMembroRequests() {
       {reviewing && (
         <MembershipReviewModal
           request={reviewing}
+          podeDecidir={podeDecidir}
           onClose={() => setReviewing(null)}
           onDone={fetchRequests}
         />

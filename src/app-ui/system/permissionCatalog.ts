@@ -49,6 +49,13 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   // Campanhas: formulários dinâmicos enviados aos membros. `edit` é o que
   // libera aprovar/reprovar uma resposta (a aprovação grava no cadastro).
   { group: 'Secretaria', name: 'Campanhas',              key: 'secretaria_campanhas', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
+  // "Quero ser Membro": pedidos de adesão vindos do portal público.
+  // Dividia a chave com `members`, então não dava para liberar (ou tirar) a
+  // avaliação das fichas sem mexer no acesso à lista de membros inteira.
+  //  view   → ver a lista de solicitações
+  //  edit   → aprovar/reprovar a ficha (a aprovação cria o membro com ROL)
+  //  create → reenviar o link da ficha pelo WhatsApp
+  { group: 'Secretaria', name: 'Quero ser Membro',       key: 'membership_requests', permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Serviços e Ocorrências', key: 'services',          permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Requerimentos',          key: 'requirements',      permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Batismo',                key: 'baptism',           permissions: mkPerms(full(), full(), full(), admin()) },
