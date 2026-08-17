@@ -408,7 +408,9 @@ export function AppUI() {
   useEffect(() => {
     const token = localStorage.getItem('mrm_token');
     if (!token) {
-      navigate('/login', { replace: true });
+      // `/auth/login` é a rota do SPA; `/login` só existe como redirecionamento
+      // e sairia do SPA para voltar, custando um carregamento inteiro
+      navigate('/auth/login', { replace: true });
       return;
     }
     try {

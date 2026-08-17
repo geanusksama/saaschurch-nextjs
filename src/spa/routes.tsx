@@ -34,8 +34,6 @@ import { ChurchSelector, Onboarding } from "../components/app-ui/AllScreens";
 import { Login } from "../components/auth/Login";
 import { Register } from "../components/auth/Register";
 import { PendingActivation } from "../components/auth/PendingActivation";
-import ForgotPassword from "../auth/ForgotPassword";
-import ResetPassword from "../auth/ResetPassword";
 import { TwoFactorSetup } from "../components/auth/TwoFactorSetup";
 import { TwoFactorVerify } from "../components/auth/TwoFactorVerify";
 
@@ -490,8 +488,6 @@ export const router = createBrowserRouter([
     children: [
       { path: "login", Component: Login },
       { path: "register", Component: Register },
-      { path: "forgot-password", Component: ForgotPassword },
-      { path: "reset-password", Component: ResetPassword },
       { path: "two-factor-setup", Component: TwoFactorSetup },
       { path: "two-factor-verify", Component: TwoFactorVerify },
       { path: "church-selector", Component: ChurchSelector },

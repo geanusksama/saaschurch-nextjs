@@ -37,8 +37,6 @@ const screenCategories = [
     screens: [
       { id: 'login', name: 'Login', path: '/auth/login', status: 'done' },
       { id: 'register', name: 'Cadastro', path: '/auth/register', status: 'done' },
-      { id: 'forgot-password', name: 'Esqueci a Senha', path: '/auth/forgot-password', status: 'done' },
-      { id: 'reset-password', name: 'Redefinir Senha', path: '/auth/reset-password', status: 'done' },
       { id: '2fa-setup', name: 'Configurar 2FA', status: 'done' },
       { id: '2fa-verify', name: 'Verificar 2FA', status: 'done' },
       { id: 'church-selector', name: 'Seletor de Igreja', status: 'done' },
