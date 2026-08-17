@@ -647,7 +647,7 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                     <>
                       <div>
                         <label className={labelClass}>CNPJ</label>
-                        <input type="text" value={form.cnpj} onChange={(e) => update('cnpj', formatCnpj(e.target.value))} placeholder="00.000.000/0000-00" className={inputClass} />
+                        <input type="text" inputMode="numeric" value={form.cnpj} onChange={(e) => update('cnpj', formatCnpj(e.target.value))} placeholder="00.000.000/0000-00" className={inputClass} />
                       </div>
                       <div>
                         <label className={labelClass}>Nome fantasia</label>
@@ -665,7 +665,7 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                   </div>
                   <div>
                     <label className={labelClass}>CPF</label>
-                    <input type="text" value={form.cpf} onChange={(e) => update('cpf', formatCpf(e.target.value))} placeholder="000.000.000-00" className={inputClass} />
+                    <input type="text" inputMode="numeric" value={form.cpf} onChange={(e) => update('cpf', formatCpf(e.target.value))} placeholder="000.000.000-00" className={inputClass} />
                   </div>
                   <div>
                     <label className={labelClass}>RG</label>
@@ -736,11 +736,11 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                   </div>
                   <div>
                     <label className={labelClass}>Telefone</label>
-                    <input type="text" value={form.phone} onChange={(e) => update('phone', formatPhone(e.target.value))} placeholder="(11) 9999-9999" className={inputClass} />
+                    <input type="tel" inputMode="tel" value={form.phone} onChange={(e) => update('phone', formatPhone(e.target.value))} placeholder="(11) 9999-9999" className={inputClass} />
                   </div>
                   <div>
                     <label className={labelClass}>Celular</label>
-                    <input type="text" value={form.mobile} onChange={(e) => update('mobile', formatPhone(e.target.value))} placeholder="(11) 99999-9999" className={inputClass} />
+                    <input type="tel" inputMode="tel" value={form.mobile} onChange={(e) => update('mobile', formatPhone(e.target.value))} placeholder="(11) 99999-9999" className={inputClass} />
                   </div>
                 </div>
               </section>
@@ -750,7 +750,7 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
                   <div className="md:col-span-2">
                     <label className={labelClass}>CEP</label>
-                    <input type="text" value={form.addressZipcode} onChange={(e) => update('addressZipcode', formatZipcode(e.target.value))} placeholder="00000-000" className={inputClass} />
+                    <input type="text" inputMode="numeric" value={form.addressZipcode} onChange={(e) => update('addressZipcode', formatZipcode(e.target.value))} placeholder="00000-000" className={inputClass} />
                   </div>
                   <div className="md:col-span-3">
                     <label className={labelClass}>Logradouro</label>
@@ -896,7 +896,7 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                   </div>
                   <div>
                     <label className={labelClass}>Telefone</label>
-                    <input type="text" value={form.emergencyContactPhone} onChange={(e) => update('emergencyContactPhone', formatPhone(e.target.value))} className={inputClass} />
+                    <input type="tel" inputMode="tel" value={form.emergencyContactPhone} onChange={(e) => update('emergencyContactPhone', formatPhone(e.target.value))} className={inputClass} />
                   </div>
                 </div>
               </section>

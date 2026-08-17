@@ -967,6 +967,7 @@ export function MemberRegistration() {
               </label>
               <input
                 type="text"
+                inputMode="numeric"
                 required
                 value={formData.cpf}
                 onChange={(e) => updateFormValue('cpf', formatCpf(e.target.value))}
@@ -1009,6 +1010,7 @@ export function MemberRegistration() {
               </label>
               <input
                 type="tel"
+                inputMode="tel"
                 value={formData.phone}
                 onChange={(e) => updateFormValue('phone', formatPhone(e.target.value))}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1022,6 +1024,7 @@ export function MemberRegistration() {
               </label>
               <input
                 type="tel"
+                inputMode="tel"
                 value={formData.mobile}
                 onChange={(e) => updateFormValue('mobile', formatPhone(e.target.value))}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1285,6 +1288,7 @@ export function MemberRegistration() {
               <div className="flex gap-2">
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={formData.zipCode}
                   onChange={(e) => {
                     const v = e.target.value.replace(/\D/g, '').slice(0, 8);
@@ -1569,8 +1573,9 @@ export function MemberRegistration() {
               </label>
               <input
                 type="tel"
+                inputMode="tel"
                 value={formData.emergencyPhone}
-                onChange={(e) => updateFormValue('emergencyPhone', e.target.value)}
+                onChange={(e) => updateFormValue('emergencyPhone', formatPhone(e.target.value))}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="(11) 98765-4321"
               />

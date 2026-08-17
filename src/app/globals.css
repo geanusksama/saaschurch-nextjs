@@ -43,6 +43,10 @@
   --theme-secondary-hover: #8494ab;
   --theme-secondary-soft: rgba(148, 163, 184, 0.12);
 
+  /* Contorno do campo em foco. Não sai do tema (--theme-primary-ring tem 14%
+     de opacidade e some no escuro): é ele que diz em qual campo se está. */
+  --field-focus: #2563eb;
+
   --radius: 0.5rem;
 }
 
@@ -74,6 +78,9 @@
   --border: #334155;
   --input: #334155;
   --ring: #475569;
+
+  /* mais claro que no tema claro: precisa aparecer sobre o campo quase preto */
+  --field-focus: #60a5fa;
 }
 
 @theme inline {
@@ -425,6 +432,19 @@ body {
   --tw-ring-color: var(--theme-primary-ring) !important;
 }
 
+/* ── Foco visível nos campos ─────────────────────────────────────────────────
+   A regra acima repinta TODO `focus:ring-*` do app com --theme-primary-ring,
+   que tem 14% de opacidade: sobre o campo quase preto do modo escuro o anel
+   simplesmente some, e não dá para saber em qual campo o cursor está.
+   O contorno abaixo é próprio do campo em foco e não depende do anel do tema. */
+.app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):focus,
+.app-shell select:focus,
+.app-shell textarea:focus {
+  outline: 2px solid var(--field-focus);
+  outline-offset: 1px;
+  border-color: var(--field-focus) !important;
+}
+
 input,
 select,
 textarea {
@@ -503,6 +523,8 @@ select:-webkit-autofill {
     background-color: #020617 !important;
     border-color: #334155 !important;
     color: #f8fafc !important;
+    /* o cursor de digitação também: escuro sobre #020617 é invisível */
+    caret-color: #f8fafc !important;
   }
 
   .dark input::placeholder,

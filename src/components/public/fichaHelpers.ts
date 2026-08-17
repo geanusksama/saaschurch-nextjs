@@ -1,44 +1,22 @@
 /**
- * Máscaras e validações da ficha de adesão.
+ * Ajudantes da ficha de adesão — máscaras e busca de CEP.
  *
- * Ficam separadas porque a mesma ficha é preenchida em dois lugares: pelo link
- * com token (MembershipFormPublic) e direto na home, na aba "Ficha completa"
- * (MembershipFullFormFields). Duplicar a máscara faria os dois caminhos
- * gravarem o CPF em formatos diferentes.
- *
- * Todas trabalham sobre os dígitos e reconstroem a formatação, então apagar no
- * meio do texto continua funcionando. O valor vai formatado para o banco — é
- * assim que o cadastro de membros já guarda CPF e telefone.
+ * A mesma ficha é preenchida em dois lugares: pelo link com token
+ * (MembershipFormPublic) e direto na home, na aba "Ficha completa"
+ * (MembershipFullFormFields). As máscaras vêm de `@/lib/masks`, as mesmas do
+ * cadastro de membro — reescrevê-las aqui faria a ficha gravar o CPF num
+ * formato e a secretaria em outro.
  */
 
-export const digitos = (v: string) => v.replace(/\D/g, '');
+export {
+  apenasDigitos as digitos,
+  mascaraCep,
+  mascaraCpf,
+  mascaraRg,
+  mascaraTelefone,
+} from '@/lib/masks';
 
-export function mascaraCpf(v: string) {
-  const d = digitos(v).slice(0, 11);
-  return d
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-}
-
-export function mascaraTelefone(v: string) {
-  const d = digitos(v).slice(0, 11);
-  if (d.length <= 10) {
-    // fixo: (19) 3333-3333
-    return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d{1,4})$/, '$1-$2');
-  }
-  // celular: (19) 99999-9999
-  return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d{1,4})$/, '$1-$2');
-}
-
-export function mascaraCep(v: string) {
-  return digitos(v).slice(0, 8).replace(/(\d{5})(\d{1,3})$/, '$1-$2');
-}
-
-export function mascaraRg(v: string) {
-  // RG varia por estado; mantemos números, letras e traço, sem impor formato
-  return v.replace(/[^0-9A-Za-z.\-]/g, '').slice(0, 15);
-}
+import { apenasDigitos as digitos } from '@/lib/masks';
 
 /** Validação de CPF (dígitos verificadores) — espelha a checagem do servidor. */
 export function cpfValido(raw: string): boolean {

@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { apiBase } from '../../lib/apiBase';
 import { qk } from '../../lib/queryClient';
+import { mascaraCep, mascaraCpf, mascaraRg, mascaraTelefone } from '../../lib/masks';
 import { LocationPicker } from './shared/LocationPicker';
 
 export function MemberEdit() {
@@ -197,8 +198,10 @@ export function MemberEdit() {
               <label className="block text-sm font-medium text-slate-700 mb-2">Telefone *</label>
               <input
                 type="tel"
+                inputMode="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="(11) 98765-4321"
+                onChange={(e) => setFormData({ ...formData, phone: mascaraTelefone(e.target.value) })}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -217,8 +220,10 @@ export function MemberEdit() {
               <label className="block text-sm font-medium text-slate-700 mb-2">CPF</label>
               <input
                 type="text"
+                inputMode="numeric"
                 value={formData.cpf}
-                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                placeholder="000.000.000-00"
+                onChange={(e) => setFormData({ ...formData, cpf: mascaraCpf(e.target.value) })}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -228,7 +233,7 @@ export function MemberEdit() {
               <input
                 type="text"
                 value={formData.rg}
-                onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, rg: mascaraRg(e.target.value) })}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -309,8 +314,10 @@ export function MemberEdit() {
               <label className="block text-sm font-medium text-slate-700 mb-2">CEP</label>
               <input
                 type="text"
+                inputMode="numeric"
                 value={formData.addressZipcode}
-                onChange={(e) => setFormData({ ...formData, addressZipcode: e.target.value })}
+                placeholder="00000-000"
+                onChange={(e) => setFormData({ ...formData, addressZipcode: mascaraCep(e.target.value) })}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -569,11 +576,12 @@ export function MemberEditDrawer({
                   </div>
                   <div>
                     <label className={lbl}>CPF</label>
-                    <input className={inp} value={form.cpf} onChange={(e) => set('cpf', e.target.value)} />
+                    <input inputMode="numeric" placeholder="000.000.000-00" className={inp}
+                      value={form.cpf} onChange={(e) => set('cpf', mascaraCpf(e.target.value))} />
                   </div>
                   <div>
                     <label className={lbl}>RG</label>
-                    <input className={inp} value={form.rg} onChange={(e) => set('rg', e.target.value)} />
+                    <input className={inp} value={form.rg} onChange={(e) => set('rg', mascaraRg(e.target.value))} />
                   </div>
                   <div>
                     <label className={lbl}>Data de Nascimento</label>
@@ -620,11 +628,13 @@ export function MemberEditDrawer({
                   </div>
                   <div>
                     <label className={lbl}>Telefone</label>
-                    <input className={inp} value={form.phone} onChange={(e) => set('phone', e.target.value)} />
+                    <input type="tel" inputMode="tel" placeholder="(11) 3333-3333" className={inp}
+                      value={form.phone} onChange={(e) => set('phone', mascaraTelefone(e.target.value))} />
                   </div>
                   <div>
                     <label className={lbl}>Celular</label>
-                    <input className={inp} value={form.mobile} onChange={(e) => set('mobile', e.target.value)} />
+                    <input type="tel" inputMode="tel" placeholder="(11) 98765-4321" className={inp}
+                      value={form.mobile} onChange={(e) => set('mobile', mascaraTelefone(e.target.value))} />
                   </div>
                 </div>
               </section>
@@ -650,7 +660,8 @@ export function MemberEditDrawer({
                   </div>
                   <div>
                     <label className={lbl}>CEP</label>
-                    <input className={inp} value={form.addressZipcode} onChange={(e) => set('addressZipcode', e.target.value)} />
+                    <input inputMode="numeric" placeholder="00000-000" className={inp}
+                      value={form.addressZipcode} onChange={(e) => set('addressZipcode', mascaraCep(e.target.value))} />
                   </div>
                 </div>
               </section>

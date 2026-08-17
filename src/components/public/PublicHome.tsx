@@ -14,7 +14,7 @@ import {
   EMPTY_FICHA, faltandoNaFicha, MembershipFullFormFields,
   type FichaCompleta, type IgrejaPublica,
 } from './MembershipFullFormFields';
-import { cpfValido } from './fichaHelpers';
+import { cpfValido, digitos, mascaraTelefone } from './fichaHelpers';
 
 function DoveIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -388,6 +388,12 @@ export function PublicHome() {
         setFormError('Escolha o campo para sabermos qual igreja vai te atender.');
         return;
       }
+    }
+    // DDD + número: o código do WhatsApp é enviado para este número, e um
+    // telefone incompleto só voltaria como erro do servidor depois da espera
+    if (digitos(phone).length < 10) {
+      setFormError('WhatsApp incompleto — informe DDD e número, ex.: (19) 99999-9999.');
+      return;
     }
     setFormError('');
     setLoadingOtp(true);
@@ -1040,8 +1046,9 @@ export function PublicHome() {
                     </label>
                     <input
                       type="tel"
+                      inputMode="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(mascaraTelefone(e.target.value))}
                       placeholder="(19) 99999-9999"
                       className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'}`}
                     />
@@ -1146,8 +1153,9 @@ export function PublicHome() {
                         </label>
                         <input
                           type="tel"
+                          inputMode="tel"
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
+                          onChange={(e) => setPhone(mascaraTelefone(e.target.value))}
                           placeholder="(19) 99999-9999"
                           className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'}`}
                         />
@@ -1214,8 +1222,9 @@ export function PublicHome() {
                     </label>
                     <input
                       type="tel"
+                      inputMode="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(mascaraTelefone(e.target.value))}
                       placeholder="(19) 99999-9999"
                       className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'}`}
                     />
