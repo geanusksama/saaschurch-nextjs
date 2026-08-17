@@ -4,6 +4,7 @@ import { ROLE_PERMISSION_CATEGORIES } from '../../../app-ui/system/permissionCat
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 
 import { apiBase } from '../../../lib/apiBase';
+import { useCampoVisible } from '../../../lib/campoVisibility';
 
 type CampoOption = {
   id: string;
@@ -82,6 +83,7 @@ export function Roles() {
   const token = localStorage.getItem('mrm_token');
   const storedUser = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; } })();
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
+  const campoVisible = useCampoVisible();
   const isMaster = storedUser.profileType === 'master';
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [churches, setChurches] = useState<ChurchOption[]>([]);
@@ -275,6 +277,7 @@ export function Roles() {
 
       <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
         <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)] md:items-end">
+          {campoVisible && (
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             Campo
             {isMaster ? (
@@ -294,6 +297,7 @@ export function Roles() {
               </div>
             )}
           </label>
+          )}
           <div className="text-sm text-slate-500 dark:text-slate-400">
             {isMaster ? 'Escolha o campo para filtrar as igrejas disponíveis no escopo da função.' : 'As igrejas abaixo já estão limitadas ao campo do usuário logado.'}
           </div>
@@ -411,7 +415,7 @@ export function Roles() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {isMaster ? (
+              {isMaster && campoVisible ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)] md:items-end">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">

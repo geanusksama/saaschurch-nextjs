@@ -43,9 +43,17 @@ import {
   Bot,
   Calculator
 } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { usePermissions } from '../../lib/usePermissions';
 import { podeAcessarContabilidadeAgendamento } from '../../lib/contabilidadeAgendamentoRole';
+import { apiBase } from '../../lib/apiBase';
+import {
+  isMasterUser,
+  lockCampoVisibility,
+  unlockCampoVisibility,
+  useCampoVisible,
+} from '../../lib/campoVisibility';
 
 type SettingsItem = {
   id: string;
@@ -196,6 +204,65 @@ export function SystemSettings() {
   const { canView } = usePermissions(profileType);
   const roleName: string = storedUser.roleName || storedUser.role?.name || '';
 
+  // ── Destravar visão de campo ────────────────────────────────────────────
+  // Campo não aparece em lugar nenhum da interface. Quem precisa dele (só o
+  // master) destrava aqui: 7 cliques na área à direita do cabeçalho abrem o
+  // pedido da senha do campo. Sem essa senha nada muda — e o destravamento vale
+  // só para esta sessão do navegador.
+  const campoVisible = useCampoVisible();
+  const clickCountRef = useRef(0);
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [campoPromptOpen, setCampoPromptOpen] = useState(false);
+  const [campoPassword, setCampoPassword] = useState('');
+  const [campoError, setCampoError] = useState('');
+  const [campoChecking, setCampoChecking] = useState(false);
+
+  const handleHotspotClick = () => {
+    if (!isMasterUser() || campoVisible) return;
+    clickCountRef.current += 1;
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    // Os 7 cliques precisam ser seguidos: 2s parado zera a contagem.
+    clickTimerRef.current = setTimeout(() => { clickCountRef.current = 0; }, 2000);
+    if (clickCountRef.current >= 7) {
+      clickCountRef.current = 0;
+      setCampoPassword('');
+      setCampoError('');
+      setCampoPromptOpen(true);
+    }
+  };
+
+  const submitCampoPassword = async () => {
+    const campoId: string = storedUser.campoId || localStorage.getItem('mrm_active_field_id') || '';
+    if (!campoId) {
+      setCampoError('Nenhum campo ativo para validar.');
+      return;
+    }
+    setCampoChecking(true);
+    setCampoError('');
+    try {
+      const token = localStorage.getItem('mrm_token');
+      const res = await fetch(`${apiBase}/context-switcher/verify-field`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ fieldId: campoId, password: campoPassword }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error || 'Senha do campo inválida.');
+      }
+      unlockCampoVisibility();
+      setCampoPromptOpen(false);
+      setCampoPassword('');
+    } catch (err) {
+      setCampoError(err instanceof Error ? err.message : 'Falha ao validar a senha do campo.');
+    } finally {
+      setCampoChecking(false);
+    }
+  };
+
   const visibleSections = settingsSections
     .map((section) => ({
       ...section,
@@ -220,8 +287,73 @@ export function SystemSettings() {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Configurações do Sistema</h1>
             <p className="text-slate-600 dark:text-slate-400">Gerencie todas as configurações da plataforma</p>
           </div>
+
+          {/* Área à direita do cabeçalho: 7 cliques (só master) destravam a
+              visão de campo. Sem marca visual — não é um botão anunciado. */}
+          <div
+            onClick={handleHotspotClick}
+            aria-hidden="true"
+            className="ml-auto h-12 w-40 self-stretch cursor-default select-none"
+          />
+
+          {campoVisible && (
+            <button
+              type="button"
+              onClick={lockCampoVisibility}
+              className="shrink-0 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-200"
+              title="Voltar a ocultar os controles de campo"
+            >
+              Visão de campo ativa · ocultar
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Modal: senha do campo */}
+      {campoPromptOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Senha do campo</h3>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              Informe a senha do campo para liberar os controles de campo nesta sessão.
+            </p>
+
+            {campoError && (
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {campoError}
+              </div>
+            )}
+
+            <input
+              type="password"
+              autoFocus
+              value={campoPassword}
+              onChange={(e) => setCampoPassword(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && campoPassword) void submitCampoPassword(); }}
+              placeholder="Senha do campo"
+              className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800"
+            />
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setCampoPromptOpen(false); setCampoPassword(''); setCampoError(''); }}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitCampoPassword()}
+                disabled={campoChecking || !campoPassword}
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+              >
+                {campoChecking ? 'Validando...' : 'Liberar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-8">
         {visibleSections.map((section) => {

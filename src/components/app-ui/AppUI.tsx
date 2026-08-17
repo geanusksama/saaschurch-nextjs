@@ -116,6 +116,7 @@ import { logClientAudit } from '../../lib/auditClient';
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from '../../lib/recentSearches';
 import { AiChatAssistant } from './shared/AiChatAssistant';
 import { resolverActionUrl } from '../../lib/notificationLinks';
+import { useCampoVisible } from '../../lib/campoVisibility';
 
 
 interface ContextSwitcherItem {
@@ -573,6 +574,9 @@ export function AppUI() {
     };
   }, []);
 
+  // Campo é invisível na interface por padrão (inclusive para o master). Só
+  // aparece depois do destravamento com senha, feito em Configurações.
+  const campoVisible = useCampoVisible();
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [churchSwitcherOpen, setChurchSwitcherOpen] = useState(false);
@@ -1065,10 +1069,24 @@ export function AppUI() {
     return canView(permKey);
   };
 
+  // Menus que expõem campo (senha dos campos, dashboard do campo) somem para
+  // todo mundo — inclusive admin. Só o master os enxerga, e "Senha dos Campos"
+  // continua visível para ele mesmo sem destravar, senão ele nunca conseguiria
+  // cadastrar a primeira senha.
+  const CAMPO_ONLY_PATHS = ['/app-ui/dashboard/field'];
+  const MASTER_ONLY_CAMPO_PATHS = ['/app-ui/system/campo-senhas'];
+  const isCampoMenuAllowed = (path: string) => {
+    if (MASTER_ONLY_CAMPO_PATHS.includes(path)) return profileType === 'master';
+    if (CAMPO_ONLY_PATHS.includes(path)) return profileType === 'master' && campoVisible;
+    return true;
+  };
+
   const visibleNavigation = appNavigation
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => canViewItem(profileType, item.permKey)),
+      items: section.items.filter(
+        (item) => canViewItem(profileType, item.permKey) && isCampoMenuAllowed(item.path),
+      ),
     }))
     .filter((section) => section.items.length > 0);
 
@@ -1096,7 +1114,7 @@ export function AppUI() {
 
   const quickAccessItems = appNavigation.flatMap((section) =>
     section.items
-      .filter((item) => canViewItem(profileType, item.permKey))
+      .filter((item) => canViewItem(profileType, item.permKey) && isCampoMenuAllowed(item.path))
       .map((item) => ({
         ...item,
         section: section.section,
@@ -1241,8 +1259,8 @@ export function AppUI() {
               </div>
             </div>
 
-            {/* Church Switcher */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+            {/* Church Switcher — só existe com a visão de campo destravada */}
+            {campoVisible && <div className="p-4 border-b border-slate-200 dark:border-slate-700">
               <button
                 onClick={() => setChurchSwitcherOpen(!churchSwitcherOpen)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors"
@@ -1254,7 +1272,7 @@ export function AppUI() {
                 </div>
                 <ChevronDown className="w-4 h-4 text-slate-400" />
               </button>
-            </div>
+            </div>}
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto px-4 py-4">
@@ -1440,7 +1458,7 @@ export function AppUI() {
 
       {/* Church Switcher Modal */}
       <AnimatePresence>
-        {churchSwitcherOpen && (
+        {churchSwitcherOpen && campoVisible && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -2369,13 +2387,15 @@ export function AppUI() {
                         <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.church?.name || storedUser.churchName || 'Não vinculada'}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                      <Building className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Campo</p>
-                        <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.campo?.name || storedUser.campoName || 'Não vinculado'}</p>
+                    {campoVisible && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                        <Building className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Campo</p>
+                          <p className="text-slate-700 dark:text-slate-200 font-medium">{storedUser.campo?.name || storedUser.campoName || 'Não vinculado'}</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                       <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
                       <div>

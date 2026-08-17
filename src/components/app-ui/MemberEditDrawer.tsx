@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Save, X, Camera, Trash2, User } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { supabase } from '../../lib/supabaseClient';
 import { LocationPicker } from './shared/LocationPicker';
 
@@ -235,6 +236,7 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
   const [regionais, setRegionais] = useState<RegionalOption[]>([]);
   const [churches, setChurches] = useState<ChurchOption[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState('');
+  const campoVisible = useCampoVisible();
 
   // Foto: mantida só em memória (preview/arquivo) até salvar. O upload para o
   // storage e a gravação no banco só acontecem no handleSave.
@@ -585,6 +587,7 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                 <section>
                   <h3 className="mb-3 text-sm font-semibold text-slate-800">Vínculo com Igreja</h3>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {campoVisible && (
                     <div>
                       <label className={labelClass}>Campo</label>
                       <select
@@ -598,6 +601,7 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                         ))}
                       </select>
                     </div>
+                    )}
                     <div>
                       <label className={labelClass}>Regional</label>
                       <select

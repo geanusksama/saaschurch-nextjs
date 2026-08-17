@@ -604,6 +604,7 @@ model Member {
   occurrences            MemberOccurrence[]       @relation("MemberOccurrenceMember")
   eventHistory           MemberEventHistory[]     @relation("MemberEventHistoryMember")
   titleHistory           MemberTitleHistory[]     @relation("MemberTitleHistoryMember")
+  previousChurches       MemberPreviousChurch[]   @relation("MemberPreviousChurchMember")
   appAuth                AppMembrosAuth[]         @relation("MemberAppAuth")
   appCadastros           AppCadastroNew[]         @relation("MemberAppCadastro")
   ebdEntregasResponsavel EbdEntrega[]             @relation("EbdEntregaResponsavel")
@@ -2313,6 +2314,36 @@ model MemberTitleHistory {
   @@index([memberId])
   @@index([churchId, createdAt])
   @@map("member_title_history")
+}
+
+/// Vida eclesiástica do membro ANTES de chegar aqui: uma linha por igreja onde
+/// ele passou. É digitado pela secretaria (não vem da matriz), então tudo é
+/// texto livre — a igreja de origem não está cadastrada no sistema.
+model MemberPreviousChurch {
+  id                  String    @id @default(uuid()) @db.Uuid
+  memberId            String    @map("member_id") @db.Uuid
+  churchName          String    @map("church_name") @db.VarChar(255)
+  /// Título que ele tinha naquela igreja (texto livre: pode não existir aqui).
+  ecclesiasticalTitle String?   @map("ecclesiastical_title") @db.VarChar(120)
+  conversionDate      DateTime? @map("conversion_date") @db.Date
+  baptismDate         DateTime? @map("baptism_date") @db.Date
+  consecrationDate    DateTime? @map("consecration_date") @db.Date
+  consecrationTitle   String?   @map("consecration_title") @db.VarChar(120)
+  pastorName          String?   @map("pastor_name") @db.VarChar(255)
+  /// Funções exercidas lá (ex.: "Diácono, Professor de EBD").
+  functions           String?   @db.Text
+  notes               String?   @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+
+  member Member @relation("MemberPreviousChurchMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@map("member_previous_churches")
 }
 
 /// Histórico de eventos do membro: gerado a cada ação da matriz de decisão.

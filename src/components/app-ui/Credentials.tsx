@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../lib/queryClient';
 import { ArrowUpDown, AlertTriangle, CheckCircle, CheckCircle2, Clock3, CreditCard, Eye, FileSpreadsheet, Loader2, Pencil, Plus, Printer, Search, Trash2, UserRound, X, XCircle } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
 import * as XLSX from 'xlsx';
@@ -177,6 +178,8 @@ export function Credentials() {
   const storedUser = useMemo(parseStoredUser, []);
   const defaultDateRange = useMemo(() => getMonthDateRange(), []);
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
+  // Campo não aparece na interface (só master, e só depois de destravar).
+  const campoVisible = useCampoVisible();
   const normalizedRole = normalizeText(storedUser.roleName || '');
   const isSecretaryOrTreasurer = normalizedRole.includes('secret') || normalizedRole.includes('tesour');
   const isAdminOrMaster = ['master', 'admin'].includes(storedUser.profileType || '');
@@ -486,15 +489,17 @@ export function Credentials() {
                 className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
             </div>
           </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
-            <select value={selectedFieldId} onChange={(e) => { setSelectedFieldId(e.target.value); setSelectedRegionalId(''); setSelectedChurchId(''); setPage(1); }}
-              disabled={!canChooseField || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
-              <option value="">Todos os campos</option>
-              {fields.map((f) => <option key={f.id} value={f.id}>{f.code ? `${f.code} - ` : ''}{f.name}</option>)}
-            </select>
-          </div>
+          {campoVisible && (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
+              <select value={selectedFieldId} onChange={(e) => { setSelectedFieldId(e.target.value); setSelectedRegionalId(''); setSelectedChurchId(''); setPage(1); }}
+                disabled={!canChooseField || loadingFilters}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
+                <option value="">Todos os campos</option>
+                {fields.map((f) => <option key={f.id} value={f.id}>{f.code ? `${f.code} - ` : ''}{f.name}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>
             <select value={selectedRegionalId} onChange={(e) => { setSelectedRegionalId(e.target.value); setSelectedChurchId(''); setPage(1); }}

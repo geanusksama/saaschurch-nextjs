@@ -9,6 +9,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Badge } from '../../design-system/components/Badge';
 import { ConfirmDialog } from './shared/ConfirmDialog';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import * as XLSX from 'xlsx';
 
 // Interfaces
@@ -153,6 +154,7 @@ const getWeeklyBehavior = (memberRecords: FacePresenceRecord[], deDateStr: strin
 
 export function AttendanceModule() {
   const token = localStorage.getItem('mrm_token');
+  const campoVisible = useCampoVisible();
 
   // Campo (field) ativo — usado para escopar igrejas/regionais/membros pelo campo
   // do usuário logado. Master enxerga todo o sistema, mas por padrão usamos o
@@ -1504,7 +1506,7 @@ export function AttendanceModule() {
                     <th className="px-6 py-4">Confiança</th>
                     <th className="px-6 py-4">Câmera</th>
                     <th className="px-6 py-4">Igreja Regional</th>
-                    <th className="px-6 py-4">Campo</th>
+                    {campoVisible && <th className="px-6 py-4">Campo</th>}
                     <th className="px-6 py-4 text-center no-print">Ações</th>
                   </tr>
                 </thead>
@@ -1565,9 +1567,11 @@ export function AttendanceModule() {
                           <td className="px-6 py-4 font-medium">
                             {record.igrejaRegional || <span className="text-slate-350 dark:text-slate-700">—</span>}
                           </td>
+                          {campoVisible && (
                           <td className="px-6 py-4 text-xs font-mono text-slate-400">
                             {record.campo || '—'}
                           </td>
+                          )}
                           <td className="px-6 py-4 text-center no-print">
                             <button
                               onClick={() => handleDeletePresence(record.id)}

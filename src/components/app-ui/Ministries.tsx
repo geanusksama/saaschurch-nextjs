@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { usePermissions } from '../../lib/usePermissions';
 
 type CampoOption = {
@@ -120,6 +121,8 @@ export function Ministries() {
   const profileType: string = storedUser.profileType || 'church';
   const { canCreate, canEdit, canDelete } = usePermissions(profileType);
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
+  // Campo não aparece na interface (só master, e só depois de destravar).
+  const campoVisible = useCampoVisible();
   const normalizedRoleName = normalizeRoleName(storedUser.roleName);
   const isChurchProfile = profileType === 'church';
   const isSecretaryOrTreasurer = normalizedRoleName.includes('secret') || normalizedRoleName.includes('tesour');
@@ -471,6 +474,7 @@ export function Ministries() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {campoVisible && (
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Campo</label>
           <select
@@ -491,6 +495,7 @@ export function Ministries() {
             ))}
           </select>
         </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Regional</label>

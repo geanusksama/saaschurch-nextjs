@@ -33,6 +33,7 @@ import {
 import * as XLSX from "xlsx";
 
 import { apiBase } from "../../lib/apiBase";
+import { useCampoVisible } from "../../lib/campoVisibility";
 import { PrintModal } from "../../components/app-ui/shared/PrintModal";
 import { printReport } from "../../lib/printReport";
 
@@ -301,6 +302,7 @@ export default function SecretariatPipeline() {
     try { return JSON.parse(localStorage.getItem("mrm_user") || "{}"); } catch { return {}; }
   }, []);
   const canFilterCampo = me?.profileType === "master";
+  const campoVisible = useCampoVisible();
   const canFilterChurch = me?.profileType === "master" || me?.profileType === "admin" || me?.profileType === "campo";
   const canMoveCards = me?.profileType === "master" || me?.profileType === "admin" || me?.profileType === "campo";
   const [filterCampoId, setFilterCampoId] = useState<string>("");
@@ -588,7 +590,7 @@ export default function SecretariatPipeline() {
           </div>
 
           {/* Campo select */}
-          {canFilterCampo && (
+          {canFilterCampo && campoVisible && (
             <SelectField
               value={filterCampoId}
               onChange={(v) => setFilterCampoId(v ? String(v) : "")}

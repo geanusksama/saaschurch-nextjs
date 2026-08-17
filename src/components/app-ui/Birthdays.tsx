@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { supabase } from '../../lib/supabaseClient';
 
 interface BirthdayMember {
@@ -64,6 +65,8 @@ export function Birthdays() {
   const profileType: string = storedUser.profileType || 'church';
   const isChurchProfile = profileType === 'church';
   const canChooseCampo = profileType === 'master' || profileType === 'admin';
+  // Campo fica oculto na interface; só aparece com a visão destravada.
+  const campoVisible = useCampoVisible();
   const showChurchFilter = !isChurchProfile;
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -497,7 +500,7 @@ export function Birthdays() {
       {showChurchFilter && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4 no-print">
           <div className="flex flex-wrap gap-4">
-            {canChooseCampo && (
+            {canChooseCampo && campoVisible && (
               <div className="flex-1 min-w-[220px]">
                 <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo Regional</label>
                 <div className="relative">

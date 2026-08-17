@@ -4,6 +4,7 @@ import { useDebounce } from '../../lib/secretariaHooks';
 import { qk } from '../../lib/queryClient';
 import { ArrowRightLeft, ArrowUpDown, Building2, Download, Pencil, Plus, Printer, Search, Trash2, UserRound, X } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
 
@@ -200,6 +201,8 @@ export function Transfer() {
   const storedUser = useMemo(parseStoredUser, []);
   const defaultDateRange = useMemo(() => getMonthDateRange(), []);
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
+  // Campo não aparece na interface (só master, e só depois de destravar).
+  const campoVisible = useCampoVisible();
   const modalFieldScopeId = activeFieldId || storedUser.campoId || '';
   const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
   const canManageTransferStatus = storedUser.profileType === 'master' || storedUser.profileType === 'admin';
@@ -687,13 +690,15 @@ export function Transfer() {
               <input type="text" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por membro, protocolo, igreja, observacao" className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
             </div>
           </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
-            <select value={selectedFieldId} onChange={(event) => { setSelectedFieldId(event.target.value); setSelectedRegionalId(''); setSelectedChurchId(''); }} disabled={!canChooseField || loadingFilters} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
-              <option value="">Todos os campos</option>
-              {fields.map((field) => <option key={field.id} value={field.id}>{field.code ? `${field.code} - ` : ''}{field.name}</option>)}
-            </select>
-          </div>
+          {campoVisible && (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
+              <select value={selectedFieldId} onChange={(event) => { setSelectedFieldId(event.target.value); setSelectedRegionalId(''); setSelectedChurchId(''); }} disabled={!canChooseField || loadingFilters} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
+                <option value="">Todos os campos</option>
+                {fields.map((field) => <option key={field.id} value={field.id}>{field.code ? `${field.code} - ` : ''}{field.name}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>
             <select value={selectedRegionalId} onChange={(event) => { setSelectedRegionalId(event.target.value); setSelectedChurchId(''); }} disabled={!canChooseRegional || loadingFilters} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">

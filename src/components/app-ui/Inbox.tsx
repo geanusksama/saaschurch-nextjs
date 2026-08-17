@@ -50,6 +50,7 @@ function stripHtml(html: string) {
 
 
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 
 function getAuthHeaders(extra: Record<string, string> = {}) {
   const token = localStorage.getItem('mrm_token');
@@ -85,6 +86,8 @@ export function Inbox() {
   const [replyToThreadId, setReplyToThreadId] = useState<string | null>(null);
 
   // Cross-campo state
+  // Envio para outro campo só existe com a visão de campo destravada.
+  const campoVisible = useCampoVisible();
   const [isCrossCampo, setIsCrossCampo] = useState(false);
   const [targetCampoId, setTargetCampoId] = useState('');
   const [targetCampoPassword, setTargetCampoPassword] = useState('');
@@ -837,6 +840,7 @@ export function Inbox() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    {campoVisible && (
                     <button 
                       onClick={() => setIsCrossCampo(!isCrossCampo)}
                       className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${isCrossCampo ? 'bg-purple-600 text-white border-purple-600' : 'text-slate-400 border-slate-200'}`}
@@ -844,6 +848,7 @@ export function Inbox() {
                     >
                       Campo Externo
                     </button>
+                    )}
                     <button 
                       onClick={() => setShowCc(!showCc)}
                       className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${showCc ? 'bg-blue-600 text-white border-blue-600' : 'text-slate-400 border-slate-200'}`}

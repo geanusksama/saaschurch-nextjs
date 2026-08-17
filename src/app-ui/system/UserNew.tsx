@@ -3,6 +3,7 @@ import { Building2, Eye, EyeOff, Info, MapPinned, Save, Shield, Users } from 'lu
 import { Link, useNavigate } from 'react-router';
 
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 
 type CampoOption = {
   id: string;
@@ -65,6 +66,8 @@ export default function UserNew() {
     isAdmin: false,
     password: '',
   });
+  // Campo não aparece: é derivado da igreja/regional escolhida.
+  const campoVisible = useCampoVisible();
 
   const token = localStorage.getItem('mrm_token');
 
@@ -326,6 +329,7 @@ export default function UserNew() {
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
               <h2 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Vinculos Organizacionais</h2>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {campoVisible && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Campo</label>
                   <div className="relative">
@@ -344,6 +348,7 @@ export default function UserNew() {
                     </select>
                   </div>
                 </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Regional</label>
                   <div className="relative">
@@ -448,7 +453,7 @@ export default function UserNew() {
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{form.email || 'email@exemplo.com'}</p>
                 {(campos.find((campo) => campo.id === form.campoId)?.name || regionais.find((regional) => regional.id === form.regionalId)?.name || churches.find((church) => church.id === form.churchId)?.name) && (
                   <div className="mt-2 space-y-1 text-xs text-slate-500 dark:text-slate-400">
-                    {campos.find((campo) => campo.id === form.campoId)?.name && (
+                    {campoVisible && campos.find((campo) => campo.id === form.campoId)?.name && (
                       <p>Campo: {campos.find((campo) => campo.id === form.campoId)?.name}</p>
                     )}
                     {regionais.find((regional) => regional.id === form.regionalId)?.name && (

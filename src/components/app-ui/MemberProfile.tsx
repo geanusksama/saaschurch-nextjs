@@ -3,6 +3,14 @@ import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Edit, Info, Pencil, Plu
 import { Link, useParams } from "react-router";
 import { MemberEditDrawer } from "./MemberEditDrawer";
 import { ConfirmDialog } from "./shared/ConfirmDialog";
+import {
+  PreviousChurchFields,
+  emptyPreviousChurchForm,
+  previousChurchPayload,
+  previousChurchRowToForm,
+  type PreviousChurchForm,
+  type PreviousChurchRow,
+} from "./shared/PreviousChurchFields";
 
 import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
@@ -102,7 +110,7 @@ type HistoryRow = {
   destinationChurch?: { id: string; name: string } | null; // igreja de destino (transferência)
 };
 
-type Tab = "historico" | "titulos" | "funcoes" | "familia";
+type Tab = "historico" | "titulos" | "funcoes" | "familia" | "igrejas";
 
 type KanService = { id: number; sigla: string; description: string; serviceGroup?: string | null };
 
@@ -402,6 +410,7 @@ export function MemberProfile() {
     { key: "titulos", label: "Títulos" },
     { key: "funcoes", label: "Funções" },
     { key: "familia", label: "Família" },
+    { key: "igrejas", label: "Outras Igrejas" },
   ];
 
   return (
@@ -806,6 +815,13 @@ export function MemberProfile() {
           )}
           {activeTab === "familia" && member && (
             <FamiliaTab memberId={member.id} canManage={canManageHistory} />
+          )}
+          {activeTab === "igrejas" && member && (
+            <OutrasIgrejasTab
+              memberId={member.id}
+              canManage={canManageHistory}
+              titleOptions={ecclesiasticalTitles.map((t) => t.name)}
+            />
           )}
         </div>
       </div>
@@ -1345,6 +1361,226 @@ function FamiliaTab({ memberId, canManage }: { memberId: string; canManage: bool
         open={!!deleteTarget}
         title="Remover familiar?"
         message="O vínculo familiar será removido do cadastro deste membro."
+        confirmLabel="Remover"
+        variant="danger"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  );
+}
+
+// ─── Histórico em outras igrejas ──────────────────────────────────────────────
+// Vida eclesiástica do membro ANTES de entrar nesta igreja: uma linha por igreja
+// onde ele passou (título de lá, batismo, consagração, pastor, funções).
+
+function OutrasIgrejasTab({
+  memberId,
+  canManage,
+  titleOptions,
+}: {
+  memberId: string;
+  canManage: boolean;
+  titleOptions: string[];
+}) {
+  const [rows, setRows] = useState<PreviousChurchRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<PreviousChurchForm>(emptyPreviousChurchForm);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<PreviousChurchRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    authFetch(`${apiBase}/members/${memberId}/previous-churches`)
+      .then((r) => r.json())
+      .then((d) => setRows(Array.isArray(d) ? d : []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [memberId]);
+
+  const openCreate = () => {
+    setForm(emptyPreviousChurchForm);
+    setFormError("");
+    setModalOpen(true);
+  };
+
+  const openEdit = (row: PreviousChurchRow) => {
+    setForm(previousChurchRowToForm(row));
+    setFormError("");
+    setModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.churchName.trim()) {
+      setFormError("Informe o nome da igreja.");
+      return;
+    }
+    setSaving(true);
+    setFormError("");
+    try {
+      const payload = previousChurchPayload(form);
+      const res = form.id
+        ? await authFetch(`${apiBase}/members/${memberId}/previous-churches/${form.id}`, {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+          })
+        : await authFetch(`${apiBase}/members/${memberId}/previous-churches`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error || "Falha ao salvar.");
+      }
+      setModalOpen(false);
+      load();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Falha ao salvar.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await authFetch(`${apiBase}/members/${memberId}/previous-churches/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok && res.status !== 204) throw new Error();
+      setDeleteTarget(null);
+      load();
+    } catch { /* mantém aberto */ } finally { setDeleting(false); }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-slate-400">
+          Igrejas onde o membro passou antes de entrar nesta: título de lá, batismo, consagração, pastor e funções.
+        </p>
+        <button
+          onClick={openCreate}
+          disabled={!canManage}
+          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40"
+        >
+          <Plus className="w-4 h-4" /> Adicionar histórico em outra igreja
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-slate-100 rounded-lg animate-pulse" />)}</div>
+      ) : rows.length === 0 ? (
+        <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
+          Nenhum histórico em outra igreja cadastrado.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {rows.map((r) => (
+            <div key={r.id} className="rounded-xl border border-slate-100 px-4 py-3 hover:bg-slate-50">
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-800">{r.churchName}</p>
+                  <p className="text-xs text-slate-500">
+                    {r.ecclesiasticalTitle || "Sem título informado"}
+                    {r.pastorName ? ` · Pr. ${r.pastorName}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => canManage && openEdit(r)}
+                    disabled={!canManage}
+                    className={`p-1 rounded ${canManage ? "hover:bg-slate-200 text-slate-500" : "text-slate-300 cursor-not-allowed"}`}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => canManage && setDeleteTarget(r)}
+                    disabled={!canManage}
+                    className={`p-1 rounded ${canManage ? "hover:bg-red-100 text-slate-500 hover:text-red-600" : "text-slate-300 cursor-not-allowed"}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                <div>
+                  <span className="block text-[11px] uppercase tracking-wide text-slate-400">Aceitou Jesus</span>
+                  {fmtDate(r.conversionDate)}
+                </div>
+                <div>
+                  <span className="block text-[11px] uppercase tracking-wide text-slate-400">Batismo</span>
+                  {fmtDate(r.baptismDate)}
+                </div>
+                <div>
+                  <span className="block text-[11px] uppercase tracking-wide text-slate-400">Consagração</span>
+                  {fmtDate(r.consecrationDate)}
+                  {r.consecrationTitle ? ` · ${r.consecrationTitle}` : ""}
+                </div>
+              </div>
+
+              {r.functions && (
+                <p className="mt-2 text-xs text-slate-600">
+                  <span className="text-[11px] uppercase tracking-wide text-slate-400">Funções: </span>
+                  {r.functions}
+                </p>
+              )}
+              {r.notes && <p className="mt-1 text-xs text-slate-500">{r.notes}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <h3 className="text-base font-semibold text-slate-900">
+                {form.id ? "Editar histórico em outra igreja" : "Adicionar histórico em outra igreja"}
+              </h3>
+              <button onClick={() => setModalOpen(false)} className="rounded-lg p-1 hover:bg-slate-100">
+                <X className="h-5 w-5 text-slate-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+              {formError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>
+              )}
+
+              <PreviousChurchFields
+                form={form}
+                onChange={(patch) => setForm((p) => ({ ...p, ...patch }))}
+                titleOptions={titleOptions}
+                idPrefix="profile-prev-church"
+              />
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button type="button" onClick={() => setModalOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
+                  {saving ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Remover histórico?"
+        message="O histórico nesta outra igreja será removido do cadastro do membro."
         confirmLabel="Remover"
         variant="danger"
         loading={deleting}

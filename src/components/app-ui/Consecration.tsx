@@ -5,6 +5,7 @@ import { qk } from '../../lib/queryClient';
 import { ArrowUpDown, Building2, Calendar, CheckCircle2, Clock3, Download, Gift, Loader2, Pencil, Plus, Printer, Search, Trash2, UserRound, X, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 import { RowCheckbox, runInBatches, useRowSelection } from './shared/rowSelection';
 import { PrintModal } from './shared/PrintModal';
@@ -266,6 +267,8 @@ export function Consecration() {
     roleName: storedUser.roleName || '',
   }), [storedUser]);
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
+  // Campo não aparece na interface (só master, e só depois de destravar).
+  const campoVisible = useCampoVisible();
   const modalFieldScopeId = activeFieldId || storedUser.campoId || '';
   const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
   const normalizedRole = normalizeText(storedUser.roleName || '');
@@ -1005,27 +1008,29 @@ export function Consecration() {
             </div>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
-            <select
-              value={selectedFieldId}
-              onChange={(event) => {
-                setSelectedFieldId(event.target.value);
-                setSelectedRegionalId('');
-                setSelectedChurchId('');
-              }}
-              disabled={!canChooseField || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
-            >
-              <option value="">Todos os campos</option>
-              {fields.map((field) => (
-                <option key={field.id} value={field.id}>
-                  {field.code ? `${field.code} - ` : ''}
-                  {field.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {campoVisible && (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
+              <select
+                value={selectedFieldId}
+                onChange={(event) => {
+                  setSelectedFieldId(event.target.value);
+                  setSelectedRegionalId('');
+                  setSelectedChurchId('');
+                }}
+                disabled={!canChooseField || loadingFilters}
+                className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+              >
+                <option value="">Todos os campos</option>
+                {fields.map((field) => (
+                  <option key={field.id} value={field.id}>
+                    {field.code ? `${field.code} - ` : ''}
+                    {field.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>

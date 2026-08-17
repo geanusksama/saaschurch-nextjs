@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { usePermissions } from '../../lib/usePermissions';
 
 interface ChatMessage {
@@ -93,6 +94,7 @@ export function ChatFAB() {
   })();
   const token = localStorage.getItem('mrm_token');
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
+  const campoVisible = useCampoVisible();
   const currentUserId = storedUser.id || '';
   const [searchQuery, setSearchQuery] = useState('');
   const [showOnlyOnline, setShowOnlyOnline] = useState(false);
@@ -1066,7 +1068,7 @@ export function ChatFAB() {
               )}
 
               {/* Multiselect dropdown for Master user to select campuses to listen to */}
-              {!selectedContact && isMasterSupportOrAdmin && (
+              {!selectedContact && isMasterSupportOrAdmin && campoVisible && (
                 <div className="relative mt-2 px-1">
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                     Filtro de Campos (Ouvir Mensagens)

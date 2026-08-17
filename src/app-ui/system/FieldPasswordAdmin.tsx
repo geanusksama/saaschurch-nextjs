@@ -17,7 +17,8 @@ function readStoredUser() {
 
 export default function FieldPasswordAdmin() {
   const storedUser = readStoredUser();
-  const isMasterOrAdmin = storedUser.profileType === 'master' || storedUser.profileType === 'admin';
+  // Senha de campo é assunto exclusivo do master — admin não vê.
+  const isMasterOrAdmin = storedUser.profileType === 'master';
   const token = localStorage.getItem('mrm_token');
 
   const [campos, setCampos] = useState<Campo[]>([]);
@@ -115,7 +116,7 @@ export default function FieldPasswordAdmin() {
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Acesso Restrito</h2>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Esta área é exclusiva para administradores e master. Contacte o responsável do sistema.
+            Esta área é exclusiva para o perfil master. Contacte o responsável do sistema.
           </p>
         </div>
       </div>

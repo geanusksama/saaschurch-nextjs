@@ -64,6 +64,7 @@ import { printReport } from '../../lib/printReport';
 import { LeaderReportModal } from './churches/LeaderReportModal';
 
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { buildAddressLabel, buildRouteEmbedUrl, buildRouteLink, formatKm, hasCoords, haversineKm } from '../../lib/geo';
 
 const getImageUrl = (photoUrl?: string) => {
@@ -429,6 +430,9 @@ export function Churches() {
   const selectedFieldContext = getStoredFieldContext();
   const selectedFieldId = selectedFieldContext?.id || localStorage.getItem('mrm_active_field_id') || '';
   const selectedFieldName = selectedFieldContext?.name || localStorage.getItem('mrm_active_field_name') || '';
+  // Campo some da tela: filtro e cadastro usam o campo ativo (o da sede do
+  // usuário), preenchido automaticamente em form.campoId.
+  const campoVisible = useCampoVisible();
 
   const [churches, setChurches] = useState<any[]>([]);
   const [campos, setCampos] = useState<any[]>([]);
@@ -1906,7 +1910,8 @@ export function Churches() {
   const columnDefinitions = [
     { key: 'code', label: 'Codigo' },
     { key: 'name', label: 'Igreja' },
-    { key: 'campo', label: 'Campo' },
+    // A coluna Campo só existe com a visão de campo destravada.
+    ...(campoVisible ? [{ key: 'campo', label: 'Campo' }] : []),
     { key: 'regional', label: 'Regional' },
     { key: 'leader', label: 'Dirigente' },
     { key: 'zone', label: 'Zona' },
@@ -1969,6 +1974,7 @@ export function Churches() {
             />
           </label>
 
+          {campoVisible && (
           <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
             <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               <Filter className="h-3.5 w-3.5" />
@@ -1988,6 +1994,7 @@ export function Churches() {
               ))}
             </select>
           </label>
+          )}
 
           <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
             <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
@@ -2147,7 +2154,7 @@ export function Churches() {
                           <div className="text-xs text-slate-400">{church.documentNumber || 'Sem documento'}</div>
                         </TableCell>
                       ) : null}
-                      {visibleColumns.campo ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.campoName}</TableCell> : null}
+                      {campoVisible && visibleColumns.campo ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.campoName}</TableCell> : null}
                       {visibleColumns.regional ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.regionalName}</TableCell> : null}
                       {visibleColumns.leader ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.leader}</TableCell> : null}
                       {visibleColumns.city ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.city}</TableCell> : null}
@@ -2258,6 +2265,7 @@ export function Churches() {
           Rol do Dirigente
           <input value={form.leaderRoll} onChange={(event) => setForm((current) => ({ ...current, leaderRoll: event.target.value }))} className={fieldClass} />
         </label>
+        {campoVisible && (
         <label className={labelClass}>
           Campo
           <select value={form.campoId} onChange={(event) => setForm((current) => ({ ...current, campoId: event.target.value, regionalId: '', headquartersId: '' }))} disabled={Boolean(selectedFieldId)} className={fieldClass}>
@@ -2267,6 +2275,7 @@ export function Churches() {
             ))}
           </select>
         </label>
+        )}
         <label className={labelClass}>
           Regional
           <select value={form.regionalId} onChange={(event) => setForm((current) => ({ ...current, regionalId: event.target.value }))} className={fieldClass}>
@@ -4084,7 +4093,7 @@ export function Churches() {
         sortOptions={[
           { value: 'code', label: 'Código' },
           { value: 'name', label: 'Igreja' },
-          { value: 'campoName', label: 'Campo' },
+          ...(campoVisible ? [{ value: 'campoName', label: 'Campo' }] : []),
           { value: 'regionalName', label: 'Regional' },
           { value: 'leader', label: 'Dirigente' },
           { value: 'zone', label: 'Zona' },
@@ -4096,7 +4105,7 @@ export function Churches() {
         columnOptions={[
           { value: 'code', label: 'Código' },
           { value: 'name', label: 'Igreja' },
-          { value: 'campoName', label: 'Campo' },
+          ...(campoVisible ? [{ value: 'campoName', label: 'Campo' }] : []),
           { value: 'regionalName', label: 'Regional' },
           { value: 'leader', label: 'Dirigente' },
           { value: 'zone', label: 'Zona' },
@@ -4113,7 +4122,7 @@ export function Churches() {
           const allCols = [
             { label: 'Código', key: 'code', width: '80px' },
             { label: 'Igreja', key: 'name' },
-            { label: 'Campo', key: 'campoName', width: '100px' },
+            ...(campoVisible ? [{ label: 'Campo', key: 'campoName', width: '100px' }] : []),
             { label: 'Regional', key: 'regionalName', width: '100px' },
             { label: 'Dirigente', key: 'leader' },
             { label: 'Zona', key: 'zone', width: '90px' },

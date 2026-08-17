@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Save, User, Phone, MapPin, Heart, Users, X, Search, CheckCircle, UserCircle, Droplets, Star, ArrowRight, AlertTriangle, Camera, Trash2 } from 'lucide-react';
+import { Save, User, Phone, MapPin, Heart, Users, X, Search, CheckCircle, UserCircle, Droplets, Star, ArrowRight, AlertTriangle, Camera, Trash2, Church, Plus, Pencil } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { supabase } from '../../lib/supabaseClient';
 import { LocationPicker } from './shared/LocationPicker';
+import {
+  PreviousChurchFields,
+  emptyPreviousChurchForm,
+  previousChurchPayload,
+  type PreviousChurchForm,
+} from './shared/PreviousChurchFields';
 
 const BRAZIL_STATES = [
   { value: 'AC', label: 'Acre' },
@@ -268,6 +275,8 @@ export function MemberRegistration() {
   const canChooseChurch = isCampoOrAbove;
   const canChooseField = isMasterOrAdmin;
   const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
+  // Campo não aparece no cadastro: vem da igreja/sede do usuário.
+  const campoVisible = useCampoVisible();
   const location = useLocation();
   const prefill = location.state?.prefill;
   const [formData, setFormData] = useState<FormState>(initialFormData);
@@ -300,6 +309,44 @@ export function MemberRegistration() {
   const [lookingUpCep, setLookingUpCep] = useState(false);
   const [savedMember, setSavedMember] = useState<SavedMemberSummary | null>(null);
   const [cityOptions, setCityOptions] = useState<{ field: 'city' | 'naturalityCity'; options: Array<{ city: string; state: string }> } | null>(null);
+
+  // Histórico em outras igrejas: fica só em memória até o membro existir —
+  // cada linha é gravada logo depois da criação, via /previous-churches.
+  const [previousChurches, setPreviousChurches] = useState<PreviousChurchForm[]>([]);
+  const [prevChurchModalOpen, setPrevChurchModalOpen] = useState(false);
+  const [prevChurchForm, setPrevChurchForm] = useState<PreviousChurchForm>(emptyPreviousChurchForm);
+  const [prevChurchError, setPrevChurchError] = useState('');
+
+  const openPrevChurchCreate = () => {
+    setPrevChurchForm({ ...emptyPreviousChurchForm });
+    setPrevChurchError('');
+    setPrevChurchModalOpen(true);
+  };
+
+  const openPrevChurchEdit = (entry: PreviousChurchForm) => {
+    setPrevChurchForm({ ...entry });
+    setPrevChurchError('');
+    setPrevChurchModalOpen(true);
+  };
+
+  const savePrevChurch = () => {
+    if (!prevChurchForm.churchName.trim()) {
+      setPrevChurchError('Informe o nome da igreja.');
+      return;
+    }
+    setPreviousChurches((prev) => {
+      if (prevChurchForm.id) {
+        return prev.map((item) => (item.id === prevChurchForm.id ? prevChurchForm : item));
+      }
+      const localId = globalThis.crypto?.randomUUID?.() ?? String(Date.now());
+      return [...prev, { ...prevChurchForm, id: localId }];
+    });
+    setPrevChurchModalOpen(false);
+  };
+
+  const removePrevChurch = (id: string) => {
+    setPreviousChurches((prev) => prev.filter((item) => item.id !== id));
+  };
 
   // Foto: só em memória até salvar (upload ao storage acontece no submit).
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -710,6 +757,30 @@ export function MemberRegistration() {
       }
 
       const savedData = await response.json();
+
+      // Histórico em outras igrejas: só agora existe o id do membro. Uma falha
+      // aqui não invalida o cadastro — avisamos e seguimos.
+      if (previousChurches.length > 0 && savedData.id) {
+        const results = await Promise.allSettled(
+          previousChurches.map((entry) =>
+            fetch(`${apiBase}/members/${savedData.id}/previous-churches`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify(previousChurchPayload(entry)),
+            }).then((r) => {
+              if (!r.ok) throw new Error('falha');
+              return r;
+            })
+          )
+        );
+        if (results.some((r) => r.status === 'rejected')) {
+          setError('Membro salvo, mas parte do histórico em outras igrejas não foi gravada. Confira na ficha do membro.');
+        }
+      }
+
       const defaultTitle = ecclesiasticalTitles.find((title) => normalizeRoleName(title.name) === 'congregado') || null;
       const titleObj = ecclesiasticalTitles.find((t) => t.id === formData.ecclesiasticalTitleId);
       const church = churches.find((c) => c.id === formData.churchId);
@@ -735,6 +806,7 @@ export function MemberRegistration() {
       }));
       setPhotoFile(null);
       setPhotoPreview(null);
+      setPreviousChurches([]);
     } catch (err) {
       setError(err.message || 'Falha ao salvar membro.');
     } finally {
@@ -790,6 +862,9 @@ export function MemberRegistration() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {/* Campo: oculto. O membro herda o campo da igreja escolhida — só
+                aparece para quem destravou a visão de campo. */}
+            {campoVisible && (
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 {canChooseField ? 'Campo *' : 'Campo Atual'}
@@ -815,6 +890,7 @@ export function MemberRegistration() {
                 </div>
               )}
             </div>
+            )}
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -1583,6 +1659,77 @@ export function MemberRegistration() {
           </div>
         </div>
 
+        {/* Histórico em outras igrejas */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                <Church className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Histórico em Outras Igrejas</h2>
+                <p className="text-sm text-slate-500">
+                  Igrejas onde o membro passou antes desta: título de lá, batismo, consagração, pastor e funções.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={openPrevChurchCreate}
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+            >
+              <Plus className="w-4 h-4" /> Adicionar histórico em outra igreja
+            </button>
+          </div>
+
+          {previousChurches.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400">
+              Nenhum histórico adicionado. Opcional — pode ser cadastrado depois na ficha do membro.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {previousChurches.map((entry) => (
+                <div key={entry.id} className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-800">{entry.churchName}</p>
+                      <p className="text-xs text-slate-500">
+                        {entry.ecclesiasticalTitle || 'Sem título informado'}
+                        {entry.pastorName ? ` · Pr. ${entry.pastorName}` : ''}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {entry.conversionDate ? `Aceitou Jesus: ${entry.conversionDate.split('-').reverse().join('/')}` : ''}
+                        {entry.baptismDate ? ` · Batismo: ${entry.baptismDate.split('-').reverse().join('/')}` : ''}
+                        {entry.consecrationDate ? ` · Consagração: ${entry.consecrationDate.split('-').reverse().join('/')}` : ''}
+                        {entry.consecrationTitle ? ` (${entry.consecrationTitle})` : ''}
+                      </p>
+                      {entry.functions && (
+                        <p className="mt-1 text-xs text-slate-500">Funções: {entry.functions}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openPrevChurchEdit(entry)}
+                        className="rounded p-1 text-slate-500 hover:bg-slate-200"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removePrevChurch(entry.id)}
+                        className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-4">
           <button
@@ -1601,6 +1748,58 @@ export function MemberRegistration() {
           </Link>
         </div>
       </form>
+
+      {/* Modal: histórico em outra igreja (fora do <form> para não aninhar forms) */}
+      {prevChurchModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <h3 className="text-base font-semibold text-slate-900">
+                {prevChurchForm.id ? 'Editar histórico em outra igreja' : 'Adicionar histórico em outra igreja'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPrevChurchModalOpen(false)}
+                className="rounded-lg p-1 hover:bg-slate-100"
+              >
+                <X className="h-5 w-5 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+              {prevChurchError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {prevChurchError}
+                </div>
+              )}
+
+              <PreviousChurchFields
+                form={prevChurchForm}
+                onChange={(patch) => setPrevChurchForm((p) => ({ ...p, ...patch }))}
+                titleOptions={ecclesiasticalTitles.map((t) => t.name)}
+                idPrefix="new-member-prev-church"
+              />
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setPrevChurchModalOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={savePrevChurch}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+                >
+                  Salvar histórico
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Duplicidade */}
       {duplicateMember && (

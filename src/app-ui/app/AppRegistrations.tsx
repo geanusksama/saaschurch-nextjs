@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { UserPlus, Search, CheckCircle2, XCircle, Clock, Eye, Users, Link2, Trash2, CheckSquare } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { useCampoVisible } from '../../lib/campoVisibility';
 
 function getToken(): string {
   try { return localStorage.getItem('mrm_token') ?? ''; } catch { return ''; }
@@ -37,6 +38,7 @@ export default function AppRegistrations() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('PENDENTE');
   const [campoFilter, setCampoFilter] = useState('');
+  const campoVisible = useCampoVisible();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [selected, setSelected] = useState<Cadastro | null>(null);
   const [nota, setNota] = useState('');
@@ -246,12 +248,14 @@ export default function AppRegistrations() {
             className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
           />
         </div>
+        {campoVisible && (
         <select value={campoFilter} onChange={e => setCampoFilter(e.target.value)}
           className="px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
         >
           <option value="">Todos os campos</option>
           {camposOptions.map(name => <option key={name} value={name}>{name}</option>)}
         </select>
+        )}
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
         >
@@ -354,7 +358,7 @@ export default function AppRegistrations() {
                 </th>
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Nome</th>
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Email</th>
-                <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Campo</th>
+                {campoVisible && <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Campo</th>}
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Membro</th>
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Status</th>
                 <th className="text-left px-4 py-3 text-slate-600 dark:text-slate-400 font-medium">Data</th>
@@ -378,9 +382,11 @@ export default function AppRegistrations() {
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{c.nome || '—'}</td>
                     <td className="px-4 py-3 text-slate-500">{c.email}</td>
+                    {campoVisible && (
                     <td className="px-4 py-3 text-slate-500 text-xs">
                       {c.campo_name_resolved || c.campo_name || <span className="text-slate-300">—</span>}
                     </td>
+                    )}
                     <td className="px-4 py-3">
                       {c.is_member
                         ? <span className="text-xs text-green-600 font-medium">Sim</span>
@@ -414,7 +420,6 @@ export default function AppRegistrations() {
               {([
                 ['Nome', selected.nome || '—'],
                 ['Email', selected.email],
-                ['Campo', selected.campo_name_resolved || selected.campo_name || '—'],
                 ['Membro de igreja', selected.is_member ? 'Sim' : 'Não'],
                 ['Status', STATUS_LABELS[selected.status]?.label ?? selected.status],
                 ['Data de cadastro', new Date(selected.created_at).toLocaleString('pt-BR')],

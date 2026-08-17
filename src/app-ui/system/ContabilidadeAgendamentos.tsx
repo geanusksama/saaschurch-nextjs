@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Calculator, MoreVertical, Send, History, X, Loader2, AlertTriangle, Plus, Copy, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { podeAcessarContabilidadeAgendamento } from '../../lib/contabilidadeAgendamentoRole';
 
 type Acesso = {
@@ -101,6 +102,7 @@ function readStoredUser() {
 }
 
 export default function ContabilidadeAgendamentos() {
+  const campoVisible = useCampoVisible();
   const storedUser = readStoredUser();
   const permitido = podeAcessarContabilidadeAgendamento(storedUser.profileType, storedUser.roleName || storedUser.role?.name);
 
@@ -206,7 +208,7 @@ export default function ContabilidadeAgendamentos() {
             <tr>
               <th className="px-4 py-3 font-medium w-8"></th>
               <th className="px-4 py-3 font-medium">Contador</th>
-              <th className="px-4 py-3 font-medium">Campo</th>
+              {campoVisible && <th className="px-4 py-3 font-medium">Campo</th>}
               <th className="px-4 py-3 font-medium">WhatsApp</th>
               <th className="px-4 py-3 font-medium">Senha (acesso home)</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -233,7 +235,7 @@ export default function ContabilidadeAgendamentos() {
                     />
                   </td>
                   <td className="px-4 py-3 font-medium">{acc.nome}</td>
-                  <td className="px-4 py-3 text-slate-500">{acc.campo}</td>
+                  {campoVisible && <td className="px-4 py-3 text-slate-500">{acc.campo}</td>}
                   <td className="px-4 py-3 text-slate-500">{acc.telefone}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
@@ -376,7 +378,10 @@ function NovoContadorModal({ onClose, onCreated }: { onClose: () => void; onCrea
   const [campos, setCampos] = useState<CampoOption[]>([]);
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [campo, setCampo] = useState('');
+  // Campo do agendamento: vem do campo ativo do usuário. O seletor só aparece
+  // para quem destravou a visão de campo.
+  const campoVisible = useCampoVisible();
+  const [campo, setCampo] = useState(localStorage.getItem('mrm_active_field_name') || '');
   const [saving, setSaving] = useState(false);
   const [hashGerado, setHashGerado] = useState<{ hash: string; nome: string } | null>(null);
 
@@ -455,6 +460,7 @@ function NovoContadorModal({ onClose, onCreated }: { onClose: () => void; onCrea
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-transparent"
                 />
               </div>
+              {campoVisible && (
               <div>
                 <label className="text-sm font-semibold block mb-1">Campo</label>
                 <select
@@ -466,6 +472,7 @@ function NovoContadorModal({ onClose, onCreated }: { onClose: () => void; onCrea
                 </select>
                 <p className="text-xs text-slate-500 mt-1">O relatório enviado será somente deste campo.</p>
               </div>
+              )}
               <div>
                 <label className="text-sm font-semibold block mb-1">WhatsApp (com DDD)</label>
                 <input
@@ -498,6 +505,7 @@ function EditarContadorModal({ acesso, onClose, onSaved }: { acesso: Acesso; onC
   const [campos, setCampos] = useState<CampoOption[]>([]);
   const [nome, setNome] = useState(acesso.nome);
   const [telefone, setTelefone] = useState(acesso.telefone);
+  const campoVisible = useCampoVisible();
   const [campo, setCampo] = useState(acesso.campo);
   const [ativo, setAtivo] = useState(acesso.ativo);
   const [saving, setSaving] = useState(false);
@@ -551,6 +559,7 @@ function EditarContadorModal({ acesso, onClose, onSaved }: { acesso: Acesso; onC
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-transparent"
             />
           </div>
+          {campoVisible && (
           <div>
             <label className="text-sm font-semibold block mb-1">Campo</label>
             <select
@@ -563,6 +572,7 @@ function EditarContadorModal({ acesso, onClose, onSaved }: { acesso: Acesso; onC
             </select>
             <p className="text-xs text-slate-500 mt-1">O relatório enviado será somente deste campo.</p>
           </div>
+          )}
           <div>
             <label className="text-sm font-semibold block mb-1">WhatsApp (com DDD)</label>
             <input

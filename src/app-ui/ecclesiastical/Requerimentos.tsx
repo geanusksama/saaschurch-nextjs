@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
+import { useCampoVisible } from "../../lib/campoVisibility";
 import { PrintModal } from "../../components/app-ui/shared/PrintModal";
 import { printReport } from "../../lib/printReport";
 
@@ -244,6 +245,7 @@ export default function Requerimentos() {
   const [activeServiceId, setActiveServiceId] = useState<number | null>(null);
 
   const activeFieldId = localStorage.getItem("mrm_active_field_id") || storedUser.campoId || "";
+  const campoVisible = useCampoVisible();
   const normalizedRole = normalizeText(storedUser.roleName || "");
   const isSecretaryOrTreasurer = normalizedRole.includes("secret") || normalizedRole.includes("tesour");
   const isAdminOrMaster = ["master", "admin"].includes(storedUser.profileType || "");
@@ -556,6 +558,7 @@ export default function Requerimentos() {
             </div>
           </div>
 
+          {campoVisible && (
           <div>
             <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Campo</label>
             <select
@@ -570,6 +573,7 @@ export default function Requerimentos() {
               ))}
             </select>
           </div>
+          )}
 
           <div>
             <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Regional</label>

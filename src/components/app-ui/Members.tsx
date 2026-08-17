@@ -11,6 +11,7 @@ import { useDebounce } from '../../lib/secretariaHooks';
 import { qk } from '../../lib/queryClient';
 
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { logClientAudit } from '../../lib/auditClient';
 
 type CampoOption = {
@@ -499,6 +500,8 @@ export function Members() {
   const token = localStorage.getItem('mrm_token');
   const storedUser = readStoredUser();
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
+  // Campo não aparece na interface (só master, e só depois de destravar).
+  const campoVisible = useCampoVisible();
   const normalizedRole = normalizeText(storedUser.roleName);
   const isSecretaryOrTreasurer = normalizedRole.includes('secret') || normalizedRole.includes('tesour');
   const isChurchScopedUser = storedUser.profileType === 'church';
@@ -1164,6 +1167,7 @@ export function Members() {
             </div>
           </div>
 
+          {campoVisible && (
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
             <select
@@ -1185,6 +1189,7 @@ export function Members() {
               ))}
             </select>
           </div>
+          )}
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>

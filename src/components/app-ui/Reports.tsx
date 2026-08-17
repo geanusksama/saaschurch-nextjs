@@ -34,6 +34,7 @@ import {
   X,
 } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
+import { useCampoVisible } from '../../lib/campoVisibility';
 import { usePermissions } from '../../lib/usePermissions';
 import {
   Dialog,
@@ -1485,6 +1486,7 @@ function MultiSelectDropdown({
   options,
   onToggle,
   disabled = false,
+  hidden = false,
 }: {
   label: string;
   emptyLabel: string;
@@ -1492,6 +1494,8 @@ function MultiSelectDropdown({
   options: MultiSelectDropdownOption[];
   onToggle: (value: string, checked: boolean) => void;
   disabled?: boolean;
+  /** Some da tela sem mexer no filtro por baixo (usado para o seletor de campo). */
+  hidden?: boolean;
 }) {
   // Opções travadas (escopo do perfil) ficam fora do marcar/desmarcar todos.
   const selectableOptions = options.filter((option) => !option.disabled);
@@ -1505,6 +1509,8 @@ function MultiSelectDropdown({
       if (selectedValues.includes(option.value) !== checked) onToggle(option.value, checked);
     }
   }
+
+  if (hidden) return null;
 
   return (
     <div className="min-w-0 space-y-2 text-sm text-slate-700">
@@ -3528,6 +3534,8 @@ export function Reports() {
   // Somente admin/master podem trocar o campo; todos os outros ficam travados no seu campo
   const isAdminOrMaster = ['master', 'admin'].includes(profileType);
   const hasFixedCampoScope = !isAdminOrMaster;
+  // Campo é invisível nos relatórios; os filtros continuam funcionando por baixo.
+  const campoVisible = useCampoVisible();
 
   // Perfil de igreja (e secretaria/tesouraria da igreja) não troca igreja nem regional:
   // os seletores nascem travados no vínculo do usuário logado. Campo, admin e master podem alterar.
@@ -8299,6 +8307,7 @@ export function Reports() {
                           </div>
                         </div>
                         <MultiSelectDropdown
+                          hidden={!campoVisible}
                           label="Campos"
                           emptyLabel="Todos os campos"
                           selectedValues={memberReportBuilder.fieldIds}
@@ -8768,6 +8777,7 @@ export function Reports() {
                           </label>
                         </div>
                         <MultiSelectDropdown
+                          hidden={!campoVisible}
                           label="Campos"
                           emptyLabel="Todos os campos"
                           selectedValues={churchReportBuilder.fieldIds}
@@ -9403,6 +9413,7 @@ export function Reports() {
                           </label>
                         </div>
                         <MultiSelectDropdown
+                          hidden={!campoVisible}
                           label="Campos"
                           emptyLabel="Todos os campos"
                           selectedValues={baptismReportBuilder.fieldIds}
@@ -9927,7 +9938,7 @@ export function Reports() {
                             <input type="date" value={consecrationReportBuilder.dateTo} onChange={(event) => setConsecrationReportBuilder((current) => ({ ...current, dateTo: event.target.value }))} className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-emerald-400" />
                           </label>
                         </div>
-                        <MultiSelectDropdown label="Campos" emptyLabel="Todos os campos" selectedValues={consecrationReportBuilder.fieldIds} options={fields.map((field) => ({ value: field.id, label: field.name, disabled: hasFixedCampoScope }))} disabled={hasFixedCampoScope} onToggle={(fieldId, checked) => setConsecrationReportBuilder((current) => {
+                        <MultiSelectDropdown hidden={!campoVisible} label="Campos" emptyLabel="Todos os campos" selectedValues={consecrationReportBuilder.fieldIds} options={fields.map((field) => ({ value: field.id, label: field.name, disabled: hasFixedCampoScope }))} disabled={hasFixedCampoScope} onToggle={(fieldId, checked) => setConsecrationReportBuilder((current) => {
                           const nextFieldIds = checked ? Array.from(new Set([...current.fieldIds, fieldId])) : current.fieldIds.filter((item) => item !== fieldId);
                           return {
                             ...current,
@@ -10345,7 +10356,7 @@ export function Reports() {
                             <input type="date" value={transferReportBuilder.dateTo} onChange={(event) => setTransferReportBuilder((current) => ({ ...current, dateTo: event.target.value }))} className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-orange-400" />
                           </label>
                         </div>
-                        <MultiSelectDropdown label="Campos de origem" emptyLabel="Todos os campos" selectedValues={transferReportBuilder.fieldIds} options={fields.map((field) => ({ value: field.id, label: field.name, disabled: hasFixedCampoScope }))} disabled={hasFixedCampoScope} onToggle={(fieldId, checked) => setTransferReportBuilder((current) => {
+                        <MultiSelectDropdown hidden={!campoVisible} label="Campos de origem" emptyLabel="Todos os campos" selectedValues={transferReportBuilder.fieldIds} options={fields.map((field) => ({ value: field.id, label: field.name, disabled: hasFixedCampoScope }))} disabled={hasFixedCampoScope} onToggle={(fieldId, checked) => setTransferReportBuilder((current) => {
                           const nextFieldIds = checked ? Array.from(new Set([...current.fieldIds, fieldId])) : current.fieldIds.filter((item) => item !== fieldId);
                           return {
                             ...current,
@@ -10743,7 +10754,7 @@ export function Reports() {
                         </div>
                       </div>
                       <div className="mt-4 grid gap-3">
-                        <div>
+                        <div className={campoVisible ? undefined : 'hidden'}>
                           <p className="mb-1.5 text-xs font-semibold text-slate-700">Campo</p>
                           <MultiSelectDropdown
                             label="Campo"
@@ -11323,7 +11334,7 @@ export function Reports() {
                         </div>
                       </div>
                       <div className="mt-4 grid gap-3">
-                        <div>
+                        <div className={campoVisible ? undefined : 'hidden'}>
                           <p className="mb-1.5 text-xs font-semibold text-slate-700">Campo</p>
                           <MultiSelectDropdown
                             label="Campo" emptyLabel="Todos os campos"
@@ -12070,7 +12081,7 @@ export function Reports() {
                 />
               </div>
 
-              <div>
+              <div className={campoVisible ? undefined : 'hidden'}>
                 <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
                 <select
                   value={selectedFieldId}
