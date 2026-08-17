@@ -61,6 +61,50 @@ export async function resolveSedeChurchOfCampo(campoId: string): Promise<SedeRes
   }
 }
 
+/**
+ * Igreja SEDE do campo a que uma igreja pertence.
+ *
+ * É o caminho do "Quero ser Membro" quando a pessoa escolhe a igreja: quem
+ * entrevista e decide é a sede do campo dela (igreja → regional → campo →
+ * sede). A própria sede escolhida devolve ela mesma, sem tratamento especial.
+ *
+ * `churchId: null` quando não dá para afirmar — quem chama decide o fallback,
+ * que NUNCA deve ser a sede de outro campo.
+ */
+export async function resolveSedeChurchOfChurch(
+  churchId: string
+): Promise<SedeResolution & { campoId: string | null }> {
+  try {
+    const { data: igreja } = await supabaseAdmin
+      .from('churches')
+      .select('id, regional_id')
+      .eq('id', churchId)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    if (!igreja?.regional_id) {
+      return { churchId: null, churchName: null, method: 'nao_encontrada', campoId: null }
+    }
+
+    const { data: regional } = await supabaseAdmin
+      .from('regionais')
+      .select('campo_id')
+      .eq('id', igreja.regional_id)
+      .maybeSingle()
+
+    const campoId = regional?.campo_id ?? null
+    if (!campoId) {
+      return { churchId: null, churchName: null, method: 'nao_encontrada', campoId: null }
+    }
+
+    const sede = await resolveSedeChurchOfCampo(String(campoId))
+    return { ...sede, campoId: String(campoId) }
+  } catch (err) {
+    console.warn('[sedeResolver] falha ao resolver a sede da igreja', churchId, err)
+    return { churchId: null, churchName: null, method: 'nao_encontrada', campoId: null }
+  }
+}
+
 async function resolveInterno(campoId: string): Promise<SedeResolution> {
   const churches = await churchesOfCampo(campoId)
 

@@ -46,25 +46,35 @@ async function nextRol(): Promise<number> {
 }
 
 /**
- * Igreja em que o membro é cadastrado.
+ * Igreja em que o MEMBRO é cadastrado — que não é, necessariamente, a que
+ * avalia.
+ *
+ * Quem entrevista e decide é a sede do campo (`church_id`/`target_church_id`).
+ * A pessoa, porém, pede adesão a uma igreja específica (`desired_church_id`,
+ * ex.: Barão Geraldo): aprovado, é NELA que o membro nasce. Sem igreja
+ * desejada — pedidos antigos e o fluxo de dados básicos — vale a igreja que
+ * recebeu o pedido, como antes.
  *
  * ATENÇÃO: `churches.headquarters_id` NÃO aponta para outra igreja — é FK para
  * a tabela `headquarters` (cadastro de contatos/redes da sede), e dezenas de
  * igrejas compartilham o mesmo registro. Usar aquele id como church_id estoura
  * a FK de `members`.
- *
- * A adesão entra pela igreja que recebeu o pedido, que no portal público já é
- * a SEDE (DEFAULT_SEDE_ID em create-membership-request). A transferência para
- * a congregação continua sendo passo posterior da secretaria.
  */
-async function resolveChurchId(churchId: string): Promise<string> {
-  const { data } = await supabaseAdmin
-    .from('churches')
-    .select('id')
-    .eq('id', churchId)
-    .is('deleted_at', null)
-    .maybeSingle()
-  return data?.id ?? churchId
+async function resolveMemberChurch(
+  desiredChurchId: string | null,
+  fallbackChurchId: string
+): Promise<{ id: string; regionalId: string | null }> {
+  for (const candidato of [desiredChurchId, fallbackChurchId]) {
+    if (!candidato) continue
+    const { data } = await supabaseAdmin
+      .from('churches')
+      .select('id, regional_id')
+      .eq('id', candidato)
+      .is('deleted_at', null)
+      .maybeSingle()
+    if (data) return { id: data.id, regionalId: data.regional_id ?? null }
+  }
+  return { id: fallbackChurchId, regionalId: null }
 }
 
 async function notifyWhatsApp(phone: string, message: string, contactName?: string) {
@@ -147,7 +157,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const now = new Date().toISOString()
     const form = (request.form_data ?? {}) as Record<string, string>
-    const churchId = await resolveChurchId(request.target_church_id ?? request.church_id)
+    // igreja do MEMBRO (a desejada) × igreja que avalia (a sede, em church_id)
+    const memberChurch = await resolveMemberChurch(
+      request.desired_church_id ?? null,
+      request.target_church_id ?? request.church_id
+    )
+    const churchId = memberChurch.id
 
     let memberId: string | null = null
     let rol: number | null = null
@@ -185,12 +200,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           id: randomUUID(),
           updated_at: now,
           church_id: churchId,
+          // acompanha a igreja: sem isso o membro fica fora dos relatórios por
+          // regional, que leem members.regional_id e não a igreja
+          regional_id: memberChurch.regionalId,
           full_name: fullName,
           preferred_name: form.preferredName || null,
           photo_url: form.photoUrl || null,
           cpf: cpf || null,
           rg: form.rg || null,
           birth_date: form.birthDate || null,
+          // a ficha da home já pergunta sexo e cônjuge; a ficha por link ainda
+          // não manda esses campos, e aí ficam nulos como antes
+          gender: form.gender || null,
+          spouse_name: form.spouseName || null,
           marital_status: MARITAL_MAP[form.maritalStatus ?? ''] ?? form.maritalStatus ?? null,
           email: form.email || null,
           phone: String(request.whatsapp ?? '').replace(/\D/g, '') || null,
@@ -202,7 +224,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           address_city: form.addressCity || null,
           address_state: form.addressState || null,
           address_zipcode: String(form.addressZipcode ?? '').replace(/\D/g, '') || null,
-          membership_status: 'ATIVO',
+          /**
+           * Nasce como o pipeline manda — CONGREGADO / aguardando ativação. É
+           * a matriz do serviço CAD, logo abaixo, que promove para MEMBRO e
+           * ativa, gravando título e ocorrência no histórico. Gravar 'ATIVO'
+           * aqui na mão mascarava a matriz não ter rodado.
+           */
+          membership_status: 'AGUARDANDO ATIVACAO',
           membership_date: form.churchEntryDate || now.slice(0, 10),
           baptism_status: form.baptized === 'sim' ? 'baptized' : 'not_baptized',
           baptism_date: form.baptismDate || null,
@@ -244,6 +272,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         upToColumnIndex: 2,
         note: 'Adesão aprovada pela ficha do "Quero ser Membro".',
       })
+
+      /**
+       * Rede de segurança: se o card não chegou à coluna "Aprovado" (serviço
+       * CAD sem etapa, matriz desativada), o membro ficaria ativo em lugar
+       * nenhum. Ativa a situação e avisa quem aprovou — o título continua como
+       * está, porque quem promove é a matriz, e inventar aqui reintroduziria o
+       * problema que este fluxo resolveu.
+       */
+      if (admission?.columnIndex !== 2) {
+        console.warn(
+          `[membership review] matriz CAD não aplicada ao membro ${member.id} — ativando na mão`
+        )
+        await supabaseAdmin
+          .from('members')
+          .update({ membership_status: 'ATIVO', updated_at: now })
+          .eq('id', member.id)
+      }
     }
 
     // ── atualiza a solicitação ──
@@ -256,7 +301,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         reviewed_at: now,
         created_member_id: memberId,
         member_rol: rol,
-        target_church_id: churchId,
+        // `target_church_id` NÃO é reescrito: ele guarda quem avaliou (a sede).
+        // A igreja em que o membro entrou é a `desired_church_id`, e o vínculo
+        // definitivo está no próprio cadastro (members.church_id).
         updated_at: now,
       })
       .eq('id', id)
@@ -344,6 +391,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       notified,
       closeProcess,
       admissionCard: admission,
+      // false = o membro foi ativado na mão; título e histórico não vieram da
+      // matriz e a secretaria precisa conferir o serviço CAD
+      matrixApplied: decision !== 'approved' ? null : admission?.columnIndex === 2,
     })
   })
 }

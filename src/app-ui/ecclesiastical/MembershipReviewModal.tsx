@@ -25,7 +25,10 @@ export interface MembershipRequestFull {
   documents?: Array<{ tipo: string; url: string; nome: string }> | null;
   review_notes?: string | null;
   member_rol?: number | null;
+  /** igreja que AVALIA (a sede do campo) */
   churches?: { name: string } | null;
+  /** igreja escolhida pela pessoa — onde o membro nasce na aprovação */
+  desired_church_name?: string | null;
 }
 
 const MARITAL: Record<string, string> = {
@@ -119,6 +122,15 @@ export function MembershipReviewModal({
             : `Cadastro aprovado! ROL ${data.rol}. O acolhimento continua no pipeline.`
         );
         if (!data.notified) toast.warning('O membro foi criado, mas o aviso no WhatsApp falhou.');
+        // sem a matriz o membro entrou ativo, mas sem virar MEMBRO nem ganhar
+        // a ocorrência no histórico — isso precisa ser conferido na hora
+        if (data.matrixApplied === false) {
+          toast.warning(
+            'A matriz do serviço CAD não foi aplicada: o membro está ativo, mas continua como ' +
+            'CONGREGADO e sem a ocorrência de admissão. Confira o pipeline de Cadastro.',
+            { duration: 12000 }
+          );
+        }
       } else {
         toast.success('Reprovado. O motivo foi enviado para a pessoa.');
       }
@@ -154,6 +166,16 @@ export function MembershipReviewModal({
         </div>
 
         <div className="p-5 overflow-y-auto flex flex-col gap-4">
+          {/* A entrevista é da sede; o cadastro nasce na igreja pedida pela
+              pessoa. Sem este aviso, aprovar parece criar o membro aqui. */}
+          {request.desired_church_name &&
+            request.desired_church_name !== request.churches?.name && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Adesão pedida para <b>{request.desired_church_name}</b>. A entrevista é desta sede;
+                ao aprovar, o membro é cadastrado naquela igreja.
+              </div>
+            )}
+
           {request.status === 'approved' && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
               Aprovado — membro cadastrado com <b>ROL {request.member_rol ?? '—'}</b>.
@@ -222,6 +244,7 @@ export function MembershipReviewModal({
                   <Row label="CPF" value={f.cpf} />
                   <Row label="RG" value={f.rg} />
                   <Row label="Estado civil" value={MARITAL[f.maritalStatus ?? ''] ?? f.maritalStatus} />
+                  <Row label="Sexo" value={f.gender} />
                 </div>
               </div>
 
@@ -231,6 +254,10 @@ export function MembershipReviewModal({
                 <Row label="Naturalidade" value={[f.naturalityCity, f.naturalityState].filter(Boolean).join(' - ')} />
                 <Row label="Nome do pai" value={f.fatherName} />
                 <Row label="Nome da mãe" value={f.motherName} />
+                <Row label="Cônjuge" value={f.spouseName} />
+                <Row label="Igreja anterior" value={f.pastChurch} />
+                {/* declarado pela pessoa; quem define o título é a secretaria */}
+                <Row label="Título declarado" value={f.ecclesiasticalTitle} />
                 <Row label="Entrada na igreja" value={fmtDate(f.churchEntryDate)} />
                 <Row label="Batizado" value={f.baptized === 'sim' ? `Sim (${fmtDate(f.baptismDate)})` : f.baptized === 'nao' ? 'Não' : '—'} />
                 <Row label="Contato de emergência" value={f.emergencyName} />

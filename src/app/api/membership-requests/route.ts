@@ -74,7 +74,33 @@ export async function GET(req: NextRequest) {
       const { data: requests, error } = await query;
       if (error) throw error;
 
-      return NextResponse.json(requests || []);
+      /**
+       * `churches(name)` resolve só a igreja que AVALIA (church_id). A igreja
+       * escolhida pela pessoa vem de `desired_church_id` — é onde o membro vai
+       * nascer na aprovação, e a secretaria precisa vê-la na lista. Buscada em
+       * uma consulta só, não uma por linha.
+       */
+      const desiredIds = [
+        ...new Set((requests ?? []).map(r => r.desired_church_id).filter(Boolean)),
+      ] as string[];
+
+      let nomePorIgreja = new Map<string, string>();
+      if (desiredIds.length) {
+        const { data: igrejas } = await supabaseAdmin
+          .from("churches")
+          .select("id, name")
+          .in("id", desiredIds);
+        nomePorIgreja = new Map((igrejas ?? []).map(c => [c.id, c.name]));
+      }
+
+      return NextResponse.json(
+        (requests ?? []).map(r => ({
+          ...r,
+          desired_church_name: r.desired_church_id
+            ? nomePorIgreja.get(r.desired_church_id) ?? null
+            : null,
+        }))
+      );
     } catch (e) {
       console.error("[GET /api/membership-requests]", e);
       return NextResponse.json({ error: "Erro ao buscar solicitações." }, { status: 500 });

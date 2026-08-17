@@ -26,6 +26,10 @@ interface MembershipRequest {
   churches?: {
     name: string;
   } | null;
+  // igreja escolhida pela pessoa: quem avalia é a sede do campo dela, mas é
+  // aqui que o membro é cadastrado quando a sede aprova
+  desired_church_id?: string | null;
+  desired_church_name?: string | null;
 }
 
 export default function QueroSerMembroRequests() {
@@ -255,7 +259,7 @@ export default function QueroSerMembroRequests() {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Candidato</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Igreja Alvo</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Avalia / Destino</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Igrejas Anteriores</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Entrevista</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
@@ -278,6 +282,13 @@ export default function QueroSerMembroRequests() {
                   </td>
                   <td className="px-6 py-4 text-slate-700 font-medium">
                     {req.churches?.name || 'AD Campinas - SEDE'}
+                    {/* a pessoa escolheu outra igreja: é nela que o membro nasce
+                        quando esta sede aprovar */}
+                    {req.desired_church_name && req.desired_church_name !== req.churches?.name && (
+                      <p className="mt-0.5 text-[11px] font-normal text-amber-700">
+                        → vira membro em <strong>{req.desired_church_name}</strong>
+                      </p>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-slate-600 max-w-[200px] truncate" title={req.past_churches}>
                     {req.past_churches || '—'}

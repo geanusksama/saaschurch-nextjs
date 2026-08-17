@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken, hashCode } from "@/lib/membroJwt";
+import { verifyToken, hashCode, validateCpf } from "@/lib/membroJwt";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendTextViaZApi, ensureConversation, persistOutboundMessage } from "@/lib/whatsappSendService";
 import { findLiveAttendance, duplicateMessage } from "@/lib/pastoralDuplicateCheck";
 import { randomUUID } from "crypto";
-import { resolveSedeChurchOfCampo } from "@/lib/sedeResolver";
+import { resolveSedeChurchOfCampo, resolveSedeChurchOfChurch } from "@/lib/sedeResolver";
 import { publicBaseUrl } from "@/lib/publicUrl";
 
 const DEFAULT_SEDE_ID = "6d2688df-5249-4bd2-89cc-0cd8c324b3d8";
@@ -23,10 +23,35 @@ export async function POST(req: NextRequest) {
       code,
       churchId,
       campoId,
+      // ficha completa preenchida já na home (aba "Ficha completa"). Ausente no
+      // fluxo de dados básicos, em que a ficha chega depois pelo link.
+      formData,
     } = body;
 
     if (!name || !whatsapp || !scheduledDate || !otp_token || !code) {
       return NextResponse.json({ error: "Parâmetros obrigatórios ausentes." }, { status: 400 });
+    }
+
+    // A ficha é validada ANTES de criar qualquer coisa: aceitar meia ficha só
+    // adiaria o problema para a mesa da secretaria.
+    const ficha =
+      formData && typeof formData === "object" ? (formData as Record<string, string>) : null;
+    if (ficha) {
+      const faltando = ["firstName", "lastName", "birthDate", "cpf"].filter(
+        (k) => !String(ficha[k] ?? "").trim()
+      );
+      if (faltando.length) {
+        return NextResponse.json(
+          { error: `Preencha os campos obrigatórios da ficha: ${faltando.join(", ")}` },
+          { status: 400 }
+        );
+      }
+      if (!validateCpf(String(ficha.cpf))) {
+        return NextResponse.json(
+          { error: "CPF inválido. Confira os números — é com ele que você acessa o Portal do Membro." },
+          { status: 400 }
+        );
+      }
     }
 
     const payload = verifyToken<{ phone: string; code_hash: string }>(otp_token);
@@ -42,8 +67,52 @@ export async function POST(req: NextRequest) {
     // Quando a pessoa escolhe o CAMPO, o pedido vai para a igreja SEDE daquele
     // campo. Se a resolução ficar ambígua (cadastro sujo), cai na sede padrão em
     // vez de mandar para a igreja errada — e o motivo fica no log.
-    let targetChurchId = churchId || DEFAULT_SEDE_ID;
+    let targetChurchId = DEFAULT_SEDE_ID;
     let roteamentoNota = "";
+    /**
+     * Igreja em que a pessoa quer se membrar. Só ela vai para
+     * `desired_church_id`: quem AVALIA é a sede do campo dessa igreja, e é a
+     * sede que fica em `church_id`/`target_church_id`. A aprovação cria o
+     * membro na igreja desejada.
+     */
+    let desiredChurchId: string | null = null;
+    let desiredChurchName = "";
+
+    // A igreja vem do público (a pessoa escolhe na ficha completa): confere se
+    // existe e está ativa antes de usar — id inventado estouraria a FK.
+    if (churchId) {
+      const { data: igreja } = await supabaseAdmin
+        .from("churches")
+        .select("id, name")
+        .eq("id", String(churchId))
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (!igreja) {
+        roteamentoNota = `Igreja ${churchId} não encontrada — pedido roteado para a sede padrão.`;
+        console.warn(`[create-membership-request] ${roteamentoNota}`);
+      } else {
+        desiredChurchId = igreja.id;
+        desiredChurchName = igreja.name;
+        const sede = await resolveSedeChurchOfChurch(igreja.id);
+        if (sede.churchId) {
+          targetChurchId = sede.churchId;
+          if (sede.churchId !== igreja.id) {
+            roteamentoNota =
+              `Adesão pedida para "${igreja.name}" — análise na sede do campo (${sede.churchName}).`;
+          }
+        } else {
+          // Sem sede identificada, o pedido fica na PRÓPRIA igreja escolhida:
+          // mandar para a sede padrão jogaria um pedido de outro campo (ou de
+          // outro estado) na mesa errada. A secretaria redireciona se precisar.
+          targetChurchId = igreja.id;
+          roteamentoNota =
+            `Campo de "${igreja.name}" sem igreja sede identificada — pedido ficou na própria igreja escolhida.`;
+          console.warn(`[create-membership-request] ${roteamentoNota}`);
+        }
+      }
+    }
+
     if (!churchId && campoId) {
       const sede = await resolveSedeChurchOfCampo(String(campoId));
       if (sede.churchId) {
@@ -132,11 +201,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Create pastoral attendance card
-    const notesStr = `Solicitação de Novo Membro. Marido/Esposa: ${
-      isMarried ? "Casado(a)" : "Solteiro(a)"
-    }. Igrejas Anteriores: ${pastChurches || "Nenhuma"}. Antecedente Afro: ${
-      afroBackground ? "Sim" : "Não"
-    }. Data de agendamento: ${scheduledDate}`;
+    const notesStr =
+      `Solicitação de Novo Membro. Marido/Esposa: ${isMarried ? "Casado(a)" : "Solteiro(a)"}. ` +
+      `Igrejas Anteriores: ${pastChurches || "Nenhuma"}. ` +
+      `Antecedente Afro: ${afroBackground ? "Sim" : "Não"}. ` +
+      `Data de agendamento: ${scheduledDate}` +
+      // a sede precisa ver, no próprio card, para qual igreja o membro vai
+      (desiredChurchName ? `. Igreja desejada: ${desiredChurchName}` : "");
 
     const { data: attendance, error: atErr } = await supabaseAdmin
       .from("pastoral_attendances")
@@ -184,6 +255,11 @@ export async function POST(req: NextRequest) {
         pipeline_card_id: attendance.id,
         status: "pending",
         church_id: targetChurchId,
+        // a igreja escolhida pela pessoa; a aprovação cria o membro NELA
+        desired_church_id: desiredChurchId,
+        // ficha completa: já entra preenchida e pronta para avaliação
+        form_data: ficha,
+        form_submitted_at: ficha ? new Date().toISOString() : null,
       })
       .select("id")
       .single();
@@ -210,7 +286,9 @@ export async function POST(req: NextRequest) {
         attendance_id: attendance.id,
         church_id: targetChurchId,
         event_type: "form",
-        description: "Formulário de adesão enviado — aguardando preenchimento",
+        description: ficha
+          ? "Ficha completa preenchida no portal público — pronta para avaliação"
+          : "Formulário de adesão enviado — aguardando preenchimento",
         metadata: { form_url: formUrl, form_token: formToken },
       },
     ]);
@@ -241,15 +319,31 @@ export async function POST(req: NextRequest) {
       // O link da ficha vai JUNTO da confirmação, de propósito: a pessoa
       // preenche antes da entrevista sem depender de alguém da secretaria
       // abrir a tela de solicitações e reenviar o link na mão.
-      const message =
-        `Olá, *${name}*! 🎉\n\n` +
-        `Recebemos seu pedido para se tornar membro da AD Campinas.\n\n` +
-        `Sua entrevista foi agendada para: *${formattedDate}*.\n\n` +
-        `Você está atualmente na posição *#${position}* na fila de atendimento.\n\n` +
-        `Antes da entrevista, preencha sua ficha de cadastro e tire uma foto do seu rosto ` +
-        `pelo próprio formulário.\n\n` +
-        `📝 É rapidinho, por aqui:\n${formUrl}\n\n` +
-        `Em breve entraremos em contato. Deus te abençoe!`;
+      // A entrevista é sempre na sede do campo, mesmo quando a pessoa escolheu
+      // uma congregação — dizer isso aqui evita que ela apareça no lugar errado.
+      const linhaIgreja =
+        desiredChurchName && desiredChurchId !== targetChurchId
+          ? `Você pediu adesão à *${desiredChurchName}*; a entrevista é feita pela igreja sede do campo, ` +
+            `e depois de aprovada seu cadastro fica na igreja que você escolheu.\n\n`
+          : "";
+
+      const message = ficha
+        ? `Olá, *${name}*! 🎉\n\n` +
+          `Recebemos seu pedido de membresia *com a ficha completa preenchida*.\n\n` +
+          linhaIgreja +
+          `Sua entrevista foi agendada para: *${formattedDate}*.\n\n` +
+          `Você está atualmente na posição *#${position}* na fila de atendimento.\n\n` +
+          `Se precisar corrigir algum dado ou enviar a foto do seu rosto, é por aqui:\n${formUrl}\n\n` +
+          `Em breve entraremos em contato. Deus te abençoe!`
+        : `Olá, *${name}*! 🎉\n\n` +
+          `Recebemos seu pedido para se tornar membro da AD Campinas.\n\n` +
+          linhaIgreja +
+          `Sua entrevista foi agendada para: *${formattedDate}*.\n\n` +
+          `Você está atualmente na posição *#${position}* na fila de atendimento.\n\n` +
+          `Antes da entrevista, preencha sua ficha de cadastro e tire uma foto do seu rosto ` +
+          `pelo próprio formulário.\n\n` +
+          `📝 É rapidinho, por aqui:\n${formUrl}\n\n` +
+          `Em breve entraremos em contato. Deus te abençoe!`;
       try {
         const result = await sendTextViaZApi(instance, normalizedPhone, message);
         // sem isto a confirmação não aparece na Caixa de Entrada nem no
@@ -279,6 +373,8 @@ export async function POST(req: NextRequest) {
       position,
       attendanceId: attendance.id,
       formUrl,
+      // o cliente usa o token para subir a foto logo depois de criar o pedido
+      formToken,
     });
   } catch (e) {
     console.error("[POST /api/public/pastoral/create-membership-request]", e);

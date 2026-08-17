@@ -18,6 +18,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { Loader2, Check, AlertTriangle, Camera, Send, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  buscarEnderecoPorCep, cpfValido, digitos, mascaraCep, mascaraCpf, mascaraRg, mascaraTelefone,
+} from './fichaHelpers';
 
 interface FormData {
   firstName: string; lastName: string; preferredName: string;
@@ -41,54 +44,6 @@ const EMPTY: FormData = {
   churchEntryDate: '', baptized: '', baptismDate: '', emergencyName: '', emergencyPhone: '',
   photoUrl: '', notes: '',
 };
-
-/* ---------------------------------------------------------------- máscaras */
-/* Todas trabalham sobre os dígitos e reconstroem a formatação, então apagar no
-   meio do texto continua funcionando. O valor vai formatado para o banco — é
-   assim que o cadastro de membros já guarda CPF e telefone. */
-
-const digitos = (v: string) => v.replace(/\D/g, '');
-
-function mascaraCpf(v: string) {
-  const d = digitos(v).slice(0, 11);
-  return d
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-}
-
-function mascaraTelefone(v: string) {
-  const d = digitos(v).slice(0, 11);
-  if (d.length <= 10) {
-    // fixo: (19) 3333-3333
-    return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d{1,4})$/, '$1-$2');
-  }
-  // celular: (19) 99999-9999
-  return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d{1,4})$/, '$1-$2');
-}
-
-function mascaraCep(v: string) {
-  return digitos(v).slice(0, 8).replace(/(\d{5})(\d{1,3})$/, '$1-$2');
-}
-
-function mascaraRg(v: string) {
-  // RG varia por estado; mantemos números, letras e traço, sem impor formato
-  return v.replace(/[^0-9A-Za-z.\-]/g, '').slice(0, 15);
-}
-
-/** Validação de CPF (dígitos verificadores) — espelha a checagem do servidor. */
-function cpfValido(raw: string): boolean {
-  const d = digitos(String(raw));
-  // 11 digitos e nunca todos iguais (111.111.111-11 passaria na conta)
-  if (d.length !== 11 || new RegExp(`^(\\d)\\1{10}$`).test(d)) return false;
-  const calc = (fatorInicial: number) => {
-    let soma = 0;
-    for (let i = 0; i < fatorInicial - 1; i++) soma += Number(d[i]) * (fatorInicial - i);
-    const resto = (soma * 10) % 11;
-    return resto === 10 ? 0 : resto;
-  };
-  return calc(10) === Number(d[9]) && calc(11) === Number(d[10]);
-}
 
 /* ------------------------------------------------------------------ estilo */
 
@@ -160,28 +115,21 @@ export default function MembershipFormPublic() {
 
   /** Busca o endereço pelo CEP — poupa a pessoa de digitar tudo. */
   const buscarCep = async (cep: string) => {
-    const d = digitos(cep);
-    if (d.length !== 8) return;
+    if (digitos(cep).length !== 8) return;
     setBuscandoCep(true);
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${d}/json/`);
-      const data = await res.json();
-      if (data.erro) {
-        toast.error('CEP não encontrado — preencha o endereço à mão.');
-        return;
-      }
-      setForm(f => ({
-        ...f,
-        addressStreet: data.logradouro || f.addressStreet,
-        addressNeighborhood: data.bairro || f.addressNeighborhood,
-        addressCity: data.localidade || f.addressCity,
-        addressState: data.uf || f.addressState,
-      }));
-    } catch {
-      /* CEP offline não impede o preenchimento manual */
-    } finally {
-      setBuscandoCep(false);
+    const data = await buscarEnderecoPorCep(cep);
+    setBuscandoCep(false);
+    if (!data) {
+      toast.error('CEP não encontrado — preencha o endereço à mão.');
+      return;
     }
+    setForm(f => ({
+      ...f,
+      addressStreet: data.logradouro || f.addressStreet,
+      addressNeighborhood: data.bairro || f.addressNeighborhood,
+      addressCity: data.localidade || f.addressCity,
+      addressState: data.uf || f.addressState,
+    }));
   };
 
   /** Troca a foto: só preview local, sem rede. */

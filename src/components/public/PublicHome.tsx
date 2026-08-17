@@ -10,6 +10,11 @@ import { apiBase } from '../../lib/apiBase';
 import { toast } from 'sonner';
 import { ScrollHint } from './ScrollHint';
 import { InstallAppCard } from '../pwa/InstallAppCard';
+import {
+  EMPTY_FICHA, faltandoNaFicha, MembershipFullFormFields,
+  type FichaCompleta, type IgrejaPublica,
+} from './MembershipFullFormFields';
+import { cpfValido } from './fichaHelpers';
 
 function DoveIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -240,6 +245,58 @@ export function PublicHome() {
   const [campos, setCampos] = useState<Array<{ id: string; name: string }>>([]);
   const [campoId, setCampoId] = useState('');
 
+  // ── "Quero ser Membro": dados básicos (agenda a entrevista e a ficha vem
+  //    depois pelo WhatsApp) ou ficha completa preenchida aqui mesmo.
+  const [membershipTab, setMembershipTab] = useState<'basico' | 'ficha'>('basico');
+  const [ficha, setFicha] = useState<FichaCompleta>(EMPTY_FICHA);
+  const [igrejas, setIgrejas] = useState<IgrejaPublica[]>([]);
+  const [carregandoIgrejas, setCarregandoIgrejas] = useState(false);
+  // igreja escolhida na ficha completa — é para ela que a adesão vai, sem
+  // depender do campo (a lista pública traz todas as igrejas ativas)
+  const [churchId, setChurchId] = useState('');
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState('');
+  const fotoPreviewRef = useRef('');
+
+  const fichaAtiva = otpFlow === 'membership' && membershipTab === 'ficha';
+
+  const setFichaCampo = <K extends keyof FichaCompleta>(k: K, v: FichaCompleta[K]) =>
+    setFicha(f => ({ ...f, [k]: v }));
+  const patchFicha = (p: Partial<FichaCompleta>) => setFicha(f => ({ ...f, ...p }));
+
+  const escolherFoto = (file: File) => {
+    if (fotoPreviewRef.current) URL.revokeObjectURL(fotoPreviewRef.current);
+    const url = URL.createObjectURL(file);
+    fotoPreviewRef.current = url;
+    setFotoFile(file);
+    setFotoPreview(url);
+  };
+
+  const removerFoto = () => {
+    if (fotoPreviewRef.current) URL.revokeObjectURL(fotoPreviewRef.current);
+    fotoPreviewRef.current = '';
+    setFotoFile(null);
+    setFotoPreview('');
+  };
+
+  // libera a URL local do preview ao sair da tela
+  useEffect(() => () => { if (fotoPreviewRef.current) URL.revokeObjectURL(fotoPreviewRef.current); }, []);
+
+  // a lista de igrejas só é buscada quando a aba da ficha é aberta
+  useEffect(() => {
+    if (activeForm !== 'membership' || membershipTab !== 'ficha' || igrejas.length) return;
+    (async () => {
+      setCarregandoIgrejas(true);
+      try {
+        const res = await fetch(`${apiBase}/public/churches`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setIgrejas(Array.isArray(data) ? data : []);
+      } catch { /* sem lista, a pessoa usa a aba de dados básicos */ }
+      finally { setCarregandoIgrejas(false); }
+    })();
+  }, [activeForm, membershipTab, igrejas.length]);
+
   useEffect(() => {
     // os dois formulários mostram o select de campo — carregar só no de
     // membresia deixava o do atendimento pastoral com a lista vazia
@@ -303,16 +360,34 @@ export function PublicHome() {
   };
 
   const handleSendOtp = async () => {
-    if (!visitorName.trim() || !phone.trim()) {
-      setFormError('Por favor, preencha o seu nome e telefone.');
-      return;
-    }
-    // sem o campo o pedido cairia na sede padrão, provavelmente a errada.
-    // Só exige quando a lista carregou — se `/campos/public` falhar, é melhor
-    // aceitar o pedido na sede padrão do que travar a pessoa na tela.
-    if (campos.length > 0 && !campoId) {
-      setFormError('Escolha o campo para sabermos qual igreja vai te atender.');
-      return;
+    if (fichaAtiva) {
+      // Na ficha completa a igreja substitui o campo: a pessoa escolhe direto
+      // onde quer se membrar, e o pedido vai para lá.
+      if (!phone.trim()) {
+        setFormError('Informe o WhatsApp — é por ele que confirmamos seu pedido.');
+        return;
+      }
+      const faltando = faltandoNaFicha(ficha, churchId);
+      if (faltando.length) {
+        setFormError(`Preencha: ${faltando.join(', ')}.`);
+        return;
+      }
+      if (!cpfValido(ficha.cpf)) {
+        setFormError('CPF inválido. Confira os números — é com ele que você acessa o Portal do Membro.');
+        return;
+      }
+    } else {
+      if (!visitorName.trim() || !phone.trim()) {
+        setFormError('Por favor, preencha o seu nome e telefone.');
+        return;
+      }
+      // sem o campo o pedido cairia na sede padrão, provavelmente a errada.
+      // Só exige quando a lista carregou — se `/campos/public` falhar, é melhor
+      // aceitar o pedido na sede padrão do que travar a pessoa na tela.
+      if (campos.length > 0 && !campoId) {
+        setFormError('Escolha o campo para sabermos qual igreja vai te atender.');
+        return;
+      }
     }
     setFormError('');
     setLoadingOtp(true);
@@ -382,18 +457,26 @@ export function PublicHome() {
     setLoadingOtp(true);
     try {
       const pastChurchesStr = selectedPastChurches.join(', ');
-      const afroStr = afroBackgrounds.join(', ');
+      // O WhatsApp verificado é sempre o telefone do pedido; na ficha ele também
+      // preenche o campo de contato quando a pessoa não informou outro.
+      const formData = fichaAtiva ? { ...ficha, phone: ficha.phone || phone } : undefined;
+      const nomeCompleto = fichaAtiva
+        ? `${ficha.firstName} ${ficha.lastName}`.trim()
+        : visitorName;
+
       const res = await fetch(`${apiBase}/public/pastoral/create-membership-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: visitorName,
+          name: nomeCompleto,
           whatsapp: phone,
-          isMarried,
-          pastChurches: pastChurchesStr,
-          afroBackground: afroBackgrounds.length > 0,
+          isMarried: fichaAtiva ? ficha.maritalStatus === 'married' : isMarried,
+          pastChurches: fichaAtiva ? ficha.pastChurch : pastChurchesStr,
+          afroBackground: fichaAtiva ? false : afroBackgrounds.length > 0,
           scheduledDate: dateStr,
-          campoId: campoId || undefined,
+          campoId: fichaAtiva ? undefined : campoId || undefined,
+          churchId: fichaAtiva ? churchId : undefined,
+          formData,
           otp_token: otpToken,
           code: otpCode,
         }),
@@ -405,6 +488,32 @@ export function PublicHome() {
         return;
       }
       if (!res.ok) throw new Error(data.error || 'Erro ao agendar');
+
+      // A foto sobe depois do pedido criado: é o token da ficha que autoriza o
+      // upload. Falha aqui não invalida a adesão — a pessoa reenvia a foto pelo
+      // link da ficha que recebe no WhatsApp.
+      if (fichaAtiva && fotoFile && data.formToken) {
+        try {
+          const fd = new FormData();
+          fd.append('file', fotoFile);
+          const up = await fetch(`${apiBase}/public/membership-form/${data.formToken}/photo`, {
+            method: 'POST',
+            body: fd,
+          });
+          const dataUp = await up.json().catch(() => ({}));
+          if (up.ok && dataUp.url) {
+            await fetch(`${apiBase}/public/membership-form/${data.formToken}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ formData: { ...formData, photoUrl: dataUp.url }, documents: [] }),
+            });
+          } else {
+            toast.error('Não conseguimos enviar sua foto — use o link da ficha no WhatsApp.');
+          }
+        } catch {
+          toast.error('Não conseguimos enviar sua foto — use o link da ficha no WhatsApp.');
+        }
+      }
 
       setSuccessInfo({
         date: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR'),
@@ -723,7 +832,11 @@ export function PublicHome() {
                         setSelectedPastChurches([]);
                         setAfroBackgrounds([]);
                         setFormError('');
-                        
+                        setMembershipTab('basico');
+                        setFicha(EMPTY_FICHA);
+                        setChurchId('');
+                        removerFoto();
+
                         if (opt.id === 'membro_login') {
                           setShowMembroLogin(true);
                         } else if (opt.id === 'membership') {
@@ -794,7 +907,12 @@ export function PublicHome() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className={`relative w-full max-w-md rounded-2xl border p-6 shadow-2xl overflow-hidden z-10 transition-all duration-300 ${modalBg}`}
+              // a ficha completa tem muito mais campo: ganha largura e rolagem
+              className={`relative w-full rounded-2xl border p-6 shadow-2xl z-10 transition-all duration-300 ${modalBg} ${
+                activeForm === 'membership' && membershipTab === 'ficha'
+                  ? 'max-w-xl max-h-[90vh] overflow-y-auto'
+                  : 'max-w-md overflow-hidden'
+              }`}
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-5">
@@ -990,6 +1108,89 @@ export function PublicHome() {
 
               {activeForm === 'membership' && (
                 <div className="space-y-4">
+                  {/* Duas portas para o mesmo pedido: só o básico (a ficha vem
+                      depois pelo WhatsApp) ou a ficha inteira agora. */}
+                  <div className={`grid grid-cols-2 gap-1 p-1 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                    {([
+                      { id: 'basico', titulo: 'Dados básicos', sub: 'rápido, ficha depois' },
+                      { id: 'ficha', titulo: 'Ficha completa', sub: 'já envio tudo agora' },
+                    ] as const).map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => { setMembershipTab(t.id); setFormError(''); }}
+                        className={`rounded-lg py-2 px-2 text-center transition-colors ${
+                          membershipTab === t.id
+                            ? 'bg-emerald-600 text-white shadow'
+                            : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-white'
+                        }`}
+                      >
+                        <span className="block text-xs font-bold">{t.titulo}</span>
+                        <span className={`block text-[10px] ${membershipTab === t.id ? 'text-emerald-50' : 'text-slate-400'}`}>
+                          {t.sub}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {membershipTab === 'ficha' ? (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
+                          WhatsApp *
+                          <div className="group relative cursor-pointer text-slate-400 hover:text-emerald-500">
+                            <Info size={13} />
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 rounded-lg bg-slate-900 border border-slate-700 text-[10px] text-slate-300 z-50 leading-relaxed shadow-lg">
+                              🔐 Enviamos um código para confirmar que o número é seu.
+                            </span>
+                          </div>
+                        </label>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="(19) 99999-9999"
+                          className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'}`}
+                        />
+                      </div>
+
+                      <MembershipFullFormFields
+                        form={ficha}
+                        set={setFichaCampo}
+                        patch={patchFicha}
+                        isDark={isDark}
+                        igrejas={igrejas}
+                        carregandoIgrejas={carregandoIgrejas}
+                        churchId={churchId}
+                        onChurchId={setChurchId}
+                        fotoPreview={fotoPreview}
+                        onFoto={escolherFoto}
+                        onRemoverFoto={removerFoto}
+                      />
+
+                      {formError && (
+                        <div className="text-red-500 text-xs flex items-start gap-1.5">
+                          <AlertCircle size={13} className="mt-0.5 flex-shrink-0" /> {formError}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2.5 pt-1">
+                        <button
+                          onClick={() => setActiveForm('options')}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border ${isDark ? 'border-slate-700 text-slate-300' : 'border-slate-300 text-slate-600'}`}
+                        >
+                          Voltar
+                        </button>
+                        <button
+                          onClick={handleSendOtp}
+                          disabled={loadingOtp}
+                          className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-md"
+                        >
+                          {loadingOtp ? <Loader2 size={13} className="animate-spin" /> : 'Confirmar e Avançar'}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                  <>
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Nome Completo *</label>
                     <input
@@ -1110,6 +1311,8 @@ export function PublicHome() {
                       {loadingOtp ? <Loader2 size={13} className="animate-spin" /> : 'Confirmar e Avançar'}
                     </button>
                   </div>
+                  </>
+                  )}
                 </div>
               )}
 
