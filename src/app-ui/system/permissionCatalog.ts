@@ -143,6 +143,10 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Finanças', name: 'Pagar Contas a Pagar',    key: 'contas_pagar_pagar',     permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
   { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(mngr(), mngr(), none(), none()) },
   { group: 'Finanças', name: 'Painel Executivo Financeiro', key: 'finance_executive', permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  // Assistentes de IA: a tela lê livro caixa e membros de todo o campo, então
+  // nasce fechada — só master. Os demais perfis só passam a ver o item no menu
+  // se alguém liberar explicitamente na matriz de permissões.
+  { group: 'Finanças', name: 'Assistentes de IA',       key: 'ai_assistants',   permissions: mkPerms(master(), master(), master(), master()) },
 
   // ── Banco / Santander ────────────────────────────────────────────────────
   // Acesso restrito: master, admin e campo — church NÃO tem acesso

@@ -59,7 +59,7 @@ export async function generateAiText(
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: config.aiModel.includes('claude') ? config.aiModel : 'claude-3-5-sonnet-20241022',
+      model: config.aiModel.includes('claude') ? config.aiModel : 'claude-opus-5',
       max_tokens: config.aiMaxTokens,
       system: systemPrompt,
       messages: history.map(m => ({ role: m.role, content: [{ type: 'text', text: m.content }] })),

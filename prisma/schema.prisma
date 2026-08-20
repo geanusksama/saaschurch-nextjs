@@ -3901,6 +3901,10 @@ model AiAgent {
   systemPrompt String   @map("system_prompt") @db.Text
   avatarUrl    String?  @map("avatar_url") @db.VarChar(500)
   isActive     Boolean  @default(true) @map("is_active")
+  /// "global" = o agente aparece em todo o sistema (widget de chat, Envios,
+  /// pastoral). "restrito" = visão bloqueada: ele existe apenas na tela
+  /// Assistentes (Finanças) e nunca é oferecido nas outras listas de escolha.
+  visibility   String   @default("global") @db.VarChar(20)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

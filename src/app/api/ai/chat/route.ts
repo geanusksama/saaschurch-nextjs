@@ -5,6 +5,25 @@ import { getAiConfig } from "@/lib/aiConfig";
 import { canUseAgent, loadAgentAccess } from "@/lib/aiAgentAccess";
 import { generateReportPdf } from "@/lib/pdfGenerator";
 import { generateReportExcel } from "@/lib/excelGenerator";
+import { consultarDados, descreverTabelas, AI_TABELAS_NOMES, AI_QUERY_MAX_ROWS } from "@/lib/aiDataAccess";
+import { generateChartSvg } from "@/lib/chartGenerator";
+
+/**
+ * Teto de tokens da resposta.
+ *
+ * O valor da tela ("Máximo de Tokens", 2000 por padrão) era usado direto e
+ * estrangulava a resposta: nos modelos atuais do Claude o raciocínio sai do
+ * MESMO orçamento, então uma pergunta longa gastava tudo pensando e voltava
+ * sem nenhum bloco de texto — o balão cinza vazio. Aqui o valor da tela vira
+ * piso, não teto: quem configurou mais continua mandando.
+ *
+ * 16000 é o limite prático desta rota, que responde de uma vez só (sem
+ * streaming); acima disso o risco é estourar o tempo da requisição HTTP.
+ */
+const RESPOSTA_MAX_TOKENS = 16000;
+function respostaMaxTokens(configurado: number | undefined): number {
+  return Math.max(Number(configurado) || 0, RESPOSTA_MAX_TOKENS);
+}
 
 // Auxiliar para converter decimais e BigInts para JSON serializável
 function serializeDbData(obj: any): any {
@@ -244,11 +263,15 @@ export async function POST(req: NextRequest) {
       });
 
       // 4. Carregar histórico (últimas 15 mensagens da sessão)
-      const messageHistory = await prisma.aiChatMessage.findMany({
+      // Mensagem em branco é descartada: a API da Anthropic recusa bloco de
+      // texto vazio com 400, e conversas antigas podem ter uma gravada de
+      // quando a resposta vazia ainda era salva.
+      const messageHistoryRaw = await prisma.aiChatMessage.findMany({
         where: { sessionId },
         orderBy: { createdAt: "asc" },
         take: 15
       });
+      const messageHistory = messageHistoryRaw.filter(m => (m.content || "").trim().length > 0);
 
       // 5. Carregar Configurações de IA
       const config = await getAiConfig(user.campoId);
@@ -336,7 +359,9 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
 6. Para LISTAR lançamentos individuais: use "consultar_livro_caixa". A lista "lancamentos" é apenas amostra (máx. 100); os totais corretos estão no "resumo" — use-os e nunca some a amostra.
 7. Definições (idênticas ao Livro Caixa do sistema): DÍZIMO = receita cujo plano de conta contém "dízimo"; OFERTA = receita cujo plano de conta contém "oferta". LÍQUIDO = receitas − despesas.
 8. Se o usuário pedir "todas as igrejas do campo", NÃO passe o filtro de igreja — deixe a ferramenta agregar o campo inteiro.
-9. Sempre apresente valores monetários no formato R$ com duas casas (ex: R$ 64.512,23).`;
+9. Sempre apresente valores monetários no formato R$ com duas casas (ex: R$ 64.512,23).
+10. Para GRÁFICOS ("faça um gráfico", "mostre a evolução", "compare visualmente"): use "gerar_grafico" com os valores que as ferramentas retornaram e inclua a URL devolvida como link markdown na resposta. Nunca invente valores para o gráfico.
+11. Se a pergunta não couber nas ferramentas acima (um campo que elas não filtram, um cruzamento entre membro e lançamento, um histórico), use "consultar_dados": ela lê livremente as tabelas centrais e traz as tabelas relacionadas por join. Nela, para "quantos" use "contar": true e responda com o campo "total" — nunca conte a lista, que é limitada. Para somas de dinheiro continue usando consultar_totais/ranking_*.`;
 
       // Formatar mensagens para OpenAI
       const openAiMessages = [
@@ -489,6 +514,80 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
                   description: "Status de membro (ex: 'ATIVO')"
                 }
               }
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "consultar_dados",
+            description: `Consulta LIVRE e somente-leitura das tabelas centrais do sistema, com JOIN das tabelas relacionadas. Use quando a pergunta não couber nas ferramentas específicas (um campo que elas não filtram, um cruzamento entre membro e lançamento, um histórico). Tabelas e relações disponíveis: ${descreverTabelas()}`,
+            parameters: {
+              type: "object",
+              properties: {
+                tabela: {
+                  type: "string",
+                  enum: AI_TABELAS_NOMES,
+                  description: "Tabela principal da consulta."
+                },
+                filtros: {
+                  type: "object",
+                  description: "Filtro no formato 'where' do Prisma, usando os nomes de campo do modelo (camelCase). Ex: {\"tipo\":\"RECEITA\",\"dataLancamento\":{\"gte\":\"2026-01-01T00:00:00.000Z\"}}. Para texto use {\"contains\":\"x\",\"mode\":\"insensitive\"}. O recorte do campo/igreja do usuário é aplicado pelo servidor automaticamente."
+                },
+                incluir: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Relações a trazer junto (join). Ex: em 'members' use [\"livroCaixaEntries\",\"church\"] para ver as contribuições da pessoa. Nome fora da lista é ignorado."
+                },
+                ordenar: {
+                  type: "object",
+                  properties: {
+                    campo: { type: "string", description: "Campo de ordenação (ex: dataLancamento, fullName)" },
+                    direcao: { type: "string", enum: ["asc", "desc"] }
+                  }
+                },
+                limite: { type: "number", description: `Quantidade de registros (padrão 50, máximo ${AI_QUERY_MAX_ROWS}).` },
+                contar: { type: "boolean", description: "true retorna só a contagem em 'total', sem trazer os registros. Use para perguntas de 'quantos'." }
+              },
+              required: ["tabela"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "gerar_grafico",
+            description: "Desenha um GRÁFICO com os valores já apurados e devolve a URL da imagem. Use quando o usuário pedir gráfico, comparação visual, evolução ao longo do tempo ou distribuição. Informe SEMPRE valores que vieram de consultar_totais, ranking_igrejas, ranking_pessoas ou consultar_dados — nunca valores estimados. Depois de gerar, inclua a URL retornada na resposta como link markdown, ex: [Gráfico](/temp-reports/grafico-xxx.svg).",
+            parameters: {
+              type: "object",
+              properties: {
+                tipo: {
+                  type: "string",
+                  enum: ["barra", "linha", "pizza", "barra_horizontal"],
+                  description: "barra = comparar categorias; linha = evolução no tempo; pizza = composição/percentual; barra_horizontal = ranking com nomes longos."
+                },
+                titulo: { type: "string", description: "Título do gráfico" },
+                subtitulo: { type: "string", description: "Linha de apoio, ex: período e igreja" },
+                categorias: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Rótulos do eixo (meses, nomes de igrejas, nomes de pessoas...)"
+                },
+                series: {
+                  type: "array",
+                  description: "Uma ou mais séries de valores, na MESMA ordem das categorias.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      nome: { type: "string", description: "Nome da série (ex: Dízimos)" },
+                      valores: { type: "array", items: { type: "number" } }
+                    },
+                    required: ["nome", "valores"]
+                  }
+                },
+                prefixo: { type: "string", description: "Use \"R$ \" para valores em dinheiro; deixe vazio para contagens." }
+              },
+              required: ["tipo", "titulo", "categorias", "series"]
             }
           }
         },
@@ -716,6 +815,36 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           return serializeDbData(dbResultsMembers);
         }
 
+        if (name === "consultar_dados") {
+          console.log("[POST /api/ai/chat] Tool 'consultar_dados' args:", JSON.stringify(args));
+          try {
+            const resultado = await consultarDados(args, fieldChurchIds);
+            return serializeDbData(resultado);
+          } catch (queryErr: any) {
+            // Filtro malformado é o erro comum aqui — devolver a mensagem deixa
+            // o agente corrigir o próprio filtro em vez de desistir da pergunta.
+            console.error("[POST /api/ai/chat] consultar_dados falhou:", queryErr);
+            return { erro: `Consulta inválida: ${queryErr?.message || queryErr}. Revise os nomes de campo e o formato do filtro e tente de novo.` };
+          }
+        }
+
+        if (name === "gerar_grafico") {
+          try {
+            const downloadUrl = generateChartSvg({
+              tipo: args.tipo, titulo: args.titulo, subtitulo: args.subtitulo,
+              categorias: args.categorias || [], series: args.series || [],
+              prefixo: args.prefixo ?? "",
+            });
+            return {
+              success: true, downloadUrl,
+              observacao: "Inclua esta URL na resposta como link markdown para o gráfico aparecer na conversa."
+            };
+          } catch (chartErr: any) {
+            console.error("[POST /api/ai/chat] Error generating chart:", chartErr);
+            return { success: false, error: chartErr.message || "Erro desconhecido ao gerar gráfico." };
+          }
+        }
+
         if (name === "gerar_pdf") {
           try {
             const downloadUrl = generateReportPdf({
@@ -751,34 +880,47 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           return NextResponse.json({ error: "Chave OpenAI não cadastrada." }, { status: 400 });
         }
 
-        // Fazer chamada para OpenAI
-        const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${config.openaiApiKey}`
-          },
-          body: JSON.stringify({
-            model: config.aiModel.includes("gpt") ? config.aiModel : "gpt-4o-mini",
-            messages: openAiMessages,
-            max_tokens: config.aiMaxTokens,
-            tools: tools,
-            tool_choice: "auto"
-          })
-        });
+        const openAiModel = config.aiModel.includes("gpt") ? config.aiModel : "gpt-4o-mini";
+        const callOpenAi = async (msgs: any[]) => {
+          const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${config.openaiApiKey}`
+            },
+            body: JSON.stringify({
+              model: openAiModel,
+              messages: msgs,
+              max_tokens: respostaMaxTokens(config.aiMaxTokens),
+              tools: tools,
+              tool_choice: "auto"
+            })
+          });
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error("OpenAI Chat error:", errText);
+            let detalhe = res.statusText;
+            try {
+              const parsed = JSON.parse(errText);
+              detalhe = parsed?.error?.message || detalhe;
+            } catch { /* corpo não-JSON: fica o statusText */ }
+            throw new Error(`Erro na API da OpenAI: ${detalhe}`);
+          }
+          return res.json();
+        };
 
-        if (!openAiRes.ok) {
-          const errText = await openAiRes.text();
-          console.error("OpenAI Chat error:", errText);
-          throw new Error(`Erro na API da OpenAI: ${openAiRes.statusText}`);
-        }
+        // Loop de tool use, igual ao do Claude. Uma pergunta pode exigir várias
+        // rodadas — apurar os totais e SÓ ENTÃO desenhar o gráfico com eles.
+        // Com uma rodada só, a segunda ferramenta nunca era oferecida de volta
+        // ao modelo e a resposta voltava vazia (o balão cinza).
+        const conversa: any[] = [...openAiMessages];
+        let data = await callOpenAi(conversa);
+        let messageObj = data.choices?.[0]?.message;
+        let iterations = 0;
 
-        const data = await openAiRes.json();
-        const choice = data.choices[0];
-        let messageObj = choice.message;
-
-        if (messageObj.tool_calls && messageObj.tool_calls.length > 0) {
-          const toolMessages: any[] = [];
+        while (messageObj?.tool_calls?.length && iterations < 5) {
+          iterations++;
+          conversa.push(messageObj);
 
           for (const toolCall of messageObj.tool_calls) {
             let parsedArgs: any = {};
@@ -788,7 +930,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
               parsedArgs = {};
             }
             const result = await executeAgentTool(toolCall.function.name, parsedArgs);
-            toolMessages.push({
+            conversa.push({
               role: "tool",
               tool_call_id: toolCall.id,
               name: toolCall.function.name,
@@ -796,34 +938,14 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
             });
           }
 
-          // Enviar os dados da ferramenta de volta para a OpenAI para que ela dê a resposta final
-          const secondResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${config.openaiApiKey}`
-            },
-            body: JSON.stringify({
-              model: config.aiModel.includes("gpt") ? config.aiModel : "gpt-4o-mini",
-              messages: [
-                ...openAiMessages,
-                messageObj,
-                ...toolMessages
-              ],
-              max_tokens: config.aiMaxTokens
-            })
-          });
+          data = await callOpenAi(conversa);
+          messageObj = data.choices?.[0]?.message;
+        }
 
-          if (!secondResponse.ok) {
-            const errText = await secondResponse.text();
-            console.error("OpenAI second response error details:", errText);
-            throw new Error(`Erro na API OpenAI pós-tool: ${secondResponse.statusText}`);
-          }
-
-          const secondData = await secondResponse.json();
-          assistantResponse = secondData.choices[0].message.content;
-        } else {
-          assistantResponse = messageObj.content || "";
+        assistantResponse = messageObj?.content || "";
+        if (!assistantResponse && messageObj?.tool_calls?.length) {
+          // Estourou o limite de rodadas ainda pedindo ferramenta.
+          assistantResponse = "Precisei de muitas consultas seguidas para essa pergunta e não consegui fechar a resposta. Tente dividir em partes — por exemplo, peça primeiro os números e depois o gráfico.";
         }
 
       } else {
@@ -845,7 +967,8 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           content: [{ type: "text", text: msg.content }]
         }));
 
-        const claudeModel = config.aiModel.includes("claude") ? config.aiModel : "claude-3-5-sonnet-20241022";
+        const claudeModel = config.aiModel.includes("claude") ? config.aiModel : "claude-opus-5";
+        const claudeMaxTokens = respostaMaxTokens(config.aiMaxTokens);
         const callClaude = async () => {
           const res = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
@@ -856,7 +979,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
             },
             body: JSON.stringify({
               model: claudeModel,
-              max_tokens: config.aiMaxTokens,
+              max_tokens: claudeMaxTokens,
               system: systemPrompt,
               tools: claudeTools,
               messages: claudeMessages
@@ -865,7 +988,14 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           if (!res.ok) {
             const errText = await res.text();
             console.error("Claude Chat error:", errText);
-            throw new Error(`Erro na API da Anthropic: ${res.statusText}`);
+            // "Bad Request" sozinho não diz nada a quem está usando; a API
+            // manda o motivo (modelo inválido, limite de tokens, bloco vazio).
+            let detalhe = res.statusText;
+            try {
+              const parsed = JSON.parse(errText);
+              detalhe = parsed?.error?.message || detalhe;
+            } catch { /* corpo não-JSON: fica o statusText */ }
+            throw new Error(`Erro na API da Anthropic: ${detalhe}`);
           }
           return res.json();
         };
@@ -901,6 +1031,22 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           .map((b: any) => b.text)
           .join("\n")
           .trim();
+        if (!assistantResponse) {
+          console.warn("[POST /api/ai/chat] Claude respondeu sem texto. stop_reason:", claudeData.stop_reason);
+          if (claudeData.stop_reason === "tool_use") {
+            assistantResponse = "Precisei de muitas consultas seguidas para essa pergunta e não consegui fechar a resposta. Tente dividir em partes — por exemplo, peça primeiro os números e depois o gráfico.";
+          } else if (claudeData.stop_reason === "max_tokens") {
+            assistantResponse = "A resposta ficou maior que o limite de tokens configurado. Aumente o 'Máximo de Tokens' em Configurações de IA ou peça uma parte de cada vez.";
+          } else if (claudeData.stop_reason === "refusal") {
+            assistantResponse = "O modelo recusou responder a essa pergunta. Tente reformulá-la.";
+          }
+        }
+      }
+
+      // Balão vazio no chat é pior do que um aviso: o usuário fica sem saber se
+      // a pergunta chegou. Nunca gravamos mensagem de assistente em branco.
+      if (!assistantResponse.trim()) {
+        assistantResponse = "Não consegui montar uma resposta para essa pergunta. Tente reformulá-la ou dividi-la em partes.";
       }
 
       // 7. Salvar resposta da IA no banco

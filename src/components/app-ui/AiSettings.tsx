@@ -132,7 +132,7 @@ export default function AiSettings() {
     if (prov === 'openai') {
       setAiModel('gpt-4o-mini');
     } else {
-      setAiModel('claude-3-5-sonnet-20241022');
+      setAiModel('claude-opus-5');
     }
   };
 
@@ -378,9 +378,10 @@ export default function AiSettings() {
                         </>
                       ) : (
                         <>
-                          <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Excelente)</option>
-                          <option value="claude-3-haiku-20240307">Claude 3 Haiku (Rápido)</option>
-                          <option value="claude-3-opus-20240229">Claude 3 Opus (Raciocínio complexo)</option>
+                          <option value="claude-fable-5">Claude Fable 5 (Máxima capacidade)</option>
+                          <option value="claude-opus-5">Claude Opus 5 (Mais Inteligente)</option>
+                          <option value="claude-sonnet-5">Claude Sonnet 5 (Equilibrado)</option>
+                          <option value="claude-haiku-4-5">Claude Haiku 4.5 (Mais Rápido &amp; Econômico)</option>
                         </>
                       )}
                     </select>

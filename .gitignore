@@ -48,3 +48,5 @@ next-env.d.ts
 /docs/*.pdf
 testsprite_tests/tmp/
 testsprite_tests/tmp/config.json
+# Relatorios/graficos gerados pela IA sob demanda — sao descartaveis
+/public/temp-reports/

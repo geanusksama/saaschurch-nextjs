@@ -155,7 +155,7 @@ import SolicitacoesCredencial from "../app-ui/ecclesiastical/SolicitacoesCredenc
 import { Birthdays } from "../components/app-ui/Birthdays";
 import { ConfigurationCenter } from "../components/app-ui/ConfigurationCenter";
 import AiSettings from "../components/app-ui/AiSettings";
-import AiAgents from "../components/app-ui/AiAgents";
+import AiAssistants from "../app-ui/finance/AiAssistants";
 import LookupCrud from "../app-ui/system/LookupCrud";
 import { FinanceCashFlow } from "../components/app-ui/FinanceCashFlow";
 import { FinanceTransactions } from "../components/app-ui/FinanceTransactions";
@@ -530,6 +530,7 @@ export const router = createBrowserRouter([
       { path: "finance/diretoria", Component: Diretoria },
       { path: "finance/contas-a-pagar", Component: ContasPagar },
       { path: "finance/santander", Component: SantanderPage },
+      { path: "finance/assistentes", Component: AiAssistants },
       { path: "finance/income/new", Component: LancamentoNew },
       { path: "finance/expense/new", Component: LancamentoNew },
       { path: "finance/lancamento/new", Component: LancamentoNew },
@@ -608,7 +609,9 @@ export const router = createBrowserRouter([
       { path: "birthdays", Component: Birthdays },
       { path: "configuration-center", Component: ConfigurationCenter },
       { path: "config/ai-settings", Component: AiSettings },
-      { path: "config/ai-agents", Component: AiAgents },
+      // A tela antiga "Agentes de IA" virou "Assistentes", dentro de Finanças.
+      // O caminho velho continua respondendo para não quebrar link salvo.
+      { path: "config/ai-agents", Component: AiAssistants },
       // CRUD genérico das listas auxiliares (plano de contas, formas de pagamento,
       // tipos de documento, centros de custo, funções, títulos). Ver lookupRegistry.ts.
       { path: "config/:lookupKey", Component: LookupCrud },

@@ -96,7 +96,7 @@ Retorne APENAS o objeto JSON.`;
 }`;
 
         const claudePayload = {
-          model: config.aiModel.includes("claude") ? config.aiModel : "claude-3-5-sonnet-20241022",
+          model: config.aiModel.includes("claude") ? config.aiModel : "claude-opus-5",
           max_tokens: 1000,
           messages: [
             {

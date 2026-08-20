@@ -115,7 +115,11 @@ export async function POST(req: NextRequest) {
               "anthropic-version": "2023-06-01"
             },
             body: JSON.stringify({
-              model: "claude-3-haiku-20240307",
+              // Testa com o modelo que o usuário escolheu: chave válida com
+              // modelo aposentado dava "conexão ok" e só quebrava no chat.
+              model: body.aiModel && String(body.aiModel).includes("claude")
+                ? body.aiModel
+                : "claude-haiku-4-5",
               max_tokens: 5,
               messages: [{ role: "user", content: "ping" }]
             })

@@ -114,7 +114,6 @@ import { MobileAppOverlay } from '../public/MobileAppPreview';
 import { ChatFAB } from './ChatFAB';
 import { logClientAudit } from '../../lib/auditClient';
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from '../../lib/recentSearches';
-import { AiChatAssistant } from './shared/AiChatAssistant';
 import { resolverActionUrl } from '../../lib/notificationLinks';
 import { useCampoVisible } from '../../lib/campoVisibility';
 
@@ -227,6 +226,7 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/finance/cash-flow") return "Fluxo de Caixa";
   if (p === "/app-ui/finance/santander") return "Banco / Santander";
   if (p === "/app-ui/finance/diretoria") return "Painel Diretoria";
+  if (p === "/app-ui/finance/assistentes") return "Assistentes";
   if (p === "/app-ui/crm/spreadsheet") return "Planilhas Financeiras";
   if (p === "/app-ui/financial-reports") return "Relatórios Financeiros";
   if (p === "/app-ui/peniel/checkin") return "Check-in Peniel";
@@ -367,6 +367,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },
       { name: 'Diretoria',        path: '/app-ui/finance/diretoria',       icon: BarChart3,       permKey: 'finance_executive' },
       { name: 'Rel. Financeiros', path: '/app-ui/financial-reports',      icon: BarChart3,       permKey: 'finance_reports' },
+      { name: 'Assistentes',      path: '/app-ui/finance/assistentes',    icon: Bot,             permKey: 'ai_assistants' },
     ]
   },
   {
@@ -642,7 +643,6 @@ export function AppUI() {
   const initials = displayName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
 
   const [profileOpen, setProfileOpen] = useState(false);
-  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [myProfileOpen, setMyProfileOpen] = useState(false);
   const [themeEditorOpen, setThemeEditorOpen] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
@@ -1823,8 +1823,8 @@ export function AppUI() {
             </button>
 
             {/* Central de Ajuda — página com a documentação do sistema e a IA
-                que responde só com base nela. Diferente do Assistente de IA ao
-                lado, que analisa dados e é restrito ao perfil master. */}
+                que responde só com base nela. Diferente dos Assistentes
+                (Finanças), que analisam os dados do banco. */}
             <Link
               to="/app-ui/help"
               title="Central de Ajuda"
@@ -1832,23 +1832,6 @@ export function AppUI() {
             >
               <HelpCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </Link>
-
-            {/* Assistente de IA */}
-            <button
-              onClick={() => {
-                if (storedUser.profileType === 'master') {
-                  setAiChatOpen(true);
-                } else {
-                  toast.error('Assistente de IA somente pra perfil autorizado');
-                }
-              }}
-              title="Assistente de IA"
-              className="inline-flex relative w-9 h-9 rounded-full items-center justify-center transition-all hover:scale-110"
-              style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 0 14px rgba(34,197,94,0.5)' }}
-            >
-              <Bot className="w-5 h-5 text-white" />
-              <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(34,197,94,0.2)' }} />
-            </button>
 
             {/* Notifications button — hidden on mobile (available in 3-dots drawer) */}
             <div className="relative hidden sm:block" ref={notificationRef}>
@@ -2502,7 +2485,6 @@ export function AppUI() {
         )}
       </AnimatePresence>
       {canView('internal_chat') && <ChatFAB />}
-      <AiChatAssistant storedUser={storedUser} isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
     </div>
   );
 }

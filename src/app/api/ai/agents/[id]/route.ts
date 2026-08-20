@@ -7,7 +7,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   return withAuth(req, async (user) => {
     try {
       const { id } = await context.params;
-      const { name, description, role, systemPrompt, avatarUrl, isActive, userIds } = await req.json().catch(() => ({}));
+      const { name, description, role, systemPrompt, avatarUrl, isActive, visibility, userIds } = await req.json().catch(() => ({}));
 
       const agent = await prisma.aiAgent.findUnique({
         where: { id }
@@ -31,6 +31,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
           ...(systemPrompt !== undefined && { systemPrompt }),
           ...(avatarUrl !== undefined && { avatarUrl }),
           ...(isActive !== undefined && { isActive }),
+          ...(visibility !== undefined && { visibility: visibility === "restrito" ? "restrito" : "global" }),
           updatedAt: new Date()
         }
       });
