@@ -16,8 +16,15 @@
  */
 import React from 'react';
 
-/** Formatação dentro de uma linha: **negrito**, *itálico*, `código`, links e imagens. */
-function renderInline(texto: string, keyBase: string): React.ReactNode[] {
+/**
+ * Formatação dentro de uma linha: **negrito**, *itálico*, `código`, links e
+ * imagens.
+ *
+ * Reentrante de propósito: a IA escreve o link dentro do negrito
+ * (`**[Baixar PDF](/temp-reports/x.pdf)**`). Sem reprocessar o miolo, o ramo
+ * do negrito engolia o link e ele virava texto cru — clicável em lugar nenhum.
+ */
+function renderInline(texto: string, keyBase: string, profundidade = 0): React.ReactNode[] {
   const partes: React.ReactNode[] = [];
   // Um regex só, para a ordem de precedência ficar explícita e previsível.
   const regex = /(!?)\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|`([^`]+)`|(?<!\*)\*([^*\n]+)\*(?!\*)/g;
@@ -63,7 +70,12 @@ function renderInline(texto: string, keyBase: string): React.ReactNode[] {
         );
       }
     } else if (m[4] !== undefined || m[5] !== undefined) {
-      partes.push(<strong key={chave} className="font-bold">{m[4] ?? m[5]}</strong>);
+      const miolo = (m[4] ?? m[5]) as string;
+      partes.push(
+        <strong key={chave} className="font-bold">
+          {profundidade < 3 ? renderInline(miolo, `${chave}-b`, profundidade + 1) : miolo}
+        </strong>
+      );
     } else if (m[6] !== undefined) {
       partes.push(
         <code key={chave} className="px-1 py-0.5 rounded bg-slate-200/70 dark:bg-slate-700/70 text-[0.9em] font-mono">
@@ -71,7 +83,11 @@ function renderInline(texto: string, keyBase: string): React.ReactNode[] {
         </code>
       );
     } else if (m[7] !== undefined) {
-      partes.push(<em key={chave}>{m[7]}</em>);
+      partes.push(
+        <em key={chave}>
+          {profundidade < 3 ? renderInline(m[7], `${chave}-i`, profundidade + 1) : m[7]}
+        </em>
+      );
     }
 
     ultimo = regex.lastIndex;
