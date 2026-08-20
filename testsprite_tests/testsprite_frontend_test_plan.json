@@ -1,0 +1,1644 @@
+[
+  {
+    "id": "TC001",
+    "title": "Sign in and reach the logged-in app",
+    "description": "This test verifies that an active user can sign in with email and password and land in the protected application area.",
+    "category": "Login and account access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the logged-in application area is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Block direct access to the protected app while signed out",
+    "description": "This test verifies that an unauthenticated visitor is sent to login when attempting to open the protected application shell.",
+    "category": "Protected application access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the login page is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Block unauthenticated access to the member portal",
+    "description": "A visitor who opens the member portal is redirected to login instead of seeing protected content.",
+    "category": "Member portal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /membro"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the login page is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Reject invalid login credentials",
+    "description": "This test verifies that invalid credentials are rejected and a login error is shown.",
+    "category": "Login and account access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with invalid@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with invalid-password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a login error is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Keep protected pages inaccessible after sign-out",
+    "description": "This test verifies that a user who is no longer signed in is returned to login when trying to open protected content again.",
+    "category": "Protected application access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/dashboard/field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the protected dashboard is not accessible without a valid session"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Register a new account and see pending activation",
+    "description": "This test verifies that a new registration creates a pending account state instead of immediate access to the app.",
+    "category": "Login and account access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/register"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the registration form with valid new user details"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a pending activation state is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Complete second-factor verification and sign in",
+    "description": "This test verifies that a user who reaches the verification screen can enter the code and complete sign-in.",
+    "category": "Login and account access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/two-factor-verify"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the verification code field with a valid code"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify sign-in completion is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Create a new member record",
+    "description": "This test verifies that a user can complete the member creation form and see the new record created.",
+    "category": "Member management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open the new member form"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the new member form with valid member details"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the member record is created"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Create a payable account with installments",
+    "description": "This test verifies that a finance user can create a payable account with installments and see it created successfully.",
+    "category": "Accounts payable",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/finance/contas-a-pagar"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new payable account"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the payable details"
+      },
+      {
+        "type": "action",
+        "description": "Add installments to the payable account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the payable account is created"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Create a system user and assign a role",
+    "description": "This verifies that an administrator can create a system user, assign a role, and see the user listed afterward.",
+    "category": "User, role, and permission management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/system/users"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new user"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the new user's name with System User Test"
+      },
+      {
+        "type": "action",
+        "description": "Assign a role to the user"
+      },
+      {
+        "type": "action",
+        "description": "Save the user"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new user appears in the list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Open the member portal dashboard",
+    "description": "A logged-in member can access the portal home and see their personal dashboard.",
+    "category": "Member portal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the member portal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the personal dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Search for a member and open the profile",
+    "description": "This test verifies that a user can search the member list, find a person, and open the member profile.",
+    "category": "Member management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Click the member management area"
+      },
+      {
+        "type": "action",
+        "description": "Search for an existing member by name"
+      },
+      {
+        "type": "action",
+        "description": "Open the matching member profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the member profile is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify title and function history are visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Request a password reset link",
+    "description": "This test verifies that a user can request password recovery and see confirmation that the request was accepted.",
+    "category": "Login and account access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/forgot-password"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a password reset confirmation is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Review the consolidated financial dashboard",
+    "description": "This test verifies that a user can open the financial dashboard and see consolidated financial indicators.",
+    "category": "Finance transactions and dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/financial-dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify summary indicators are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify summary charts are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Switch to a field context successfully",
+    "description": "This verifies that an authorized user can choose a field context and see the active context update.",
+    "category": "Church context switching",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/church-selector"
+      },
+      {
+        "type": "action",
+        "description": "Open the available contexts"
+      },
+      {
+        "type": "action",
+        "description": "Choose a field context"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the password when requested"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the active context updates to the selected field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the screen reflects the field context"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Edit an existing member record",
+    "description": "This test verifies that a user can update an existing member's registration data and see the saved changes.",
+    "category": "Member management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Search for an existing member by name"
+      },
+      {
+        "type": "action",
+        "description": "Open the member profile for editing"
+      },
+      {
+        "type": "action",
+        "description": "Change the registration data"
+      },
+      {
+        "type": "action",
+        "description": "Save the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated member record is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Create and save a vendor",
+    "description": "This test verifies that a finance user can create a vendor and see it listed afterward.",
+    "category": "Accounts payable",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/finance/contas-a-pagar"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new vendor"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the required vendor details"
+      },
+      {
+        "type": "action",
+        "description": "Save the vendor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new vendor appears in the list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Complete a password reset from the reset screen",
+    "description": "This test verifies that a user can set a new password from the reset flow and complete the recovery process.",
+    "category": "Login and account access",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/reset-password"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the new password field with a valid new password"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password confirmation field with the same valid new password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the password reset completion is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Complete a membership readmission request",
+    "description": "This test verifies that a user can open a readmission request, review it, approve it, and see the request completed.",
+    "category": "Membership admission and readmission",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/membership-requests"
+      },
+      {
+        "type": "action",
+        "description": "Open a readmission request for a former member"
+      },
+      {
+        "type": "action",
+        "description": "Review the request"
+      },
+      {
+        "type": "action",
+        "description": "Approve the request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the request is shown as completed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "Update role permissions in the permission matrix",
+    "description": "This verifies that an administrator can edit a role's permission matrix and confirm the saved permissions are visible afterward.",
+    "category": "User, role, and permission management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/system/permissions"
+      },
+      {
+        "type": "action",
+        "description": "Open the role permission matrix"
+      },
+      {
+        "type": "action",
+        "description": "Change one role permission"
+      },
+      {
+        "type": "action",
+        "description": "Save the role permissions"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated matrix is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Update personal profile details",
+    "description": "A logged-in member can edit their personal profile and save changes successfully.",
+    "category": "Member portal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the member portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile section"
+      },
+      {
+        "type": "action",
+        "description": "Edit the personal data"
+      },
+      {
+        "type": "action",
+        "description": "Save the profile changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated profile is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC022",
+    "title": "Approve a pending payable account",
+    "description": "This test verifies that a user can open a pending payable account, approve it, and see the status updated.",
+    "category": "Accounts payable",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/finance/contas-a-pagar"
+      },
+      {
+        "type": "action",
+        "description": "Open a pending payable account"
+      },
+      {
+        "type": "action",
+        "description": "Approve the account"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the account status is updated to approved"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC023",
+    "title": "Update a user's individual permissions",
+    "description": "This verifies that an administrator can open a user, adjust permissions, save the changes, and see the updated permissions reflected.",
+    "category": "User, role, and permission management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/system/users"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing user for permission editing"
+      },
+      {
+        "type": "action",
+        "description": "Change one individual permission"
+      },
+      {
+        "type": "action",
+        "description": "Save the permission changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated permissions are shown for the user"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC024",
+    "title": "Register payment for a payable installment",
+    "description": "This test verifies that a user can record payment for an installment and see the installment marked as paid.",
+    "category": "Accounts payable",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/finance/contas-a-pagar"
+      },
+      {
+        "type": "action",
+        "description": "Open a payable account with an open installment"
+      },
+      {
+        "type": "action",
+        "description": "Register payment for the installment"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the installment is marked as paid"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC025",
+    "title": "Restore a former member title after readmission",
+    "description": "This test verifies that approving a readmission request restores the member's previous ecclesiastical title in the profile.",
+    "category": "Membership admission and readmission",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/membership-requests"
+      },
+      {
+        "type": "action",
+        "description": "Approve a readmission request for a former member"
+      },
+      {
+        "type": "action",
+        "description": "Open the member profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the previous ecclesiastical title is displayed in the profile"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "Create an EBD product and see it in the catalog",
+    "description": "This verifies that an authenticated user can register a new EBD product and find it listed afterward.",
+    "category": "EBD management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/ebd"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a new EBD product"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the product name with EBD Test Product"
+      },
+      {
+        "type": "action",
+        "description": "Save the product"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new product appears in the catalog"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Filter financial transactions",
+    "description": "This test verifies that a user can review financial entries, apply a filter, and see only matching transactions.",
+    "category": "Finance transactions and dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/finance/transactions"
+      },
+      {
+        "type": "action",
+        "description": "Review the transaction list"
+      },
+      {
+        "type": "action",
+        "description": "Apply a transaction filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify matching transactions are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Import members with validation before execution",
+    "description": "This verifies that a staff user can upload a CSV, review validation results, and execute the import so accepted members are created.",
+    "category": "Member CSV import",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the member import section"
+      },
+      {
+        "type": "action",
+        "description": "Select a CSV file with valid and invalid member rows"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation report is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the import execution"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the imported members are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "Record an EBD stock entry and see the updated stock",
+    "description": "This verifies that an authenticated user can create a stock entry in the EBD module and confirm the stock changes are reflected.",
+    "category": "EBD management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/ebd"
+      },
+      {
+        "type": "action",
+        "description": "Start a new stock entry"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid quantity into the quantity field"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the stock entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the stock total is updated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the entry is listed in the stock history"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC030",
+    "title": "Review the member schedule",
+    "description": "A logged-in member can open the schedule area and view upcoming agenda items.",
+    "category": "Member portal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the member portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the schedule section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify upcoming agenda items are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC031",
+    "title": "Open the payable report",
+    "description": "This test verifies that a finance user can open the payable report and see the report generated.",
+    "category": "Accounts payable",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/finance/contas-a-pagar"
+      },
+      {
+        "type": "action",
+        "description": "Open the payable report"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the report is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "Create an EBD delivery for a church and see it registered",
+    "description": "This verifies that an authenticated user can register a delivery for a church within the EBD module and see it saved.",
+    "category": "EBD management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/ebd"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a delivery"
+      },
+      {
+        "type": "action",
+        "description": "Select a church for the delivery"
+      },
+      {
+        "type": "action",
+        "description": "Submit the delivery"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the delivery is registered"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the delivery appears in the delivery list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC033",
+    "title": "Create a baptism request for a member",
+    "description": "This verifies that a user can search for a member inside the baptism request form and submit a new request successfully.",
+    "category": "Baptism requests",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the baptism requests section"
+      },
+      {
+        "type": "action",
+        "description": "Open the new baptism request form"
+      },
+      {
+        "type": "action",
+        "description": "Search for an existing member in the form"
+      },
+      {
+        "type": "action",
+        "description": "Submit the request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new request is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC034",
+    "title": "Create a consecration request with a title selection",
+    "description": "This verifies that a user can create a consecration request for a member and choose an available title before submitting it.",
+    "category": "Consecration requests",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the consecration requests section"
+      },
+      {
+        "type": "action",
+        "description": "Open the new consecration request form"
+      },
+      {
+        "type": "action",
+        "description": "Search for an existing member in the form"
+      },
+      {
+        "type": "action",
+        "description": "Choose an available title"
+      },
+      {
+        "type": "action",
+        "description": "Submit the request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new request is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC035",
+    "title": "Read daily devotional content",
+    "description": "A logged-in member can open the devotional section and view available daily content.",
+    "category": "Member portal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the member portal"
+      },
+      {
+        "type": "action",
+        "description": "Open the daily bread section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify devotional content is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC036",
+    "title": "Show validation when required member fields are missing",
+    "description": "This test verifies that required-field validation appears when a user submits the new member form without completing mandatory inputs.",
+    "category": "Member management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open the new member form"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form without completing required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation messages are visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC037",
+    "title": "Review rejected rows during CSV validation",
+    "description": "This verifies that a CSV import shows which rows are accepted and rejected before the user proceeds.",
+    "category": "Member CSV import",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the member import section"
+      },
+      {
+        "type": "action",
+        "description": "Select a CSV file containing at least one invalid row"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify accepted rows are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify rejected rows are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC038",
+    "title": "Reverse a recorded payment",
+    "description": "This test verifies that a user can reverse a recorded payment and see the payment status changed accordingly.",
+    "category": "Accounts payable",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/finance/contas-a-pagar"
+      },
+      {
+        "type": "action",
+        "description": "Open a payable account with a recorded payment"
+      },
+      {
+        "type": "action",
+        "description": "Reverse the payment"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the reversal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the payment status is changed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC039",
+    "title": "Apply the title matrix to an existing consecration request",
+    "description": "This verifies that an existing consecration request can be updated by applying the title matrix and reflecting the updated request state.",
+    "category": "Consecration requests",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the consecration requests section"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing request"
+      },
+      {
+        "type": "action",
+        "description": "Apply the title matrix"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the request is updated according to the matrix"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC040",
+    "title": "Review quarterly EBD reports and summaries",
+    "description": "This verifies that an authenticated user can open the EBD quarterly reports and review the financial and stock summaries.",
+    "category": "EBD management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/ebd"
+      },
+      {
+        "type": "action",
+        "description": "Open the quarterly reports view"
+      },
+      {
+        "type": "action",
+        "description": "Review the trimester data"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify financial summary data is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify stock summary data is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC041",
+    "title": "Block access when a field context is unavailable",
+    "description": "This verifies that a user without permission is shown access denied when trying to enter a field context.",
+    "category": "Church context switching",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/church-selector"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access a field context"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an access denied message is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC042",
+    "title": "Delete multiple baptism requests at once",
+    "description": "This verifies that a user can select several baptism requests and remove them in a single bulk action.",
+    "category": "Baptism requests",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the baptism requests section"
+      },
+      {
+        "type": "action",
+        "description": "Select multiple requests"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the bulk deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected requests are removed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC043",
+    "title": "Delete multiple consecration requests at once",
+    "description": "This verifies that a user can select multiple consecration requests and remove them together.",
+    "category": "Consecration requests",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the consecration requests section"
+      },
+      {
+        "type": "action",
+        "description": "Select several requests"
+      },
+      {
+        "type": "action",
+        "description": "Confirm deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected requests are removed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC044",
+    "title": "Block a restricted screen for an unauthorized user",
+    "description": "This verifies that a user without the needed access cannot open a restricted administration screen.",
+    "category": "User, role, and permission management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /app-ui/system/users"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify restricted access behavior is shown"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC045",
+    "title": "Keep other members' data hidden",
+    "description": "A logged-in member can review their portal without seeing another member's personal data.",
+    "category": "Member portal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the member portal"
+      },
+      {
+        "type": "action",
+        "description": "Review the personal information section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify only the current member's data is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC046",
+    "title": "Show loading while adding a baptism request",
+    "description": "This verifies that the baptism request flow shows progress while the request is being added and then completes with the new request visible.",
+    "category": "Baptism requests",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the baptism requests section"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a baptism request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a loading indicator is displayed during inclusion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new request is displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]

@@ -81,8 +81,21 @@ function aggregateRows(rows: AggRow[]) {
   };
 }
 
+// Quebra o nome buscado em palavras e exige TODAS elas no campo.
+// Sem isso, "Alexandre Gialluca" não encontraria "ALEXANDRE COTRIM GIALLUCA",
+// porque o `contains` do Prisma casa apenas substring contígua.
+function nameTokens(term: string): string[] {
+  const tokens = String(term).trim().split(/\s+/).filter(t => t.length >= 2);
+  return tokens.length ? tokens : [String(term).trim()];
+}
+
+// Condição "todas as palavras do nome aparecem neste campo" (case-insensitive).
+function allTokensIn(field: string, term: string): any {
+  return { AND: nameTokens(term).map(t => ({ [field]: { contains: t, mode: "insensitive" } })) };
+}
+
 // Constrói o filtro `where` do Prisma para LivroCaixa a partir dos argumentos da ferramenta.
-// Compartilhado por consultar_livro_caixa, consultar_totais e ranking_igrejas.
+// Compartilhado por consultar_livro_caixa, consultar_totais, ranking_igrejas e ranking_pessoas.
 function buildLivroCaixaWhere(args: any, fieldChurchIds: string[] | null): any {
   const queryWhere: any = {};
   if (fieldChurchIds !== null) {
@@ -95,9 +108,11 @@ function buildLivroCaixaWhere(args: any, fieldChurchIds: string[] | null): any {
   }
   if (args.tipo) queryWhere.tipo = args.tipo;
   if (args.favorecido) {
+    // Casa o nome tanto no texto livre do lançamento quanto no membro vinculado,
+    // exigindo todas as palavras (permite nome do meio ausente na busca).
     queryWhere.OR = [
-      { favorecido: { contains: args.favorecido, mode: "insensitive" } },
-      { member: { fullName: { contains: args.favorecido, mode: "insensitive" } } },
+      allTokensIn("favorecido", args.favorecido),
+      { member: { AND: nameTokens(args.favorecido).map(t => ({ fullName: { contains: t, mode: "insensitive" } })) } },
     ];
   }
   if (args.igreja) {
@@ -316,10 +331,12 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
 1. NUNCA some, conte ou ranqueie lançamentos manualmente a partir de listas. Os valores precisos são SEMPRE calculados pelo servidor.
 2. Para TOTAIS/SOMATÓRIOS ("quanto arrecadou", "total de dízimos", "total de despesas do mês"): use a ferramenta "consultar_totais" e responda com os valores do campo "resumo".
 3. Para RANKINGS ("igrejas com maior/menor X", "top 5", "qual arrecadou mais"): use a ferramenta "ranking_igrejas" com a "metrica" adequada e responda exatamente com o "ranking" retornado (campo "valorMetrica" é o valor da métrica pedida).
-4. Para LISTAR lançamentos individuais: use "consultar_livro_caixa". A lista "lancamentos" é apenas amostra (máx. 100); os totais corretos estão no "resumo" — use-os e nunca some a amostra.
-5. Definições (idênticas ao Livro Caixa do sistema): DÍZIMO = receita cujo plano de conta contém "dízimo"; OFERTA = receita cujo plano de conta contém "oferta". LÍQUIDO = receitas − despesas.
-6. Se o usuário pedir "todas as igrejas do campo", NÃO passe o filtro de igreja — deixe a ferramenta agregar o campo inteiro.
-7. Sempre apresente valores monetários no formato R$ com duas casas (ex: R$ 64.512,23).`;
+4. Para RANKINGS DE PESSOAS ("quem foi o maior dizimista", "quem deu o maior valor", "top contribuintes"): use a ferramenta "ranking_pessoas" e responda exatamente com o "ranking" retornado. NUNCA escolha o maior valor olhando a amostra de lançamentos.
+5. Ao buscar uma pessoa pelo nome, informe o nome como o usuário escreveu — a busca já casa nomes parciais (sem o nome do meio). Se não vier nenhum lançamento, confirme com "consultar_membros" antes de afirmar que a pessoa não contribuiu, e diga que não há registros COM ESSE NOME em vez de afirmar que a pessoa não contribuiu.
+6. Para LISTAR lançamentos individuais: use "consultar_livro_caixa". A lista "lancamentos" é apenas amostra (máx. 100); os totais corretos estão no "resumo" — use-os e nunca some a amostra.
+7. Definições (idênticas ao Livro Caixa do sistema): DÍZIMO = receita cujo plano de conta contém "dízimo"; OFERTA = receita cujo plano de conta contém "oferta". LÍQUIDO = receitas − despesas.
+8. Se o usuário pedir "todas as igrejas do campo", NÃO passe o filtro de igreja — deixe a ferramenta agregar o campo inteiro.
+9. Sempre apresente valores monetários no formato R$ com duas casas (ex: R$ 64.512,23).`;
 
       // Formatar mensagens para OpenAI
       const openAiMessages = [
@@ -419,6 +436,29 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
                 },
                 ordem: { type: "string", enum: ["desc", "asc"], description: "desc = maiores primeiro (padrão); asc = menores primeiro" },
                 limite: { type: "number", description: "Quantidade de igrejas a retornar (padrão 10)" }
+              },
+              required: ["metrica"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "ranking_pessoas",
+            description: "Retorna o RANKING de PESSOAS (dizimistas/ofertantes/favorecidos) já agregado e ordenado pelo servidor, somando todos os lançamentos de cada pessoa no período. Use SEMPRE que o usuário perguntar 'quem foi o maior dizimista', 'quem deu o maior valor', 'top dizimistas', 'quem mais contribuiu' etc. NUNCA deduza a partir da lista de lançamentos de consultar_livro_caixa — ela é apenas uma amostra.",
+            parameters: {
+              type: "object",
+              properties: {
+                data_inicio: { type: "string", description: "Data de início YYYY-MM-DD. Omita para considerar todo o período." },
+                data_fim: { type: "string", description: "Data de fim YYYY-MM-DD. Omita para considerar todo o período." },
+                igreja: { type: "string", description: "Nome ou parte do nome da igreja/filial (ex: 'SEDE'). Omita para considerar TODAS as igrejas do campo." },
+                metrica: {
+                  type: "string",
+                  enum: ["dizimos", "ofertas", "receitas"],
+                  description: "Métrica usada para ordenar. 'dizimos' = soma das receitas cujo plano de conta contém 'dízimo'."
+                },
+                ordem: { type: "string", enum: ["desc", "asc"], description: "desc = maiores primeiro (padrão)" },
+                limite: { type: "number", description: "Quantidade de pessoas a retornar (padrão 10)" }
               },
               required: ["metrica"]
             }
@@ -609,11 +649,62 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           };
         }
 
+        if (name === "ranking_pessoas") {
+          console.log("[POST /api/ai/chat] Tool 'ranking_pessoas' args:", args);
+          const { favorecido, cargo, ...rankArgs } = args;
+          const queryWhere = buildLivroCaixaWhere({ ...rankArgs, tipo: "RECEITA" }, fieldChurchIds);
+          const allRows = await prisma.livroCaixa.findMany({
+            where: queryWhere,
+            select: {
+              tipo: true, valor: true, planoDeConta: true, memberId: true, favorecido: true,
+              member: { select: { fullName: true } },
+              church: { select: { name: true } },
+            },
+            take: AGG_SCAN_LIMIT
+          });
+          // Agrupa por membro vinculado quando existe; senão pelo texto do favorecido.
+          const pessoas = new Map<string, { nome: string; igrejas: Set<string>; rows: AggRow[] }>();
+          for (const r of allRows) {
+            const nome = r.member?.fullName || r.favorecido || "(sem favorecido)";
+            const key = r.memberId || normalizeText(nome);
+            if (!pessoas.has(key)) pessoas.set(key, { nome, igrejas: new Set(), rows: [] });
+            const p = pessoas.get(key)!;
+            if (r.church?.name) p.igrejas.add(r.church.name);
+            p.rows.push(r);
+          }
+          const metrica = (args.metrica || "dizimos") as string;
+          const metricKey: Record<string, keyof ReturnType<typeof aggregateRows>> = {
+            dizimos: "totalDizimos", ofertas: "totalOfertas", receitas: "totalReceitas",
+          };
+          const chave = metricKey[metrica] || "totalDizimos";
+          const ordem = args.ordem === "asc" ? 1 : -1;
+          let ranking = Array.from(pessoas.values()).map(p => {
+            const agg = aggregateRows(p.rows);
+            return {
+              pessoa: p.nome,
+              igrejas: Array.from(p.igrejas),
+              valorMetrica: agg[chave] as number,
+              totalDizimos: agg.totalDizimos,
+              totalOfertas: agg.totalOfertas,
+              totalReceitas: agg.totalReceitas,
+              qtdLancamentos: agg.qtdLancamentos,
+            };
+          }).filter(p => p.valorMetrica > 0);
+          ranking.sort((a, b) => (a.valorMetrica - b.valorMetrica) * ordem);
+          const limite = Math.max(1, Math.min(Number(args.limite) || 10, 100));
+          const totalPessoas = ranking.length;
+          ranking = ranking.slice(0, limite);
+          return {
+            metrica, ordem: args.ordem === "asc" ? "asc" : "desc", totalPessoas, ranking,
+            observacao: "Ranking de pessoas já agregado e ordenado pelo servidor pelo campo 'valorMetrica' (soma de TODOS os lançamentos da pessoa no período). Use exatamente estes valores; não recalcule nem reordene."
+          };
+        }
+
         if (name === "consultar_membros") {
           console.log("[POST /api/ai/chat] Tool 'consultar_membros' args:", args);
           const queryWhereMembers: any = {};
           if (fieldChurchIds !== null) queryWhereMembers.churchId = { in: fieldChurchIds };
-          if (args.nome) queryWhereMembers.fullName = { contains: args.nome, mode: "insensitive" };
+          if (args.nome) queryWhereMembers.AND = [allTokensIn("fullName", args.nome)];
           if (args.cargo) queryWhereMembers.ecclesiasticalTitle = { contains: args.cargo, mode: "insensitive" };
           if (args.igreja) queryWhereMembers.church = { name: { contains: args.igreja, mode: "insensitive" } };
           if (args.status) queryWhereMembers.membershipStatus = args.status;
