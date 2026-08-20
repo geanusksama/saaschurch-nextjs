@@ -485,12 +485,14 @@ export default function AiAssistants() {
         <div className="flex-1 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 space-y-4">
           {chatMessages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+              {/* A pergunta é texto puro (pre-wrap preserva as quebras que o
+                  usuário digitou); a resposta vem em markdown e é renderizada. */}
+              <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
                 msg.role === 'user'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100'
+                  ? 'bg-indigo-600 text-white whitespace-pre-wrap'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 leading-relaxed'
               }`}>
-                {renderMessageContent(msg.content)}
+                {msg.role === 'user' ? msg.content : renderMessageContent(msg.content)}
               </div>
             </div>
           ))}

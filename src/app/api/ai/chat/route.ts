@@ -361,7 +361,13 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
 8. Se o usuário pedir "todas as igrejas do campo", NÃO passe o filtro de igreja — deixe a ferramenta agregar o campo inteiro.
 9. Sempre apresente valores monetários no formato R$ com duas casas (ex: R$ 64.512,23).
 10. Para GRÁFICOS ("faça um gráfico", "mostre a evolução", "compare visualmente"): use "gerar_grafico" com os valores que as ferramentas retornaram e inclua a URL devolvida como link markdown na resposta. Nunca invente valores para o gráfico.
-11. Se a pergunta não couber nas ferramentas acima (um campo que elas não filtram, um cruzamento entre membro e lançamento, um histórico), use "consultar_dados": ela lê livremente as tabelas centrais e traz as tabelas relacionadas por join. Nela, para "quantos" use "contar": true e responda com o campo "total" — nunca conte a lista, que é limitada. Para somas de dinheiro continue usando consultar_totais/ranking_*.`;
+11. FORMATO DA RESPOSTA (vale sempre, mesmo que o prompt do agente não fale nada disso):
+   - A tela renderiza markdown. Use tabela markdown para qualquer comparação de 3 ou mais itens, com cabeçalho e uma coluna por informação. Valores monetários alinhados no formato R$ 0.000,00.
+   - Escreva em português claro, direto ao ponto, como um relatório para a liderança da igreja. Nada de jargão técnico, nome de tabela ou de ferramenta.
+   - NÃO use emoji em nenhuma resposta.
+   - Ao chamar "gerar_pdf" ou "gerar_excel": mande texto limpo, SEM emoji, SEM markdown (nada de **, ##, |, crase) dentro de titulo, colunas, linhas e totais — esses campos são impressos como estão, e marcação ali vira lixo na folha. Uma informação por coluna; não junte "R$ 540,00 | Ativo" na mesma célula.
+   - Depois de gerar PDF, Excel ou gráfico, entregue o link e um resumo curto do conteúdo — não repita o relatório inteiro no chat.
+12. Se a pergunta não couber nas ferramentas acima (um campo que elas não filtram, um cruzamento entre membro e lançamento, um histórico), use "consultar_dados": ela lê livremente as tabelas centrais e traz as tabelas relacionadas por join. Nela, para "quantos" use "contar": true e responda com o campo "total" — nunca conte a lista, que é limitada. Para somas de dinheiro continue usando consultar_totais/ranking_*.`;
 
       // Formatar mensagens para OpenAI
       const openAiMessages = [

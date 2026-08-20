@@ -11,7 +11,38 @@ interface PdfReportData {
   totais?: string[];
 }
 
-export function generateReportPdf(data: PdfReportData): string {
+/**
+ * Deixa o texto no que a fonte padrão do jsPDF (Helvetica, WinAnsi) sabe
+ * escrever.
+ *
+ * A IA gosta de enfeitar a resposta com emoji e marcação markdown. No PDF isso
+ * saía como lixo — "✅ Ativo" virava "' A t i v o", "📊" virava "Ø=ÜÈ" — porque
+ * o caractere não existe na tabela da fonte e ainda quebra o espaçamento da
+ * linha inteira. Aqui o emoji sai, o markdown (**, ##, `) sai, e o que sobra é
+ * texto legível para quem vai receber o relatório.
+ */
+function limparParaPdf(texto: unknown): string {
+  return String(texto ?? "")
+    // marcação markdown que não faz sentido impressa
+    .replace(/\*\*/g, "")
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/`/g, "")
+    // emoji e qualquer caractere fora do que a fonte suporta
+    .replace(/[^\u0000-\u00FF\u0152\u0153\u2018\u2019\u201C\u201D\u2013\u2014\u20AC]/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+export function generateReportPdf(dataOriginal: PdfReportData): string {
+  // Limpa tudo na entrada: assim nenhum ponto do desenho precisa lembrar disso.
+  const data: PdfReportData = {
+    titulo: limparParaPdf(dataOriginal.titulo),
+    subtitulo: dataOriginal.subtitulo ? limparParaPdf(dataOriginal.subtitulo) : undefined,
+    colunas: (dataOriginal.colunas || []).map(limparParaPdf),
+    linhas: (dataOriginal.linhas || []).map(linha => (linha || []).map(limparParaPdf)),
+    totais: (dataOriginal.totais || []).map(limparParaPdf),
+  };
+
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
