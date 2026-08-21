@@ -17,6 +17,48 @@ import { RelatorioModal } from './RelatorioModal';
 import { AnalyticsModal } from './AnalyticsModal';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * O PostgREST corta TODA resposta em 1.000 linhas, e o `.limit()` do cliente não
+ * levanta esse teto — `limit=5000` voltava `content-range: 0-999/3426`. A
+ * resposta cortada não vem marcada de forma nenhuma: chegava um recorte e os
+ * cards de totais fechavam por cima dele como se fosse o período inteiro. Com
+ * ~3.450 lançamentos por mês, uma consulta de um único mês já perdia mais de
+ * dois mil lançamentos em silêncio.
+ *
+ * Aqui as páginas são pedidas por `range()` até a última vir incompleta.
+ *
+ * `MAX_LINHAS` é teto de navegador, não de banco: a tabela inteira tem mais de
+ * 330 mil linhas e montar isso no cliente travaria a tela. Ao encostar no teto
+ * a função devolve `truncado: true` e quem chama AVISA — número parcial nunca
+ * pode ser servido como fechado, que é exatamente o defeito que isto corrige.
+ */
+const PAGINA_PGREST = 1000;
+const MAX_LINHAS = 30000;
+
+async function buscarTodasAsPaginas<T>(
+  pagina: (de: number, ate: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+): Promise<{ rows: T[]; error: string | null; truncado: boolean }> {
+  const rows: T[] = [];
+
+  for (let de = 0; de < MAX_LINHAS; de += PAGINA_PGREST) {
+    const ate = Math.min(de + PAGINA_PGREST, MAX_LINHAS) - 1;
+    const { data, error } = await pagina(de, ate);
+    if (error) return { rows, error: error.message, truncado: false };
+
+    const lote = (data as T[]) ?? [];
+    rows.push(...lote);
+    if (lote.length < ate - de + 1) return { rows, error: null, truncado: false };
+  }
+
+  // Enchemos o teto exatamente. Uma linha além dele diz se havia mais — sem esta
+  // sondagem o aviso apareceria também no caso em que o período acabou junto com
+  // o teto, e aviso que mente é tão ruim quanto silêncio.
+  const { data: sobra, error: erroSobra } = await pagina(MAX_LINHAS, MAX_LINHAS);
+  if (erroSobra) return { rows, error: erroSobra.message, truncado: false };
+  return { rows, error: null, truncado: ((sobra as T[]) ?? []).length > 0 };
+}
+
 function firstDayOfMonth() {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
@@ -925,18 +967,22 @@ function ConsultarLancamentoModal({
     if (dataFim < dataInicio) { setError('A data final deve ser maior ou igual à data inicial.'); return; }
     setLoading(true);
     try {
-      let query = supabase
+      const consultaBase = () => supabase
         .from('livro_caixa')
         .select(`id, data_lancamento, tipo, valor, favorecido, plano_de_conta,
                  categoria, forma_pg, referencia, obs, foto, legacy_id,
                  num_doc, tipo_documento, member_id, church_id, operador,
                  id_favorecido_externo, churches(name)`)
         .gte('data_lancamento', dataInicio)
-        .lte('data_lancamento', dataFim)
-        .order('data_lancamento', { ascending: false })
-        .limit(5000);
+        .lte('data_lancamento', dataFim);
 
-      if (tipo !== 'all') query = query.eq('tipo', tipo);
+      // Os filtros são coletados antes de consultar porque a busca é paginada e
+      // cada página precisa de uma query nova — um builder do supabase-js não se
+      // reaproveita depois de executado. A ordem de aplicação é preservada.
+      type Consulta = ReturnType<typeof consultaBase>;
+      const filtros: ((q: Consulta) => Consulta)[] = [];
+
+      if (tipo !== 'all') filtros.push(q => q.eq('tipo', tipo));
 
       const term = termo.trim();
 
@@ -966,7 +1012,7 @@ function ConsultarLancamentoModal({
           const orParts: string[] = [];
           if (memberIds.length > 0) orParts.push(`member_id.in.(${memberIds.join(',')})`);
           for (const name of memberNames) orParts.push(`favorecido.ilike.%${name}%`);
-          query = (query as any).or(orParts.join(','));
+          filtros.push(q => q.or(orParts.join(',')));
         } else {
           // Nome: busca membros pelo nome primeiro, filtra por member_id
           // com fallback para ilike em favorecido (não-membros / lançamentos avulsos)
@@ -977,21 +1023,22 @@ function ConsultarLancamentoModal({
           const memberIds = (memberData ?? []).map((m: { id: string }) => m.id);
           if (memberIds.length > 0) {
             const memberIdList = memberIds.join(',');
-            query = (query as any).or(`member_id.in.(${memberIdList}),favorecido.ilike.%${term}%`);
+            filtros.push(q => q.or(`member_id.in.(${memberIdList}),favorecido.ilike.%${term}%`));
           } else {
-            query = query.ilike('favorecido', `%${term}%`);
+            filtros.push(q => q.ilike('favorecido', `%${term}%`));
           }
         }
       }
 
       // Filtro por igreja específica tem maior precedência
       if (selectedChurchId) {
-        query = query.eq('church_id', selectedChurchId);
+        filtros.push(q => q.eq('church_id', selectedChurchId));
       } else if (selectedRegionalId) {
         // Filtra por todas as igrejas da regional selecionada
         // igrejas já foi carregado pelo useEffect ao selecionar a regional
         if (igrejas.length > 0) {
-          query = query.in('church_id', igrejas.map(c => c.id));
+          const ids = igrejas.map(c => c.id);
+          filtros.push(q => q.in('church_id', ids));
         } else {
           // fallback: busca as igrejas da regional diretamente
           const { data: churchData } = await supabase
@@ -1000,7 +1047,7 @@ function ConsultarLancamentoModal({
             .eq('regional_id', selectedRegionalId);
           const ids = (churchData ?? []).map((c: { id: string }) => c.id);
           if (ids.length > 0) {
-            query = query.in('church_id', ids);
+            filtros.push(q => q.in('church_id', ids));
           } else {
             setLoading(false);
             onResults([], dataInicio, dataFim);
@@ -1009,13 +1056,29 @@ function ConsultarLancamentoModal({
         }
       } else if (isChurchProfile && storedUser.churchId) {
         // Scope restriction — church profile sees only own church_id
-        query = query.eq('church_id', storedUser.churchId);
+        const churchId = storedUser.churchId;
+        filtros.push(q => q.eq('church_id', churchId));
       }
 
-      const { data, error: err } = await query;
+      const paginaDaConsulta = (de: number, ate: number) => {
+        let query = consultaBase();
+        for (const filtro of filtros) query = filtro(query);
+        return query
+          .order('data_lancamento', { ascending: false })
+          // Desempate estável entre páginas: sem ele, datas repetidas fazem uma
+          // linha voltar em duas páginas e outra não voltar em nenhuma.
+          .order('id', { ascending: true })
+          .range(de, ate);
+      };
+
+      const { rows: achados, error: err, truncado: cortou } = await buscarTodasAsPaginas<Row>(paginaDaConsulta);
       setLoading(false);
-      if (err) { setError('Erro ao consultar: ' + err.message); return; }
-      onResults((data as unknown as Row[]) || [], dataInicio, dataFim);
+      if (err) { setError('Erro ao consultar: ' + err); return; }
+      if (cortou) {
+        setError(`A consulta parou em ${MAX_LINHAS.toLocaleString('pt-BR')} lançamentos e há mais no período. Reduza o intervalo de datas ou restrinja a igreja.`);
+        return;
+      }
+      onResults(achados, dataInicio, dataFim);
     } catch {
       setLoading(false);
       setError('Erro inesperado ao consultar.');
@@ -1274,6 +1337,9 @@ export default function Cashbook() {
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
   const [deleting, setDeleting]     = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  // Consulta encostou no teto de MAX_LINHAS: o que está na tela é recorte, e os
+  // cards de totais somam só esse recorte. Precisa aparecer, não pode ser omitido.
+  const [truncado, setTruncado]     = useState(false);
 
   // Auto-select church for church-profile users
   useEffect(() => {
@@ -1284,34 +1350,46 @@ export default function Cashbook() {
 
   async function buscar() {
     setError('');
+    setTruncado(false);
     if (dataFim < dataInicio) { setError('A data final deve ser maior ou igual a data inicial.'); return; }
     setLoading(true);
     setSearched(true);
     setPage(1);
 
-    let query = supabase
-      .from('livro_caixa')
-      .select(`id, data_lancamento, tipo, valor, favorecido, plano_de_conta,
-               categoria, forma_pg, referencia, obs, foto, legacy_id,
-               num_doc, tipo_documento, member_id, church_id, operador, churches(name)`)
-      .gte('data_lancamento', dataInicio)
-      .lte('data_lancamento', dataFim)
-      // Estorno de pagamento do Contas a Pagar baixa o lançamento logicamente;
-      // sem este filtro ele continuaria somando nos cards depois de estornado.
-      .is('deleted_at', null)
-      .order('data_lancamento', { ascending: false })
-      .limit(5000);
+    // Montada por página: cada chamada precisa de uma query nova, porque um
+    // builder do supabase-js não se reaproveita depois de executado.
+    const paginaDoPeriodo = (de: number, ate: number) => {
+      let query = supabase
+        .from('livro_caixa')
+        .select(`id, data_lancamento, tipo, valor, favorecido, plano_de_conta,
+                 categoria, forma_pg, referencia, obs, foto, legacy_id,
+                 num_doc, tipo_documento, member_id, church_id, operador, churches(name)`)
+        .gte('data_lancamento', dataInicio)
+        .lte('data_lancamento', dataFim)
+        // Estorno de pagamento do Contas a Pagar baixa o lançamento logicamente;
+        // sem este filtro ele continuaria somando nos cards depois de estornado.
+        .is('deleted_at', null)
+        .order('data_lancamento', { ascending: false })
+        // Desempate por `id`: `data_lancamento` repete centenas de vezes no mesmo
+        // dia, e ordem ambígua entre páginas repete linha numa e some com outra.
+        // A tabela é reordenada no cliente, então isto serve só à paginação.
+        .order('id', { ascending: true })
+        .range(de, ate);
 
-    if (selectedChurch?.id) {
-      query = query.eq('church_id', selectedChurch.id);
-    } else if (isChurchProfile && storedUser.churchId) {
-      query = query.eq('church_id', storedUser.churchId);
-    }
+      if (selectedChurch?.id) {
+        query = query.eq('church_id', selectedChurch.id);
+      } else if (isChurchProfile && storedUser.churchId) {
+        query = query.eq('church_id', storedUser.churchId);
+      }
 
-    const { data, error: err } = await query;
+      return query;
+    };
+
+    const { rows: encontrados, error: err, truncado } = await buscarTodasAsPaginas<Row>(paginaDoPeriodo);
     setLoading(false);
-    if (err) { setError('Erro ao buscar dados: ' + err.message); return; }
-    setRows((data as unknown as Row[]) || []);
+    if (err) { setError('Erro ao buscar dados: ' + err); return; }
+    setRows(encontrados);
+    setTruncado(truncado);
     void fetchPrevMonth();
     void fetchAPagar();
   }
@@ -1352,20 +1430,27 @@ export default function Cashbook() {
     const last = new Date(base.getFullYear(), base.getMonth(), 0);
     const f = (dt: Date) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 
-    let q = supabase
-      .from('livro_caixa')
-      .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, categoria, forma_pg, member_id, church_id, churches(name)')
-      .gte('data_lancamento', f(first))
-      .lte('data_lancamento', f(last))
-      .is('deleted_at', null)
-      .limit(5000);
+    const paginaDoMesAnterior = (de: number, ate: number) => {
+      let q = supabase
+        .from('livro_caixa')
+        .select('id, data_lancamento, tipo, valor, favorecido, plano_de_conta, categoria, forma_pg, member_id, church_id, churches(name)')
+        .gte('data_lancamento', f(first))
+        .lte('data_lancamento', f(last))
+        .is('deleted_at', null)
+        .order('id', { ascending: true })
+        .range(de, ate);
 
-    if (selectedChurch?.id) q = q.eq('church_id', selectedChurch.id);
-    else if (isChurchProfile && storedUser.churchId) q = q.eq('church_id', storedUser.churchId);
+      if (selectedChurch?.id) q = q.eq('church_id', selectedChurch.id);
+      else if (isChurchProfile && storedUser.churchId) q = q.eq('church_id', storedUser.churchId);
 
-    const { data, error: err } = await q;
+      return q;
+    };
+
+    // O mês anterior alimenta as setas de variação e a lista de quem deixou de
+    // dizimar. Truncado aqui apontava variação e ausência de dízimo falsas — a
+    // "Díz. faltando" acusava quem só estava depois da milésima linha.
+    const { rows: prev, error: err } = await buscarTodasAsPaginas<Row>(paginaDoMesAnterior);
     if (err) { setPrevMonthRows([]); setPrevDizimoMembers([]); return; }
-    const prev = (data as unknown as Row[]) || [];
     setPrevMonthRows(prev);
 
     // Membros distintos que dizimaram no mês anterior (com member_id).
@@ -1740,6 +1825,17 @@ export default function Cashbook() {
             <div className="mt-3 flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
+            </div>
+          ) : null}
+
+          {truncado ? (
+            <div className="mt-3 flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>
+                Período muito amplo: a consulta parou em {MAX_LINHAS.toLocaleString('pt-BR')} lançamentos
+                e <strong>há mais no período</strong>. Os totais acima somam apenas o que foi carregado —
+                reduza o intervalo de datas ou escolha uma igreja para fechar os números.
+              </span>
             </div>
           ) : null}
         </div>
