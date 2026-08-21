@@ -946,7 +946,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
 
         if (name === "gerar_grafico") {
           try {
-            const downloadUrl = generateChartSvg({
+            const downloadUrl = await generateChartSvg({
               tipo: args.tipo, titulo: args.titulo, subtitulo: args.subtitulo,
               categorias: args.categorias || [], series: args.series || [],
               prefixo: args.prefixo ?? "",
@@ -963,7 +963,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
 
         if (name === "gerar_pdf") {
           try {
-            const downloadUrl = generateReportPdf({
+            const downloadUrl = await generateReportPdf({
               titulo: args.titulo, subtitulo: args.subtitulo,
               colunas: args.colunas || [], linhas: args.linhas || [], totais: args.totais || []
             });
@@ -976,7 +976,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
 
         if (name === "gerar_excel") {
           try {
-            const downloadUrl = generateReportExcel({
+            const downloadUrl = await generateReportExcel({
               titulo: args.titulo, colunas: args.colunas || [], linhas: args.linhas || [], totais: args.totais || []
             });
             return { success: true, downloadUrl };

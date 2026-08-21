@@ -16,6 +16,7 @@ import * as echarts from "echarts";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { publicarArquivoGerado } from "./generatedFiles";
 
 export type ChartType = "barra" | "linha" | "pizza" | "barra_horizontal";
 
@@ -120,7 +121,7 @@ function montarOption(data: ChartData): any {
 }
 
 /** Desenha o gráfico e devolve a URL pública do SVG. */
-export function generateChartSvg(data: ChartData): string {
+export async function generateChartSvg(data: ChartData): Promise<string> {
   if (!data?.titulo) throw new Error("O gráfico precisa de um título.");
   if (!Array.isArray(data.categorias) || data.categorias.length === 0) {
     throw new Error("O gráfico precisa de pelo menos uma categoria.");
@@ -140,9 +141,5 @@ export function generateChartSvg(data: ChartData): string {
   chart.dispose();
 
   const fileName = `grafico-${crypto.randomUUID()}.svg`;
-  const destDir = path.join(process.cwd(), "public", "temp-reports");
-  if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-  fs.writeFileSync(path.join(destDir, fileName), svg, "utf8");
-
-  return `/temp-reports/${fileName}`;
+  return publicarArquivoGerado(svg, fileName, "image/svg+xml");
 }

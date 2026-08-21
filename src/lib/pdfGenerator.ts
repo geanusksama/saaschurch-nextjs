@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { publicarArquivoGerado } from "./generatedFiles";
 
 interface PdfReportData {
   titulo: string;
@@ -33,7 +34,7 @@ function limparParaPdf(texto: unknown): string {
     .trim();
 }
 
-export function generateReportPdf(dataOriginal: PdfReportData): string {
+export async function generateReportPdf(dataOriginal: PdfReportData): Promise<string> {
   // Limpa tudo na entrada: assim nenhum ponto do desenho precisa lembrar disso.
   const data: PdfReportData = {
     titulo: limparParaPdf(dataOriginal.titulo),
@@ -193,19 +194,10 @@ export function generateReportPdf(dataOriginal: PdfReportData): string {
   doc.setTextColor(148, 163, 184); // Slate 400
   doc.text(`Relatório gerado em ${todayStr} por Inteligência Artificial.`, margin, pageHeight - 10);
 
-  // Generate buffer and write to file
+  // Publica no Storage: gravar em public/ quebra no deploy serverless.
   const buffer = doc.output("arraybuffer");
   const fileName = `relatorio-${crypto.randomUUID()}.pdf`;
-  const destDir = path.join(process.cwd(), "public", "temp-reports");
-  
-  if (!fs.existsSync(destDir)) {
-    fs.mkdirSync(destDir, { recursive: true });
-  }
-
-  const destPath = path.join(destDir, fileName);
-  fs.writeFileSync(destPath, Buffer.from(buffer));
-
-  return `/temp-reports/${fileName}`;
+  return publicarArquivoGerado(Buffer.from(buffer), fileName, "application/pdf");
 }
 
 // ── Parecer por contato (módulo GF) ─────────────────────────────────────────

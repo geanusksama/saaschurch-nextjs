@@ -2,6 +2,7 @@ import * as XLSX from "xlsx";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { publicarArquivoGerado } from "./generatedFiles";
 
 interface ExcelReportData {
   titulo: string;
@@ -10,7 +11,7 @@ interface ExcelReportData {
   totais?: string[];
 }
 
-export function generateReportExcel(data: ExcelReportData): string {
+export async function generateReportExcel(data: ExcelReportData): Promise<string> {
   const wb = XLSX.utils.book_new();
   
   // Format the data array for spreadsheet
@@ -64,14 +65,9 @@ export function generateReportExcel(data: ExcelReportData): string {
   // Write buffer and save file
   const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
   const fileName = `relatorio-${crypto.randomUUID()}.xlsx`;
-  const destDir = path.join(process.cwd(), "public", "temp-reports");
-  
-  if (!fs.existsSync(destDir)) {
-    fs.mkdirSync(destDir, { recursive: true });
-  }
-
-  const destPath = path.join(destDir, fileName);
-  fs.writeFileSync(destPath, buffer);
-
-  return `/temp-reports/${fileName}`;
+  return publicarArquivoGerado(
+    buffer,
+    fileName,
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
 }
