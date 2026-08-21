@@ -226,7 +226,7 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/finance/cash-flow") return "Fluxo de Caixa";
   if (p === "/app-ui/finance/santander") return "Banco / Santander";
   if (p === "/app-ui/finance/diretoria") return "Painel Diretoria";
-  if (p === "/app-ui/finance/assistentes") return "Assistentes";
+  if (p === "/app-ui/finance/assistentes") return "Smart Report";
   if (p === "/app-ui/crm/spreadsheet") return "Planilhas Financeiras";
   if (p === "/app-ui/financial-reports") return "Relatórios Financeiros";
   if (p === "/app-ui/peniel/checkin") return "Check-in Peniel";
@@ -367,7 +367,7 @@ const appNavigation: NavigationSection[] = [
       { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },
       { name: 'Diretoria',        path: '/app-ui/finance/diretoria',       icon: BarChart3,       permKey: 'finance_executive' },
       { name: 'Rel. Financeiros', path: '/app-ui/financial-reports',      icon: BarChart3,       permKey: 'finance_reports' },
-      { name: 'Assistentes',      path: '/app-ui/finance/assistentes',    icon: Bot,             permKey: 'ai_assistants' },
+      { name: 'Smart Report',     path: '/app-ui/finance/assistentes',    icon: Snowflake,       permKey: 'ai_assistants' },
     ]
   },
   {

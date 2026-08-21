@@ -528,7 +528,11 @@ model Member {
   longitude           Decimal? @db.Decimal(11, 8)
 
   membershipStatus    String?   @default("AGUARDANDO ATIVACAO") @map("membership_status") @db.VarChar(30)
-  membershipDate      DateTime? @map("membership_date") @db.Date
+  /// Data de ENTRADA na igreja — é este o campo para contar crescimento, nunca
+  /// `createdAt`, que marca a chegada da linha neste banco (a migração de
+  /// 07/05/2026 carimbou 25.982 membros no mesmo dia). Default no banco:
+  /// CURRENT_DATE, para nenhum caminho de cadastro deixar a data em branco.
+  membershipDate      DateTime? @default(dbgenerated("CURRENT_DATE")) @map("membership_date") @db.Date
   ecclesiasticalTitle String?   @default("CONGREGADO") @map("ecclesiastical_title") @db.VarChar(120)
   baptismStatus       String?   @map("baptism_status") @db.VarChar(20)
   baptismDate         DateTime? @map("baptism_date") @db.Date

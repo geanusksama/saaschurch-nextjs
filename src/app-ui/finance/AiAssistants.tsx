@@ -14,7 +14,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, ToggleLeft, ToggleRight, Trash2, Edit2, Check, AlertCircle, RefreshCw,
   Bot, Sparkles, X, MessageSquare, ArrowLeft, Send, Table2, LayoutGrid, Lock, Globe,
-  ArrowRight, History, Search, Mic, Square,
+  ArrowRight, History, Search, Mic, Square, Snowflake,
 } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
 import { renderMessageContent } from '../../components/app-ui/shared/renderMessageContent';
@@ -664,11 +664,11 @@ export default function AiAssistants() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-white" />
+            <Snowflake className="w-5 h-5 text-white" />
           </div>
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Assistentes</h1>
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Smart Report</h1>
               <span className="text-sm text-slate-500 dark:text-slate-400">
                 — {saudacao}{primeiroNome ? `, ${primeiroNome}` : ''}! Sobre o que posso te ajudar hoje?
               </span>

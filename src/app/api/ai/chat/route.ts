@@ -5,7 +5,7 @@ import { getAiConfig } from "@/lib/aiConfig";
 import { canUseAgent, loadAgentAccess } from "@/lib/aiAgentAccess";
 import { generateReportPdf } from "@/lib/pdfGenerator";
 import { generateReportExcel } from "@/lib/excelGenerator";
-import { consultarDados, descreverTabelas, AI_TABELAS_NOMES, AI_QUERY_MAX_ROWS } from "@/lib/aiDataAccess";
+import { consultarDados, crescimentoMembros, processosSecretaria, camposDaTabela, listarTabelas, tabelasPorEspecialidade, AI_QUERY_MAX_ROWS } from "@/lib/aiDataAccess";
 import { generateChartSvg } from "@/lib/chartGenerator";
 
 /**
@@ -329,6 +329,12 @@ export async function POST(req: NextRequest) {
         fieldChurchIds = fieldChurches.map(c => c.id);
       }
 
+      // A especialidade do agente decide o que ele enxerga. Sem isto, o
+      // "Auxiliar Pastoral" tinha as ferramentas financeiras na mão e
+      // respondia "crescimento da igreja" com total de dízimos.
+      const ehFinanceiro = agent.role === "financeiro";
+      const tabelasPermitidas = tabelasPorEspecialidade(agent.role);
+
 
       const systemPrompt = `Você é um agente de IA assistente especialista chamado "${agent.name}" integrado ao SAAS Church.
 Sua especialidade/cargo é: "${agent.role}".
@@ -345,6 +351,10 @@ Contexto do usuário logado:
 - ID da Igreja: ${user.churchId || "Nenhum"}
 - Data/Hora de Referência (Hoje): ${currentDateTimeStr} (Brasília, ${weekday})
 - Data de Hoje (AAAA-MM-DD): ${currentDateStr}
+
+ESCOPO DESTE ASSISTENTE: ${ehFinanceiro
+  ? 'você é o assistente FINANCEIRO — tem acesso ao livro caixa, totais, rankings e cadastros de banco/departamento.'
+  : 'você NÃO tem acesso a dados financeiros. Suas ferramentas cobrem membros, igrejas e os processos da secretaria (batismo, consagração, transferência, requerimentos). Se perguntarem sobre dízimos, ofertas, receitas ou despesas, diga que isso é com o assistente financeiro — NUNCA responda uma pergunta sobre pessoas usando valores em dinheiro.'}
 
 Ao falar com o usuário, trate-o pelo nome e use uma linguagem profissional, prestativa e amigável.
       Se o usuário fizer perguntas financeiras sobre lançamentos, valores, totalizadores ou livro caixa, você PODE usar as ferramentas fornecidas para buscar os dados reais no banco de dados.
@@ -367,7 +377,14 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
    - NÃO use emoji em nenhuma resposta.
    - Ao chamar "gerar_pdf" ou "gerar_excel": mande texto limpo, SEM emoji, SEM markdown (nada de **, ##, |, crase) dentro de titulo, colunas, linhas e totais — esses campos são impressos como estão, e marcação ali vira lixo na folha. Uma informação por coluna; não junte "R$ 540,00 | Ativo" na mesma célula.
    - Depois de gerar PDF, Excel ou gráfico, entregue o link e um resumo curto do conteúdo — não repita o relatório inteiro no chat.
-12. Se a pergunta não couber nas ferramentas acima (um campo que elas não filtram, um cruzamento entre membro e lançamento, um histórico), use "consultar_dados": ela lê livremente as tabelas centrais e traz as tabelas relacionadas por join. Nela, para "quantos" use "contar": true e responda com o campo "total" — nunca conte a lista, que é limitada. Para somas de dinheiro continue usando consultar_totais/ranking_*.`;
+12. CRESCIMENTO DE MEMBROS — leia com atenção, aqui é fácil errar feio:
+   - Para QUANTOS membros novos/crescimento, use a ferramenta "crescimento_membros" e responda com os números dela. Ela já conta pelo campo certo, exclui fornecedores e desconta os lotes de migração. Só use consultar_dados para membros quando precisar de algo que ela não dá (uma lista nominal, por exemplo).
+   - Se for consultar por conta própria, o campo é "membershipDate" (data de entrada na igreja). NUNCA use "createdAt" para contar novos membros: createdAt é a data em que a linha entrou neste banco, e a migração de 07/05/2026 carimbou 25.982 dos 26.214 membros no MESMO dia. Contar por createdAt faz o lote da importação parecer crescimento.
+   - Filtre sempre memberType = "MEMBRO". A tabela members também guarda fornecedores (memberType "PJ", 2.527 registros) criados pela tela de Lançamento; eles não são pessoas da igreja e inflam qualquer contagem.
+   - membershipDate anterior a agosto/2024 também é carimbo de lote (22.251 pessoas com 08/03/2024 e 1.703 com 03/08/2024, vindas do sistema anterior). Ao comparar períodos que peguem essa faixa, diga isso ao usuário em vez de apresentar como crescimento real.
+   - BATISMOS, CONSAGRAÇÕES, TRANSFERÊNCIAS e REQUERIMENTOS: use a ferramenta "processos_secretaria", que já conta no servidor. NUNCA responda essas perguntas olhando a tabela members — não existe transferência nem batismo lá, e responder "nenhuma" a partir dela é dar informação falsa. Os mesmos dados também estão na tabela "pipeline" (consultar_dados) quando precisar de detalhe nominal, separados pelo campo service.serviceGroup: BATISMO, CONSAGRACAO, TRANSFERENCIA, REQUERIMENTO, CADASTRO, CREDENCIAL. NÃO use o campo "baptismDate"/"baptismStatus" de members nem a relação "baptisms" — estão praticamente vazios; o processo real é o card do pipeline. Batismo concluído = status "concluido" ou "batizado"; consagração concluída = "concluido" ou "consagrado". Para "quantos batismos no período", filtre por createdAt (abertura) ou closedAt (conclusão) e diga qual dos dois usou.
+   - Aqui também há lote de migração: 21.295 cards de batismo e 7.908 de consagração foram criados em 11/08/2024, o dia da importação. Períodos que peguem essa data não representam movimento real — avise.
+13. Se a pergunta não couber nas ferramentas acima (um campo que elas não filtram, um cruzamento entre membro e lançamento, um histórico), use "consultar_dados": ela lê livremente as tabelas centrais e traz as tabelas relacionadas por join. Nela, para "quantos" use "contar": true e responda com o campo "total" — nunca conte a lista, que é limitada. Para somas de dinheiro continue usando consultar_totais/ranking_*.`;
 
       // Formatar mensagens para OpenAI
       const openAiMessages = [
@@ -379,7 +396,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
       ];
 
       // Definir ferramentas (Functions)
-      const tools = [
+      const todasAsTools = [
         {
           type: "function",
           function: {
@@ -527,13 +544,13 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           type: "function",
           function: {
             name: "consultar_dados",
-            description: `Consulta LIVRE e somente-leitura das tabelas centrais do sistema, com JOIN das tabelas relacionadas. Use quando a pergunta não couber nas ferramentas específicas (um campo que elas não filtram, um cruzamento entre membro e lançamento, um histórico). Tabelas e relações disponíveis: ${descreverTabelas()}`,
+            description: `Consulta LIVRE e somente-leitura das tabelas do sistema, com JOIN das tabelas relacionadas. Use quando a pergunta não couber nas ferramentas específicas (um campo que elas não filtram, um cruzamento, um histórico). Antes de filtrar por um campo de que você não tem certeza, chame "estrutura_tabela". Tabelas disponíveis:\n${listarTabelas(tabelasPermitidas)}`,
             parameters: {
               type: "object",
               properties: {
                 tabela: {
                   type: "string",
-                  enum: AI_TABELAS_NOMES,
+                  enum: tabelasPermitidas,
                   description: "Tabela principal da consulta."
                 },
                 filtros: {
@@ -554,6 +571,59 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
                 },
                 limite: { type: "number", description: `Quantidade de registros (padrão 50, máximo ${AI_QUERY_MAX_ROWS}).` },
                 contar: { type: "boolean", description: "true retorna só a contagem em 'total', sem trazer os registros. Use para perguntas de 'quantos'." }
+              },
+              required: ["tabela"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "crescimento_membros",
+            description: "Retorna o CRESCIMENTO DE MEMBROS já contado pelo servidor: quantas pessoas ENTRARAM na igreja no período. Use SEMPRE que perguntarem 'quantos membros novos', 'crescimento da igreja', 'novos cadastros', 'quantos entraram nos últimos meses'. NUNCA conte membros por conta própria nem use a data de criação do registro — esta ferramenta já usa a data de entrada correta, exclui fornecedores e desconta os lotes de migração.",
+            parameters: {
+              type: "object",
+              properties: {
+                data_inicio: { type: "string", description: "Data inicial YYYY-MM-DD. Ex: para 'últimos 6 meses', calcule a partir da data de hoje informada no contexto." },
+                data_fim: { type: "string", description: "Data final YYYY-MM-DD. Omita para ir até hoje." },
+                igreja: { type: "string", description: "Nome ou parte do nome da igreja (ex: 'SEDE'). Omita para todo o campo." },
+                agrupar_por: { type: "string", enum: ["mes", "ano", "igreja"], description: "Como quebrar o resultado. Padrão: mes." }
+              }
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "processos_secretaria",
+            description: "Retorna os PROCESSOS DA SECRETARIA já contados pelo servidor: BATISMO, CONSAGRACAO, TRANSFERENCIA, REQUERIMENTO, CADASTRO e CREDENCIAL. Use SEMPRE que perguntarem sobre batismos, consagrações de obreiros/ministros, transferências entre igrejas, admissões, desligamentos ou readmissões. NUNCA responda essas perguntas olhando a tabela de membros — transferência e batismo NÃO estão em members, estão aqui.",
+            parameters: {
+              type: "object",
+              properties: {
+                tipo: {
+                  type: "string",
+                  enum: ["BATISMO", "CONSAGRACAO", "TRANSFERENCIA", "REQUERIMENTO", "CADASTRO", "CREDENCIAL"],
+                  description: "Tipo de processo. Omita para contar todos."
+                },
+                data_inicio: { type: "string", description: "Data inicial YYYY-MM-DD" },
+                data_fim: { type: "string", description: "Data final YYYY-MM-DD" },
+                igreja: { type: "string", description: "Nome ou parte do nome da igreja. Em transferências, casa tanto a origem quanto o destino — a resposta separa os dois em 'porPonta'." },
+                status: { type: "string", description: "Filtra pelo status do processo (concluido, batizado, consagrado, aprovado, pendente, reprovado, cancelado)." },
+                agrupar_por: { type: "string", enum: ["mes", "ano", "status", "igreja", "tipo"], description: "Como quebrar o resultado. Padrão: mes." },
+                base_da_data: { type: "string", enum: ["abertura", "conclusao"], description: "Contar pela data de abertura do processo (padrão) ou pela de conclusão." }
+              }
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "estrutura_tabela",
+            description: "Devolve a lista REAL de campos de uma tabela (nome, tipo e se e obrigatorio) e as relacoes que podem ser trazidas por join. Chame ANTES de montar um filtro em consultar_dados quando nao tiver certeza do nome do campo — melhor consultar a estrutura do que chutar e receber erro ou resposta errada.",
+            parameters: {
+              type: "object",
+              properties: {
+                tabela: { type: "string", enum: tabelasPermitidas, description: "Tabela cuja estrutura voce quer ver." }
               },
               required: ["tabela"]
             }
@@ -672,6 +742,18 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           }
         }
       ];
+
+      // Ferramentas de dinheiro só para o agente financeiro. As demais
+      // (membros, consulta livre, PDF/Excel/gráfico) valem para todos.
+      const FERRAMENTAS_FINANCEIRAS = new Set([
+        "consultar_livro_caixa", "consultar_totais", "ranking_igrejas", "ranking_pessoas",
+      ]);
+      const FERRAMENTAS_DE_PESSOAS = new Set(["crescimento_membros", "processos_secretaria"]);
+      const tools = todasAsTools.filter(t =>
+        ehFinanceiro
+          ? !FERRAMENTAS_DE_PESSOAS.has(t.function.name)
+          : !FERRAMENTAS_FINANCEIRAS.has(t.function.name)
+      );
 
       // Executor único de ferramentas, compartilhado entre OpenAI e Claude (Anthropic).
       // Retorna um objeto JS (o chamador serializa). Toda a matemática é feita aqui, no servidor.
@@ -824,7 +906,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
         if (name === "consultar_dados") {
           console.log("[POST /api/ai/chat] Tool 'consultar_dados' args:", JSON.stringify(args));
           try {
-            const resultado = await consultarDados(args, fieldChurchIds);
+            const resultado = await consultarDados(args, fieldChurchIds, tabelasPermitidas);
             return serializeDbData(resultado);
           } catch (queryErr: any) {
             // Filtro malformado é o erro comum aqui — devolver a mensagem deixa
@@ -832,6 +914,34 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
             console.error("[POST /api/ai/chat] consultar_dados falhou:", queryErr);
             return { erro: `Consulta inválida: ${queryErr?.message || queryErr}. Revise os nomes de campo e o formato do filtro e tente de novo.` };
           }
+        }
+
+        if (name === "crescimento_membros") {
+          console.log("[POST /api/ai/chat] Tool 'crescimento_membros' args:", args);
+          try {
+            return serializeDbData(await crescimentoMembros(args, fieldChurchIds));
+          } catch (err: any) {
+            console.error("[POST /api/ai/chat] crescimento_membros falhou:", err);
+            return { erro: err?.message || "Erro ao contar o crescimento de membros." };
+          }
+        }
+
+        if (name === "processos_secretaria") {
+          console.log("[POST /api/ai/chat] Tool 'processos_secretaria' args:", args);
+          try {
+            return serializeDbData(await processosSecretaria(args, fieldChurchIds));
+          } catch (err: any) {
+            console.error("[POST /api/ai/chat] processos_secretaria falhou:", err);
+            return { erro: err?.message || "Erro ao contar os processos da secretaria." };
+          }
+        }
+
+        if (name === "estrutura_tabela") {
+          const nome = String(args.tabela || "");
+          if (!tabelasPermitidas.includes(nome)) {
+            return { erro: `Tabela "${nome}" nao disponivel para este assistente.`, tabelasDisponiveis: tabelasPermitidas };
+          }
+          return camposDaTabela(nome);
         }
 
         if (name === "gerar_grafico") {

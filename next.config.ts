@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@prisma/client", "prisma"],
+  // echarts entra aqui porque o gerador de gráfico (src/lib/chartGenerator.ts)
+  // o usa em modo SSR no servidor: empacotado, o bundler resolve para o build de
+  // browser, que espera DOM e quebra na hora de desenhar.
+  serverExternalPackages: ["@prisma/client", "prisma", "echarts"],
   env: {
     // Carimbo do build. O service worker é registrado como /sw.js?v=<isto>,
     // então cada deploy vira um script novo para o navegador e o aviso de
