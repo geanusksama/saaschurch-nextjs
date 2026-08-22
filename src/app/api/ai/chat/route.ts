@@ -25,6 +25,68 @@ function respostaMaxTokens(configurado: number | undefined): number {
   return Math.max(Number(configurado) || 0, RESPOSTA_MAX_TOKENS);
 }
 
+/**
+ * Garante que o link de cada arquivo gerado no turno chegue íntegro ao chat.
+ *
+ * Escrever o link era tarefa do modelo, e ele errava de duas maneiras — as duas
+ * observadas no histórico de produção em 21/08/2026:
+ *
+ *   `[Gráfico de Batismos](/https://…supabase.co/…/grafico-8a38….svg)`
+ *   `[Gráfico de Crescimento](/temp-reports/grafico-af93….svg)`
+ *
+ * Nos dois casos o arquivo estava no Storage e acessível; o que quebrou foi a
+ * URL escrita na prosa. A causa é o exemplo `[Gráfico](/temp-reports/…)` que a
+ * descrição da ferramenta trazia: o modelo copiava o formato do exemplo em vez
+ * de usar a URL devolvida, ora colando a barra na frente da URL absoluta, ora
+ * remontando o caminho antigo com o uuid certo.
+ *
+ * A descrição agora não mostra caminho nenhum, e esta função fecha a porta:
+ * conserta as duas deformações pelo NOME DO ARQUIVO (que o modelo acerta, por
+ * ser o que veio na URL) e acrescenta ao final o que ele tenha esquecido de
+ * citar. Imagem entra como `![…]`, para o chat desenhar em vez de linkar.
+ */
+function corrigirLinksDeArquivos(
+  texto: string,
+  arquivos: { url: string; rotulo: string; ehImagem: boolean }[],
+): string {
+  if (arquivos.length === 0) return texto;
+  let saida = texto;
+
+  for (const arquivo of arquivos) {
+    const nome = arquivo.url.split("/").pop() || "";
+    if (!nome) continue;
+
+    // Qualquer alvo de link markdown que termine no nome deste arquivo é ele —
+    // não importa o prefixo que o modelo tenha inventado.
+    const alvoErrado = new RegExp(
+      `(!?)\\[([^\\]]*)\\]\\((?!${escaparRegex(arquivo.url)}\\))[^)]*${escaparRegex(nome)}\\)`,
+      "g",
+    );
+    saida = saida.replace(alvoErrado, (_m, bang, rotulo) =>
+      `${arquivo.ehImagem ? "!" : bang}[${rotulo || arquivo.rotulo}](${arquivo.url})`,
+    );
+
+    // Citou a URL certa, mas como link comum: imagem tem de abrir desenhada.
+    if (arquivo.ehImagem) {
+      saida = saida.replace(
+        new RegExp(`(?<!!)\\[([^\\]]*)\\]\\(${escaparRegex(arquivo.url)}\\)`, "g"),
+        (_m, rotulo) => `![${rotulo || arquivo.rotulo}](${arquivo.url})`,
+      );
+    }
+
+    // Nem citou: o arquivo foi gerado e o usuário precisa recebê-lo.
+    if (!saida.includes(arquivo.url)) {
+      saida += `\n\n${arquivo.ehImagem ? "!" : ""}[${arquivo.rotulo}](${arquivo.url})`;
+    }
+  }
+
+  return saida;
+}
+
+function escaparRegex(valor: string): string {
+  return valor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // Auxiliar para converter decimais e BigInts para JSON serializável
 function serializeDbData(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -370,7 +432,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
 7. Definições (idênticas ao Livro Caixa do sistema): DÍZIMO = receita cujo plano de conta contém "dízimo"; OFERTA = receita cujo plano de conta contém "oferta". LÍQUIDO = receitas − despesas.
 8. Se o usuário pedir "todas as igrejas do campo", NÃO passe o filtro de igreja — deixe a ferramenta agregar o campo inteiro.
 9. Sempre apresente valores monetários no formato R$ com duas casas (ex: R$ 64.512,23).
-10. Para GRÁFICOS ("faça um gráfico", "mostre a evolução", "compare visualmente"): use "gerar_grafico" com os valores que as ferramentas retornaram e inclua a URL devolvida como link markdown na resposta. Nunca invente valores para o gráfico.
+10. Para GRÁFICOS ("faça um gráfico", "mostre a evolução", "compare visualmente"): use "gerar_grafico" com os valores que as ferramentas retornaram. Nunca invente valores para o gráfico. O gráfico e os arquivos (PDF, Excel) entram na conversa sozinhos — NÃO escreva a URL nem monte link markdown para eles; só comente o que mostram.
 11. FORMATO DA RESPOSTA (vale sempre, mesmo que o prompt do agente não fale nada disso):
    - A tela renderiza markdown. Use tabela markdown para qualquer comparação de 3 ou mais itens, com cabeçalho e uma coluna por informação. Valores monetários alinhados no formato R$ 0.000,00.
    - Escreva em português claro, direto ao ponto, como um relatório para a liderança da igreja. Nada de jargão técnico, nome de tabela ou de ferramenta.
@@ -633,7 +695,10 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           type: "function",
           function: {
             name: "gerar_grafico",
-            description: "Desenha um GRÁFICO com os valores já apurados e devolve a URL da imagem. Use quando o usuário pedir gráfico, comparação visual, evolução ao longo do tempo ou distribuição. Informe SEMPRE valores que vieram de consultar_totais, ranking_igrejas, ranking_pessoas ou consultar_dados — nunca valores estimados. Depois de gerar, inclua a URL retornada na resposta como link markdown, ex: [Gráfico](/temp-reports/grafico-xxx.svg).",
+            // Sem exemplo de URL de propósito: com um caminho no texto, o modelo
+            // copiava o formato do exemplo em vez da URL devolvida e o link
+            // chegava quebrado. O servidor insere a imagem na resposta.
+            description: "Desenha um GRÁFICO com os valores já apurados. Use quando o usuário pedir gráfico, comparação visual, evolução ao longo do tempo ou distribuição. Informe SEMPRE valores que vieram de consultar_totais, ranking_igrejas, ranking_pessoas ou consultar_dados — nunca valores estimados. O gráfico é inserido na conversa automaticamente: NÃO escreva a URL nem monte link na resposta, apenas comente o que ele mostra.",
             parameters: {
               type: "object",
               properties: {
@@ -754,6 +819,21 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
           ? !FERRAMENTAS_DE_PESSOAS.has(t.function.name)
           : !FERRAMENTAS_FINANCEIRAS.has(t.function.name)
       );
+
+      /**
+       * Arquivos que as ferramentas geraram NESTE turno, na ordem em que saíram.
+       *
+       * O link do arquivo não pode depender do modelo escrever a URL certa: ele
+       * copiava o formato do exemplo da descrição da ferramenta em vez da URL
+       * devolvida, e o resultado chegava quebrado ao usuário de duas formas —
+       * `](/https://...supabase.co/...)` (barra colada numa URL absoluta) e
+       * `](/temp-reports/grafico-<uuid>.svg)` (caminho do exemplo com o uuid
+       * certo, apontando para um arquivo que não existe nesse caminho).
+       *
+       * Com o registro aqui, `corrigirLinksDeArquivos` conserta o texto final no
+       * servidor e o acerto não depende de obediência do modelo.
+       */
+      const arquivosGerados: { url: string; rotulo: string; ehImagem: boolean }[] = [];
 
       // Executor único de ferramentas, compartilhado entre OpenAI e Claude (Anthropic).
       // Retorna um objeto JS (o chamador serializa). Toda a matemática é feita aqui, no servidor.
@@ -951,9 +1031,10 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
               categorias: args.categorias || [], series: args.series || [],
               prefixo: args.prefixo ?? "",
             });
+            arquivosGerados.push({ url: downloadUrl, rotulo: args.titulo || "Gráfico", ehImagem: true });
             return {
               success: true, downloadUrl,
-              observacao: "Inclua esta URL na resposta como link markdown para o gráfico aparecer na conversa."
+              observacao: "O gráfico já será mostrado na conversa. Comente o que ele revela; não escreva o link."
             };
           } catch (chartErr: any) {
             console.error("[POST /api/ai/chat] Error generating chart:", chartErr);
@@ -967,7 +1048,8 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
               titulo: args.titulo, subtitulo: args.subtitulo,
               colunas: args.colunas || [], linhas: args.linhas || [], totais: args.totais || []
             });
-            return { success: true, downloadUrl };
+            arquivosGerados.push({ url: downloadUrl, rotulo: `Baixar PDF — ${args.titulo || "Relatório"}`, ehImagem: false });
+            return { success: true, downloadUrl, observacao: "O link já será incluído na conversa; não o escreva na resposta." };
           } catch (pdfErr: any) {
             console.error("[POST /api/ai/chat] Error generating PDF:", pdfErr);
             return { success: false, error: pdfErr.message || "Erro desconhecido ao gerar PDF." };
@@ -979,7 +1061,8 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
             const downloadUrl = await generateReportExcel({
               titulo: args.titulo, colunas: args.colunas || [], linhas: args.linhas || [], totais: args.totais || []
             });
-            return { success: true, downloadUrl };
+            arquivosGerados.push({ url: downloadUrl, rotulo: `Baixar Excel — ${args.titulo || "Planilha"}`, ehImagem: false });
+            return { success: true, downloadUrl, observacao: "O link já será incluído na conversa; não o escreva na resposta." };
           } catch (xlsErr: any) {
             console.error("[POST /api/ai/chat] Error generating Excel:", xlsErr);
             return { success: false, error: xlsErr.message || "Erro desconhecido ao gerar Excel." };
@@ -1164,6 +1247,10 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
       if (!assistantResponse.trim()) {
         assistantResponse = "Não consegui montar uma resposta para essa pergunta. Tente reformulá-la ou dividi-la em partes.";
       }
+
+      // Último passo antes de gravar: o link do arquivo gerado não pode depender
+      // de o modelo tê-lo escrito corretamente na prosa.
+      assistantResponse = corrigirLinksDeArquivos(assistantResponse, arquivosGerados);
 
       // 7. Salvar resposta da IA no banco
       const aiMsg = await prisma.aiChatMessage.create({

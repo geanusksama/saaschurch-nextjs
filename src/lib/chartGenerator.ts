@@ -1,10 +1,10 @@
 /**
  * Gráficos gerados pelo agente de IA.
  *
- * Mesma ideia do pdfGenerator: o servidor desenha o arquivo em
- * public/temp-reports e devolve a URL, que o agente entrega como link na
- * resposta — a tela do chat reconhece a extensão .svg e mostra o gráfico
- * dentro da conversa, em vez de virar um link para baixar.
+ * Mesma ideia do pdfGenerator: o servidor desenha o arquivo, publica no Storage
+ * (ver generatedFiles) e devolve a URL. Quem insere a imagem na resposta é a
+ * rota do chat, não o modelo — a tela reconhece a extensão .svg e desenha o
+ * gráfico dentro da conversa, em vez de virar um link para baixar.
  *
  * Usa o ECharts em modo SSR (`ssr: true` + renderer SVG). É o mesmo ECharts já
  * usado nas telas do sistema, e nesse modo ele monta o SVG como string sem

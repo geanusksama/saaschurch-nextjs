@@ -40,7 +40,12 @@ function renderInline(texto: string, keyBase: string, profundidade = 0): React.R
       const url = m[3];
       // URL relativa do sistema resolvida contra o host atual
       let absoluta = url;
-      if (url.startsWith('/')) {
+      if (/^\/https?:\/\//i.test(url)) {
+        // Barra colada numa URL absoluta: `/https://…supabase.co/…`. O servidor
+        // já não produz isso, mas as conversas gravadas antes da correção
+        // continuam no histórico e o gráfico delas tem de abrir do mesmo jeito.
+        absoluta = url.slice(1);
+      } else if (url.startsWith('/')) {
         absoluta = window.location.origin + url;
       } else if (url.includes('temp-reports/')) {
         absoluta = `${window.location.origin}/temp-reports/${url.split('temp-reports/').pop()}`;
