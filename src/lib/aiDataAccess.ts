@@ -523,7 +523,6 @@ export async function processosSecretaria(
 
   const where: any = { deletedAt: null }
   if (args.tipo) where.service = { serviceGroup: String(args.tipo).toUpperCase() }
-  if (args.status) where.status = { contains: args.status, mode: 'insensitive' }
   if (args.data_inicio || args.data_fim) {
     where[campoData] = {
       ...(args.data_inicio ? { gte: new Date(args.data_inicio) } : {}),
@@ -539,10 +538,46 @@ export async function processosSecretaria(
     ]
   }
 
+  /**
+   * O status de verdade é `statusLabel`, NUNCA `status`.
+   *
+   * `status` não acompanha o card quando ele anda no pipeline: em agosto/2026 os
+   * 51 batismos estavam todos com status "pendente" no banco, enquanto a tela
+   * de Batismo mostrava 4 pendentes e 47 aprovados. A tela acerta porque lê a
+   * coluna do card (Baptism.tsx conta por `columnIndex`), e `statusLabel` é o
+   * nome dessa coluna — bate com ela linha a linha. Perguntado por batismos
+   * aprovados em agosto, o agente respondeu ZERO lendo o campo velho.
+   *
+   * `statusLabel` está preenchido em 100% dos 91.705 cards, nos seis grupos de
+   * serviço — não há buraco que justifique voltar ao campo antigo.
+   *
+   * A distribuição é levantada ANTES de filtrar, por dois motivos: é ela que
+   * traduz o termo do usuário para os rótulos que existem de fato (comparando
+   * sem acento, senão "concluido" não acha "Concluído (legado)"), e é ela que
+   * responde "então o que tem?" quando o filtro devolve zero — o momento exato
+   * em que o modelo é mais tentado a inventar uma distribuição.
+   */
+  const distribuicaoDeStatus = await prisma.kanCard.groupBy({
+    by: ['statusLabel'],
+    where,
+    _count: { _all: true },
+  })
+
+  const semAcento = (v: string) =>
+    v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+
+  const rotulosQueCasam = args.status
+    ? distribuicaoDeStatus
+        .map(d => d.statusLabel)
+        .filter((r): r is string => !!r && semAcento(r).includes(semAcento(String(args.status))))
+    : null
+
+  if (rotulosQueCasam) where.statusLabel = { in: rotulosQueCasam }
+
   const cards = await prisma.kanCard.findMany({
     where,
     select: {
-      status: true, createdAt: true, closedAt: true, candidateName: true,
+      status: true, statusLabel: true, createdAt: true, closedAt: true, candidateName: true,
       intendedTitle: true, protocol: true,
       service: { select: { serviceGroup: true, description: true } },
       church: { select: { name: true } },
@@ -568,7 +603,7 @@ export async function processosSecretaria(
 
   const agruparPor = args.agrupar_por || 'mes'
   const chaveDe = (c: typeof cards[number]) => {
-    if (agruparPor === 'status') return c.status || '(sem status)'
+    if (agruparPor === 'status') return c.statusLabel || '(sem status)'
     if (agruparPor === 'tipo') return c.service?.serviceGroup || '(sem tipo)'
     if (agruparPor === 'igreja') return c.church?.name || '(sem igreja)'
     const d = dataDe(c)
@@ -610,12 +645,18 @@ export async function processosSecretaria(
       protocolo: c.protocol,
       pessoa: c.member?.fullName || c.candidateName,
       tipo: c.service?.description,
-      status: c.status,
+      status: c.statusLabel,
       origem: c.church?.name,
       destino: c.destinationChurch?.name,
       abertura: iso(c.createdAt),
       conclusao: c.closedAt ? iso(c.closedAt) : null,
     })),
+    ...(args.status ? { statusFiltrado: args.status, rotulosQueCasaram: rotulosQueCasam } : {}),
+    statusExistentesNoPeriodo: distribuicaoDeStatus
+      .map(d => ({ status: d.statusLabel || '(sem status)', quantidade: d._count._all }))
+      .sort((a, b) => b.quantidade - a.quantidade),
+    avisoStatus:
+      'Distribuição REAL das situações no mesmo período e escopo, ignorando o filtro de status. São EXATAMENTE estas as situações que existem: ao dizer quais são, use somente esta lista, nunca cite de memória nem suponha. Se o filtro devolveu zero, a resposta está aqui.',
     observacao:
       'Contagem feita pelo servidor sobre os processos do pipeline da secretaria. Use exatamente estes números. A lista "amostra" é só ilustrativa (máx. 15) — nunca conte por ela.',
   }

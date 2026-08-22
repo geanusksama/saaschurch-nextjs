@@ -613,10 +613,15 @@ export default function AiAssistants() {
                   <span className="text-[10px] text-slate-400 dark:text-slate-500">
                     {new Date(sess.updatedAt || sess.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                   </span>
+                  {/* Sempre visível: escondido atrás do hover, o botão não
+                      existia para quem usa toque, e mesmo no desktop era preciso
+                      descobrir que ele estava ali. Discreto por padrão, vermelho
+                      ao passar o mouse — dá para achar sem convidar ao clique. */}
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteSession(sess.id); }}
-                    className="p-1 rounded-md text-slate-300 dark:text-slate-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition-all"
+                    className="p-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                     title="Excluir conversa"
+                    aria-label={`Excluir conversa ${sess.title || 'sem título'}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
