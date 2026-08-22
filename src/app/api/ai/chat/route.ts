@@ -26,6 +26,33 @@ function respostaMaxTokens(configurado: number | undefined): number {
 }
 
 /**
+ * O usuário pediu, com todas as letras, dados de TODAS as igrejas?
+ *
+ * O prompt manda usar a igreja do usuário quando a pergunta não diz qual. Esse
+ * padrão gruda: perguntado "quero de todas as igrejas" logo depois de uma
+ * resposta sobre a SEDE, o agente repetiu o recorte da SEDE e ainda intitulou a
+ * resposta "AD Campinas SEDE" — eram 4 batismos em agosto/2026, quando havia 51
+ * no campo.
+ *
+ * Instrução em prosa já se mostrou insuficiente nesta rota. Quando a frase do
+ * usuário é inequívoca, o servidor crava a decisão para aquele turno, em vez de
+ * torcer para o modelo lembrar. Casos ambíguos continuam com o modelo — a
+ * escolha entre "minha igreja" e "o campo todo" é semântica, e só a frase do
+ * usuário a resolve.
+ *
+ * Acentos são removidos antes: "congregações" e "congregacoes" chegam as duas.
+ */
+function pediuTodasAsIgrejas(mensagem: string): boolean {
+  const texto = (mensagem || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  return /(tod[oa]s?\s+(as\s+|os\s+)?(igrejas|congregacoes|congregacao|filiais|localidades|as\s+igrejas))|(campo\s+(todo|inteiro))|(tod[oa]\s+o\s+campo)|(geral\s+do\s+campo)|(de\s+tod[oa]s?\s+as\s+igrejas)/.test(
+    texto,
+  );
+}
+
+/**
  * Garante que o link de cada arquivo gerado no turno chegue íntegro ao chat.
  *
  * Escrever o link era tarefa do modelo, e ele errava de duas maneiras — as duas
@@ -451,7 +478,14 @@ ESCOPO DESTE ASSISTENTE: ${ehFinanceiro
 
 Ao falar com o usuário, trate-o pelo nome e use uma linguagem profissional, prestativa e amigável.
       Se o usuário fizer perguntas financeiras sobre lançamentos, valores, totalizadores ou livro caixa, você PODE usar as ferramentas fornecidas para buscar os dados reais no banco de dados.
-      ATENÇÃO: Você tem acesso aos dados de todas as igrejas pertencentes ao seu campo/região. Por padrão, filtre ou informe os dados da igreja do usuário logado (${user.churchName || "Nenhuma"}, ID: ${user.churchId}) a menos que ele solicite explicitamente sobre outra filial ou sobre o campo todo.
+      ESCOPO DE IGREJA — vale para TODAS as ferramentas, financeiras e de secretaria:
+      - Você enxerga todas as igrejas do campo/região do usuário.
+      - O parâmetro "igreja" é OPCIONAL em toda ferramenta que o tem. Passe-o para restringir a UMA igreja; OMITA-O para abranger TODAS as igrejas do campo. Omitir é a única forma de ampliar — não existe valor de "igreja" que signifique "todas".
+      - O filtro NÃO é permanente. Cada pergunta reabre a decisão: ter respondido a anterior sobre uma igreja não prende as seguintes a ela.
+      - Se o usuário pedir "todas as igrejas", "todas as congregações", "todas as filiais", "o campo todo", "geral" ou equivalente, OMITA "igreja" — mesmo que a pergunta anterior fosse sobre uma igreja só. Não responda com o recorte antigo.
+      - Se ele nomear uma igreja, use aquela.
+      - Sem nenhuma indicação, use a igreja do usuário logado (${user.churchName || "Nenhuma"}, ID: ${user.churchId}) e DIGA na resposta que o recorte é dessa igreja, para ele saber que pode pedir mais amplo.
+      - O título e o texto da resposta têm de refletir o escopo que você de fato consultou. Escrever "da SEDE" sobre número do campo inteiro, ou o contrário, é erro grave.
 
 REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão depende disso):
 1. NUNCA some, conte ou ranqueie lançamentos manualmente a partir de listas. Os valores precisos são SEMPRE calculados pelo servidor.
@@ -477,7 +511,11 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
    - membershipDate anterior a agosto/2024 também é carimbo de lote (22.251 pessoas com 08/03/2024 e 1.703 com 03/08/2024, vindas do sistema anterior). Ao comparar períodos que peguem essa faixa, diga isso ao usuário em vez de apresentar como crescimento real.
    - BATISMOS, CONSAGRAÇÕES, TRANSFERÊNCIAS e REQUERIMENTOS: use a ferramenta "processos_secretaria", que já conta no servidor. NUNCA responda essas perguntas olhando a tabela members — não existe transferência nem batismo lá, e responder "nenhuma" a partir dela é dar informação falsa. Os mesmos dados também estão na tabela "pipeline" (consultar_dados) quando precisar de detalhe nominal, separados pelo campo service.serviceGroup: BATISMO, CONSAGRACAO, TRANSFERENCIA, REQUERIMENTO, CADASTRO, CREDENCIAL. NÃO use o campo "baptismDate"/"baptismStatus" de members nem a relação "baptisms" — estão praticamente vazios; o processo real é o card do pipeline. Batismo concluído = status "concluido" ou "batizado"; consagração concluída = "concluido" ou "consagrado". Para "quantos batismos no período", filtre por createdAt (abertura) ou closedAt (conclusão) e diga qual dos dois usou.
    - Aqui também há lote de migração: 21.295 cards de batismo e 7.908 de consagração foram criados em 11/08/2024, o dia da importação. Períodos que peguem essa data não representam movimento real — avise.
-13. Se a pergunta não couber nas ferramentas acima (um campo que elas não filtram, um cruzamento entre membro e lançamento, um histórico), use "consultar_dados": ela lê livremente as tabelas centrais e traz as tabelas relacionadas por join. Nela, para "quantos" use "contar": true e responda com o campo "total" — nunca conte a lista, que é limitada. Para somas de dinheiro continue usando consultar_totais/ranking_*.`;
+13. Se a pergunta não couber nas ferramentas acima (um campo que elas não filtram, um cruzamento entre membro e lançamento, um histórico), use "consultar_dados": ela lê livremente as tabelas centrais e traz as tabelas relacionadas por join. Nela, para "quantos" use "contar": true e responda com o campo "total" — nunca conte a lista, que é limitada. Para somas de dinheiro continue usando consultar_totais/ranking_*.${pediuTodasAsIgrejas(message)
+  ? `
+
+ESCOPO DESTA PERGUNTA — DECIDIDO, NÃO É SUGESTÃO: o usuário pediu TODAS as igrejas com todas as letras. NÃO passe o parâmetro "igreja" em NENHUMA ferramenta nesta resposta, ainda que a pergunta anterior fosse sobre uma igreja só. Não escreva o nome de uma única igreja no título nem diga que o dado é dela: os números são do campo inteiro.`
+  : ""}`;
 
       // Formatar mensagens para OpenAI
       const openAiMessages = [
@@ -517,7 +555,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
                 },
                 igreja: {
                   type: "string",
-                  description: "Nome ou parte do nome da igreja/filial (ex: 'SEDE', 'JD SAO FERNANDO') para filtrar"
+                  description: "Nome ou parte do nome da igreja/filial (ex: 'SEDE', 'JD SAO FERNANDO'). Omita para TODAS as igrejas do campo."
                 },
                 plano_de_conta: {
                   type: "string",
@@ -551,7 +589,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
                 data_fim: { type: "string", description: "Data de fim YYYY-MM-DD (ex: '2026-06-30')" },
                 tipo: { type: "string", enum: ["RECEITA", "DESPESA", "TRANSFERENCIA"], description: "Filtra por tipo de lançamento" },
                 favorecido: { type: "string", description: "Nome ou parte do nome do favorecido/membro" },
-                igreja: { type: "string", description: "Nome ou parte do nome da igreja/filial (ex: 'SEDE'). Omita para somar TODAS as igrejas do campo." },
+                igreja: { type: "string", description: "Nome ou parte do nome da igreja/filial (ex: 'SEDE'). Omita para TODAS as igrejas do campo." },
                 plano_de_conta: { type: "string", description: "Nome ou código do plano de conta (ex: 'DIZIMOS', 'OFERTAS')" },
                 categoria: { type: "string", description: "Categoria do lançamento" },
                 centro_de_custo: { type: "string", description: "Centro de custo" },
@@ -592,7 +630,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
               properties: {
                 data_inicio: { type: "string", description: "Data de início YYYY-MM-DD. Omita para considerar todo o período." },
                 data_fim: { type: "string", description: "Data de fim YYYY-MM-DD. Omita para considerar todo o período." },
-                igreja: { type: "string", description: "Nome ou parte do nome da igreja/filial (ex: 'SEDE'). Omita para considerar TODAS as igrejas do campo." },
+                igreja: { type: "string", description: "Nome ou parte do nome da igreja/filial (ex: 'SEDE'). Omita para TODAS as igrejas do campo." },
                 metrica: {
                   type: "string",
                   enum: ["dizimos", "ofertas", "receitas"],
@@ -623,7 +661,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
                 },
                 igreja: {
                   type: "string",
-                  description: "Nome ou parte do nome da igreja do membro (ex: 'SEDE')"
+                  description: "Nome ou parte do nome da igreja do membro (ex: 'SEDE'). Omita para TODAS as igrejas do campo."
                 },
                 status: {
                   type: "string",
@@ -679,7 +717,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
               properties: {
                 data_inicio: { type: "string", description: "Data inicial YYYY-MM-DD. Ex: para 'últimos 6 meses', calcule a partir da data de hoje informada no contexto." },
                 data_fim: { type: "string", description: "Data final YYYY-MM-DD. Omita para ir até hoje." },
-                igreja: { type: "string", description: "Nome ou parte do nome da igreja (ex: 'SEDE'). Omita para todo o campo." },
+                igreja: { type: "string", description: "Nome ou parte do nome da igreja (ex: 'SEDE'). Omita para TODAS as igrejas do campo." },
                 agrupar_por: { type: "string", enum: ["mes", "ano", "igreja"], description: "Como quebrar o resultado. Padrão: mes." }
               }
             }
@@ -700,7 +738,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
                 },
                 data_inicio: { type: "string", description: "Data inicial YYYY-MM-DD" },
                 data_fim: { type: "string", description: "Data final YYYY-MM-DD" },
-                igreja: { type: "string", description: "Nome ou parte do nome da igreja. Em transferências, casa tanto a origem quanto o destino — a resposta separa os dois em 'porPonta'." },
+                igreja: { type: "string", description: "Nome ou parte do nome da igreja. Omita para TODAS as igrejas do campo. Em transferências, casa tanto a origem quanto o destino — a resposta separa os dois em 'porPonta'." },
                 status: { type: "string", description: "Filtra pelo status do processo (concluido, batizado, consagrado, aprovado, pendente, reprovado, cancelado)." },
                 agrupar_por: { type: "string", enum: ["mes", "ano", "status", "igreja", "tipo"], description: "Como quebrar o resultado. Padrão: mes." },
                 base_da_data: { type: "string", enum: ["abertura", "conclusao"], description: "Contar pela data de abertura do processo (padrão) ou pela de conclusão." }
