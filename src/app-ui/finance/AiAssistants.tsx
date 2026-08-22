@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
 import { renderMessageContent } from '../../components/app-ui/shared/renderMessageContent';
+import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 
 interface AiAgent {
   id: string;
@@ -67,6 +68,21 @@ export default function AiAssistants() {
 
   // Tabela é o padrão; cartões para quem prefere olhar em grade.
   const [layout, setLayout] = useState<'tabela' | 'cards'>('tabela');
+
+  /**
+   * Confirmação pendente, no lugar do `window.confirm` do navegador — aquela
+   * tarja "www.adcampinas.com.br diz", fora do tema e com "OK" genérico para
+   * uma exclusão definitiva.
+   *
+   * Guarda a AÇÃO, não um booleano: assim o mesmo diálogo serve a qualquer
+   * exclusão nova sem virar um estado por botão.
+   */
+  const [confirmacao, setConfirmacao] = useState<null | {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    executar: () => void;
+  }>(null);
 
   // ── Modal de criação/edição ──
   const [showModal, setShowModal] = useState(false);
@@ -241,8 +257,16 @@ export default function AiAssistants() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este assistente?')) return;
+  const handleDelete = (id: string, nome?: string) => {
+    setConfirmacao({
+      title: 'Excluir assistente',
+      message: `${nome ? `"${nome}" ` : 'Este assistente '}sai da lista e deixa de responder. As conversas já gravadas permanecem no histórico.`,
+      confirmLabel: 'Excluir assistente',
+      executar: () => void excluirAssistente(id),
+    });
+  };
+
+  const excluirAssistente = async (id: string) => {
     setError('');
     try {
       const res = await fetch(`${apiBase}/ai/agents/${id}`, { method: 'DELETE', headers: authHeaders() });
@@ -293,8 +317,16 @@ export default function AiAssistants() {
     finally { setChatLoading(false); }
   };
 
-  const handleDeleteSession = async (id: string) => {
-    if (!window.confirm('Excluir esta conversa e todo o histórico dela?')) return;
+  const handleDeleteSession = (id: string, titulo?: string) => {
+    setConfirmacao({
+      title: 'Excluir conversa',
+      message: `${titulo ? `"${titulo}" — a` : 'A'} conversa e todas as mensagens dela são apagadas. Não há como desfazer.`,
+      confirmLabel: 'Excluir conversa',
+      executar: () => void excluirConversa(id),
+    });
+  };
+
+  const excluirConversa = async (id: string) => {
     try {
       const res = await fetch(`${apiBase}/ai/chat?sessionId=${id}`, { method: 'DELETE', headers: authHeaders() });
       if (!res.ok) throw new Error('Erro ao excluir conversa.');
@@ -426,10 +458,26 @@ export default function AiAssistants() {
     return `${sess.agent?.name || ''} ${sess.title || ''}`.toLowerCase().includes(q);
   });
 
+  /* A tela tem dois returns (chat em tela cheia e lista), e a exclusão pode
+     partir dos dois — o diálogo entra nos dois, senão o clique no chat abriria
+     a confirmação em um lugar onde ela não é renderizada. */
+  const dialogoConfirmacao = (
+    <ConfirmDialog
+      open={!!confirmacao}
+      title={confirmacao?.title || ''}
+      message={confirmacao?.message}
+      confirmLabel={confirmacao?.confirmLabel}
+      variant="danger"
+      onConfirm={() => { confirmacao?.executar(); setConfirmacao(null); }}
+      onCancel={() => setConfirmacao(null)}
+    />
+  );
+
   // ─── Chat em tela cheia ───────────────────────────────────────────────────
   if (chatAgent) {
     return (
       <div className="p-6 text-slate-900 dark:text-slate-100 flex flex-col h-[calc(100vh-80px)]">
+        {dialogoConfirmacao}
         <div className="flex items-center gap-4 mb-4">
           <button
             onClick={handleCloseChat}
@@ -461,7 +509,7 @@ export default function AiAssistants() {
           </button>
           {sessionId && (
             <button
-              onClick={() => handleDeleteSession(sessionId)}
+              onClick={() => handleDeleteSession(sessionId, chatAgent?.name)}
               className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
               title="Excluir esta conversa"
             >
@@ -618,7 +666,7 @@ export default function AiAssistants() {
                       descobrir que ele estava ali. Discreto por padrão, vermelho
                       ao passar o mouse — dá para achar sem convidar ao clique. */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleDeleteSession(sess.id); }}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteSession(sess.id, sess.title); }}
                     className="p-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                     title="Excluir conversa"
                     aria-label={`Excluir conversa ${sess.title || 'sem título'}`}
@@ -666,6 +714,7 @@ export default function AiAssistants() {
 
   return (
     <div className="p-6 text-slate-900 dark:text-slate-100">
+      {dialogoConfirmacao}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
@@ -807,7 +856,7 @@ export default function AiAssistants() {
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
+                onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id, session.title); }}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                 title="Excluir conversa"
               >
@@ -889,7 +938,7 @@ export default function AiAssistants() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(agent.id)}
+                        onClick={() => handleDelete(agent.id, agent.name)}
                         className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
                         title="Excluir assistente"
                       >
@@ -978,7 +1027,7 @@ export default function AiAssistants() {
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => handleDelete(agent.id)}
+                  onClick={() => handleDelete(agent.id, agent.name)}
                   className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
                   title="Excluir assistente"
                 >
