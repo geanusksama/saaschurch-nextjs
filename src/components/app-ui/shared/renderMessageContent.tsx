@@ -11,10 +11,15 @@
  * do texto é interpretado — o conteúdo entra sempre como texto do React, então
  * não há caminho para injeção.
  *
+ * A exceção é o bloco ```grafico, que carrega os números apurados e vira um
+ * gráfico interativo. Ele é escrito pelo SERVIDOR, não pelo modelo — a lição do
+ * link quebrado: o que precisa estar exato não passa pela prosa da IA.
+ *
  * Vivia dentro do widget AiChatAssistant. O widget saiu da barra superior —
  * o chat agora é a tela Assistentes (Finanças) — e este pedaço ficou.
  */
 import React from 'react';
+import { GraficoInterativo } from './GraficoInterativo';
 
 /**
  * Formatação dentro de uma linha: **negrito**, *itálico*, `código`, links e
@@ -119,6 +124,33 @@ export function renderMessageContent(content: string) {
 
   while (i < linhas.length) {
     const linha = linhas[i];
+
+    // ── Gráfico interativo ──
+    // Bloco ```grafico com os números que a ferramenta apurou, escrito pelo
+    // SERVIDOR (nunca pelo modelo). Vira um gráfico de verdade: tooltip com
+    // total, tabela sob demanda e clique que aponta a linha correspondente.
+    if (/^\s*```grafico\s*$/.test(linha)) {
+      const corpo: string[] = [];
+      i++;
+      while (i < linhas.length && !/^\s*```\s*$/.test(linhas[i])) {
+        corpo.push(linhas[i]);
+        i++;
+      }
+      i++; // fecha a cerca
+      try {
+        const dados = JSON.parse(corpo.join('\n'));
+        blocos.push(<GraficoInterativo key={`graf-${i}`} dados={dados} />);
+      } catch {
+        // JSON corrompido não pode derrubar a mensagem inteira: o texto da
+        // resposta vale mesmo sem o desenho.
+        blocos.push(
+          <p key={`graf-erro-${i}`} className="my-2 text-xs text-slate-400">
+            (não foi possível desenhar este gráfico)
+          </p>
+        );
+      }
+      continue;
+    }
 
     // ── Tabela ──
     if (ehLinhaTabela(linha) && i + 1 < linhas.length && ehSeparadorTabela(linhas[i + 1])) {

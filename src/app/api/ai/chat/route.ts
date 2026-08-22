@@ -87,6 +87,37 @@ function escaparRegex(valor: string): string {
   return valor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Coloca os gráficos do turno na resposta, como bloco ```grafico.
+ *
+ * O bloco carrega os números apurados; quem desenha é o navegador, o que dá
+ * tooltip com total, tabela sob demanda e clique apontando a linha. Por isso
+ * QUALQUER link para a imagem que o modelo tenha escrito é removido antes —
+ * senão o mesmo gráfico apareceria duas vezes, uma viva e uma estática, e a
+ * versão estática é justamente a que não responde a nada.
+ *
+ * Escrito pelo servidor, e não pedido ao modelo, pela mesma razão de sempre:
+ * JSON montado na prosa sai malformado cedo ou tarde.
+ */
+function inserirGraficos(texto: string, graficos: any[]): string {
+  if (graficos.length === 0) return texto;
+  let saida = texto;
+
+  for (const grafico of graficos) {
+    const nome = String(grafico.imagem || "").split("/").pop();
+    if (nome) {
+      saida = saida.replace(
+        new RegExp(`!?\\[[^\\]]*\\]\\([^)]*${escaparRegex(nome)}\\)`, "g"),
+        "",
+      );
+    }
+    saida += `\n\n\`\`\`grafico\n${JSON.stringify(grafico)}\n\`\`\``;
+  }
+
+  // Remover o link pode deixar linha só com espaço ou negrito vazio.
+  return saida.replace(/\*\*\s*\*\*/g, "").replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n");
+}
+
 // Auxiliar para converter decimais e BigInts para JSON serializável
 function serializeDbData(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -432,7 +463,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
 7. Definições (idênticas ao Livro Caixa do sistema): DÍZIMO = receita cujo plano de conta contém "dízimo"; OFERTA = receita cujo plano de conta contém "oferta". LÍQUIDO = receitas − despesas.
 8. Se o usuário pedir "todas as igrejas do campo", NÃO passe o filtro de igreja — deixe a ferramenta agregar o campo inteiro.
 9. Sempre apresente valores monetários no formato R$ com duas casas (ex: R$ 64.512,23).
-10. Para GRÁFICOS ("faça um gráfico", "mostre a evolução", "compare visualmente"): use "gerar_grafico" com os valores que as ferramentas retornaram. Nunca invente valores para o gráfico. O gráfico e os arquivos (PDF, Excel) entram na conversa sozinhos — NÃO escreva a URL nem monte link markdown para eles; só comente o que mostram.
+10. Para GRÁFICOS ("faça um gráfico", "mostre a evolução", "compare visualmente"): use "gerar_grafico" com os valores que as ferramentas retornaram. Nunca invente valores para o gráfico. O gráfico e os arquivos (PDF, Excel) entram na conversa sozinhos — NÃO escreva a URL nem monte link markdown para eles. O gráfico é interativo e já mostra os números (total no mouse, tabela completa num botão), então NÃO repita os mesmos valores numa tabela markdown logo abaixo; comente o que eles significam.
 11. FORMATO DA RESPOSTA (vale sempre, mesmo que o prompt do agente não fale nada disso):
    - A tela renderiza markdown. Use tabela markdown para qualquer comparação de 3 ou mais itens, com cabeçalho e uma coluna por informação. Valores monetários alinhados no formato R$ 0.000,00.
    - Escreva em português claro, direto ao ponto, como um relatório para a liderança da igreja. Nada de jargão técnico, nome de tabela ou de ferramenta.
@@ -698,7 +729,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
             // Sem exemplo de URL de propósito: com um caminho no texto, o modelo
             // copiava o formato do exemplo em vez da URL devolvida e o link
             // chegava quebrado. O servidor insere a imagem na resposta.
-            description: "Desenha um GRÁFICO com os valores já apurados. Use quando o usuário pedir gráfico, comparação visual, evolução ao longo do tempo ou distribuição. Informe SEMPRE valores que vieram de consultar_totais, ranking_igrejas, ranking_pessoas ou consultar_dados — nunca valores estimados. O gráfico é inserido na conversa automaticamente: NÃO escreva a URL nem monte link na resposta, apenas comente o que ele mostra.",
+            description: "Desenha um GRÁFICO INTERATIVO com os valores já apurados. Use quando o usuário pedir gráfico, comparação visual, evolução ao longo do tempo ou distribuição. Informe SEMPRE valores que vieram de consultar_totais, ranking_igrejas, ranking_pessoas ou consultar_dados — nunca valores estimados. O gráfico entra na conversa automaticamente e JÁ TRAZ os números: tooltip com total ao passar o mouse, tabela completa sob demanda e clique que aponta a linha. Portanto NÃO repita os valores numa tabela markdown, não escreva a URL e não monte link — apenas comente o que o gráfico mostra.",
             parameters: {
               type: "object",
               properties: {
@@ -834,6 +865,16 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
        * servidor e o acerto não depende de obediência do modelo.
        */
       const arquivosGerados: { url: string; rotulo: string; ehImagem: boolean }[] = [];
+
+      /**
+       * Gráficos do turno, com os números que os produziram.
+       *
+       * O desenho vai para o chat como bloco ```grafico e é montado no
+       * navegador, para o usuário poder apontar o mouse, ver o total e abrir a
+       * tabela. A imagem do Storage continua junto, como link de download: ela
+       * serve onde não roda JavaScript (ata, PDF, WhatsApp).
+       */
+      const graficosGerados: any[] = [];
 
       // Executor único de ferramentas, compartilhado entre OpenAI e Claude (Anthropic).
       // Retorna um objeto JS (o chamador serializa). Toda a matemática é feita aqui, no servidor.
@@ -1031,10 +1072,14 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
               categorias: args.categorias || [], series: args.series || [],
               prefixo: args.prefixo ?? "",
             });
-            arquivosGerados.push({ url: downloadUrl, rotulo: args.titulo || "Gráfico", ehImagem: true });
+            graficosGerados.push({
+              tipo: args.tipo, titulo: args.titulo, subtitulo: args.subtitulo,
+              categorias: args.categorias || [], series: args.series || [],
+              prefixo: args.prefixo ?? "", imagem: downloadUrl,
+            });
             return {
-              success: true, downloadUrl,
-              observacao: "O gráfico já será mostrado na conversa. Comente o que ele revela; não escreva o link."
+              success: true,
+              observacao: "O gráfico já será mostrado na conversa, com tabela e totais. Comente o que ele revela; não escreva link nem URL."
             };
           } catch (chartErr: any) {
             console.error("[POST /api/ai/chat] Error generating chart:", chartErr);
@@ -1251,6 +1296,7 @@ REGRAS OBRIGATÓRIAS PARA CONSULTAS FINANCEIRAS (siga sempre — sua precisão d
       // Último passo antes de gravar: o link do arquivo gerado não pode depender
       // de o modelo tê-lo escrito corretamente na prosa.
       assistantResponse = corrigirLinksDeArquivos(assistantResponse, arquivosGerados);
+      assistantResponse = inserirGraficos(assistantResponse, graficosGerados);
 
       // 7. Salvar resposta da IA no banco
       const aiMsg = await prisma.aiChatMessage.create({
