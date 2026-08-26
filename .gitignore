@@ -50,3 +50,10 @@ testsprite_tests/tmp/
 testsprite_tests/tmp/config.json
 # Relatorios/graficos gerados pela IA sob demanda — sao descartaveis
 /public/temp-reports/
+
+# Ferramentas locais de recriacao do banco. O schema completo e o script que
+# o gera sao material de trabalho para replicar o sistema em outros Supabase —
+# ficam fora do historico. Os seeds em supabase/seed-sistema/ continuam
+# versionados (sao catalogos com placeholders, sem dado real).
+/scripts/_tmp-dump.mjs
+/supabase/rebuild-full-schema.sql
