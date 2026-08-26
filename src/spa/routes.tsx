@@ -39,6 +39,7 @@ import { TwoFactorVerify } from "../components/auth/TwoFactorVerify";
 
 // App UI
 import { AppUI } from "../components/app-ui/AppUI";
+import { AppHome } from "../components/app-ui/AppHome";
 import FieldDashboard from "../app-ui/dashboard/FieldDashboard";
 import RegionalDashboard from "../app-ui/dashboard/RegionalDashboard";
 import { Members } from "../components/app-ui/Members";
@@ -499,7 +500,7 @@ export const router = createBrowserRouter([
     Component: AppUI,
     errorElement: <ErrorBoundary />,
     children: [
-      { index: true, Component: Notifications },
+      { index: true, Component: AppHome },
       { path: "dashboard/field", Component: FieldDashboard },
       { path: "dashboard/regional", Component: RegionalDashboard },
       { path: "members", Component: Members },

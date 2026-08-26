@@ -714,3 +714,15 @@ select:-webkit-autofill {
 .dark .parcela-card--pendente { background-color: rgba(249, 115, 22, .12); border-color: rgba(249, 115, 22, .4); }
 .dark .parcela-card--atrasado { background-color: rgba(239, 68, 68, .12); border-color: rgba(239, 68, 68, .4); }
 .dark .parcela-card--cancelada { background-color: #1e293b; border-color: #334155; opacity: .7; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Tela de Apps (home): os ladrilhos precisam manter as cores proprias mesmo
+   com o tema global ativo, senao todos viram a cor primaria (preto/cinza).
+   Declarado depois das regras de tema para vencer no cascade com a mesma
+   especificidade.
+   ────────────────────────────────────────────────────────────────────────── */
+.app-shell .app-tile-icon,
+.app-tile-icon {
+  background-color: var(--tile-color) !important;
+  color: #ffffff !important;
+}

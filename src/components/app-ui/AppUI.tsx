@@ -99,7 +99,7 @@ function Dove(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { MemberEditDrawer } from './MemberEditDrawer';
@@ -116,6 +116,7 @@ import { logClientAudit } from '../../lib/auditClient';
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from '../../lib/recentSearches';
 import { resolverActionUrl } from '../../lib/notificationLinks';
 import { useCampoVisible } from '../../lib/campoVisibility';
+import { useFavoritePaths, toggleFavoritePath } from '../../lib/favorites';
 
 
 interface ContextSwitcherItem {
@@ -126,12 +127,12 @@ interface ContextSwitcherItem {
   requiresPassword?: boolean;
 }
 
-interface NavigationSection {
+export interface NavigationSection {
   section: string;
   items: NavigationItem[];
 }
 
-interface NavigationItem {
+export interface NavigationItem {
   name: string;
   path: string;
   icon: any;
@@ -258,7 +259,26 @@ function getFriendlyScreenName(path: string): string {
 }
 
 
-const appNavigation: NavigationSection[] = [
+/** Chave sintetica da "categoria" Favoritos no painel lateral. */
+const FAVORITES_SECTION = '__favoritos__';
+
+/** Icone representativo de cada categoria do menu lateral colapsado. */
+const SECTION_ICONS: Record<string, any> = {
+  'Principal': Bell,
+  'Secretaria': Clipboard,
+  'Gestão Pastoral': HeartHandshake,
+  'Ministérios': Users,
+  'GF (Grupos Familiares)': Home,
+  'Patrimônio': Package,
+  'Eventos': Calendar,
+  'App Móvel': Smartphone,
+  'Finanças': DollarSign,
+  'Gestão EBD': BookOpen,
+  'Peniel': Dove,
+  'Sistema': Settings,
+};
+
+export const appNavigation: NavigationSection[] = [
   {
     section: 'Principal',
     items: [
@@ -271,12 +291,9 @@ const appNavigation: NavigationSection[] = [
     items: [
       { name: 'Pipeline',               path: '/app-ui/secretariat/pipeline',          icon: TrendingUp,  permKey: 'crm_pipeline' },
       { name: 'Campanhas',              path: '/app-ui/secretariat/campaigns',          icon: Megaphone,   permKey: 'secretaria_campanhas' },
-      { name: 'Serviços e Ocorrências', path: '/app-ui/secretariat/services',           icon: List,        permKey: 'services' },
-      { name: 'Configurar Pipelines',   path: '/app-ui/secretariat/pipelines',          icon: GitBranch,   permKey: 'pipeline_config' },
       { name: 'Igrejas',                path: '/app-ui/churches',                       icon: Building,    permKey: 'churches' },
       { name: 'Lista de Membros',       path: '/app-ui/members',                        icon: Users,       permKey: 'members' },
       { name: 'Quero ser Membro',       path: '/app-ui/membership-requests',            icon: UserPlus,    permKey: 'membership_requests' },
-      { name: 'Importação de Membros',  path: '/app-ui/members/import',                 icon: UserPlus,    permKey: 'member_import' },
       { name: 'Batismo',                path: '/app-ui/baptism',                        icon: Droplets,    permKey: 'baptism' },
       { name: 'Consagração',            path: '/app-ui/consecration',                   icon: Crown,       permKey: 'consecration' },
       { name: 'Ler QR Code',            path: '/app-ui/qr-reader',                      icon: QrCode,      permKey: 'qr_reader' },
@@ -286,7 +303,6 @@ const appNavigation: NavigationSection[] = [
       { name: 'Requerimentos',          path: '/app-ui/requirements',                   icon: FileText,    permKey: 'requirements' },
       { name: 'Presença',               path: '/app-ui/attendance',                     icon: Clipboard,   permKey: 'attendance' },
       { name: 'Gerar Ticket',           path: '/app-ui/secretariat/tickets',            icon: Ticket,      permKey: 'presence_tickets' },
-      { name: 'Contatos / Leads',       path: '/app-ui/contacts',                       icon: Contact,     permKey: 'crm_leads' },
       { name: 'Relatórios',             path: '/app-ui/reports',                        icon: BarChart3,   permKey: 'reports' },
       { name: 'Documentos',             path: '/app-ui/secretariat/word',               icon: FileText,    permKey: 'word_docs' },
       { name: 'Aniversariantes',        path: '/app-ui/birthdays',                      icon: Cake,        permKey: 'birthdays' },
@@ -318,13 +334,6 @@ const appNavigation: NavigationSection[] = [
     items: [
       { name: 'Bens e Patrimônio', path: '/app-ui/assets',                    icon: Package,       permKey: 'assets',         exact: true },
       { name: 'Inventário',        path: '/app-ui/asset-inventories',         icon: ClipboardList, permKey: 'asset_inventory' },
-    ]
-  },
-  {
-    section: 'Comunicação',
-    items: [
-      { name: 'WhatsApp (Caixa)',   path: '/app-ui/communication/whatsapp-inbox',      icon: MessageCircle, permKey: 'whatsapp_inbox' },
-      { name: 'WhatsApp Instâncias', path: '/app-ui/system/whatsapp',                icon: Smartphone,    permKey: 'whatsapp_instances' },
     ]
   },
   {
@@ -395,6 +404,12 @@ const appNavigation: NavigationSection[] = [
       { name: 'Usuários',              path: '/app-ui/system/users',        icon: Users,    permKey: 'system_users' },
       { name: 'Funções e Permissões',  path: '/app-ui/system/permissions',  icon: Shield,   permKey: 'system_roles' },
       { name: 'Configurações',         path: '/app-ui/system-settings',     icon: Settings, permKey: 'system_settings' },
+      { name: 'Serviços e Ocorrências', path: '/app-ui/secretariat/services',  icon: List,     permKey: 'services' },
+      { name: 'Configurar Pipelines',  path: '/app-ui/secretariat/pipelines', icon: GitBranch, permKey: 'pipeline_config' },
+      { name: 'Importação de Membros', path: '/app-ui/members/import',        icon: UserPlus, permKey: 'member_import' },
+      { name: 'Contatos / Leads',      path: '/app-ui/contacts',              icon: Contact,  permKey: 'crm_leads' },
+      { name: 'WhatsApp (Caixa)',      path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp_inbox' },
+      { name: 'WhatsApp Instâncias',   path: '/app-ui/system/whatsapp',       icon: Smartphone, permKey: 'whatsapp_instances' },
       { name: 'Senha dos Campos',      path: '/app-ui/system/campo-senhas', icon: Lock,     permKey: 'campo_passwords' },
       { name: 'Log de Auditoria',      path: '/app-ui/system/audit-log',    icon: FileText, permKey: 'audit_log' },
       { name: 'Integrações',           path: '/app-ui/system/integrations', icon: Plug,     permKey: 'integrations' },
@@ -610,14 +625,7 @@ export function AppUI() {
   const [memberEditorId, setMemberEditorId] = useState<string | null>(null);
   const [memberTitles, setMemberTitles] = useState<EcclesiasticalTitleOption[]>([]);
   const topSearchInputRef = useRef<HTMLInputElement>(null);
-  const [favoritePaths, setFavoritePaths] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem('mrm_favorite_nav_items');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const favoritePaths = useFavoritePaths();
 
   const activeContext = switcherItems.find(
     (item) => item.id === selectedContext.id && item.level === selectedContext.level,
@@ -780,9 +788,6 @@ export function AppUI() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('mrm_favorite_nav_items', JSON.stringify(favoritePaths));
-  }, [favoritePaths]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -1142,11 +1147,138 @@ export function AppUI() {
     .filter((item): item is (typeof quickAccessItems)[number] => Boolean(item))
     .filter((item) => matchesSidebarSearch(item.name, item.section));
 
-  const toggleFavorite = (path: string) => {
-    setFavoritePaths((current) =>
-      current.includes(path)
-        ? current.filter((itemPath) => itemPath !== path)
-        : [...current, path],
+  const toggleFavorite = toggleFavoritePath;
+
+  // ── Menu lateral colapsado ────────────────────────────────────────────────
+  // A sidebar lista apenas as categorias; os itens abrem em um painel flutuante
+  // ao lado, evitando a lista longa e o scroll interminável.
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const [sectionPanelTop, setSectionPanelTop] = useState(0);
+  const sectionPanelRef = useRef<HTMLDivElement | null>(null);
+  const sectionTriggerRef = useRef<HTMLElement | null>(null);
+
+  const activeSection: { section: string; items: NavigationItem[] } | null =
+    openSection === FAVORITES_SECTION
+      ? { section: 'Favoritos', items: favoriteQuickAccessItems }
+      : openSection
+        ? visibleNavigation.find((section) => section.section === openSection) ?? null
+        : null;
+
+  const openSectionPanel = (sectionName: string, trigger: HTMLElement) => {
+    if (openSection === sectionName) {
+      setOpenSection(null);
+      return;
+    }
+    sectionTriggerRef.current = trigger;
+    setSectionPanelTop(trigger.getBoundingClientRect().top);
+    setOpenSection(sectionName);
+  };
+
+  // Reposiciona o painel para que ele nunca ultrapasse o rodapé da janela.
+  useLayoutEffect(() => {
+    if (!activeSection) return;
+    const panel = sectionPanelRef.current;
+    if (!panel) return;
+
+    const reposition = () => {
+      const margin = 16;
+      const anchorTop = sectionTriggerRef.current?.getBoundingClientRect().top ?? sectionPanelTop;
+      const maxTop = window.innerHeight - panel.offsetHeight - margin;
+      setSectionPanelTop(Math.max(margin, Math.min(anchorTop, maxTop)));
+    };
+
+    reposition();
+    window.addEventListener('resize', reposition);
+    return () => window.removeEventListener('resize', reposition);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection]);
+
+  // Fecha no Esc e em cliques fora do painel/gatilho.
+  useEffect(() => {
+    if (!openSection) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenSection(null);
+    };
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (sectionPanelRef.current?.contains(target)) return;
+      if ((target as HTMLElement).closest?.('[data-section-trigger]')) return;
+      setOpenSection(null);
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('mousedown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('mousedown', onPointerDown);
+    };
+  }, [openSection]);
+
+  // Some ao navegar ou quando a sidebar fecha.
+  useEffect(() => { setOpenSection(null); }, [location.pathname]);
+  useEffect(() => { if (!sidebarOpen) setOpenSection(null); }, [sidebarOpen]);
+
+  const closeSectionPanel = () => {
+    setOpenSection(null);
+    if (isMobile) setSidebarOpen(false);
+  };
+
+  /** Linha de item de menu — usada nos resultados de busca e no painel da categoria. */
+  const renderNavItem = (item: NavigationItem) => {
+    const Icon = item.icon;
+    const isActive = item.exact
+      ? location.pathname === item.path
+      : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+    const badge = getItemBadge(item);
+    const isFavorite = favoritePaths.includes(item.path);
+
+    return (
+      <div
+        key={item.path}
+        className={`group flex items-center gap-2 rounded-lg text-sm transition-all ${
+          isActive ? 'bg-purple-100 dark:bg-purple-900/40' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+        }`}
+      >
+        <Link
+          to={item.path}
+          onClick={closeSectionPanel}
+          className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
+            isActive
+              ? 'font-semibold text-purple-700 dark:text-purple-300'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+          }`}
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+          <span className="flex-1 truncate">{item.name}</span>
+          {badge && (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              isActive
+                ? 'bg-purple-200 text-purple-700 dark:bg-purple-800 dark:text-purple-200'
+                : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+            }`}>
+              {badge}
+            </span>
+          )}
+        </Link>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleFavorite(item.path);
+          }}
+          className={`mr-2 flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+            isFavorite
+              ? 'text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-500/10'
+              : 'text-slate-300 hover:bg-slate-200/70 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-600/50 dark:hover:text-slate-300'
+          }`}
+          title={isFavorite ? 'Remover dos favoritos' : 'Favoritar atalho'}
+        >
+          <Star className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+        </button>
+      </div>
     );
   };
 
@@ -1299,131 +1431,91 @@ export function AppUI() {
                 </div>
               </div>
 
-              <div className="mb-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/60">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Favoritos</p>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">
-                    {favoriteQuickAccessItems.length}
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {favoriteQuickAccessItems.length ? favoriteQuickAccessItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = item.exact ? location.pathname === item.path : (location.pathname === item.path || location.pathname.startsWith(item.path + '/'));
-                    const badge = getItemBadge(item);
-                    return (
-                      <div
-                        key={`favorite-${item.path}`}
-                        className={`group flex items-center gap-2 rounded-xl transition-all text-sm ${
-                          isActive ? 'bg-purple-100 dark:bg-purple-900/40' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        <Link
-                          to={item.path}
-                          className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                            isActive
-                              ? 'text-purple-700 dark:text-purple-300 font-semibold'
-                              : 'text-slate-700 dark:text-slate-300'
-                          }`}
-                        >
-                          <Icon className={`h-5 w-5 ${isActive ? 'text-purple-700 dark:text-purple-300' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`} />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate">{item.name}</p>
-                            <p className="truncate text-[11px] font-medium text-slate-400 dark:text-slate-500">{item.section}</p>
-                          </div>
-                          {badge ? (
-                            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-700 dark:bg-purple-500/20 dark:text-purple-200">
-                              {badge}
-                            </span>
-                          ) : null}
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            toggleFavorite(item.path);
-                          }}
-                          className="mr-2 flex h-8 w-8 items-center justify-center rounded-lg text-sky-500 transition-colors hover:bg-sky-100 dark:hover:bg-sky-500/10"
-                          title="Remover dos favoritos"
-                        >
-                          <Star className="h-4 w-4 fill-current" />
-                        </button>
-                      </div>
-                    );
-                  }) : (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-white/80 px-3 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-400">
-                      Marque a estrela nos menus para montar seus atalhos aqui.
-                    </div>
-                  )}
-                </div>
-              </div>
+              {/* Apps — volta para a tela inicial com todos os modulos */}
+              <Link
+                to="/app-ui"
+                onClick={() => isMobile && setSidebarOpen(false)}
+                className={`mb-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                  location.pathname === '/app-ui'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                <LayoutGrid className="h-5 w-5" />
+                <span>Apps</span>
+              </Link>
 
-              <div className="space-y-4">
-              {filteredNavigation.map((section) => (
-                <div key={section.section}>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">{section.section}</p>
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = item.exact ? location.pathname === item.path : (location.pathname === item.path || location.pathname.startsWith(item.path + '/'));
-                    const badge = getItemBadge(item);
-                    const isFavorite = favoritePaths.includes(item.path);
+              {/* Favoritos — agora colapsado como as categorias; abre no painel lateral */}
+              <button
+                type="button"
+                data-section-trigger
+                aria-expanded={openSection === FAVORITES_SECTION}
+                onClick={(event) => openSectionPanel(FAVORITES_SECTION, event.currentTarget)}
+                className={`mb-4 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
+                  openSection === FAVORITES_SECTION
+                    ? 'bg-purple-100 font-semibold text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'
+                }`}
+              >
+                <Star className={`h-5 w-5 shrink-0 ${favoriteQuickAccessItems.length ? 'fill-current text-amber-500' : ''}`} />
+                <span className="flex-1 truncate text-left">Favoritos</span>
+                <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                  {favoriteQuickAccessItems.length}
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0" />
+              </button>
+
+              {sidebarSearchQuery.trim() ? (
+                /* Busca ativa: lista achatada dos resultados, sem precisar abrir categoria */
+                <div className="space-y-4">
+                  {filteredNavigation.map((section) => (
+                    <div key={section.section}>
+                      <p className="mb-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{section.section}</p>
+                      {section.items.map((item) => renderNavItem(item))}
+                    </div>
+                  ))}
+                  {!filteredNavigation.length ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                      Nenhum menu encontrado para "{sidebarSearchQuery}".
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                /* Menu principal: so as categorias — os itens abrem no painel lateral */
+                <div className="space-y-1">
+                  {visibleNavigation.map((section) => {
+                    const SectionIcon = SECTION_ICONS[section.section] ?? LayoutGrid;
+                    const hasActiveItem = section.items.some((item) =>
+                      item.exact
+                        ? location.pathname === item.path
+                        : location.pathname === item.path || location.pathname.startsWith(item.path + '/'),
+                    );
+                    const isOpen = openSection === section.section;
+
                     return (
-                      <div
-                        key={item.path}
-                        className={`group flex items-center gap-2 rounded-lg transition-all text-sm ${
-                          isActive ? 'bg-purple-100 dark:bg-purple-900/40' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+                      <button
+                        key={section.section}
+                        type="button"
+                        data-section-trigger
+                        aria-expanded={isOpen}
+                        onClick={(event) => openSectionPanel(section.section, event.currentTarget)}
+                        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
+                          hasActiveItem || isOpen
+                            ? 'bg-purple-100 font-semibold text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'
                         }`}
                       >
-                        <Link
-                          to={item.path}
-                          className={`
-                            flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm
-                            ${isActive 
-                              ? 'text-purple-700 dark:text-purple-300 font-semibold' 
-                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                            }
-                          `}
-                        >
-                          <Icon className="w-5 h-5" />
-                          <span className="flex-1 truncate">{item.name}</span>
-                          {badge && (
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                              isActive
-                                ? 'bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-200'
-                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                            }`}>
-                              {badge}
-                            </span>
-                          )}
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            toggleFavorite(item.path);
-                          }}
-                          className={`mr-2 flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                            isFavorite
-                              ? 'text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-500/10'
-                              : 'text-slate-300 hover:bg-slate-200/70 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-600/50 dark:hover:text-slate-300'
-                          }`}
-                          title={isFavorite ? 'Remover dos favoritos' : 'Favoritar atalho'}
-                        >
-                          <Star className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
-                        </button>
-                      </div>
+                        <SectionIcon className="h-5 w-5 shrink-0" />
+                        <span className="flex-1 truncate text-left">{section.section}</span>
+                        <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                          {section.items.length}
+                        </span>
+                        <ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'translate-x-0.5' : ''}`} />
+                      </button>
                     );
                   })}
                 </div>
-              ))}
-              {!filteredNavigation.length ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                  Nenhum menu encontrado para "{sidebarSearchQuery}".
-                </div>
-              ) : null}
-              </div>
+              )}
             </nav>
 
             {/* User Profile */}
@@ -1698,6 +1790,47 @@ export function AppUI() {
         )}
       </AnimatePresence>
 
+      {/* Painel da categoria — renderizado fora da sidebar para nao herdar o
+          transform da animacao (que quebraria o position: fixed) nem ser
+          cortado pelo overflow do <nav>. O topo e reposicionado para nunca
+          passar do rodape da janela. */}
+      {activeSection && sidebarOpen && (
+        <div
+          ref={sectionPanelRef}
+          role="dialog"
+          aria-label={activeSection.section}
+          style={{
+            top: sectionPanelTop,
+            left: isMobile ? 16 : 296,
+            width: isMobile ? 'calc(100vw - 32px)' : 288,
+            maxHeight: 'calc(100vh - 32px)',
+          }}
+          className="fixed z-[60] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+        >
+          <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{activeSection.section}</p>
+            <button
+              type="button"
+              onClick={() => setOpenSection(null)}
+              title="Fechar"
+              aria-label="Fechar"
+              className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {activeSection.items.length ? (
+              activeSection.items.map((item) => renderNavItem(item))
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                Marque a estrela nos menus para montar seus atalhos aqui.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
@@ -1708,6 +1841,19 @@ export function AppUI() {
           >
             <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
           </button>
+
+          <Link
+            to="/app-ui"
+            title="Todos os aplicativos"
+            aria-label="Todos os aplicativos"
+            className={`p-2 rounded-lg transition-colors ${
+              location.pathname === '/app-ui'
+                ? 'bg-purple-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+            }`}
+          >
+            <LayoutGrid className="w-5 h-5" />
+          </Link>
 
           {/* Search */}
           <div className="flex flex-1 items-center gap-3 max-w-3xl">
