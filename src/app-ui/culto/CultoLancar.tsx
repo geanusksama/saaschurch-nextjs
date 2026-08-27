@@ -19,8 +19,8 @@ type Alvo = Bloco | 'DIRIGENTE';
 interface CardBloco {
   bloco: Alvo;
   titulo: string;
-  subtitulo: string;
-  campos: string;
+  /** Uma linha, só para dizer o que o card faz. */
+  legenda: string;
   icone: React.ElementType;
   gradiente: string;
 }
@@ -29,24 +29,21 @@ const CARDS: CardBloco[] = [
   {
     bloco: 'FINANCEIRO',
     titulo: 'Tesoureiro',
-    subtitulo: 'Financeiro do culto',
-    campos: 'Dízimos e ofertas.',
+    legenda: 'Dízimos e ofertas',
     icone: Wallet,
     gradiente: 'from-amber-500 to-orange-600',
   },
   {
     bloco: 'PRESENCA',
     titulo: 'Secretário',
-    subtitulo: 'Contagem de presença',
-    campos: 'Contagem de pessoas e cadeiras vazias.',
+    legenda: 'Contagem de presença',
     icone: Users,
     gradiente: 'from-rose-500 to-pink-600',
   },
   {
     bloco: 'DIRIGENTE',
     titulo: 'Dirigente',
-    subtitulo: 'Confere e aprova',
-    campos: 'Os envios da sua igreja no dia. Aprova ou cobra o que falta.',
+    legenda: 'Conferir e aprovar',
     icone: ShieldCheck,
     gradiente: 'from-emerald-500 to-green-600',
   },
@@ -123,7 +120,7 @@ export default function CultoLancar() {
       )}
 
       {!carregando && !erro && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 max-w-4xl">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 max-w-3xl">
           {/* Só o card do papel de quem entrou. Um tesoureiro não precisa ver
               o botão do secretário — não é dele e não abre. Master vê os dois
               porque precisa conferir os dois lados. */}
@@ -145,35 +142,25 @@ export default function CultoLancar() {
                     : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-800 opacity-60 cursor-not-allowed'
                 }`}
               >
-                <div className={`h-1.5 bg-gradient-to-r ${card.gradiente} ${ativo ? '' : 'opacity-40'}`} />
-                <div className="p-5">
+                <div className={`h-1 bg-gradient-to-r ${card.gradiente}`} />
+                <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div
-                      className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br ${card.gradiente} ${
-                        ativo ? '' : 'opacity-50'
-                      }`}
+                      className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br ${card.gradiente}`}
                     >
-                      <Icone className="w-6 h-6 text-white" />
+                      <Icone className="w-5 h-5 text-white" />
                     </div>
                     {ativo && (
                       <ArrowRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-all" />
                     )}
                   </div>
-                  <h3 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">
+                  <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
                     {card.titulo}
                   </h3>
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {card.subtitulo}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{card.campos}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{card.legenda}</p>
                   {ativo && igreja && (
-                    <p className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
-                      <strong className="text-slate-700 dark:text-slate-200">{igreja}</strong>
-                    </p>
-                  )}
-                  {!ativo && (
-                    <p className="mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-xs text-slate-400">
-                      Você não está anexado a esta posição.
+                    <p className="mt-2 text-xs text-slate-400 truncate" title={igreja}>
+                      {igreja}
                     </p>
                   )}
                 </div>
