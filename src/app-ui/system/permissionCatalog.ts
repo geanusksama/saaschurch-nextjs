@@ -74,6 +74,20 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Secretaria', name: 'Pipeline (Secretaria)', key: 'crm_pipeline',      permissions: mkPerms(full(), mngr(), mngr(), admin()) },
   { group: 'Secretaria', name: 'Configurar Pipelines',  key: 'pipeline_config',   permissions: mkPerms(admin(), admin(), admin(), admin()) },
 
+  // ── Gestão de Culto ──────────────────────────────────────────────────────
+  // Fechamento pós-culto com aprovação em cascata. Ver
+  // docs/modules/gestao-culto/SPEC.md.
+  //
+  // Estas chaves só decidem se a TELA abre. Quem vê qual bloco e quem pode
+  // aprovar é a matriz de posições (culto_posicoes), aplicada no servidor por
+  // src/lib/cultoScope.ts — permissão de tela não substitui escopo.
+  // NASCEM FECHADAS: só o master enxerga até que o administrador libere a chave
+  // para a FUNÇÃO (role) ou para o usuário na matriz de permissões. Módulo novo
+  // liberado por padrão apareceria de uma vez para os 262 usuários de igreja.
+  { group: 'Gestão de Culto', name: 'Gestão de Culto',   key: 'culto_gestao',   permissions: mkPerms(master(), master(), master(), master()) },
+  { group: 'Gestão de Culto', name: 'Lançar dados de culto', key: 'culto_lancar', permissions: mkPerms(master(), master(), master(), master()) },
+  { group: 'Gestão de Culto', name: 'Posições do Culto', key: 'culto_posicoes', permissions: mkPerms(master(), master(), master(), master()) },
+
   // ── Gestão Pastoral ──────────────────────────────────────────────────────
   { group: 'Gestão Pastoral', name: 'Gestão',                key: 'pastoral_visits',   permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Gestão Pastoral', name: 'Discipulado',           key: 'discipleship',       permissions: mkPerms(full(), full(), full(), admin()) },

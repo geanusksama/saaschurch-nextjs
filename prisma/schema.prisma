@@ -58,6 +58,8 @@ model Campo {
   settings             Setting[]                  @relation("CampoSettings")
   bancos               Banco[]
   departamentos        Departamento[]
+  cultoPosicoes        CultoPosicao[]             @relation("CampoCultoPosicoes")
+  cultoRegistros       CultoRegistro[]            @relation("CampoCultoRegistros")
 
   @@map("campos")
 }
@@ -84,6 +86,7 @@ model Regional {
   kanCardsOrigin      KanCard[] @relation("KanCardOriginRegional")
   kanCardsDestination KanCard[] @relation("KanCardDestinationRegional")
   events              Event[]   @relation("EventRegional")
+  cultoRegistros      CultoRegistro[] @relation("RegionalCultoRegistros")
 
   @@unique([campoId, code])
   @@map("regionais")
@@ -222,6 +225,10 @@ model Church {
   contasPagar            ContaPagar[]
   parcelasContasPagar    ParcelaContaPagar[]
   pagamentosParcela      PagamentoParcela[]
+
+  cultoPosicoes             CultoPosicao[]  @relation("ChurchCultoPosicoes")
+  cultoRegistros            CultoRegistro[] @relation("ChurchCultoRegistros")
+  cultoRegistrosComoHost    CultoRegistro[] @relation("HostChurchCultoRegistros")
 
   @@unique([regionalId, code])
   @@index([headquartersId])
@@ -438,6 +445,12 @@ model User {
   presenceTickets         ChurchPresenceTicket[] @relation("UserPresenceTickets")
   aiChatSessions          AiChatSession[]
   assetInventoriesStarted AssetInventory[]       @relation("AssetInventoryStartedBy")
+
+  cultoPosicoes         CultoPosicao[]    @relation("UserCultoPosicoes")
+  cultoPosicoesCriadas  CultoPosicao[]    @relation("UserCultoPosicoesCriadas")
+  cultoRegistrosCriados CultoRegistro[]   @relation("UserCultoRegistrosCriados")
+  cultoLancamentos      CultoLancamento[] @relation("UserCultoLancamentos")
+  cultoAprovacoes       CultoAprovacao[]  @relation("UserCultoAprovacoes")
 
   @@map("users")
 }
@@ -4074,4 +4087,172 @@ model ContabilidadeRelatorioAssinatura {
   @@unique([churchId, periodoInicio, periodoFim, slot])
   @@index([churchId, periodoInicio, periodoFim])
   @@map("contabilidade_relatorio_assinaturas")
+}
+
+// ---------------------------------------------------------------------------
+// GESTÃO DE CULTO — fechamento pós-culto com aprovação em cascata.
+// Ver docs/modules/gestao-culto/SPEC.md.
+//
+// Tesoureiro lança o financeiro, secretário lança a presença, um terceiro pode
+// lançar um complemento. Nenhum deles vê o bloco do outro. O dirigente da
+// igreja vê os três juntos e aprova; o dirigente da hospedeira aprova as
+// filhas; o pastor presidente só assiste, no topo.
+// ---------------------------------------------------------------------------
+
+/// Quem ocupa qual papel neste fluxo. Anexa USUÁRIO (não membro): quem envia e
+/// quem aprova precisa logar. church_function_history não serve porque anexa
+/// member_id. Ver decisão D1 da SPEC.
+model CultoPosicao {
+  id       String  @id @default(uuid()) @db.Uuid
+  campoId  String  @map("campo_id") @db.Uuid
+  /// NULL apenas para PRESIDENTE, que vale para o campo inteiro.
+  churchId String? @map("church_id") @db.Uuid
+  userId   String  @map("user_id") @db.Uuid
+
+  /// FINANCEIRO | PRESENCA | EXTRA | APROVADOR_LOCAL | APROVADOR_HOSPEDEIRA | PRESIDENTE
+  papel  String  @db.VarChar(30)
+  /// Rótulo livre exibido na tela ("Tesoureiro", "Dirigente", ...).
+  titulo String? @db.VarChar(120)
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  createdBy String?   @map("created_by") @db.Uuid
+
+  campo   Campo   @relation("CampoCultoPosicoes", fields: [campoId], references: [id], onDelete: Cascade)
+  church  Church? @relation("ChurchCultoPosicoes", fields: [churchId], references: [id], onDelete: Cascade)
+  user    User    @relation("UserCultoPosicoes", fields: [userId], references: [id], onDelete: Cascade)
+  creator User?   @relation("UserCultoPosicoesCriadas", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([campoId])
+  @@index([churchId, papel])
+  @@index([userId])
+  @@map("culto_posicoes")
+}
+
+/// O culto de uma igreja num dia. É a unidade que sobe na hierarquia.
+model CultoRegistro {
+  id         String  @id @default(uuid()) @db.Uuid
+  campoId    String  @map("campo_id") @db.Uuid
+  regionalId String? @map("regional_id") @db.Uuid
+  churchId   String  @map("church_id") @db.Uuid
+  /// Congelado na abertura: se a igreja trocar de hospedeira depois, o culto
+  /// de hoje continua contando para a hospedeira certa. Mesmo princípio de
+  /// church_leader_history.distance_km.
+  hostChurchId String? @map("host_church_id") @db.Uuid
+
+  dataCulto DateTime @map("data_culto") @db.Date
+  /// Período do culto. Sem hora não dá para consolidar por faixa de horário
+  /// nem separar o culto da manhã do da noite no mesmo dia.
+  /// NULL nos registros anteriores à coluna — a UI mostra "não informada".
+  horaInicio DateTime? @map("hora_inicio") @db.Time()
+  horaFim    DateTime? @map("hora_fim") @db.Time()
+  tipoCulto String   @default("CULTO") @map("tipo_culto") @db.VarChar(60)
+
+  /// ABERTO | AGUARDANDO_LOCAL | APROVADO_LOCAL | CONCLUIDO | REJEITADO
+  status     String  @default("ABERTO") @db.VarChar(30)
+  observacao String? @db.Text
+
+  concluidoEm DateTime? @map("concluido_em") @db.Timestamptz
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  createdBy String?   @map("created_by") @db.Uuid
+
+  campo      Campo     @relation("CampoCultoRegistros", fields: [campoId], references: [id], onDelete: Cascade)
+  regional   Regional? @relation("RegionalCultoRegistros", fields: [regionalId], references: [id], onDelete: SetNull)
+  church     Church    @relation("ChurchCultoRegistros", fields: [churchId], references: [id], onDelete: Cascade)
+  hostChurch Church?   @relation("HostChurchCultoRegistros", fields: [hostChurchId], references: [id], onDelete: SetNull)
+  creator    User?     @relation("UserCultoRegistrosCriados", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  lancamentos CultoLancamento[]
+  aprovacoes  CultoAprovacao[]
+
+  /// No banco a unicidade é um índice com COALESCE(hora_inicio, '00:00') —
+  /// ver a migration 20260827200000_culto_hora. O Prisma não expressa índice
+  /// por expressão, então aqui fica a versão simples; a rota de abertura
+  /// confere antes de criar.
+  @@unique([churchId, dataCulto, tipoCulto, horaInicio])
+  @@index([campoId, dataCulto])
+  @@index([dataCulto, horaInicio])
+  @@index([status])
+  @@index([hostChurchId])
+  @@index([regionalId])
+  @@map("culto_registros")
+}
+
+/// Um por bloco (FINANCEIRO, PRESENCA, EXTRA). Colunas tipadas em vez de JSON
+/// porque estes números viram soma e relatório por período (decisão D5).
+model CultoLancamento {
+  id         String @id @default(uuid()) @db.Uuid
+  registroId String @map("registro_id") @db.Uuid
+
+  /// FINANCEIRO | PRESENCA | EXTRA
+  bloco      String    @db.VarChar(20)
+  enviadoPor String?   @map("enviado_por") @db.Uuid
+  enviadoEm  DateTime? @map("enviado_em") @db.Timestamptz
+
+  // ── bloco FINANCEIRO ──
+  totalDizimos Decimal? @map("total_dizimos") @db.Decimal(15, 2)
+  totalOfertas Decimal? @map("total_ofertas") @db.Decimal(15, 2)
+  qtdDizimos   Int?     @map("qtd_dizimos")
+  qtdOfertas   Int?     @map("qtd_ofertas")
+
+  // ── bloco PRESENCA ──
+  qtdHomens         Int? @map("qtd_homens")
+  qtdMulheres       Int? @map("qtd_mulheres")
+  qtdJovens         Int? @map("qtd_jovens")
+  qtdAdolescentes   Int? @map("qtd_adolescentes")
+  qtdCriancas       Int? @map("qtd_criancas")
+  qtdVisitantes     Int? @map("qtd_visitantes")
+  qtdConversoes     Int? @map("qtd_conversoes")
+  qtdReconciliacoes Int? @map("qtd_reconciliacoes")
+  qtdFamilias       Int? @map("qtd_familias")
+  cadeirasVazias    Int? @map("cadeiras_vazias")
+
+  // ── bloco EXTRA ──
+  texto    String? @db.Text
+  anexoUrl String? @map("anexo_url") @db.VarChar(500)
+
+  /// Recado do lançador para quem aprova ("a oferta do sábado veio junto").
+  /// Separado de `texto`, que é o conteúdo do bloco EXTRA.
+  observacao String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  registro     CultoRegistro @relation(fields: [registroId], references: [id], onDelete: Cascade)
+  enviadoPorUser User?       @relation("UserCultoLancamentos", fields: [enviadoPor], references: [id], onDelete: SetNull)
+
+  @@unique([registroId, bloco])
+  @@index([enviadoPor])
+  @@map("culto_lancamentos")
+}
+
+/// Decisão viva de cada nível. O histórico completo fica em audit_logs, que o
+/// withAuth já grava sozinho em toda mutação.
+model CultoAprovacao {
+  id         String @id @default(uuid()) @db.Uuid
+  registroId String @map("registro_id") @db.Uuid
+
+  /// LOCAL | HOSPEDEIRA
+  nivel String @db.VarChar(20)
+  /// APROVADO | REJEITADO
+  decisao String @db.VarChar(20)
+
+  aprovadorId String? @map("aprovador_id") @db.Uuid
+  /// Obrigatório quando REJEITADO — é o que o dirigente cobra de volta.
+  motivo      String? @db.Text
+
+  decididoEm DateTime @default(now()) @map("decidido_em") @db.Timestamptz
+
+  registro  CultoRegistro @relation(fields: [registroId], references: [id], onDelete: Cascade)
+  aprovador User?         @relation("UserCultoAprovacoes", fields: [aprovadorId], references: [id], onDelete: SetNull)
+
+  @@unique([registroId, nivel])
+  @@index([aprovadorId])
+  @@map("culto_aprovacoes")
 }

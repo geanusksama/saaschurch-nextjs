@@ -172,6 +172,29 @@ export const LOOKUPS: Record<string, LookupConfig> = {
     ],
   },
 
+  "tipos-culto": {
+    key: "tipos-culto",
+    table: "tipo_culto",
+    label: "Tipos de Culto",
+    description:
+      "Culto, EBD, oração, jovens, vigília... Alimenta o dropdown do fechamento pós-culto (Gestão de Culto).",
+    orderBy: "ordem, nome",
+    permKey: "culto_gestao",
+    activeField: "ativo",
+    campoField: "campo_id",
+    softDelete: true,
+    warning:
+      "O código é o que fica gravado no culto — renomear o nome é seguro, mudar o código desliga o vínculo dos cultos já lançados.",
+    fields: [
+      { key: "codigo", label: "Código", type: "text", required: true, inList: true, help: "Estável, sem acento: CULTO, EBD, ORACAO. É o que fica gravado no registro." },
+      { key: "nome", label: "Nome", type: "text", required: true, inList: true, help: "O que o usuário lê no dropdown." },
+      { key: "descricao", label: "Descrição", type: "text" },
+      { key: "ordem", label: "Ordem", type: "number", inList: true, help: "Ordem no dropdown." },
+      { key: "ativo", label: "Ativo", type: "boolean", inList: true, help: "Só os ativos aparecem no dropdown." },
+      { key: "is_default", label: "Padrão", type: "boolean", inList: true, help: "Pré-selecionado no formulário de lançamento." },
+    ],
+  },
+
   departamentos: {
     key: "departamentos",
     table: "departamentos",

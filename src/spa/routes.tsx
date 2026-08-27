@@ -175,6 +175,10 @@ import TransferRequests from "../app-ui/ecclesiastical/TransferRequests";
 import TicketPresencePage from "../app-ui/ecclesiastical/TicketPresencePage";
 import SecretariatPipeline from "../app-ui/ecclesiastical/SecretariatPipeline";
 import SecretariaCampaigns from "../app-ui/secretaria/SecretariaCampaigns";
+import CultoHospedeiro from "../app-ui/culto/CultoHospedeiro";
+import CultoLancar from "../app-ui/culto/CultoLancar";
+import GestaoCulto from "../app-ui/culto/GestaoCulto";
+import PosicoesCulto from "../app-ui/culto/PosicoesCulto";
 import HelpCenterPage from "../app-ui/help/HelpCenterPage";
 import ServicesMatrix from "../app-ui/ecclesiastical/ServicesMatrix";
 import PipelinesAdmin from "../app-ui/ecclesiastical/PipelinesAdmin";
@@ -523,6 +527,10 @@ export const router = createBrowserRouter([
       { path: "secretariat/services", Component: ServicesMatrix },
       { path: "secretariat/pipelines", Component: PipelinesAdmin },
       { path: "secretariat/tickets", Component: TicketPresencePage },
+      { path: "culto", Component: CultoHospedeiro },
+      { path: "culto/gestao", Component: GestaoCulto },
+      { path: "culto/lancar", Component: CultoLancar },
+      { path: "culto/posicoes", Component: PosicoesCulto },
       { path: "crm/:id", Component: LeadDetail },
       { path: "crm/detail/:id", Component: CRMDetail },
       { path: "finance", Component: Finance },

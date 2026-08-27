@@ -78,6 +78,9 @@ import {
   LayoutTemplate,
   Package,
   ClipboardList,
+  ClipboardCheck,
+  UserCog,
+  PencilLine,
 } from 'lucide-react';
 
 function Dove(props: React.SVGProps<SVGSVGElement>) {
@@ -176,6 +179,10 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/inbox") return "Caixa de Entrada";
   if (p === "/app-ui/secretariat/pipeline") return "Pipeline da Secretaria";
   if (p === "/app-ui/secretariat/campaigns") return "Campanhas da Secretaria";
+  if (p === "/app-ui/culto") return "Gestão de Culto";
+  if (p === "/app-ui/culto/gestao") return "Gestão de Culto";
+  if (p === "/app-ui/culto/lancar") return "Lançar dados de culto";
+  if (p === "/app-ui/culto/posicoes") return "Posições do Culto";
   if (p === "/app-ui/secretariat/services") return "Serviços e Ocorrências";
   if (p === "/app-ui/secretariat/pipelines") return "Configurar Pipelines";
   if (p === "/app-ui/churches") return "Igrejas";
@@ -266,6 +273,7 @@ const FAVORITES_SECTION = '__favoritos__';
 const SECTION_ICONS: Record<string, any> = {
   'Principal': Bell,
   'Secretaria': Clipboard,
+  'Gestão de Culto': ClipboardCheck,
   'Gestão Pastoral': HeartHandshake,
   'Ministérios': Users,
   'GF (Grupos Familiares)': Home,
@@ -306,6 +314,15 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Relatórios',             path: '/app-ui/reports',                        icon: BarChart3,   permKey: 'reports' },
       { name: 'Documentos',             path: '/app-ui/secretariat/word',               icon: FileText,    permKey: 'word_docs' },
       { name: 'Aniversariantes',        path: '/app-ui/birthdays',                      icon: Cake,        permKey: 'birthdays' },
+    ]
+  },
+  {
+    section: 'Gestão de Culto',
+    items: [
+      { name: 'Hospedeiro',       path: '/app-ui/culto',           icon: LayoutGrid,     permKey: 'culto_gestao', exact: true },
+      { name: 'Gestão',           path: '/app-ui/culto/gestao',    icon: ClipboardCheck, permKey: 'culto_gestao' },
+      { name: 'Lançamentos',      path: '/app-ui/culto/lancar',    icon: PencilLine,     permKey: 'culto_lancar' },
+      { name: 'Posições',         path: '/app-ui/culto/posicoes',  icon: UserCog,        permKey: 'culto_posicoes' },
     ]
   },
   {
