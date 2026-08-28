@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.340Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.874Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 0d7449fb3f6c8936
+-- Baseline 6013fb939d04d7f4
 
 -- Triggers
 drop trigger if exists "trg_app_cart_items_campo_id" on "public"."app_cart_items";

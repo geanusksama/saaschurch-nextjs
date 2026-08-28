@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.341Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.875Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 0d7449fb3f6c8936
+-- Baseline 6013fb939d04d7f4
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -457,6 +457,12 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."help_ai_cache" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."help_ai_cache" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."help_ai_cache" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."home_cards" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."home_cards" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."home_cards" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."home_configs" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."home_configs" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."home_configs" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."inbox_attachments" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."inbox_attachments" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."inbox_attachments" to "service_role";

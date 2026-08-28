@@ -80,6 +80,7 @@ const settingsSections: SettingsSection[] = [
     items: [
       { id: 'church-info',   name: 'Informações da Igreja', description: 'Nome, endereço e contatos',       path: '/app-ui/system/church-info',  permKey: 'settings_church_info' },
       { id: 'branding',      name: 'Marca e Aparência',      description: 'Logo, cores e temas',             path: '/app-ui/system/branding',     permKey: 'settings_branding' },
+      { id: 'home-publica',  name: 'Home Pública',           description: 'Marca, textos, cores e ícones da home', path: '/app-ui/system/home-publica', permKey: 'settings_home_publica' },
       { id: 'localization',  name: 'Localização e Idioma',   description: 'Fuso horário e moeda',            path: '/app-ui/system/localization', permKey: 'settings_localization' },
     ]
   },

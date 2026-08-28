@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.339Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.873Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 0d7449fb3f6c8936
+-- Baseline 6013fb939d04d7f4
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -114,6 +114,9 @@ CREATE INDEX IF NOT EXISTS funcoes_igreja_member_id_idx ON public.church_functio
 CREATE INDEX IF NOT EXISTS headquarters_field_id_idx ON public.headquarters USING btree (field_id);
 CREATE UNIQUE INDEX IF NOT EXISTS headquarters_legacy_id_key ON public.headquarters USING btree (legacy_id);
 CREATE INDEX IF NOT EXISTS historico_dirigente_igreja_church_id_entry_date_idx ON public.church_leader_history USING btree (church_id, entry_date);
+CREATE UNIQUE INDEX IF NOT EXISTS home_cards_config_id_key_key ON public.home_cards USING btree (config_id, key);
+CREATE INDEX IF NOT EXISTS home_cards_config_id_sort_order_idx ON public.home_cards USING btree (config_id, sort_order);
+CREATE UNIQUE INDEX IF NOT EXISTS home_configs_campo_id_key ON public.home_configs USING btree (campo_id);
 CREATE INDEX IF NOT EXISTS idx_ai_agent_users_agent ON public.ai_agent_users USING btree (agent_id);
 CREATE INDEX IF NOT EXISTS idx_ai_agent_users_user ON public.ai_agent_users USING btree (user_id);
 CREATE INDEX IF NOT EXISTS idx_apn_campo ON public.app_push_notifications USING btree (campo_id);

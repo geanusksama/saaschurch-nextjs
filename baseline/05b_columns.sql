@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.335Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.867Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 0d7449fb3f6c8936
+-- Baseline 6013fb939d04d7f4
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -2005,6 +2005,53 @@ alter table "public"."help_ai_cache" add column if not exists "sources" jsonb de
 alter table "public"."help_ai_cache" add column if not exists "hits" integer default 1 not null;
 alter table "public"."help_ai_cache" add column if not exists "created_at" timestamp with time zone default now() not null;
 alter table "public"."help_ai_cache" add column if not exists "last_used_at" timestamp with time zone default now() not null;
+alter table "public"."home_cards" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."home_cards" add column if not exists "config_id" uuid;
+alter table "public"."home_cards" add column if not exists "key" character varying(60);
+alter table "public"."home_cards" add column if not exists "action" character varying(20) default 'link'::character varying not null;
+alter table "public"."home_cards" add column if not exists "title" character varying(160);
+alter table "public"."home_cards" add column if not exists "subtitle" text;
+alter table "public"."home_cards" add column if not exists "url" character varying(500);
+alter table "public"."home_cards" add column if not exists "icon" character varying(40) default 'Circle'::character varying not null;
+alter table "public"."home_cards" add column if not exists "icon_color" character varying(7);
+alter table "public"."home_cards" add column if not exists "hover_color" character varying(7);
+alter table "public"."home_cards" add column if not exists "visible" boolean default true not null;
+alter table "public"."home_cards" add column if not exists "pulse" boolean default false not null;
+alter table "public"."home_cards" add column if not exists "live_dot" boolean default false not null;
+alter table "public"."home_cards" add column if not exists "full_width" boolean default false not null;
+alter table "public"."home_cards" add column if not exists "sort_order" integer default 0 not null;
+alter table "public"."home_cards" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."home_cards" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."home_configs" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."home_configs" add column if not exists "campo_id" uuid;
+alter table "public"."home_configs" add column if not exists "site_title" character varying(120);
+alter table "public"."home_configs" add column if not exists "site_description" character varying(300);
+alter table "public"."home_configs" add column if not exists "favicon_url" character varying(500);
+alter table "public"."home_configs" add column if not exists "logo_url" character varying(500);
+alter table "public"."home_configs" add column if not exists "watermark_url" character varying(500);
+alter table "public"."home_configs" add column if not exists "pwa_name" character varying(120);
+alter table "public"."home_configs" add column if not exists "pwa_short_name" character varying(60);
+alter table "public"."home_configs" add column if not exists "pwa_icon_192" character varying(500);
+alter table "public"."home_configs" add column if not exists "pwa_icon_512" character varying(500);
+alter table "public"."home_configs" add column if not exists "pwa_icon_maskable" character varying(500);
+alter table "public"."home_configs" add column if not exists "hero_eyebrow" character varying(120);
+alter table "public"."home_configs" add column if not exists "hero_title" character varying(120);
+alter table "public"."home_configs" add column if not exists "hero_text" text;
+alter table "public"."home_configs" add column if not exists "verse_ref" character varying(80);
+alter table "public"."home_configs" add column if not exists "verse_label" character varying(40);
+alter table "public"."home_configs" add column if not exists "verse_text" text;
+alter table "public"."home_configs" add column if not exists "show_verse" boolean default true not null;
+alter table "public"."home_configs" add column if not exists "bg_dark" character varying(7) default '#0a0a0a'::character varying not null;
+alter table "public"."home_configs" add column if not exists "bg_light" character varying(7) default '#f5f4f0'::character varying not null;
+alter table "public"."home_configs" add column if not exists "accent_color" character varying(7) default '#d4af37'::character varying not null;
+alter table "public"."home_configs" add column if not exists "default_dark" boolean default true not null;
+alter table "public"."home_configs" add column if not exists "show_symbols" boolean default true not null;
+alter table "public"."home_configs" add column if not exists "show_spotlights" boolean default true not null;
+alter table "public"."home_configs" add column if not exists "watermark_opacity" numeric(4,3) default 0.05 not null;
+alter table "public"."home_configs" add column if not exists "symbol_colors" jsonb;
+alter table "public"."home_configs" add column if not exists "services_config" jsonb;
+alter table "public"."home_configs" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."home_configs" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."inbox_attachments" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."inbox_attachments" add column if not exists "message_id" uuid;
 alter table "public"."inbox_attachments" add column if not exists "name" character varying(255);

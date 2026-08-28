@@ -120,6 +120,7 @@ import ContabilidadeAgendamentos from "../app-ui/system/ContabilidadeAgendamento
 import {
   ChurchInfo,
   Branding,
+  HomePublica,
   Localization,
   Roles,
   Security,
@@ -591,6 +592,7 @@ export const router = createBrowserRouter([
       { path: "system/users/:id/permissions", Component: UserPermissions },
       { path: "system/church-info", Component: ChurchInfo },
       { path: "system/branding", Component: Branding },
+      { path: "system/home-publica", Component: HomePublica },
       { path: "system/localization", Component: Localization },
       { path: "system/roles", Component: Roles },
       { path: "system/permissions", Component: PermissionsMatrix },

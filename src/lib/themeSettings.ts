@@ -87,27 +87,14 @@ export function saveThemeSettings(settings: ThemeSettings) {
   localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(settings));
 }
 
-function syncFavicon(logoUrl: string | null) {
-  if (typeof document === 'undefined') return;
-
-  const href = logoUrl || '/favicon.ico';
-  const definitions = [
-    { rel: 'icon', type: 'image/png' },
-    { rel: 'shortcut icon', type: 'image/png' },
-    { rel: 'apple-touch-icon', type: 'image/png' },
-  ];
-
-  definitions.forEach(({ rel, type }) => {
-    let link = document.head.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = rel;
-      document.head.appendChild(link);
-    }
-    link.type = type;
-    link.href = href;
-  });
-}
+/**
+ * O favicon NAO e mais tocado aqui.
+ *
+ * Ele e publico: todo visitante ve o mesmo icone. Sincronizar a partir do
+ * localStorage (mrm_branding) so trocava o icone no navegador de quem tinha
+ * salvo a marca, e ainda concorria com o icone que o servidor renderiza. A
+ * fonte unica passou a ser Sistema -> Home Publica (home_configs.favicon_url).
+ */
 
 export function applyThemeSettings(settings: ThemeSettings) {
   const root = document.documentElement;
@@ -135,8 +122,6 @@ export function applyThemeSettings(settings: ThemeSettings) {
   root.style.setProperty('--theme-secondary', normalizedSecondary);
   root.style.setProperty('--theme-secondary-hover', shade(normalizedSecondary, -8));
   root.style.setProperty('--theme-secondary-soft', alpha(normalizedSecondary, 0.12));
-
-  syncFavicon(settings.logoUrl);
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(THEME_EVENT_NAME, {

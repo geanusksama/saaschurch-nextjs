@@ -1,6 +1,7 @@
 // System Settings Screens
 export { ChurchInfo } from './ChurchInfo';
 export { Branding } from './Branding';
+export { HomePublica } from './HomePublica';
 export { AuditLog } from './AuditLog';
 export { Security } from './Security';
 export { ApiKeys } from './ApiKeys';

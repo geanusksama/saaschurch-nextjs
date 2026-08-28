@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.338Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.870Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 0d7449fb3f6c8936
+-- Baseline 6013fb939d04d7f4
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -487,6 +487,10 @@ alter table "public"."help_ai_cache" alter column "question" set not null;
 alter table "public"."help_ai_cache" alter column "question_norm" set not null;
 alter table "public"."help_ai_cache" alter column "scope_hash" set not null;
 alter table "public"."help_ai_cache" alter column "answer" set not null;
+alter table "public"."home_cards" alter column "config_id" set not null;
+alter table "public"."home_cards" alter column "key" set not null;
+alter table "public"."home_cards" alter column "title" set not null;
+alter table "public"."home_configs" alter column "campo_id" set not null;
 alter table "public"."internal_chat_messages" alter column "campo_id" set not null;
 alter table "public"."internal_chat_messages" alter column "user_id" set not null;
 alter table "public"."internal_chat_messages" alter column "user_name" set not null;

@@ -277,6 +277,7 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   // Geral
   { group: 'Configurações', name: 'Informações da Igreja',      key: 'settings_church_info',     permissions: mkPerms(admin(), none(), admin(), none()) },
   { group: 'Configurações', name: 'Marca e Aparência',           key: 'settings_branding',         permissions: mkPerms(admin(), none(), admin(), none()) },
+  { group: 'Configurações', name: 'Home Pública',                key: 'settings_home_publica',     permissions: mkPerms(admin(), none(), admin(), none()) },
   { group: 'Configurações', name: 'Localização e Idioma',        key: 'settings_localization',     permissions: mkPerms(admin(), none(), admin(), none()) },
   // Segurança
   { group: 'Configurações', name: 'Configurações de Segurança',  key: 'settings_security',         permissions: mkPerms(admin(), none(), admin(), none()) },

@@ -15,22 +15,11 @@ import {
   type FichaCompleta, type IgrejaPublica,
 } from './MembershipFullFormFields';
 import { cpfValido, digitos, mascaraTelefone } from './fichaHelpers';
-
-function DoveIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M22 3s-3 1-5.5 3c-3 2.5-5.5 6-6.5 8.5-.75.25-1.5.25-2.25 0-.5-.5-1-1.5-1.25-2.75C5.75 9 4.25 8.75 3 9c1.5 1.5 3 2.5 3.5 4.5.5 2 2 3.5 3.5 4.5.5.25.75.75.5 1.25-.25.75-1 1.75-2.5 2.25 1.25-.25 2.25-.75 2.5-1.5.25-.75.75-.75 1.25-.5 1 1 2.5 2.5 4.5 3.5-.25-1.25-.5-2.75-1.25-3.75C16 18.5 19.5 16 22 13.5c2-2 1.5-5.5 0-7.5-1-1-2-1-2.5-1.5.5-1 1-1.5.5-1.5z" />
-    </svg>
-  );
-}
+import { resolveHomeIcon } from './homeIcons';
+import {
+  DEFAULT_HOME_PAYLOAD, mapsUrlFor, mergeHomePayload, resolveCardUrl,
+  type HomeCard, type HomeConfigPayload, type HomeSede,
+} from '../../lib/homeConfig';
 
 interface FloatingItem {
   id: number;
@@ -61,8 +50,11 @@ const BIBLICAL_COLORS = [
   '#e2e8f0', // claro
 ];
 
-function BiblicalFloatingElements({ isDark }: { isDark: boolean }) {
+function BiblicalFloatingElements({ isDark, colors }: { isDark: boolean; colors?: string[] }) {
   const [items, setItems] = useState<FloatingItem[]>([]);
+  // A paleta vem da configuração da igreja; sem ela, a original.
+  const palette = colors && colors.length ? colors : BIBLICAL_COLORS;
+  const paletteKey = palette.join(',');
 
   useEffect(() => {
     const generated: FloatingItem[] = [];
@@ -79,13 +71,14 @@ function BiblicalFloatingElements({ isDark }: { isDark: boolean }) {
         // Ciclo de aparecer/sumir (fade) defasado por elemento
         fadeDuration: Math.floor(Math.random() * 6) + 7,
         fadeDelay: Math.floor(Math.random() * 10),
-        color: BIBLICAL_COLORS[i % BIBLICAL_COLORS.length],
+        color: palette[i % palette.length],
         // Opacidade de pico (mais visível que antes, mas sem competir com o texto)
         peak: (isDark ? 0.16 : 0.12) + Math.random() * 0.1,
       });
     }
     setItems(generated);
-  }, [isDark]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDark, paletteKey]);
 
   const renderSvgContent = (type: number) => {
     switch (type) {
@@ -205,6 +198,46 @@ export function PublicHome() {
       return true;
     }
   });
+  /**
+   * Personalização da igreja (logo, textos, cores, cartões e serviços).
+   * Começa no padrão — que é exatamente o conteúdo de hoje — e é substituída
+   * quando a API responde: a home nunca aparece vazia nem pisca.
+   */
+  const [home, setHome] = useState<HomeConfigPayload>(DEFAULT_HOME_PAYLOAD);
+
+  /**
+   * Se a pessoa já escolheu claro/escuro alguma vez. Precisa ser lido ANTES do
+   * efeito que persiste o tema rodar — depois dele a chave sempre existe e o
+   * tema padrão da igreja nunca seria aplicado.
+   */
+  const [tinhaPreferenciaDeTema] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try { return !!localStorage.getItem('mrm_theme_settings'); } catch { return true; }
+  });
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        // `no-store` também aqui: o cache do próprio navegador guardava a
+        // resposta anterior e a home continuava mostrando a configuração
+        // antiga mesmo depois de a igreja salvar.
+        const res = await fetch(`${apiBase}/public/home-config`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const payload = mergeHomePayload(await res.json());
+        if (!vivo) return;
+        setHome(payload);
+        // Tema inicial escolhido pela igreja só vale para quem ainda não
+        // clicou no sol/lua — a preferência da pessoa vence sempre.
+        if (!tinhaPreferenciaDeTema) setIsDark(payload.config.defaultDark);
+      } catch { /* sem configuração, segue com o padrão */ }
+    })();
+    return () => { vivo = false; };
+  }, [tinhaPreferenciaDeTema]);
+
+  const cfg = home.config;
+  const sede = home.sede;
+
   const [showMembroLogin, setShowMembroLogin] = useState(false);
   const [showPenielModal, setShowPenielModal] = useState(false);
   const [showVerseModal, setShowVerseModal] = useState(false);
@@ -353,7 +386,8 @@ export function PublicHome() {
     return () => { root.classList.toggle('dark', anterior); };
   }, [isDark]);
 
-  const bg        = isDark ? '#0a0a0a' : '#f5f4f0';
+  const bg        = isDark ? cfg.bgDark : cfg.bgLight;
+  const accent    = cfg.accentColor;
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSub   = isDark ? 'text-slate-400' : 'text-gray-500';
   const textMuted = isDark ? 'text-slate-500' : 'text-gray-400';
@@ -553,6 +587,143 @@ export function PublicHome() {
     }
   };
 
+  // ── Cartões da home ───────────────────────────────────────────────────────
+  // Cada ícone da tela é uma linha de `home_cards`. O JSX abaixo é o mesmo de
+  // antes (mesmas classes, mesmos tamanhos); o que mudou é de onde vêm título,
+  // ícone, cor e destino.
+
+  /** "linha 1\nlinha 2" → linha 1<br />linha 2 */
+  const comQuebras = (texto: string) =>
+    texto.split('\n').map((linha, i) => (
+      <span key={i}>{i > 0 && <br />}{linha}</span>
+    ));
+
+  /** Programação da sede agrupada por dia, na ordem cadastrada. */
+  const agendaPorDia = (dados: HomeSede) => {
+    const dias: { dia: string; itens: string[] }[] = [];
+    for (const linha of dados.schedules) {
+      const existente = dias.find(d => d.dia === linha.dayOfWeek);
+      const item = [linha.time, linha.name].filter(Boolean).join(' ');
+      if (existente) existente.itens.push(item);
+      else dias.push({ dia: linha.dayOfWeek, itens: [item] });
+    }
+    return dias;
+  };
+
+  const corpoDoCartao = (card: HomeCard) => {
+    if (card.action === 'maps') {
+      return (
+        <p className={`text-xs leading-relaxed ${textSub}`}>
+          {sede.address}
+          {sede.phone && <><br />Telefone/WhatsApp: {sede.phone}</>}
+        </p>
+      );
+    }
+
+    if (card.action === 'agenda') {
+      return (
+        <div className={`text-xs leading-relaxed space-y-0.5 ${textSub}`}>
+          {agendaPorDia(sede).map(({ dia, itens }) => (
+            <p key={dia}>
+              <strong className={textPrimary}>{dia}:</strong> {itens.join(' · ')}
+            </p>
+          ))}
+        </div>
+      );
+    }
+
+    if (!card.subtitle) return null;
+
+    return (
+      <p className={`text-xs leading-relaxed ${card.liveDot ? 'flex items-center gap-2' : ''} ${textSub}`}>
+        {comQuebras(card.subtitle)}
+        {card.liveDot && <span className="w-2.5 h-2.5 rounded-full bg-[#00b894] animate-pulse" />}
+      </p>
+    );
+  };
+
+  const renderCard = (card: HomeCard) => {
+    // O convite de instalar o app tem lógica própria (some se já instalado ou
+    // se o navegador não sabe instalar) e é padrão da plataforma.
+    if (card.action === 'pwa') return <InstallAppCard key={card.key} isDark={isDark} />;
+
+    const Icone = resolveHomeIcon(card.icon);
+    const destacado = !!card.iconColor;
+
+    const anel = (
+      <div
+        className={`home-card-ring flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center transition-colors ${
+          destacado ? 'border-2' : `border ${border}`
+        } ${card.pulse ? 'animate-pulse' : ''}`}
+        style={destacado ? {
+          borderColor: card.iconColor as string,
+          background: `${card.iconColor}1f`,
+          ...(card.pulse ? { boxShadow: `0 0 16px ${card.iconColor}73` } : {}),
+        } : undefined}
+      >
+        <Icone
+          className={`home-card-icon w-6 h-6 transition-colors ${destacado ? '' : iconColor}`}
+          style={destacado ? { color: card.iconColor as string } : undefined}
+        />
+      </div>
+    );
+
+    const conteudo = (
+      <>
+        {anel}
+        <div className="flex flex-col justify-center min-h-[3.5rem]">
+          <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>{card.title}</h3>
+          {corpoDoCartao(card)}
+        </div>
+      </>
+    );
+
+    const classe = `home-card flex items-start gap-4 group hover:opacity-80 transition-opacity text-left${
+      card.fullWidth ? ' lg:col-span-2' : ''
+    }`;
+    // Cor de hover vira variável CSS: classe Tailwind dinâmica não existe em
+    // build time, e a cor vem do banco.
+    const estilo = card.hoverColor ? ({ ['--hv' as any]: card.hoverColor }) : undefined;
+
+    if (card.action === 'link' || card.action === 'maps') {
+      const href = card.action === 'maps' ? mapsUrlFor(sede) : resolveCardUrl(card, sede);
+      // Link sem destino (rede social ainda não cadastrada em Informações da
+      // Igreja) não vira um <a> quebrado — vira um bloco sem clique.
+      if (!href) return <div key={card.key} className={classe} style={estilo}>{conteudo}</div>;
+      return (
+        <a key={card.key} href={href} target="_blank" rel="noopener noreferrer" className={classe} style={estilo}>
+          {conteudo}
+        </a>
+      );
+    }
+
+    if (card.action === 'agenda') {
+      return <div key={card.key} className={classe} style={estilo}>{conteudo}</div>;
+    }
+
+    const aoClicar = (e: React.MouseEvent) => {
+      if (card.action === 'membro') return setShowMembroLogin(true);
+      if (card.action === 'peniel') return setShowPenielModal(true);
+      if (card.action === 'verse') return setShowVerseModal(true);
+      if (card.action === 'gf') {
+        // A navegação só acontece quando o círculo termina de cobrir a tela.
+        setGfOrigin({ x: e.clientX, y: e.clientY });
+        setGfSliding(true);
+      }
+    };
+
+    return (
+      <button key={card.key} onClick={aoClicar} className={classe} style={estilo}>
+        {conteudo}
+      </button>
+    );
+  };
+
+  // Opções do atendimento da secretaria, filtradas e renomeadas pela igreja.
+  const fabOptions = FAB_OPTIONS
+    .filter(opt => !cfg.services.hidden.includes(opt.id))
+    .map(opt => ({ ...opt, label: cfg.services.labels[opt.id] || opt.label }));
+
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden font-sans transition-colors duration-500"
       style={{ background: bg }}>
@@ -570,6 +741,10 @@ export function PublicHome() {
         @keyframes cometAnimR{0%{transform:translate(0,0) rotate(-45deg);opacity:0}5%{opacity:1}20%,100%{transform:translate(100vw,100vh) rotate(-45deg);opacity:0}}
         .btn-phone{transition:transform 0.2s,box-shadow 0.2s}
         .btn-phone:hover{transform:scale(1.09)}
+        /* Cor de hover de cada cartão vem do banco: classe Tailwind dinâmica
+           não existe em build time, então a cor viaja numa variável CSS. */
+        .home-card:hover .home-card-ring{border-color:var(--hv,inherit)}
+        .home-card:hover .home-card-icon{color:var(--hv,inherit)}
         *::-webkit-scrollbar{display:none}
         
         /* Estilos globais para forçar cores de texto corretas nos inputs e selects em modo escuro/claro */
@@ -650,7 +825,7 @@ export function PublicHome() {
         }
       `}</style>
 
-      {isDark && (
+      {isDark && cfg.showSpotlights && (
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="spotlight-left"/><div className="spotlight-right"/>
           <div className="comet comet-1"/><div className="comet comet-2"/><div className="comet comet-3"/>
@@ -658,15 +833,21 @@ export function PublicHome() {
       )}
 
       {/* Elegant Biblical Floating Elements Background */}
-      <BiblicalFloatingElements isDark={isDark} />
+      {cfg.showSymbols && <BiblicalFloatingElements isDark={isDark} colors={cfg.symbolColors} />}
 
-      <img src="/adcampinas.png" alt=""
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-[80vw] md:w-[50vw] lg:w-[42rem] aspect-square object-cover rounded-full z-0"
-        style={{ opacity: isDark ? 0.05 : 0.04, mixBlendMode: isDark ? 'screen' : 'multiply' }} />
+      {cfg.watermarkUrl && (
+        <img src={cfg.watermarkUrl} alt=""
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-[80vw] md:w-[50vw] lg:w-[42rem] aspect-square object-cover rounded-full z-0"
+          style={{
+            // O tema claro sempre foi um pouco mais discreto que o escuro.
+            opacity: isDark ? cfg.watermarkOpacity : cfg.watermarkOpacity * 0.8,
+            mixBlendMode: isDark ? 'screen' : 'multiply',
+          }} />
+      )}
 
       {/* Header */}
       <header className="flex items-center justify-between p-6 md:px-12 relative z-10">
-        <img src="/adcampinas.png" alt="AD Campinas" className={`w-12 h-12 md:w-14 md:h-14 rounded-full object-cover opacity-95 hover:opacity-100 transition-opacity ring-1 ${isDark ? 'ring-white/10' : 'ring-black/10'}`} />
+        <img src={cfg.logoUrl} alt={cfg.siteTitle} className={`w-12 h-12 md:w-14 md:h-14 rounded-full object-cover opacity-95 hover:opacity-100 transition-opacity ring-1 ${isDark ? 'ring-white/10' : 'ring-black/10'}`} />
         <div className="flex items-center gap-3">
           {/* Contabilidade — gatilho invisivel a esquerda do icone de tema:
               7 toques abrem o modal do contador. Mesmo formato do icone de
@@ -690,120 +871,29 @@ export function PublicHome() {
       {/* Main content */}
       <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 md:px-24 py-12 relative z-10 gap-16 lg:gap-32">
         <div className="w-full md:w-1/2 max-w-lg">
-          <p className={`font-medium mb-2 text-sm tracking-wide ${textMuted}`}>Nossa missão é</p>
-          <h1 className={`text-6xl md:text-7xl lg:text-[5.5rem] font-medium mb-8 tracking-tight ${textPrimary}`}>REINAR</h1>
+          <p className={`font-medium mb-2 text-sm tracking-wide ${textMuted}`}>{cfg.heroEyebrow}</p>
+          <h1 className={`text-6xl md:text-7xl lg:text-[5.5rem] font-medium mb-8 tracking-tight ${textPrimary}`}>{cfg.heroTitle}</h1>
           <p className={`leading-relaxed mb-6 text-sm md:text-base font-light ${textSub}`}>
-            Restaurando vidas através do ensino da Palavra, investindo em pessoas,
-            nutrindo o conhecimento, para alcançar a cidade e estabelecer o Reino dos Céus.
+            {cfg.heroText}
           </p>
-          <div className="flex items-center gap-2">
-            <p className={`text-xs tracking-wide ${textMuted}`}>João 3:16</p>
-            <button
-              onClick={() => setShowVerseModal(true)}
-              className="text-xs font-semibold tracking-wide underline decoration-dotted underline-offset-4 hover:opacity-70 transition-opacity"
-              style={{ color: '#d4af37' }}
-            >
-              Leia
-            </button>
-          </div>
+          {cfg.showVerse && (
+            <div className="flex items-center gap-2">
+              <p className={`text-xs tracking-wide ${textMuted}`}>{cfg.verseRef}</p>
+              <button
+                onClick={() => setShowVerseModal(true)}
+                className="text-xs font-semibold tracking-wide underline decoration-dotted underline-offset-4 hover:opacity-70 transition-opacity"
+                style={{ color: accent }}
+              >
+                {cfg.verseLabel}
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* Os ícones vêm de `home_cards`: a igreja reordena, oculta, renomeia e
+            troca o destino de cada um em Sistema → Home Pública. */}
         <div className="w-full md:w-1/2 max-w-xl grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-7">
-
-          {/* 1. Sou Membro — destaque verde pulsante para chamar atenção */}
-          <button onClick={() => setShowMembroLogin(true)}
-            className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left">
-            <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors animate-pulse"
-              style={{ borderColor: '#22c55e', background: 'rgba(34,197,94,0.12)', boxShadow: '0 0 16px rgba(34,197,94,0.45)' }}>
-              <User className="w-6 h-6" style={{ color: '#22c55e' }} />
-            </div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Sou Membro</h3>
-              <p className={`text-xs leading-relaxed ${textSub}`}>Acesse sua área exclusiva<br />de membro da igreja.</p>
-            </div>
-          </button>
-
-          {/* 2. Inscrições Peniel */}
-          <button onClick={() => setShowPenielModal(true)} className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left">
-            <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors"
-              style={{ borderColor: '#d4af37', background: 'rgba(212,175,55,0.08)' }}>
-              <DoveIcon className="w-6 h-6 transition-colors" style={{ color: '#d4af37' }} />
-            </div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Inscrições Peniel e consultar inscrições</h3>
-              <p className={`text-xs leading-relaxed ${textSub}`}>Um lugar de encontro, fé e transformação.<br />Faça sua inscrição ou consulte uma já realizada.</p>
-            </div>
-          </button>
-
-          {/* 3. Grupos Familiares — lista pública com líder, endereço, mapa e distância.
-              Botão (não Link) porque a navegação só acontece depois do slide terminar. */}
-          <button
-            onClick={(e) => {
-              setGfOrigin({ x: e.clientX, y: e.clientY });
-              setGfSliding(true);
-            }}
-            className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left"
-          >
-            <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors"
-              style={{ borderColor: '#f59e0b', background: 'rgba(245,158,11,0.1)' }}>
-              <HomeIcon className="w-6 h-6" style={{ color: '#f59e0b' }} />
-            </div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Grupos Familiares</h3>
-              <p className={`text-xs leading-relaxed ${textSub}`}>Encontre um GF perto de você<br />e conheça o líder e o horário.</p>
-            </div>
-          </button>
-
-          {/* 4. Instalar o app — só aparece se o navegador permitir instalar
-              e o app ainda não estiver instalado */}
-          <InstallAppCard isDark={isDark} />
-
-          <a href="https://www.youtube.com/@tvadcampinas" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
-            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#ff0000] transition-colors ${border}`}><Play className={`w-6 h-6 group-hover:text-[#ff0000] transition-colors ${iconColor}`} /></div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Culto ao vivo</h3>
-              <p className={`text-xs leading-relaxed ${textSub}`}>Assista o culto ao vivo pela internet<br />em nosso canal no Youtube</p>
-            </div>
-          </a>
-
-          <a href="https://maisfm1029.com.br/" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
-            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-[#00b894] transition-colors ${border}`}><Radio className={`w-6 h-6 group-hover:text-[#00b894] transition-colors ${iconColor}`} /></div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>102,9</h3>
-              <p className={`text-xs leading-relaxed flex items-center gap-2 ${textSub}`}>Mais FM ao vivo <span className="w-2.5 h-2.5 rounded-full bg-[#00b894] animate-pulse" /></p>
-            </div>
-          </a>
-
-
-
-          <a href="https://www.instagram.com/adcampinas/" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
-            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-pink-500 transition-colors ${border}`}><Camera className={`w-6 h-6 group-hover:text-pink-500 transition-colors ${iconColor}`} /></div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Instagram</h3>
-              <p className={`text-xs leading-relaxed ${textSub}`}>Saiba o que está acontecendo, siga-nos<br />nas redes sociais</p>
-            </div>
-          </a>
-
-          <a href="https://www.google.com/maps/search/?api=1&query=Rua+Barão+de+Parnaíba,+149+-+Campinas" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group hover:opacity-80 transition-opacity">
-            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center group-hover:border-blue-400 transition-colors ${border}`}><MapPin className={`w-6 h-6 group-hover:text-blue-400 transition-colors ${iconColor}`} /></div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Nossa Sede</h3>
-              <p className={`text-xs leading-relaxed ${textSub}`}>Rua Barão de Parnaíba, 149 - Campinas<br />Telefone/WhatsApp: (19) 98928-1188</p>
-            </div>
-          </a>
-
-          <div className="flex items-start gap-4 lg:col-span-2">
-            <div className={`flex-shrink-0 w-14 h-14 rounded-full border flex items-center justify-center ${border}`}><Users className={`w-6 h-6 ${iconColor}`} /></div>
-            <div className="flex flex-col justify-center min-h-[3.5rem]">
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Dias de culto</h3>
-              <div className={`text-xs leading-relaxed space-y-0.5 ${textSub}`}>
-                <p><strong className={textPrimary}>Domingo:</strong> 8h EBD, 9:30 e 18:30 Culto da Família</p>
-                <p><strong className={textPrimary}>Quarta:</strong> 19:15 Culto de Ensino &nbsp;·&nbsp; <strong className={textPrimary}>Sexta:</strong> 23h Vigília</p>
-                <p><strong className={textPrimary}>Sábado:</strong> Manhã - Oração das Mulheres, Noite - Culto de Jovens</p>
-              </div>
-            </div>
-          </div>
-
+          {home.cards.filter(card => card.visible).map(renderCard)}
         </div>
       </main>
 
@@ -811,7 +901,9 @@ export function PublicHome() {
           está escondida pelo CSS global desta página */}
       <ScrollHint hidden={fabOpen || showFabModal || showMembroLogin || showPenielModal} />
 
-      {/* Floating Action Button (FAB) and Menu Stack */}
+      {/* Botão flutuante de atendimento da secretaria. A igreja pode desligá-lo
+          inteiro em Sistema → Home Pública. */}
+      {cfg.services.enabled && (
       <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
         {/* Floating Menu Stack */}
         <AnimatePresence>
@@ -837,7 +929,7 @@ export function PublicHome() {
                   msOverflowStyle: 'none'
                 }}
               >
-                {FAB_OPTIONS.map((opt, index) => {
+                {fabOptions.map((opt, index) => {
                   const Icon = opt.icon;
                   return (
                     <motion.div
@@ -846,7 +938,7 @@ export function PublicHome() {
                       animate={{
                         opacity: 1,
                         x: 0,
-                        transition: { delay: (FAB_OPTIONS.length - 1 - index) * 0.02 }
+                        transition: { delay: (fabOptions.length - 1 - index) * 0.02 }
                       }}
                       exit={{ opacity: 0, x: 20 }}
                       className="flex items-center gap-3 cursor-pointer group"
@@ -916,6 +1008,7 @@ export function PublicHome() {
           </motion.div>
         </button>
       </div>
+      )}
 
       {/* FAB Drawer Modal */}
       <AnimatePresence>
@@ -945,7 +1038,7 @@ export function PublicHome() {
                 <div className="flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-emerald-500" />
                   <h2 className={`font-bold text-lg ${textPrimary}`}>
-                    {activeForm === 'options' && 'Atendimento AD Campinas'}
+                    {activeForm === 'options' && cfg.services.title}
                     {activeForm === 'pastoral' && 'Solicitar Atendimento'}
                     {activeForm === 'membership' && 'Quero ser Membro'}
                     {activeForm === 'otp' && 'Verificação de WhatsApp'}
@@ -1566,15 +1659,14 @@ export function PublicHome() {
 
               <div className="flex items-center gap-2 mb-5">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(212,175,55,0.12)' }}>
-                  <BookOpen className="w-5 h-5" style={{ color: '#d4af37' }} />
+                  style={{ background: `${accent}1f` }}>
+                  <BookOpen className="w-5 h-5" style={{ color: accent }} />
                 </div>
-                <span className={`text-sm font-bold tracking-wide ${textPrimary}`}>João 3:16</span>
+                <span className={`text-sm font-bold tracking-wide ${textPrimary}`}>{cfg.verseRef}</span>
               </div>
 
               <p className={`text-lg md:text-xl leading-relaxed font-light italic ${textPrimary}`}>
-                &ldquo;Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito, para
-                que todo aquele que nele crê não pereça, mas tenha a vida eterna.&rdquo;
+                &ldquo;{cfg.verseText}&rdquo;
               </p>
             </motion.div>
           </div>

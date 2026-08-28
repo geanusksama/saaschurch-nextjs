@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.334Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.865Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 0d7449fb3f6c8936
+-- Baseline 6013fb939d04d7f4
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -2454,6 +2454,59 @@ create table if not exists "public"."help_ai_cache" (
   "hits" integer default 1 not null,
   "created_at" timestamp with time zone default now() not null,
   "last_used_at" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."home_cards" (
+  "id" uuid default gen_random_uuid() not null,
+  "config_id" uuid not null,
+  "key" character varying(60) not null,
+  "action" character varying(20) default 'link'::character varying not null,
+  "title" character varying(160) not null,
+  "subtitle" text,
+  "url" character varying(500),
+  "icon" character varying(40) default 'Circle'::character varying not null,
+  "icon_color" character varying(7),
+  "hover_color" character varying(7),
+  "visible" boolean default true not null,
+  "pulse" boolean default false not null,
+  "live_dot" boolean default false not null,
+  "full_width" boolean default false not null,
+  "sort_order" integer default 0 not null,
+  "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+);
+
+create table if not exists "public"."home_configs" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "site_title" character varying(120),
+  "site_description" character varying(300),
+  "favicon_url" character varying(500),
+  "logo_url" character varying(500),
+  "watermark_url" character varying(500),
+  "pwa_name" character varying(120),
+  "pwa_short_name" character varying(60),
+  "pwa_icon_192" character varying(500),
+  "pwa_icon_512" character varying(500),
+  "pwa_icon_maskable" character varying(500),
+  "hero_eyebrow" character varying(120),
+  "hero_title" character varying(120),
+  "hero_text" text,
+  "verse_ref" character varying(80),
+  "verse_label" character varying(40),
+  "verse_text" text,
+  "show_verse" boolean default true not null,
+  "bg_dark" character varying(7) default '#0a0a0a'::character varying not null,
+  "bg_light" character varying(7) default '#f5f4f0'::character varying not null,
+  "accent_color" character varying(7) default '#d4af37'::character varying not null,
+  "default_dark" boolean default true not null,
+  "show_symbols" boolean default true not null,
+  "show_spotlights" boolean default true not null,
+  "watermark_opacity" numeric(4,3) default 0.05 not null,
+  "symbol_colors" jsonb,
+  "services_config" jsonb,
+  "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
 );
 
 create table if not exists "public"."inbox_attachments" (

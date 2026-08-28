@@ -52,6 +52,7 @@ model Campo {
   stripeSubscriptions  StripeSubscription[]       @relation("CampoStripeSubscriptions")
   internalChatMessages InternalChatMessage[]
   penielConfig         PenielConfig?
+  homeConfig           HomeConfig?
   penielEvents         PenielEvent[]
   presenceTickets      ChurchPresenceTicket[]     @relation("CampoPresenceTickets")
   aiAgents             AiAgent[]                  @relation("CampoAiAgents")
@@ -4255,4 +4256,105 @@ model CultoAprovacao {
   @@unique([registroId, nivel])
   @@index([aprovadorId])
   @@map("culto_aprovacoes")
+}
+
+/// Personalização da home pública (a tela do "REINAR").
+///
+/// O saaschurch é um código só rodando contra um banco por igreja, e cada
+/// igreja quer a home com a SUA marca: logo, título da aba, favicon, cores,
+/// textos, ícones, endereços das redes e os dias de culto. Sem linha aqui, o
+/// front usa DEFAULT_HOME_CONFIG (src/lib/homeConfig.ts) e a home fica igual à
+/// de hoje — ausência de configuração é um estado válido, não um erro.
+model HomeConfig {
+  id      String @id @default(uuid()) @db.Uuid
+  campoId String @unique @map("campo_id") @db.Uuid
+
+  // ── Identidade: aba do navegador, favicon, logo e app instalado ──────────
+  siteTitle       String? @map("site_title") @db.VarChar(120)
+  siteDescription String? @map("site_description") @db.VarChar(300)
+  faviconUrl      String? @map("favicon_url") @db.VarChar(500)
+  logoUrl         String? @map("logo_url") @db.VarChar(500)
+  watermarkUrl    String? @map("watermark_url") @db.VarChar(500)
+  pwaName         String? @map("pwa_name") @db.VarChar(120)
+  pwaShortName    String? @map("pwa_short_name") @db.VarChar(60)
+  pwaIcon192      String? @map("pwa_icon_192") @db.VarChar(500)
+  pwaIcon512      String? @map("pwa_icon_512") @db.VarChar(500)
+  pwaIconMaskable String? @map("pwa_icon_maskable") @db.VarChar(500)
+
+  // ── Hero ────────────────────────────────────────────────────────────────
+  heroEyebrow String? @map("hero_eyebrow") @db.VarChar(120)
+  heroTitle   String? @map("hero_title") @db.VarChar(120)
+  heroText    String? @map("hero_text") @db.Text
+  verseRef    String? @map("verse_ref") @db.VarChar(80)
+  verseLabel  String? @map("verse_label") @db.VarChar(40)
+  verseText   String? @map("verse_text") @db.Text
+  showVerse   Boolean @default(true) @map("show_verse")
+
+  // ── Aparência ───────────────────────────────────────────────────────────
+  bgDark           String  @default("#0a0a0a") @map("bg_dark") @db.VarChar(7)
+  bgLight          String  @default("#f5f4f0") @map("bg_light") @db.VarChar(7)
+  accentColor      String  @default("#d4af37") @map("accent_color") @db.VarChar(7)
+  defaultDark      Boolean @default(true) @map("default_dark")
+  showSymbols      Boolean @default(true) @map("show_symbols")
+  showSpotlights   Boolean @default(true) @map("show_spotlights")
+  watermarkOpacity Decimal @default(0.05) @map("watermark_opacity") @db.Decimal(4, 3)
+  /// string[] — paleta dos símbolos bíblicos flutuantes.
+  symbolColors     Json?   @map("symbol_colors") @db.JsonB
+
+  // ── Botão flutuante de atendimento da secretaria ─────────────────────────
+  /// { enabled, title, hidden: string[], labels: Record<string,string> }.
+  ///
+  /// Endereço, telefone, redes sociais e programação de culto NÃO ficam aqui:
+  /// já são cadastrados em Sistema → Informações da Igreja (`headquarters` e
+  /// `church_schedule`). A home lê de lá — duplicar criaria duas verdades para
+  /// o mesmo dado, e a igreja arrumaria o endereço num lugar e não no outro.
+  servicesConfig Json? @map("services_config") @db.JsonB
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  campo Campo      @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  cards HomeCard[]
+
+  @@map("home_configs")
+}
+
+/// Cada ícone da home vira uma linha: dá para reordenar, ocultar, renomear,
+/// trocar o ícone/cor e apontar para outro endereço sem tocar em código.
+model HomeCard {
+  id       String @id @default(uuid()) @db.Uuid
+  configId String @map("config_id") @db.Uuid
+  /// Identidade estável do cartão dentro da configuração ('membro', 'peniel'…).
+  key      String @db.VarChar(60)
+
+  /// membro | peniel | gf | pwa | link | maps | agenda | verse
+  action   String  @default("link") @db.VarChar(20)
+  title    String  @db.VarChar(160)
+  /// "\n" no texto vira quebra de linha na home.
+  subtitle String? @db.Text
+  url      String? @db.VarChar(500)
+
+  /// Nome do ícone no catálogo HOME_ICONS (lucide + 'Dove').
+  icon       String  @default("Circle") @db.VarChar(40)
+  /// null herda a cor neutra do tema, como os cartões secundários de hoje.
+  iconColor  String? @map("icon_color") @db.VarChar(7)
+  hoverColor String? @map("hover_color") @db.VarChar(7)
+
+  visible   Boolean @default(true)
+  /// Anel pulsante, como o "Sou Membro" verde.
+  pulse     Boolean @default(false)
+  /// Bolinha verde de "ao vivo" ao lado do subtítulo.
+  liveDot   Boolean @default(false) @map("live_dot")
+  /// Ocupa as duas colunas do grid (o cartão de dias de culto usa isso).
+  fullWidth Boolean @default(false) @map("full_width")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  config HomeConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, key])
+  @@index([configId, sortOrder])
+  @@map("home_cards")
 }
