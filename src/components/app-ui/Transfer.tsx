@@ -80,6 +80,8 @@ type StatusOption = {
 };
 
 type DashboardPayload = {
+  truncated?: boolean;
+  queueCap?: number;
   queue: TransferQueueItem[];
   history: TransferHistoryItem[];
   statusOptions: StatusOption[];
@@ -224,10 +226,27 @@ export function Transfer() {
   const qc = useQueryClient();
 
   // ── TanStack Query para o dashboard de transferências ──────────────────
+  const [dateFrom, setDateFrom] = useState(defaultDateRange.start);
+  const [dateTo, setDateTo] = useState(defaultDateRange.end);
+  // O intervalo de datas vai para o servidor e entra na chave do cache: cada
+  // janela e uma consulta propria, e mudar as datas refaz o fetch ja recortado.
+  // Antes o painel baixava a fila inteira e o navegador descartava tudo que
+  // estava fora do mes corrente — 23.243 cards para exibir 51, no batismo.
+  const dashboardRange = useMemo(() => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    return params.toString();
+  }, [dateFrom, dateTo]);
+  const dashboardKey = useMemo(
+    () => qk.transfer({ dateFrom, dateTo }),
+    [dateFrom, dateTo],
+  );
+
   const dashboardQuery = useQuery<DashboardPayload>({
-    queryKey: qk.transfer({}),
+    queryKey: dashboardKey,
     queryFn: async () => {
-      const response = await authFetch(`${apiBase}/transfer/dashboard`);
+      const response = await authFetch(`${apiBase}/transfer/dashboard${dashboardRange ? `?${dashboardRange}` : ''}`);
       if (!response.ok) throw new Error('Falha ao carregar painel de transferência.');
       return response.json();
     },
@@ -237,18 +256,22 @@ export function Transfer() {
 
   const dashboard = dashboardQuery.data ?? null;
   const loading = dashboardQuery.isLoading;
-  const loadDashboard = () => qc.invalidateQueries({ queryKey: qk.transfer({}) });
+  // Prefixo, e nao dashboardKey: uma mutacao invalida todas as janelas de
+  // datas em cache, nao apenas a que esta na tela.
+  const loadDashboard = () => qc.invalidateQueries({ queryKey: ['secretaria', 'transfer'] });
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 350);
   const [selectedRegionalId, setSelectedRegionalId] = useState(defaultRegionalFilter);
   const [selectedChurchId, setSelectedChurchId] = useState(defaultChurchFilter);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState(defaultDateRange.start);
-  const [dateTo, setDateTo] = useState(defaultDateRange.end);
   const [sortKey, setSortKey] = useState<SortKey>('openedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  // 100 por pagina e o padrao das listas. Nas telas de fluxo a fila ja chega
+  // recortada por data, entao paginar e so exibicao — trocar o limite nao
+  // refaz o fetch. Em Membros a paginacao e do servidor: trocar o limite
+  // busca a pagina nova, sem nunca esconder o resto (o total vem do banco).
+  const [pageSize, setPageSize] = useState(100);
   const [error, setError] = useState('');
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestForm, setRequestForm] = useState({ ...EMPTY_REQUEST_FORM });
@@ -586,7 +609,7 @@ export function Transfer() {
     if (!deleteTarget) return;
 
     // ── Optimistic: remove do cache imediatamente ─────────────────────────
-    const queryKey = qk.transfer({});
+    const queryKey = dashboardKey;
     const snapshot = qc.getQueryData<DashboardPayload>(queryKey);
     if (snapshot) {
       qc.setQueryData<DashboardPayload>(queryKey, (prev) =>
@@ -673,6 +696,13 @@ export function Transfer() {
           </button>
         </div>
       </div>
+
+      {dashboard?.truncated ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Sem intervalo de datas a lista para nos {dashboard.queueCap ?? 2000} registros mais recentes.
+          Informe uma data inicial e final para ver o periodo inteiro.
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total</p><p className="text-xl font-bold text-slate-900">{stats.total}</p></div><ArrowRightLeft className="h-5 w-5 text-purple-600" /></div>

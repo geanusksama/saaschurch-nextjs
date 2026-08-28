@@ -92,6 +92,8 @@ type ConsecrationQueueItem = {
 };
 
 type DashboardPayload = {
+  truncated?: boolean;
+  queueCap?: number;
   canManageSchedules: boolean;
   schedules: ConsecrationSchedule[];
   queue: ConsecrationQueueItem[];
@@ -291,10 +293,27 @@ export function Consecration() {
   const qc = useQueryClient();
 
   // ── TanStack Query para o dashboard ──────────────────────────────────────
+  const [dateFrom, setDateFrom] = useState(defaultDateRange.start);
+  const [dateTo, setDateTo] = useState(defaultDateRange.end);
+  // O intervalo de datas vai para o servidor e entra na chave do cache: cada
+  // janela e uma consulta propria, e mudar as datas refaz o fetch ja recortado.
+  // Antes o painel baixava a fila inteira e o navegador descartava tudo que
+  // estava fora do mes corrente — 23.243 cards para exibir 51, no batismo.
+  const dashboardRange = useMemo(() => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    return params.toString();
+  }, [dateFrom, dateTo]);
+  const dashboardKey = useMemo(
+    () => qk.consecration({ ...dashboardScopeKey, dateFrom, dateTo }),
+    [dashboardScopeKey, dateFrom, dateTo],
+  );
+
   const dashboardQuery = useQuery<DashboardPayload>({
-    queryKey: qk.consecration(dashboardScopeKey),
+    queryKey: dashboardKey,
     queryFn: async () => {
-      const response = await authFetch(`${apiBase}/consecration/dashboard`);
+      const response = await authFetch(`${apiBase}/consecration/dashboard${dashboardRange ? `?${dashboardRange}` : ''}`);
       if (!response.ok) throw new Error('Falha ao carregar painel de consagração.');
       return response.json();
     },
@@ -306,18 +325,22 @@ export function Consecration() {
 
   const dashboard = dashboardQuery.data ?? null;
   const loading = dashboardQuery.isLoading;
-  const loadDashboard = () => qc.invalidateQueries({ queryKey: qk.consecration(dashboardScopeKey) });
+  // Prefixo, e nao dashboardKey: uma mutacao invalida todas as janelas de
+  // datas em cache, nao apenas a que esta na tela.
+  const loadDashboard = () => qc.invalidateQueries({ queryKey: ['secretaria', 'consecration'] });
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 350);
   const [selectedRegionalId, setSelectedRegionalId] = useState(defaultRegionalFilter);
   const [selectedChurchId, setSelectedChurchId] = useState(defaultChurchFilter);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState(defaultDateRange.start);
-  const [dateTo, setDateTo] = useState(defaultDateRange.end);
   const [sortKey, setSortKey] = useState<SortKey>('openedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  // 100 por pagina e o padrao das listas. Nas telas de fluxo a fila ja chega
+  // recortada por data, entao paginar e so exibicao — trocar o limite nao
+  // refaz o fetch. Em Membros a paginacao e do servidor: trocar o limite
+  // busca a pagina nova, sem nunca esconder o resto (o total vem do banco).
+  const [pageSize, setPageSize] = useState(100);
   const [error, setError] = useState('');
 
   const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -772,7 +795,7 @@ export function Consecration() {
         throw new Error(payload.error || 'Falha ao salvar data de consagração.');
       }
       const savedSchedule = await response.json();
-      qc.setQueryData<DashboardPayload>(qk.consecration(dashboardScopeKey), (prev) => {
+      qc.setQueryData<DashboardPayload>(dashboardKey, (prev) => {
         if (!prev) return prev;
         const nextSchedules = [...prev.schedules.filter((schedule) => schedule.id !== savedSchedule.id), savedSchedule]
           .sort((left, right) => String(left.scheduledDate || '').localeCompare(String(right.scheduledDate || '')));
@@ -834,7 +857,7 @@ export function Consecration() {
       setInsertingLabel(label);
       try {
         await loadDashboard();
-        const fresh = qc.getQueryData<DashboardPayload>(qk.consecration(dashboardScopeKey));
+        const fresh = qc.getQueryData<DashboardPayload>(dashboardKey);
         const landed = !savedId || (fresh?.queue || []).some((row) => row.id === savedId);
         toast.success(wasEditing ? 'Registro de consagração atualizado.' : 'Processo de consagração iniciado.');
         if (!landed) {
@@ -854,7 +877,7 @@ export function Consecration() {
     if (!deleteTarget) return;
 
     // ── Optimistic: remove do cache imediatamente ─────────────────────────
-    const queryKey = qk.consecration(dashboardScopeKey);
+    const queryKey = dashboardKey;
     const snapshot = qc.getQueryData<DashboardPayload>(queryKey);
     if (snapshot) {
       qc.setQueryData<DashboardPayload>(queryKey, (prev) => {
@@ -893,7 +916,7 @@ export function Consecration() {
     const ids = selection.selected;
     if (!ids.length) return;
 
-    const queryKey = qk.consecration(dashboardScopeKey);
+    const queryKey = dashboardKey;
     const snapshot = qc.getQueryData<DashboardPayload>(queryKey);
     const removing = new Set(ids);
 
@@ -1120,6 +1143,13 @@ export function Consecration() {
 
       {error ? (
         <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
+      ) : null}
+
+      {dashboard?.truncated ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Sem intervalo de datas a lista para nos {dashboard.queueCap ?? 2000} registros mais recentes.
+          Informe uma data inicial e final para ver o periodo inteiro.
+        </div>
       ) : null}
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { serializeBigInts, kanScopeFilter } from "@/lib/helpers";
+import { serializeBigInts, kanScopeFilter, kanQueueWindow, KAN_QUEUE_CAP, kanQueueTake } from "@/lib/helpers";
 
 /** Mirrors old buildScheduleDashboardScope – returns a SQL clause + params. */
 function buildScheduleScope(user: {
@@ -47,6 +47,7 @@ function isConsecrationService(s: { serviceGroup?: string | null; sigla?: string
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
+    const sp = new URL(req.url).searchParams;
     const canManageSchedules = ["master", "admin", "campo", "regional"].includes(user.profileType || "");
     const scope = buildScheduleScope({
       profileType: user.profileType || undefined,
@@ -97,6 +98,9 @@ export async function GET(req: NextRequest) {
       .filter((s) => isConsecrationService(s))
       .map((s) => s.id);
 
+    // `select` no lugar de `include`: o map abaixo usa 14 campos do card, e o
+    // `include` trazia a linha inteira (attachments JSONB inclusive) para
+    // descartar o resto.
     const cards = await prisma.kanCard.findMany({
       where: {
         deletedAt: null,
@@ -104,8 +108,21 @@ export async function GET(req: NextRequest) {
         ...(consecrationServiceIds.length > 0
           ? { serviceId: { in: consecrationServiceIds } }
           : { service: { is: { OR: [{ serviceGroup: "CONSAGRACAO" }, { serviceGroup: null }] } } }),
+        ...kanQueueWindow(sp),
       },
-      include: {
+      select: {
+        id: true,
+        protocol: true,
+        churchId: true,
+        status: true,
+        statusLabel: true,
+        columnIndex: true,
+        openedAt: true,
+        intendedTitle: true,
+        currentTitle: true,
+        observations: true,
+        description: true,
+        metadata: true,
         church: {
           select: {
             id: true, name: true, code: true,
@@ -117,7 +134,12 @@ export async function GET(req: NextRequest) {
         column: { select: { id: true, name: true, columnIndex: true, color: true } },
       },
       orderBy: { openedAt: "desc" },
+      // undefined quando o chamador passou all=1 (relatórios): sem teto.
+      take: kanQueueTake(sp),
     });
+
+    const truncated = cards.length > KAN_QUEUE_CAP && sp.get("all") !== "1";
+    if (truncated) cards.length = KAN_QUEUE_CAP;
 
     const consecCards = cards.filter((c) => isConsecrationService(c.service));
 
@@ -162,7 +184,7 @@ export async function GET(req: NextRequest) {
     };
 
     return NextResponse.json(
-      serializeBigInts({ canManageSchedules, schedules: scheduleRows, queue, stats }),
+      serializeBigInts({ canManageSchedules, schedules: scheduleRows, queue, stats, truncated, queueCap: KAN_QUEUE_CAP }),
     );
   });
 }

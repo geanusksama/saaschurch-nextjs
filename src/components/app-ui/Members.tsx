@@ -535,7 +535,11 @@ export function Members() {
   const [sortKey, setSortKey] = useState<SortKey>('fullName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  // 100 por pagina e o padrao das listas. Nas telas de fluxo a fila ja chega
+  // recortada por data, entao paginar e so exibicao — trocar o limite nao
+  // refaz o fetch. Em Membros a paginacao e do servidor: trocar o limite
+  // busca a pagina nova, sem nunca esconder o resto (o total vem do banco).
+  const [pageSize, setPageSize] = useState(100);
   const [serverTotal, setServerTotal] = useState(0);
   const [serverActiveCount, setServerActiveCount] = useState(0);
   const [serverInactiveCount, setServerInactiveCount] = useState(0);

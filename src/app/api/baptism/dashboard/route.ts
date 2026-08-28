@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-import { serializeBigInts, kanScopeFilter } from "@/lib/helpers";
+import { serializeBigInts, kanScopeFilter, kanQueueWindow, KAN_QUEUE_CAP, kanQueueTake } from "@/lib/helpers";
 
 function buildScheduleScope(user: {
   profileType?: string;
@@ -36,6 +36,7 @@ function buildScheduleScope(user: {
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
+    const sp = new URL(req.url).searchParams;
     const canManageSchedules = ["master", "admin", "campo", "regional"].includes(user.profileType || "");
     const scope = buildScheduleScope({
       profileType: user.profileType || undefined,
@@ -74,9 +75,24 @@ export async function GET(req: NextRequest) {
       if (fieldId && !nextByField.has(fieldId)) nextByField.set(fieldId, row);
     }
 
+    // `select` em vez de `include`: a resposta só monta 11 campos do card, mas o
+    // `include` trazia as ~30 colunas da linha inteira (metadata e attachments
+    // JSONB inclusive) para jogar fora no map abaixo.
     const cards = await prisma.kanCard.findMany({
-      where: { deletedAt: null, ...kanScopeFilter(user), service: { is: { serviceGroup: "BATISMO" } } },
-      include: {
+      where: {
+        deletedAt: null,
+        ...kanScopeFilter(user),
+        service: { is: { serviceGroup: "BATISMO" } },
+        ...kanQueueWindow(sp),
+      },
+      select: {
+        id: true,
+        protocol: true,
+        churchId: true,
+        status: true,
+        statusLabel: true,
+        columnIndex: true,
+        openedAt: true,
         church: {
           select: {
             id: true,
@@ -90,7 +106,12 @@ export async function GET(req: NextRequest) {
         column: { select: { id: true, name: true, columnIndex: true, color: true } },
       },
       orderBy: { openedAt: "desc" },
+      // undefined quando o chamador passou all=1 (relatórios): sem teto.
+      take: kanQueueTake(sp),
     });
+
+    const truncated = cards.length > KAN_QUEUE_CAP && sp.get("all") !== "1";
+    if (truncated) cards.length = KAN_QUEUE_CAP;
 
     const queue = cards.map((card) => {
       const churchCampoId = card.church?.regional?.campoId || null;
@@ -111,7 +132,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(serializeBigInts({
-      canManageSchedules, schedules: scheduleRows, queue,
+      canManageSchedules, schedules: scheduleRows, queue, truncated, queueCap: KAN_QUEUE_CAP,
       stats: {
         pendingCount: queue.filter((i) => i.columnIndex === 1).length,
         approvedCount: queue.filter((i) => i.columnIndex === 2).length,

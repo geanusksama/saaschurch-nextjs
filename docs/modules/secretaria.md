@@ -1126,11 +1126,20 @@ fullName STARTS WITH token1 AND fullName STARTS WITH token2 ...
 
 **`GET /api/transfer/dashboard`**
 
+Aceita os mesmos parâmetros de recorte dos painéis de batismo e consagração —
+ver 5.18.
+
 ```typescript
+// Query string (todos opcionais):
+//   dateFrom=YYYY-MM-DD  dateTo=YYYY-MM-DD   recorte por openedAt
+//   all=1                                    desliga o teto da fila (relatórios)
+
 // Response:
 {
   canManage: boolean,  // master ou admin
-  queue: KanCard[],    // todos os cards de TRANSFERENCIA no escopo do usuário
+  queue: KanCard[],    // cards de TRANSFERENCIA no escopo do usuário, dentro do recorte
+  truncated: boolean,  // true = o teto cortou a fila; a tela avisa o usuário
+  queueCap: number,    // valor do teto (KAN_QUEUE_CAP)
   statusOptions: [{ value, label, columnIndex }],
   stats: {
     pendingCount: number,   // cards na coluna 1
@@ -1139,7 +1148,58 @@ fullName STARTS WITH token1 AND fullName STARTS WITH token2 ...
   }
 }
 // KanCard inclui: church, destinationChurch, member, service, column
+// statusOptions vem do pipeline (kan_columns), não dos cards carregados: derivá-lo
+// dos cards fazia o filtro perder opções quando a fila recortada não tinha
+// nenhum card naquela coluna.
 ```
+
+---
+
+### 5.18 Painéis de fluxo — recorte da fila
+
+Vale para `GET /api/baptism/dashboard`, `GET /api/consecration/dashboard` e
+`GET /api/transfer/dashboard`.
+
+**O problema que isto resolve.** As três telas sempre filtraram a fila por
+`openedAt`, com o mês corrente como padrão — só que no navegador. O servidor
+mandava a tabela inteira e o front descartava o resto: **23.243 cards de
+batismo (35,4 MB de JSON, 7,5 s) para exibir os 51 do mês**. `kan_cards` tem
+91.773 linhas e cresce com cada igreja nova, então o custo era proporcional ao
+histórico acumulado, não ao que a tela mostra.
+
+**Parâmetros:**
+
+| Parâmetro | Efeito |
+|---|---|
+| `dateFrom=YYYY-MM-DD` | `openedAt >= dateFrom` às 00:00:00.000 **UTC** |
+| `dateTo=YYYY-MM-DD` | `openedAt <= dateTo` às 23:59:59.999 **UTC** |
+| `all=1` | desliga o teto e devolve a base fechada |
+
+Formato inválido é ignorado (sem recorte naquela ponta). A semântica é a mesma
+que o front aplicava em `dateInRange` — data UTC, limites inclusivos nas duas
+pontas — de propósito: os filtros do cliente continuam no lugar e nenhuma linha
+que aparecia antes pode sumir por causa do recorte.
+
+**Teto da fila (`KAN_QUEUE_CAP`, hoje 2000).** Sem intervalo informado não há
+recorte, e sem teto a resposta de 35 MB voltaria pela porta dos fundos. Quando
+o teto corta, a resposta traz `truncated: true` e a tela mostra uma faixa
+avisando — **um corte silencioso seria pior do que a lentidão que ele evita**.
+
+**`all=1` é obrigatório para relatórios.** `Reports.tsx` agrega sobre a base
+fechada e chama os três painéis sem datas; sem `all=1` ele receberia 2000 de
+23.243 cards e os números do relatório sairiam errados, calados.
+
+Implementação: `kanQueueWindow` e `kanQueueTake` em `src/lib/helpers.ts`.
+
+**Projeção.** Batismo e consagração usam `select` em vez de `include`: a
+resposta monta ~12 campos do card, mas o `include` trazia as ~30 colunas da
+linha inteira — `metadata` e `attachments` (JSONB) inclusive — para descartar
+no `map`.
+
+**Limite de exibição.** As telas de fluxo paginam no cliente sobre a fila já
+recortada, então trocar o limite (padrão 100) não refaz o fetch. Em Membros a
+paginação é do servidor: trocar o limite busca a página nova, e `total` vem do
+`count()` do banco — o resto nunca fica escondido.
 
 ---
 

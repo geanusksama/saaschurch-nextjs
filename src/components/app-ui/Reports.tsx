@@ -3999,9 +3999,12 @@ export function Reports() {
 
       const [dashboardResponse, baptismResponse, consecrationResponse, transferResponse, servicesResponse] = await Promise.all([
         authFetch(`${apiBase}/dashboard`),
-        authFetch(`${apiBase}/baptism/dashboard`),
-        authFetch(`${apiBase}/consecration/dashboard`),
-        authFetch(`${apiBase}/transfer/dashboard`),
+        // all=1: relatorio agrega sobre a base fechada. As telas de lista pedem
+        // um recorte por data e ficam sujeitas ao teto da fila; aqui um corte
+        // silencioso falsearia os numeros do relatorio.
+        authFetch(`${apiBase}/baptism/dashboard?all=1`),
+        authFetch(`${apiBase}/consecration/dashboard?all=1`),
+        authFetch(`${apiBase}/transfer/dashboard?all=1`),
         authFetch(`${apiBase}/kan/services`),
       ]);
 

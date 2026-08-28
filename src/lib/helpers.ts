@@ -156,3 +156,52 @@ export function isPastMonth(year: number, month: number): boolean {
   return false;
 }
 
+
+/**
+ * Teto da fila dos painéis de fluxo (batismo/consagração/transferência).
+ *
+ * O recorte por data já corta a fila para dezenas de linhas; este teto só
+ * existe para o caso de o usuário limpar as duas datas, que sem ele traria a
+ * tabela inteira de volta.
+ *
+ * Vale para as telas de lista, nunca para quem precisa da base fechada:
+ * relatórios pedem `all=1` e recebem tudo (ver kanQueueTake). Um teto calado
+ * num relatório seria pior do que a lentidão que ele evita.
+ */
+export const KAN_QUEUE_CAP = 2000;
+
+/**
+ * `take` da fila: `all=1` desliga o teto, para os relatórios, que agregam sobre
+ * a base inteira e não podem receber um recorte silencioso. O +1 serve para o
+ * chamador detectar que houve corte sem pagar uma segunda contagem.
+ */
+export function kanQueueTake(sp: URLSearchParams): number | undefined {
+  return sp.get("all") === "1" ? undefined : KAN_QUEUE_CAP + 1;
+}
+
+/**
+ * Recorte por data dos painéis de fluxo, lido da query string.
+ *
+ * As telas de batismo, consagração e transferência sempre filtraram a fila por
+ * `openedAt`, com o mês corrente como padrão — só que no navegador. O servidor
+ * mandava a tabela inteira e o front descartava o resto: 23.243 cards de
+ * batismo trafegados (35 MB) para exibir os 51 do mês.
+ *
+ * A semântica aqui é a mesma que o front aplicava em `dateInRange`: compara a
+ * data UTC de `openedAt` com limites inclusivos nas duas pontas. Igual de
+ * propósito — os filtros do cliente continuam no lugar, e nenhuma linha que
+ * aparecia antes pode sumir por causa deste recorte.
+ *
+ * Sem intervalo informado não há recorte; quem segura a resposta é KAN_QUEUE_CAP.
+ */
+export function kanQueueWindow(sp: URLSearchParams): Record<string, unknown> {
+  const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const from = (sp.get("dateFrom") || "").trim();
+  const to = (sp.get("dateTo") || "").trim();
+
+  const range: Record<string, Date> = {};
+  if (isDate(from)) range.gte = new Date(`${from}T00:00:00.000Z`);
+  if (isDate(to)) range.lte = new Date(`${to}T23:59:59.999Z`);
+
+  return Object.keys(range).length > 0 ? { openedAt: range } : {};
+}
