@@ -24,7 +24,7 @@ import {
   type Registro,
   type TipoCulto,
 } from './cultoApi';
-import { PASTILHA, TEXTO } from './cultoCores';
+import { PASTILHA } from './cultoCores';
 
 const CAMPOS: Record<Bloco, { campo: string; label: string; moeda?: boolean }[]> = {
   FINANCEIRO: [
@@ -242,7 +242,7 @@ export default function CultoLancarModal({
               />
             </label>
             <label className="block">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Início</span>
+              <span className="block text-xs font-medium text-slate-500 dark:text-slate-400">Início</span>
               <input
                 type="time"
                 value={horaInicio}
@@ -251,7 +251,7 @@ export default function CultoLancarModal({
               />
             </label>
             <label className="block">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Fim</span>
+              <span className="block text-xs font-medium text-slate-500 dark:text-slate-400">Fim</span>
               <input
                 type="time"
                 value={horaFim}
@@ -389,13 +389,6 @@ export default function CultoLancarModal({
             />
           </label>
 
-          {!horaInicio && (
-            <p className={`text-xs ${TEXTO.ambar}`}>
-              Informe o horário — é o que permite consolidar por faixa e separar o culto da manhã
-              do da noite.
-            </p>
-          )}
-
           {registro && registro.status === 'REJEITADO' && (
             <div className={`rounded-lg px-4 py-3 text-sm ${PASTILHA.ambar}`}>
               <strong>Devolvido pelo dirigente.</strong>{' '}
@@ -405,10 +398,7 @@ export default function CultoLancarModal({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-slate-200 dark:border-slate-700">
-          <span className={`text-xs ${TEXTO.cinza}`}>
-            Você lança só o seu bloco. O outro responsável lança o dele.
-          </span>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-2">
             <button
               onClick={onFechar}
