@@ -310,7 +310,14 @@ export default function SecretariatPipeline() {
     const role = String(me?.roleName || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     return role.includes("secret") || role.includes("tesour");
   })();
-  const [filterChurchId, setFilterChurchId] = useState<string>(hasFixedChurchScope ? (me?.churchId || "") : "");
+  // Lista, nao um id so: o filtro agora permite escolher varias igrejas. Quem
+  // tem escopo fixo (perfil igreja, secretaria, tesouraria) continua preso a sua.
+  const [filterChurchIds, setFilterChurchIds] = useState<string[]>(
+    me?.churchId ? [me.churchId] : [],
+  );
+  const [churchPickerOpen, setChurchPickerOpen] = useState(false);
+  const [churchPickerSearch, setChurchPickerSearch] = useState("");
+  const churchPickerRef = useRef<HTMLDivElement | null>(null);
   const [campos, setCampos] = useState<Array<{ id: string; name: string; code?: string }>>([]);
   const [churches, setChurches] = useState<Array<{ id: string; name: string; code?: string | null }>>([]);
 
@@ -333,12 +340,60 @@ export default function SecretariatPipeline() {
       .then((data) => Array.isArray(data) ? setChurches(data) : setChurches([]))
       .catch(() => setChurches([]));
     // Quando muda o campo, limpa a igreja selecionada
-    setFilterChurchId("");
+    // Escopo fixo (perfil igreja, secretaria, tesouraria) nao perde a propria
+    // igreja ao trocar de campo — ela e a unica que esse perfil pode ver.
+    setFilterChurchIds(hasFixedChurchScope && me?.churchId ? [me.churchId] : []);
   }, [canFilterChurch, filterCampoId, me?.campoId]);
+
+  // O nome da igreja ja vem prefixado com o codigo ("01-002-018 - BARAO
+  // GERALDO"), entao concatenar o code de novo duplicava: "01-002-018 –
+  // 01-002-018 - BARAO GERALDO". So prefixa quando o nome ainda nao tem.
+  const churchOptionLabel = (c: { code?: string | null; name: string }) => {
+    const code = (c.code || "").trim();
+    if (!code || c.name.trim().startsWith(code)) return c.name;
+    return `${code} – ${c.name}`;
+  };
+
+  const visibleChurchOptions = useMemo(() => {
+    const term = churchPickerSearch.trim().toLowerCase();
+    if (!term) return churches;
+    return churches.filter((c) => churchOptionLabel(c).toLowerCase().includes(term));
+  }, [churches, churchPickerSearch]);
+
+  const churchFilterLabel = useMemo(() => {
+    if (!filterChurchIds.length) return "Todas as igrejas";
+    if (filterChurchIds.length === 1) {
+      const only = churches.find((c) => c.id === filterChurchIds[0]);
+      return only ? churchOptionLabel(only) : "1 igreja";
+    }
+    return `${filterChurchIds.length} igrejas`;
+  }, [filterChurchIds, churches]);
+
+  // Fecha o seletor ao clicar fora.
+  useEffect(() => {
+    if (!churchPickerOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!churchPickerRef.current?.contains(event.target as Node)) {
+        setChurchPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [churchPickerOpen]);
 
   const [board, setBoard] = useState<ColumnWithCards[]>([]);
   const [stageMeta, setStageMeta] = useState<Stage | null>(null);
   const [loadingBoard, setLoadingBoard] = useState(false);
+  // A tela abre vazia: nada e consultado enquanto o usuario nao clicar em
+  // Buscar. Antes toda mudanca de filtro disparava uma carga do board — e como
+  // `q` estava nas dependencias do efeito, cada tecla digitada virava uma
+  // requisicao inteira.
+  const [hasSearched, setHasSearched] = useState(false);
+  // Descarta resposta que chegou fora de ordem. Sem isto, uma carga antiga
+  // podia sobrescrever o board depois de uma mais nova — e `handleCardMove`
+  // guarda `previousBoard` para desfazer, entao o rollback restauraria estado
+  // errado no meio de uma movimentacao de card.
+  const boardRequestRef = useRef(0);
   const [refreshingBoard, setRefreshingBoard] = useState(false);
   const [showNewCard, setShowNewCard] = useState(false);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
@@ -424,21 +479,33 @@ export default function SecretariatPipeline() {
     if (from) params.set("from", from);
     if (to) params.set("to", to + "T23:59:59");
     if (q) params.set("q", q);
-    if (filterChurchId) params.set("churchId", filterChurchId);
+    if (filterChurchIds.length) params.set("churchIds", filterChurchIds.join(","));
     if (filterCampoId) params.set("campoId", filterCampoId);
+
+    const requestId = ++boardRequestRef.current;
 
     try {
       const response = await authFetch(`${apiBase}/kan/stages/${stageId}/board?${params}`);
       const data: { stage: Stage; columns: ColumnWithCards[] } = await response.json();
+      if (requestId !== boardRequestRef.current) return;
       setStageMeta(data.stage);
       setBoard(data.columns || []);
       setMoveError("");
     } catch {
+      if (requestId !== boardRequestRef.current) return;
       if (!silent) setBoard([]);
     } finally {
-      if (silent) setRefreshingBoard(false);
-      else setLoadingBoard(false);
+      if (requestId === boardRequestRef.current) {
+        if (silent) setRefreshingBoard(false);
+        else setLoadingBoard(false);
+      }
     }
+  };
+
+  // Consulta explicita — o unico caminho que carrega o board a partir dos filtros.
+  const handleSearch = () => {
+    setHasSearched(true);
+    void loadBoard();
   };
 
   const handleCardMove = async (cardIds: string[], newColumnIndex: number) => {
@@ -478,44 +545,43 @@ export default function SecretariatPipeline() {
     }
   };
 
+  // Trocar de pasta de trabalho zera o quadro em vez de recarregar. As colunas
+  // vem da resposta do board, entao manter as da pasta anterior deixaria cards
+  // de um servico sobre as colunas de outro — e essas colunas aceitam drop.
   useEffect(() => {
-    void loadBoard();
-  }, [stageId, from, to, q, filterCampoId, filterChurchId]);
+    boardRequestRef.current += 1;
+    setBoard([]);
+    setStageMeta(null);
+    setHasSearched(false);
+    setMoveError("");
+  }, [stageId]);
 
   const allCards = useMemo(() => board.flatMap((c) => c.cards), [board]);
 
   return (
-    <div className="p-4 sm:p-6">
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center">
-            <TrendingUp className="w-6 h-6 text-indigo-600 dark:text-indigo-300" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Pipeline – Secretaria
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400">
-              Gestão de processos eclesiásticos
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Pasta de trabalho — Folder cards for service selection */}
+    <div className="p-4 sm:px-6 sm:pt-3 sm:pb-6">
+      {/* Pastas de trabalho. Antes vinham abaixo de uma faixa de titulo
+          ("Pipeline – Secretaria" sobre "Gestao de processos eclesiasticos")
+          que repetia o nome do menu; a faixa saiu inteira e o kanban subiu.
+          O pt-2 preserva a "orelha" da pasta, que fica em -top-[8px]. */}
       {stages.length > 0 && (
-        <div className="mb-4 -mx-6 px-6 overflow-x-auto">
+        <div className="mb-2 -mx-6 px-6 overflow-x-auto pt-2">
           <div className="flex gap-2 pb-1" style={{ minWidth: "max-content" }}>
             {stages.map((stage, i) => {
               const isActive = stageId === stage.id;
+              // Uma cor por pasta, so na abinha do topo — corpo e letras seguem
+              // o padrao neutro do sistema. Valores arbitrarios de proposito:
+              // globals.css normaliza toda cor nomeada dentro de .app-shell
+              // ([class*="bg-sky-200"] { ...!important }), e o seletor casa por
+              // trecho do nome da classe, entao "bg-sky-200" viraria cinza.
               const palette = [
-                { activeBg: "bg-indigo-100 dark:bg-indigo-950/60", activeBorder: "border-indigo-300 dark:border-indigo-700", activeText: "text-indigo-700 dark:text-indigo-300", activeIcon: "bg-indigo-200 dark:bg-indigo-800", iconColor: "text-indigo-600 dark:text-indigo-300", tab: "bg-indigo-200 dark:bg-indigo-800", tabActive: "bg-indigo-300 dark:bg-indigo-700" },
-                { activeBg: "bg-sky-100 dark:bg-sky-950/60",       activeBorder: "border-sky-300 dark:border-sky-700",     activeText: "text-sky-700 dark:text-sky-300",     activeIcon: "bg-sky-200 dark:bg-sky-800",     iconColor: "text-sky-600 dark:text-sky-300",     tab: "bg-sky-200 dark:bg-sky-800",     tabActive: "bg-sky-300 dark:bg-sky-700" },
-                { activeBg: "bg-violet-100 dark:bg-violet-950/60", activeBorder: "border-violet-300 dark:border-violet-700",activeText: "text-violet-700 dark:text-violet-300",activeIcon: "bg-violet-200 dark:bg-violet-800",iconColor: "text-violet-600 dark:text-violet-300",tab: "bg-violet-200 dark:bg-violet-800",tabActive: "bg-violet-300 dark:bg-violet-700" },
-                { activeBg: "bg-amber-100 dark:bg-amber-950/60",   activeBorder: "border-amber-300 dark:border-amber-700",  activeText: "text-amber-700 dark:text-amber-300",  activeIcon: "bg-amber-200 dark:bg-amber-800",  iconColor: "text-amber-600 dark:text-amber-300",  tab: "bg-amber-200 dark:bg-amber-800",  tabActive: "bg-amber-300 dark:bg-amber-700" },
-                { activeBg: "bg-emerald-100 dark:bg-emerald-950/60",activeBorder: "border-emerald-300 dark:border-emerald-700",activeText: "text-emerald-700 dark:text-emerald-300",activeIcon: "bg-emerald-200 dark:bg-emerald-800",iconColor: "text-emerald-600 dark:text-emerald-300",tab: "bg-emerald-200 dark:bg-emerald-800",tabActive: "bg-emerald-300 dark:bg-emerald-700" },
-              ][i % 5];
+                { tab: "bg-[#93c5fd]", tabActive: "bg-[#2563eb]" },
+                { tab: "bg-[#c4b5fd]", tabActive: "bg-[#7c3aed]" },
+                { tab: "bg-[#5eead4]", tabActive: "bg-[#0d9488]" },
+                { tab: "bg-[#fcd34d]", tabActive: "bg-[#d97706]" },
+                { tab: "bg-[#6ee7b7]", tabActive: "bg-[#059669]" },
+                { tab: "bg-[#fca5a5]", tabActive: "bg-[#dc2626]" },
+              ][i % 6];
               const haystack = [stage.name, stage.description || "", stage.service?.sigla || "", stage.service?.description || ""].join(" ").toLowerCase();
               const kind = haystack.includes("batis") ? "baptism" : haystack.includes("consagra") ? "consecration" : haystack.includes("transf") ? "transfer" : "default";
               const ServiceIcon = kind === "baptism" ? Droplets : kind === "consecration" ? Shirt : kind === "transfer" ? ArrowRightLeft : TrendingUp;
@@ -523,27 +589,27 @@ export default function SecretariatPipeline() {
                 <button
                   key={stage.id}
                   onClick={() => setStageId(stage.id)}
-                  className={`group relative min-w-[140px] max-w-[200px] rounded-b-lg rounded-tr-lg text-left transition-all duration-150 overflow-visible
+                  className={`group relative min-w-[140px] max-w-[200px] rounded-b-sm rounded-tr-sm text-left transition-all duration-150 overflow-visible
                     ${isActive
-                      ? `${palette.activeBg} border ${palette.activeBorder} shadow-sm`
+                      ? `bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm`
                       : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                     }`}
                   title={stage.description || stage.name}
                 >
                   {/* folder ear tab */}
                   <span
-                    className={`absolute -top-[8px] left-0 h-[8px] w-[44px] rounded-t-md
-                      ${isActive ? palette.tabActive : "bg-slate-200 dark:bg-slate-700 group-hover:bg-slate-300 dark:group-hover:bg-slate-600"}`}
+                    className={`absolute -top-[8px] left-0 h-[8px] w-[44px] rounded-t-sm
+                      ${isActive ? palette.tabActive : palette.tab}`}
                   />
                   <div className="flex items-center gap-2.5 px-3 py-2.5">
-                    <span className={`inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md ${isActive ? palette.activeIcon : "bg-slate-100 dark:bg-slate-700"}`}>
-                      <ServiceIcon className={`h-3.5 w-3.5 ${isActive ? palette.iconColor : "text-slate-500 dark:text-slate-400"}`} />
+                    <span className={`inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-sm ${isActive ? "bg-white dark:bg-slate-800" : "bg-slate-100 dark:bg-slate-700"}`}>
+                      <ServiceIcon className={`h-3.5 w-3.5 text-slate-500 dark:text-slate-400`} />
                     </span>
                     <div className="min-w-0">
-                      <p className={`text-[10px] font-semibold uppercase tracking-wider leading-none mb-0.5 ${isActive ? palette.activeText : "text-slate-400 dark:text-slate-500"}`}>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wider leading-none mb-0.5 text-slate-400 dark:text-slate-500`}>
                         Pasta de trabalho
                       </p>
-                      <p className={`text-xs font-bold leading-tight truncate ${isActive ? palette.activeText : "text-slate-700 dark:text-slate-200"}`}>
+                      <p className={`text-xs font-bold leading-tight truncate ${isActive ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-200"}`}>
                         {stage.name}
                       </p>
                     </div>
@@ -556,7 +622,7 @@ export default function SecretariatPipeline() {
       )}
 
       {/* Toolbar */}
-      <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 sm:p-4">
+      <div className="mb-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 sm:p-3">
         {/* Single row on desktop, stacked on mobile */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Search */}
@@ -566,6 +632,7 @@ export default function SecretariatPipeline() {
               type="text"
               value={q}
               onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
               placeholder="Buscar..."
               className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-9 pr-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
@@ -602,22 +669,93 @@ export default function SecretariatPipeline() {
             />
           )}
 
-          {/* Igreja select */}
+          {/* Igreja — selecao multipla, com busca e marcar/desmarcar todas.
+              Era um <select> de uma igreja so. Nenhuma selecionada continua
+              significando "todas": o parametro simplesmente nao vai na consulta. */}
           {canFilterChurch && (
-            <div className="relative w-full sm:w-48">
-              <select
-                value={filterChurchId}
-                onChange={(e) => setFilterChurchId(e.target.value)}
-                className="w-full appearance-none rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 pl-3 pr-8 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            <div ref={churchPickerRef} className="relative w-full sm:w-56">
+              <button
+                type="button"
+                onClick={() => setChurchPickerOpen((open) => !open)}
+                disabled={hasFixedChurchScope}
+                className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 pl-3 pr-2 py-2 text-sm focus:border-indigo-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800"
               >
-                <option value="">Todas as igrejas</option>
-                {churches.map((c) => (
-                  <option key={c.id} value={c.id}>{c.code ? `${c.code} – ${c.name}` : c.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <span className="truncate">{churchFilterLabel}</span>
+                <ChevronDown className="w-4 h-4 flex-shrink-0 text-slate-400" />
+              </button>
+
+              {churchPickerOpen && (
+                <div className="absolute left-0 z-50 mt-1 w-[min(22rem,90vw)] overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+                  <div className="border-b border-slate-100 dark:border-slate-800 p-2">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      <input
+                        autoFocus
+                        type="text"
+                        value={churchPickerSearch}
+                        onChange={(e) => setChurchPickerSearch(e.target.value)}
+                        placeholder="Filtrar igreja..."
+                        className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8 pr-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-3 py-1.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setFilterChurchIds(visibleChurchOptions.map((c) => c.id))}
+                      className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                    >
+                      Marcar todas{churchPickerSearch ? " (filtradas)" : ""}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterChurchIds([])}
+                      className="font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                    >
+                      Desmarcar todas
+                    </button>
+                  </div>
+
+                  <div className="max-h-64 overflow-y-auto py-1">
+                    {visibleChurchOptions.length === 0 ? (
+                      <p className="px-3 py-4 text-center text-xs text-slate-400">Nenhuma igreja encontrada</p>
+                    ) : (
+                      visibleChurchOptions.map((c) => {
+                        const checked = filterChurchIds.includes(c.id);
+                        return (
+                          <label
+                            key={c.id}
+                            className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => setFilterChurchIds((current) => (
+                                checked ? current.filter((id) => id !== c.id) : [...current, c.id]
+                              ))}
+                              className="h-3.5 w-3.5 flex-shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="truncate text-slate-700 dark:text-slate-200">{churchOptionLabel(c)}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
+
+          {/* Consulta explicita: nada e carregado ate clicar aqui. */}
+          <button
+            onClick={handleSearch}
+            disabled={loadingBoard || !stageId}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Search className="w-4 h-4" />
+            {loadingBoard ? "Buscando..." : "Buscar"}
+          </button>
 
           {/* Actions */}
           <div className="ml-auto flex items-center gap-3">
@@ -676,6 +814,16 @@ export default function SecretariatPipeline() {
       {loadingBoard ? (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-12 text-center text-slate-400 dark:text-slate-500">
           Carregando...
+        </div>
+      ) : !hasSearched ? (
+        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-12 text-center">
+          <Search className="mx-auto mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Ajuste os filtros e clique em Buscar
+          </p>
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            O quadro carrega apenas o período e a igreja que você escolher.
+          </p>
         </div>
       ) : view === "kanban" ? (
         <KanbanView

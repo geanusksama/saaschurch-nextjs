@@ -47,6 +47,7 @@ import {
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -3560,6 +3561,28 @@ export function Reports() {
   const [dateTo, setDateTo] = useState<string>(_defaultTo);
   const [dashboardData, setDashboardData] = useState<DashboardApiPayload | null>(null);
   const [members, setMembers] = useState<MemberReportItem[]>([]);
+  // Confirmacao de exclusao. O confirm() nativo estampa o dominio na caixa
+  // ("www.adcampinas.com.br diz"), ignora o tema e trava a aba enquanto esta
+  // aberto; o resto do arquivo ja usa AlertDialog.
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  // Detalhe de uma fatia/barra/ponto do grafico: o clique abre as linhas que
+  // formaram aquele valor. A dimensao vem de aggregateRows, que agrupa por
+  // String(record[dimensionKey]) e chama vazio de "Nao informado" — o mesmo
+  // criterio e usado aqui para reencontrar os registros.
+  const [chartDrilldown, setChartDrilldown] = useState<{
+    title: string;
+    dimensionLabel: string;
+    dimensionValue: string;
+    columns: { key: string; label: string }[];
+    rows: SourceRecord[];
+  } | null>(null);
+
   const [baptismData, setBaptismData] = useState<BaptismDashboardPayload | null>(null);
   const [consecrationData, setConsecrationData] = useState<ConsecrationDashboardPayload | null>(null);
   const [transferData, setTransferData] = useState<TransferDashboardPayload | null>(null);
@@ -4671,16 +4694,51 @@ export function Reports() {
     setChartEditorOpen(false);
   }
 
+  function openChartDrilldown(
+    chart: SavedChartConfig,
+    source: SourceDefinition,
+    dimensionValue: string,
+  ) {
+    if (!dimensionValue) return;
+    const dimensionLabel = source.dimensions.find((item) => item.key === chart.dimensionKey)?.label
+      || 'Dimensão';
+
+    const rows = source.records.filter((record) => {
+      const raw = record[chart.dimensionKey];
+      const value = raw === null || raw === undefined || raw === '' ? 'Não informado' : String(raw);
+      return value === dimensionValue;
+    });
+
+    // Mostra a dimensao, as metricas do grafico e o resto das dimensoes da
+    // fonte — que e o contexto que responde "quem sao esses registros".
+    const columns = [
+      { key: chart.dimensionKey, label: dimensionLabel },
+      ...chart.metricKeys
+        .filter((key) => key !== '__count')
+        .map((key) => ({ key, label: source.metrics.find((m) => m.key === key)?.label || key })),
+      ...source.dimensions
+        .filter((item) => item.key !== chart.dimensionKey)
+        .map((item) => ({ key: item.key, label: item.label })),
+    ];
+
+    setChartDrilldown({ title: chart.title, dimensionLabel, dimensionValue, columns, rows });
+  }
+
   function handleDeleteChart(chartId: string) {
-    if (!activeDashboard || !window.confirm('Remover este gráfico do dashboard?')) return;
-    setDashboardsState((current) => ({
-      ...current,
-      dashboards: current.dashboards.map((dashboard) => (
-        dashboard.id === activeDashboard.id
-          ? { ...dashboard, charts: dashboard.charts.filter((chart) => chart.id !== chartId) }
-          : dashboard
-      )),
-    }));
+    if (!activeDashboard) return;
+    setConfirmState({
+      title: 'Remover gráfico',
+      description: 'O gráfico sai deste dashboard. Os dados de origem não são afetados.',
+      confirmLabel: 'Remover',
+      onConfirm: () => setDashboardsState((current) => ({
+        ...current,
+        dashboards: current.dashboards.map((dashboard) => (
+          dashboard.id === activeDashboard.id
+            ? { ...dashboard, charts: dashboard.charts.filter((chart) => chart.id !== chartId) }
+            : dashboard
+        )),
+      })),
+    });
   }
 
   function handleAddDashboard() {
@@ -4698,11 +4756,17 @@ export function Reports() {
 
   function handleDeleteDashboard(dashboardId: string) {
     if (dashboardsState.dashboards.length === 1) return;
-    if (!window.confirm('Excluir este dashboard e todos os gráficos dele?')) return;
-    const remaining = dashboardsState.dashboards.filter((item) => item.id !== dashboardId);
-    setDashboardsState({
-      activeDashboardId: remaining[0].id,
-      dashboards: remaining,
+    setConfirmState({
+      title: 'Excluir dashboard',
+      description: 'O dashboard e todos os gráficos dele serão removidos. Não dá para desfazer.',
+      confirmLabel: 'Excluir',
+      onConfirm: () => {
+        const remaining = dashboardsState.dashboards.filter((item) => item.id !== dashboardId);
+        setDashboardsState({
+          activeDashboardId: remaining[0].id,
+          dashboards: remaining,
+        });
+      },
     });
   }
 
@@ -4931,6 +4995,33 @@ export function Reports() {
       return true;
     });
   }, [members, churchReportChurchIdSet, churchReportDateRange, churchReportBuilder.memberTypes]);
+  // Membros indexados por igreja. Sem isto, cada igreja refazia um filter sobre
+  // a base inteira: 126 igrejas x 26.224 membros = ~3,3 milhoes de iteracoes, e
+  // a tabela repetia a conta a cada render. Era isso que travava a aba.
+  const membersByChurchId = useMemo(() => {
+    const index = new Map<string, typeof members>();
+    for (const member of members) {
+      const churchId = member.church?.id;
+      if (!churchId) continue;
+      const bucket = index.get(churchId);
+      if (bucket) bucket.push(member);
+      else index.set(churchId, [member]);
+    }
+    return index;
+  }, [members]);
+
+  const churchReportMembersByChurchId = useMemo(() => {
+    const index = new Map<string, typeof churchReportMembers>();
+    for (const member of churchReportMembers) {
+      const churchId = member.church?.id;
+      if (!churchId) continue;
+      const bucket = index.get(churchId);
+      if (bucket) bucket.push(member);
+      else index.set(churchId, [member]);
+    }
+    return index;
+  }, [churchReportMembers]);
+
   const churchReportSummaryRows = useMemo<ChurchReportSummaryRow[]>(() => {
     const baptismByChurchName = new Map<string, number>();
     const consecrationByChurchName = new Map<string, number>();
@@ -4948,7 +5039,7 @@ export function Reports() {
     });
 
     return churchReportChurches.map((church) => {
-      const scopedMembers = churchReportMembers.filter((member) => member.church?.id === church.id);
+      const scopedMembers = churchReportMembersByChurchId.get(church.id) ?? [];
       const now = new Date();
       const newMembers = scopedMembers.filter((member) => {
         const baseDate = member.membershipDate || member.createdAt;
@@ -4991,7 +5082,7 @@ export function Reports() {
         newMembers,
       };
     });
-  }, [churchReportChurches, churchReportMembers, baptismData, consecrationData, churchReportDateRange]);
+  }, [churchReportChurches, churchReportMembersByChurchId, baptismData, consecrationData, churchReportDateRange]);
   const churchActiveRow = useMemo(() => {
     if (!churchReportSummaryRows.length) return null;
     if (churchReportBuilder.mode === 'single') {
@@ -5070,11 +5161,9 @@ export function Reports() {
 
   const churchActiveMemberBreakdown = useMemo(() => {
     if (!churchActiveRow) return { diaconisas: 0, presbyteros: 0, evangelistas: 0, membersAtStart: 0, growth: 0 };
-    const scopedMembers = members.filter((m) => {
-      if (m.church?.id !== churchActiveRow.churchId) return false;
-      if (churchReportBuilder.memberTypes.length && !churchReportBuilder.memberTypes.includes(m.memberType || 'MEMBRO')) return false;
-      return true;
-    });
+    const scopedMembers = (membersByChurchId.get(churchActiveRow.churchId) ?? []).filter((m) => (
+      !churchReportBuilder.memberTypes.length || churchReportBuilder.memberTypes.includes(m.memberType || 'MEMBRO')
+    ));
     const titleBreakdown = scopedMembers.reduce(
       (acc, member) => {
         const t = normalizeLookupValue(member.ecclesiasticalTitleRef?.name || member.ecclesiasticalTitle);
@@ -7442,61 +7531,86 @@ export function Reports() {
   function handleDeleteMemberReportTemplate(templateId: string) {
     const template = memberReportTemplates.find((item) => item.id === templateId);
     if (!template) return;
-    if (!window.confirm(`Excluir o modelo "${template.name}"?`)) return;
-
-    setMemberReportTemplates((current) => current.filter((item) => item.id !== templateId));
-    if (activeMemberReportTemplateId === templateId) {
-      setActiveMemberReportTemplateId(null);
-      setMemberReportTemplateName('');
-    }
+    setConfirmState({
+      title: 'Excluir modelo',
+      description: `O modelo "${template.name}" será removido desta lista.`,
+      confirmLabel: 'Excluir',
+      onConfirm: () => {
+        setMemberReportTemplates((current) => current.filter((item) => item.id !== templateId));
+        if (activeMemberReportTemplateId === templateId) {
+          setActiveMemberReportTemplateId(null);
+          setMemberReportTemplateName('');
+        }
+      },
+    });
   }
 
   function handleDeleteBaptismReportTemplate(templateId: string) {
     const template = baptismReportTemplates.find((item) => item.id === templateId);
     if (!template) return;
-    if (!window.confirm(`Excluir o modelo "${template.name}"?`)) return;
-
-    setBaptismReportTemplates((current) => current.filter((item) => item.id !== templateId));
-    if (activeBaptismReportTemplateId === templateId) {
-      setActiveBaptismReportTemplateId(null);
-      setBaptismReportTemplateName('');
-    }
+    setConfirmState({
+      title: 'Excluir modelo',
+      description: `O modelo "${template.name}" será removido desta lista.`,
+      confirmLabel: 'Excluir',
+      onConfirm: () => {
+        setBaptismReportTemplates((current) => current.filter((item) => item.id !== templateId));
+        if (activeBaptismReportTemplateId === templateId) {
+          setActiveBaptismReportTemplateId(null);
+          setBaptismReportTemplateName('');
+        }
+      },
+    });
   }
 
   function handleDeleteConsecrationReportTemplate(templateId: string) {
     const template = consecrationReportTemplates.find((item) => item.id === templateId);
     if (!template) return;
-    if (!window.confirm(`Excluir o modelo "${template.name}"?`)) return;
-
-    setConsecrationReportTemplates((current) => current.filter((item) => item.id !== templateId));
-    if (activeConsecrationReportTemplateId === templateId) {
-      setActiveConsecrationReportTemplateId(null);
-      setConsecrationReportTemplateName('');
-    }
+    setConfirmState({
+      title: 'Excluir modelo',
+      description: `O modelo "${template.name}" será removido desta lista.`,
+      confirmLabel: 'Excluir',
+      onConfirm: () => {
+        setConsecrationReportTemplates((current) => current.filter((item) => item.id !== templateId));
+        if (activeConsecrationReportTemplateId === templateId) {
+          setActiveConsecrationReportTemplateId(null);
+          setConsecrationReportTemplateName('');
+        }
+      },
+    });
   }
 
   function handleDeleteTransferReportTemplate(templateId: string) {
     const template = transferReportTemplates.find((item) => item.id === templateId);
     if (!template) return;
-    if (!window.confirm(`Excluir o modelo "${template.name}"?`)) return;
-
-    setTransferReportTemplates((current) => current.filter((item) => item.id !== templateId));
-    if (activeTransferReportTemplateId === templateId) {
-      setActiveTransferReportTemplateId(null);
-      setTransferReportTemplateName('');
-    }
+    setConfirmState({
+      title: 'Excluir modelo',
+      description: `O modelo "${template.name}" será removido desta lista.`,
+      confirmLabel: 'Excluir',
+      onConfirm: () => {
+        setTransferReportTemplates((current) => current.filter((item) => item.id !== templateId));
+        if (activeTransferReportTemplateId === templateId) {
+          setActiveTransferReportTemplateId(null);
+          setTransferReportTemplateName('');
+        }
+      },
+    });
   }
 
   function handleDeleteChurchReportTemplate(templateId: string) {
     const template = churchReportTemplates.find((item) => item.id === templateId);
     if (!template) return;
-    if (!window.confirm(`Excluir o modelo "${template.name}"?`)) return;
-
-    setChurchReportTemplates((current) => current.filter((item) => item.id !== templateId));
-    if (activeChurchReportTemplateId === templateId) {
-      setActiveChurchReportTemplateId(null);
-      setChurchReportTemplateName('');
-    }
+    setConfirmState({
+      title: 'Excluir modelo',
+      description: `O modelo "${template.name}" será removido desta lista.`,
+      confirmLabel: 'Excluir',
+      onConfirm: () => {
+        setChurchReportTemplates((current) => current.filter((item) => item.id !== templateId));
+        if (activeChurchReportTemplateId === templateId) {
+          setActiveChurchReportTemplateId(null);
+          setChurchReportTemplateName('');
+        }
+      },
+    });
   }
 
   function handleDuplicateMemberReportTemplate(template?: SavedMemberReportTemplate) {
@@ -9212,11 +9326,9 @@ export function Reports() {
                           <tbody>
                             {churchReportListRows.map((row, index) => {
                               const isOpen = listRowOpenMembersId === row.churchId;
-                              const rowMembers = members.filter((m) => {
-                                if (m.church?.id !== row.churchId) return false;
-                                if (churchReportBuilder.memberTypes.length && !churchReportBuilder.memberTypes.includes(m.memberType || 'MEMBRO')) return false;
-                                return true;
-                              }).sort((a, b) => compareLocaleValues(a.fullName, b.fullName));
+                              const rowMembers = (membersByChurchId.get(row.churchId) ?? [])
+                                .filter((m) => !churchReportBuilder.memberTypes.length || churchReportBuilder.memberTypes.includes(m.memberType || 'MEMBRO'))
+                                .sort((a, b) => compareLocaleValues(a.fullName, b.fullName));
                               return (
                                 <>
                                   <tr key={row.churchId} className="border-t border-slate-100" style={churchReportBuilder.zebraEnabled && index % 2 === 1 ? { backgroundColor: churchReportBuilder.zebraColor } : undefined}>
@@ -11922,6 +12034,97 @@ export function Reports() {
         ) : null}
       </Dialog>
 
+      {chartDrilldown ? (
+        <>
+          <div
+            className="fixed inset-0 z-[10050] bg-slate-900/50"
+            onClick={() => setChartDrilldown(null)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-[10051] flex max-h-[85vh] w-[94%] max-w-5xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 dark:border-slate-800">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-300">
+                  {chartDrilldown.title}
+                </p>
+                <h3 className="mt-1 truncate text-lg font-bold text-slate-900 dark:text-white">
+                  {chartDrilldown.dimensionLabel}: {chartDrilldown.dimensionValue}
+                </h3>
+                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                  {chartDrilldown.rows.length} {chartDrilldown.rows.length === 1 ? 'registro' : 'registros'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChartDrilldown(null)}
+                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto">
+              {chartDrilldown.rows.length ? (
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                      {chartDrilldown.columns.map((column) => (
+                        <th
+                          key={column.key}
+                          className="whitespace-nowrap px-3 py-2 text-left font-semibold uppercase tracking-wide text-slate-500"
+                        >
+                          {column.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chartDrilldown.rows.map((row, index) => (
+                      <tr
+                        key={index}
+                        className="border-t border-slate-100 dark:border-slate-800"
+                      >
+                        {chartDrilldown.columns.map((column) => {
+                          const value = row[column.key];
+                          return (
+                            <td key={column.key} className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                              {value === null || value === undefined || value === '' ? '-' : String(value)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="p-6 text-center text-sm text-slate-500">
+                  Nenhum registro por tras deste ponto.
+                </p>
+              )}
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      <AlertDialog open={!!confirmState} onOpenChange={(open) => { if (!open) setConfirmState(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmState?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmState?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmState(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                confirmState?.onConfirm();
+                setConfirmState(null);
+              }}
+            >
+              {confirmState?.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={memberReportNameDialogOpen} onOpenChange={setMemberReportNameDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -12037,29 +12240,29 @@ export function Reports() {
       {!loading && !error && activeTab === 'dashboards' ? (
         <div className="space-y-6">
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex flex-wrap items-center gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-300">Construtor visual</p>
-                <h2 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">Dashboards de gráficos customizados</h2>
-              </div>
-            </div>
+            {/* Controles em uma linha so. Antes eram quatro blocos verticais —
+                titulo, divisoria, grade de filtros com rotulo empilhado sobre
+                cada campo, e a barra de dashboards — que empurravam os graficos
+                para fora da tela. Os rotulos viraram aria-label/title: o valor
+                selecionado ja diz o que o campo e ("Todas as igrejas"), e as
+                duas datas ganham prefixo curto porque sozinhas nao diriam. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="mr-1 shrink-0 text-sm font-bold text-slate-900 dark:text-white">Dashboards</h2>
 
-            <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4 md:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(150px,0.9fr)_minmax(150px,0.9fr)_minmax(180px,1fr)_minmax(150px,0.9fr)_minmax(150px,0.9fr)] dark:border-slate-800">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Intervalo</label>
-                <select
-                  value={selectedDatePreset}
-                  onChange={(event) => setSelectedDatePreset(event.target.value as DatePresetKey)}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900"
-                >
-                  {DATE_PRESET_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                aria-label="Intervalo"
+                title="Intervalo"
+                value={selectedDatePreset}
+                onChange={(event) => setSelectedDatePreset(event.target.value as DatePresetKey)}
+                className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900"
+              >
+                {DATE_PRESET_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Data inicial</label>
+              <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                De
                 <input
                   type="date"
                   value={dateFrom}
@@ -12067,12 +12270,12 @@ export function Reports() {
                     setSelectedDatePreset('custom');
                     setDateFrom(event.target.value);
                   }}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900"
+                  className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900"
                 />
-              </div>
+              </label>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Data final</label>
+              <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                Ate
                 <input
                   type="date"
                   value={dateTo}
@@ -12080,13 +12283,14 @@ export function Reports() {
                     setSelectedDatePreset('custom');
                     setDateTo(event.target.value);
                   }}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900"
+                  className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900"
                 />
-              </div>
+              </label>
 
-              <div className={campoVisible ? undefined : 'hidden'}>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
+              {campoVisible ? (
                 <select
+                  aria-label="Campo"
+                  title="Campo"
                   value={selectedFieldId}
                   onChange={(event) => {
                     setSelectedFieldId(event.target.value);
@@ -12094,50 +12298,48 @@ export function Reports() {
                     setSelectedChurchId('');
                   }}
                   disabled={hasFixedCampoScope}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:disabled:bg-slate-800"
+                  className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                 >
                   <option value="">Todos os campos</option>
                   {fields.map((field) => (
                     <option key={field.id} value={field.id}>{field.code ? `${field.code} - ` : ''}{field.name}</option>
                   ))}
                 </select>
-              </div>
+              ) : null}
 
-              <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>
-                <select
-                  value={selectedRegionalId}
-                  onChange={(event) => {
-                    setSelectedRegionalId(event.target.value);
-                    setSelectedChurchId('');
-                  }}
-                  disabled={hasFixedChurchScope}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:disabled:bg-slate-800"
-                >
-                  <option value="">Todas as regionais</option>
-                  {filteredRegionais.map((regional) => (
-                    <option key={regional.id} value={regional.id}>{regional.code ? `${regional.code} - ` : ''}{regional.name}</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                aria-label="Regional"
+                title="Regional"
+                value={selectedRegionalId}
+                onChange={(event) => {
+                  setSelectedRegionalId(event.target.value);
+                  setSelectedChurchId('');
+                }}
+                disabled={hasFixedChurchScope}
+                className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+              >
+                <option value="">Todas as regionais</option>
+                {filteredRegionais.map((regional) => (
+                  <option key={regional.id} value={regional.id}>{regional.code ? `${regional.code} - ` : ''}{regional.name}</option>
+                ))}
+              </select>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Igreja</label>
-                <select
-                  value={selectedChurchId}
-                  onChange={(event) => setSelectedChurchId(event.target.value)}
-                  disabled={hasFixedChurchScope}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:disabled:bg-slate-800"
-                >
-                  <option value="">Todas as igrejas</option>
-                  {filteredChurchOptions.map((church) => (
-                    <option key={church.id} value={church.id}>{church.code ? `${church.code} - ` : ''}{church.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+              <select
+                aria-label="Igreja"
+                title="Igreja"
+                value={selectedChurchId}
+                onChange={(event) => setSelectedChurchId(event.target.value)}
+                disabled={hasFixedChurchScope}
+                className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 disabled:bg-slate-100 dark:disabled:bg-slate-800 max-w-[220px]"
+              >
+                <option value="">Todas as igrejas</option>
+                {filteredChurchOptions.map((church) => (
+                  <option key={church.id} value={church.id}>{church.code ? `${church.code} - ` : ''}{church.name}</option>
+                ))}
+              </select>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="mx-1 hidden h-5 w-px bg-slate-200 dark:bg-slate-700 xl:block" />
+
               {dashboardsState.dashboards.map((dashboard) => (
                 <div key={dashboard.id} className="inline-flex items-center gap-1">
                   <button
@@ -12261,7 +12463,17 @@ export function Reports() {
                         </table>
                       </div>
                     ) : (
-                      <ReactECharts option={buildChartOption(chart, source, aggregated, source.records)} style={{ height: 320 }} notMerge lazyUpdate />
+                      <ReactECharts
+                        option={buildChartOption(chart, source, aggregated, source.records)}
+                        style={{ height: 320, cursor: 'pointer' }}
+                        notMerge
+                        lazyUpdate
+                        onEvents={{
+                          // params.name e a categoria em barra/linha e o nome da
+                          // fatia na rosca — mesmo campo nos tres casos.
+                          click: (params: { name?: string }) => openChartDrilldown(chart, source, String(params?.name || '')),
+                        }}
+                      />
                     )}
 
                     {chart.showTable && chart.chartType !== 'table' ? (

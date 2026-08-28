@@ -394,14 +394,18 @@ function MultiSelectDropdown({
   onChange,
   allLabel,
   disabled,
+  searchable,
 }: {
   options: { value: string; label: string }[];
   value: string[] | null;
   onChange: (v: string[] | null) => void;
   allLabel: string;
   disabled?: boolean;
+  /** Campo de filtro no topo. Ligado nas listas longas (igrejas, regionais). */
+  searchable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -412,6 +416,16 @@ function MultiSelectDropdown({
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) setSearch('');
+  }, [open]);
+
+  const visibleOptions = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(term));
+  }, [options, search]);
 
   // null = modo "todos"; [] = nenhum marcado; [ids] = seleção parcial
   const isAll = value === null;
@@ -428,9 +442,17 @@ function MultiSelectDropdown({
   const handleTodos = () => {
     if (isAll) {
       onChange([]); // desmarcar todos → entra no modo seleção vazia
-    } else {
-      onChange(null); // marcar todos → volta ao modo "todos"
+      return;
     }
+    // Com um filtro digitado, "marcar todos" marca o que está à vista somado ao
+    // que já estava escolhido — marcar a lista inteira aqui apagaria o filtro
+    // que o usuário acabou de aplicar.
+    if (search.trim()) {
+      const next = Array.from(new Set([...selected, ...visibleOptions.map((o) => o.value)]));
+      onChange(next.length === options.length ? null : next);
+      return;
+    }
+    onChange(null); // marcar todos → volta ao modo "todos"
   };
 
   const toggle = (val: string) => {
@@ -458,7 +480,22 @@ function MultiSelectDropdown({
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-full min-w-[200px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl">
+        <div className="absolute z-50 mt-1 w-full min-w-[240px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl">
+          {searchable && (
+            <div className="border-b border-slate-100 dark:border-slate-700 p-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Filtrar..."
+                  className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1.5 pl-8 pr-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+          )}
           <div className="max-h-64 overflow-y-auto py-1">
             <label className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm font-semibold border-b border-slate-100 dark:border-slate-700">
               <input
@@ -467,9 +504,11 @@ function MultiSelectDropdown({
                 onChange={handleTodos}
                 className="h-4 w-4 rounded border-slate-300 accent-purple-600"
               />
-              {allLabel}
+              {search.trim() ? 'Marcar filtrados' : allLabel}
             </label>
-            {options.map((option) => (
+            {visibleOptions.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-slate-400">Nada encontrado</p>
+            ) : visibleOptions.map((option) => (
               <label key={option.value} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm">
                 <input
                   type="checkbox"
@@ -518,13 +557,21 @@ export function Members() {
   const [titles, setTitles] = useState<EcclesiasticalTitleOption[]>([]);
   const [members, setMembers] = useState<MemberRecord[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState(activeFieldId);
-  const [selectedRegionalId, setSelectedRegionalId] = useState(storedUser.regionalId || '');
-  const [selectedChurchId, setSelectedChurchId] = useState(storedUser.churchId || '');
+  // null = "todas", igual aos demais MultiSelectDropdown desta tela. Comecam na
+  // regional e na igreja do usuario logado.
+  const [selectedRegionalIds, setSelectedRegionalIds] = useState<string[] | null>(
+    storedUser.regionalId ? [storedUser.regionalId] : null,
+  );
+  const [selectedChurchIds, setSelectedChurchIds] = useState<string[] | null>(
+    storedUser.churchId ? [storedUser.churchId] : null,
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 350);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<MemberTypeFilter>('MEMBRO');
   const [selectedTitleFilters, setSelectedTitleFilters] = useState<string[] | null>(null);
-  const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[] | null>(null);
+  // Ativos por padrao: e o recorte que a secretaria usa no dia a dia, e evita
+  // que a primeira consulta traga inativos, desligados e visitantes junto.
+  const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[] | null>(['ativo']);
   const [selectedMaritalStatusFilters, setSelectedMaritalStatusFilters] = useState<string[] | null>(null);
   const [loadingFilters, setLoadingFilters] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -549,7 +596,26 @@ export function Members() {
   const [preparingPrint, setPreparingPrint] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [isNavigatingNew, setIsNavigatingNew] = useState(false);
-  const isLoadingScreen = loadingFilters || loadingMembers;
+  type AppliedFilters = {
+    churchIds?: string;
+    regionalIds?: string;
+    campoId?: string;
+    q?: string;
+    memberType?: string;
+    status?: string;
+    maritalStatus?: string;
+    titleId?: string;
+  };
+  const [appliedFilters, setAppliedFilters] = useState<AppliedFilters | null>(null);
+
+  // Sem busca feita a tela nao esta carregando — esta esperando o usuario.
+  const hasSearched = appliedFilters !== null;
+  // Duas esperas diferentes, que estavam sob a mesma flag: as opcoes dos
+  // filtros (campos, regionais, igrejas, titulos) e a lista de membros. Antes
+  // as duas mostravam "Carregando dados dos membros...", entao a tela dizia
+  // estar buscando membros enquanto pedia para o usuario clicar em Buscar.
+  const isLoadingMembersList = hasSearched && loadingMembers;
+  const isLoadingScreen = isLoadingMembersList;
   const isAnyActionActive = printModalOpen || preparingPrint || exportingExcel || (quickCreateType !== null) || isNavigatingNew;
 
   const filteredRegionais = useMemo(() => {
@@ -577,12 +643,14 @@ export function Members() {
       return church.regional?.campoId === selectedFieldId || church.regional?.campo?.id === selectedFieldId;
     });
 
-    if (!selectedRegionalId) {
+    if (!selectedRegionalIds || selectedRegionalIds.length === 0) {
       return churchesInField;
     }
 
-    return churchesInField.filter((church) => church.regional?.id === selectedRegionalId || church.regionalId === selectedRegionalId);
-  }, [churches, hasFixedChurchScope, selectedFieldId, selectedRegionalId, storedUser.churchId]);
+    return churchesInField.filter((church) => (
+      selectedRegionalIds.includes(church.regional?.id || '') || selectedRegionalIds.includes(church.regionalId || '')
+    ));
+  }, [churches, hasFixedChurchScope, selectedFieldId, selectedRegionalIds, storedUser.churchId]);
 
   const titleFilterOptions = useMemo(() => {
     const options = titles.map((title) => ({
@@ -669,9 +737,11 @@ export function Members() {
     uniqueChurches: serverChurchCount,
   }), [serverActiveCount, serverInactiveCount, serverChurchCount]);
 
+  // Mexer num filtro nao mexe mais na pagina: os resultados na tela ainda sao
+  // os da busca anterior. Quem zera a pagina e handleSearchMembers.
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, selectedFieldId, selectedRegionalId, selectedChurchId, selectedTypeFilter, selectedTitleFilters, selectedStatusFilters, selectedMaritalStatusFilters, pageSize]);
+  }, [pageSize]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -737,12 +807,12 @@ export function Members() {
           setSelectedFieldId(activeFieldId);
         }
 
-        if (hasFixedChurchScope && storedUser.regionalId && storedUser.regionalId !== selectedRegionalId) {
-          setSelectedRegionalId(storedUser.regionalId);
+        if (hasFixedChurchScope && storedUser.regionalId) {
+          setSelectedRegionalIds([storedUser.regionalId]);
         }
 
-        if (hasFixedChurchScope && storedUser.churchId && storedUser.churchId !== selectedChurchId) {
-          setSelectedChurchId(storedUser.churchId);
+        if (hasFixedChurchScope && storedUser.churchId) {
+          setSelectedChurchIds([storedUser.churchId]);
         }
       } catch (loadError) {
         setFields([]);
@@ -760,19 +830,38 @@ export function Members() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, selectedFieldId, hasFixedChurchScope, activeFieldId]);
 
+  // A tela abre limpa: a consulta so acontece quando o usuario clica em Buscar.
+  // Antes ela carregava a base ao montar e refazia a busca a cada filtro
+  // mexido — com 26 mil membros isso era uma espera que ninguem pediu.
+  // Este snapshot e o que a query enxerga; mexer num <select> nao o altera.
+  const buildFiltersFromForm = useCallback((): AppliedFilters => ({
+    churchIds: selectedChurchIds?.length ? selectedChurchIds.join(',') : undefined,
+    regionalIds: !selectedChurchIds?.length && selectedRegionalIds?.length
+      ? selectedRegionalIds.join(',')
+      : undefined,
+    campoId: (!selectedChurchIds?.length && !selectedRegionalIds?.length)
+      ? (selectedFieldId || undefined)
+      : undefined,
+    q: searchTerm.trim() || undefined,
+    memberType: selectedTypeFilter !== 'ALL' ? selectedTypeFilter : undefined,
+    status: selectedStatusFilters && selectedStatusFilters.length > 0 ? selectedStatusFilters.join(',') : undefined,
+    maritalStatus: selectedMaritalStatusFilters && selectedMaritalStatusFilters.length > 0 ? selectedMaritalStatusFilters.join(',') : undefined,
+    titleId: selectedTitleFilters && selectedTitleFilters.length > 0 ? selectedTitleFilters.join(',') : undefined,
+  }), [selectedChurchIds, selectedRegionalIds, selectedFieldId, searchTerm, selectedTypeFilter, selectedStatusFilters, selectedMaritalStatusFilters, selectedTitleFilters]);
+
+  const handleSearchMembers = useCallback(() => {
+    setPage(1);
+    setAppliedFilters(buildFiltersFromForm());
+  }, [buildFiltersFromForm]);
+
   // ── TanStack Query — members ─────────────────────────────────────────────
+  // page/pageSize ficam de fora do snapshot: paginar e navegar no resultado ja
+  // buscado, entao muda a consulta na hora, sem passar pelo botao.
   const memberQueryFilters = useMemo(() => ({
-    churchId: selectedChurchId || undefined,
-    regionalId: !selectedChurchId ? (selectedRegionalId || undefined) : undefined,
-    campoId: (!selectedChurchId && !selectedRegionalId) ? (selectedFieldId || undefined) : undefined,
-    q: debouncedSearch || undefined,
+    ...(appliedFilters ?? {}),
     page,
     pageSize,
-    memberType: selectedTypeFilter !== 'ALL' ? selectedTypeFilter : undefined,
-    status: selectedStatusFilters !== null && selectedStatusFilters.length > 0 ? selectedStatusFilters.join(',') : undefined,
-    maritalStatus: selectedMaritalStatusFilters !== null && selectedMaritalStatusFilters.length > 0 ? selectedMaritalStatusFilters.join(',') : undefined,
-    titleId: selectedTitleFilters !== null && selectedTitleFilters.length > 0 ? selectedTitleFilters.join(',') : undefined,
-  }), [selectedChurchId, selectedRegionalId, selectedFieldId, debouncedSearch, page, pageSize, selectedTypeFilter, selectedStatusFilters, selectedMaritalStatusFilters, selectedTitleFilters]);
+  }), [appliedFilters, page, pageSize]);
 
   const membersQuery = useQuery<MembersQueryData>({
     queryKey: qk.members(memberQueryFilters),
@@ -801,7 +890,7 @@ export function Members() {
         churchCount: data.churchCount ?? 0,
       };
     },
-    enabled: !!token && !loadingFilters,
+    enabled: !!token && !loadingFilters && appliedFilters !== null,
     placeholderData: (prev) => prev,
     staleTime: 5 * 60 * 1000,
   });
@@ -1128,28 +1217,28 @@ export function Members() {
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{serverTotal}</p>}
+            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{hasSearched ? serverTotal : '—'}</p>}
           </div>
           <User className="h-5 w-5 text-blue-600" />
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Ativos</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{stats.activeMembers}</p>}
+            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{hasSearched ? stats.activeMembers : '—'}</p>}
           </div>
           <User className="h-5 w-5 text-green-600" />
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Inativos</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{stats.inactiveMembers}</p>}
+            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{hasSearched ? stats.inactiveMembers : '—'}</p>}
           </div>
           <User className="h-5 w-5 text-orange-600" />
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Igrejas</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{stats.uniqueChurches}</p>}
+            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{hasSearched ? stats.uniqueChurches : '—'}</p>}
           </div>
           <MapPin className="h-5 w-5 text-purple-600" />
         </div>
@@ -1178,8 +1267,9 @@ export function Members() {
               value={selectedFieldId}
               onChange={(event) => {
                 setSelectedFieldId(event.target.value);
-                setSelectedRegionalId('');
-                setSelectedChurchId('');
+                // Trocar de campo invalida regional e igreja escolhidas.
+                setSelectedRegionalIds(null);
+                setSelectedChurchIds(null);
               }}
               disabled={!canChooseField || loadingFilters}
               className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
@@ -1197,41 +1287,37 @@ export function Members() {
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>
-            <select
-              value={selectedRegionalId}
-              onChange={(event) => {
-                setSelectedRegionalId(event.target.value);
-                setSelectedChurchId('');
+            <MultiSelectDropdown
+              searchable
+              options={filteredRegionais.map((regional) => ({
+                value: regional.id,
+                label: `${regional.code ? `${regional.code} - ` : ''}${regional.name}`,
+              }))}
+              value={selectedRegionalIds}
+              onChange={(next) => {
+                setSelectedRegionalIds(next);
+                // Trocar a regional invalida a igreja escolhida: ela pode nem
+                // pertencer mais as regionais selecionadas.
+                setSelectedChurchIds(null);
               }}
+              allLabel="Todas as regionais"
               disabled={!canChooseRegional || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
-            >
-              {!hasFixedChurchScope && <option value="">Todas as regionais</option>}
-              {filteredRegionais.map((regional) => (
-                <option key={regional.id} value={regional.id}>
-                  {regional.code ? `${regional.code} - ` : ''}
-                  {regional.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Igreja</label>
-            <select
-              value={selectedChurchId}
-              onChange={(event) => setSelectedChurchId(event.target.value)}
+            <MultiSelectDropdown
+              searchable
+              options={filteredChurches.map((church) => ({
+                value: church.id,
+                label: `${church.code ? `${church.code} - ` : ''}${church.name}`,
+              }))}
+              value={selectedChurchIds}
+              onChange={setSelectedChurchIds}
+              allLabel="Todas as igrejas"
               disabled={!canChooseChurch || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
-            >
-              {!hasFixedChurchScope && <option value="">Todas as igrejas</option>}
-              {filteredChurches.map((church) => (
-                <option key={church.id} value={church.id}>
-                  {church.code ? `${church.code} - ` : ''}
-                  {church.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>
@@ -1282,12 +1368,41 @@ export function Members() {
               allLabel="Todos os estados civis"
             />
           </div>
+
+          {/* Consulta explicita: nada e buscado ate clicar aqui. */}
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={handleSearchMembers}
+              disabled={membersQuery.isFetching}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Search className="h-4 w-4" />
+              {membersQuery.isFetching ? 'Buscando...' : 'Buscar'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {isLoadingScreen ? (
+      {loadingFilters ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          Carregando opções dos filtros...
+        </div>
+      ) : isLoadingMembersList ? (
         <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
           Carregando dados dos membros...
+        </div>
+      ) : null}
+
+      {!hasSearched ? (
+        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-12 text-center">
+          <Search className="mx-auto mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Ajuste os filtros e clique em Buscar
+          </p>
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            A lista carrega apenas os membros que você escolher.
+          </p>
         </div>
       ) : null}
 
@@ -1297,6 +1412,7 @@ export function Members() {
         </div>
       ) : null}
 
+      {hasSearched ? (
       <div className="relative rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         {isRefetching && (
           <div className="absolute inset-0 z-20 flex items-start justify-center rounded-xl bg-white/60 pt-24 backdrop-blur-[1px] dark:bg-slate-900/60">
@@ -1515,6 +1631,7 @@ export function Members() {
           </div>
         </div>
       </div>
+      ) : null}
 
       <MemberEditDrawer
         memberId={editorMemberId}
@@ -1527,9 +1644,9 @@ export function Members() {
       <MemberQuickCreateModal
         open={!!quickCreateType}
         type={quickCreateType}
-        initialChurchId={selectedChurchId || storedUser.churchId || filteredChurches[0]?.id || ''}
+        initialChurchId={selectedChurchIds?.[0] || storedUser.churchId || filteredChurches[0]?.id || ''}
         availableChurches={filteredChurches.map((church) => ({ id: church.id, name: church.name, code: church.code || '' }))}
-        lockChurchSelection={hasFixedChurchScope && Boolean(selectedChurchId || storedUser.churchId)}
+        lockChurchSelection={hasFixedChurchScope && Boolean(selectedChurchIds?.[0] || storedUser.churchId)}
         onClose={closeQuickCreate}
         onCreated={handleQuickCreated}
       />

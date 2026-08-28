@@ -16,14 +16,38 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!stage) return NextResponse.json({ stage: null, columns: [] });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cardWhere: Record<string, any> = { stageId, deletedAt: null, ...kanScopeFilter(user) };
+    // Record: kanScopeFilter retorna uma uniao em que nem todo ramo tem
+    // churchId, e aqui so precisamos saber se ele veio.
+    const scope = kanScopeFilter(user) as Record<string, unknown>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cardWhere: Record<string, any> = { stageId, deletedAt: null, ...scope };
     const churchId = searchParams.get("churchId");
+    // Lista separada por virgula, para o filtro de multiplas igrejas da tela.
+    // `churchId` (uma so) continua aceito — outros chamadores ainda usam.
+    const churchIds = (searchParams.get("churchIds") || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
     const campoId = searchParams.get("campoId");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const q = searchParams.get("q");
 
-    if (churchId) cardWhere.churchId = churchId;
+    // O filtro da tela so pode RESTRINGIR dentro do escopo, nunca substitui-lo.
+    // Antes `cardWhere.churchId = churchId` sobrescrevia o churchId que
+    // kanScopeFilter tinha fixado, entao um perfil preso a uma igreja (church,
+    // secretaria, tesouraria) via cards de qualquer outra so passando o id na
+    // query. Com selecao multipla o vazamento seria de varias de uma vez.
+    const scopedChurchId = typeof scope.churchId === "string" ? scope.churchId : null;
+    const requestedChurchIds = churchIds.length ? churchIds : (churchId ? [churchId] : []);
+
+    if (scopedChurchId) {
+      cardWhere.churchId = scopedChurchId;
+    } else if (requestedChurchIds.length === 1) {
+      cardWhere.churchId = requestedChurchIds[0];
+    } else if (requestedChurchIds.length > 1) {
+      cardWhere.churchId = { in: requestedChurchIds };
+    }
     if (campoId) cardWhere.church = { ...(cardWhere.church || {}), regional: { campoId } };
     if (from || to) {
       cardWhere.openedAt = {};

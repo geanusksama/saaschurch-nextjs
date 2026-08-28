@@ -917,6 +917,7 @@ churchId     // filtrar por igreja
 regionalId   // filtrar por regional
 campoId      // filtrar por campo
 churchIds    // múltiplas igrejas separadas por vírgula
+regionalIds  // múltiplas regionais separadas por vírgula
 limit        // modo legado: retorna array simples (máx 500)
 page         // página (default 1)
 pageSize     // por página (default 20, máx 5000)
@@ -937,6 +938,36 @@ titleId      // UUID(s) de título eclesiástico|__NONE__
 // Resposta legada (com limit):
 Member[]
 ```
+
+**Precedência dos filtros de abrangência** (o primeiro que vier vence):
+`churchId` → `churchIds` → `regionalIds` → `regionalId` → `campoId` → campo do usuário.
+
+O escopo do usuário é aplicado **depois** e sobrepõe qualquer um deles: perfil
+não-master fica preso ao próprio campo, e `isRestrictedToOwnChurch` (perfil
+`church`, secretaria ou tesouraria) fica preso à própria igreja. Filtro da tela
+só restringe dentro do escopo — nunca o amplia.
+
+---
+
+### 5.19 Board do Kanban — filtros
+
+**`GET /api/kan/stages/:id/board`**
+
+```typescript
+// Query params:
+churchId    // uma igreja
+churchIds   // múltiplas igrejas separadas por vírgula
+campoId     // campo
+from, to    // intervalo por openedAt
+q           // busca por protocolo ou nome do candidato
+```
+
+**O escopo é inviolável.** `kanScopeFilter` fixa `churchId` para perfis presos a
+uma igreja, e o filtro da query só pode restringir dentro dele. Até 2026-08-28 a
+rota fazia `cardWhere.churchId = churchId` **sobrescrevendo** o escopo — um
+perfil `church`, secretaria ou tesouraria via cards de qualquer outra igreja
+apenas passando o id na query. Ao mexer aqui, preserve a precedência: quando
+`kanScopeFilter` devolve um `churchId`, ele vence sempre.
 
 **Busca por nome (lógica):**
 ```typescript

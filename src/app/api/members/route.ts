@@ -76,6 +76,12 @@ export async function GET(req: NextRequest) {
     const regionalId = sp.get("regionalId") ?? undefined;
     const campoId = sp.get("campoId") ?? undefined;
     const churchIds = sp.get("churchIds") ?? undefined;
+    // Lista separada por virgula, para o filtro de multiplas regionais da tela.
+    // `regionalId` (uma so) continua aceito — outros chamadores ainda usam.
+    const regionalIds = (sp.get("regionalIds") || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
     const limitParam = sp.get("limit");
 
     // Accept `q`, `query`, or `search` as name search param
@@ -106,6 +112,8 @@ export async function GET(req: NextRequest) {
     } else if (churchIds) {
       const ids = churchIds.split(",").filter(Boolean);
       if (ids.length) churchWhere.id = { in: ids };
+    } else if (regionalIds.length) {
+      churchWhere.regionalId = { in: regionalIds };
     } else if (regionalId) {
       churchWhere.regionalId = regionalId;
     } else if (campoId) {
