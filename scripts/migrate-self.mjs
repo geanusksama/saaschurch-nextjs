@@ -15,6 +15,13 @@
  *   3. iguais -> nao faz nada e o build segue
  *   4. diferentes -> aplica o baseline (todo idempotente) e carimba a versao
  *
+ * ATENCAO A QUEM CRIA MIGRATION: este script aplica o BASELINE, nao as
+ * migrations do Prisma. Criar prisma/migrations/... resolve so o banco de
+ * referencia. Sem regerar o baseline (painelchurch: npm run baseline:dump) e
+ * copiar para saaschurch-nextjs/baseline/, o deploy leva o front novo para
+ * todas as igrejas e deixa os bancos delas para tras.
+ * Passo a passo: docs/RELEASE-CHECKLIST.md secao 1.
+ *
  * ATIVACAO: so roda quando MIGRATE_ON_BUILD=1. E opt-in de proposito — o
  * projeto principal do saaschurch nao deve se automigrar.
  *

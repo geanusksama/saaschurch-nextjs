@@ -119,7 +119,10 @@ O `GET` público **nunca grava** — tráfego de visitante não semeia banco.
 → 200 { campoId, config: {...}, cards: [...], sede: {...} }
 ```
 
-- `Cache-Control: public, max-age=60, stale-while-revalidate=300`.
+- `Cache-Control: no-store`, e o `fetch` do front também. Os 60 s de cache +
+  300 s de stale que havia aqui faziam quem editava salvar, abrir a home e
+  continuar vendo o estado antigo por minutos — sem saber se tinha errado ou
+  se era cache. O custo de largar o cache é uma consulta por chave única.
 - Nunca 500 para o visitante: qualquer erro ⇒ default com `{ fallback: true }`.
   Home fora do ar por causa de configuração é inaceitável.
 
@@ -130,11 +133,21 @@ falhar, devolve o que der para editar com `seedFailed: true` em vez de 500.
 
 ### `PUT /api/home-config` — autenticado, `master | admin | campo`
 
-Body `{ config, cards }`. Transação:
+Body `{ config, cards }`. Transação de **3 statements**:
 
 1. `upsert` de `home_configs` por `campoId`
-2. `deleteMany` dos cartões que sumiram
-3. `upsert` dos enviados, com `sort_order` = posição no array
+2. `deleteMany` de todos os cartões da configuração
+3. `createMany` da lista recebida, `sort_order` = posição no array
+
+A lista enviada substitui a anterior por inteiro e nada referencia um cartão
+pelo id, então apagar e recriar é correto — e é o que torna o custo constante.
+
+A primeira versão fazia um `upsert` POR CARTÃO. Com ~700 ms de ida e volta até
+o pooler, 10 cartões passavam dos 5 s do limite da transação interativa: o
+Prisma a fechava no meio (`Transaction not found`), todo salvamento devolvia
+500, e a conexão envenenada derrubava rotas vizinhas depois
+(`Server has closed the connection` no `/api/headquarters`). Ver
+`docs/RELEASE-CHECKLIST.md` §4.
 
 Validação: cores `^#[0-9a-fA-F]{6}$`, URL `http(s)://`, `/caminho` ou `sede:`,
 `icon` dentro do catálogo, `action` dentro do enum, `key` único, título ≤160.
@@ -186,10 +199,20 @@ primeira — e `church_schedule` na ordem cadastrada), `loadHomePayload`
 
 - `src/lib/homeMetadata.ts` — `cache()` do React: `generateMetadata`,
   `generateViewport` e o manifesto compartilham uma consulta só;
-- `src/app/layout.tsx` — `generateMetadata` / `generateViewport` assíncronos;
+- `src/app/layout.tsx` — `generateMetadata` / `generateViewport` assíncronos,
+  com `export const dynamic = "force-dynamic"`: sem isso o Next renderiza `/`
+  estaticamente no build e congela título e favicon da igreja que existia
+  naquele momento;
 - `src/app/manifest.ts` (`MetadataRoute.Manifest`) serve `/manifest.webmanifest`.
   **`public/manifest.webmanifest` foi removido**: arquivo em `public/` tem
   precedência sobre a rota e venceria sempre.
+- **Favicon com dono único.** Havia três fontes disputando o `<link rel="icon">`:
+  `src/app/favicon.ico` (convenção do Next — saía primeiro no `<head>` e
+  vencia), o script inline do `layout.tsx` lendo `localStorage.mrm_branding`, e
+  a configuração. As duas primeiras foram removidas; a do localStorage só
+  trocava o ícone no navegador de quem tinha salvo a marca, e visitante nenhum
+  via. O `syncFavicon` do `themeSettings.ts` também saiu — cores e raio
+  continuam intactos.
 
 ### 5.6 Tela de edição
 
@@ -211,8 +234,14 @@ mesmo padrão do "Escolher Ícone" que já existe em Informações da Igreja.
 `pg_constraint`. Aditiva, sem tocar em tabela existente, compatível com o
 `migrate-self`.
 
-Depois de mesclar: **regerar o `baseline/`** pelo painelchurch, senão os bancos
-das outras igrejas não ganham as tabelas no próximo deploy.
+Depois de mesclar, obrigatoriamente: **regerar o `baseline/`** pelo painelchurch
+(`npm run baseline:dump`) e copiar para `saaschurch-nextjs/baseline/`.
+
+O `migrate-self` aplica o BASELINE, **não** as migrations do Prisma — sem esse
+passo o deploy leva o front novo para todas as igrejas e deixa os bancos delas
+para trás. Feito nesta entrega: baseline `6013fb939d04d7f4`.
+
+Procedimento completo: [../../RELEASE-CHECKLIST.md](../../RELEASE-CHECKLIST.md) §1.
 
 Nenhum seed em SQL — a ausência de linha é estado válido, e a semeadura real
 acontece na primeira visita à tela (§3).
@@ -228,3 +257,21 @@ acontece na primeira visita à tela (§3).
 | Ícone inválido salvo por API | Catálogo fechado no servidor; `resolveHomeIcon` cai em `Circle` |
 | `generateMetadata` bate no banco a cada request | `cache()` do React + consulta por chave única |
 | Bancos antigos sem as tabelas | `IF NOT EXISTS` + `catch` na leitura ⇒ default |
+
+## 8. Testes
+
+`scripts/e2e-home-publica.mjs` — 46 verificações contra o servidor rodando:
+carregar/semear, ocultar, reordenar, editar (título, ícone, cores, quebra de
+linha), criar, apagar, as travas do cartão do app, as quatro recusas de
+validação, autorização (401 sem token) e o reflexo no `<title>`, no
+`<link rel="icon">` e no manifesto.
+
+A sessão vem de um magic link gerado com o service role — não precisa de senha.
+
+```bash
+E2E_CONFIRMO=sim node scripts/e2e-home-publica.mjs
+```
+
+A confirmação é obrigatória porque o teste **grava na configuração real e
+restaura no fim**: rodando enquanto alguém edita a tela, a restauração desfaz o
+que a pessoa salvou — foi o que aconteceu na primeira execução.

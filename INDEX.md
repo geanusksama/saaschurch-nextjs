@@ -4,6 +4,12 @@ Bem-vindo ao centro de documentação unificado do **SaasChurch**. Este reposit�
 
 ---
 
+> ⚠️ **Antes de subir para o Git:** leia o
+> [RELEASE-CHECKLIST.md](file:///d:/projetos/FRONTBACK/saaschurch-nextjs/docs/RELEASE-CHECKLIST.md).
+> Mudou o schema? O `migrate-self` aplica o **baseline**, não as migrations do
+> Prisma — sem regerar o baseline pelo painelchurch, o deploy atualiza o front
+> de todas as igrejas e deixa os bancos delas para trás.
+
 ## 🗂️ Estrutura de Pastas e Links Diretos
 
 ### 📊 Modelos de Dados e Banco de Dados (`docs/database/`)
