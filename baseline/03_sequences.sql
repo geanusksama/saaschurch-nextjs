@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:10:27.918Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.207Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline c4f239f220316469
+-- Baseline 17aacbeba6e33d7b
 
 -- Sequences
 create sequence if not exists "public"."kan_columns_id_seq" as integer increment by 1 minvalue 1 maxvalue 2147483647 start with 1 no cycle;

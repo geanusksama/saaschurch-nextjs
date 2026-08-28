@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:10:27.919Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.208Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline c4f239f220316469
+-- Baseline 17aacbeba6e33d7b
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 

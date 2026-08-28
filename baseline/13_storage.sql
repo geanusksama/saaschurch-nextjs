@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:10:27.926Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.217Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline c4f239f220316469
+-- Baseline 17aacbeba6e33d7b
 
 -- Storage: buckets e policies
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:10:27.925Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.215Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline c4f239f220316469
+-- Baseline 17aacbeba6e33d7b
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS _teste_aliancas_campo_idx ON public._teste_aliancas USING btree (campo_id);

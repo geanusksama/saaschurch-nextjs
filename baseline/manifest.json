@@ -1,6 +1,6 @@
 {
-  "version": "c4f239f220316469",
-  "generatedAt": "2026-08-28T05:10:27.927Z",
+  "version": "17aacbeba6e33d7b",
+  "generatedAt": "2026-08-28T05:15:33.218Z",
   "schemas": [
     "public",
     "app"
@@ -36,11 +36,11 @@
     },
     {
       "file": "06_constraints.sql",
-      "bytes": 79382
+      "bytes": 90330
     },
     {
       "file": "07_foreign_keys.sql",
-      "bytes": 148611
+      "bytes": 165747
     },
     {
       "file": "08_indexes.sql",

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:10:27.926Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.216Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline c4f239f220316469
+-- Baseline 17aacbeba6e33d7b
 
 -- Row Level Security
 alter table "public"."_teste_aliancas" enable row level security;
