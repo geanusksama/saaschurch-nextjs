@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && node scripts/migrate-self.mjs && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate:self": "node scripts/migrate-self.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
