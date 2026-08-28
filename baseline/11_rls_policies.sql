@@ -1,8 +1,9 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:01:11.766Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:10:27.926Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 03e71297af6eae49
+-- Baseline c4f239f220316469
 
 -- Row Level Security
+alter table "public"."_teste_aliancas" enable row level security;
 alter table "public"."app_cadastros" enable row level security;
 alter table "public"."app_cart_items" enable row level security;
 alter table "public"."app_daily_bread_entries" enable row level security;
@@ -124,6 +125,8 @@ alter table "public"."site_style_presets" enable row level security;
 alter table "public"."tbeventos" enable row level security;
 
 -- Policies
+drop policy if exists "_teste_aliancas_read" on "public"."_teste_aliancas";
+create policy "_teste_aliancas_read" on "public"."_teste_aliancas" as permissive for select to "authenticated" using (true);
 drop policy if exists "app_cadastros_self_insert" on "public"."app_cadastros";
 create policy "app_cadastros_self_insert" on "public"."app_cadastros" as permissive for insert to "anon", "authenticated" with check (true);
 drop policy if exists "app_cadastros_self_select" on "public"."app_cadastros";
