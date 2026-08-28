@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.208Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.334Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 17aacbeba6e33d7b
+-- Baseline 0d7449fb3f6c8936
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -13,15 +13,6 @@ create table if not exists "public"."_prisma_migrations" (
   "rolled_back_at" timestamp with time zone,
   "started_at" timestamp with time zone default now() not null,
   "applied_steps_count" integer default 0 not null
-);
-
-create table if not exists "public"."_teste_aliancas" (
-  "id" uuid default gen_random_uuid() not null,
-  "campo_id" uuid,
-  "nome" character varying(120) not null,
-  "descricao" text,
-  "ativo" boolean default true not null,
-  "created_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "public"."ai_agent_users" (

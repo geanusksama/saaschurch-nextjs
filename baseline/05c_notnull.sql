@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.213Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.338Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 17aacbeba6e33d7b
+-- Baseline 0d7449fb3f6c8936
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -9,7 +9,6 @@
 alter table "public"."_prisma_migrations" alter column "id" set not null;
 alter table "public"."_prisma_migrations" alter column "checksum" set not null;
 alter table "public"."_prisma_migrations" alter column "migration_name" set not null;
-alter table "public"."_teste_aliancas" alter column "nome" set not null;
 alter table "public"."ai_agent_users" alter column "agent_id" set not null;
 alter table "public"."ai_agent_users" alter column "user_id" set not null;
 alter table "public"."ai_agents" alter column "name" set not null;

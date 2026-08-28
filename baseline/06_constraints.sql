@@ -1,11 +1,9 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.213Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.338Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 17aacbeba6e33d7b
+-- Baseline 0d7449fb3f6c8936
 
 -- Primary keys, unique e check
 do $$ begin alter table "public"."_prisma_migrations" add constraint "_prisma_migrations_pkey" PRIMARY KEY (id);
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."_teste_aliancas" add constraint "_teste_aliancas_pkey" PRIMARY KEY (id);
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."ai_agent_users" add constraint "ai_agent_users_pkey" PRIMARY KEY (id);
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -589,9 +587,9 @@ do $$ begin alter table "public"."department_event_registrations" add constraint
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."department_orders" add constraint "department_orders_numero_pedido_key" UNIQUE (numero_pedido);
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."department_orders" add constraint "department_orders_lookup_token_key" UNIQUE (lookup_token);
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."department_orders" add constraint "department_orders_check_in_code_key" UNIQUE (check_in_code);
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."department_orders" add constraint "department_orders_lookup_token_key" UNIQUE (lookup_token);
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."discipleship_program_lessons" add constraint "uq_program_lesson_number" UNIQUE (program_id, lesson_number);
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -659,9 +657,9 @@ do $$ begin alter table "public"."whatsapp_instance_users" add constraint "whats
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_cadastros" add constraint "app_cadastros_status_check" CHECK ((status = ANY (ARRAY['PENDENTE'::text, 'APROVADO'::text, 'REJEITADO'::text, 'VINCULADO'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."app_daily_bread_entries" add constraint "app_daily_bread_entries_audience_scope_check" CHECK ((audience_scope = ANY (ARRAY['headquarters'::text, 'church'::text])));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_daily_bread_entries" add constraint "ck_app_daily_bread_scope" CHECK ((((audience_scope = 'headquarters'::text) AND (church_id IS NULL)) OR ((audience_scope = 'church'::text) AND (church_id IS NOT NULL))));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."app_daily_bread_entries" add constraint "app_daily_bread_entries_audience_scope_check" CHECK ((audience_scope = ANY (ARRAY['headquarters'::text, 'church'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_lideranca" add constraint "app_lideranca_tipo_check" CHECK ((tipo = ANY (ARRAY['bispo'::text, 'pastor'::text, 'diacono'::text, 'evangelista'::text, 'outro'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -671,13 +669,13 @@ do $$ begin alter table "public"."app_location_profiles" add constraint "app_loc
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_media_channels" add constraint "ck_app_media_channels_scope" CHECK ((((audience_scope = 'headquarters'::app_media_audience_scope) AND (church_id IS NULL)) OR ((audience_scope = 'church'::app_media_audience_scope) AND (church_id IS NOT NULL))));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."app_media_files" add constraint "ck_app_media_files_scope" CHECK ((((audience_scope = 'headquarters'::app_media_audience_scope) AND (church_id IS NULL)) OR ((audience_scope = 'church'::app_media_audience_scope) AND (church_id IS NOT NULL))));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_media_files" add constraint "ck_app_media_files_bucket" CHECK ((bucket_name = 'cultos'::text));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."app_media_items" add constraint "app_media_items_source_platform_check" CHECK ((source_platform = ANY (ARRAY['supabase'::text, 'youtube'::text, 'vimeo'::text, 'spotify'::text, 'external'::text])));
+do $$ begin alter table "public"."app_media_files" add constraint "ck_app_media_files_scope" CHECK ((((audience_scope = 'headquarters'::app_media_audience_scope) AND (church_id IS NULL)) OR ((audience_scope = 'church'::app_media_audience_scope) AND (church_id IS NOT NULL))));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_media_items" add constraint "ck_app_media_items_scope" CHECK ((((audience_scope = 'headquarters'::app_media_audience_scope) AND (church_id IS NULL)) OR ((audience_scope = 'church'::app_media_audience_scope) AND (church_id IS NOT NULL))));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."app_media_items" add constraint "app_media_items_source_platform_check" CHECK ((source_platform = ANY (ARRAY['supabase'::text, 'youtube'::text, 'vimeo'::text, 'spotify'::text, 'external'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_media_people" add constraint "ck_app_media_people_scope" CHECK ((((audience_scope = 'headquarters'::app_media_audience_scope) AND (church_id IS NULL)) OR ((audience_scope = 'church'::app_media_audience_scope) AND (church_id IS NOT NULL))));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -691,15 +689,15 @@ do $$ begin alter table "public"."app_media_series" add constraint "app_media_se
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_media_series" add constraint "ck_app_media_series_scope" CHECK ((((audience_scope = 'headquarters'::app_media_audience_scope) AND (church_id IS NULL)) OR ((audience_scope = 'church'::app_media_audience_scope) AND (church_id IS NOT NULL))));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."app_public_profiles" add constraint "app_public_profiles_audience_scope_check" CHECK ((audience_scope = ANY (ARRAY['headquarters'::text, 'church'::text])));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_public_profiles" add constraint "ck_app_public_profiles_scope" CHECK ((((audience_scope = 'headquarters'::text) AND (church_id IS NULL)) OR ((audience_scope = 'church'::text) AND (church_id IS NOT NULL))));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."app_push_notifications" add constraint "app_push_notifications_status_check" CHECK ((status = ANY (ARRAY['draft'::text, 'scheduled'::text, 'sent'::text, 'cancelled'::text])));
+do $$ begin alter table "public"."app_public_profiles" add constraint "app_public_profiles_audience_scope_check" CHECK ((audience_scope = ANY (ARRAY['headquarters'::text, 'church'::text])));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."app_push_notifications" add constraint "app_push_notifications_target_type_check" CHECK ((target_type = ANY (ARRAY['all'::text, 'campo'::text, 'regional'::text, 'church'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."app_push_notifications" add constraint "app_push_notifications_media_type_check" CHECK ((media_type = ANY (ARRAY['image'::text, 'video'::text, 'audio'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."app_push_notifications" add constraint "app_push_notifications_target_type_check" CHECK ((target_type = ANY (ARRAY['all'::text, 'campo'::text, 'regional'::text, 'church'::text])));
+do $$ begin alter table "public"."app_push_notifications" add constraint "app_push_notifications_status_check" CHECK ((status = ANY (ARRAY['draft'::text, 'scheduled'::text, 'sent'::text, 'cancelled'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."church_cashbook_status" add constraint "church_cashbook_status_reference_month_check" CHECK (((reference_month >= 1) AND (reference_month <= 12)));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -711,9 +709,9 @@ do $$ begin alter table "public"."contabilidade_agendamentos" add constraint "co
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."contabilidade_agendamentos" add constraint "contabilidade_agendamentos_tipo_periodo_check" CHECK (((tipo_periodo)::text = ANY ((ARRAY['mes_corrente'::character varying, 'mes_anterior'::character varying, 'gap'::character varying])::text[])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."contabilidade_envios_historico" add constraint "contabilidade_envios_historico_status_check" CHECK (((status)::text = ANY ((ARRAY['sucesso'::character varying, 'erro'::character varying, 'parcial'::character varying])::text[])));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."contabilidade_envios_historico" add constraint "contabilidade_envios_historico_tipo_check" CHECK (((tipo)::text = ANY ((ARRAY['automatico'::character varying, 'manual'::character varying])::text[])));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."contabilidade_envios_historico" add constraint "contabilidade_envios_historico_status_check" CHECK (((status)::text = ANY ((ARRAY['sucesso'::character varying, 'erro'::character varying, 'parcial'::character varying])::text[])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."contabilidade_periodos_enviados" add constraint "contabilidade_periodos_enviados_mes_check" CHECK (((mes >= 1) AND (mes <= 12)));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -725,9 +723,9 @@ do $$ begin alter table "public"."discipleship_meetings" add constraint "discipl
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."discipleship_programs" add constraint "discipleship_programs_stage_check" CHECK ((stage = ANY (ARRAY['fundamentos'::text, 'crescimento'::text, 'multiplicacao'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."discipleships" add constraint "discipleships_progress_percent_check" CHECK (((progress_percent >= 0) AND (progress_percent <= 100)));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."discipleships" add constraint "discipleships_status_check" CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'paused'::text, 'cancelled'::text])));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."discipleships" add constraint "discipleships_progress_percent_check" CHECK (((progress_percent >= 0) AND (progress_percent <= 100)));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."feed_posts" add constraint "feed_posts_media_type_check" CHECK ((media_type = ANY (ARRAY['image'::text, 'video'::text, 'audio'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -743,17 +741,17 @@ do $$ begin alter table "public"."pastoral_counseling_sessions" add constraint "
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_counseling_sessions" add constraint "pastoral_counseling_sessions_spiritual_state_check" CHECK ((spiritual_state = ANY (ARRAY['strong'::text, 'weak'::text, 'growing'::text, 'confused'::text, 'restored'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."pastoral_counselings" add constraint "pastoral_counselings_status_check" CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'paused'::text, 'cancelled'::text])));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_counselings" add constraint "pastoral_counselings_counseling_type_check" CHECK ((counseling_type = ANY (ARRAY['conjugal'::text, 'familiar'::text, 'espiritual'::text, 'emocional'::text, 'libertacao'::text, 'ministerial'::text, 'financeiro'::text, 'outro'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_counselings" add constraint "pastoral_counselings_priority_check" CHECK ((priority = ANY (ARRAY['low'::text, 'normal'::text, 'high'::text, 'urgent'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."pastoral_counselings" add constraint "pastoral_counselings_status_check" CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'paused'::text, 'cancelled'::text])));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_visit_participants" add constraint "pastoral_visit_participants_role_check" CHECK ((role = ANY (ARRAY['pastor'::text, 'lider'::text, 'obreiro'::text, 'visitante'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."pastoral_visits" add constraint "pastoral_visits_status_check" CHECK ((status = ANY (ARRAY['scheduled'::text, 'completed'::text, 'cancelled'::text, 'rescheduled'::text, 'pending'::text])));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_visits" add constraint "pastoral_visits_visit_type_check" CHECK ((visit_type = ANY (ARRAY['pastoral'::text, 'domiciliar'::text, 'hospitalar'::text, 'familiar'::text, 'novo_convertido'::text, 'disciplina'::text, 'acompanhamento'::text])));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."pastoral_visits" add constraint "pastoral_visits_status_check" CHECK ((status = ANY (ARRAY['scheduled'::text, 'completed'::text, 'cancelled'::text, 'rescheduled'::text, 'pending'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_visits" add constraint "pastoral_visits_priority_check" CHECK ((priority = ANY (ARRAY['low'::text, 'normal'::text, 'high'::text, 'urgent'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -763,9 +761,9 @@ do $$ begin alter table "public"."prayer_requests" add constraint "prayer_reques
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_priority_check" CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_visibility_check" CHECK ((visibility = ANY (ARRAY['public'::text, 'leadership'::text, 'private'::text])));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_status_check" CHECK ((status = ANY (ARRAY['active'::text, 'answered'::text, 'archived'::text])));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_visibility_check" CHECK ((visibility = ANY (ARRAY['public'::text, 'leadership'::text, 'private'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."santander_conciliacoes" add constraint "santander_conciliacoes_score_match_check" CHECK (((score_match >= 0) AND (score_match <= 100)));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -773,9 +771,9 @@ do $$ begin alter table "public"."santander_credentials" add constraint "santand
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."santander_credentials" add constraint "santander_credentials_tolerance_days_check" CHECK (((tolerance_days >= 0) AND (tolerance_days <= 7)));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."santander_movimentos" add constraint "santander_movimentos_amount_check" CHECK ((amount > (0)::numeric));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."santander_movimentos" add constraint "santander_movimentos_credit_debit_type_check" CHECK (((credit_debit_type)::text = ANY ((ARRAY['C'::character varying, 'D'::character varying])::text[])));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."santander_movimentos" add constraint "santander_movimentos_amount_check" CHECK ((amount > (0)::numeric));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."santander_sync_logs" add constraint "santander_sync_logs_source_check" CHECK (((source)::text = ANY ((ARRAY['api'::character varying, 'febraban'::character varying, 'manual'::character varying])::text[])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;

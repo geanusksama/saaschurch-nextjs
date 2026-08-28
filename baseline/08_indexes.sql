@@ -1,9 +1,8 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.215Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.339Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 17aacbeba6e33d7b
+-- Baseline 0d7449fb3f6c8936
 
 -- Indexes (exceto os criados por constraints)
-CREATE INDEX IF NOT EXISTS _teste_aliancas_campo_idx ON public._teste_aliancas USING btree (campo_id);
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
 CREATE INDEX IF NOT EXISTS asset_inventories_church_id_idx ON public.asset_inventories USING btree (church_id);
 CREATE UNIQUE INDEX IF NOT EXISTS asset_inventory_items_inventory_id_asset_id_key ON public.asset_inventory_items USING btree (inventory_id, asset_id);

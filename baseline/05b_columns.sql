@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:15:33.209Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-28T05:21:04.335Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 17aacbeba6e33d7b
+-- Baseline 0d7449fb3f6c8936
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -12,12 +12,6 @@ alter table "public"."_prisma_migrations" add column if not exists "logs" text;
 alter table "public"."_prisma_migrations" add column if not exists "rolled_back_at" timestamp with time zone;
 alter table "public"."_prisma_migrations" add column if not exists "started_at" timestamp with time zone default now() not null;
 alter table "public"."_prisma_migrations" add column if not exists "applied_steps_count" integer default 0 not null;
-alter table "public"."_teste_aliancas" add column if not exists "id" uuid default gen_random_uuid() not null;
-alter table "public"."_teste_aliancas" add column if not exists "campo_id" uuid;
-alter table "public"."_teste_aliancas" add column if not exists "nome" character varying(120);
-alter table "public"."_teste_aliancas" add column if not exists "descricao" text;
-alter table "public"."_teste_aliancas" add column if not exists "ativo" boolean default true not null;
-alter table "public"."_teste_aliancas" add column if not exists "created_at" timestamp with time zone default now() not null;
 alter table "public"."ai_agent_users" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."ai_agent_users" add column if not exists "agent_id" uuid;
 alter table "public"."ai_agent_users" add column if not exists "user_id" uuid;

@@ -165,6 +165,14 @@ try {
     const path = join(BASELINE, step.file);
     if (!existsSync(path)) { log(`${step.file}: ausente, pulando.`); continue; }
 
+    // O carimbo de versao so vale se TUDO passou. Carimbar um banco meio
+    // aplicado o marcaria como atualizado, e o deploy seguinte pularia a
+    // migracao — o banco ficaria quebrado em silencio.
+    if (step.file === '99_version.sql' && failures.length > 0) {
+      log(`99_version.sql: NAO carimbado — ${failures.length} falhas antes.`);
+      continue;
+    }
+
     const statements = splitStatements(readFileSync(path, 'utf8'));
     const tx = !step.autocommit;
     if (tx) await client.query('begin');
