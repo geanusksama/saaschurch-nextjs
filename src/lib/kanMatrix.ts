@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolverTituloDaRegra } from "@/lib/tituloEclesiasticoHistorico";
+import { ehServicoDeReadmissao } from "@/lib/readmissaoTitulo";
 import { ROTA_PIPELINE_SECRETARIA } from "@/lib/notificationLinks";
 
 /**
@@ -36,13 +37,20 @@ export async function applyMatrixRule({
       let prevMember: { ecclesiasticalTitle: string | null; addressCity: string | null; addressState: string | null; nationality: string | null } | null = null;
       if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = rule.newStatus.toUpperCase();
 
-      // O título pode ser fixo (rule.newTitle) ou restaurado do histórico do
-      // membro, quando a regra tem restorePreviousTitle — é o caso da
-      // readmissão, em que quem já foi pastor não pode voltar como congregado.
-      const { titulo: tituloResolvido, restaurado } = await resolverTituloDaRegra(
+      // O título pode ser fixo (rule.newTitle), restaurado do histórico do
+      // membro (restorePreviousTitle) ou — e este vence os dois — o que a
+      // secretaria confirmou ao abrir o requerimento de readmissão, guardado em
+      // `intended_title` no card. Ver src/lib/readmissaoTitulo.ts.
+      const tituloConfirmado = ehServicoDeReadmissao(
+        service as { sigla?: string | null; description?: string | null } | null
+      )
+        ? ((card.intendedTitle as string | null) || null)
+        : null;
+      const { titulo: tituloResolvido, restaurado, origem } = await resolverTituloDaRegra(
         prisma,
         rule,
-        card.memberId as string
+        card.memberId as string,
+        tituloConfirmado
       );
 
       if (rule.changeTitle && tituloResolvido) {
@@ -72,15 +80,23 @@ export async function applyMatrixRule({
             newTitle: tituloResolvido,
             // Deixa rastro de que o título foi restaurado, e não escolhido na
             // regra — a secretaria precisa saber de onde veio numa conferência.
-            source: restaurado ? "MATRIZ_RESTAURADO" : "MATRIZ",
+            source:
+              origem === "CONFIRMADO"
+                ? "MATRIZ_CONFIRMADO"
+                : origem === "HISTORICO"
+                  ? "MATRIZ_RESTAURADO"
+                  : "MATRIZ",
             serviceGroup,
             serviceName,
             memberCity: prevMember?.addressCity ?? null,
             memberState: prevMember?.addressState ?? null,
             memberCountry: prevMember?.nationality ?? null,
-            notes: restaurado
-              ? `Título restaurado do histórico: ${restaurado.nome}${restaurado.quando ? ` (registrado em ${new Date(restaurado.quando).toLocaleDateString("pt-BR")})` : ""}`
-              : rule.message ?? null,
+            notes:
+              origem === "CONFIRMADO"
+                ? `Título confirmado pela secretaria na readmissão: ${tituloResolvido}`
+                : restaurado
+                  ? `Título restaurado do histórico: ${restaurado.nome}${restaurado.quando ? ` (registrado em ${new Date(restaurado.quando).toLocaleDateString("pt-BR")})` : ""}`
+                  : rule.message ?? null,
             createdBy: user?.id ?? null,
           },
         }).catch(() => null);

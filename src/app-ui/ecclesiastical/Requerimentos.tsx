@@ -25,6 +25,8 @@ import { apiBase } from "../../lib/apiBase";
 import { useCampoVisible } from "../../lib/campoVisibility";
 import { PrintModal } from "../../components/app-ui/shared/PrintModal";
 import { printReport } from "../../lib/printReport";
+import { ConfirmarTituloReadmissao } from "../../components/ecclesiastical/ConfirmarTituloReadmissao";
+import { ehServicoDeReadmissao } from "../../lib/readmissaoTitulo";
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function authFetch(url: string, init: RequestInit = {}) {
@@ -85,6 +87,8 @@ type KanService = {
   rules?: Array<{
     id: number;
     columnIndex: number;
+    changeTitle?: boolean;
+    restorePreviousTitle?: boolean;
     stage?: {
       id: number;
       name: string;
@@ -1335,6 +1339,12 @@ function memberStatusCls(s?: string | null) {
   return "bg-slate-100 text-slate-600";
 }
 
+/** Readmissão cuja matriz restaura o título: é onde a confirmação faz efeito. */
+function pedeTituloDeRetorno(service: KanService | null) {
+  if (!ehServicoDeReadmissao(service)) return false;
+  return (service?.rules || []).some((r) => r.changeTitle && r.restorePreviousTitle);
+}
+
 function NovoRequerimentoModal({
   services,
   defaultServiceId,
@@ -1350,6 +1360,11 @@ function NovoRequerimentoModal({
   const [observations, setObservations] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Readmissão: a secretaria confirma, no histórico do membro, para qual título
+  // ele volta. Fica gravado no card (intended_title) e é o que a matriz aplica
+  // quando o card é movido. Ver src/lib/readmissaoTitulo.ts.
+  const [confirmedTitle, setConfirmedTitle] = useState("");
+  const [titlePickerOpen, setTitlePickerOpen] = useState(false);
 
   // â”€â”€ Member search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [selectedMember, setSelectedMember] = useState<MemberHit | null>(null);
@@ -1430,6 +1445,10 @@ function NovoRequerimentoModal({
     setMemberSearch("");
     setMemberHits([]);
     setShowMemberDropdown(false);
+    // Outro membro, outro histórico: a confirmação anterior não vale mais.
+    setConfirmedTitle("");
+    const svc = services.find((x) => x.id === Number(serviceId)) || null;
+    setTitlePickerOpen(pedeTituloDeRetorno(svc));
   }
 
   // â”€â”€ Attachments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1469,6 +1488,12 @@ function NovoRequerimentoModal({
   }, [selectedService]);
   const stageId = selectedRuleStage?.id ?? selectedService?.stages?.[0]?.id ?? null;
 
+  // Só pede confirmação onde a matriz de fato restaura o título anterior —
+  // é a regra que consome o valor gravado em `intended_title` no card.
+  const exigeTitulo =
+    ehServicoDeReadmissao(selectedService) &&
+    (selectedService?.rules || []).some((r) => r.changeTitle && r.restorePreviousTitle);
+
 
   // â”€â”€ Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function handleSubmit(e: React.FormEvent) {
@@ -1477,6 +1502,11 @@ function NovoRequerimentoModal({
     if (!selectedMember) { setError("Selecione o membro."); return; }
     if (!serviceId) { setError("Selecione o tipo de requerimento."); return; }
     if (!stageId) { setError("Serviço selecionado não possui etapa configurada na matriz."); return; }
+    if (exigeTitulo && !confirmedTitle) {
+      setError("Confirme o título de retorno da readmissão.");
+      setTitlePickerOpen(true);
+      return;
+    }
     const churchId = selectedMember.church?.id || "";
     if (!churchId) { setError("Membro selecionado não possui igreja vinculada."); return; }
     setSaving(true);
@@ -1509,6 +1539,7 @@ function NovoRequerimentoModal({
         candidateName: selectedMember.fullName,
         description: observations || null,
         attachments: attachmentPayload,
+        ...(confirmedTitle ? { intendedTitle: confirmedTitle } : {}),
       };
       const res = await authFetch(`${apiBase}/kan/cards`, {
         method: "POST",
@@ -1663,7 +1694,16 @@ function NovoRequerimentoModal({
               <div className="relative">
                 <select
                   value={serviceId}
-                  onChange={(e) => setServiceId(e.target.value)}
+                  onChange={(e) => {
+                    const novoId = e.target.value;
+                    setServiceId(novoId);
+                    // Trocar de serviço invalida a confirmação anterior; sendo
+                    // readmissão e com o membro já escolhido, o histórico de
+                    // títulos abre na hora.
+                    setConfirmedTitle("");
+                    const svc = services.find((x) => x.id === Number(novoId)) || null;
+                    setTitlePickerOpen(Boolean(selectedMember) && pedeTituloDeRetorno(svc));
+                  }}
                   className="w-full appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 py-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
                 >
                   <option value="">Selecione o tipo de requerimento...</option>
@@ -1677,6 +1717,40 @@ function NovoRequerimentoModal({
               </div>
               {selectedService && !stageId && (
                 <p className="mt-1 text-[11px] text-amber-600">Este serviço não possui etapa na matriz.</p>
+              )}
+
+              {/* Readmissão: título de retorno confirmado no histórico do membro */}
+              {exigeTitulo && (
+                <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700 mb-1">
+                    Título de retorno
+                  </p>
+                  {!selectedMember ? (
+                    <p className="text-xs text-violet-700">Selecione o membro para ver o histórico de títulos.</p>
+                  ) : confirmedTitle ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-violet-900">{confirmedTitle}</span>
+                      <button
+                        type="button"
+                        onClick={() => setTitlePickerOpen(true)}
+                        className="text-xs font-medium text-violet-700 underline hover:text-violet-900"
+                      >
+                        Trocar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setTitlePickerOpen(true)}
+                      className="text-sm font-medium text-violet-700 underline hover:text-violet-900"
+                    >
+                      Escolher no histórico do membro
+                    </button>
+                  )}
+                  <p className="mt-1 text-[11px] text-violet-600">
+                    Fica gravado no requerimento e é o título aplicado quando o card for movido no kanban.
+                  </p>
+                </div>
               )}
 
               <div className="mt-3">
@@ -1795,6 +1869,23 @@ function NovoRequerimentoModal({
           </button>
         </div>
       </div>
+
+      {/* O backdrop do requerimento fecha no clique; a caixa do picker precisa
+          barrar o borbulhamento para o clique dentro dela não fechar os dois. */}
+      {titlePickerOpen && selectedMember && serviceId && (
+        <div onClick={(e) => e.stopPropagation()}>
+        <ConfirmarTituloReadmissao
+          memberId={selectedMember.id}
+          serviceId={serviceId}
+          onCancel={() => setTitlePickerOpen(false)}
+          onConfirm={(titulo) => {
+            setConfirmedTitle(titulo);
+            setTitlePickerOpen(false);
+            setError("");
+          }}
+        />
+        </div>
+      )}
     </div>
   );
 }

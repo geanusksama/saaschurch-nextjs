@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Search,
@@ -39,6 +39,18 @@ type Service = {
   pipelineCount?: number;
   pipelineNames?: string[];
   stageNames?: string[];
+  // /api/kan/services já devolve as regras e as etapas com suas colunas.
+  stages?: Array<{
+    id: number;
+    name: string;
+    pipeline?: { id: number; name: string } | null;
+    columns?: Array<{ id: number; name: string; columnIndex: number }>;
+  }>;
+  rules?: Array<{
+    id: number;
+    columnIndex: number;
+    stage?: { id: number; name: string; pipeline?: { id: number; name: string } | null } | null;
+  }>;
 };
 
 type Pipeline = { id: number; name: string; type?: string | null };
@@ -180,10 +192,8 @@ function ServicesView({
   onDelete: (id: number) => void;
 }) {
   const [services, setServices] = useState<Service[]>([]);
-  const [serviceStructure, setServiceStructure] = useState<Record<number, ServiceStructureSummary>>({});
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
-  const [loadingStructure, setLoadingStructure] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -194,70 +204,52 @@ function ServicesView({
       .finally(() => setLoading(false));
   }, [tick]);
 
-  useEffect(() => {
-    let active = true;
+  /**
+   * Estrutura (pipelines, etapas, colunas, regras) de cada serviço.
+   *
+   * Sai do próprio payload de `/api/kan/services`, que já traz `rules` e
+   * `stages.columns`. Antes a tela disparava uma requisição extra por serviço
+   * — 33 chamadas a `/kan/services/:id/rules`, ~3 s cada — e, enquanto elas não
+   * voltavam, todos os contadores ficavam em 0. Dava a impressão de que a
+   * matriz estava zerada, quando era só demora.
+   */
+  const serviceStructure = useMemo(() => {
+    const porServico: Record<number, ServiceStructureSummary> = {};
+    for (const service of services) {
+      const pipelineSet = new Set(service.pipelineNames || []);
+      const stageSet = new Set(service.stageNames || []);
+      const columnSet = new Set<string>();
 
-    if (!services.length) {
-      setServiceStructure({});
-      return () => {
-        active = false;
+      // Nome da coluna por índice — o mesmo mapa que /kan/services/:id/rules monta.
+      const nomeDaColuna: Record<number, string> = {};
+      for (const stage of service.stages || []) {
+        if (stage.name) stageSet.add(stage.name);
+        if (stage.pipeline?.name) pipelineSet.add(stage.pipeline.name);
+        for (const col of stage.columns || []) {
+          if (nomeDaColuna[col.columnIndex] === undefined) nomeDaColuna[col.columnIndex] = col.name;
+        }
+      }
+
+      const rules = service.rules || [];
+      for (const rule of rules) {
+        if (rule.stage?.name) stageSet.add(rule.stage.name);
+        if (rule.stage?.pipeline?.name) pipelineSet.add(rule.stage.pipeline.name);
+        const nome = nomeDaColuna[rule.columnIndex];
+        if (nome) columnSet.add(nome);
+      }
+
+      const ordenar = (v: Set<string>) => Array.from(v).sort((a, b) => a.localeCompare(b, "pt-BR"));
+      porServico[service.id] = {
+        ruleCount: rules.length || service.ruleCount || 0,
+        pipelineCount: pipelineSet.size || service.pipelineCount || 0,
+        stageCount: stageSet.size || service.stageCount || 0,
+        columnCount: columnSet.size || service.columnCount || 0,
+        pipelineNames: ordenar(pipelineSet),
+        stageNames: ordenar(stageSet),
+        columnNames: ordenar(columnSet),
       };
     }
-
-    setLoadingStructure(true);
-    Promise.all(
-      services.map(async (service) => {
-        const pipelineSet = new Set(service.pipelineNames || []);
-        const stageSet = new Set(service.stageNames || []);
-        const columnSet = new Set<string>();
-
-        try {
-          const response = await authFetch(`${apiBase}/kan/services/${service.id}/rules`);
-          const rules = response.ok ? ((await response.json()) as MatrixRule[]) : [];
-
-          for (const rule of Array.isArray(rules) ? rules : []) {
-            if (rule.pipelineName) pipelineSet.add(rule.pipelineName);
-            if (rule.stage?.name) stageSet.add(rule.stage.name);
-            if (rule.columnName) columnSet.add(rule.columnName);
-          }
-
-          return [
-            service.id,
-            {
-              ruleCount: Array.isArray(rules) ? rules.length : service.ruleCount ?? 0,
-              pipelineCount: pipelineSet.size,
-              stageCount: stageSet.size,
-              columnCount: columnSet.size || service.columnCount || 0,
-              pipelineNames: Array.from(pipelineSet).sort((a, b) => a.localeCompare(b, "pt-BR")),
-              stageNames: Array.from(stageSet).sort((a, b) => a.localeCompare(b, "pt-BR")),
-              columnNames: Array.from(columnSet).sort((a, b) => a.localeCompare(b, "pt-BR")),
-            },
-          ] as const;
-        } catch {
-          return [
-            service.id,
-            {
-              ruleCount: service.ruleCount ?? 0,
-              pipelineCount: service.pipelineCount ?? 0,
-              stageCount: service.stageCount ?? 0,
-              columnCount: service.columnCount ?? 0,
-              pipelineNames: service.pipelineNames || [],
-              stageNames: service.stageNames || [],
-              columnNames: [],
-            },
-          ] as const;
-        }
-      })
-    ).then((entries) => {
-      if (!active) return;
-      setServiceStructure(Object.fromEntries(entries));
-    }).finally(() => {
-      if (active) setLoadingStructure(false);
-    });
-
-    return () => {
-      active = false;
-    };
+    return porServico;
   }, [services]);
 
   const filtered = services
@@ -306,15 +298,6 @@ function ServicesView({
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Lista de Serviços</span>
-          {loadingStructure && (
-            <span className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-              <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-              </svg>
-              Atualizando estrutura...
-            </span>
-          )}
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3 text-slate-400 dark:text-slate-500">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolverTituloDaRegra } from "@/lib/tituloEclesiasticoHistorico";
+import { ehServicoDeReadmissao } from "@/lib/readmissaoTitulo";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess } from "@/lib/helpers";
 
@@ -14,6 +15,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const body = await req.json().catch(() => ({}));
     const { action, notes, serviceGroup, serviceName, metadata, serviceId, columnIndex, date, targetChurchId } = body;
+    // Título confirmado pela secretaria no modal de readmissão. Ver
+    // src/lib/readmissaoTitulo.ts.
+    const confirmedTitle: string | null = body.confirmedTitle ?? null;
 
     // ── Mode 1: direct occurrence (legacy) ──────────────────────────────────
     if (!serviceId) {
@@ -58,10 +62,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         // Change ecclesiastical title.
-        // O título pode ser fixo ou restaurado do histórico do membro, quando a
-        // regra tem restorePreviousTitle (readmissão). Ver
-        // src/lib/tituloEclesiasticoHistorico.ts
-        const { titulo: tituloDaRegra, restaurado } = await resolverTituloDaRegra(prisma, rule, id);
+        // Numa readmissão o título não pode ser deduzido: a secretaria confirma
+        // na tela para qual título a pessoa volta, olhando o histórico dela.
+        // Sem essa confirmação a ocorrência é recusada, porque foi exatamente a
+        // dedução automática que trocou títulos errados em produção.
+        if (rule.changeTitle && rule.restorePreviousTitle && ehServicoDeReadmissao(service) && !confirmedTitle) {
+          return NextResponse.json(
+            {
+              error:
+                "Confirme o título de retorno antes de aplicar a readmissão.",
+              code: "TITULO_READMISSAO_NAO_CONFIRMADO",
+            },
+            { status: 400 }
+          );
+        }
+        const { titulo: tituloDaRegra, restaurado, origem } = await resolverTituloDaRegra(
+          prisma,
+          rule,
+          id,
+          confirmedTitle
+        );
         if (rule.changeTitle && tituloDaRegra) {
           memberUpdate.ecclesiasticalTitle = tituloDaRegra;
           const titleRecord = await prisma.ecclesiasticalTitle.findFirst({
@@ -76,14 +96,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 churchId: member.churchId,
                 previousTitle: member.ecclesiasticalTitle || null,
                 newTitle: tituloDaRegra,
-                source: restaurado ? "OCORRENCIA_RAPIDA_RESTAURADO" : "OCORRENCIA_RAPIDA",
+                source:
+                  origem === "CONFIRMADO"
+                    ? "OCORRENCIA_RAPIDA_CONFIRMADO"
+                    : origem === "HISTORICO"
+                      ? "OCORRENCIA_RAPIDA_RESTAURADO"
+                      : "OCORRENCIA_RAPIDA",
                 serviceGroup: service.sigla,
                 serviceName: service.description,
+                notes:
+                  origem === "CONFIRMADO"
+                    ? `Titulo confirmado pela secretaria na readmissao: ${tituloDaRegra}`
+                    : restaurado
+                      ? `Titulo restaurado do historico: ${restaurado.nome}`
+                      : notes || null,
                 createdBy: user.id || null,
               },
             }).catch(() => null);
           }
-          appliedActions.push(`Título alterado → ${tituloDaRegra}${restaurado ? " (restaurado do histórico)" : ""}`);
+          appliedActions.push(
+            `Título alterado → ${tituloDaRegra}${
+              origem === "CONFIRMADO"
+                ? " (confirmado pela secretaria)"
+                : origem === "HISTORICO"
+                  ? " (restaurado do histórico)"
+                  : ""
+            }`
+          );
         }
 
         // Execute transfer
@@ -117,6 +156,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               notes: notes || rule.message || null,
               metadata: {
                 source: "OCORRENCIA_RAPIDA", serviceId: svcId, columnIndex: colIdx, date: date || null,
+                ...(confirmedTitle ? { confirmedTitle } : {}),
                 ...(rule.doesTransfer && targetChurchId ? { destinationChurchId: targetChurchId } : {}),
               },
               createdBy: user.id || null,

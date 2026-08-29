@@ -1052,7 +1052,8 @@ fullName STARTS WITH token1 AND fullName STARTS WITH token2 ...
   columnIndex?: number,     // coluna que determina qual regra aplicar
   notes?: string,
   date?: string,            // data de referência
-  targetChurchId?: string   // destino se doesTransfer=true
+  targetChurchId?: string,  // destino se doesTransfer=true
+  confirmedTitle?: string   // OBRIGATÓRIO em readmissão que troca título
 }
 // → busca KanMatrixRule(serviceId, columnIndex)
 // → aplica: change_status, change_title, does_transfer
@@ -1062,6 +1063,17 @@ fullName STARTS WITH token1 AND fullName STARTS WITH token2 ...
 // Resposta Modo 1: { id, memberId, ... }
 // Resposta Modo 2: { appliedActions: string[] }
 ```
+
+> **Readmissão (READMEM / READOBR / READOMN):** quando a regra da matriz troca o
+> título, `confirmedTitle` é obrigatório — a secretaria escolhe o título de
+> retorno no histórico da pessoa, num modal que abre ao selecionar o serviço.
+> Sem ele a chamada devolve 400 com
+> `code: "TITULO_READMISSAO_NAO_CONFIRMADO"`. No requerimento (kanban) o mesmo
+> valor vai em `intendedTitle` no `POST /api/kan/cards` e fica gravado no card.
+> Detalhes em [readmissao-confirma-titulo.md](./readmissao-confirma-titulo.md).
+>
+> O histórico para o modal vem de
+> **`GET /api/members/:id/readmission-titles?serviceId=N`**.
 
 ---
 

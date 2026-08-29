@@ -106,26 +106,136 @@ export async function ultimoTituloDoHistorico(
   };
 }
 
+/** De onde saiu o título que foi aplicado. Vai para o rastro no histórico. */
+export type OrigemDoTitulo = "CONFIRMADO" | "HISTORICO" | "FIXO";
+
+export type TituloResolvido = {
+  titulo: string | null;
+  restaurado: TituloEncontrado | null;
+  origem: OrigemDoTitulo | null;
+};
+
 /**
  * Título que a regra da matriz deve aplicar.
  *
- * Com `restorePreviousTitle` ligado, tenta o último título do histórico; o
- * `newTitle` da regra vira apenas a rede de segurança para quem não tem
- * histórico nenhum. Sem a flag, o comportamento é o de sempre: título fixo.
+ * Ordem de precedência:
+ *
+ * 1. `restorePreviousTitle` ligado — a regra diz "o título vem do passado do
+ *    membro". Só aí vale o `tituloConfirmado`: o que a secretaria escolheu na
+ *    tela olhando o histórico. Qual título a pessoa recupera é decisão humana,
+ *    não dedução. Ele só entra se casar com o catálogo; texto solto é ignorado,
+ *    para não gravar lixo no cadastro. Sem confirmação, cai no último título do
+ *    histórico — é o caminho de quem não passa pela tela (importações, API).
+ * 2. `newTitle` — o título fixo da regra.
+ *
+ * O `tituloConfirmado` NÃO atropela uma regra de título fixo. Isso importa na
+ * coluna "Readmissão cancelada" do READMEM, que grava CONGREGADO fixo
+ * (change_title=true, restore_previous_title=false): o título confirmado para o
+ * caso de aprovação não pode vazar para o cancelamento.
  */
 export async function resolverTituloDaRegra(
   db: Db,
   regra: { changeTitle: boolean; newTitle: string | null; restorePreviousTitle?: boolean },
-  memberId: string
-): Promise<{ titulo: string | null; restaurado: TituloEncontrado | null }> {
-  if (!regra.changeTitle) return { titulo: null, restaurado: null };
+  memberId: string,
+  tituloConfirmado?: string | null
+): Promise<TituloResolvido> {
+  if (!regra.changeTitle) return { titulo: null, restaurado: null, origem: null };
 
   if (regra.restorePreviousTitle) {
+    if (tituloConfirmado) {
+      const doCatalogo = await normalizarTituloDoCatalogo(db, tituloConfirmado);
+      if (doCatalogo) return { titulo: doCatalogo.nome, restaurado: doCatalogo, origem: "CONFIRMADO" };
+    }
     const encontrado = await ultimoTituloDoHistorico(db, memberId);
-    if (encontrado) return { titulo: encontrado.nome, restaurado: encontrado };
+    if (encontrado) return { titulo: encontrado.nome, restaurado: encontrado, origem: "HISTORICO" };
     // Sem histórico reconhecível: cai no título fixo da regra, se houver.
-    return { titulo: regra.newTitle ?? null, restaurado: null };
+    return { titulo: regra.newTitle ?? null, restaurado: null, origem: "FIXO" };
   }
 
-  return { titulo: regra.newTitle ?? null, restaurado: null };
+  return { titulo: regra.newTitle ?? null, restaurado: null, origem: "FIXO" };
+}
+
+/**
+ * Todos os títulos reconhecíveis do histórico do membro, do mais recente para o
+ * mais antigo, sem repetir o mesmo título.
+ *
+ * É o que a secretaria vê no modal de confirmação da readmissão: em vez de o
+ * sistema decidir sozinho, a lista é mostrada e a pessoa escolhe para qual
+ * título o readmitido volta. A varredura é a mesma de
+ * `ultimoTituloDoHistorico` — as duas colunas, porque o legado gravou o título
+ * real em `previous_title` — e o catálogo continua sendo o filtro.
+ */
+export async function historicoDeTitulos(
+  db: Db,
+  memberId: string
+): Promise<TituloEncontrado[]> {
+  return db.$queryRawUnsafe<TituloEncontrado[]>(
+    `
+    WITH catalogo AS (
+      SELECT id, name, level, ${SEM_ACENTO("name")} AS chave
+      FROM ecclesiastical_titles
+      WHERE deleted_at IS NULL
+    ),
+    candidatos AS (
+      SELECT ${SEM_ACENTO("previous_title")} AS chave, created_at, 0 AS prioridade
+      FROM member_title_history
+      WHERE member_id = $1::uuid AND previous_title IS NOT NULL
+
+      UNION ALL
+
+      SELECT ${SEM_ACENTO("new_title")} AS chave, created_at, 1 AS prioridade
+      FROM member_title_history
+      WHERE member_id = $1::uuid AND new_title IS NOT NULL
+    ),
+    casados AS (
+      SELECT c.id, c.name, c.level, cand.created_at, cand.prioridade
+      FROM candidatos cand
+      JOIN catalogo c ON c.chave = cand.chave
+    )
+    SELECT DISTINCT ON (id)
+      id::text AS id, name AS nome, level AS level, created_at AS quando
+    FROM casados
+    ORDER BY id, created_at DESC NULLS LAST, prioridade DESC
+    `,
+    memberId
+  ).then((linhas) =>
+    linhas
+      .map((l) => ({ ...l, level: Number(l.level), quando: l.quando ?? null }))
+      .sort((a, b) => {
+        const da = a.quando ? new Date(a.quando).getTime() : 0;
+        const db_ = b.quando ? new Date(b.quando).getTime() : 0;
+        if (db_ !== da) return db_ - da;
+        return b.level - a.level;
+      })
+  );
+}
+
+/**
+ * Confere um título escolhido na tela contra o catálogo e devolve o nome
+ * exatamente como está lá.
+ *
+ * A tela manda texto; o cadastro precisa do nome canônico (a base tem
+ * PRESBÍTERO e PRESBITERO convivendo). Devolve null quando o texto não é um
+ * título do catálogo — quem chama recusa a operação em vez de gravar lixo.
+ */
+export async function normalizarTituloDoCatalogo(
+  db: Db,
+  titulo: string
+): Promise<TituloEncontrado | null> {
+  const texto = (titulo || "").trim();
+  if (!texto) return null;
+  const linhas = await db.$queryRawUnsafe<
+    Array<{ id: string; nome: string; level: number }>
+  >(
+    `
+    SELECT id::text AS id, name AS nome, level AS level
+    FROM ecclesiastical_titles
+    WHERE deleted_at IS NULL AND ${SEM_ACENTO("name")} = ${SEM_ACENTO("$1::text")}
+    LIMIT 1
+    `,
+    texto
+  );
+  const achado = linhas[0];
+  if (!achado) return null;
+  return { id: achado.id, nome: achado.nome, level: Number(achado.level), quando: null };
 }

@@ -13,6 +13,8 @@ import {
 } from "./shared/PreviousChurchFields";
 
 import { apiBase } from '../../lib/apiBase';
+import { ConfirmarTituloReadmissao } from '../ecclesiastical/ConfirmarTituloReadmissao';
+import { ehServicoDeReadmissao } from '../../lib/readmissaoTitulo';
 import { supabase } from '../../lib/supabaseClient';
 
 function authFetch(url: string, options: RequestInit = {}) {
@@ -122,6 +124,7 @@ type MatrixRule = {
   columnName?: string | null;
   changeStatus: boolean; newStatus?: string | null;
   changeTitle: boolean; newTitle?: string | null;
+  restorePreviousTitle?: boolean;
   doesTransfer: boolean;
   insertOccurrence: boolean;
 };
@@ -1970,10 +1973,27 @@ function FuncoesTab({
   );
 }
 
-function ruleActionBadges(rule: MatrixRule) {
+/**
+ * O que a matriz vai executar nesta posição.
+ *
+ * Numa readmissão, `rule.newTitle` é só o valor de reserva da regra
+ * (em geral CONGREGADO) — mostrá-lo dava a entender que era ele que seria
+ * aplicado. Quando a secretaria já confirmou o título de retorno, é esse que
+ * aparece; enquanto não confirmou, o rótulo diz que o título sai do histórico,
+ * não do valor fixo. Ver src/lib/readmissaoTitulo.ts.
+ */
+function ruleActionBadges(rule: MatrixRule, tituloConfirmado?: string) {
   const badges: { label: string; color: string }[] = [];
   if (rule.changeStatus && rule.newStatus) badges.push({ label: `Status → ${rule.newStatus}`, color: "bg-blue-100 text-blue-700" });
-  if (rule.changeTitle && rule.newTitle) badges.push({ label: `Título → ${rule.newTitle}`, color: "bg-purple-100 text-purple-700" });
+  if (rule.changeTitle) {
+    if (tituloConfirmado) {
+      badges.push({ label: `Título → ${tituloConfirmado} (escolhido agora)`, color: "bg-violet-100 text-violet-700 ring-1 ring-violet-300" });
+    } else if (rule.restorePreviousTitle) {
+      badges.push({ label: "Título → a confirmar no histórico", color: "bg-amber-100 text-amber-700" });
+    } else if (rule.newTitle) {
+      badges.push({ label: `Título → ${rule.newTitle}`, color: "bg-purple-100 text-purple-700" });
+    }
+  }
   if (rule.doesTransfer) badges.push({ label: "Transferência", color: "bg-orange-100 text-orange-700" });
   if (rule.insertOccurrence) badges.push({ label: "Gera Ocorrência", color: "bg-emerald-100 text-emerald-700" });
   return badges;
@@ -2004,6 +2024,11 @@ function OccurrenceModal({
   const [churchSearch, setChurchSearch] = useState("");
   const [churches, setChurches] = useState<ChurchOption[]>([]);
   const [churchDropOpen, setChurchDropOpen] = useState(false);
+  // Readmissão: o título de retorno é confirmado pela secretaria, olhando o
+  // histórico do membro, antes de a ocorrência ser aplicada.
+  // Ver src/lib/readmissaoTitulo.ts.
+  const [confirmedTitle, setConfirmedTitle] = useState<string>("");
+  const [titlePickerOpen, setTitlePickerOpen] = useState(false);
 
   useEffect(() => {
     authFetch(`${apiBase}/kan/services`)
@@ -2043,16 +2068,31 @@ function OccurrenceModal({
 
 
   const selectedRule = matrixRules.find((r) => r.columnIndex === selectedColIdx) || null;
+  const selectedService = services.find((s) => String(s.id) === String(serviceId)) || null;
+  const ehReadmissao = ehServicoDeReadmissao(selectedService);
+  // A confirmação só é exigida quando o serviço realmente troca o título.
+  const exigeTitulo = ehReadmissao && matrixRules.some((r) => r.changeTitle && r.restorePreviousTitle);
+  // Readmissão cuja matriz não troca título: o que a secretaria confirmar não
+  // tem onde ser aplicado. Em vez de engolir a escolha em silêncio, a tela diz
+  // que falta configurar a regra.
+  const readmissaoSemRegraDeTitulo =
+    ehReadmissao && !loadingRules && !matrixRules.some((r) => r.changeTitle && r.restorePreviousTitle);
 
   async function handleSave() {
     if (!serviceId) { setErr("Selecione um serviço."); return; }
     if (matrixRules.length > 0 && selectedColIdx === null) { setErr("Selecione uma posição da matriz."); return; }
+    if (exigeTitulo && !confirmedTitle) {
+      setErr("Confirme o título de retorno da readmissão.");
+      setTitlePickerOpen(true);
+      return;
+    }
     if (selectedRule?.doesTransfer && !targetChurchId) { setErr("Selecione a igreja de destino para realizar a transferência."); return; }
     setSaving(true); setErr("");
     try {
       const body: Record<string, unknown> = { serviceId: Number(serviceId), date, notes };
       if (selectedColIdx !== null) body.columnIndex = selectedColIdx;
       if (targetChurchId) body.targetChurchId = targetChurchId;
+      if (confirmedTitle) body.confirmedTitle = confirmedTitle;
       const res = await authFetch(`${apiBase}/members/${memberId}/occurrences`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -2128,7 +2168,16 @@ function OccurrenceModal({
             <label className="block text-xs font-medium text-slate-500 mb-1">Serviço *</label>
             <select
               value={serviceId}
-              onChange={(e) => { setServiceId(e.target.value); setErr(""); }}
+              onChange={(e) => {
+                const novoId = e.target.value;
+                setServiceId(novoId);
+                setErr("");
+                setConfirmedTitle("");
+                // Escolheu uma readmissão: o histórico de títulos abre na hora,
+                // que é onde a secretaria decide para qual título a pessoa volta.
+                const svc = services.find((s) => String(s.id) === novoId) || null;
+                setTitlePickerOpen(ehServicoDeReadmissao(svc));
+              }}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Selecione...</option>
@@ -2166,7 +2215,7 @@ function OccurrenceModal({
 
                   <div className="grid grid-cols-2 gap-2">
                     {matrixRules.map((rule) => {
-                      const badges = ruleActionBadges(rule);
+                      const badges = ruleActionBadges(rule, confirmedTitle || undefined);
                       const isSelected = selectedColIdx === rule.columnIndex;
                       return (
                         <button
@@ -2208,11 +2257,11 @@ function OccurrenceModal({
                   </div>
 
                   {/* Selected summary */}
-                  {selectedRule && ruleActionBadges(selectedRule).length > 0 && (
+                  {selectedRule && ruleActionBadges(selectedRule, confirmedTitle || undefined).length > 0 && (
                     <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
                       <p className="text-xs font-semibold text-emerald-700 mb-1">Ações que serão executadas:</p>
                       <ul className="space-y-0.5">
-                        {ruleActionBadges(selectedRule).map((b, i) => (
+                        {ruleActionBadges(selectedRule, confirmedTitle || undefined).map((b, i) => (
                           <li key={i} className="text-xs text-emerald-700 flex items-center gap-1.5">
                             <CheckCircle2 className="w-3 h-3" /> {b.label}
                           </li>
@@ -2222,6 +2271,53 @@ function OccurrenceModal({
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {readmissaoSemRegraDeTitulo && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>
+                {matrixRules.length === 0
+                  ? "Este serviço de readmissão não tem nenhuma regra na matriz. Nada será aplicado ao membro — nem título, nem situação, nem transferência; só fica o registro da ocorrência."
+                  : "Nenhuma posição da matriz deste serviço restaura o título anterior do membro."}{" "}
+                {confirmedTitle
+                  ? `O título confirmado (${confirmedTitle}) NÃO será aplicado.`
+                  : "O título confirmado não seria aplicado."}{" "}
+                Configure em Secretaria › Serviços e Ocorrências › Matriz de Decisão: na coluna de aprovação, ligue &quot;Troca Título&quot; e &quot;Restaurar último título do membro&quot;.
+              </span>
+            </div>
+          )}
+
+          {/* Readmissão: título de retorno confirmado pela secretaria */}
+          {exigeTitulo && (
+            <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5">
+              <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide mb-1">
+                Título de retorno
+              </p>
+              {confirmedTitle ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-violet-900">{confirmedTitle}</span>
+                  <button
+                    type="button"
+                    onClick={() => setTitlePickerOpen(true)}
+                    className="text-xs font-medium text-violet-700 underline hover:text-violet-900"
+                  >
+                    Trocar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setTitlePickerOpen(true)}
+                  className="text-sm font-medium text-violet-700 underline hover:text-violet-900"
+                >
+                  Escolher no histórico do membro
+                </button>
+              )}
+              <p className="text-[11px] text-violet-600 mt-1">
+                O título aplicado na readmissão é este — escolhido no histórico da pessoa, não deduzido pelo sistema.
+              </p>
             </div>
           )}
 
@@ -2320,6 +2416,19 @@ function OccurrenceModal({
           </button>
         </div>
       </div>
+
+      {titlePickerOpen && serviceId && (
+        <ConfirmarTituloReadmissao
+          memberId={memberId}
+          serviceId={serviceId}
+          onCancel={() => setTitlePickerOpen(false)}
+          onConfirm={(titulo) => {
+            setConfirmedTitle(titulo);
+            setTitlePickerOpen(false);
+            setErr("");
+          }}
+        />
+      )}
     </div>
   );
 }

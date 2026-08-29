@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth";
 import { serializeBigInts, kanScopeFilter, isRestrictedToOwnChurch, buildProtocol } from "@/lib/helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { applyMatrixRule } from "@/lib/kanMatrix";
+import { ehServicoDeReadmissao } from "@/lib/readmissaoTitulo";
+import { normalizarTituloDoCatalogo } from "@/lib/tituloEclesiasticoHistorico";
 
 // A regra da matriz é executada pelo módulo compartilhado: existia uma cópia
 // idêntica aqui, e uma cópia a menos é uma chance a menos de as duas
@@ -47,6 +49,44 @@ export async function POST(req: NextRequest) {
       const foundMember = await prisma.member.findFirst({ where: { churchId, deletedAt: null, fullName: { equals: candidateName.trim(), mode: "insensitive" } } });
       if (foundMember) { member = foundMember; resolvedMemberId = foundMember.id; }
     }
+    // Readmissão: o título de retorno é confirmado pela secretaria na abertura
+    // do requerimento e fica gravado no card. Quando o card for movido para a
+    // coluna que troca o título, é este valor que a matriz aplica — sem depender
+    // de deduzir nada do histórico legado. Ver src/lib/readmissaoTitulo.ts.
+    let resolvedIntendedTitle: string | null = intendedTitle || null;
+    if (ehServicoDeReadmissao(service)) {
+      const trocaTitulo = await prisma.kanMatrixRule.findFirst({
+        // Só a regra que restaura o título do passado depende da confirmação.
+        // Uma regra de título fixo (a coluna de cancelamento, por exemplo) não
+        // usa o título confirmado e não deve exigi-lo.
+        where: { serviceId: service.id, isActive: true, changeTitle: true, restorePreviousTitle: true },
+        select: { id: true },
+      });
+      if (trocaTitulo) {
+        if (!resolvedIntendedTitle) {
+          return NextResponse.json(
+            {
+              error: "Confirme o título de retorno antes de abrir a readmissão.",
+              code: "TITULO_READMISSAO_NAO_CONFIRMADO",
+            },
+            { status: 400 }
+          );
+        }
+        const doCatalogo = await normalizarTituloDoCatalogo(prisma, resolvedIntendedTitle);
+        if (!doCatalogo) {
+          return NextResponse.json(
+            {
+              error: `Título de retorno "${resolvedIntendedTitle}" não existe no catálogo de títulos.`,
+              code: "TITULO_READMISSAO_INVALIDO",
+            },
+            { status: 400 }
+          );
+        }
+        // Guarda o nome canônico: a base tem PRESBÍTERO e PRESBITERO convivendo.
+        resolvedIntendedTitle = doCatalogo.nome;
+      }
+    }
+
     let resolvedOriginRegionalId = originRegionalId || null;
     if (!resolvedOriginRegionalId && churchId) {
       const originChurch = await prisma.church.findUnique({ where: { id: churchId }, select: { regionalId: true } });
@@ -65,7 +105,7 @@ export async function POST(req: NextRequest) {
         originRegionalId: resolvedOriginRegionalId, destinationRegionalId: resolvedDestRegionalId,
         requesterChurchId: requesterChurchId || null, requestedChurchId: requestedChurchId || null,
         requesterName: requesterName || null, candidateName: candidateName || member?.fullName || null,
-        currentTitle: member?.ecclesiasticalTitle || null, intendedTitle: intendedTitle || null,
+        currentTitle: member?.ecclesiasticalTitle || null, intendedTitle: resolvedIntendedTitle,
         subject: subject || null, justification: justification || null, observations: observations || null,
         description: description || null, status: "pendente", statusLabel: firstColumn.name,
         metadata: metadata || null, attachments: attachments || null, createdBy: user.id || null,
