@@ -726,3 +726,27 @@ select:-webkit-autofill {
   background-color: var(--tile-color) !important;
   color: #ffffff !important;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Botão de ação verde (ex.: "Nova Ocorrência" no perfil do membro)
+
+   O mapeador de tema acima repinta QUALQUER `bg-emerald-*` com a cor da
+   igreja — era por isso que o botão saía cinza-escuro com gradiente em vez de
+   verde. Mesmo motivo dos selos do financeiro: quando a cor carrega
+   significado, ela precisa de classe própria e de especificidade maior que a
+   do tema (aqui, `button` + classe vence o `[class*="bg-emerald-500"]`).
+   ────────────────────────────────────────────────────────────────────────── */
+.app-shell button.btn-acao-verde {
+  background: #16a34a !important;   /* `background`, não `background-color`:
+                                       zera de uma vez image/gradient/attachment */
+  background-image: none !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  box-shadow: none !important;      /* nada de halo ou brilho em volta */
+  filter: none !important;
+  text-shadow: none !important;
+}
+.app-shell button.btn-acao-verde:hover {
+  background: #15803d !important;
+  box-shadow: none !important;
+}

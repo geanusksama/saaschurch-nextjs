@@ -114,6 +114,20 @@ type HistoryRow = {
 
 type Tab = "historico" | "titulos" | "funcoes" | "familia" | "igrejas";
 
+/**
+ * As duas abas do topo do perfil.
+ *
+ * "Perfil" são os dados cadastrais e a presença; "Históricos" é a linha do
+ * tempo (ocorrências, títulos, funções, família, outras igrejas), que antes
+ * ficava embaixo dos painéis e exigia rolar a tela para ser notada.
+ */
+type AbaPrincipal = "perfil" | "historicos";
+
+const ABAS_PRINCIPAIS: { key: AbaPrincipal; label: string }[] = [
+  { key: "perfil", label: "Perfil" },
+  { key: "historicos", label: "Históricos" },
+];
+
 type KanService = { id: number; sigla: string; description: string; serviceGroup?: string | null };
 
 type MatrixRule = {
@@ -150,6 +164,7 @@ export function MemberProfile() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [histSearch, setHistSearch] = useState("");
 
+  const [abaPrincipal, setAbaPrincipal] = useState<AbaPrincipal>("perfil");
   const [activeTab, setActiveTab] = useState<Tab>("historico");
   const [showOccModal, setShowOccModal] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
@@ -521,7 +536,11 @@ export function MemberProfile() {
                   {canManageHistory && (
                     <button
                       onClick={() => setShowOccModal(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-medium transition-colors"
+                      // `bg-green-600` é só a rede de segurança: o tema o repinta com a
+                      // cor da igreja, e `.btn-acao-verde` (em globals.css) vence os dois
+                      // e deixa verde. Sem ela o botão continua visível, só não verde —
+                      // em vez de virar texto branco sobre fundo transparente.
+                      className="btn-acao-verde inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       Nova Ocorrência
@@ -567,7 +586,30 @@ export function MemberProfile() {
         </div>
       </div>
 
-      {/* ── Two-column: details + attendance ───────────────────────────── */}
+      {/* ── Abas principais ─────────────────────────────────────────────
+          Antes o grupo de histórico/títulos/funções ficava embaixo dos painéis
+          e só aparecia depois de rolar a tela — dava para não perceber que
+          existia. Agora os dois grupos são irmãos e trocam no mesmo lugar. */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="flex border-b border-slate-200">
+          {ABAS_PRINCIPAIS.map((aba) => (
+            <button
+              key={aba.key}
+              onClick={() => setAbaPrincipal(aba.key)}
+              className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                abaPrincipal === aba.key
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {aba.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Aba "Perfil": dados cadastrais e presença. */}
+      {abaPrincipal === "perfil" && (
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Details card */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
@@ -660,6 +702,7 @@ export function MemberProfile() {
           )}
         </div>
       </div>
+      )}
 
       {member && (
         <MemberEditDrawer
@@ -775,7 +818,8 @@ export function MemberProfile() {
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Aba "Históricos": tudo o que é linha do tempo do membro. */}
+      {abaPrincipal === "historicos" && (
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="flex border-b border-slate-200">
           {tabs.map((t) => (
@@ -828,6 +872,7 @@ export function MemberProfile() {
           )}
         </div>
       </div>
+      )}
 
       {/* Modal: foto muito grande */}
       {photoSizeError && (
