@@ -106,7 +106,10 @@ export function InstallAppCard({ isDark }: { isDark: boolean }) {
         <div className="flex flex-col justify-center min-h-[3.5rem]">
           <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Instalar o app</h3>
           <p className={`text-xs leading-relaxed ${textSub}`}>
-            Adicione a AD Campinas à tela de início<br />e abra direto, sem navegador.
+            {/* Sem nome de igreja: este cartão é da plataforma e aparece igual
+                em todas elas. Estava escrito "AD Campinas" aqui, e era isso que
+                a home de qualquer congregação mostrava. */}
+            Adicione à tela de início<br />e abra direto, sem navegador.
           </p>
         </div>
       </button>

@@ -50,6 +50,12 @@ export const PROTECTED_ACTIONS: HomeCardAction[] = ['membro', 'peniel', 'gf'];
  * se esconde sozinho quando o navegador não sabe instalar ou o app já está
  * instalado. Não pode ser apagado nem ocultado pela tela de configuração —
  * escondê-lo só tiraria o atalho de quem quer instalar, sem ganho nenhum.
+ *
+ * O texto dele também é da plataforma: vem sempre do código, ignorando o que
+ * estiver gravado. As igrejas provisionadas antes têm em `home_cards` a frase
+ * antiga, "Adicione a AD Campinas à tela de início" — o nome de outra
+ * congregação, na tela de todas elas. Sobrescrever aqui conserta as que já
+ * existem sem precisar mexer no banco de cada uma.
  */
 export const LOCKED_ACTIONS: HomeCardAction[] = ['pwa'];
 
@@ -626,11 +632,16 @@ export function mergeHomeCard(raw: unknown, index: number): HomeCard | null {
   const url = isSafeUrl(c.url) ? (c.url as string) : null;
   if (action === 'link' && !url) return null;
 
+  // Cartão da plataforma: título e texto vêm do código, não do banco.
+  const padraoDaPlataforma = isLockedAction(action)
+    ? DEFAULT_HOME_CARDS.find((d) => d.action === action)
+    : undefined;
+
   return {
     key,
     action,
-    title,
-    subtitle: nullableStr(c.subtitle, null),
+    title: padraoDaPlataforma?.title ?? title,
+    subtitle: padraoDaPlataforma ? padraoDaPlataforma.subtitle : nullableStr(c.subtitle, null),
     url,
     icon: isHomeIconName(c.icon) ? c.icon : 'Circle',
     iconColor: nullableColor(c.iconColor, null),
