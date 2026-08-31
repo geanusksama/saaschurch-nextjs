@@ -207,6 +207,10 @@ CREATE TABLE culto_registros (
   -- ABERTO | AGUARDANDO_LOCAL | APROVADO_LOCAL | CONCLUIDO | REJEITADO
   status         VARCHAR(30) NOT NULL DEFAULT 'ABERTO',
   observacao     TEXT,
+  -- A palavra do Pastor Presidente. Fica no registro, e não numa aprovação,
+  -- porque ele não é nível de aprovação (só existem LOCAL e HOSPEDEIRA) — ele
+  -- comenta o culto, aprovado ou não, e é o parecer que fecha o relatório.
+  observacao_presidente TEXT,
   concluido_em   TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -270,6 +274,21 @@ CREATE TABLE culto_lancamentos (
 mostra (três caixas, uma por frente). Reenvio é `UPDATE`, não linha nova, e só é
 aceito enquanto o registro estiver em `ABERTO` ou `REJEITADO`.
 
+**Colunas que saíram das telas, mas continuam no banco.** A igreja parou de
+contar por faixa etária e de somar envelope de oferta, então `qtd_jovens`,
+`qtd_adolescentes`, `qtd_familias` e `qtd_ofertas` sumiram do formulário, do
+detalhe, do resumo e do relatório. As colunas ficam: apagá-las jogaria fora o
+que já foi lançado. O formulário de presença hoje é:
+
+| Grupo | Campos |
+|---|---|
+| Descrição do culto | Homens, Mulheres, Crianças |
+| Detalhes do culto | Visitantes, Conversões, Reconciliações, Cadeiras vazias |
+
+E o financeiro, nesta ordem — a contagem antes do valor, que é como se conta o
+envelope: **Qtd. de dízimos**, **Valor total de dízimos**, **Valor total de
+ofertas**.
+
 ### 2.4 `culto_aprovacoes` — a decisão de cada nível
 
 ```sql
@@ -290,6 +309,92 @@ automaticamente pelo `withAuth` (`src/lib/auth.ts:170-176`).
 
 ---
 
+### 2.5 `horario_culto` — os horários de cada igreja
+
+```sql
+CREATE TABLE horario_culto (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campo_id    UUID REFERENCES campos(id)   ON DELETE CASCADE,
+  church_id   UUID REFERENCES churches(id) ON DELETE CASCADE,
+  codigo      VARCHAR(60)  NOT NULL,   -- MANHA, TARDE, NOITE
+  nome        VARCHAR(120) NOT NULL,   -- "Culto da manhã"
+  hora_inicio VARCHAR(5),              -- "09:00"
+  hora_fim    VARCHAR(5),              -- "11:00"
+  descricao   TEXT,
+  ordem       INTEGER NOT NULL DEFAULT 0,
+  ativo       BOOLEAN NOT NULL DEFAULT true,
+  is_default  BOOLEAN NOT NULL DEFAULT false,
+  ...
+);
+-- unicidade POR IGREJA: duas igrejas podem ter cada uma o seu "NOITE"
+CREATE UNIQUE INDEX ON horario_culto (church_id, codigo) WHERE deleted_at IS NULL;
+```
+
+É uma lista auxiliar registrada em `src/lib/lookupRegistry.ts`, mas com uma
+diferença: as outras são isoladas **por campo**; esta é **por igreja**
+(`churchField: "church_id"`). O horário do culto é da congregação — uma tem
+três cultos, outra tem um — e uma igreja não vê nem edita o da outra.
+
+Duas consequências no CRUD genérico:
+
+- `igrejaDoUsuario()` prende o perfil `church` à própria igreja: mandar
+  `?churchId=` de outra congregação não muda nada. Master e admin escolhem a
+  igreja na tela.
+- `canManage()` passou a aceitar o perfil `church` quando a lista tem
+  `churchField`. A igreja mantém o próprio cadastro sem ser admin do campo.
+
+**O cadastro não fica em Configurações.** Ele abre num modal a partir da
+engrenagem ao lado do dropdown, na própria tela de lançamento
+(`HorariosCultoModal.tsx`): quem lança o culto é quem sabe os horários dele, e
+pôr a lista no menu de configurações obrigaria a liberar acesso administrativo
+para toda igreja. O código (`CULTO_DA_MANHA`) é gerado do nome; quem cadastra
+digita só nome, início e fim.
+
+Escolher um horário no lançamento preenche Início e Fim; sem `hora_fim`
+cadastrado, o Fim cai em início + 1h. Depois disso é tudo manual — o cadastro
+é ponto de partida, não regra.
+
+### 2.6 `culto_visao_bloqueada` — o cadeado do organograma
+
+```sql
+CREATE TABLE culto_visao_bloqueada (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campo_id   UUID REFERENCES campos(id),
+  church_id  UUID NOT NULL REFERENCES churches(id) ON DELETE CASCADE,
+  blocos     VARCHAR(20)[] NOT NULL DEFAULT ARRAY['FINANCEIRO','PRESENCA','EXTRA'],
+  motivo     TEXT,
+  created_by UUID REFERENCES users(id),
+  ...
+);
+CREATE UNIQUE INDEX ON culto_visao_bloqueada (church_id);
+```
+
+Uma linha significa: **quem dirige aquele nó não vê os valores lançados abaixo
+dele**. Continua enxergando os cultos, o status, o que falta enviar e continua
+aprovando; o que some são os números.
+
+Quem tranca é o **Pastor Presidente** (e master/admin), pelo ícone de cadeado
+no nó do Organograma — é quem enxerga a árvore inteira. Um dirigente de
+hospedeira não consegue se destrancar (`POST /api/culto/visao-bloqueada`
+recusa com 403).
+
+A trava não é da tela: `getCultoScope` deixa de incluir os blocos daquele nó e
+`podarLancamentos()` já roda em toda rota que devolve registro. Duas regras
+importantes:
+
+- **O papel de lançador não é afetado.** Quem é tesoureiro continua vendo o
+  Financeiro que ele mesmo lança, mesmo com o nó trancado — o cadeado limita a
+  visão *para cima*, não o próprio trabalho.
+- `visaoCampo` alarga o alcance de **igrejas**, não o de blocos: quem tem o nó
+  trancado continua sem os valores mesmo enxergando o campo inteiro.
+
+Efeito na tela: um bloco enviado cujos valores foram podados aparece como
+**enviado · visão limitada**, nunca como "pendente". `blocosEnviados` é
+calculado **antes** da poda justamente para isso — dizer "ainda não enviado"
+seria mentira, e o culto pode até já estar aprovado por causa dele.
+
+---
+
 ## 3. Máquina de estados
 
 | De | Evento | Para | Guarda |
@@ -306,6 +411,28 @@ automaticamente pelo `withAuth` (`src/lib/auth.ts:170-176`).
 
 **Cor**: `CONCLUIDO` = verde. Todo o resto = vermelho para quem está acima. É
 literalmente o que o diagrama pede.
+
+**Os rótulos dizem de quem se espera a decisão.** "Aguardando aprovação" não
+informava se a bola estava com a congregação ou com a hospedeira, e quem cobrava
+tinha de adivinhar:
+
+| Status | Rótulo |
+|---|---|
+| `ABERTO` | Aguardando envio |
+| `AGUARDANDO_LOCAL` | **Aguardando o dirigente da congregação** |
+| `APROVADO_LOCAL` | **Aguardando o dirigente hospedeiro** |
+| `CONCLUIDO` | Concluído |
+| `REJEITADO` | Devolvido |
+
+Os dois rótulos vivem em `cultoApi.ts` (front) e `cultoScope.ts` (servidor) —
+mudar num só faz a tela e o relatório discordarem. A coluna do Kanban continua
+se chamando "Aguardando aprovação" porque ela agrupa os dois estados; a pastilha
+dentro do card diz qual é.
+
+No detalhe do culto, uma faixa âmbar completa a informação com o **nome** de
+quem decide e o que vem depois — inclusive o caso em que a igreja não é anexa de
+ninguém e a aprovação local **já conclui** o culto (`temNivelHospedeira`, hoje
+122 das 126 igrejas).
 
 ---
 
@@ -336,6 +463,11 @@ o que é o caso comum: 35 igrejas têm um único usuário). A visibilidade é a
 Blindagem: o `GET` de um registro **remove do JSON** os blocos que o usuário não
 pode ver. Não é `display:none` no front — o dado não sai do servidor.
 
+O cadeado da seção 2.6 age exatamente aqui: com o nó trancado, o
+`APROVADOR_LOCAL`/`APROVADOR_HOSPEDEIRA` daquele nó sai da coluna "todos" e
+passa a não ver bloco nenhum pelos papéis de aprovação — mas continua vendo o
+bloco de que ele é lançador, se acumular os dois papéis.
+
 ---
 
 ## 5. API
@@ -352,12 +484,15 @@ Tudo sob `src/app/api/culto/`, tudo com `withAuth`.
 | `GET` | `/api/culto/registros?de=&ate=&church_id=&status=` | lista já filtrada pelo escopo, com blocos podados |
 | `POST` | `/api/culto/registros` | abre o registro do culto |
 | `GET` | `/api/culto/registros/[id]` | detalhe com blocos permitidos + aprovações |
-| `PATCH` | `/api/culto/registros/[id]` | edita data/tipo/observação (só em `ABERTO`) |
+| `PATCH` | `/api/culto/registros/[id]` | edita data/tipo/observação (só em `ABERTO`); `observacaoPresidente` é a exceção — só o Pastor Presidente escreve, e pode escrever com o culto já fechado, que é quando ele lê o consolidado |
 | `DELETE` | `/api/culto/registros/[id]` | soft delete (só `master`) |
 | `PUT` | `/api/culto/registros/[id]/lancamentos` | upsert do **próprio** bloco e reavalia o status |
 | `POST` | `/api/culto/registros/[id]/aprovacoes` | `{ nivel, decisao, motivo }` |
 | `GET` | `/api/culto/painel?de=&ate=` | rollup hierárquico do nível do usuário |
-| `GET` | `/api/culto/resumo?nivel=&id=&tipo_grupo=&de=&ate=` | consolidado de um nó e a lista do nível abaixo |
+| `GET` | `/api/culto/resumo?nivel=&id=&tipo_grupo=&de=&ate=` | consolidado de um nó e a lista do nível abaixo, com as observações de cada voz nos nós do tipo CULTO |
+| `GET` | `/api/culto/visao-bloqueada` | nós com o cadeado ligado + se o usuário pode mexer |
+| `POST` | `/api/culto/visao-bloqueada` | `{ churchId, bloqueado }` — só Pastor Presidente / master |
+| `GET` | `/api/lookups/horarios-culto?churchId=` | horários daquela igreja (CRUD genérico, isolado por `church_id`) |
 
 ### 5.1 Formato do `/api/culto/painel`
 
@@ -596,6 +731,63 @@ tipo e atualizar. Sem parágrafo de apresentação e sem uma segunda linha só p
 as datas. Os rótulos dos botões somem abaixo de `xl` e o campo de tipo abaixo de
 `md`, restando os ícones — em tela estreita a faixa quebra sozinha.
 
+### 6.3.4 Relatório impresso — colunas escolhidas, paisagem, detalhe
+
+`CultoImprimirModal.tsx` + `cultoRelatorio.ts`. Imprime **exatamente os cultos
+que o filtro da tela deixou na lista** — sem segunda consulta, que poderia
+divergir do que está na frente do usuário.
+
+- **Colunas por checkbox**, agrupadas em Culto / Financeiro / Presença /
+  Observações. A ordem no papel é a do cadastro das colunas, não a dos cliques.
+- **Orientação** retrato ou paisagem. O `@page { size: A4 landscape }` fica
+  **fora** de `@media print`: dentro do bloco o Chrome ignora o `size` e imprime
+  tudo em retrato.
+- **"Mostrar detalhes"** agrupa por hospedeira/regional e abre, sob cada culto,
+  o que falta enviar, quem já enviou (com data) e a decisão de cada nível com o
+  motivo — o organograma no papel.
+- **Cor só na coluna Situação**: verde negrito quando concluiu, vermelho quando
+  ainda falta enviar. A linha inteira colorida virava parede e nada se
+  destacava.
+- A janela **se fecha sozinha** depois de imprimir ou cancelar
+  (`onafterprint` + fecho tardio para quem não dispara o evento).
+
+As cinco vozes do culto saem em colunas próprias: tesoureiro, secretário,
+dirigente da congregação, dirigente hospedeiro e Pastor Presidente. Cada uma
+vem de um lugar diferente do banco (`culto_lancamentos.observacao`,
+`culto_aprovacoes.motivo`, `culto_registros.observacao_presidente`).
+
+### 6.3.5 O quadro se atualiza sozinho
+
+O culto é acompanhado a várias mãos: o tesoureiro lança de um lugar, o
+secretário de outro, o dirigente aprova de um terceiro. A Gestão de Culto
+recarrega **a cada 20s**, em silêncio (sem acender o "carregando", senão o
+quadro pisca), e imediatamente quando a aba volta ao foco. Com a aba escondida
+o relógio para.
+
+Uma pastilha na barra mostra a hora da última atualização e desliga a recarga
+com um clique — ao conferir número a número, a lista pulando debaixo do dedo
+atrapalha.
+
+É polling, não WebSocket: o Realtime do Supabase (usado no WhatsApp) exigiria
+publicar `culto_registros`/`culto_lancamentos` e resolver RLS para o cliente do
+navegador. 20s resolve o caso de uso sem essa dependência.
+
+### 6.3.6 Quem não abriu culto também aparece
+
+O quadro mostrava só o que existe: igreja que não lançou nada não tem registro
+e não aparecia em coluna nenhuma — justo a que o hospedeiro precisa cobrar.
+
+Agora a coluna "Aguardando envio" recebe, depois dos cultos abertos, um card de
+**borda tracejada** para cada igreja do alcance com `status = SEM_REGISTRO` no
+`/api/culto/painel`, com o nome do dirigente e a hospedeira/regional a que ela
+pertence. A Tabela faz o mesmo no fim de cada grupo, e tem um bloco "Sem nenhum
+culto no período" para o caso de um grupo inteiro estar zerado (ele não
+apareceria, porque a tabela é montada a partir dos registros).
+
+O recorte é o **período consultado**, não uma agenda de dias de culto: quem
+consulta escolhe o dia em que houve culto. Numa segunda-feira o quadro ficaria
+todo vermelho, e é uma pergunta que ninguém faz.
+
 ### 6.4 O período padrão é de 7 dias, não de um mês
 
 Uma igreja conta como pendente enquanto **qualquer** culto do intervalo estiver
@@ -675,8 +867,29 @@ atuais permanecem como estão.
 
 ## 9. O que esta entrega **não** faz
 
-- Não altera nenhuma tabela existente (a migration só faz `CREATE TABLE`).
 - Não grava em `livro_caixa` (D4).
 - Não cria `profile_type` nem role nova (D1).
 - Não liga RLS (D6).
-- Não emite relatório/PDF — etapa seguinte, já combinada.
+
+Já entregue depois da primeira versão: relatório impresso (6.3.4), cadastro de
+horários por igreja (2.5), cadeado de visão (2.6), observação do presidente e
+atualização automática do quadro (6.3.5).
+
+## 10. Limites conhecidos
+
+Coisas que **não** estão feitas e foram decididas assim, não esquecidas:
+
+- **O cadeado é por nó inteiro, não por bloco.** A coluna `blocos` já existe
+  para separar ("vê a presença, não vê o dinheiro"), mas a tela ainda tranca
+  tudo de uma vez.
+- **Regional não tem cadeado.** O nó de regional não é uma igreja e a trava é
+  por `church_id`.
+- **Só o perfil `church` fica preso à própria igreja** em `igrejaDoUsuario()`.
+  Um perfil `campo` sem posição pode ler os horários de outra igreja **do mesmo
+  campo** montando a requisição na mão. Nenhuma tela oferece isso.
+- **Não existe agenda de dias de culto.** O quadro não sabe que aquela igreja
+  tem culto domingo, quarta e sexta; ele mostra ausência dentro do período
+  consultado (6.3.6).
+- **O relatório imprime só os cultos que existem.** As igrejas que não abriram
+  culto aparecem no Kanban e na Tabela, mas ainda não saem no papel.
+- **Não há observação do presidente por nível acima do campo** — ele é o topo.

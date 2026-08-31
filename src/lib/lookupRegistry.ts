@@ -14,7 +14,11 @@
  * ("column ordem is of type integer but expression is of type text"). Campo
  * numérico é enviado com cast explícito na query.
  */
-export type LookupFieldType = "text" | "boolean" | "select" | "number";
+/**
+ * `time` é texto "HH:MM" no banco (VARCHAR(5)), renderizado como
+ * <input type="time"> — o formato que o navegador manda e lê.
+ */
+export type LookupFieldType = "text" | "boolean" | "select" | "number" | "time";
 
 export type LookupField = {
   key: string;
@@ -62,6 +66,15 @@ export type LookupConfig = {
    * Lista sem esta coluna é global (plano de contas, formas de pagamento).
    */
   campoField?: string;
+  /**
+   * Coluna de isolamento por IGREJA (normalmente `church_id`).
+   *
+   * Mais estreito que `campoField`: a lista é da congregação, não do campo.
+   * Uma igreja nunca enxerga nem edita o cadastro de outra, e quem tem perfil
+   * de igreja pode manter o próprio cadastro sem ser admin do campo — é o caso
+   * dos horários de culto, que cada igreja define para si.
+   */
+  churchField?: string;
 };
 
 const TIPO_OPTIONS = [
@@ -188,6 +201,33 @@ export const LOOKUPS: Record<string, LookupConfig> = {
     fields: [
       { key: "codigo", label: "Código", type: "text", required: true, inList: true, help: "Estável, sem acento: CULTO, EBD, ORACAO. É o que fica gravado no registro." },
       { key: "nome", label: "Nome", type: "text", required: true, inList: true, help: "O que o usuário lê no dropdown." },
+      { key: "descricao", label: "Descrição", type: "text" },
+      { key: "ordem", label: "Ordem", type: "number", inList: true, help: "Ordem no dropdown." },
+      { key: "ativo", label: "Ativo", type: "boolean", inList: true, help: "Só os ativos aparecem no dropdown." },
+      { key: "is_default", label: "Padrão", type: "boolean", inList: true, help: "Pré-selecionado no formulário de lançamento." },
+    ],
+  },
+
+  "horarios-culto": {
+    key: "horarios-culto",
+    table: "horario_culto",
+    label: "Horários de Culto",
+    description:
+      "Culto da manhã, da tarde, da noite... Alimenta o dropdown de horário do fechamento pós-culto (Gestão de Culto) e preenche o início e o fim sozinho.",
+    orderBy: "ordem, hora_inicio, nome",
+    permKey: "culto_gestao",
+    activeField: "ativo",
+    campoField: "campo_id",
+    // Cada igreja cadastra os SEUS horários e não vê os das outras.
+    churchField: "church_id",
+    softDelete: true,
+    warning:
+      "Estes horários são desta igreja: outra congregação não os vê nem os edita. A hora daqui é só o que vem preenchido no lançamento — quem lança pode ajustar antes de enviar, e mudá-la aqui não altera cultos já lançados.",
+    fields: [
+      { key: "codigo", label: "Código", type: "text", required: true, inList: true, help: "Estável, sem acento: MANHA, TARDE, NOITE." },
+      { key: "nome", label: "Nome", type: "text", required: true, inList: true, help: "O que o usuário lê no dropdown. Ex.: Culto da manhã." },
+      { key: "hora_inicio", label: "Hora de início", type: "time", inList: true, help: "Preenche o Início do lançamento." },
+      { key: "hora_fim", label: "Hora de término", type: "time", inList: true, help: "Preenche o Fim do lançamento. Em branco, o Fim vem uma hora depois do início." },
       { key: "descricao", label: "Descrição", type: "text" },
       { key: "ordem", label: "Ordem", type: "number", inList: true, help: "Ordem no dropdown." },
       { key: "ativo", label: "Ativo", type: "boolean", inList: true, help: "Só os ativos aparecem no dropdown." },

@@ -21,6 +21,24 @@ function authHeaders(): HeadersInit {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
+/**
+ * Perfil e igreja do usuário logado, do mesmo lugar que o resto do app lê.
+ *
+ * Numa lista isolada por igreja (`churchField`), o perfil de igreja só enxerga
+ * a própria — nem precisa do seletor. Quem administra acima dela escolhe para
+ * qual igreja está cadastrando.
+ */
+function usuarioGuardado(): { profileType?: string; churchId?: string; churchName?: string } {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem('mrm_user') || '{}');
+  } catch {
+    return {};
+  }
+}
+
+type IgrejaOpcao = { id: string; name: string };
+
 function emptyFormFor(cfg: LookupConfig): Record<string, unknown> {
   const form: Record<string, unknown> = {};
   for (const f of cfg.fields) {
@@ -44,6 +62,12 @@ export default function LookupCrud() {
   const [formError, setFormError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Seletor de igreja das listas isoladas por igreja (ex.: horários de culto).
+  const usuario = useMemo(usuarioGuardado, []);
+  const precisaEscolherIgreja = Boolean(cfg?.churchField) && usuario.profileType !== 'church';
+  const [igrejas, setIgrejas] = useState<IgrejaOpcao[]>([]);
+  const [churchId, setChurchId] = useState<string>(usuario.churchId ?? '');
 
   /**
    * Opções dos selects que vêm de outra lista cadastrada (`optionsFrom`).
@@ -86,11 +110,32 @@ export default function LookupCrud() {
     [opcoesDinamicas]
   );
 
+  useEffect(() => {
+    if (!precisaEscolherIgreja) return;
+    fetch(`${apiBase}/churches?slim=1`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => {
+        const lista: IgrejaOpcao[] = Array.isArray(d) ? d : [];
+        setIgrejas(lista);
+        setChurchId((atual) => atual || lista[0]?.id || '');
+      })
+      .catch(() => toast.error('Não foi possível carregar a lista de igrejas.'));
+  }, [precisaEscolherIgreja]);
+
   const load = useCallback(async () => {
     if (!cfg) return;
+    // Sem igreja escolhida a lista fica vazia de propósito: o servidor não tem
+    // como saber de quem é o cadastro, e mostrar o de todas seria justamente o
+    // vazamento que o isolamento por igreja existe para impedir.
+    if (cfg.churchField && precisaEscolherIgreja && !churchId) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/lookups/${cfg.key}`, { headers: authHeaders() });
+      const q = cfg.churchField && churchId ? `?churchId=${encodeURIComponent(churchId)}` : '';
+      const res = await fetch(`${apiBase}/lookups/${cfg.key}${q}`, { headers: authHeaders() });
       if (!res.ok) throw new Error('Falha ao carregar a lista.');
       const data = await res.json();
       setRows(Array.isArray(data) ? data : []);
@@ -100,7 +145,7 @@ export default function LookupCrud() {
     } finally {
       setLoading(false);
     }
-  }, [cfg]);
+  }, [cfg, churchId, precisaEscolherIgreja]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -148,7 +193,7 @@ export default function LookupCrud() {
       const res = await fetch(url, {
         method: editingId ? 'PATCH' : 'POST',
         headers: authHeaders(),
-        body: JSON.stringify(form),
+        body: JSON.stringify(cfg.churchField && churchId ? { ...form, churchId } : form),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -245,10 +290,31 @@ export default function LookupCrud() {
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">{cfg.label}</h1>
           <p className="text-sm text-slate-500">{cfg.description}</p>
+          {/* Lista por igreja: o cadastro é de UMA congregação por vez. Quem é
+              da própria igreja não escolhe nada — vê só o dela. */}
+          {precisaEscolherIgreja && (
+            <label className="mt-3 block">
+              <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Igreja
+              </span>
+              <select
+                value={churchId}
+                onChange={(e) => setChurchId(e.target.value)}
+                className="min-w-[16rem] rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Selecione a igreja...</option>
+                {igrejas.map((i) => (
+                  <option key={i.id} value={i.id}>{i.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
         <button
           onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+          disabled={precisaEscolherIgreja && !churchId}
+          title={precisaEscolherIgreja && !churchId ? 'Escolha a igreja primeiro.' : undefined}
+          className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
         >
           <Plus className="h-4 w-4" /> Novo item
         </button>
@@ -383,7 +449,7 @@ export default function LookupCrud() {
                         </select>
                       ) : (
                         <input
-                          type={f.type === 'number' ? 'number' : 'text'}
+                          type={f.type === 'number' ? 'number' : f.type === 'time' ? 'time' : 'text'}
                           value={String(form[f.key] ?? '')}
                           onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
                           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"

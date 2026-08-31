@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.865Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-31T18:52:32.435Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 6013fb939d04d7f4
+-- Baseline 84afdef9474857e7
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -1404,7 +1404,18 @@ create table if not exists "public"."culto_registros" (
   "deleted_at" timestamp with time zone,
   "created_by" uuid,
   "hora_inicio" time without time zone,
-  "hora_fim" time without time zone
+  "hora_fim" time without time zone,
+  "observacao_presidente" text
+);
+
+create table if not exists "public"."culto_visao_bloqueada" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid,
+  "church_id" uuid not null,
+  "blocos" character varying(20)[] default ARRAY['FINANCEIRO'::character varying(20), 'PRESENCA'::character varying(20), 'EXTRA'::character varying(20)] not null,
+  "motivo" text,
+  "created_at" timestamp with time zone default CURRENT_TIMESTAMP not null,
+  "created_by" uuid
 );
 
 create table if not exists "public"."departamentos" (
@@ -2507,6 +2518,23 @@ create table if not exists "public"."home_configs" (
   "services_config" jsonb,
   "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
   "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+);
+
+create table if not exists "public"."horario_culto" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid,
+  "church_id" uuid,
+  "codigo" character varying(60) not null,
+  "nome" character varying(120) not null,
+  "hora_inicio" character varying(5),
+  "descricao" text,
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null,
+  "is_default" boolean default false not null,
+  "created_at" timestamp with time zone default CURRENT_TIMESTAMP not null,
+  "updated_at" timestamp with time zone default CURRENT_TIMESTAMP not null,
+  "deleted_at" timestamp with time zone,
+  "hora_fim" character varying(5)
 );
 
 create table if not exists "public"."inbox_attachments" (

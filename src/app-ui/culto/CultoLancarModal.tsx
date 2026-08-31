@@ -8,8 +8,8 @@
  * Reenvio é permitido enquanto o dirigente não aprovou. Depois de aprovado, o
  * servidor recusa (409) e o modal explica que precisa pedir a devolução.
  */
-import React, { useEffect, useState } from 'react';
-import { X, Loader2, Check, AlertTriangle, CalendarDays, Settings2 } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { X, Loader2, Check, AlertTriangle, CalendarDays, Clock, Settings2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
 import {
@@ -21,32 +21,79 @@ import {
   ROTULO_BLOCO,
   ROTULO_STATUS,
   type Bloco,
+  type HorarioCulto,
   type Registro,
   type TipoCulto,
 } from './cultoApi';
 import { PASTILHA } from './cultoCores';
+import HorariosCultoModal from './HorariosCultoModal';
 
-const CAMPOS: Record<Bloco, { campo: string; label: string; moeda?: boolean }[]> = {
+/**
+ * Os campos de cada bloco, em grupos com subtítulo.
+ *
+ * O bloco PRESENÇA mistura duas contagens diferentes: quantas pessoas estavam
+ * no culto e o que aconteceu no apelo. Sem separação visual, quem lança lia
+ * dezesseis caixinhas iguais e errava a linha.
+ *
+ * "Jovens" e "Adolescentes" saíram do formulário: a igreja parou de contar por
+ * faixa. As colunas continuam no banco por causa dos cultos já lançados.
+ */
+type Campo = { campo: string; label: string; moeda?: boolean };
+type Grupo = { titulo: string | null; campos: Campo[] };
+
+const CAMPOS: Record<Bloco, Grupo[]> = {
   FINANCEIRO: [
-    { campo: 'totalDizimos', label: 'Total de dízimos', moeda: true },
-    { campo: 'totalOfertas', label: 'Total de ofertas', moeda: true },
-    { campo: 'qtdDizimos', label: 'Qtd. de dízimos' },
-    { campo: 'qtdOfertas', label: 'Qtd. de ofertas' },
+    {
+      titulo: null,
+      // A quantidade vem antes do valor: quem lança conta os envelopes
+      // primeiro e só depois soma o dinheiro.
+      campos: [
+        { campo: 'qtdDizimos', label: 'Qtd. de dízimos' },
+        { campo: 'totalDizimos', label: 'Valor total de dízimos', moeda: true },
+        { campo: 'totalOfertas', label: 'Valor total de ofertas', moeda: true },
+      ],
+    },
   ],
   PRESENCA: [
-    { campo: 'qtdHomens', label: 'Homens' },
-    { campo: 'qtdMulheres', label: 'Mulheres' },
-    { campo: 'qtdJovens', label: 'Jovens' },
-    { campo: 'qtdAdolescentes', label: 'Adolescentes' },
-    { campo: 'qtdCriancas', label: 'Crianças' },
-    { campo: 'qtdVisitantes', label: 'Visitantes' },
-    { campo: 'qtdConversoes', label: 'Conversões' },
-    { campo: 'qtdReconciliacoes', label: 'Reconciliações' },
-    { campo: 'qtdFamilias', label: 'Famílias' },
-    { campo: 'cadeirasVazias', label: 'Cadeiras vazias' },
+    {
+      titulo: 'Descrição do culto',
+      campos: [
+        { campo: 'qtdHomens', label: 'Homens' },
+        { campo: 'qtdMulheres', label: 'Mulheres' },
+        { campo: 'qtdCriancas', label: 'Crianças' },
+      ],
+    },
+    {
+      titulo: 'Detalhes do culto',
+      campos: [
+        { campo: 'qtdVisitantes', label: 'Visitantes' },
+        { campo: 'qtdConversoes', label: 'Conversões' },
+        { campo: 'qtdReconciliacoes', label: 'Reconciliações' },
+        { campo: 'cadeirasVazias', label: 'Cadeiras vazias' },
+      ],
+    },
   ],
   EXTRA: [],
 };
+
+/**
+ * Fim do culto quando o cadastro não tem hora de término.
+ *
+ * O horário cadastrado guarda início e fim; este cálculo é a rede de segurança
+ * para os horários criados antes de o campo Fim existir. Vira ao dia seguinte
+ * quando o culto começa às 23h30 (vigília), por isso o resto de 24.
+ */
+function umaHoraDepois(hhmm: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return '';
+  const hora = (Number(m[1]) + 1) % 24;
+  return `${String(hora).padStart(2, '0')}:${m[2]}`;
+}
+
+/** Todos os campos do bloco, sem os grupos — para ler e gravar o lançamento. */
+function camposDoBloco(bloco: Bloco): Campo[] {
+  return CAMPOS[bloco].flatMap((g) => g.campos);
+}
 
 interface IgrejaOpcao {
   id: string;
@@ -77,6 +124,9 @@ export default function CultoLancarModal({
   const [horaInicio, setHoraInicio] = useState('');
   const [horaFim, setHoraFim] = useState('');
   const [tipos, setTipos] = useState<TipoCulto[]>([]);
+  const [horarios, setHorarios] = useState<HorarioCulto[]>([]);
+  const [horarioCodigo, setHorarioCodigo] = useState('');
+  const [cadastrandoHorarios, setCadastrandoHorarios] = useState(false);
   const [observacao, setObservacao] = useState('');
   const navigate = useNavigate();
   const [churchId, setChurchId] = useState<string | null>(churchIdPadrao);
@@ -107,6 +157,36 @@ export default function CultoLancarModal({
     };
   }, []);
 
+  // Horários vêm do mesmo lugar (Configurações › Horários de Culto). Escolher
+  // um preenche início e fim — quem lança não digita "19:00" toda semana.
+  const carregarHorarios = useCallback(() => {
+    if (!churchId) return;
+    cultoApi
+      .horariosCulto(churchId)
+      .then((lista) => {
+        setHorarios(lista);
+        const padrao = lista.find((h) => h.is_default);
+        // Só o padrão entra sozinho, e só se o usuário ainda não mexeu na hora:
+        // reabrir um culto já lançado não pode trocar o horário dele.
+        if (padrao) {
+          setHorarioCodigo((atual) => atual || padrao.codigo);
+          setHoraInicio((atual) => atual || padrao.hora_inicio || '');
+          setHoraFim(
+            (atual) =>
+              atual ||
+              padrao.hora_fim ||
+              (padrao.hora_inicio ? umaHoraDepois(padrao.hora_inicio) : ''),
+          );
+        }
+      })
+      .catch(() => {
+        /* sem cadastro, o dropdown fica vazio e as horas são digitadas à mão */
+      });
+    // Trocar de igreja troca a lista: o horário é cadastro de cada congregação.
+  }, [churchId]);
+
+  useEffect(carregarHorarios, [carregarHorarios]);
+
   useEffect(() => {
     if (!precisaEscolherIgreja) return;
     fetch(`${apiBase}/churches?slim=1`, { headers: authHeaders() })
@@ -130,7 +210,14 @@ export default function CultoLancarModal({
         if (!vivo) return;
         setErro(null);
         setSalvo(false);
-        const achado = lista.find((r) => r.tipoCulto === tipoCulto) ?? null;
+        // Manhã e noite do mesmo dia são cultos distintos: quando há horário
+        // escolhido, ele entra na busca — senão o lançamento da noite abriria
+        // em cima do da manhã.
+        const doTipo = lista.filter((r) => r.tipoCulto === tipoCulto);
+        const achado =
+          (horaInicio ? doTipo.find((r) => r.horaInicio === horaInicio) : null) ??
+          (horaInicio ? null : doTipo[0]) ??
+          null;
         setRegistro(achado);
         if (achado) {
           setHoraInicio(achado.horaInicio ?? '');
@@ -139,7 +226,7 @@ export default function CultoLancarModal({
         const valores: Record<string, string> = {};
         const lanc = achado?.lancamentos.find((l) => l.bloco === bloco);
         if (lanc) {
-          for (const c of CAMPOS[bloco]) {
+          for (const c of camposDoBloco(bloco)) {
             const v = lanc[c.campo as keyof typeof lanc];
             if (v === null || v === undefined) continue;
             // Dinheiro volta formatado; contagem volta como número puro.
@@ -154,7 +241,7 @@ export default function CultoLancarModal({
     return () => {
       vivo = false;
     };
-  }, [churchId, data, tipoCulto, bloco]);
+  }, [churchId, data, tipoCulto, horaInicio, bloco]);
 
   const jaAprovado = registro
     ? ['APROVADO_LOCAL', 'CONCLUIDO'].includes(registro.status)
@@ -181,14 +268,17 @@ export default function CultoLancarModal({
         });
       }
       const dados: Record<string, unknown> = { observacao: observacao.trim() || null };
-      for (const c of CAMPOS[bloco]) {
+      for (const c of camposDoBloco(bloco)) {
         const bruto = form[c.campo] ?? '';
         dados[c.campo] = c.moeda ? moedaParaNumero(bruto) : bruto || null;
       }
       await cultoApi.enviarBloco(alvo.id, bloco, dados);
 
       const lista = await cultoApi.listarRegistros({ de: data, ate: data, churchId });
-      setRegistro(lista.find((r) => r.tipoCulto === tipoCulto) ?? null);
+      const doTipo = lista.filter((r) => r.tipoCulto === tipoCulto);
+      setRegistro(
+        (horaInicio ? doTipo.find((r) => r.horaInicio === horaInicio) : doTipo[0]) ?? null,
+      );
       setSalvo(true);
     } catch (e) {
       setErro((e as Error).message);
@@ -197,9 +287,10 @@ export default function CultoLancarModal({
     }
   }
 
-  const campos = CAMPOS[bloco];
+  const grupos = CAMPOS[bloco];
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onFechar}>
       <div
         className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
@@ -225,9 +316,13 @@ export default function CultoLancarModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* Cabeçalho do formulário, tudo numa linha só. */}
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="block">
+          {/* Cabeçalho do formulário.
+              No celular vira uma grade de duas colunas: data, horário, nome e
+              igreja ocupam a linha toda e só Início/Fim dividem espaço — são
+              os dois campos estreitos, e um do lado do outro é como se lê a
+              duração do culto. A partir do sm volta a ser uma linha corrida. */}
+          <div className="grid grid-cols-2 gap-3 items-end sm:flex sm:flex-wrap">
+            <label className="col-span-2 block sm:w-auto">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <CalendarDays className="w-3.5 h-3.5" /> Data do culto
               </span>
@@ -238,30 +333,87 @@ export default function CultoLancarModal({
                   setBuscando(true);
                   setData(e.target.value);
                 }}
-                className="mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               />
             </label>
-            <label className="block">
+            <label className="col-span-2 block sm:w-auto">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" /> Horário do culto
+              </span>
+              <div className="mt-1 flex items-center gap-1">
+                <select
+                  value={horarioCodigo}
+                  onChange={(e) => {
+                    const h = horarios.find((x) => x.codigo === e.target.value);
+                    setHorarioCodigo(e.target.value);
+                    // Escolher o horário preenche Início com a hora cadastrada
+                    // e Fim uma hora depois; quem lança ajusta ao lado quando o
+                    // culto passa disso.
+                    if (h) {
+                      setBuscando(true);
+                      setHoraInicio(h.hora_inicio ?? '');
+                      // O fim vem do cadastro; sem ele, uma hora depois do
+                      // início, que era o comportamento anterior.
+                      setHoraFim(
+                        h.hora_fim ?? (h.hora_inicio ? umaHoraDepois(h.hora_inicio) : ''),
+                      );
+                    }
+                  }}
+                  className="w-full sm:w-44 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                >
+                  <option value="">Sem horário definido</option>
+                  {horarios.map((h) => (
+                    // Só o nome: a hora aparece nos campos ao lado assim que o
+                    // horário é escolhido — repeti-la aqui era ler duas vezes a
+                    // mesma informação.
+                    <option key={h.id} value={h.codigo}>
+                      {h.nome}
+                    </option>
+                  ))}
+                </select>
+                {/* O cadastro é da própria igreja e mora aqui, não em
+                    Configurações: quem lança o culto é quem sabe os horários
+                    dele, e não precisa de acesso administrativo para isso. */}
+                <button
+                  type="button"
+                  onClick={() => setCadastrandoHorarios(true)}
+                  title="Cadastrar horários de culto desta igreja"
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  <Settings2 className="w-4 h-4" />
+                </button>
+              </div>
+            </label>
+            {/* O tesoureiro escolhe só o horário cadastrado; quem cronometra o
+                culto é o secretário, então início e fim aparecem só para ele. */}
+            {bloco === 'PRESENCA' && (
+              <>
+            <label className="block sm:w-auto">
               <span className="block text-xs font-medium text-slate-500 dark:text-slate-400">Início</span>
               <input
                 type="time"
                 value={horaInicio}
-                onChange={(e) => setHoraInicio(e.target.value)}
-                className="mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                onChange={(e) => {
+                  setBuscando(true);
+                  setHoraInicio(e.target.value);
+                }}
+                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               />
             </label>
-            <label className="block">
+            <label className="block sm:w-auto">
               <span className="block text-xs font-medium text-slate-500 dark:text-slate-400">Fim</span>
               <input
                 type="time"
                 value={horaFim}
                 onChange={(e) => setHoraFim(e.target.value)}
-                className="mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               />
             </label>
-            <label className="block">
+              </>
+            )}
+            <label className="col-span-2 block sm:w-auto">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Tipo de culto
+                Nome do culto
               </span>
               <div className="mt-1 flex items-center gap-1">
                 <select
@@ -270,7 +422,7 @@ export default function CultoLancarModal({
                     setBuscando(true);
                     setTipoCulto(e.target.value);
                   }}
-                  className="w-44 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                  className="w-full sm:w-44 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 >
                   {tipos.length === 0 && <option value="CULTO">Culto</option>}
                   {tipos.map((t) => (
@@ -291,7 +443,7 @@ export default function CultoLancarModal({
               </div>
             </label>
             {precisaEscolherIgreja && (
-              <label className="block flex-1 min-w-[14rem]">
+              <label className="col-span-2 block sm:flex-1 sm:min-w-[14rem]">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Igreja</span>
                 <select
                   value={churchId ?? ''}
@@ -309,7 +461,9 @@ export default function CultoLancarModal({
                 </select>
               </label>
             )}
-            {buscando && <Loader2 className="w-4 h-4 animate-spin text-slate-400 mb-3" />}
+            {buscando && (
+              <Loader2 className="col-span-2 w-4 h-4 animate-spin text-slate-400 sm:mb-3" />
+            )}
           </div>
 
           {erro && (
@@ -337,8 +491,17 @@ export default function CultoLancarModal({
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {campos.map((c) => (
+          {grupos.map((g) => (
+            <div key={g.titulo ?? 'sem-titulo'} className="space-y-3">
+              {g.titulo && (
+                <div className="pt-1 border-t border-slate-100 dark:border-slate-700">
+                  <h3 className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    {g.titulo}
+                  </h3>
+                </div>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {g.campos.map((c) => (
               <label key={c.campo} className="block">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {c.label}
@@ -371,8 +534,10 @@ export default function CultoLancarModal({
                   />
                 </div>
               </label>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          ))}
 
           {/* O dirigente lê isto antes de aprovar. */}
           <label className="block">
@@ -418,5 +583,18 @@ export default function CultoLancarModal({
         </div>
       </div>
     </div>
+
+    {/* Cadastro dos horários desta igreja, por cima do lançamento — sai daqui
+        com a lista já recarregada quando algo mudou. */}
+    {cadastrandoHorarios && (
+      <HorariosCultoModal
+        churchId={churchId}
+        onFechar={(mudou) => {
+          setCadastrandoHorarios(false);
+          if (mudou) carregarHorarios();
+        }}
+      />
+    )}
+    </>
   );
 }

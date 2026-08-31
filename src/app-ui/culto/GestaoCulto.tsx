@@ -28,11 +28,13 @@ import {
   Wallet,
   Users,
   FileText,
+  Printer,
 } from 'lucide-react';
 import {
   cultoApi,
   fmtData,
   fmtHora,
+  turnoDoCulto,
   fmtMoeda,
   periodoPadrao,
   COLUNAS_KANBAN,
@@ -50,6 +52,7 @@ import CultoResumoModal, { type PassoResumo } from './CultoResumoModal';
 import CultoMeusLancamentos from './CultoMeusLancamentos';
 import { BORDA, PASTILHA, PONTO, TOM_DO_STATUS, tomDoSemaforo } from './cultoCores';
 import CultoRegistroDrawer from './CultoRegistroDrawer';
+import CultoImprimirModal from './CultoImprimirModal';
 
 type Modo = 'kanban' | 'tabela' | 'painel' | 'organograma';
 
@@ -122,6 +125,23 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [resumo, setResumo] = useState<PassoResumo | null>(null);
   const [expandido, setExpandido] = useState<Record<string, boolean>>({});
+  const [imprimindo, setImprimindo] = useState(false);
+  /**
+   * Atualização automática.
+   *
+   * O quadro é acompanhado a várias mãos: o tesoureiro lança de um lugar, o
+   * secretário de outro e o dirigente aprova de um terceiro. Sem recarregar
+   * sozinho, quem está de olho no telão vê um quadro parado e cobra um culto
+   * que já entrou. Desligável porque, ao conferir número a número, a lista
+   * pulando debaixo do dedo atrapalha.
+   */
+  const [aoVivo, setAoVivo] = useState(true);
+  /** Nós com a visão de valores trancada — o cadeado do organograma. */
+  const [bloqueados, setBloqueados] = useState<Set<string>>(new Set());
+  const [podeBloquear, setPodeBloquear] = useState(false);
+  /** Código gravado no culto → nome cadastrado. O card mostra o nome. */
+  const [nomesDeTipo, setNomesDeTipo] = useState<Record<string, string>>({});
+  const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
 
   /** A hospedeira em que o usuário é dirigente — o recorte do item "Hospedeiro". */
   const minhaHospedeira =
@@ -188,6 +208,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
         setRegistros(reg);
         setGrupos(pai.grupos);
         setCampoNome(pai.campoNome);
+        setAtualizadoEm(new Date());
       })
       .catch((e) => vivo && setErro((e as Error).message))
       .finally(() => vivo && setCarregando(false));
@@ -195,6 +216,77 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
       vivo = false;
     };
   }, [de, ate, tipoCulto, versao, recorte, horaDe, horaAte]);
+
+  /**
+   * Recarga silenciosa a cada 20s — sem acender o "carregando", senão a tela
+   * pisca a cada volta. Só com a aba visível: nada de bater no servidor com o
+   * quadro esquecido atrás de outra janela. Ao voltar para a aba, recarrega na
+   * hora, porque nesse intervalo pode ter mudado tudo.
+   */
+  useEffect(() => {
+    cultoApi
+      .tiposCulto()
+      .then((lista) => {
+        const mapa: Record<string, string> = {};
+        for (const t of lista) mapa[t.codigo] = t.nome;
+        setNomesDeTipo(mapa);
+      })
+      .catch(() => {
+        /* sem cadastro, o card mostra o código gravado */
+      });
+  }, []);
+
+  const nomeDoTipo = useCallback(
+    (codigo: string) => nomesDeTipo[codigo] ?? codigo,
+    [nomesDeTipo],
+  );
+
+  useEffect(() => {
+    cultoApi
+      .visaoBloqueada()
+      .then((d) => {
+        setBloqueados(new Set(d.churchIds ?? []));
+        setPodeBloquear(Boolean(d.podeMexer));
+      })
+      .catch(() => {
+        /* sem o cadastro de cadeados a árvore aparece toda liberada */
+      });
+  }, [versao]);
+
+  /** Tranca ou destranca um nó e já reflete na árvore. */
+  async function alternarBloqueio(churchId: string, bloquear: boolean) {
+    // Otimista: o cadeado vira na hora e volta atrás se o servidor recusar.
+    setBloqueados((atual) => {
+      const proximo = new Set(atual);
+      if (bloquear) proximo.add(churchId);
+      else proximo.delete(churchId);
+      return proximo;
+    });
+    try {
+      await cultoApi.bloquearVisao(churchId, bloquear);
+    } catch (e) {
+      setErro((e as Error).message);
+      setBloqueados((atual) => {
+        const proximo = new Set(atual);
+        if (bloquear) proximo.delete(churchId);
+        else proximo.add(churchId);
+        return proximo;
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (!aoVivo) return;
+    const tick = () => {
+      if (document.visibilityState === 'visible') setVersao((v) => v + 1);
+    };
+    const id = window.setInterval(tick, 20000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [aoVivo]);
 
   /** Bloco que o card do hub mandou destacar (tesoureiro ou secretário). */
   const blocoAtalho: Bloco | null =
@@ -206,6 +298,30 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
     if (!blocoAtalho) return 0;
     return registros.filter((r) => r.blocosFaltando.includes(blocoAtalho)).length;
   }, [registros, blocoAtalho]);
+
+  /**
+   * As igrejas do meu alcance que não abriram culto nenhum no período.
+   *
+   * O quadro só mostrava o que existe: igreja que não lançou nada não tem
+   * registro e, portanto, não aparecia em lugar nenhum — justo a que o
+   * hospedeiro precisa cobrar. Aqui elas entram como card sem registro na
+   * coluna "Aguardando envio". O painel já sabe quem são (status SEM_REGISTRO).
+   *
+   * Vale o período consultado, e não uma agenda de dias de culto: quem consulta
+   * escolhe o dia em que houve culto. Numa segunda-feira o quadro apareceria
+   * todo vermelho, e é uma pergunta que ninguém faz.
+   */
+  const igrejasSemLancamento = useMemo(() => {
+    const lista: { churchId: string; nome: string; dirigente: string | null; grupo: string }[] = [];
+    for (const g of grupos) {
+      for (const i of [...g.pendentes, ...g.concluidas]) {
+        if (i.status === 'SEM_REGISTRO' || i.totalCultos === 0) {
+          lista.push({ churchId: i.churchId, nome: i.nome, dirigente: i.dirigente, grupo: g.nome });
+        }
+      }
+    }
+    return lista.sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [grupos]);
 
   /** Registros agrupados por hospedeira/regional, para a tabela aninhada. */
   const agrupados = useMemo(() => {
@@ -283,8 +399,8 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
         {pre && (
           <div>
             <strong className="text-slate-600 dark:text-slate-300">Presença</strong>{' '}
-            {pre.qtdHomens ?? 0} H · {pre.qtdMulheres ?? 0} M · {pre.qtdJovens ?? 0} jovens ·{' '}
-            {pre.qtdCriancas ?? 0} crianças · {pre.cadeirasVazias ?? 0} cadeiras vazias
+            {pre.qtdHomens ?? 0} H · {pre.qtdMulheres ?? 0} M · {pre.qtdCriancas ?? 0} crianças ·{' '}
+            {pre.qtdVisitantes ?? 0} visitantes · {pre.cadeirasVazias ?? 0} cadeiras vazias
           </div>
         )}
       </div>
@@ -297,7 +413,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
   }
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-5">
       {/* Uma faixa só: voltar + título + seletor de visão + ações. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {!escopoHospedeira && (
@@ -325,8 +441,11 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
           </span>
         )}
 
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {/* No celular a faixa vira três blocos empilhados — visões, ações e
+            período. Rolagem horizontal escondia o seletor de visão; espremer
+            tudo numa linha deixava os campos ilegíveis. */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto sm:flex-nowrap">
+          <div className="flex w-full sm:w-auto rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
             {(
               [
                 ['kanban', LayoutGrid, 'Kanban'],
@@ -341,14 +460,14 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                   key={m}
                   onClick={() => setModo(m)}
                   title={label}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-2.5 py-1.5 text-sm font-medium transition-colors ${
                     modo === m
                       ? 'bg-emerald-500 text-white'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
                 >
-                  <Icone className="w-4 h-4" />
-                  <span className="hidden xl:inline">{label}</span>
+                  <Icone className="w-4 h-4 shrink-0" />
+                  <span className="truncate sm:hidden xl:inline">{label}</span>
                 </button>
               ))}
           </div>
@@ -364,22 +483,42 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
             </button>
           )}
 
-          {/* Filtros na mesma faixa: evita uma segunda linha só de datas. */}
-          <input
-            type="date"
-            value={de}
-            onChange={(e) => aplicarFiltro(setDe, e.target.value)}
-            title="Data inicial"
-            className="border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-          />
-          <span className="text-slate-400 text-sm">a</span>
-          <input
-            type="date"
-            value={ate}
-            onChange={(e) => aplicarFiltro(setAte, e.target.value)}
-            title="Data final"
-            className="border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-          />
+          {/* O que sai no papel é o que o filtro deixou na lista — por isso o
+              botão fica junto dos filtros, e não numa tela de relatórios. */}
+          <button
+            onClick={() => setImprimindo(true)}
+            title="Imprimir relatório dos cultos filtrados"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+          >
+            <Printer className="w-4 h-4" />
+            <span className="hidden xl:inline">Imprimir</span>
+          </button>
+
+          {/* Período: lado a lado no desktop, um sobre o outro no celular —
+              dois campos de data na mesma linha de 360px não cabem legíveis. */}
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <label className="flex items-center gap-2">
+              <span className="w-6 shrink-0 text-xs text-slate-400 sm:hidden">de</span>
+              <input
+                type="date"
+                value={de}
+                onChange={(e) => aplicarFiltro(setDe, e.target.value)}
+                title="Data inicial"
+                className="w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+              />
+            </label>
+            <span className="hidden sm:inline text-slate-400 text-sm">a</span>
+            <label className="flex items-center gap-2">
+              <span className="w-6 shrink-0 text-xs text-slate-400 sm:hidden">até</span>
+              <input
+                type="date"
+                value={ate}
+                onChange={(e) => aplicarFiltro(setAte, e.target.value)}
+                title="Data final"
+                className="w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+              />
+            </label>
+          </div>
           <input
             type="time"
             value={horaDe}
@@ -403,8 +542,42 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
             className="hidden xl:block w-20 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
           />
           <button
+            onClick={() => setAoVivo((v) => !v)}
+            title={
+              aoVivo
+                ? `Atualizando sozinho a cada 20s${
+                    atualizadoEm ? ` — última às ${atualizadoEm.toLocaleTimeString('pt-BR')}` : ''
+                  }. Clique para congelar.`
+                : 'Atualização automática desligada. Clique para voltar a acompanhar ao vivo.'
+            }
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+              aoVivo
+                ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500'
+            }`}
+          >
+            <span className="relative flex w-2 h-2">
+              {aoVivo && (
+                <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              )}
+              <span
+                className={`relative inline-flex w-2 h-2 rounded-full ${
+                  aoVivo ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+                }`}
+              />
+            </span>
+            <span className="hidden xl:inline">
+              {aoVivo
+                ? atualizadoEm
+                  ? atualizadoEm.toLocaleTimeString('pt-BR')
+                  : 'Ao vivo'
+                : 'Congelado'}
+            </span>
+          </button>
+
+          <button
             onClick={recarregar}
-            title="Atualizar"
+            title="Atualizar agora"
             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
           >
             <RefreshCw className={`w-4 h-4 ${carregando ? 'animate-spin' : ''}`} />
@@ -455,30 +628,39 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
 
       {!carregando && modo === 'organograma' && (
         <CultoOrganograma
-          campoNome={campoNome}
           grupos={grupos}
           registros={registros}
           onAbrirRegistro={setAbertoId}
           onAbrirResumo={setResumo}
+          bloqueados={bloqueados}
+          podeBloquear={podeBloquear}
+          onAlternarBloqueio={(id, bloquear) => void alternarBloqueio(id, bloquear)}
         />
       )}
 
       {!carregando && modo === 'kanban' && (
-        <div className="flex flex-col lg:flex-row gap-4 pb-4">
+        <div className="flex flex-col lg:flex-row gap-4 pb-4 min-w-0">
           {COLUNAS_KANBAN.map((coluna) => {
             const itens = registros.filter((r) => coluna.status.includes(r.status));
+            // As igrejas que não abriram culto nenhum entram na primeira
+            // coluna: é lá que se olha para saber quem ainda deve.
+            const semLancamento = coluna.chave === 'enviar' ? igrejasSemLancamento : [];
             return (
-              <div key={coluna.chave} className="flex-1 min-w-[18rem]">
+              /* min-w só a partir do lg: no celular as colunas empilham e a
+                 largura mínima de 18rem furava a tela de 360px. */
+              <div key={coluna.chave} className="flex-1 min-w-0 lg:min-w-[18rem]">
                 <div
                   className={`flex items-center justify-between px-3 py-2 rounded-t-xl bg-white dark:bg-slate-800 border-t-4 ${COR_COLUNA[coluna.chave]} border-x border-slate-200 dark:border-slate-700`}
                 >
                   <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     {coluna.titulo}
                   </span>
-                  <span className="text-xs font-bold text-slate-400">{itens.length}</span>
+                  <span className="text-xs font-bold text-slate-400">
+                    {itens.length + semLancamento.length}
+                  </span>
                 </div>
                 <div className="space-y-2 p-2 rounded-b-xl bg-slate-100/70 dark:bg-slate-900/50 border-x border-b border-slate-200 dark:border-slate-700 min-h-[8rem]">
-                  {itens.length === 0 && (
+                  {itens.length === 0 && semLancamento.length === 0 && (
                     <p className="text-xs text-slate-400 text-center py-6">vazio</p>
                   )}
                   {itens.map((r) => (
@@ -494,10 +676,11 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         {fmtData(r.dataCulto)}
+                        {turnoDoCulto(r.horaInicio) ? ` · ${turnoDoCulto(r.horaInicio)}` : ''}
                         {fmtHora(r.horaInicio, r.horaFim)
                           ? ` · ${fmtHora(r.horaInicio, r.horaFim)}`
                           : ''}{' '}
-                        · {r.tipoCulto}
+                        · {nomeDoTipo(r.tipoCulto)}
                       </div>
                       {/* A coluna agrupa estados; o card diz qual é o dele. */}
                       {r.status !== 'ABERTO' && (
@@ -512,10 +695,41 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                       <div className="mt-2 flex items-center justify-between">
                         {pastilhasBloco(r)}
                         {r.blocosFaltando.length > 0 && (
+                          /* O nome do bloco, não a contagem: "falta 1" obrigava
+                             a abrir o card para descobrir se o que faltava era
+                             o dinheiro ou a presença. */
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${PASTILHA.vermelho}`}>
-                            falta {r.blocosFaltando.length}
+                            falta {r.blocosFaltando.map((b) => ROTULO_BLOCO[b]).join(' e ')}
                           </span>
                         )}
+                      </div>
+                    </button>
+                  ))}
+
+                  {/* Sem registro: a igreja não abriu culto nenhum no período.
+                      Borda tracejada para não se confundir com culto aberto. */}
+                  {semLancamento.map((i) => (
+                    <button
+                      key={`sem:${i.churchId}`}
+                      onClick={() =>
+                        setResumo({ nivel: 'IGREJA', id: i.churchId, rotulo: i.nome })
+                      }
+                      className="w-full text-left rounded-lg bg-white/60 dark:bg-slate-800/40 border-2 border-dashed border-slate-300 dark:border-slate-600 p-3 hover:shadow-md transition-shadow"
+                    >
+                      <div className="font-semibold text-sm text-slate-600 dark:text-slate-300 truncate">
+                        {i.nome}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5 truncate">
+                        nenhum culto lançado no período
+                        {i.dirigente ? ` · ${i.dirigente}` : ''}
+                      </div>
+                      {/* De quem ela é: sem isto, quem tem várias hospedeiras
+                          não sabe se aquela igreja é dele. */}
+                      <div className="text-[11px] text-slate-400 truncate">{i.grupo}</div>
+                      <div className="mt-2 flex items-center justify-end">
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${PASTILHA.vermelho}`}>
+                          não abriu culto
+                        </span>
                       </div>
                     </button>
                   ))}
@@ -526,8 +740,12 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
         </div>
       )}
 
+      {/* A tabela tem colunas demais para 360px. Em vez de espremer (que fazia
+          o status escrever por cima do nome da igreja), ela rola na horizontal
+          dentro do próprio cartão, com largura mínima que preserva o alinhamento. */}
       {!carregando && modo === 'tabela' && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto shadow-sm">
+          <div className="min-w-[44rem] sm:min-w-0">
           {agrupados.length === 0 ? (
             <div className="text-center py-20 text-slate-400 dark:text-slate-500">
               Nenhum culto registrado no período.
@@ -593,6 +811,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                               <span className="truncate font-medium">{r.church.name}</span>
                               <span className="text-xs text-slate-400 shrink-0">
                                 {fmtData(r.dataCulto)}
+                                {turnoDoCulto(r.horaInicio) ? ` · ${turnoDoCulto(r.horaInicio)}` : ''}
                                 {fmtHora(r.horaInicio, r.horaFim)
                                   ? ` · ${fmtHora(r.horaInicio, r.horaFim)}`
                                   : ''}
@@ -632,10 +851,82 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                         </div>
                       );
                     })}
+
+                  {/* As que não abriram culto nenhum fecham o grupo: é a lista
+                      de quem o dirigente da hospedeira ainda precisa cobrar. */}
+                  {aberto &&
+                    igrejasSemLancamento
+                      .filter((i) => i.grupo === grupo.nome)
+                      .map((i) => (
+                        <div
+                          key={`sem:${i.churchId}`}
+                          className="flex items-center justify-between px-4 py-2.5 pl-10 hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                        >
+                          <span className="flex items-center gap-2 min-w-0 text-sm text-slate-500 dark:text-slate-400">
+                            <span className="w-3.5 shrink-0" />
+                            <span className="truncate">{i.nome}</span>
+                            <span className="text-xs text-slate-400 shrink-0">
+                              nenhum culto lançado
+                            </span>
+                          </span>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span
+                              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${PASTILHA.vermelho}`}
+                            >
+                              não abriu culto
+                            </span>
+                            <button
+                              onClick={() =>
+                                setResumo({ nivel: 'IGREJA', id: i.churchId, rotulo: i.nome })
+                              }
+                              className="text-xs font-semibold text-slate-500 hover:text-emerald-600"
+                            >
+                              resumo
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                 </div>
               );
             })
           )}
+
+          {/* Grupo inteiro sem nenhum culto no período não aparece acima (a
+              tabela é montada a partir dos registros). Estas igrejas ficariam
+              invisíveis justamente por não terem lançado nada. */}
+          {(() => {
+            const gruposNaTabela = new Set(agrupados.map(([, g]) => g.nome));
+            const orfas = igrejasSemLancamento.filter((i) => !gruposNaTabela.has(i.grupo));
+            if (orfas.length === 0) return null;
+            return (
+              <div className="border-b border-slate-100 dark:border-slate-700 last:border-0">
+                <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/40 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  Sem nenhum culto no período
+                  <span className="ml-1 text-xs font-normal text-slate-400">
+                    ({orfas.length} igreja{orfas.length > 1 ? 's' : ''})
+                  </span>
+                </div>
+                {orfas.map((i) => (
+                  <div
+                    key={`orfa:${i.churchId}`}
+                    className="flex items-center justify-between px-4 py-2.5 pl-10 hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                  >
+                    <span className="flex items-center gap-2 min-w-0 text-sm text-slate-500 dark:text-slate-400">
+                      <span className="truncate">{i.nome}</span>
+                      <span className="text-xs text-slate-400 shrink-0 truncate">{i.grupo}</span>
+                    </span>
+                    <button
+                      onClick={() => setResumo({ nivel: 'IGREJA', id: i.churchId, rotulo: i.nome })}
+                      className="text-xs font-semibold text-slate-500 hover:text-emerald-600 shrink-0"
+                    >
+                      resumo
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+          </div>
         </div>
       )}
 
@@ -658,6 +949,17 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
           registroId={abertoId}
           onFechar={() => setAbertoId(null)}
           onMudou={recarregar}
+        />
+      )}
+
+      {imprimindo && (
+        <CultoImprimirModal
+          registros={registros}
+          titulo="Relatório de Gestão de Cultos"
+          periodo={`${fmtData(de)} a ${fmtData(ate)}${campoNome ? ` · ${campoNome}` : ''}${
+            escopoHospedeira ? ' · visão do hospedeiro' : ''
+          }`}
+          onFechar={() => setImprimindo(false)}
         />
       )}
     </div>

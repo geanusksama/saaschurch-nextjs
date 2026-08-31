@@ -129,6 +129,27 @@ export default function CultoResumoModal({
     };
   }, [atual.nivel, atual.id, atual.tipoGrupo, de, ate, tipoCulto]);
 
+  /**
+   * Código gravado no culto → nome cadastrado ("CULTO" → "Culto", "EBD" →
+   * "EBD (Escola Bíblica)"). O registro guarda o código, que é estável; quem
+   * lê a tela quer o nome que a igreja cadastrou.
+   */
+  const [nomesDeTipo, setNomesDeTipo] = useState<Record<string, string>>({});
+  useEffect(() => {
+    cultoApi
+      .tiposCulto()
+      .then((lista) => {
+        const mapa: Record<string, string> = {};
+        for (const t of lista) mapa[t.codigo] = t.nome;
+        setNomesDeTipo(mapa);
+      })
+      .catch(() => {
+        /* sem cadastro, mostra o código mesmo */
+      });
+  }, []);
+
+  const nomeDoTipo = (codigo: string) => nomesDeTipo[codigo] ?? codigo;
+
   function descer(no: NoResumo) {
     if (no.tipo === 'CULTO' && no.registroId) {
       onAbrirCulto(no.registroId);
@@ -251,17 +272,21 @@ export default function CultoResumoModal({
                   <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 mb-2">
                     <Wallet className="w-3.5 h-3.5" /> Financeiro consolidado
                   </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {/* Mesma ordem e mesmos rótulos do formulário de lançamento:
+                      quem lança e quem confere leem a mesma sequência. */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     <Estatistica
-                      rotulo="Dízimos"
+                      rotulo="Quantidade de dízimos"
+                      valor={resumo.totais.financeiro.qtdDizimos}
+                    />
+                    <Estatistica
+                      rotulo="Valor total de dízimos"
                       valor={fmtMoeda(resumo.totais.financeiro.totalDizimos)}
                     />
                     <Estatistica
-                      rotulo="Ofertas"
+                      rotulo="Valor total de ofertas"
                       valor={fmtMoeda(resumo.totais.financeiro.totalOfertas)}
                     />
-                    <Estatistica rotulo="Qtd. dízimos" valor={resumo.totais.financeiro.qtdDizimos} />
-                    <Estatistica rotulo="Qtd. ofertas" valor={resumo.totais.financeiro.qtdOfertas} />
                   </div>
                 </div>
               )}
@@ -275,8 +300,6 @@ export default function CultoResumoModal({
                     <Estatistica rotulo="Público" valor={resumo.totais.presenca.publicoTotal} />
                     <Estatistica rotulo="Homens" valor={resumo.totais.presenca.homens} />
                     <Estatistica rotulo="Mulheres" valor={resumo.totais.presenca.mulheres} />
-                    <Estatistica rotulo="Jovens" valor={resumo.totais.presenca.jovens} />
-                    <Estatistica rotulo="Adolesc." valor={resumo.totais.presenca.adolescentes} />
                     <Estatistica rotulo="Crianças" valor={resumo.totais.presenca.criancas} />
                     <Estatistica rotulo="Visitantes" valor={resumo.totais.presenca.visitantes} />
                     <Estatistica rotulo="Conversões" valor={resumo.totais.presenca.conversoes} />
@@ -284,7 +307,6 @@ export default function CultoResumoModal({
                       rotulo="Reconcil."
                       valor={resumo.totais.presenca.reconciliacoes}
                     />
-                    <Estatistica rotulo="Famílias" valor={resumo.totais.presenca.familias} />
                     <Estatistica
                       rotulo="Cadeiras vazias"
                       valor={resumo.totais.presenca.cadeirasVazias}
@@ -342,7 +364,9 @@ export default function CultoResumoModal({
                               <span className="block text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
                                 {no.tipo === 'CULTO' && no.dataCulto
                                   ? `${fmtData(`${no.dataCulto}T00:00:00.000Z`)}${
-                                      no.nome.includes('·') ? ` · ${no.nome.split('· ')[1]}` : ''
+                                      no.nome.includes('·')
+                                        ? ` · ${nomeDoTipo(no.nome.split('· ')[1])}`
+                                        : ''
                                     }`
                                   : no.nome}
                               </span>
@@ -375,6 +399,24 @@ export default function CultoResumoModal({
                               <ChevronRight className="w-4 h-4 shrink-0 text-slate-300" />
                             )}
                           </button>
+
+                          {/* Os recados de cada nível sobre aquele culto. O
+                              consolidado diz quanto; a observação diz por quê. */}
+                          {no.observacoes?.length > 0 && (
+                            <div className="px-4 pb-3 -mt-1 space-y-1">
+                              {no.observacoes.map((o, i) => (
+                                <p
+                                  key={i}
+                                  className="text-xs text-slate-500 dark:text-slate-400 pl-6"
+                                >
+                                  <span className="font-semibold text-slate-600 dark:text-slate-300">
+                                    {o.autor}:
+                                  </span>{' '}
+                                  {o.texto}
+                                </p>
+                              ))}
+                            </div>
+                          )}
                         </li>
                       );
                     })}

@@ -62,18 +62,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (scope.churchIds !== null && !scope.churchIds.includes(registro.churchId)) {
       return NextResponse.json({ error: 'Sem acesso a este registro.' }, { status: 403 });
     }
-    // Depois que foi para aprovação, data e tipo travam: mudar isso por baixo
-    // do dirigente que já aprovou seria trocar o objeto da decisão.
-    if (!scope.irrestrito && !['ABERTO', 'REJEITADO'].includes(registro.status)) {
-      return NextResponse.json(
-        { error: 'Registro já enviado para aprovação — não pode mais ser editado.' },
-        { status: 409 },
-      );
-    }
-
     const body = await req.json().catch(() => ({}));
     const data: Record<string, unknown> = {};
     if (typeof body.observacao === 'string') data.observacao = body.observacao.trim() || null;
+    // A observação do presidente é dele: quem não é presidente (nem master)
+    // não escreve nesse campo, mesmo tendo acesso ao registro.
+    if (typeof body.observacaoPresidente === 'string') {
+      const ehPresidente =
+        scope.irrestrito || scope.posicoes.some((p) => p.papel === 'PRESIDENTE');
+      if (!ehPresidente) {
+        return NextResponse.json(
+          { error: 'Só o Pastor Presidente escreve a observação do presidente.' },
+          { status: 403 },
+        );
+      }
+      data.observacaoPresidente = body.observacaoPresidente.trim() || null;
+    }
     if (typeof body.tipoCulto === 'string' && body.tipoCulto.trim()) {
       data.tipoCulto = body.tipoCulto.trim().toUpperCase().slice(0, 60);
     }
@@ -84,6 +88,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (typeof body.horaFim === 'string') data.horaFim = horaParaDate(body.horaFim);
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: 'Nada para atualizar.' }, { status: 400 });
+    }
+
+    // Depois que foi para aprovação, data e tipo travam: mudar isso por baixo
+    // do dirigente que já aprovou seria trocar o objeto da decisão.
+    //
+    // A observação do presidente é a exceção: ele comenta o culto DEPOIS de
+    // fechado, que é quando ele lê o consolidado. Travá-la junto deixaria o
+    // campo inútil.
+    const soObservacaoPresidente =
+      Object.keys(data).length === 1 && 'observacaoPresidente' in data;
+    if (
+      !scope.irrestrito &&
+      !soObservacaoPresidente &&
+      !['ABERTO', 'REJEITADO'].includes(registro.status)
+    ) {
+      return NextResponse.json(
+        { error: 'Registro já enviado para aprovação — não pode mais ser editado.' },
+        { status: 409 },
+      );
     }
 
     const atualizado = await prisma.cultoRegistro.update({ where: { id }, data });

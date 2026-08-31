@@ -26,15 +26,17 @@ import {
   Building2,
   MapPin,
   Church,
-  Landmark,
   CalendarDays,
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import {
   fmtData,
   fmtHora,
+  turnoDoCulto,
   fmtMoeda,
   ROTULO_STATUS,
   type GrupoDoPainel,
@@ -54,11 +56,19 @@ import {
 import type { PassoResumo } from './CultoResumoModal';
 
 interface Props {
-  campoNome: string | null;
   grupos: GrupoDoPainel[];
   registros: Registro[];
   onAbrirRegistro: (registroId: string) => void;
   onAbrirResumo: (passo: PassoResumo) => void;
+  /**
+   * Nós com a visão de valores trancada, e o cadeado para mexer neles.
+   *
+   * Só o presidente do campo (e o master) recebem `podeBloquear`: é quem
+   * enxerga a árvore inteira e decide quem, abaixo dele, vê os números.
+   */
+  bloqueados?: Set<string>;
+  podeBloquear?: boolean;
+  onAlternarBloqueio?: (churchId: string, bloquear: boolean) => void;
 }
 
 /** Barra que une os irmãos: neutra, mas visível. */
@@ -146,6 +156,15 @@ interface CaixaProps {
   onAlternar: () => void;
   onTitulo?: () => void;
   largura?: string;
+  /**
+   * A contagem do grupo, na linha de baixo: veio do nó do campo, que saiu.
+   * Aqui ela diz respeito ao próprio nó — quantas igrejas ele tem, quantas
+   * fecharam e quantas ainda devem.
+   */
+  numeros?: { igrejas: number; concluidas: number; pendentes: number };
+  /** undefined = este nó não aceita cadeado (o campo e as regionais). */
+  bloqueado?: boolean;
+  onBloquear?: () => void;
 }
 
 function Caixa({
@@ -161,6 +180,9 @@ function Caixa({
   onAlternar,
   onTitulo,
   largura = 'w-56',
+  numeros,
+  bloqueado,
+  onBloquear,
 }: CaixaProps) {
   return (
     <div
@@ -176,6 +198,30 @@ function Caixa({
           >
             {contagem}
           </span>
+        )}
+        {/* Cadeado do nó: trancado, quem dirige aqui aprova sem ver os valores
+            lançados abaixo. Sem onBloquear, vira só o indicador. */}
+        {bloqueado !== undefined && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBloquear?.();
+            }}
+            disabled={!onBloquear}
+            title={
+              bloqueado
+                ? 'Visão trancada: quem dirige este nó não vê os valores lançados abaixo. Clique para liberar.'
+                : 'Visão liberada: quem dirige este nó vê os valores lançados abaixo. Clique para trancar.'
+            }
+            className={`shrink-0 p-0.5 rounded ${contagem ? 'ml-1' : 'ml-auto'} ${
+              bloqueado
+                ? 'text-[#b45309] dark:text-[#fbbf24]'
+                : 'text-slate-300 dark:text-slate-600'
+            } ${onBloquear ? 'hover:bg-slate-100 dark:hover:bg-slate-700' : 'cursor-default'}`}
+          >
+            {bloqueado ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+          </button>
         )}
       </div>
 
@@ -195,6 +241,13 @@ function Caixa({
           {etiqueta}
         </span>
       )}
+      {numeros && (
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
+          <span className="text-slate-500 dark:text-slate-400">{numeros.igrejas} igrejas</span>
+          <span className={`font-bold ${TEXTO.verde}`}>{numeros.concluidas} concluídas</span>
+          <span className={`font-bold ${TEXTO.vermelho}`}>{numeros.pendentes} pendentes</span>
+        </div>
+      )}
       {detalhe && (
         <span className="block text-[11px] text-slate-500 dark:text-slate-400 truncate">
           {detalhe}
@@ -205,11 +258,13 @@ function Caixa({
 }
 
 export default function CultoOrganograma({
-  campoNome,
   grupos,
   registros,
   onAbrirRegistro,
   onAbrirResumo,
+  bloqueados,
+  podeBloquear = false,
+  onAlternarBloqueio,
 }: Props) {
   const [abertos, setAbertos] = useState<Record<string, boolean>>({ campo: true });
 
@@ -237,6 +292,40 @@ export default function CultoOrganograma({
     setArrastando(true);
     origem.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
   }
+
+  /**
+   * O mesmo arrasto pelo toque.
+   *
+   * `onMouseDown` não dispara em celular, e sem isto a árvore ficava presa: no
+   * telefone ela é maior que a tela em qualquer zoom. Um dedo só move; o resto
+   * (pinça) fica com os botões de zoom, que já estão ali no canto.
+   */
+  function aoTocar(e: React.TouchEvent) {
+    if ((e.target as HTMLElement).closest('button, a, input, select')) return;
+    const t = e.touches[0];
+    if (!t) return;
+    setArrastando(true);
+    origem.current = { x: t.clientX, y: t.clientY, panX: pan.x, panY: pan.y };
+  }
+
+  useEffect(() => {
+    if (!arrastando) return;
+    function moverToque(e: TouchEvent) {
+      const t = e.touches[0];
+      if (!t) return;
+      // Impede a página de rolar junto enquanto o dedo arrasta a árvore.
+      e.preventDefault();
+      setPan({
+        x: origem.current.panX + (t.clientX - origem.current.x),
+        y: origem.current.panY + (t.clientY - origem.current.y),
+      });
+    }
+    window.addEventListener('touchmove', moverToque, { passive: false });
+    window.addEventListener('touchend', () => setArrastando(false));
+    return () => {
+      window.removeEventListener('touchmove', moverToque);
+    };
+  }, [arrastando]);
 
   useEffect(() => {
     if (!arrastando) return;
@@ -298,15 +387,6 @@ export default function CultoOrganograma({
     return mapa;
   }, [registros]);
 
-  const totais = useMemo(
-    () => ({
-      igrejas: grupos.reduce((s, g) => s + g.totalIgrejas, 0),
-      concluidas: grupos.reduce((s, g) => s + g.concluidas.length, 0),
-      pendentes: grupos.reduce((s, g) => s + g.pendentes.length, 0),
-    }),
-    [grupos],
-  );
-
   // ── Nível 4: o culto ──────────────────────────────────────────────────────
   function noCulto(r: Registro) {
     const tom = TOM_DO_STATUS[r.status as StatusCulto];
@@ -321,6 +401,7 @@ export default function CultoOrganograma({
           <CalendarDays className="w-3.5 h-3.5 shrink-0 text-slate-400" />
           <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
             {fmtData(r.dataCulto)}
+            {turnoDoCulto(r.horaInicio) ? ` · ${turnoDoCulto(r.horaInicio)}` : ''}
             {fmtHora(r.horaInicio, r.horaFim) ? ` · ${fmtHora(r.horaInicio, r.horaFim)}` : ''}
           </span>
           <span className={`ml-auto w-2 h-2 rounded-full shrink-0 ${PONTO[tom]}`} />
@@ -364,6 +445,12 @@ export default function CultoOrganograma({
             onAbrirResumo({ nivel: 'IGREJA', id: igreja.churchId, rotulo: igreja.nome })
           }
           largura="w-52"
+          bloqueado={bloqueados ? bloqueados.has(igreja.churchId) : undefined}
+          onBloquear={
+            podeBloquear && onAlternarBloqueio
+              ? () => onAlternarBloqueio(igreja.churchId, !bloqueados?.has(igreja.churchId))
+              : undefined
+          }
         />
         {aberto && cultos.length > 0 && (
           <>
@@ -397,12 +484,26 @@ export default function CultoOrganograma({
           etiqueta={g.tipo === 'HOSPEDEIRA' ? 'hospedeira' : 'regional'}
           detalhe={g.dirigente ? `dirigente ${g.dirigente}` : 'sem dirigente anexado'}
           tom={tom}
-          contagem={`${g.concluidas.length}/${g.totalIgrejas}`}
+          contagem={null}
           aberto={aberto}
           temFilhos={igrejas.length > 0}
           onAlternar={() => alternar(chave)}
           onTitulo={() =>
             onAbrirResumo({ nivel: 'GRUPO', id: g.id, tipoGrupo: g.tipo, rotulo: g.nome })
+          }
+          largura="w-72"
+          numeros={{
+            igrejas: g.totalIgrejas,
+            concluidas: g.concluidas.length,
+            pendentes: g.pendentes.length,
+          }}
+          bloqueado={
+            g.tipo === 'HOSPEDEIRA' && bloqueados ? bloqueados.has(g.id) : undefined
+          }
+          onBloquear={
+            g.tipo === 'HOSPEDEIRA' && podeBloquear && onAlternarBloqueio
+              ? () => onAlternarBloqueio(g.id, !bloqueados?.has(g.id))
+              : undefined
           }
         />
         {aberto && igrejas.length > 0 && (
@@ -428,17 +529,16 @@ export default function CultoOrganograma({
     );
   }
 
-  const campoAberto = abertos.campo ?? true;
-  const tomCampo = tomDoSemaforo(totais.pendentes === 0 && totais.igrejas > 0);
 
   return (
     <div
       ref={telaRef}
       onMouseDown={aoPressionar}
+      onTouchStart={aoTocar}
       onWheel={aoRolar}
       // Ocupa o que sobra da janela e encosta nas bordas: a árvore é grande e
       // qualquer moldura só rouba espaço dela.
-      className={`relative bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 overflow-hidden -mx-6 -mb-6 h-[calc(100vh-9.5rem)] ${
+      className={`relative bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 overflow-hidden touch-none -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 h-[calc(100vh-13rem)] sm:h-[calc(100vh-9.5rem)] ${
         arrastando ? 'cursor-grabbing' : 'cursor-grab'
       }`}
     >
@@ -471,7 +571,7 @@ export default function CultoOrganograma({
       </div>
 
       <span className="absolute bottom-3 left-3 z-10 text-[11px] text-slate-400 select-none">
-        arraste para mover · role para dar zoom
+        arraste para mover · role (ou use + e −) para dar zoom
       </span>
 
       {/* Camada que recebe zoom e deslocamento. */}
@@ -482,44 +582,18 @@ export default function CultoOrganograma({
           transition: arrastando ? 'none' : 'transform 120ms ease-out',
         }}
       >
+      {/* Os grupos são a raiz da árvore.
+          O nó do campo saiu: ele só repetia o nome do campo e uma contagem que
+          cabe melhor em cada hospedeira — e roubava uma linha inteira de altura
+          numa árvore que já não cabe na tela. O consolidado do campo continua a
+          um clique, no botão Resumo da barra. */}
       <div className="inline-flex flex-col items-center">
-        {/* ── Nível 1: o campo ── */}
-        <div
-          className={`rounded-xl border-2 ${BORDA[tomCampo]} bg-white dark:bg-slate-800 shadow-sm px-4 py-3 min-w-[18rem]`}
-        >
-          <div className="flex items-center gap-2">
-            <Alternador aberto={campoAberto} temFilhos onClick={() => alternar('campo')} />
-            <Landmark className="w-5 h-5 shrink-0 text-[#7c3aed]" />
-            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${PONTO[tomCampo]}`} />
-            <button
-              onClick={() =>
-                onAbrirResumo({ nivel: 'CAMPO', id: null, rotulo: campoNome ?? 'Campo' })
-              }
-              title="Ver o resumo consolidado do campo inteiro"
-              className="text-base font-bold text-slate-900 dark:text-white hover:underline truncate"
-            >
-              {campoNome ?? 'Campo'}
-            </button>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pl-7">
-            <span>{grupos.length} grupos</span>
-            <span>{totais.igrejas} igrejas</span>
-            <span className={`font-semibold ${TEXTO.verde}`}>{totais.concluidas} concluídas</span>
-            <span className={`font-semibold ${TEXTO.vermelho}`}>{totais.pendentes} pendentes</span>
-          </div>
-        </div>
-
-        {campoAberto && (
-          <>
-            <Haste />
-            <Ramificacao
-              filhos={grupos.map((g) => ({
-                tom: tomDoSemaforo(g.cor === 'VERDE'),
-                conteudo: noGrupo(g),
-              }))}
-            />
-          </>
-        )}
+        <Ramificacao
+          filhos={grupos.map((g) => ({
+            tom: tomDoSemaforo(g.cor === 'VERDE'),
+            conteudo: noGrupo(g),
+          }))}
+        />
       </div>
       </div>
     </div>

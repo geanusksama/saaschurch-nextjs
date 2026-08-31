@@ -39,6 +39,24 @@ grep -c "<nome_da_tabela>" ../saaschurch-nextjs/baseline/05_tables.sql
 #    painelchurch      → é o que cria o banco de uma igreja nova
 ```
 
+### Aplicar UMA migration no banco de referência
+
+`prisma migrate dev` não serve aqui (ele quer sincronizar o histórico inteiro
+contra produção). O caminho seguro é aplicar só o arquivo e depois registrar:
+
+```bash
+npx prisma db execute --file prisma/migrations/<nome>/migration.sql --schema prisma/schema.prisma
+npx prisma migrate resolve --applied <nome>
+```
+
+Dois tropeços que já custaram tempo:
+
+- **Rode de dentro de `saaschurch-nextjs`.** Fora dela o `npx prisma` baixa o
+  CLI novo da plataforma Prisma, que não tem `db execute` e responde
+  `CLI.UNKNOWN_COMMAND`.
+- **Pare o `next dev` antes de qualquer `prisma generate`** (seção 6). Coluna
+  nova sem `generate` dá "does not exist in type ...Select" no typecheck.
+
 A versão em `baseline/manifest.json` **tem que mudar**. É o carimbo que o
 `migrate-self` compara com `public._painelchurch_baseline` no banco de cada
 igreja: versões iguais ⇒ ele não faz nada.

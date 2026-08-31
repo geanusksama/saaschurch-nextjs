@@ -3,11 +3,34 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
 import { getLookup, type LookupConfig } from "@/lib/lookupRegistry";
-import { buildWritableValues, campoDoUsuario, erroLegivel } from "../route";
+import { buildWritableValues, campoDoUsuario, igrejaDoUsuario, erroLegivel } from "../route";
 import type { AuthUser } from "@/lib/auth";
 
-function canManage(user: { profileType: string }) {
-  return user.profileType === "master" || user.profileType === "admin";
+function canManage(user: { profileType: string }, cfg?: { churchField?: string }) {
+  if (user.profileType === "master" || user.profileType === "admin") return true;
+  // Lista por igreja: o perfil de igreja mantém o próprio cadastro. O escopo
+  // é conferido em itemForaDaIgreja antes de qualquer escrita.
+  return Boolean(cfg?.churchField) && user.profileType === "church";
+}
+
+/**
+ * Numa lista isolada por igreja, editar/excluir só vale para item da PRÓPRIA
+ * igreja. Vale inclusive para master: aqui o id não é escapatória, porque o
+ * cadastro de horário de uma congregação não é assunto de outra.
+ */
+async function itemForaDaIgreja(cfg: LookupConfig, id: string, user: AuthUser) {
+  if (!cfg.churchField) return false;
+  // Master e admin do campo administram várias igrejas — para eles o limite é
+  // o campo, conferido em itemForaDoCampo. O perfil de igreja só mexe no seu.
+  if (user.profileType !== "church") return false;
+  const churchId = igrejaDoUsuario(user, null);
+  if (!churchId) return true;
+  const linhas = await prisma.$queryRawUnsafe<Array<{ existe: boolean }>>(
+    `SELECT true AS existe FROM "${cfg.table}" WHERE id = $1::uuid AND "${cfg.churchField}" = $2::uuid LIMIT 1`,
+    id,
+    churchId
+  );
+  return linhas.length === 0;
 }
 
 /**
@@ -18,6 +41,9 @@ function canManage(user: { profileType: string }) {
 async function itemForaDoCampo(cfg: LookupConfig, id: string, user: AuthUser) {
   if (!cfg.campoField) return false;
   if (user.profileType === "master") return false;
+  // Numa lista por igreja, o perfil de igreja é conferido por itemForaDaIgreja:
+  // exigir campo aqui travaria quem não tem campo preenchido no cadastro.
+  if (cfg.churchField && user.profileType === "church") return false;
   const campoId = campoDoUsuario(user, null);
   if (!campoId) return true;
   const linhas = await prisma.$queryRawUnsafe<Array<{ existe: boolean }>>(
@@ -34,10 +60,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ke
     const { key, id } = await params;
     const cfg = getLookup(key);
     if (!cfg) return NextResponse.json({ error: "Lista não encontrada." }, { status: 404 });
-    if (!canManage(user)) return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
+    if (!canManage(user, cfg)) return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
 
     if (await itemForaDoCampo(cfg, id, user)) {
       return NextResponse.json({ error: "Este item pertence a outro campo." }, { status: 403 });
+    }
+
+    if (await itemForaDaIgreja(cfg, id, user)) {
+      return NextResponse.json({ error: "Este item pertence a outra igreja." }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -67,10 +97,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ k
     const { key, id } = await params;
     const cfg = getLookup(key);
     if (!cfg) return NextResponse.json({ error: "Lista não encontrada." }, { status: 404 });
-    if (!canManage(user)) return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
+    if (!canManage(user, cfg)) return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
 
     if (await itemForaDoCampo(cfg, id, user)) {
       return NextResponse.json({ error: "Este item pertence a outro campo." }, { status: 403 });
+    }
+
+    if (await itemForaDaIgreja(cfg, id, user)) {
+      return NextResponse.json({ error: "Este item pertence a outra igreja." }, { status: 403 });
     }
 
     try {

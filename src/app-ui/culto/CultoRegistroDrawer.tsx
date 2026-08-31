@@ -25,28 +25,26 @@ import {
   ROTULO_BLOCO,
   ROTULO_STATUS,
   type Bloco,
+  type Papel,
+  type Posicao,
   type Nivel,
   type Registro,
 } from './cultoApi';
 import { BORDA, PASTILHA, TEXTO } from './cultoCores';
 
 const CAMPOS_FINANCEIRO: { campo: string; label: string; moeda?: boolean }[] = [
-  { campo: 'totalDizimos', label: 'Total de dízimos', moeda: true },
-  { campo: 'totalOfertas', label: 'Total de ofertas', moeda: true },
+  { campo: 'totalDizimos', label: 'Valor total de dízimos', moeda: true },
+  { campo: 'totalOfertas', label: 'Valor total de ofertas', moeda: true },
   { campo: 'qtdDizimos', label: 'Qtd. de dízimos' },
-  { campo: 'qtdOfertas', label: 'Qtd. de ofertas' },
 ];
 
 const CAMPOS_PRESENCA: { campo: string; label: string }[] = [
   { campo: 'qtdHomens', label: 'Homens' },
   { campo: 'qtdMulheres', label: 'Mulheres' },
-  { campo: 'qtdJovens', label: 'Jovens' },
-  { campo: 'qtdAdolescentes', label: 'Adolescentes' },
   { campo: 'qtdCriancas', label: 'Crianças' },
   { campo: 'qtdVisitantes', label: 'Visitantes' },
   { campo: 'qtdConversoes', label: 'Conversões' },
   { campo: 'qtdReconciliacoes', label: 'Reconciliações' },
-  { campo: 'qtdFamilias', label: 'Famílias' },
   { campo: 'cadeirasVazias', label: 'Cadeiras vazias' },
 ];
 
@@ -71,6 +69,17 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
   const [form, setForm] = useState<Record<string, string>>({});
   const [motivo, setMotivo] = useState('');
   const [pedindoMotivo, setPedindoMotivo] = useState<Nivel | null>(null);
+  const [obsPresidente, setObsPresidente] = useState('');
+  const [salvandoObs, setSalvandoObs] = useState(false);
+  const [papeisDoUsuario, setPapeisDoUsuario] = useState<string[]>([]);
+  /**
+   * Quem responde por cada bloco na igreja deste culto.
+   *
+   * "Faltando enviar: Financeiro" não diz a quem cobrar. O dirigente precisa do
+   * nome — e precisa saber quando NÃO há ninguém anexado, que é o caso em que
+   * o bloco nunca vai chegar sozinho.
+   */
+  const [posicoes, setPosicoes] = useState<Posicao[]>([]);
 
   /** Preenche o formulário com o que já foi lançado nos blocos visíveis. */
   function formDoRegistro(r: Registro): Record<string, string> {
@@ -100,6 +109,7 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
         setErro(null);
         setRegistro(r);
         setForm(formDoRegistro(r));
+        setObsPresidente(r.observacaoPresidente ?? '');
       })
       .catch((e) => vivo && setErro((e as Error).message))
       .finally(() => vivo && setCarregando(false));
@@ -107,6 +117,50 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
       vivo = false;
     };
   }, [registroId, versao]);
+
+  useEffect(() => {
+    cultoApi
+      .meusPapeis()
+      .then((p) => setPapeisDoUsuario(p.papeis))
+      .catch(() => {
+        /* sem papéis, o campo do presidente simplesmente não aparece */
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!registro?.churchId) return;
+    cultoApi
+      .listarPosicoes(registro.churchId)
+      .then(setPosicoes)
+      .catch(() => {
+        /* sem as posições, o drawer continua igual — só sem o nome */
+      });
+  }, [registro?.churchId]);
+
+  /**
+   * Só o presidente do campo (e o master) escrevem a observação do presidente.
+   * O servidor recusa qualquer outro; aqui é só para não mostrar um campo que
+   * vai voltar 403.
+   */
+  const souPresidente = (() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const u = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+      if (u.profileType === 'master' || u.profileType === 'admin') return true;
+    } catch {
+      /* sem usuário guardado, cai no papel do culto abaixo */
+    }
+    return papeisDoUsuario.includes('PRESIDENTE');
+  })();
+
+  /** Quem decide no nível local, para dizer o nome em vez de "o dirigente". */
+  const aprovadorLocal =
+    posicoes.find((p) => p.papel === 'APROVADOR_LOCAL' && p.isActive)?.user.fullName ?? null;
+
+  /** Nome de quem deveria enviar o bloco; null quando ninguém foi anexado. */
+  function responsavel(bloco: Bloco): string | null {
+    return posicoes.find((p) => p.papel === (bloco as Papel) && p.isActive)?.user.fullName ?? null;
+  }
 
   async function enviar(bloco: Bloco) {
     if (!registro) return;
@@ -189,10 +243,14 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
     const lanc = registro.lancamentos.find((l) => l.bloco === bloco);
     const souResponsavel = podeEnviar.includes(bloco);
     const exigido = registro.blocosExigidos.includes(bloco);
-    if (!lanc && !souResponsavel && !exigido) return null;
+    if (!lanc && !souResponsavel && !exigido && !registro.blocosEnviados.includes(bloco)) {
+      return null;
+    }
 
     const Icone = ICONE_BLOCO[bloco];
-    const enviado = Boolean(lanc?.enviadoEm);
+    // `blocosEnviados` vem do servidor ANTES da poda: é o que permite saber que
+    // o bloco chegou mesmo quando os valores dele não vieram.
+    const enviado = Boolean(lanc?.enviadoEm) || registro.blocosEnviados.includes(bloco);
 
     return (
       <div
@@ -290,8 +348,20 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                 </div>
               )}
             </dl>
+          ) : enviado ? (
+            /* Chegou, mas os números não vieram para este usuário: o bloco foi
+               podado no servidor. Dizer "ainda não enviado" seria mentira — o
+               culto inclusive já pode estar aprovado por causa dele.
+               O texto não diz quem limitou: quem trancou não precisa aparecer
+               para quem foi trancado. */
+            <p className="text-sm text-slate-400">Enviado · visão limitada.</p>
           ) : (
-            <p className="text-sm text-slate-400">Ainda não enviado.</p>
+            <p className="text-sm text-slate-400">
+              Ainda não enviado.{' '}
+              {responsavel(bloco)
+                ? `Responsável: ${responsavel(bloco)}.`
+                : 'Nenhum responsável anexado nesta igreja — enquanto não houver, este bloco não tem quem envie.'}
+            </p>
           )}
         </div>
       </div>
@@ -368,12 +438,92 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
               {registro.blocosFaltando.length > 0 && (
                 <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                   Faltando enviar:{' '}
-                  <strong>{registro.blocosFaltando.map((b) => ROTULO_BLOCO[b]).join(', ')}</strong>.
-                  Não dá para aprovar até chegar.
+                  <strong>
+                    {registro.blocosFaltando
+                      .map((b) => {
+                        const quem = responsavel(b);
+                        return `${ROTULO_BLOCO[b]}${quem ? ` (${quem})` : ' (sem responsável)'}`;
+                      })
+                      .join(', ')}
+                  </strong>
+                  . Não dá para aprovar até chegar.
+                </div>
+              )}
+
+              {/* De quem se espera a decisão AGORA — e o nome de quem é, quando
+                  há alguém anexado. Sem isto, "aguardando aprovação" não diz se
+                  a bola está com a congregação ou com a hospedeira. */}
+              {(registro.status === 'AGUARDANDO_LOCAL' || registro.status === 'APROVADO_LOCAL') && (
+                <div className={`rounded-lg px-4 py-3 text-sm ${PASTILHA.ambar}`}>
+                  {registro.status === 'AGUARDANDO_LOCAL' ? (
+                    <>
+                      Aguardando a aprovação do <strong>dirigente da congregação</strong>
+                      {aprovadorLocal ? ` — ${aprovadorLocal}` : ' (ninguém anexado nesta igreja)'}.
+                      {registro.hostChurchId
+                        ? ` Depois dele, ainda passa pelo dirigente hospedeiro${
+                            registro.hostChurch ? ` (${registro.hostChurch.name})` : ''
+                          }.`
+                        : ' Como esta igreja não é anexa de nenhuma hospedeira, a decisão dele já conclui o culto.'}
+                    </>
+                  ) : (
+                    <>
+                      O dirigente da congregação já aprovou. Aguardando o{' '}
+                      <strong>dirigente hospedeiro</strong>
+                      {registro.hostChurch ? ` — ${registro.hostChurch.name}` : ''}, que conclui o
+                      culto.
+                    </>
+                  )}
                 </div>
               )}
 
               {(['FINANCEIRO', 'PRESENCA', 'EXTRA'] as Bloco[]).map((b) => blocoCard(b))}
+
+              {/* A palavra do topo da árvore. Aparece para todos (é o parecer
+                  que fecha o assunto no relatório), mas só o presidente edita. */}
+              {(souPresidente || registro.observacaoPresidente) && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
+                    Observação do Pastor Presidente
+                  </p>
+                  {souPresidente ? (
+                    <>
+                      <textarea
+                        rows={2}
+                        value={obsPresidente}
+                        onChange={(e) => setObsPresidente(e.target.value)}
+                        placeholder="O parecer do presidente sobre este culto — sai nos relatórios."
+                        className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          onClick={async () => {
+                            setSalvandoObs(true);
+                            setErro(null);
+                            try {
+                              await cultoApi.observacaoPresidente(registro.id, obsPresidente);
+                              recarregar();
+                              onMudou();
+                            } catch (e) {
+                              setErro((e as Error).message);
+                            } finally {
+                              setSalvandoObs(false);
+                            }
+                          }}
+                          disabled={salvandoObs}
+                          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
+                        >
+                          {salvandoObs ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                          Salvar observação
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      {registro.observacaoPresidente}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {nivelAtivo && (
                 <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">

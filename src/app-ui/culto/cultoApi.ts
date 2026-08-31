@@ -38,8 +38,11 @@ export const ROTULO_BLOCO: Record<Bloco, string> = {
 
 export const ROTULO_STATUS: Record<StatusCulto, string> = {
   ABERTO: 'Aguardando envio',
-  AGUARDANDO_LOCAL: 'Aguardando aprovação',
-  APROVADO_LOCAL: 'Aprovado pelo dirigente',
+  // O status diz de QUEM se espera a decisão. "Aguardando aprovação" não
+  // informava se a bola estava com o dirigente da congregação ou com o da
+  // hospedeira, e quem cobrava tinha de adivinhar.
+  AGUARDANDO_LOCAL: 'Aguardando o dirigente da congregação',
+  APROVADO_LOCAL: 'Aguardando o dirigente hospedeiro',
   CONCLUIDO: 'Concluído',
   REJEITADO: 'Devolvido',
 };
@@ -83,8 +86,6 @@ export interface Lancamento {
 
   qtdHomens: number | null;
   qtdMulheres: number | null;
-  qtdJovens: number | null;
-  qtdAdolescentes: number | null;
   qtdCriancas: number | null;
   qtdVisitantes: number | null;
   qtdConversoes: number | null;
@@ -117,6 +118,8 @@ export interface Registro {
   tipoCulto: string;
   status: StatusCulto;
   observacao: string | null;
+  /** A palavra do Pastor Presidente sobre este culto. */
+  observacaoPresidente: string | null;
   concluidoEm: string | null;
   hostChurchId: string | null;
   church: {
@@ -222,6 +225,8 @@ export interface NoResumo {
   presenca: TotaisPresenca | null;
   navegavel: boolean;
   tipoGrupo: 'HOSPEDEIRA' | 'REGIONAL' | null;
+  /** Recados de cada nível sobre o culto (só em nós do tipo CULTO). */
+  observacoes: { autor: string; texto: string }[];
 }
 
 export interface Resumo {
@@ -245,6 +250,20 @@ export interface TipoCulto {
   id: string;
   codigo: string;
   nome: string;
+  ordem: number | null;
+  ativo: boolean;
+  is_default: boolean;
+}
+
+/** Horário cadastrado em Configurações › Horários de Culto. */
+export interface HorarioCulto {
+  id: string;
+  codigo: string;
+  nome: string;
+  /** "19:00" — preenche o Início do lançamento. */
+  hora_inicio: string | null;
+  /** "21:00" — preenche o Fim. Vazio, o lançamento usa início + 1h. */
+  hora_fim: string | null;
   ordem: number | null;
   ativo: boolean;
   is_default: boolean;
@@ -389,6 +408,53 @@ export const cultoApi = {
     return lista.filter((t) => t.ativo !== false);
   },
 
+  /** Horários de culto daquela igreja (Configurações › Horários de Culto). */
+  horariosCulto: async (churchId?: string | null): Promise<HorarioCulto[]> => {
+    // Cada igreja tem os seus: sem passar a igreja, o servidor devolve a do
+    // usuário logado — o master, que troca de igreja na tela, passa qual é.
+    const bruto = await req<{ data?: HorarioCulto[] } | HorarioCulto[]>(
+      `/lookups/horarios-culto${qs({ churchId })}`,
+    );
+    const lista = Array.isArray(bruto) ? bruto : (bruto?.data ?? []);
+    return lista.filter((h) => h.ativo !== false);
+  },
+
+  /**
+   * Todos os horários da igreja, inclusive os desativados — é a lista do modal
+   * de cadastro, onde o secretário precisa ver o que já criou.
+   */
+  listarHorariosCulto: (churchId?: string | null) =>
+    req<HorarioCulto[]>(`/lookups/horarios-culto${qs({ churchId })}`),
+
+  criarHorarioCulto: (dados: {
+    codigo: string;
+    nome: string;
+    hora_inicio: string;
+    hora_fim?: string | null;
+    ordem?: number;
+    churchId?: string | null;
+  }) => req<{ id: string }[]>('/lookups/horarios-culto', { method: 'POST', body: JSON.stringify(dados) }),
+
+  excluirHorarioCulto: (id: string) =>
+    req<null>(`/lookups/horarios-culto/${id}`, { method: 'DELETE' }),
+
+  /** Grava a observação do Pastor Presidente no culto. */
+  observacaoPresidente: (registroId: string, texto: string) =>
+    req<{ id: string }>(`/culto/registros/${registroId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ observacaoPresidente: texto }),
+    }),
+
+  /** Nós do organograma com o cadeado ligado (visão de valores bloqueada). */
+  visaoBloqueada: () =>
+    req<{ churchIds: string[]; podeMexer?: boolean }>('/culto/visao-bloqueada'),
+
+  bloquearVisao: (churchId: string, bloqueado: boolean) =>
+    req<{ churchId: string; bloqueado: boolean }>('/culto/visao-bloqueada', {
+      method: 'POST',
+      body: JSON.stringify({ churchId, bloqueado }),
+    }),
+
   listarPosicoes: (churchId?: string | null) =>
     req<Posicao[]>(`/culto/posicoes${qs({ church_id: churchId })}`),
 
@@ -475,6 +541,23 @@ export function numeroParaMoeda(valor: string | number | null | undefined): stri
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+
+/**
+ * "Manhã", "Tarde" ou "Noite" a partir da hora de início.
+ *
+ * O quadro mostra o relógio, mas quem lê procura o turno: "o da noite já
+ * fechou?". Derivar da hora — e não guardar o horário escolhido no registro —
+ * faz o rótulo valer também para os cultos lançados antes do cadastro de
+ * horários existir.
+ */
+export function turnoDoCulto(horaInicio?: string | null): string | null {
+  const m = /^(\d{1,2}):/.exec(String(horaInicio ?? '').trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  if (h < 12) return 'Manhã';
+  if (h < 18) return 'Tarde';
+  return 'Noite';
+}
 
 /** "19:30" pronto para exibir; traço quando o culto não tem hora informada. */
 export function fmtHora(inicio?: string | null, fim?: string | null): string {

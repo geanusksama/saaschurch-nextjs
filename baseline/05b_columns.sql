@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.867Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-31T18:52:32.436Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 6013fb939d04d7f4
+-- Baseline 84afdef9474857e7
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -1150,6 +1150,14 @@ alter table "public"."culto_registros" add column if not exists "deleted_at" tim
 alter table "public"."culto_registros" add column if not exists "created_by" uuid;
 alter table "public"."culto_registros" add column if not exists "hora_inicio" time without time zone;
 alter table "public"."culto_registros" add column if not exists "hora_fim" time without time zone;
+alter table "public"."culto_registros" add column if not exists "observacao_presidente" text;
+alter table "public"."culto_visao_bloqueada" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."culto_visao_bloqueada" add column if not exists "campo_id" uuid;
+alter table "public"."culto_visao_bloqueada" add column if not exists "church_id" uuid;
+alter table "public"."culto_visao_bloqueada" add column if not exists "blocos" character varying(20)[] default ARRAY['FINANCEIRO'::character varying(20), 'PRESENCA'::character varying(20), 'EXTRA'::character varying(20)] not null;
+alter table "public"."culto_visao_bloqueada" add column if not exists "motivo" text;
+alter table "public"."culto_visao_bloqueada" add column if not exists "created_at" timestamp with time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."culto_visao_bloqueada" add column if not exists "created_by" uuid;
 alter table "public"."departamentos" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."departamentos" add column if not exists "nome" character varying(150);
 alter table "public"."departamentos" add column if not exists "codigo" character varying(20);
@@ -2052,6 +2060,20 @@ alter table "public"."home_configs" add column if not exists "symbol_colors" jso
 alter table "public"."home_configs" add column if not exists "services_config" jsonb;
 alter table "public"."home_configs" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."home_configs" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."horario_culto" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."horario_culto" add column if not exists "campo_id" uuid;
+alter table "public"."horario_culto" add column if not exists "church_id" uuid;
+alter table "public"."horario_culto" add column if not exists "codigo" character varying(60);
+alter table "public"."horario_culto" add column if not exists "nome" character varying(120);
+alter table "public"."horario_culto" add column if not exists "hora_inicio" character varying(5);
+alter table "public"."horario_culto" add column if not exists "descricao" text;
+alter table "public"."horario_culto" add column if not exists "ordem" integer default 0 not null;
+alter table "public"."horario_culto" add column if not exists "ativo" boolean default true not null;
+alter table "public"."horario_culto" add column if not exists "is_default" boolean default false not null;
+alter table "public"."horario_culto" add column if not exists "created_at" timestamp with time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."horario_culto" add column if not exists "updated_at" timestamp with time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."horario_culto" add column if not exists "deleted_at" timestamp with time zone;
+alter table "public"."horario_culto" add column if not exists "hora_fim" character varying(5);
 alter table "public"."inbox_attachments" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."inbox_attachments" add column if not exists "message_id" uuid;
 alter table "public"."inbox_attachments" add column if not exists "name" character varying(255);

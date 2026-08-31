@@ -59,6 +59,14 @@ export interface NoResumo {
   navegavel: boolean;
   /** Só em filhos do tipo GRUPO — o modal precisa para descer. */
   tipoGrupo: TipoGrupo | null;
+  /**
+   * Os recados de cada nível sobre aquele culto, só em nós do tipo CULTO.
+   *
+   * O consolidado responde "quanto" e "quantos"; a observação responde "por
+   * quê" — a oferta que veio junto, o motivo da devolução, o parecer do
+   * presidente. Sem elas, quem lê o resumo tem de abrir culto por culto.
+   */
+  observacoes: { autor: string; texto: string }[];
 }
 
 export interface Resumo {
@@ -101,6 +109,8 @@ function zeroPresenca(): TotaisPresenca {
 interface LinhaLancamento {
   registroId: string;
   bloco: string;
+  observacao?: string | null;
+  enviadoPorUser?: { fullName: string } | null;
   totalDizimos: unknown;
   totalOfertas: unknown;
   qtdDizimos: number | null;
@@ -276,7 +286,23 @@ export async function montarResumo(params: {
       dataCulto: { gte: de, lte: ate },
       ...(tipoCulto ? { tipoCulto } : {}),
     },
-    select: { id: true, churchId: true, status: true, dataCulto: true, tipoCulto: true },
+    select: {
+      id: true,
+      churchId: true,
+      status: true,
+      dataCulto: true,
+      tipoCulto: true,
+      observacao: true,
+      observacaoPresidente: true,
+      aprovacoes: {
+        select: {
+          nivel: true,
+          decisao: true,
+          motivo: true,
+          aprovador: { select: { fullName: true } },
+        },
+      },
+    },
     orderBy: { dataCulto: 'desc' },
   });
 
@@ -292,6 +318,8 @@ export async function montarResumo(params: {
           select: {
             registroId: true,
             bloco: true,
+            observacao: true,
+            enviadoPorUser: { select: { fullName: true } },
             totalDizimos: true,
             totalOfertas: true,
             qtdDizimos: true,
@@ -352,6 +380,33 @@ export async function montarResumo(params: {
   const nomePorId = new Map(igrejas.map((c) => [c.id, c.name]));
   const filhos: NoResumo[] = [];
 
+  /** Junta, em ordem de fluxo, quem escreveu o quê sobre aquele culto. */
+  function observacoesDoCulto(r: (typeof registros)[number]): { autor: string; texto: string }[] {
+    const saida: { autor: string; texto: string }[] = [];
+    for (const l of lancPorRegistro.get(r.id) ?? []) {
+      if (!l.observacao) continue;
+      const papel = l.bloco === 'FINANCEIRO' ? 'Tesoureiro' : l.bloco === 'PRESENCA' ? 'Secretário' : 'Complemento';
+      saida.push({
+        autor: l.enviadoPorUser?.fullName ? `${papel} · ${l.enviadoPorUser.fullName}` : papel,
+        texto: l.observacao,
+      });
+    }
+    for (const a of r.aprovacoes ?? []) {
+      if (!a.motivo) continue;
+      const papel = a.nivel === 'LOCAL' ? 'Dirigente da congregação' : 'Dirigente hospedeiro';
+      const decisao = a.decisao === 'REJEITADO' ? 'devolveu' : 'aprovou';
+      saida.push({
+        autor: a.aprovador?.fullName ? `${papel} · ${a.aprovador.fullName}` : papel,
+        texto: `(${decisao}) ${a.motivo}`,
+      });
+    }
+    if (r.observacao) saida.push({ autor: 'Culto', texto: r.observacao });
+    if (r.observacaoPresidente) {
+      saida.push({ autor: 'Pastor Presidente', texto: r.observacaoPresidente });
+    }
+    return saida;
+  }
+
   if (nivel === 'IGREJA') {
     for (const r of registros) {
       const vis = comVisibilidade(somaDe([r]));
@@ -370,6 +425,7 @@ export async function montarResumo(params: {
         ...vis,
         navegavel: false,
         tipoGrupo: null,
+        observacoes: observacoesDoCulto(r),
       });
     }
   } else if (nivel === 'GRUPO') {
@@ -391,6 +447,7 @@ export async function montarResumo(params: {
         ...comVisibilidade(somaDe(daIgreja)),
         navegavel: true,
         tipoGrupo: null,
+        observacoes: [],
       });
     }
   } else {
@@ -423,6 +480,7 @@ export async function montarResumo(params: {
             presenca: null,
             navegavel: true,
             tipoGrupo: hostId ? 'HOSPEDEIRA' : 'REGIONAL',
+            observacoes: [],
           },
         });
       }

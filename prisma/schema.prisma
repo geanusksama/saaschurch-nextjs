@@ -4155,6 +4155,9 @@ model CultoRegistro {
   /// ABERTO | AGUARDANDO_LOCAL | APROVADO_LOCAL | CONCLUIDO | REJEITADO
   status     String  @default("ABERTO") @db.VarChar(30)
   observacao String? @db.Text
+  /// A palavra do Pastor Presidente sobre este culto. Ele não é nível de
+  /// aprovação (só existem LOCAL e HOSPEDEIRA), então comenta o registro.
+  observacaoPresidente String? @map("observacao_presidente") @db.Text
 
   concluidoEm DateTime? @map("concluido_em") @db.Timestamptz
 

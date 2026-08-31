@@ -11,8 +11,12 @@ import { getLookup, type LookupConfig } from "@/lib/lookupRegistry";
  * Nada vindo do cliente é interpolado em SQL — valores usam parâmetros ($1, $2...).
  */
 
-function canManage(user: { profileType: string }) {
-  return user.profileType === "master" || user.profileType === "admin";
+function canManage(user: { profileType: string }, cfg?: { churchField?: string }) {
+  if (user.profileType === "master" || user.profileType === "admin") return true;
+  // Lista isolada por igreja é da congregação: quem tem perfil de igreja
+  // mantém o próprio cadastro sem precisar ser admin do campo. O escopo é
+  // garantido por `igrejaDoUsuario`, que prende esse perfil à igreja dele.
+  return Boolean(cfg?.churchField) && user.profileType === "church";
 }
 
 /**
@@ -54,6 +58,22 @@ export function erroLegivel(e: unknown, padrao: string) {
     return { error: "Um dos valores selecionados não existe mais. Recarregue a página." };
   }
   return { error: padrao };
+}
+
+/**
+ * Igreja em que a lista deve ser lida/gravada.
+ *
+ * Perfil de igreja fica preso à PRÓPRIA igreja: nem passando `?churchId=` ele
+ * enxerga o cadastro de outra congregação. Quem administra acima da igreja
+ * (master, admin do campo, campo) escolhe a igreja na tela — continua limitado
+ * ao campo dele pelo filtro de `campoField`.
+ */
+export function igrejaDoUsuario(
+  user: { profileType: string; churchId: string | null },
+  churchIdPedido?: string | null
+) {
+  if (user.profileType === "church") return user.churchId || null;
+  return churchIdPedido || user.churchId || null;
 }
 
 export function campoDoUsuario(
@@ -116,10 +136,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ key:
       if (campoId) {
         valores.push(campoId);
         filtros.push(`"${cfg.campoField}" = $${valores.length}::uuid`);
-      } else if (user.profileType !== "master") {
+      } else if (user.profileType !== "master" && !cfg.churchField) {
         // Sem campo definido e sem ser master: não há escopo para devolver.
+        // Quando a lista é por igreja, o filtro de igreja abaixo já dá o
+        // escopo — exigir campo aqui deixaria o usuário sem cadastro nenhum.
         return NextResponse.json([]);
       }
+    }
+
+    // Isolamento por igreja: mais estreito que o de campo. Sem igreja definida
+    // não há o que devolver — misturar o cadastro de todas seria justamente o
+    // que este filtro existe para impedir.
+    if (cfg.churchField) {
+      const churchId = igrejaDoUsuario(user, new URL(req.url).searchParams.get("churchId"));
+      if (!churchId) return NextResponse.json([]);
+      valores.push(churchId);
+      filtros.push(`"${cfg.churchField}" = $${valores.length}::uuid`);
     }
 
     const where = filtros.length ? `WHERE ${filtros.join(" AND ")}` : "";
@@ -137,7 +169,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
     const { key } = await params;
     const cfg = getLookup(key);
     if (!cfg) return NextResponse.json({ error: "Lista não encontrada." }, { status: 404 });
-    if (!canManage(user)) return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
+    if (!canManage(user, cfg)) return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
 
@@ -153,14 +185,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
     // O campo é carimbado pelo servidor, nunca aceito do corpo da requisição.
     if (cfg.campoField) {
       const campoId = campoDoUsuario(user, body.campoId as string | undefined);
-      if (!campoId) {
+      if (!campoId && !cfg.churchField) {
         return NextResponse.json(
           { error: "Não foi possível identificar o campo. Selecione um campo antes de cadastrar." },
           { status: 400 }
         );
       }
-      cols.push(cfg.campoField);
-      values.push(campoId);
+      // Numa lista por igreja o campo é só apoio ao filtro: se o usuário não
+      // tem campo, a coluna fica nula e a igreja continua identificando a linha.
+      if (campoId) {
+        cols.push(cfg.campoField);
+        values.push(campoId);
+        casts.push("::uuid");
+      }
+    }
+
+    // A igreja também é carimbada pelo servidor. Para perfil de igreja o corpo
+    // é ignorado de propósito: ele só cadastra para si.
+    if (cfg.churchField) {
+      const churchId = igrejaDoUsuario(user, body.churchId as string | undefined);
+      if (!churchId) {
+        return NextResponse.json(
+          { error: "Não foi possível identificar a igreja. Selecione uma igreja antes de cadastrar." },
+          { status: 400 }
+        );
+      }
+      cols.push(cfg.churchField);
+      values.push(churchId);
       casts.push("::uuid");
     }
 

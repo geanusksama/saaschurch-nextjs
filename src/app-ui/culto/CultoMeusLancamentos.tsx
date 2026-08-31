@@ -26,6 +26,7 @@ import {
   cultoApi,
   fmtData,
   fmtHora,
+  turnoDoCulto,
   periodoPadrao,
   ROTULO_BLOCO,
   ROTULO_STATUS,
@@ -247,6 +248,7 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-slate-800 dark:text-slate-100">
                     {fmtData(r.dataCulto)}
+                    {turnoDoCulto(r.horaInicio) ? ` · ${turnoDoCulto(r.horaInicio)}` : ''}
                     {fmtHora(r.horaInicio, r.horaFim)
                       ? ` · ${fmtHora(r.horaInicio, r.horaFim)}`
                       : ''}{' '}

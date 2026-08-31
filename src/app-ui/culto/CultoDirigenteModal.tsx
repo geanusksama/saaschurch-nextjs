@@ -23,14 +23,22 @@ import {
   cultoApi,
   fmtData,
   fmtHora,
+  turnoDoCulto,
   periodoPadrao,
   ROTULO_BLOCO,
   ROTULO_STATUS,
   type Bloco,
+  type Papel,
+  type Posicao,
   type Registro,
 } from './cultoApi';
 import { PASTILHA, PONTO, TOM_DO_STATUS } from './cultoCores';
 import CultoRegistroDrawer from './CultoRegistroDrawer';
+
+/** "MARIA DAJUDA DA SILVA" → "MARIA DAJUDA": cabe na pastilha e identifica. */
+function primeiroNome(nome: string): string {
+  return nome.trim().split(/\s+/).slice(0, 2).join(' ');
+}
 
 const ICONE_BLOCO: Record<Bloco, React.ElementType> = {
   FINANCEIRO: Wallet,
@@ -52,6 +60,14 @@ export default function CultoDirigenteModal({ churchId, onFechar }: Props) {
   const [erro, setErro] = useState<string | null>(null);
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [versao, setVersao] = useState(0);
+  /**
+   * Quem é responsável por cada bloco nesta igreja.
+   *
+   * O dirigente não cobra "o Financeiro": ele cobra a pessoa. Sem o nome ao
+   * lado do bloco que falta, ele tem de sair perguntando quem era o tesoureiro
+   * daquele culto.
+   */
+  const [posicoes, setPosicoes] = useState<Posicao[]>([]);
 
   const recarregar = useCallback(() => {
     setCarregando(true);
@@ -79,19 +95,43 @@ export default function CultoDirigenteModal({ churchId, onFechar }: Props) {
     };
   }, [de, ate, churchId, versao]);
 
+  useEffect(() => {
+    cultoApi
+      .listarPosicoes(churchId)
+      .then(setPosicoes)
+      .catch(() => {
+        /* sem as posições o bloco continua aparecendo, só sem o nome */
+      });
+  }, [churchId]);
+
+  /** Nome de quem deveria enviar aquele bloco, quando há alguém anexado. */
+  function responsavel(bloco: Bloco): string | null {
+    const papel = bloco as Papel;
+    const achado = posicoes.find((p) => p.papel === papel && p.isActive);
+    return achado?.user.fullName ?? null;
+  }
+
   function pastilha(r: Registro, bloco: Bloco) {
     const Icone = ICONE_BLOCO[bloco];
     const ok = r.blocosEnviados.includes(bloco);
+    const quem = ok
+      ? (r.lancamentos.find((l) => l.bloco === bloco)?.enviadoPorUser?.fullName ?? null)
+      : responsavel(bloco);
     return (
       <span
         key={bloco}
-        title={`${ROTULO_BLOCO[bloco]}: ${ok ? 'enviado' : 'falta enviar'}`}
+        title={
+          ok
+            ? `${ROTULO_BLOCO[bloco]} enviado${quem ? ` por ${quem}` : ''}`
+            : `${ROTULO_BLOCO[bloco]}: falta enviar${quem ? ` — responsável: ${quem}` : ' — ninguém anexado nesta igreja'}`
+        }
         className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold ${
           ok ? PASTILHA.verde : PASTILHA.cinza
         }`}
       >
         <Icone className="w-3.5 h-3.5" />
         {ROTULO_BLOCO[bloco]}
+        {!ok && quem && <span className="font-normal opacity-80">· {primeiroNome(quem)}</span>}
       </span>
     );
   }
@@ -108,10 +148,12 @@ export default function CultoDirigenteModal({ churchId, onFechar }: Props) {
         <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700">
           <div className="mr-auto">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Envios da minha igreja
+              {/* Sem o nome da igreja aqui, quem dirige uma e hospeda outras
+                  não sabe de qual congregação são estes números. */}
+              {registros[0]?.church.name ?? posicoes[0]?.churchName ?? 'Envios da minha igreja'}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Clique na linha para ver os envios e aprovar.
+              Envios da igreja · clique na linha para ver e aprovar.
             </p>
           </div>
           <input
@@ -178,6 +220,7 @@ export default function CultoDirigenteModal({ churchId, onFechar }: Props) {
                       <td className="px-5 py-3">
                         <span className="block font-medium text-slate-800 dark:text-slate-100">
                           {fmtData(r.dataCulto)}
+                          {turnoDoCulto(r.horaInicio) ? ` · ${turnoDoCulto(r.horaInicio)}` : ''}
                           {fmtHora(r.horaInicio, r.horaFim)
                             ? ` · ${fmtHora(r.horaInicio, r.horaFim)}`
                             : ''}

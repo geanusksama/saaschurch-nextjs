@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.873Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-31T18:52:32.443Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 6013fb939d04d7f4
+-- Baseline 84afdef9474857e7
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -64,6 +64,8 @@ CREATE INDEX IF NOT EXISTS culto_registros_data_hora_idx ON public.culto_registr
 CREATE INDEX IF NOT EXISTS culto_registros_host_church_id_idx ON public.culto_registros USING btree (host_church_id);
 CREATE INDEX IF NOT EXISTS culto_registros_regional_id_idx ON public.culto_registros USING btree (regional_id);
 CREATE INDEX IF NOT EXISTS culto_registros_status_idx ON public.culto_registros USING btree (status);
+CREATE INDEX IF NOT EXISTS culto_visao_bloqueada_campo_idx ON public.culto_visao_bloqueada USING btree (campo_id);
+CREATE UNIQUE INDEX IF NOT EXISTS culto_visao_bloqueada_church_unico ON public.culto_visao_bloqueada USING btree (church_id);
 CREATE INDEX IF NOT EXISTS departamentos_ativo_idx ON public.departamentos USING btree (ativo);
 CREATE UNIQUE INDEX IF NOT EXISTS departamentos_campo_codigo_key ON public.departamentos USING btree (campo_id, codigo) WHERE (codigo IS NOT NULL);
 CREATE INDEX IF NOT EXISTS departamentos_campo_id_idx ON public.departamentos USING btree (campo_id);
@@ -117,6 +119,10 @@ CREATE INDEX IF NOT EXISTS historico_dirigente_igreja_church_id_entry_date_idx O
 CREATE UNIQUE INDEX IF NOT EXISTS home_cards_config_id_key_key ON public.home_cards USING btree (config_id, key);
 CREATE INDEX IF NOT EXISTS home_cards_config_id_sort_order_idx ON public.home_cards USING btree (config_id, sort_order);
 CREATE UNIQUE INDEX IF NOT EXISTS home_configs_campo_id_key ON public.home_configs USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS horario_culto_ativo_idx ON public.horario_culto USING btree (ativo);
+CREATE INDEX IF NOT EXISTS horario_culto_campo_id_idx ON public.horario_culto USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS horario_culto_church_id_idx ON public.horario_culto USING btree (church_id);
+CREATE UNIQUE INDEX IF NOT EXISTS horario_culto_codigo_unico ON public.horario_culto USING btree (church_id, codigo) WHERE (deleted_at IS NULL);
 CREATE INDEX IF NOT EXISTS idx_ai_agent_users_agent ON public.ai_agent_users USING btree (agent_id);
 CREATE INDEX IF NOT EXISTS idx_ai_agent_users_user ON public.ai_agent_users USING btree (user_id);
 CREATE INDEX IF NOT EXISTS idx_apn_campo ON public.app_push_notifications USING btree (campo_id);

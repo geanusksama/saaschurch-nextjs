@@ -52,8 +52,11 @@ export const ROTULO_PAPEL: Record<Papel, string> = {
 
 export const ROTULO_STATUS: Record<Status, string> = {
   ABERTO: 'Aguardando envio',
-  AGUARDANDO_LOCAL: 'Aguardando aprovação',
-  APROVADO_LOCAL: 'Aprovado pelo dirigente',
+  // O status diz de QUEM se espera a decisão. "Aguardando aprovação" não
+  // informava se a bola estava com o dirigente da congregação ou com o da
+  // hospedeira, e quem cobrava tinha de adivinhar.
+  AGUARDANDO_LOCAL: 'Aguardando o dirigente da congregação',
+  APROVADO_LOCAL: 'Aguardando o dirigente hospedeiro',
   CONCLUIDO: 'Concluído',
   REJEITADO: 'Devolvido',
 };
@@ -102,6 +105,21 @@ export async function igrejasDaHospedeira(hostChurchId: string): Promise<string[
  * master/admin não precisam de posição: já enxergam o campo inteiro no resto
  * do sistema e continuam enxergando aqui.
  */
+/**
+ * Nós do organograma com o cadeado ligado.
+ *
+ * Uma linha em culto_visao_bloqueada quer dizer: quem dirige AQUELE nó não vê
+ * os valores lançados abaixo dele. Ele continua com os cultos, o status e o
+ * poder de aprovar — some o número. A poda em si é feita por podarLancamentos,
+ * que já roda em toda rota que devolve registro.
+ */
+async function nosBloqueados(): Promise<Map<string, Bloco[]>> {
+  const linhas = await prisma.$queryRawUnsafe<Array<{ church_id: string; blocos: string[] }>>(
+    `SELECT church_id, blocos FROM culto_visao_bloqueada`,
+  );
+  return new Map(linhas.map((l) => [l.church_id, (l.blocos ?? []) as Bloco[]]));
+}
+
 export async function getCultoScope(user: AuthUser): Promise<CultoScope> {
   const irrestrito = user.profileType === 'master' || user.profileType === 'admin';
 
@@ -111,6 +129,14 @@ export async function getCultoScope(user: AuthUser): Promise<CultoScope> {
         select: { papel: true, churchId: true, titulo: true },
       })
     : [];
+
+  const bloqueados = await nosBloqueados();
+  /** Blocos que este nó ainda pode ver, depois do cadeado. */
+  const blocosLiberados = (churchId: string): Bloco[] => {
+    const escondidos = bloqueados.get(churchId);
+    if (!escondidos) return [...BLOCOS];
+    return BLOCOS.filter((b) => !escondidos.includes(b));
+  };
 
   const posicoes: PosicaoDoUsuario[] = posicoesRaw.map((p) => ({
     papel: p.papel as Papel,
@@ -150,6 +176,8 @@ export async function getCultoScope(user: AuthUser): Promise<CultoScope> {
 
   for (const pos of posicoes) {
     if (pos.papel === 'PRESIDENTE') {
+      // O presidente é o topo da árvore e é ele quem põe o cadeado nos outros;
+      // não faria sentido ele se trancar por acidente.
       scope.visaoCampo = true;
       for (const b of BLOCOS) blocos.add(b);
       continue;
@@ -165,7 +193,8 @@ export async function getCultoScope(user: AuthUser): Promise<CultoScope> {
 
     if (pos.papel === 'APROVADOR_LOCAL') {
       churchIds.add(pos.churchId);
-      for (const b of BLOCOS) blocos.add(b);
+      // Cadeado no nó da congregação: ele aprova sem ver os valores.
+      for (const b of blocosLiberados(pos.churchId)) blocos.add(b);
       aprovaLocal.add(pos.churchId);
       continue;
     }
@@ -176,7 +205,9 @@ export async function getCultoScope(user: AuthUser): Promise<CultoScope> {
         churchIds.add(id);
         aprovaHospedeira.add(id);
       }
-      for (const b of BLOCOS) blocos.add(b);
+      // Cadeado no nó da hospedeira: ela acompanha as filhas pelo status, sem
+      // os números que as congregações lançaram.
+      for (const b of blocosLiberados(pos.churchId)) blocos.add(b);
       continue;
     }
   }
@@ -200,7 +231,10 @@ export async function getCultoScope(user: AuthUser): Promise<CultoScope> {
     scope.visaoCampo = true;
   }
   scope.churchIds = scope.visaoCampo ? null : Array.from(churchIds);
-  scope.blocosVisiveis = scope.visaoCampo ? [...BLOCOS] : Array.from(blocos);
+  // `visaoCampo` alarga o alcance de IGREJAS, não o de blocos: quem tem o nó
+  // trancado continua sem os valores mesmo enxergando o campo inteiro.
+  scope.blocosVisiveis =
+    scope.visaoCampo && blocos.size === 0 ? [...BLOCOS] : Array.from(blocos);
 
   if (aprovaLocal.size) {
     scope.podeAprovar.push({ nivel: 'LOCAL', churchIds: Array.from(aprovaLocal) });

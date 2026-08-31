@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-28T18:29:08.870Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-08-31T18:52:32.440Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 6013fb939d04d7f4
+-- Baseline 84afdef9474857e7
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -292,6 +292,7 @@ alter table "public"."culto_posicoes" alter column "papel" set not null;
 alter table "public"."culto_registros" alter column "campo_id" set not null;
 alter table "public"."culto_registros" alter column "church_id" set not null;
 alter table "public"."culto_registros" alter column "data_culto" set not null;
+alter table "public"."culto_visao_bloqueada" alter column "church_id" set not null;
 alter table "public"."departamentos" alter column "nome" set not null;
 alter table "public"."department_cart_items" alter column "cart_id" set not null;
 alter table "public"."department_cart_items" alter column "product_id" set not null;
@@ -491,6 +492,8 @@ alter table "public"."home_cards" alter column "config_id" set not null;
 alter table "public"."home_cards" alter column "key" set not null;
 alter table "public"."home_cards" alter column "title" set not null;
 alter table "public"."home_configs" alter column "campo_id" set not null;
+alter table "public"."horario_culto" alter column "codigo" set not null;
+alter table "public"."horario_culto" alter column "nome" set not null;
 alter table "public"."internal_chat_messages" alter column "campo_id" set not null;
 alter table "public"."internal_chat_messages" alter column "user_id" set not null;
 alter table "public"."internal_chat_messages" alter column "user_name" set not null;
