@@ -117,13 +117,22 @@ async function emTransacao(nome, corpo) {
   });
 
   // 7 — nada sobreviveu aos rollbacks
+  //
+  // Conta só o que ESTE teste cria. Comparar com "zero excluído logicamente na
+  // tabela" era errado: horário apagado pela tela deixa deleted_at preenchido,
+  // e o teste passava a acusar sobra de gente que não é dele.
   const [{ n }] = await prisma.$queryRawUnsafe(
     `SELECT count(*)::int AS n FROM horario_culto WHERE codigo = 'CULTO_DE_TESTE'`
   );
-  const [{ total }] = await prisma.$queryRawUnsafe(
-    `SELECT count(*)::int AS total FROM horario_culto WHERE deleted_at IS NOT NULL`
+  const [{ apagados }] = await prisma.$queryRawUnsafe(
+    `SELECT count(*)::int AS apagados FROM horario_culto
+      WHERE deleted_at IS NOT NULL AND deleted_at > now() - interval '2 minutes'`
   );
-  checar('rollback: nada do teste ficou gravado', n === 0 && total === 0, `${n} sobra(s)`);
+  checar(
+    'rollback: nada do teste ficou gravado',
+    n === 0 && apagados === 0,
+    `${n} criado(s), ${apagados} apagado(s) agora`
+  );
 
   console.log(ok.map((t) => `  PASSOU  ${t}`).join('\n'));
   if (falhas.length) console.log('\n' + falhas.map((t) => `  FALHOU  ${t}`).join('\n'));
