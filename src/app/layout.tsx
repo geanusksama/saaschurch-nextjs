@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { loadHomeConfigForMetadata } from "@/lib/homeMetadata";
+import { NOME_PLATAFORMA, NOME_PLATAFORMA_CURTO } from "@/lib/homeConfig";
 
 /**
  * Título da aba, descrição e favicon vêm da configuração da igreja
@@ -23,13 +24,15 @@ export async function generateMetadata(): Promise<Metadata> {
   const icone = cfg.faviconUrl || cfg.pwaIcon192;
 
   return {
-    title: cfg.siteTitle,
-    description: cfg.siteDescription,
+    // Igreja que ainda não cadastrou a home cai no nome da plataforma, nunca
+    // no de outra congregação.
+    title: cfg.siteTitle || NOME_PLATAFORMA,
+    description: cfg.siteDescription || "Plataforma de gestão eclesiástica",
     manifest: "/manifest.webmanifest",
-    applicationName: cfg.pwaName,
+    applicationName: cfg.pwaName || NOME_PLATAFORMA_CURTO,
     appleWebApp: {
       capable: true,
-      title: cfg.pwaShortName,
+      title: cfg.pwaShortName || NOME_PLATAFORMA_CURTO,
       statusBarStyle: "black-translucent",
     },
     icons: {

@@ -847,7 +847,20 @@ export function PublicHome() {
 
       {/* Header */}
       <header className="flex items-center justify-between p-6 md:px-12 relative z-10">
-        <img src={cfg.logoUrl} alt={cfg.siteTitle} className={`w-12 h-12 md:w-14 md:h-14 rounded-full object-cover opacity-95 hover:opacity-100 transition-opacity ring-1 ${isDark ? 'ring-white/10' : 'ring-black/10'}`} />
+        {/* Sem logo cadastrada, um círculo neutro: melhor um espaço vazio do
+            que a marca de outra igreja (ou o ícone de imagem quebrada). */}
+        {cfg.logoUrl ? (
+          <img
+            src={cfg.logoUrl}
+            alt={cfg.siteTitle || 'Logo da igreja'}
+            className={`w-12 h-12 md:w-14 md:h-14 rounded-full object-cover opacity-95 hover:opacity-100 transition-opacity ring-1 ${isDark ? 'ring-white/10' : 'ring-black/10'}`}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className={`w-12 h-12 md:w-14 md:h-14 rounded-full ring-1 ${isDark ? 'ring-white/10 bg-white/5' : 'ring-black/10 bg-black/5'}`}
+          />
+        )}
         <div className="flex items-center gap-3">
           {/* Contabilidade — gatilho invisivel a esquerda do icone de tema:
               7 toques abrem o modal do contador. Mesmo formato do icone de
@@ -871,11 +884,19 @@ export function PublicHome() {
       {/* Main content */}
       <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 md:px-24 py-12 relative z-10 gap-16 lg:gap-32">
         <div className="w-full md:w-1/2 max-w-lg">
-          <p className={`font-medium mb-2 text-sm tracking-wide ${textMuted}`}>{cfg.heroEyebrow}</p>
-          <h1 className={`text-6xl md:text-7xl lg:text-[5.5rem] font-medium mb-8 tracking-tight ${textPrimary}`}>{cfg.heroTitle}</h1>
-          <p className={`leading-relaxed mb-6 text-sm md:text-base font-light ${textSub}`}>
-            {cfg.heroText}
-          </p>
+          {/* Texto ainda não cadastrado vira um traço — a home nasce em branco
+              e espera o cadastro, em vez de exibir o texto de outra igreja. */}
+          {cfg.heroEyebrow && (
+            <p className={`font-medium mb-2 text-sm tracking-wide ${textMuted}`}>{cfg.heroEyebrow}</p>
+          )}
+          <h1 className={`text-6xl md:text-7xl lg:text-[5.5rem] font-medium mb-8 tracking-tight ${textPrimary}`}>
+            {cfg.heroTitle || cfg.siteTitle || '—'}
+          </h1>
+          {cfg.heroText && (
+            <p className={`leading-relaxed mb-6 text-sm md:text-base font-light ${textSub}`}>
+              {cfg.heroText}
+            </p>
+          )}
           {cfg.showVerse && (
             <div className="flex items-center gap-2">
               <p className={`text-xs tracking-wide ${textMuted}`}>{cfg.verseRef}</p>
@@ -1038,7 +1059,9 @@ export function PublicHome() {
                 <div className="flex items-center gap-2">
                   <HeartHandshake className="w-5 h-5 text-emerald-500" />
                   <h2 className={`font-bold text-lg ${textPrimary}`}>
-                    {activeForm === 'options' && cfg.services.title}
+                    {/* Sem título cadastrado, o rótulo genérico do módulo —
+                        nunca o nome de outra igreja. */}
+                    {activeForm === 'options' && (cfg.services.title || 'Atendimento')}
                     {activeForm === 'pastoral' && 'Solicitar Atendimento'}
                     {activeForm === 'membership' && 'Quero ser Membro'}
                     {activeForm === 'otp' && 'Verificação de WhatsApp'}

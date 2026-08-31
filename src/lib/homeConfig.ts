@@ -6,9 +6,18 @@
  * ícones e os links estavam cravados no JSX. Agora tudo isso vem de
  * `home_configs` / `home_cards`.
  *
- * Os defaults deste arquivo SÃO o conteúdo que a home mostra hoje: banco vazio
- * significa "home igual à de sempre", não tela em branco. É isso que permite
- * subir a mudança sem migrar nada e sem ninguém perceber diferença.
+ * Os defaults deste arquivo são NEUTROS — vazios. Cada igreja roda o seu banco,
+ * e por um tempo os defaults carregavam o conteúdo da AD Campinas (nome, logo,
+ * marca d'água, endereço, horários). O efeito é que toda igreja nova, e toda
+ * home cujo dado ainda não foi cadastrado, aparecia com a marca de outra
+ * congregação — inclusive piscando o nome antigo enquanto a página carregava.
+ *
+ * Melhor a home nascer em branco e esperar o cadastro do que mostrar o dado de
+ * outra igreja. Onde falta texto a tela mostra um traço; onde falta imagem, não
+ * mostra imagem nenhuma.
+ *
+ * Quem já tinha a home cadastrada não perde nada: os valores estão gravados em
+ * `home_configs`, não aqui.
  *
  * O que este módulo deliberadamente NÃO guarda: endereço da sede, telefone,
  * WhatsApp, redes sociais e a programação de cultos. Isso tudo já é cadastrado
@@ -139,7 +148,8 @@ export interface HomeConfig {
   siteTitle: string;
   siteDescription: string;
   faviconUrl: string | null;
-  logoUrl: string;
+  /** null = igreja ainda não subiu logo; a home mostra um espaço neutro. */
+  logoUrl: string | null;
   watermarkUrl: string | null;
   pwaName: string;
   pwaShortName: string;
@@ -303,23 +313,33 @@ export const DEFAULT_VERSE_TEXT =
   'Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito, ' +
   'para que todo aquele que nele crê não pereça, mas tenha a vida eterna.';
 
+/**
+ * Nome neutro da plataforma. Serve de último recurso para o título da aba e o
+ * manifesto, que não podem ficar vazios — e é o nome do sistema, não o de uma
+ * igreja: nenhuma congregação aparece na aba de outra.
+ */
+export const NOME_PLATAFORMA = 'MRM — Gestão Ministerial';
+export const NOME_PLATAFORMA_CURTO = 'MRM';
+
 export const DEFAULT_HOME_CONFIG: HomeConfig = {
-  siteTitle: 'AD Campinas',
-  siteDescription: 'Plataforma de gestão eclesiástica',
+  // Vazio de propósito: ver o cabeçalho do arquivo. Nada aqui pode carregar a
+  // marca de uma igreja específica.
+  siteTitle: '',
+  siteDescription: '',
   faviconUrl: null,
-  logoUrl: '/adcampinas.png',
-  watermarkUrl: '/adcampinas.png',
-  pwaName: 'AD Campinas',
-  pwaShortName: 'AD Campinas',
+  logoUrl: null,
+  watermarkUrl: null,
+  pwaName: '',
+  pwaShortName: '',
+  // Ícones do PWA continuam com o padrão da plataforma: sem eles o navegador
+  // não instala o app, e são genéricos, não a marca de uma igreja.
   pwaIcon192: '/icons/icon-192.png',
   pwaIcon512: '/icons/icon-512.png',
   pwaIconMaskable: '/icons/icon-maskable-512.png',
 
-  heroEyebrow: 'Nossa missão é',
-  heroTitle: 'REINAR',
-  heroText:
-    'Restaurando vidas através do ensino da Palavra, investindo em pessoas, ' +
-    'nutrindo o conhecimento, para alcançar a cidade e estabelecer o Reino dos Céus.',
+  heroEyebrow: '',
+  heroTitle: '',
+  heroText: '',
   verseRef: 'João 3:16',
   verseLabel: 'Leia',
   verseText: DEFAULT_VERSE_TEXT,
@@ -336,36 +356,29 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
 
   services: {
     enabled: true,
-    title: 'Atendimento AD Campinas',
+    title: '',
     hidden: [],
     labels: {},
   },
 };
 
 /**
- * Usado só quando o banco não tem sede cadastrada — é exatamente o que a home
- * mostra hoje, para nenhuma igreja perder informação no dia da migração.
+ * Usado quando o banco não tem sede cadastrada. Vazio: endereço, telefone e
+ * programação de outra igreja no ar são pior do que campo em branco — alguém
+ * liga para o número errado.
  */
 export const DEFAULT_HOME_SEDE: HomeSede = {
-  churchName: 'AD Campinas',
-  address: 'Rua Barão de Parnaíba, 149 - Campinas',
-  phone: '(19) 98928-1188',
-  whatsapp: '(19) 98928-1188',
+  churchName: '',
+  address: '',
+  phone: '',
+  whatsapp: '',
   email: '',
-  instagram: 'https://www.instagram.com/adcampinas/',
-  youtube: 'https://www.youtube.com/@tvadcampinas',
+  instagram: '',
+  youtube: '',
   facebook: '',
   tiktok: '',
   site: '',
-  schedules: [
-    { dayOfWeek: 'Domingo', name: 'EBD', time: '08:00' },
-    { dayOfWeek: 'Domingo', name: 'Culto da Família', time: '09:30' },
-    { dayOfWeek: 'Domingo', name: 'Culto da Família', time: '18:30' },
-    { dayOfWeek: 'Quarta', name: 'Culto de Ensino', time: '19:15' },
-    { dayOfWeek: 'Sexta', name: 'Vigília', time: '23:00' },
-    { dayOfWeek: 'Sábado', name: 'Oração das Mulheres', time: '06:00' },
-    { dayOfWeek: 'Sábado', name: 'Culto de Jovens', time: '19:30' },
-  ],
+  schedules: [],
 };
 
 export const DEFAULT_HOME_CARDS: HomeCard[] = [

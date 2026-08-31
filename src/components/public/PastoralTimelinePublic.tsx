@@ -1,3 +1,4 @@
+import { useMarcaDaIgreja } from '../../lib/useMarcaDaIgreja';
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
 import { motion } from 'motion/react';
@@ -5,6 +6,7 @@ import { Calendar, Clock, CheckCircle2, User, Church, ArrowLeft, RefreshCw, Aler
 import { apiBase } from '../../lib/apiBase';
 
 export default function PastoralTimelinePublic() {
+  const marca = useMarcaDaIgreja();
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -76,7 +78,14 @@ export default function PastoralTimelinePublic() {
         <Link to="/" className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold">
           <ArrowLeft size={16} /> Home
         </Link>
-        <img src="/adcampinas.png" alt="AD Campinas" className="w-10 h-10 rounded-full object-cover" />
+        {/* A logo é a da igreja que roda este banco; sem cadastro, nada. */}
+        {marca.logoUrl && (
+          <img
+            src={marca.logoUrl}
+            alt={marca.nome || 'Logo da igreja'}
+            className="w-10 h-10 rounded-full object-cover"
+          />
+        )}
       </header>
 
       {/* Main Content */}

@@ -16,6 +16,7 @@
  * demais páginas deste site.
  */
 
+import { useMarcaDaIgreja } from '../../lib/useMarcaDaIgreja';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
@@ -154,6 +155,7 @@ interface SedeItem {
 }
 
 export function GfPublicList() {
+  const marca = useMarcaDaIgreja();
   const [groups, setGroups] = useState<GfItem[]>([]);
   const [sede, setSede] = useState<SedeItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -494,7 +496,7 @@ export function GfPublicList() {
           <button
             type="button"
             onClick={() => setZoomFoto({
-              src: gf.photo || '/adcampinas.png',
+              src: gf.photo || marca.logoUrl || '',
               nome: gf.name,
               subtitulo: [gf.cellType, [gf.meetingDay, gf.meetingTime].filter(Boolean).join(' às ')]
                 .filter(Boolean).join(' · '),
@@ -819,11 +821,19 @@ export function GfPublicList() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setZoomFoto({ src: '/adcampinas.png', nome: sede?.name ?? 'AD Campinas', subtitulo: sedeAddress })}
+                    onClick={() =>
+                      setZoomFoto({
+                        src: marca.logoUrl ?? '',
+                        nome: sede?.name ?? marca.nome,
+                        subtitulo: sedeAddress,
+                      })
+                    }
                     title="Ampliar"
                     className="mx-auto mb-2 block w-14 h-14 rounded-full overflow-hidden border-2 border-amber-200 bg-white hover:scale-105 transition-transform"
                   >
-                    <img src="/adcampinas.png" alt="" className="w-full h-full object-cover" />
+                    {marca.logoUrl && (
+                      <img src={marca.logoUrl} alt="" className="w-full h-full object-cover" />
+                    )}
                   </button>
                   <p className="text-[9px] font-extrabold uppercase tracking-wide text-amber-600">Igreja sede</p>
                   <p className="text-xs font-extrabold text-slate-800 leading-tight mt-0.5">

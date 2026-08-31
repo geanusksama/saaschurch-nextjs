@@ -7,6 +7,7 @@
  */
 import type { MetadataRoute } from "next";
 import { loadHomeConfigForMetadata } from "@/lib/homeMetadata";
+import { NOME_PLATAFORMA, NOME_PLATAFORMA_CURTO } from "@/lib/homeConfig";
 
 // Mesmo motivo do layout: o manifesto vem do banco, não do build.
 export const dynamic = "force-dynamic";
@@ -15,9 +16,10 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const cfg = await loadHomeConfigForMetadata();
 
   return {
-    name: cfg.pwaName,
-    short_name: cfg.pwaShortName,
-    description: cfg.siteDescription,
+    // O manifesto não aceita nome vazio; sem cadastro, é o nome da plataforma.
+    name: cfg.pwaName || NOME_PLATAFORMA,
+    short_name: cfg.pwaShortName || NOME_PLATAFORMA_CURTO,
+    description: cfg.siteDescription || "Plataforma de gestão eclesiástica",
     id: "/",
     start_url: "/?fonte=pwa",
     scope: "/",

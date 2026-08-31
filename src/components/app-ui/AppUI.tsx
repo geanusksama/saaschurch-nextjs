@@ -1385,10 +1385,13 @@ export function AppUI() {
               <div className="flex items-center gap-3">
                 <Link to="/" onClick={() => isMobile && setSidebarOpen(false)} className="flex items-center gap-3 group">
                   <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-black ring-1 ring-white/10 group-hover:ring-white/30 transition-all">
+                    {/* Sem logo cadastrada, o quadrado fica neutro. A logo da
+                        AD Campinas estava fixa aqui e aparecia no sistema de
+                        toda igreja que ainda não subiu a sua. */}
                     {branding.logoUrl ? (
                       <img src={branding.logoUrl} alt="Logo" className="h-full w-full object-cover" />
                     ) : (
-                      <img src="/adcampinas.png" alt="Logo" className="h-8 w-8 object-contain" />
+                      <span className="text-lg font-bold text-white/80">MRM</span>
                     )}
                   </div>
                   <div>

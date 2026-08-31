@@ -1,5 +1,6 @@
 "use client";
 
+import { useMarcaDaIgreja } from '../../lib/useMarcaDaIgreja';
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
@@ -63,6 +64,7 @@ interface PenielConfig {
 }
 
 export function PenielPublicPage() {
+  const marca = useMarcaDaIgreja();
   const navigate = useNavigate();
 
   // State
@@ -1176,8 +1178,19 @@ export function PenielPublicPage() {
         <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
-              <img src="/adcampinas.png" alt="AD Campinas Logo" className="h-6 object-contain opacity-90" style={{ mixBlendMode: 'screen' }} />
-              <span className="text-base font-black tracking-widest text-white uppercase">Sede AD Campinas</span>
+              {/* Marca da igreja que roda este banco — estava fixa na AD
+                  Campinas e aparecia no Peniel de todas as outras. */}
+              {marca.logoUrl && (
+                <img
+                  src={marca.logoUrl}
+                  alt=""
+                  className="h-6 object-contain opacity-90"
+                  style={{ mixBlendMode: 'screen' }}
+                />
+              )}
+              <span className="text-base font-black tracking-widest text-white uppercase">
+                {marca.nome || '—'}
+              </span>
             </div>
             <p className="text-[11px] text-white/30 font-light leading-relaxed">
               Restaurando vidas através do ensino da Palavra, investindo em pessoas e estabelecendo o Reino dos Céus.
