@@ -117,6 +117,10 @@ model Church {
   hasOwnTemple          Boolean   @default(false) @map("has_own_temple")
   notes                 String?   @db.Text
 
+  /// Período do culto desta linha: T (tarde), M (manhã), N (noite) ou 0 (sem
+  /// período próprio). A mesma congregação aparece uma vez por período.
+  periodo      String? @db.VarChar(10)
+
   /// Igreja central da regional que recebe as demais como anexas.
   isHost       Boolean @default(false) @map("is_host")
   /// Zona geográfica (Zona Leste, Zona Sul, ...), usada em filtro e relatório.

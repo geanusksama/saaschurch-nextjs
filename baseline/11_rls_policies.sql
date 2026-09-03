@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-31T18:52:32.444Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:26:46.452Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 84afdef9474857e7
+-- Baseline 61855ad708763c38
 
 -- Row Level Security
 alter table "public"."app_cadastros" enable row level security;

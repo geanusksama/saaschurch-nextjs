@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-31T18:52:32.441Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:26:46.450Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 84afdef9474857e7
+-- Baseline 61855ad708763c38
 
 -- Primary keys, unique e check
 do $$ begin alter table "public"."_prisma_migrations" add constraint "_prisma_migrations_pkey" PRIMARY KEY (id);

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-08-31T18:52:32.435Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:26:46.446Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 84afdef9474857e7
+-- Baseline 61855ad708763c38
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -1153,7 +1153,8 @@ create table if not exists "public"."churches" (
   "cashbook_permanent_open" boolean default false not null,
   "is_host" boolean default false not null,
   "zone" character varying(60),
-  "host_church_id" uuid
+  "host_church_id" uuid,
+  "periodo" character varying(10)
 );
 
 create table if not exists "public"."communication_campaigns" (
