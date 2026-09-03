@@ -144,6 +144,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ key:
       }
     }
 
+    // Lista que É o campo (tabela `campos`): o escopo é a própria linha. Master
+    // administra todos; qualquer outro perfil só enxerga o campo em que opera.
+    if (cfg.selfCampo && user.profileType !== "master") {
+      const campoId = campoDoUsuario(user, null);
+      if (!campoId) return NextResponse.json([]);
+      valores.push(campoId);
+      filtros.push(`id = $${valores.length}::uuid`);
+    }
+
     // Isolamento por igreja: mais estreito que o de campo. Sem igreja definida
     // não há o que devolver — misturar o cadastro de todas seria justamente o
     // que este filtro existe para impedir.

@@ -75,6 +75,16 @@ export type LookupConfig = {
    * dos horários de culto, que cada igreja define para si.
    */
   churchField?: string;
+  /**
+   * A própria linha é o campo (tabela `campos`).
+   *
+   * Aqui não existe coluna de isolamento: a linha não pertence a um campo, ela
+   * É o campo. Sem este modo o cadastro de campo seria a única lista sem escopo
+   * nenhum — quem não é master enxergaria e editaria o campo dos outros. Com
+   * ele, o filtro e a checagem de escrita usam `id`, e o campo em que o usuário
+   * opera não pode ser excluído por dentro dele mesmo.
+   */
+  selfCampo?: boolean;
 };
 
 const TIPO_OPTIONS = [
@@ -395,6 +405,45 @@ export const LOOKUPS: Record<string, LookupConfig> = {
       { key: "abbreviation", label: "Abreviação", type: "text", inList: true },
       { key: "display_order", label: "Ordem", type: "number", inList: true, help: "Define a posição no dropdown." },
       { key: "is_active", label: "Ativa", type: "boolean", inList: true },
+    ],
+  },
+
+  campos: {
+    key: "campos",
+    table: "campos",
+    label: "Campos",
+    description: "O campo a que este sistema pertence: nome, código e país.",
+    orderBy: "name",
+    permKey: "settings_campos",
+    softDelete: true,
+    warning:
+      "O campo é a raiz de tudo: regionais, igrejas, membros e finanças penduram nele. Trocar o código aqui não renomeia nada que já foi gravado. A senha de acesso tem tela própria, em Senha dos Campos.",
+    selfCampo: true,
+    fields: [
+      { key: "name", label: "Nome", type: "text", required: true, inList: true },
+      { key: "code", label: "Código", type: "text", required: true, inList: true, help: "Único no sistema. É por ele que o campo é identificado." },
+      { key: "description", label: "Descrição", type: "text" },
+      { key: "country", label: "País", type: "text", inList: true },
+    ],
+  },
+
+  regionais: {
+    key: "regionais",
+    table: "regionais",
+    label: "Regionais",
+    description: "Regionais do campo — é a regional que agrupa as igrejas.",
+    orderBy: "code, name",
+    permKey: "settings_regionais",
+    softDelete: true,
+    campoField: "campo_id",
+    warning:
+      "A igreja aponta para a regional por vínculo, não por nome: renomear aqui atualiza a igreja junto. Regional com igreja vinculada não pode ser excluída — a exclusão levaria as igrejas dela.",
+    fields: [
+      { key: "code", label: "Código", type: "text", required: true, inList: true, help: "O número da regional (1, 2, 3...). Único dentro do campo." },
+      { key: "name", label: "Nome", type: "text", required: true, inList: true },
+      { key: "description", label: "Descrição", type: "text" },
+      { key: "city", label: "Cidade", type: "text", inList: true },
+      { key: "state", label: "Estado", type: "text", inList: true },
     ],
   },
 };

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:26:46.453Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:40:19.432Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 61855ad708763c38
+-- Baseline f7e4dc6d2e62ff75
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";

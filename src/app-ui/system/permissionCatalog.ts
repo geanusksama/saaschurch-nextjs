@@ -354,6 +354,9 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Configurações', name: 'Tipos de Conta Bancária', key: 'settings_tipos_conta_bancaria',  permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Configurações', name: 'Funções da Igreja',      key: 'settings_church_functions',       permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Configurações', name: 'Títulos Eclesiásticos',  key: 'settings_ecclesiastical_titles',  permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Zonas',                  key: 'settings_zonas',                  permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Regionais',              key: 'settings_regionais',              permissions: mkPerms(admin(), admin(), none(), none()) },
+  { group: 'Configurações', name: 'Campos',                 key: 'settings_campos',                 permissions: mkPerms(admin(), admin(), none(), none()) },
   // Documentação Técnica
   {
     group: 'Configurações',

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:26:46.447Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:40:19.425Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 61855ad708763c38
+-- Baseline f7e4dc6d2e62ff75
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -662,14 +662,14 @@ alter table "public"."cameras" add column if not exists "last_seen_at" timestamp
 alter table "public"."cameras" add column if not exists "church_id" character varying(100);
 alter table "public"."cameras" add column if not exists "created_at" timestamp with time zone default now() not null;
 alter table "public"."cameras" add column if not exists "updated_at" timestamp with time zone default now() not null;
-alter table "public"."campos" add column if not exists "id" uuid;
+alter table "public"."campos" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."campos" add column if not exists "name" character varying(255);
 alter table "public"."campos" add column if not exists "code" character varying(50);
 alter table "public"."campos" add column if not exists "description" text;
 alter table "public"."campos" add column if not exists "logo_url" character varying(500);
 alter table "public"."campos" add column if not exists "country" character varying(100) default 'Brasil'::character varying;
 alter table "public"."campos" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
-alter table "public"."campos" add column if not exists "updated_at" timestamp(3) without time zone;
+alter table "public"."campos" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."campos" add column if not exists "deleted_at" timestamp(3) without time zone;
 alter table "public"."campos" add column if not exists "access_password_hash" character varying(255);
 alter table "public"."campos" add column if not exists "domain" character varying(255);
@@ -3134,7 +3134,7 @@ alter table "public"."region" add column if not exists "created_at" timestamp wi
 alter table "public"."region" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."region" add column if not exists "headquarters_id" uuid;
 alter table "public"."region" add column if not exists "field_id" uuid;
-alter table "public"."regionais" add column if not exists "id" uuid;
+alter table "public"."regionais" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."regionais" add column if not exists "campo_id" uuid;
 alter table "public"."regionais" add column if not exists "name" character varying(255);
 alter table "public"."regionais" add column if not exists "code" character varying(50);
@@ -3143,7 +3143,7 @@ alter table "public"."regionais" add column if not exists "coordinator_id" uuid;
 alter table "public"."regionais" add column if not exists "state" character varying(100);
 alter table "public"."regionais" add column if not exists "city" character varying(100);
 alter table "public"."regionais" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
-alter table "public"."regionais" add column if not exists "updated_at" timestamp(3) without time zone;
+alter table "public"."regionais" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."regionais" add column if not exists "deleted_at" timestamp(3) without time zone;
 alter table "public"."roles" add column if not exists "id" uuid;
 alter table "public"."roles" add column if not exists "church_id" uuid;

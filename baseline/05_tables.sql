@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:26:46.446Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:40:19.424Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 61855ad708763c38
+-- Baseline f7e4dc6d2e62ff75
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -819,14 +819,14 @@ create table if not exists "public"."cameras" (
 );
 
 create table if not exists "public"."campos" (
-  "id" uuid not null,
+  "id" uuid default gen_random_uuid() not null,
   "name" character varying(255) not null,
   "code" character varying(50) not null,
   "description" text,
   "logo_url" character varying(500),
   "country" character varying(100) default 'Brasil'::character varying,
   "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
-  "updated_at" timestamp(3) without time zone not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
   "deleted_at" timestamp(3) without time zone,
   "access_password_hash" character varying(255),
   "domain" character varying(255),
@@ -3819,7 +3819,7 @@ create table if not exists "public"."region" (
 );
 
 create table if not exists "public"."regionais" (
-  "id" uuid not null,
+  "id" uuid default gen_random_uuid() not null,
   "campo_id" uuid not null,
   "name" character varying(255) not null,
   "code" character varying(50) not null,
@@ -3828,7 +3828,7 @@ create table if not exists "public"."regionais" (
   "state" character varying(100),
   "city" character varying(100),
   "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
-  "updated_at" timestamp(3) without time zone not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
   "deleted_at" timestamp(3) without time zone
 );
 

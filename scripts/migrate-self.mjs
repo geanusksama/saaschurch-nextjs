@@ -86,6 +86,7 @@ const STEPS = [
   { file: '05_tables.sql' },
   { file: '05b_columns.sql', autocommit: true, tolerant: true },
   { file: '05c_notnull.sql', autocommit: true, tolerant: true },
+  { file: '05d_defaults.sql', autocommit: true, tolerant: true },
   { file: '06_constraints.sql' },
   { file: '07_foreign_keys.sql' },
   { file: '08_indexes.sql' },

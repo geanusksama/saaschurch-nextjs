@@ -54,6 +54,17 @@ async function itemForaDoCampo(cfg: LookupConfig, id: string, user: AuthUser) {
   return linhas.length === 0;
 }
 
+/**
+ * Numa lista que É o campo (tabela `campos`), escrever só vale para o campo em
+ * que o usuário opera. Master administra todos; para os demais o id não é
+ * escapatória — sem isto, conhecer o uuid bastaria para renomear outro campo.
+ */
+function campoAlheio(cfg: LookupConfig, id: string, user: AuthUser) {
+  if (!cfg.selfCampo) return false;
+  if (user.profileType === "master") return false;
+  return campoDoUsuario(user, null) !== id;
+}
+
 // PATCH /api/lookups/[key]/[id] — atualiza item
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ key: string; id: string }> }) {
   return withAuth(req, async (user) => {
@@ -68,6 +79,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ke
 
     if (await itemForaDaIgreja(cfg, id, user)) {
       return NextResponse.json({ error: "Este item pertence a outra igreja." }, { status: 403 });
+    }
+
+    if (campoAlheio(cfg, id, user)) {
+      return NextResponse.json({ error: "Este campo não é o seu." }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -105,6 +120,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ k
 
     if (await itemForaDaIgreja(cfg, id, user)) {
       return NextResponse.json({ error: "Este item pertence a outra igreja." }, { status: 403 });
+    }
+
+    if (campoAlheio(cfg, id, user)) {
+      return NextResponse.json({ error: "Este campo não é o seu." }, { status: 403 });
+    }
+
+    // Excluir o campo em que se está operando levaria junto regionais, igrejas,
+    // membros e finanças — e deixaria a sessão apontando para o que não existe.
+    // Vale inclusive para master: quem precisa remover um campo faz isso de
+    // fora dele, nunca por dentro.
+    if (cfg.selfCampo && campoDoUsuario(user, null) === id) {
+      return NextResponse.json(
+        { error: "Este é o campo em que você está operando e não pode ser excluído por aqui." },
+        { status: 409 }
+      );
     }
 
     try {

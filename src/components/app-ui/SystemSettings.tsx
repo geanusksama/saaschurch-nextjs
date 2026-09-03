@@ -169,6 +169,8 @@ const settingsSections: SettingsSection[] = [
       { id: 'church-functions',       name: 'Funções da Igreja',     description: 'Dirigente, líder, secretário...',   path: '/app-ui/config/church-functions',       permKey: 'settings_church_functions' },
       { id: 'ecclesiastical-titles',  name: 'Títulos Eclesiásticos', description: 'Membro, diácono, presbítero...',    path: '/app-ui/config/ecclesiastical-titles',  permKey: 'settings_ecclesiastical_titles' },
       { id: 'zonas',                  name: 'Zonas',                 description: 'Zona Leste, Zona Sul, Centro...',   path: '/app-ui/config/zonas',                  permKey: 'settings_zonas' },
+      { id: 'campos',                 name: 'Campos',                description: 'O campo a que este sistema pertence', path: '/app-ui/config/campos',               permKey: 'settings_campos' },
+      { id: 'regionais',              name: 'Regionais',             description: 'Regionais que agrupam as igrejas',   path: '/app-ui/config/regionais',              permKey: 'settings_regionais' },
     ]
   },
   {

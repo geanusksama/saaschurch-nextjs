@@ -1,6 +1,6 @@
 {
-  "version": "61855ad708763c38",
-  "generatedAt": "2026-09-03T15:26:46.454Z",
+  "version": "f7e4dc6d2e62ff75",
+  "generatedAt": "2026-09-03T15:40:19.433Z",
   "schemas": [
     "public",
     "app"
@@ -24,15 +24,19 @@
     },
     {
       "file": "05_tables.sql",
-      "bytes": 168980
+      "bytes": 169084
     },
     {
       "file": "05b_columns.sql",
-      "bytes": 383980
+      "bytes": 384120
     },
     {
       "file": "05c_notnull.sql",
-      "bytes": 67407
+      "bytes": 67137
+    },
+    {
+      "file": "05d_defaults.sql",
+      "bytes": 120591
     },
     {
       "file": "06_constraints.sql",

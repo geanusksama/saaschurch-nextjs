@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:26:46.450Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:40:19.428Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 61855ad708763c38
+-- Baseline f7e4dc6d2e62ff75
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -194,10 +194,8 @@ alter table "public"."cameras" alter column "active" set not null;
 alter table "public"."cameras" alter column "fps_analysis" set not null;
 alter table "public"."cameras" alter column "min_face_size" set not null;
 alter table "public"."cameras" alter column "status" set not null;
-alter table "public"."campos" alter column "id" set not null;
 alter table "public"."campos" alter column "name" set not null;
 alter table "public"."campos" alter column "code" set not null;
-alter table "public"."campos" alter column "updated_at" set not null;
 alter table "public"."cell_group_leaders" alter column "cell_group_id" set not null;
 alter table "public"."cell_group_leaders" alter column "member_id" set not null;
 alter table "public"."cell_group_members" alter column "id" set not null;
@@ -710,11 +708,9 @@ alter table "public"."prayer_requests" alter column "church_id" set not null;
 alter table "public"."prayer_requests" alter column "title" set not null;
 alter table "public"."prayer_requests" alter column "description" set not null;
 alter table "public"."prayer_requests" alter column "category" set not null;
-alter table "public"."regionais" alter column "id" set not null;
 alter table "public"."regionais" alter column "campo_id" set not null;
 alter table "public"."regionais" alter column "name" set not null;
 alter table "public"."regionais" alter column "code" set not null;
-alter table "public"."regionais" alter column "updated_at" set not null;
 alter table "public"."roles" alter column "id" set not null;
 alter table "public"."roles" alter column "name" set not null;
 alter table "public"."roles" alter column "updated_at" set not null;
