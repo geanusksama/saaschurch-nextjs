@@ -93,6 +93,29 @@ repetidas vezes. Escreva sempre:
 - `ALTER TABLE ... ADD CONSTRAINT` guardado por consulta ao `pg_constraint`
 - nada de `DROP`, nada de `ALTER COLUMN` destrutivo em tabela existente
 
+### E quando o certo é justamente REMOVER?
+
+Aí o baseline gerado não resolve, e o problema é silencioso: `create ... if not
+exists` nunca derruba nem afrouxa o que já está no banco da igreja. Se você tira
+um unique, um default ou uma constraint no banco de referência, o dump apenas
+**para de mencionar** aquilo — e cada igreja segue com o objeto antigo, barrando
+o que o código novo já permite.
+
+Nesses casos o DROP vai à mão em **`baseline/98_patches.sql`**, aplicado pelo
+`migrate-self` depois de todo o resto (tolerante, fora de transação). Esse
+arquivo não sai do `baseline:dump` e não é sobrescrito por ele.
+
+Regras ao escrever lá: idempotente (`IF EXISTS`), só estrutura (nunca dado),
+datado e com o porquê — quem ler depois precisa saber se a linha ainda serve.
+
+Dois casos que já morderam, os dois pela mesma raiz:
+
+- **DEFAULT em coluna existente.** `add column if not exists` não altera coluna
+  que já existe. Hoje o gerador emite `05d_defaults.sql` com `alter column set
+  default` de tudo, então default novo replica sozinho — não precisa de patch.
+- **Unique afrouxado.** O índice antigo continua vivo na igreja. Precisa de
+  patch.
+
 ---
 
 ## 4. Latência do banco: cuidado com transação interativa

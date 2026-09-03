@@ -97,6 +97,8 @@ const STEPS = [
   { file: '12_grants.sql' },
   { file: '13_storage.sql' },
   { file: '14_realtime.sql', autocommit: true },
+  // Escrito a mao: DROP/ALTER que o dump nao expressa. Ver baseline/98_patches.sql.
+  { file: '98_patches.sql', autocommit: true, tolerant: true },
   { file: '99_version.sql' },
 ];
 

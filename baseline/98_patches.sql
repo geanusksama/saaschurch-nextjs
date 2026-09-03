@@ -1,0 +1,32 @@
+-- Correções pontuais nos bancos das igrejas já provisionadas.
+--
+-- ESTE ARQUIVO É ESCRITO À MÃO. Ele não sai do `baseline:dump` e não é
+-- sobrescrito por ele.
+--
+-- Por que existe: todo o resto do baseline só CRIA. `create table if not
+-- exists`, `add column if not exists`, `create index if not exists` — nenhum
+-- deles remove nem altera objeto que já está lá. Isso é proposital, é o que
+-- torna o baseline seguro de rodar repetidas vezes em produção. Mas deixa um
+-- buraco: quando algo é REMOVIDO ou AFROUXADO no banco de referência, o dump
+-- simplesmente para de mencionar aquilo, e a igreja que já tem o objeto antigo
+-- fica com ele para sempre.
+--
+-- Foi o que aconteceu com o unique de `churches (regional_id, code)`: ele saiu
+-- do baseline, mas continuava vivo em cada igreja, barrando o cadastro que o
+-- código novo permite.
+--
+-- REGRAS PARA ESCREVER AQUI
+--   1. Idempotente e tolerante: roda em todo deploy de toda igreja, muitas
+--      vezes. Sempre `IF EXISTS` / `IF NOT EXISTS`.
+--   2. Só o que o dump não consegue expressar: DROP e ALTER de objeto que já
+--      existe. Coisa nova continua vindo do baseline gerado.
+--   3. Nunca apague dado. Este arquivo mexe em ESTRUTURA.
+--   4. Datar e explicar o porquê — quem lê daqui a um ano precisa saber se a
+--      linha ainda faz sentido ou se já pode sair.
+
+-- 2026-09-03 — o código da igreja passou a aceitar repetição.
+-- O número é o que a secretaria usa e ele se repete de propósito (Sede 1,
+-- Sede Brasil 1, Sede UEA 1), como o `rol` do membro. Quem identifica a linha
+-- é o id. O índice comum que substitui o unique vem do baseline gerado.
+DROP INDEX IF EXISTS "churches_regional_id_code_key";
+DROP INDEX IF EXISTS "churches_regional_id_code_periodo_key";

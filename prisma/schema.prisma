@@ -235,7 +235,10 @@ model Church {
   cultoRegistros            CultoRegistro[] @relation("ChurchCultoRegistros")
   cultoRegistrosComoHost    CultoRegistro[] @relation("HostChurchCultoRegistros")
 
-  @@unique([regionalId, code])
+  /// `code` NÃO é único, de propósito: é o número que a secretaria usa e ele se
+  /// repete (Sede 1, Sede Brasil 1, Sede UEA 1), como o `rol` do membro. Quem
+  /// identifica a linha é o id.
+  @@index([regionalId, code])
   @@index([headquartersId])
   @@index([hostChurchId])
   @@index([zone])

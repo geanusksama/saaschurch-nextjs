@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:40:19.431Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:53:08.675Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline f7e4dc6d2e62ff75
+-- Baseline 820c0419401ec0ac
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -31,7 +31,7 @@ CREATE INDEX IF NOT EXISTS church_rent_records_church_id_paid_at_idx ON public.c
 CREATE UNIQUE INDEX IF NOT EXISTS churches_cnpj_key ON public.churches USING btree (cnpj);
 CREATE INDEX IF NOT EXISTS churches_headquarters_id_idx ON public.churches USING btree (headquarters_id);
 CREATE INDEX IF NOT EXISTS churches_host_church_id_idx ON public.churches USING btree (host_church_id);
-CREATE UNIQUE INDEX IF NOT EXISTS churches_regional_id_code_key ON public.churches USING btree (regional_id, code);
+CREATE INDEX IF NOT EXISTS churches_regional_id_code_idx ON public.churches USING btree (regional_id, code);
 CREATE INDEX IF NOT EXISTS churches_zone_idx ON public.churches USING btree (zone);
 CREATE UNIQUE INDEX IF NOT EXISTS consecration_schedules_church_date_key ON public.consecration_schedules USING btree (church_id, scheduled_date);
 CREATE INDEX IF NOT EXISTS contabilidade_acessos_campo_idx ON public.contabilidade_acessos USING btree (campo);

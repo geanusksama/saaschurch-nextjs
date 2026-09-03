@@ -38,6 +38,12 @@ O checklist completo, com o porquê de cada item, está em
 **[docs/RELEASE-CHECKLIST.md](docs/RELEASE-CHECKLIST.md)**. Leia antes de subir.
 Resumo do que já mordeu:
 
+- **O baseline só CRIA — remoção não replica sozinha.** `create ... if not
+  exists` nunca derruba nem afrouxa objeto que já está no banco da igreja.
+  Quando você REMOVE ou afrouxa algo (um unique, um default, uma constraint), o
+  dump só para de mencionar — e a igreja continua com o objeto antigo. O DROP
+  correspondente vai à mão em `baseline/98_patches.sql`, que o `migrate-self`
+  aplica no fim. Idempotente, datado e explicado.
 - **O `.env` local aponta para PRODUÇÃO** (`ysibqnwgitakofehdxvd`, o banco de
   origem do baseline). Não existe banco de dev separado. Confirme antes de
   qualquer DDL.
