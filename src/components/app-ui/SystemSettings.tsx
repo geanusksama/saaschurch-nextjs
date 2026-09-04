@@ -72,7 +72,11 @@ type SettingsSection = {
   items: SettingsItem[];
 };
 
-const settingsSections: SettingsSection[] = [
+/**
+ * Exportado para o breadcrumb: as telas de Configurações não estão no menu
+ * lateral, então é daqui que sai o caminho de volta delas.
+ */
+export const settingsSections: SettingsSection[] = [
   {
     category: 'Geral',
     icon: Settings,

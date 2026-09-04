@@ -6,11 +6,13 @@ import {
   CalendarDays,
   Camera,
   ChevronLeft,
-  Columns3,
+  CornerDownRight,
   Download,
   Eye,
   ExternalLink,
+  FileSpreadsheet,
   Filter,
+  Network,
   Image as ImageIcon,
   Link2,
   MapPin,
@@ -20,6 +22,7 @@ import {
   Printer,
   RotateCw,
   Search,
+  Settings,
   Trash2,
   Upload,
   UserRound,
@@ -39,6 +42,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -425,6 +429,16 @@ const dialogContentClass = 'border border-slate-200 bg-white p-0 dark:border-sla
 /** Botão com a mesma caixa das abas da tela, para as ações do cabeçalho combinarem. */
 const tabStyleButtonClass = 'inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900';
 
+/**
+ * Aba de verdade: só o nome, com um traço embaixo do ativo.
+ *
+ * O TabsTrigger do projeto vem com `flex-1`, `rounded-xl` e `border` — é o que
+ * esticava cada aba e a fazia parecer botão em caixa. Aqui os três são
+ * desfeitos explicitamente (`flex-none`, `rounded-none`, `border-0`), e só a
+ * borda de baixo sobrevive para marcar onde a pessoa está.
+ */
+const tabTriggerClass = 'flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 py-3 text-sm font-medium text-slate-500 shadow-none transition-colors hover:border-slate-300 hover:text-slate-900 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-purple-700 data-[state=active]:shadow-none dark:text-slate-400 dark:hover:text-slate-100 dark:data-[state=active]:text-purple-300';
+
 export function Churches() {
   const token = localStorage.getItem('mrm_token');
   const selectedFieldContext = getStoredFieldContext();
@@ -454,6 +468,17 @@ export function Churches() {
   const [filters, setFilters] = useState(() => ({ ...initialFilters, campoId: selectedFieldId }));
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [visibleColumns, setVisibleColumns] = useState(defaultVisibleColumns);
+  /** Hospedeira cujas anexas estão sendo listadas no diálogo. */
+  const [hostedListFor, setHostedListFor] = useState<any | null>(null);
+  const [exporting, setExporting] = useState<'' | 'xlsx' | 'csv'>('');
+  /**
+   * A lista só aparece depois de Buscar.
+   *
+   * Abrir a tela carregando todas as igrejas deixava a pessoa esperando por um
+   * resultado que ela nem pediu — os filtros ficam disponíveis de imediato e a
+   * consulta sai quando ela mandar.
+   */
+  const [hasSearched, setHasSearched] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [viewMode, setViewMode] = useState('list');
@@ -576,21 +601,103 @@ export function Churches() {
     return response.json();
   };
 
-  const loadBaseData = async () => {
+  /**
+   * A listagem só renderiza código/nome/campo/regional/dirigente/cidade/UF/status;
+   * o cadastro completo vem depois, por igreja, ao abrir o registro.
+   */
+  const churchesQuery = () => (selectedFieldId
+    ? `?slim=1&fieldId=${encodeURIComponent(selectedFieldId)}`
+    : '?slim=1');
+
+  /** Busca só as igrejas — é o que o botão Buscar dispara. */
+  const loadChurches = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      setChurches(await fetchJson(`/churches${churchesQuery()}`, {}, { requiresAuth: true }));
+    } catch (loadError: any) {
+      setError(loadError.message || 'Falha ao carregar a base de igrejas.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runSearch = () => {
+    setHasSearched(true);
+    setPage(1);
+    loadChurches();
+  };
+
+  /**
+   * Exporta o resultado dos filtros — não a página exibida. Quem filtrou 38 e
+   * está vendo 25 espera as 38 no arquivo.
+   *
+   * Excel e CSV saem da mesma planilha montada em memória: o `xlsx` já está no
+   * projeto (é o que a tela de Membros usa) e converte para os dois formatos,
+   * então nenhuma dependência nova entra por causa do CSV.
+   */
+  const exportChurches = async (formato: 'xlsx' | 'csv') => {
+    try {
+      setExporting(formato);
+      const XLSX = await import('xlsx');
+      const linhas = sortedChurches.map((church) => ({
+        'Codigo': church.code || '',
+        'Igreja': church.name || '',
+        'Campo': church.campoName || '',
+        'Regional': church.regionalName || '',
+        'Dirigente': church.leader === '-' ? '' : church.leader,
+        'Zona': church.zone || '',
+        'Hospedagem': church.isHost
+          ? `Hospedeira (${church.hostedCount} anexas)`
+          : church.hostChurchName || '',
+        'Cidade': church.city === '-' ? '' : church.city,
+        'UF': church.state === '-' ? '' : church.state,
+        'Status': church.statusLabel || '',
+        'Documento': church.documentNumber || '',
+        'Telefone': church.phone || '',
+        'Email': church.email || '',
+      }));
+
+      const planilha = XLSX.utils.json_to_sheet(linhas);
+      const dataArquivo = new Date().toISOString().split('T')[0];
+
+      if (formato === 'xlsx') {
+        const pasta = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(pasta, planilha, 'Igrejas');
+        XLSX.writeFile(pasta, `igrejas_${dataArquivo}.xlsx`);
+      } else {
+        // BOM na frente: sem ele o Excel abre o CSV quebrando os acentos.
+        const csv = `﻿${XLSX.utils.sheet_to_csv(planilha, { FS: ';' })}`;
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `igrejas_${dataArquivo}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (exportError: any) {
+      toast.error(exportError?.message || 'Falha ao exportar a lista de igrejas.');
+    } finally {
+      setExporting('');
+    }
+  };
+
+  /**
+   * `comIgrejas` fica em false na abertura da tela: os filtros precisam de campo,
+   * regional e zona para montar os dropdowns, mas a lista de igrejas só é
+   * buscada quando a pessoa clica em Buscar.
+   */
+  const loadBaseData = async (comIgrejas = true) => {
     try {
       setLoading(true);
       setError('');
 
       const queryString = selectedFieldId ? `?fieldId=${encodeURIComponent(selectedFieldId)}` : '';
 
-      // A listagem só renderiza código/nome/campo/regional/dirigente/cidade/UF/status;
-      // o cadastro completo vem depois, por igreja, ao abrir o registro.
-      const churchesQuery = selectedFieldId
-        ? `?slim=1&fieldId=${encodeURIComponent(selectedFieldId)}`
-        : '?slim=1';
-
       const requests = [
-        fetchJson(`/churches${churchesQuery}`, {}, { requiresAuth: true }),
+        comIgrejas
+          ? fetchJson(`/churches${churchesQuery()}`, {}, { requiresAuth: true })
+          : Promise.resolve(null),
         fetchJson('/campos', {}, { requiresAuth: true }),
         fetchJson(`/regionais${queryString}`, {}, { requiresAuth: true }),
       ];
@@ -610,7 +717,7 @@ export function Churches() {
       }
 
       const [churchesData, camposData, regionaisData, headquartersData, functionCatalogData, zonasData] = await Promise.all(requests);
-      setChurches(churchesData);
+      if (churchesData) setChurches(churchesData);
       setCampos(camposData);
       setRegionais(regionaisData);
       setHeadquarters(headquartersData || []);
@@ -817,7 +924,10 @@ export function Churches() {
   };
 
   useEffect(() => {
-    loadBaseData();
+    // Sem as igrejas: a lista espera o Buscar. Depois que a pessoa já buscou,
+    // trocar de campo refaz a consulta — o resultado na tela ficaria do campo
+    // anterior, o que é pior do que buscar de novo.
+    loadBaseData(hasSearched);
   }, [selectedFieldId, token]);
 
   useEffect(() => {
@@ -886,13 +996,33 @@ export function Churches() {
     return headquarters.filter((item) => item.fieldId === form.campoId);
   }, [form.campoId, headquarters]);
 
+  /**
+   * Anexas de cada hospedeira, indexadas pelo id dela.
+   *
+   * A hospedeira não guarda a lista: quem aponta é a anexa, pelo host_church_id
+   * (o mesmo desenho do banco de Campinas, onde o host_church_id da hospedeira
+   * é sempre nulo). Então a lista se monta virando a relação do avesso.
+   */
+  const anexasPorHospedeira = useMemo(() => {
+    const mapa = new Map<string, any[]>();
+    for (const church of churches) {
+      if (!church.hostChurchId) continue;
+      const lista = mapa.get(church.hostChurchId);
+      if (lista) lista.push(church);
+      else mapa.set(church.hostChurchId, [church]);
+    }
+    return mapa;
+  }, [churches]);
+
   const enrichedChurches = useMemo(() => {
     return churches.map((church) => {
       const regional = regionalById.get(church.regionalId);
       const campo = regional ? campoById.get(regional.campoId) : null;
+      const anexas = anexasPorHospedeira.get(church.id) || [];
 
       return {
         ...church,
+        hostedCount: anexas.length,
         campoName: campo?.name || '-',
         campoId: campo?.id || '',
         regionalName: regional?.name || '-',
@@ -906,7 +1036,7 @@ export function Churches() {
         statusLabel: church.status === 'inactive' ? 'Inativa' : 'Ativa',
       };
     });
-  }, [campoById, churches, regionalById]);
+  }, [anexasPorHospedeira, campoById, churches, regionalById]);
 
   const filteredChurches = useMemo(() => {
     const query = normalizeText(filters.search);
@@ -1960,22 +2090,42 @@ export function Churches() {
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-          <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
-            <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-              <Search className="h-3.5 w-3.5" />
-              Busca Geral
+        {/* Uma linha só de filtros. Flex em vez de grid: cada filtro tem largura
+            mínima e cresce com o espaço que sobra, então cabem todos lado a lado
+            no desktop e quebram por conta própria quando a tela estreita — sem
+            número fixo de colunas, que era o que espremia tudo antes. */}
+        <div className="flex flex-wrap items-stretch gap-3">
+          {/* A busca ocupa a linha toda no celular e o dobro das demais a partir
+              do desktop: é o filtro mais usado e se perdia entre os selects. O
+              destaque vem do foco, não de uma borda pesada permanente. */}
+          <label className="group flex min-w-[240px] flex-[2.5] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm transition-all focus-within:border-purple-400 focus-within:shadow-md focus-within:ring-4 focus-within:ring-purple-100 dark:border-slate-800 dark:bg-slate-950 dark:focus-within:ring-purple-900/30">
+            <Search className="h-5 w-5 shrink-0 text-slate-400 transition-colors group-focus-within:text-purple-500" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                Busca Geral
+              </span>
+              <input
+                value={filters.search}
+                onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+                onKeyDown={(event) => { if (event.key === 'Enter') runSearch(); }}
+                placeholder="Nome, codigo, dirigente..."
+                className="w-full border-none bg-transparent p-0 text-base text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100"
+              />
             </span>
-            <input
-              value={filters.search}
-              onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
-              placeholder="Nome, codigo, dirigente..."
-              className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100"
-            />
+            {filters.search ? (
+              <button
+                type="button"
+                onClick={() => setFilters((current) => ({ ...current, search: '' }))}
+                title="Limpar busca"
+                className="shrink-0 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
           </label>
 
           {campoVisible && (
-          <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
+          <label className="w-[170px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
             <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               <Filter className="h-3.5 w-3.5" />
               Campo
@@ -1996,7 +2146,7 @@ export function Churches() {
           </label>
           )}
 
-          <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
+          <label className="w-[170px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
             <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               <Filter className="h-3.5 w-3.5" />
               Regional
@@ -2015,7 +2165,8 @@ export function Churches() {
             </select>
           </label>
 
-          <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
+          {/* UF guarda duas letras: não cresce junto com os outros. */}
+          <label className="w-[110px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
             <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               <Filter className="h-3.5 w-3.5" />
               UF
@@ -2034,7 +2185,7 @@ export function Churches() {
             </select>
           </label>
 
-          <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
+          <label className="w-[150px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
             <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               <Filter className="h-3.5 w-3.5" />
               Zona
@@ -2053,7 +2204,7 @@ export function Churches() {
             </select>
           </label>
 
-          <label className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
+          <label className="w-[165px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
             <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               <Link2 className="h-3.5 w-3.5" />
               Hospedagem
@@ -2070,57 +2221,80 @@ export function Churches() {
             </select>
           </label>
 
-          <div className="flex items-end gap-2">
+          {/* Ações na mesma linha dos filtros. Só o Exportar virou menu: dois
+              botões lado a lado gastavam a largura que os filtros precisavam. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={runSearch}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-60"
+            >
+              <Search className="h-4 w-4" />
+              {loading ? 'Buscando...' : 'Buscar'}
+            </button>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
+              Limpar
+            </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
+                  disabled={!hasSearched || !sortedChurches.length || Boolean(exporting)}
+                  title={!hasSearched ? 'Busque antes de exportar.' : 'Exportar as igrejas dos filtros atuais'}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300"
                 >
-                  <Columns3 className="h-4 w-4" />
-                  Colunas
+                  <Download className="h-4 w-4" />
+                  {exporting ? 'Exportando...' : 'Exportar'}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Colunas da tabela</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel>Exportar {sortedChurches.length} registros</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {columnDefinitions.map((column) => (
-                  <DropdownMenuCheckboxItem
-                    key={column.key}
-                    checked={visibleColumns[column.key]}
-                    onCheckedChange={(checked) => setVisibleColumns((current) => ({ ...current, [column.key]: Boolean(checked) }))}
-                  >
-                    {column.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
+                <DropdownMenuItem onClick={() => exportChurches('xlsx')}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportChurches('csv')}>
+                  <Download className="mr-2 h-4 w-4 text-slate-500" />
+                  CSV (.csv)
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
-            >
-              Limpar
-            </button>
           </div>
         </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between dark:border-slate-800">
-          <div>
-            <h2 className="text-[28px] font-semibold tracking-tight text-slate-950 dark:text-slate-50">Tabela de igrejas</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{sortedChurches.length} registros filtrados de {churches.length} igrejas.</p>
-          </div>
-          <div className="text-sm text-slate-500 dark:text-slate-400">
-            Exibindo {listFrom} a {listTo}
-          </div>
-        </div>
-
         {loading ? <div className="px-5 py-8 text-sm text-slate-500">Carregando igrejas...</div> : null}
         {error ? <div className="mx-5 mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
 
-        {!loading ? (
+        {!loading && !hasSearched ? (
+          <div className="flex flex-col items-center gap-3 px-5 py-16 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-950/40">
+              <Search className="h-7 w-7 text-purple-600 dark:text-purple-300" />
+            </div>
+            <p className="text-base font-semibold text-slate-800 dark:text-slate-100">Nenhuma busca feita ainda</p>
+            <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">
+              A lista não carrega sozinha para a tela abrir na hora. Ajuste os filtros acima
+              e clique em <strong>Buscar</strong> para ver as igrejas.
+            </p>
+            <button
+              type="button"
+              onClick={runSearch}
+              className="mt-1 inline-flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-700"
+            >
+              <Search className="h-4 w-4" />
+              Buscar igrejas
+            </button>
+          </div>
+        ) : null}
+
+        {!loading && hasSearched ? (
           <>
             <div className="px-5 py-4">
               <Table>
@@ -2141,12 +2315,63 @@ export function Churches() {
                         </TableHead>
                       );
                     })}
-                    {visibleColumns.actions ? <TableHead className="px-3 py-3 text-right">Acoes</TableHead> : null}
+                    {visibleColumns.actions ? (
+                      <TableHead className="px-3 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Acoes</span>
+                          {/* Escolher colunas é ajuste DA TABELA: mora no cabeçalho
+                              dela, não na barra de filtros. */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                title="Colunas da tabela"
+                                className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                              >
+                                <Settings className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuLabel>Colunas da tabela</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {columnDefinitions.map((column) => (
+                                <DropdownMenuCheckboxItem
+                                  key={column.key}
+                                  checked={visibleColumns[column.key]}
+                                  onCheckedChange={(checked) => setVisibleColumns((current) => ({ ...current, [column.key]: Boolean(checked) }))}
+                                >
+                                  {column.label}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableHead>
+                    ) : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedChurches.map((church) => (
-                    <TableRow key={church.id} className="border-slate-200">
+                    <TableRow
+                      key={church.id}
+                      // A linha inteira abre o cadastro — o botão Editar continua
+                      // existindo para quem procura o rótulo.
+                      onClick={() => openChurchDetail(church.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openChurchDetail(church.id);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      title="Abrir cadastro da igreja"
+                      // Fundo branco e limpo: a separação fica por conta da linha
+                      // divisória. O `bg-white` explícito também neutraliza o
+                      // `hover:bg-muted/50` cinza que o TableRow do projeto traz
+                      // embutido — o realce do hover é o roxo, não o cinza.
+                      className="cursor-pointer border-slate-200 bg-white transition-colors hover:bg-purple-50 focus:bg-purple-50 focus:outline-none dark:bg-slate-950 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                    >
                       {visibleColumns.code ? <TableCell className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">{church.code}</TableCell> : null}
                       {visibleColumns.name ? (
                         <TableCell className="px-3 py-3">
@@ -2157,6 +2382,33 @@ export function Churches() {
                       {campoVisible && visibleColumns.campo ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.campoName}</TableCell> : null}
                       {visibleColumns.regional ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.regionalName}</TableCell> : null}
                       {visibleColumns.leader ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.leader}</TableCell> : null}
+                      {visibleColumns.zone ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.zone || '-'}</TableCell> : null}
+                      {visibleColumns.hostingLabel ? (
+                        <TableCell className="px-3 py-3">
+                          {church.isHost ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setHostedListFor(church);
+                              }}
+                              title={`Ver as ${church.hostedCount} igrejas anexas a ${church.name}`}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-900/50 dark:bg-purple-950/30 dark:text-purple-300"
+                            >
+                              <Network className="h-3.5 w-3.5" />
+                              Hospedeira
+                              <span className="rounded-full bg-purple-600 px-1.5 text-[10px] text-white">{church.hostedCount}</span>
+                            </button>
+                          ) : church.hostChurchName ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                              <CornerDownRight className="h-3.5 w-3.5 text-slate-400" />
+                              {church.hostChurchName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </TableCell>
+                      ) : null}
                       {visibleColumns.city ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.city}</TableCell> : null}
                       {visibleColumns.state ? <TableCell className="px-3 py-3 text-slate-700 dark:text-slate-300">{church.state}</TableCell> : null}
                       {visibleColumns.status ? (
@@ -2167,7 +2419,9 @@ export function Churches() {
                         </TableCell>
                       ) : null}
                       {visibleColumns.actions ? (
-                        <TableCell className="px-3 py-3 text-right">
+                        // Sem o stopPropagation, Excluir dispararia o clique da
+                        // linha junto e abriria o cadastro por cima do diálogo.
+                        <TableCell className="px-3 py-3 text-right" onClick={(event) => event.stopPropagation()}>
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
@@ -2196,6 +2450,12 @@ export function Churches() {
 
             <div className="flex flex-col gap-4 border-t border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
               <label className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                {/* A contagem vive aqui, junto da paginação: o bloco de título
+                    que a exibia saiu por repetir o cabeçalho da tela. */}
+                <span className="mr-2 hidden sm:inline">
+                  Exibindo {listFrom} a {listTo} de {sortedChurches.length}
+                  {sortedChurches.length !== churches.length ? ` (de ${churches.length})` : ''}
+                </span>
                 <span>Linhas por pagina</span>
                 <select
                   value={pageSize}
@@ -2523,15 +2783,15 @@ export function Churches() {
       {detailLoading ? <div className="rounded-lg border border-slate-200 bg-white px-5 py-8 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">Carregando dados da igreja...</div> : null}
 
       {!form.id ? renderChurchDataSection() : <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-4">
-        <TabsList className="flex h-auto w-full flex-wrap items-end justify-between gap-x-6 gap-y-0 rounded-none border-b border-slate-200 bg-transparent px-0 py-0 dark:border-slate-800 dark:bg-transparent">
-          <TabsTrigger value="dados" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Dados</TabsTrigger>
-          <TabsTrigger value="contatos" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Contatos</TabsTrigger>
-          <TabsTrigger value="trocar-dirigente" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Trocar Dirigente</TabsTrigger>
-          <TabsTrigger value="funcoes" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Funcoes</TabsTrigger>
-          <TabsTrigger value="hospedeira" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Hospedeira</TabsTrigger>
-          <TabsTrigger value="imagens" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Imagens</TabsTrigger>
-          <TabsTrigger value="aluguel" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Aluguel</TabsTrigger>
-          <TabsTrigger value="mapa" className="rounded-none border-b-2 border-transparent px-2 py-4 data-[state=active]:border-purple-600 data-[state=active]:bg-transparent data-[state=active]:text-slate-950 data-[state=active]:shadow-none dark:data-[state=active]:text-slate-50">Mapa</TabsTrigger>
+        <TabsList className="flex h-auto w-full flex-wrap items-end justify-start gap-x-2 gap-y-0 rounded-none border-b border-slate-200 bg-transparent px-0 py-0 dark:border-slate-800 dark:bg-transparent">
+          <TabsTrigger value="dados" className={tabTriggerClass}>Dados</TabsTrigger>
+          <TabsTrigger value="contatos" className={tabTriggerClass}>Contatos</TabsTrigger>
+          <TabsTrigger value="trocar-dirigente" className={tabTriggerClass}>Trocar Dirigente</TabsTrigger>
+          <TabsTrigger value="funcoes" className={tabTriggerClass}>Funcoes</TabsTrigger>
+          <TabsTrigger value="hospedeira" className={tabTriggerClass}>Hospedeira</TabsTrigger>
+          <TabsTrigger value="imagens" className={tabTriggerClass}>Imagens</TabsTrigger>
+          <TabsTrigger value="aluguel" className={tabTriggerClass}>Aluguel</TabsTrigger>
+          <TabsTrigger value="mapa" className={tabTriggerClass}>Mapa</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados">
@@ -4066,6 +4326,77 @@ export function Churches() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {hostedListFor ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          onClick={() => setHostedListFor(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+              <div className="flex items-start gap-2">
+                <Network className="mt-0.5 h-4 w-4 text-purple-600 dark:text-purple-300" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Anexas de {hostedListFor.name}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {(anexasPorHospedeira.get(hostedListFor.id) || []).length} igreja(s) hospedada(s) por esta hospedeira.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHostedListFor(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto px-5 py-3">
+              {(anexasPorHospedeira.get(hostedListFor.id) || []).length ? (
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {(anexasPorHospedeira.get(hostedListFor.id) || []).map((anexa: any) => (
+                    <li key={anexa.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHostedListFor(null);
+                          openChurchDetail(anexa.id);
+                        }}
+                        className="flex w-full items-center gap-3 py-2.5 text-left hover:text-purple-700 dark:hover:text-purple-300"
+                      >
+                        <CornerDownRight className="h-4 w-4 shrink-0 text-slate-400" />
+                        <span className="w-14 shrink-0 text-xs font-semibold text-slate-500">{anexa.code}</span>
+                        <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-100">{anexa.name}</span>
+                        <span className="text-xs text-slate-400">{anexa.periodo || ''}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="py-6 text-center text-sm text-slate-500">
+                  Esta hospedeira ainda não recebeu nenhuma igreja anexa.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end border-t border-slate-200 px-5 py-3 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setHostedListFor(null)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <ConfirmDialog
         open={Boolean(pendingConfirm)}

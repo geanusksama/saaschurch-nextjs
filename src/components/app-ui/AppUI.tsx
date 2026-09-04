@@ -102,7 +102,7 @@ function Dove(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { MemberEditDrawer } from './MemberEditDrawer';
@@ -120,6 +120,9 @@ import { clearRecentSearches, pushRecentSearch, readRecentSearches } from '../..
 import { resolverActionUrl } from '../../lib/notificationLinks';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { useFavoritePaths, toggleFavoritePath } from '../../lib/favorites';
+import { Breadcrumbs } from './Breadcrumbs';
+import { buildBreadcrumbTrail } from '../../lib/breadcrumbTrail';
+import { settingsSections } from './SystemSettings';
 
 
 interface ContextSwitcherItem {
@@ -1114,6 +1117,20 @@ export function AppUI() {
 
   // Primeira rota permitida — usada como fallback de redirecionamento
   const firstAllowedPath = visibleNavigation[0]?.items[0]?.path || '/app-ui';
+
+  // Caminho de navegação da tela atual. Sai das listas que já existem — o menu
+  // lateral e os cartões de Configurações — para não virar um mapa paralelo que
+  // esquece a tela nova.
+  const breadcrumbTrail = useMemo(
+    () => buildBreadcrumbTrail({
+      pathname: location.pathname,
+      navigation: appNavigation,
+      settings: settingsSections.map((secao) => ({ section: secao.category, items: secao.items })),
+      homePath: firstAllowedPath,
+      screenName: getFriendlyScreenName(location.pathname),
+    }),
+    [location.pathname, firstAllowedPath]
+  );
 
   // Verifica se a rota atual é permitida (RENDER-TIME — segurança real)
   // Itens com exact:true só casam se o pathname for idêntico, evitando que
@@ -2442,7 +2459,10 @@ export function AppUI() {
         {/* Content */}
         <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
           {isCurrentPathAllowed ? (
-            <Outlet />
+            <>
+              <Breadcrumbs trail={breadcrumbTrail} />
+              <Outlet />
+            </>
           ) : (
             <div className="flex h-full items-center justify-center p-6">
               <div className="max-w-md text-center rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 shadow-sm">
