@@ -109,6 +109,42 @@ async function ensureUserProfile(authUser: { id: string; email?: string; user_me
 }
 
 /**
+ * Resolução do token em andamento/recente, por token.
+ *
+ * Toda rota autenticada paga, ANTES de qualquer coisa: uma chamada de rede à
+ * API de Auth do Supabase, mais duas consultas sequenciais ao banco (perfil e
+ * sede do campo). Uma tela como a da igreja abre 8 requisições paralelas — o
+ * mesmo token, o mesmo usuário, 8 vezes o mesmo trabalho. Medido no log do dev:
+ * `/api/campos`, que lê uma tabela de 1 linha, levava 4,3 s.
+ *
+ * A janela é curta de propósito: ela existe para juntar as requisições de UMA
+ * tela, não para guardar sessão. Consequência a conhecer: trocar permissão ou
+ * revogar sessão leva até TTL_MS para valer.
+ */
+const TTL_MS = 10_000;
+const authCache = new Map<string, { quando: number; user: Promise<AuthUser> }>();
+
+function resolverToken(token: string, resolver: () => Promise<AuthUser>): Promise<AuthUser> {
+  const agora = Date.now();
+  const emCache = authCache.get(token);
+  if (emCache && agora - emCache.quando < TTL_MS) return emCache.user;
+
+  const user = resolver();
+  authCache.set(token, { quando: agora, user });
+  // Token inválido não fica em cache: o próximo pedido tem que perguntar de novo.
+  user.catch(() => authCache.delete(token));
+
+  // Varredura barata: sem isso o Map cresceria com todo token já visto.
+  if (authCache.size > 200) {
+    for (const [chave, valor] of authCache) {
+      if (agora - valor.quando >= TTL_MS) authCache.delete(chave);
+    }
+  }
+
+  return user;
+}
+
+/**
  * Extrai e valida o Bearer token. Retorna o AuthUser ou lança NextResponse 401.
  */
 export async function getAuthUser(req: NextRequest): Promise<AuthUser> {
@@ -117,6 +153,10 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser> {
 
   if (!token) throw NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
+  return resolverToken(token, () => resolveAuthUser(token));
+}
+
+async function resolveAuthUser(token: string): Promise<AuthUser> {
   const { data, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !data?.user) throw NextResponse.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 

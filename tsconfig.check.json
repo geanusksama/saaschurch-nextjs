@@ -1,0 +1,10 @@
+{
+  "//": "Typecheck só do código-fonte. O tsconfig.json inclui .next/dev/types, gerado pelo Turbopack — esse arquivo não compila (275 erros de sintaxe em routes.d.ts) e faz o tsc parar antes de checar src/, devolvendo um 'typecheck limpo' que não checou nada. Use: npx tsc --noEmit -p tsconfig.check.json",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false
+  },
+  "//2": "next-env.d.ts fica de fora porque ele faz `import \"./.next/dev/types/routes.d.ts\"` — é por ali que o arquivo quebrado entra, mesmo excluído.",
+  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.mts"],
+  "exclude": ["node_modules", "projetoantigo", "src/components/app-ui-screens", ".next"]
+}
