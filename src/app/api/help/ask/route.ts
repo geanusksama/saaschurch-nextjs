@@ -14,6 +14,32 @@ import {
 } from '@/lib/helpAiCache'
 
 /**
+ * A IA da ajuda é liberada pela chave `help_ai` da matriz (padrão: só master).
+ *
+ * Esconder os botões na tela não basta: sem esta checagem, qualquer usuário
+ * autenticado ainda podia chamar a rota direto e consumir a cota de IA.
+ */
+async function podeUsarIa(user: AuthUser): Promise<boolean> {
+  let salva = null
+  try {
+    const row = await prisma.setting.findFirst({
+      where: { settingKey: 'permissions_matrix', churchId: null },
+    })
+    if (row?.settingValue) salva = JSON.parse(row.settingValue as string)
+  } catch {
+    // matriz ilegível: cai no catálogo do código, que é o padrão seguro
+  }
+  return resolvePermission({
+    key: 'help_ai',
+    action: 'view',
+    profileType: user.profileType as ProfileKey,
+    modules: mergeModules(salva),
+    userOverrides: (user.permissions ?? {}) as Record<string, boolean>,
+    userRoleId: user.roleId,
+  })
+}
+
+/**
  * POST /api/help/ask — a IA da Central de Ajuda.
  *
  * Responde **apenas** com o que está na documentação (`src/lib/helpContent.ts`).
@@ -109,6 +135,10 @@ export async function POST(req: NextRequest) {
       history?: { role: string; content: string }[]
     }
 
+    if (!(await podeUsarIa(user))) {
+      return NextResponse.json({ error: 'Sem permissão para usar a IA da ajuda.' }, { status: 403 })
+    }
+
     const pergunta = String(body.question ?? '').trim().slice(0, MAX_PERGUNTA)
     if (!pergunta) return NextResponse.json({ error: 'Escreva sua dúvida.' }, { status: 400 })
 
@@ -170,6 +200,9 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
+    // Sem acesso à IA, não há atalhos a sugerir.
+    if (!(await podeUsarIa(user))) return NextResponse.json({ perguntas: [] })
+
     const { permKeys } = await documentacaoDoUsuario(user)
     const perguntas = await perguntasFrequentes(scopeHash(user.profileType, permKeys)).catch(() => [])
     return NextResponse.json({ perguntas })

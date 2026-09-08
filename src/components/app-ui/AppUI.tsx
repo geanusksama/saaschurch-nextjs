@@ -1088,7 +1088,15 @@ export function AppUI() {
   };
 
   const profileType: string = storedUser.profileType || 'church';
-  const { canView } = usePermissions(profileType);
+  const { canView, canCreate } = usePermissions(profileType);
+
+  // Atalhos que existem FORA do menu lateral (engrenagem ao lado do nome, itens
+  // do menu do perfil, botão "Novo Membro" no topo). O menu lateral já passa
+  // pelo canViewItem; estes não passavam, então um perfil sem acesso continuava
+  // vendo a porta de entrada e só descobria o bloqueio ao clicar.
+  const podeVerConfiguracoes = canView('system_settings');
+  const podeVerUsuarios = canView('system_users');
+  const podeCriarMembro = canCreate('members');
   const canViewItem = (pt: string, permKey?: string) => {
     if (!permKey) return true;
     return canView(permKey);
@@ -1565,13 +1573,15 @@ export function AppUI() {
                   <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{displayName}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{displayRole}</p>
                 </div>
-                <Link
-                  to="/app-ui/system-settings"
-                  title="Configurações"
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                >
-                  <Settings className="w-4 h-4 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" />
-                </Link>
+                {podeVerConfiguracoes && (
+                  <Link
+                    to="/app-ui/system-settings"
+                    title="Configurações"
+                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" />
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   title="Sair"
@@ -1975,14 +1985,16 @@ export function AppUI() {
               {renderWeatherIcon()}
               Mais
             </button>
-            {/* Novo Membro — visible on sm+ screens */}
-            <Link
-              to="/app-ui/members/new"
-              className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
-            >
-              <UserPlus className="h-4 w-4" />
-              Novo Membro
-            </Link>
+            {/* Novo Membro — visible on sm+ screens, e só para quem pode criar */}
+            {podeCriarMembro && (
+              <Link
+                to="/app-ui/members/new"
+                className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+              >
+                <UserPlus className="h-4 w-4" />
+                Novo Membro
+              </Link>
+            )}
             {/* 3-dots mobile button — visible only on xs screens */}
             <button
               type="button"
@@ -2170,35 +2182,39 @@ export function AppUI() {
                         <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </button>
 
-                      <Link
-                        to="/app-ui/system/users"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
-                      >
-                        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
-                          <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">Usuários e Permissões</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Gerenciar acessos</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </Link>
+                      {podeVerUsuarios && (
+                        <Link
+                          to="/app-ui/system/users"
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                        >
+                          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                            <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">Usuários e Permissões</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Gerenciar acessos</p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
+                      )}
 
-                      <Link
-                        to="/app-ui/system-settings"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
-                      >
-                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                          <Settings className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">Configurações</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Preferências do sistema</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </Link>
+                      {podeVerConfiguracoes && (
+                        <Link
+                          to="/app-ui/system-settings"
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                        >
+                          <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                            <Settings className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">Configurações</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Preferências do sistema</p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
+                      )}
 
                       <button
                         type="button"
@@ -2291,19 +2307,21 @@ export function AppUI() {
               {/* Drawer content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {/* Novo Membro — primary CTA */}
-                <Link
-                  to="/app-ui/members/new"
-                  onClick={() => setMobileDrawerOpen(false)}
-                  className="flex items-center gap-3 w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-3 text-white font-semibold transition-colors"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20">
-                    <UserPlus className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold">Novo Membro</p>
-                    <p className="text-xs text-emerald-100">Cadastrar na secretaria</p>
-                  </div>
-                </Link>
+                {podeCriarMembro && (
+                  <Link
+                    to="/app-ui/members/new"
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="flex items-center gap-3 w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-3 text-white font-semibold transition-colors"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20">
+                      <UserPlus className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Novo Membro</p>
+                      <p className="text-xs text-emerald-100">Cadastrar na secretaria</p>
+                    </div>
+                  </Link>
+                )}
 
                 {/* Atalhos favoritos */}
                 <div className="pt-2">
@@ -2388,34 +2406,38 @@ export function AppUI() {
                   </button>
 
                   {/* Usuários e Permissões */}
-                  <Link
-                    to="/app-ui/system/users"
-                    onClick={() => setMobileDrawerOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
-                      <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Usuários e Permissões</p>
-                      <p className="text-xs text-slate-400">Gerenciar acessos</p>
-                    </div>
-                  </Link>
+                  {podeVerUsuarios && (
+                    <Link
+                      to="/app-ui/system/users"
+                      onClick={() => setMobileDrawerOpen(false)}
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                        <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Usuários e Permissões</p>
+                        <p className="text-xs text-slate-400">Gerenciar acessos</p>
+                      </div>
+                    </Link>
+                  )}
 
                   {/* Configurações */}
-                  <Link
-                    to="/app-ui/system-settings"
-                    onClick={() => setMobileDrawerOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700">
-                      <Settings className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Configurações</p>
-                      <p className="text-xs text-slate-400">Preferências do sistema</p>
-                    </div>
-                  </Link>
+                  {podeVerConfiguracoes && (
+                    <Link
+                      to="/app-ui/system-settings"
+                      onClick={() => setMobileDrawerOpen(false)}
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700">
+                        <Settings className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Configurações</p>
+                        <p className="text-xs text-slate-400">Preferências do sistema</p>
+                      </div>
+                    </Link>
+                  )}
 
                   {/* Modo Escuro */}
                   <div className="flex items-center gap-3 rounded-xl px-3 py-2.5">

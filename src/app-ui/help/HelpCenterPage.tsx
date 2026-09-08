@@ -79,6 +79,10 @@ export default function HelpCenterPage() {
   }, []);
   const { canView } = usePermissions(storedUser?.profileType);
 
+  // "Perguntar à IA" é controlado pela matriz (chave `help_ai`) e nasce só para
+  // o master. Sem isso, os tres botoes abaixo apareciam para qualquer perfil.
+  const podeUsarIa = canView('help_ai');
+
   const secoes = useMemo(() => filterHelpSections(canView), [canView]);
   const totalArtigos = useMemo(() => secoes.reduce((n, s) => n + s.articles.length, 0), [secoes]);
 
@@ -180,17 +184,23 @@ export default function HelpCenterPage() {
         </div>
 
         <p className="mt-10 text-center text-xs text-slate-400">
-          Ainda com dúvida? Use a aba{' '}
-          <button
-            onClick={() => {
-              voltarParaCapa();
-              setModoIa(true);
-            }}
-            className="font-semibold text-emerald-600 hover:underline"
-          >
-            Perguntar à IA
-          </button>{' '}
-          ou fale com quem administra o sistema.
+          {podeUsarIa ? (
+            <>
+              Ainda com dúvida? Use a aba{' '}
+              <button
+                onClick={() => {
+                  voltarParaCapa();
+                  setModoIa(true);
+                }}
+                className="font-semibold text-emerald-600 hover:underline"
+              >
+                Perguntar à IA
+              </button>{' '}
+              ou fale com quem administra o sistema.
+            </>
+          ) : (
+            <>Ainda com dúvida? Fale com quem administra o sistema.</>
+          )}
         </p>
       </Moldura>
     );
@@ -248,7 +258,9 @@ export default function HelpCenterPage() {
   }
 
   // ── IA ────────────────────────────────────────────────────────────────────
-  if (modoIa) {
+  // A checagem repete `podeUsarIa` de proposito: os botoes somem, mas o estado
+  // ainda poderia ser ligado por outro caminho.
+  if (modoIa && podeUsarIa) {
     return (
       <Moldura>
         <button
@@ -299,12 +311,14 @@ export default function HelpCenterPage() {
             {!resultados.length ? (
               <div className="rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-600">
                 <p className="text-sm text-slate-500">Nada encontrado na documentação.</p>
-                <button
-                  onClick={() => setModoIa(true)}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white"
-                >
-                  <Sparkles className="h-3.5 w-3.5" /> Perguntar à IA
-                </button>
+                {podeUsarIa && (
+                  <button
+                    onClick={() => setModoIa(true)}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Perguntar à IA
+                  </button>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-800">
@@ -355,6 +369,7 @@ export default function HelpCenterPage() {
                 );
               })}
 
+              {podeUsarIa && (
               <button
                 onClick={() => setModoIa(true)}
                 className="flex flex-col rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 text-left transition-shadow hover:shadow-md dark:border-emerald-800 dark:bg-emerald-900/20"
@@ -369,6 +384,7 @@ export default function HelpCenterPage() {
                 </span>
                 <span className="mt-3 text-[11px] text-slate-400">resposta na hora</span>
               </button>
+              )}
             </div>
           </>
         )}

@@ -261,6 +261,11 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   },
   { group: 'Sistema', name: 'Configurações (página)', key: 'system_settings', permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Sistema', name: 'Log de Auditoria',        key: 'audit_log',      permissions: mkPerms(master(), master(), none(), none()) },
+  // "Perguntar à IA", dentro da Central de Ajuda. Fica na matriz para poder ser
+  // liberado caso a caso, mas nasce só para o master: a IA responde a partir da
+  // documentação e o custo da chamada é por pergunta.
+  //  view → mostra os botões que abrem o modo IA (e o próprio modo)
+  { group: 'Sistema', name: 'Perguntar à IA (Ajuda)',  key: 'help_ai',        permissions: mkPerms(master(), none(), none(), none()) },
   {
     group: 'Sistema',
     name: 'Integrações / API',
