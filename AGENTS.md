@@ -62,6 +62,12 @@ Resumo do que já mordeu:
 - **Favicon, título e manifesto têm dono único** em `home_configs`. Não recrie
   `src/app/favicon.ico` nem `public/manifest.webmanifest`: têm precedência e
   anulam a configuração em silêncio.
+- **`findMany` sem `take` é bomba-relógio.** Ele devolve a tabela inteira, e
+  enquanto a base é pequena ninguém percebe. O board da Secretaria carregava
+  42 mil cards com todas as colunas para agrupar em JavaScript: 1.201 ms dentro
+  do Postgres, 60 MB por request e 2,4 GB derramados em disco temporário.
+  Liste com teto no banco e pagine. `pg_stat_statements` com `temp_blks_written`
+  alto denuncia as que restaram. Detalhes na seção 9 do checklist.
 - **Typecheck e GET 200 não cobrem gravação.** Rode o E2E de escrita
   (`scripts/e2e-*.mjs`) antes de dizer que está pronto. Eles gravam no banco de
   referência e restauram no fim — confirme que ninguém está editando a tela.

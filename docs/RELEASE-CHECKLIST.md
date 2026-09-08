@@ -212,6 +212,79 @@ Confirme que ninguém está usando a tela antes de rodar.
 
 ---
 
+## 9. Lista que cresce precisa de teto no banco, não no JavaScript
+
+Um `findMany` sem `take` devolve a tabela inteira. Enquanto a base é pequena
+ninguém percebe; quando ela cresce, a tela não fica "um pouco mais lenta" — ela
+passa a arrastar dezenas de MB por request e a derramar disco temporário no
+Postgres.
+
+Foi o que aconteceu no board da Secretaria. Uma etapa tinha 42 mil cards; a
+rota carregava todos, com todas as colunas (incluindo `metadata`, `attachments`
+e `justification`, os campos gordos), ordenava por `opened_at` e só então
+agrupava por coluna **em JavaScript**:
+
+```ts
+// ✗ traz a etapa inteira para jogar quase tudo fora no cliente
+const cards = await prisma.kanCard.findMany({ where, include, orderBy });
+const grouped = colunas.map((col) => ({
+  ...col,
+  cards: cards.filter((c) => c.columnIndex === col.columnIndex),
+}));
+
+// ✓ uma consulta por coluna, cada uma com teto, em paralelo
+const [counts, ...pages] = await Promise.all([
+  prisma.kanCard.groupBy({ by: ["columnIndex"], where, _count: { _all: true } }),
+  ...colunas.map((col) => prisma.kanCard.findMany({
+    where: { ...where, columnIndex: col.columnIndex },
+    include, orderBy, take: 40,
+  })),
+]);
+```
+
+Medido no banco de referência, etapa com 42.393 cards:
+
+| | antes | depois |
+|---|---|---|
+| tempo dentro do Postgres | 1.201 ms | 0,5–29 ms |
+| payload JSON | 60,6 MB | 0,18 MB |
+| disco temporário | 2,4 GB derramados | zero |
+
+Como achar as outras: `pg_stat_statements` denuncia sozinho. Query com
+`temp_blks_written` alto é lista sem teto até prova em contrário.
+
+```sql
+select round(mean_exec_time::numeric,1) as media_ms, calls,
+       round((temp_blks_read+temp_blks_written)*8192/1024.0/1024.0,1) as temp_mb,
+       left(query, 120) as query
+from pg_stat_statements
+where temp_blks_written > 0
+order by temp_blks_written desc limit 10;
+```
+
+### Três detalhes que quebram na prática
+
+**Paginação por `OFFSET` precisa de ordem total.** `ORDER BY opened_at DESC`
+sozinho não desempata linhas com a mesma data: entre uma página e a seguinte a
+ordem pode mudar, repetindo um registro e engolindo outro. Sempre acrescente um
+critério único — `[{ openedAt: "desc" }, { id: "desc" }]`.
+
+**O `skip` sai do que já está carregado, não de um contador de páginas.** Se um
+item sair da lista no meio do caminho (movido, arquivado), o contador de páginas
+passa a pular registros; o tamanho do array carregado, não.
+
+**O total mostrado na tela vem do `count`, não do `length`.** Senão toda coluna
+cheia exibe "40" e a pessoa acha que perdeu dados.
+
+### O filtro de escopo mora em UM lugar
+
+Quando a paginação vira uma segunda rota, ela precisa do **mesmo** `where` da
+primeira — inclusive o recorte por igreja/campo. Copiar aquele bloco é como se
+reabre um vazamento de dados já corrigido. Extraia para um módulo e importe nos
+dois lados (`board/cardFilter.ts` é o exemplo).
+
+---
+
 ## Resumo — checklist
 
 - [ ] Migration aditiva e idempotente em `prisma/migrations/`
@@ -224,3 +297,5 @@ Confirme que ninguém está usando a tela antes de rodar.
 - [ ] Rotas de configuração sem cache; páginas com metadata do banco em `force-dynamic`
 - [ ] `npx tsc --noEmit` limpo
 - [ ] E2E de gravação executado e passando
+- [ ] Nenhum `findMany` sem `take` em rota de listagem que cresce
+- [ ] Paginação com ordem total (campo + `id`) e total vindo de `count`

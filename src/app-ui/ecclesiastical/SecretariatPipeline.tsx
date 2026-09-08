@@ -88,7 +88,9 @@ type ChatMessageItem = {
     filename?: string;
   } | null;
 };
-type ColumnWithCards = Column & { cards: Card[] };
+// `cards` traz so a primeira pagina da coluna; `totalCards` e quantos existem no
+// banco e `hasMore` diz se a rolagem ainda tem o que buscar.
+type ColumnWithCards = Column & { cards: Card[]; totalCards: number; hasMore: boolean };
 
 function moveCardsBetweenColumns(
   currentBoard: ColumnWithCards[],
@@ -105,9 +107,14 @@ function moveCardsBetweenColumns(
       return false;
     });
 
+    // O total da coluna tem que cair junto, senao o balao segue contando um
+    // card que ja saiu daqui.
+    const leaving = column.cards.length - remainingCards.length;
+
     return {
       ...column,
       cards: remainingCards,
+      totalCards: Math.max(0, column.totalCards - leaving),
     };
   });
 
@@ -119,6 +126,7 @@ function moveCardsBetweenColumns(
     return {
       ...column,
       cards: [...movedCards, ...column.cards],
+      totalCards: column.totalCards + movedCards.length,
     };
   });
 }
@@ -394,6 +402,11 @@ export default function SecretariatPipeline() {
   // guarda `previousBoard` para desfazer, entao o rollback restauraria estado
   // errado no meio de uma movimentacao de card.
   const boardRequestRef = useRef(0);
+  // Querystring do ultimo board carregado, reusada pela rolagem infinita.
+  const boardParamsRef = useRef("");
+  // Colunas com uma pagina em voo, para a rolagem nao disparar em duplicata.
+  const loadingMoreRef = useRef<Set<number>>(new Set());
+  const [loadingMoreColumns, setLoadingMoreColumns] = useState<Set<number>>(new Set());
   const [refreshingBoard, setRefreshingBoard] = useState(false);
   const [showNewCard, setShowNewCard] = useState(false);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
@@ -488,6 +501,11 @@ export default function SecretariatPipeline() {
       const response = await authFetch(`${apiBase}/kan/stages/${stageId}/board?${params}`);
       const data: { stage: Stage; columns: ColumnWithCards[] } = await response.json();
       if (requestId !== boardRequestRef.current) return;
+      // Guarda os filtros DESTE carregamento. A rolagem infinita precisa repetir
+      // exatamente eles; se lesse os estados dos campos, um filtro que a pessoa
+      // digitou mas ainda nao aplicou faria a proxima pagina vir de outro
+      // recorte e os cards se misturariam na coluna.
+      boardParamsRef.current = params.toString();
       setStageMeta(data.stage);
       setBoard(data.columns || []);
       setMoveError("");
@@ -499,6 +517,53 @@ export default function SecretariatPipeline() {
         if (silent) setRefreshingBoard(false);
         else setLoadingBoard(false);
       }
+    }
+  };
+
+  // ── Rolagem infinita da coluna ───────────────────────────────────────────
+  // Busca a proxima pagina de UMA coluna e concatena. O `skip` sai da
+  // quantidade ja carregada, e nao de um contador de paginas, para continuar
+  // certo depois de um card ser movido para fora da coluna.
+  const loadMoreColumn = async (columnIndex: number) => {
+    if (!stageId) return;
+    if (loadingMoreRef.current.has(columnIndex)) return;
+
+    const column = board.find((c) => c.columnIndex === columnIndex);
+    if (!column || !column.hasMore) return;
+
+    loadingMoreRef.current.add(columnIndex);
+    setLoadingMoreColumns(new Set(loadingMoreRef.current));
+
+    const requestId = boardRequestRef.current;
+
+    try {
+      const params = new URLSearchParams(boardParamsRef.current);
+      params.set("columnIndex", String(columnIndex));
+      params.set("skip", String(column.cards.length));
+
+      const response = await authFetch(`${apiBase}/kan/stages/${stageId}/board/cards?${params}`);
+      const data: { cards: Card[]; hasMore: boolean } = await response.json();
+
+      // Se o board foi recarregado no meio do caminho, esta pagina e de um
+      // recorte que nao esta mais na tela.
+      if (requestId !== boardRequestRef.current) return;
+
+      setBoard((prev) =>
+        prev.map((col) => {
+          if (col.columnIndex !== columnIndex) return col;
+          // Um card movido em outra aba pode voltar aqui ja presente; sem o
+          // filtro o React repetiria a key e o card apareceria duas vezes.
+          const seen = new Set(col.cards.map((c) => c.id));
+          const incoming = (data.cards || []).filter((c) => !seen.has(c.id));
+          return { ...col, cards: [...col.cards, ...incoming], hasMore: !!data.hasMore };
+        }),
+      );
+    } catch {
+      // Silencioso de proposito: a coluna segue com o que ja tem e a proxima
+      // rolagem tenta de novo. Um erro aqui nao invalida o board inteiro.
+    } finally {
+      loadingMoreRef.current.delete(columnIndex);
+      setLoadingMoreColumns(new Set(loadingMoreRef.current));
     }
   };
 
@@ -550,6 +615,8 @@ export default function SecretariatPipeline() {
   // de um servico sobre as colunas de outro — e essas colunas aceitam drop.
   useEffect(() => {
     boardRequestRef.current += 1;
+    loadingMoreRef.current.clear();
+    setLoadingMoreColumns(new Set());
     setBoard([]);
     setStageMeta(null);
     setHasSearched(false);
@@ -831,6 +898,8 @@ export default function SecretariatPipeline() {
           stageMeta={stageMeta}
           canMoveCards={canMoveCards}
           movingCardIds={movingCardIds}
+          loadingMoreColumns={loadingMoreColumns}
+          onLoadMore={loadMoreColumn}
           onRefresh={loadBoard}
           onCardMove={(cardId, newColumnIndex) => handleCardMove([cardId], newColumnIndex)}
           onBulkMove={(cardIds, newColumnIndex) => handleCardMove(cardIds, newColumnIndex)}
@@ -1040,6 +1109,8 @@ function KanbanView({
   stageMeta,
   canMoveCards,
   movingCardIds,
+  loadingMoreColumns,
+  onLoadMore,
   onCardMove,
   onBulkMove,
   onAction,
@@ -1049,6 +1120,8 @@ function KanbanView({
   stageMeta: Stage | null;
   canMoveCards: boolean;
   movingCardIds: Set<string>;
+  loadingMoreColumns: Set<number>;
+  onLoadMore: (columnIndex: number) => void;
   onCardMove: (cardId: string, newColumnIndex: number) => Promise<void>;
   onBulkMove: (cardIds: string[], newColumnIndex: number) => Promise<void>;
   onAction: (action: "details" | "edit" | "archive" | "delete", card: Card) => void;
@@ -1304,8 +1377,17 @@ function KanbanView({
                   ) : (
                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{col.name}</span>
                   )}
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold flex-shrink-0 ${colorBadge}`}>
-                    {col.cards.length}
+                  {/* Total no banco, nao o que ja foi carregado — senao toda
+                      coluna grande mostraria "40". */}
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold flex-shrink-0 ${colorBadge}`}
+                    title={
+                      col.hasMore
+                        ? `${col.cards.length} de ${col.totalCards} carregados — role para ver mais`
+                        : undefined
+                    }
+                  >
+                    {col.totalCards}
                   </span>
                 </div>
                 <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -1386,6 +1468,17 @@ function KanbanView({
                 className="flex-1 overflow-y-auto space-y-2 p-3"
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.stopPropagation(); handleDrop(e, col.columnIndex); }}
+                onScroll={(e) => {
+                  // Busca a proxima pagina uma tela antes do fim, para o card
+                  // seguinte ja estar la quando a pessoa chegar. Com a busca da
+                  // coluna ativa a lista visivel e um recorte do que esta em
+                  // memoria, entao a rolagem nao pagina.
+                  if (!col.hasMore || searchVal) return;
+                  const el = e.currentTarget;
+                  if (el.scrollHeight - el.scrollTop - el.clientHeight < el.clientHeight) {
+                    onLoadMore(col.columnIndex);
+                  }
+                }}
               >
                 {filteredCards.length === 0 ? (
                   <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 dark:border-slate-700 py-8 text-xs text-slate-400 dark:text-slate-500">
@@ -1407,6 +1500,27 @@ function KanbanView({
                       canDrag={canMoveCards}
                     />
                   ))
+                )}
+
+                {/* Rodape da rolagem infinita. Com a busca da coluna ativa nao
+                    aparece, porque ali a lista nao pagina. */}
+                {col.hasMore && !searchVal && (
+                  <div className="py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                    {loadingMoreColumns.has(col.columnIndex) ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Carregando...
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onLoadMore(col.columnIndex)}
+                        className="hover:text-indigo-600 hover:underline"
+                      >
+                        Carregar mais ({col.totalCards - col.cards.length} restantes)
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
