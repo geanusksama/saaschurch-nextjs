@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
 import { checkChurchCashStatus } from '../../lib/financeCashStatus';
+import { MSG as MSG_DIZIMO, planoExigeNumeracaoDizimo } from '../../lib/dizimoNumeracao';
 import { ReciboModal } from './ReciboModal';
 import type { ReciboRow } from './ReciboModal';
 import { MemberQuickCreateModal } from '../../components/app-ui/MemberQuickCreateModal';
@@ -161,7 +162,7 @@ type Modo = 'RECEITA' | 'DESPESA';
 type TipoPessoa = 'MEMBRO' | 'IGREJA' | 'NAO_MEMBRO' | 'PJ';
 
 type Church = { id: string; name: string };
-type PlanoDeContas = { id: string; nome: string; codigo: string | null };
+type PlanoDeContas = { id: string; nome: string; codigo: string | null; exige_numeracao_bloco?: boolean | null };
 type FormaPagamento = { id: string; nome: string };
 type Banco = { id: string; nome: string; codigo: string | null; is_default: boolean | null };
 type Departamento = { id: string; nome: string; codigo: string | null; is_default: boolean | null };
@@ -208,6 +209,148 @@ function getReceitaTipoDocumentoPadrao(planoDeContas: string | null | undefined,
   }
 
   return tipoDocumentoAtual || null;
+}
+
+// ─── Números livres do talão de dízimo ───────────────────────────────────────
+
+/**
+ * A lupa do dízimo: os números que ainda sobraram nos blocos DESTA igreja.
+ *
+ * É o espelho do que a lupa da despesa faz com as parcelas do Contas a Pagar —
+ * em vez de o tesoureiro decorar em que número parou o talão, ele escolhe da
+ * lista. Só aparecem números livres, e só os da igreja do caixa: a rota filtra
+ * por church_id, então não há como esbarrar no talão da igreja vizinha.
+ */
+function DizimoNumeroPickerModal({
+  churchId, churchNome, onFechar, onSelecionar,
+}: {
+  churchId: string;
+  churchNome: string;
+  onFechar: () => void;
+  onSelecionar: (numero: number) => void;
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [blocos, setBlocos] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [numeros, setNumeros] = useState<any[]>([]);
+  const [blocoId, setBlocoId] = useState('');
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      setLoading(true);
+      setErro('');
+      try {
+        const token = localStorage.getItem('mrm_token');
+        const p = new URLSearchParams({ churchId, pageSize: '300' });
+        if (blocoId) p.set('blocoId', blocoId);
+        const r = await fetch(`${apiBase}/dizimo-blocos/numeros?${p}`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          cache: 'no-store',
+        });
+        const j = await r.json();
+        if (!vivo) return;
+        if (!r.ok) { setErro(j.error || 'Não foi possível carregar os números.'); return; }
+        setBlocos(j.blocos ?? []);
+        setNumeros(j.data ?? []);
+        setTotal(j.total ?? 0);
+      } catch {
+        if (vivo) setErro('Falha de conexão ao carregar os números.');
+      } finally {
+        if (vivo) setLoading(false);
+      }
+    })();
+    return () => { vivo = false; };
+  }, [churchId, blocoId]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-[560px] flex flex-col max-h-[80vh]">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
+          <div className="min-w-0">
+            <h3 className="font-bold text-slate-800 dark:text-white text-sm">Números livres do talão</h3>
+            <p className="text-xs text-slate-400 truncate">{churchNome || 'Igreja do caixa'}</p>
+          </div>
+          <button type="button" onClick={onFechar} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
+            <X className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+
+        {blocos.length > 1 && (
+          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setBlocoId('')}
+              className={`px-2.5 py-1 rounded text-xs font-semibold border ${
+                !blocoId
+                  ? 'bg-emerald-600 border-emerald-600 text-white'
+                  : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              Todos
+            </button>
+            {blocos.map(b => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setBlocoId(b.id)}
+                title={`${b.numeroInicial}–${b.numeroFinal}`}
+                className={`px-2.5 py-1 rounded text-xs font-semibold border ${
+                  blocoId === b.id
+                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                    : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Bloco {b.numeroBloco}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-slate-400 text-sm">
+              <RefreshCw className="w-4 h-4 animate-spin" /> Carregando...
+            </div>
+          ) : erro ? (
+            <div className="flex items-center gap-2 px-3 py-2 rounded bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 text-xs">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" /> {erro}
+            </div>
+          ) : !numeros.length ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-slate-400 text-sm text-center px-6">
+              <AlertCircle className="w-7 h-7 text-slate-200 dark:text-slate-700" />
+              {blocos.length
+                ? 'Todos os números dos blocos desta igreja já foram usados. Peça um bloco novo em Finanças › Blocos de Numeração.'
+                : 'Esta igreja ainda não tem bloco cadastrado.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(64px,1fr))] gap-1.5">
+              {numeros.map(n => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => onSelecionar(n.numero)}
+                  title={`Bloco ${n.bloco?.numeroBloco}`}
+                  className="px-1 py-1.5 rounded text-center text-xs font-semibold tabular-nums border bg-emerald-50 dark:bg-emerald-900/25 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-colors"
+                >
+                  {n.numero}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700 text-[11px] text-slate-400 flex-shrink-0">
+          {total > numeros.length
+            ? `Mostrando os ${numeros.length} primeiros de ${total.toLocaleString('pt-BR')} livres.`
+            : `${total.toLocaleString('pt-BR')} número(s) livre(s).`}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Search Modal (Membro ou Igreja) ─────────────────────────────────────────
@@ -891,6 +1034,25 @@ export default function LancamentoNew() {
   const [bancoId, setBancoId] = useState('');
   const [departamentoId, setDepartamentoId] = useState('');
   const [numDoc, setNumDoc] = useState('');
+
+  /**
+   * Numeração de dízimo por bloco.
+   *
+   * A igreja recebe talões de recibo físicos e o número digitado aqui tem que
+   * ser um deles. `exige` é o switch da tela de Blocos de Numeração: enquanto
+   * está desligado o dízimo entra sem número, como sempre entrou — as igrejas
+   * recebem os talões aos poucos e travar todas no dia do deploy pararia a
+   * tesouraria de quem ainda não pegou bloco.
+   *
+   * `temBloco` é separado de propósito: com bloco cadastrado o número digitado
+   * PASSA pela conferência mesmo com o switch desligado. Um número que não
+   * existe no talão não vira dado bom só porque o campo era opcional.
+   */
+  const [dizimoConfig, setDizimoConfig] = useState<{ exige: boolean; temBloco: boolean }>({ exige: false, temBloco: false });
+  const [showDizimoPicker, setShowDizimoPicker] = useState(false);
+  const [numDocAviso, setNumDocAviso] = useState<{ titulo: string; mensagem: string } | null>(null);
+  const [numDocConferindo, setNumDocConferindo] = useState(false);
+  const [numDocConferido, setNumDocConferido] = useState<number | null>(null);
   const [valor, setValor] = useState('');
   const [dataLancamento, setDataLancamento] = useState(new Date().toISOString().split('T')[0]);
   const [referencia, setReferencia] = useState(() => {
@@ -1085,6 +1247,135 @@ export default function LancamentoNew() {
     }
   }, [caixaId, caixaNome, churches, profileChurchId, profileChurchName]);
 
+  // ── Numeração de dízimo ───────────────────────────────────────────────────
+
+  /** Cabeçalho de autenticação das rotas /api. */
+  const dizimoHeaders = useCallback(() => {
+    const token = localStorage.getItem('mrm_token');
+    return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  }, []);
+
+  /**
+   * O plano escolhido pede número de recibo?
+   *
+   * A regra mora em src/lib/dizimoNumeracao.ts porque o servidor decide pelo
+   * mesmo critério — duplicar a comparação aqui faria a tela pedir número numa
+   * ponta e a rota não pedir na outra.
+   */
+  const planoSelecionado = planos.find(p => p.id === planoId);
+  const planoEhDizimo = modo === 'RECEITA' && planoExigeNumeracaoDizimo(planoSelecionado);
+  const numeroDizimoObrigatorio = planoEhDizimo && dizimoConfig.exige;
+  /** Com bloco cadastrado, o que for digitado é conferido — obrigatório ou não. */
+  const numeroDizimoConferivel = planoEhDizimo && dizimoConfig.temBloco;
+
+  // A configuração é da IGREJA do caixa, não do usuário: quem lança para várias
+  // igrejas troca de regra ao trocar o caixa.
+  useEffect(() => {
+    if (!caixaId) { setDizimoConfig({ exige: false, temBloco: false }); return; }
+    let vivo = true;
+    (async () => {
+      try {
+        // no-store: o tesoureiro acabou de receber o bloco na outra tela e não
+        // pode continuar vendo o estado antigo aqui.
+        const r = await fetch(`${apiBase}/dizimo-blocos/numeros?churchId=${encodeURIComponent(caixaId)}&pageSize=1`, {
+          headers: dizimoHeaders(),
+          cache: 'no-store',
+        });
+        if (!r.ok) throw new Error();
+        const j = await r.json();
+        if (vivo) setDizimoConfig({ exige: Boolean(j.exigeNumeracao), temBloco: Boolean(j.temBloco) });
+      } catch {
+        // Sem resposta, a tela não inventa exigência: o lançamento continua
+        // possível e a conferência de verdade acontece no salvar.
+        if (vivo) setDizimoConfig({ exige: false, temBloco: false });
+      }
+    })();
+    return () => { vivo = false; };
+  }, [caixaId, dizimoHeaders]);
+
+  // Trocar de plano ou de igreja invalida a conferência anterior — senão um
+  // "ok" do número 10 do dízimo sobreviveria à troca para outra igreja, onde o
+  // 10 é de outro talão (ou não existe). Digitar no campo zera pelo onChange,
+  // e não aqui, para o número escolhido na lupa já entrar conferido.
+  useEffect(() => { setNumDocConferido(null); }, [planoId, caixaId]);
+
+  /**
+   * Confere o número contra o talão da igreja. Roda ao sair do campo e de novo
+   * no salvar — a primeira é cortesia, a segunda é a que vale.
+   */
+  const conferirNumeroDizimo = useCallback(async (numeroTexto: string): Promise<boolean> => {
+    const numero = numeroTexto.trim();
+    if (!numero) return true;
+    setNumDocConferindo(true);
+    try {
+      const r = await fetch(
+        `${apiBase}/dizimo-blocos/numeros?churchId=${encodeURIComponent(caixaId)}&numero=${encodeURIComponent(numero)}`,
+        { headers: dizimoHeaders(), cache: 'no-store' }
+      );
+      const j = await r.json();
+      if (!r.ok) {
+        setNumDocAviso({ titulo: 'Não foi possível conferir o número', mensagem: j.error || 'Tente novamente.' });
+        return false;
+      }
+      if (!j.ok) {
+        setNumDocAviso({
+          titulo: j.motivo === 'JA_USADO' ? 'Número já utilizado' : 'Número fora do seu bloco',
+          mensagem: j.mensagem,
+        });
+        setNumDocConferido(null);
+        return false;
+      }
+      setNumDocConferido(Number(numero));
+      return true;
+    } catch {
+      setNumDocAviso({ titulo: 'Não foi possível conferir o número', mensagem: 'Falha de conexão. Tente novamente.' });
+      return false;
+    } finally {
+      setNumDocConferindo(false);
+    }
+  }, [caixaId, dizimoHeaders]);
+
+  /** Pega o número para este lançamento antes de gravar. Ver a rota: a reserva é atômica. */
+  const reservarNumeroDizimo = useCallback(async (numero: string): Promise<{ ok: boolean; numeroId?: string }> => {
+    try {
+      const r = await fetch(`${apiBase}/dizimo-blocos/numeros`, {
+        method: 'POST',
+        headers: dizimoHeaders(),
+        body: JSON.stringify({ acao: 'reservar', churchId: caixaId, numero }),
+      });
+      const j = await r.json();
+      if (!r.ok) {
+        setNumDocAviso({
+          titulo: j.motivo === 'JA_USADO' ? 'Número já utilizado' : 'Número indisponível',
+          mensagem: j.error || 'Não foi possível usar este número.',
+        });
+        return { ok: false };
+      }
+      return { ok: true, numeroId: j.numeroId };
+    } catch {
+      setNumDocAviso({ titulo: 'Número indisponível', mensagem: 'Falha de conexão ao reservar o número.' });
+      return { ok: false };
+    }
+  }, [caixaId, dizimoHeaders]);
+
+  /** Fecha (ou desfaz) a reserva depois da gravação. */
+  const fecharReservaDizimo = useCallback(async (numeroId: string, livroCaixaId: string | null) => {
+    try {
+      await fetch(`${apiBase}/dizimo-blocos/numeros`, {
+        method: 'POST',
+        headers: dizimoHeaders(),
+        body: JSON.stringify(
+          livroCaixaId
+            ? { acao: 'confirmar', churchId: caixaId, numeroId, livroCaixaId }
+            : { acao: 'liberar', churchId: caixaId, numeroId }
+        ),
+      });
+    } catch {
+      // A reserva expira sozinha em 15 minutos (ver a rota), então uma falha de
+      // rede aqui não queima o número do talão para sempre.
+    }
+  }, [caixaId, dizimoHeaders]);
+
   // Load planos e tiposDocs quando modo muda
   useEffect(() => {
     (async () => {
@@ -1092,7 +1383,7 @@ export default function LancamentoNew() {
       setTipoDocId('');
       const tipo = modo;
       const [p, t] = await Promise.all([
-        supabase.from('plano_de_contas').select('id, nome, codigo').eq('tipo', tipo).eq('ativo', true).order('nome'),
+        supabase.from('plano_de_contas').select('id, nome, codigo, exige_numeracao_bloco').eq('tipo', tipo).eq('ativo', true).order('nome'),
         supabase.from('tipo_documento').select('id, nome, sigla')
           .eq(modo === 'RECEITA' ? 'disponivel_receita' : 'disponivel_despesa', true)
           .eq('ativo', true).order('nome'),
@@ -1445,7 +1736,7 @@ export default function LancamentoNew() {
     e.preventDefault();
     // Ignora submits disparados por botões dentro dos modais (ReciboModal, etc.)
     // que ficam dentro da <form> mas não têm type="button"
-    if (reciboRow || cashClosedMessage || duplicateTransactionModal?.show || showHistoricoRepetirModal || showContaPagarModal) return;
+    if (reciboRow || cashClosedMessage || duplicateTransactionModal?.show || showHistoricoRepetirModal || showContaPagarModal || showDizimoPicker || numDocAviso) return;
     setError('');
     setSaving(true);
 
@@ -1460,6 +1751,12 @@ export default function LancamentoNew() {
     // lançamento do livro caixa é montado no servidor a partir da conta.
     if (!tipoDocId && !vinculoCP) { handleFail('Selecione o tipo de documento.'); return; }
     if (modo === 'DESPESA' && isBlank(numDoc)) { handleFail('Informe o número do documento para a despesa.'); return; }
+    // Dízimo com bloco: o número do recibo é do talão desta igreja.
+    if (numeroDizimoObrigatorio && isBlank(numDoc)) {
+      if (!dizimoConfig.temBloco) { handleFail(MSG_DIZIMO.semBloco); return; }
+      handleFail(MSG_DIZIMO.obrigatorio);
+      return;
+    }
     if (!formaId) { handleFail('Selecione a forma de pagamento.'); return; }
     if (isBlank(dataLancamento)) { handleFail('Informe a data do lançamento.'); return; }
     if (isBlank(referencia)) { handleFail('Informe a referência do lançamento.'); return; }
@@ -1584,6 +1881,21 @@ export default function LancamentoNew() {
       }
     }
 
+    /**
+     * Número do recibo de dízimo: confere e RESERVA antes de gravar.
+     *
+     * A ordem importa. O insert abaixo sai daqui do navegador, fora de qualquer
+     * transação com a rota: marcar o número só depois do insert abriria a
+     * janela em que dois tesoureiros gravam o mesmo recibo. Reservado antes, se
+     * a gravação falhar o número volta para a cartela logo abaixo.
+     */
+    let reservaDizimo: string | null = null;
+    if (numeroDizimoConferivel && numDocTrimmed) {
+      const reserva = await reservarNumeroDizimo(numDocTrimmed);
+      if (!reserva.ok) { setSaving(false); return; }
+      reservaDizimo = reserva.numeroId ?? null;
+    }
+
     const { data: inserted, error: err } = await supabase.from('livro_caixa').insert({
       church_id: caixaId,
       data_lancamento: dataLancamento,
@@ -1605,6 +1917,12 @@ export default function LancamentoNew() {
       operador: operadorNome,
     }).select('id, legacy_id').single();
     setSaving(false);
+
+    // Fecha a reserva do recibo: confirma com o id do lançamento, ou devolve o
+    // número para a cartela se a gravação não foi.
+    if (reservaDizimo) {
+      await fecharReservaDizimo(reservaDizimo, err ? null : (inserted?.id ?? null));
+    }
 
     if (err) {
       const msg = err.message || '';
@@ -1804,10 +2122,11 @@ export default function LancamentoNew() {
         </div>
       )}
 
-      {/* Two Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-        {/* Left Form */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-4 py-3 shadow-sm">
+      {/* O formulário ocupa a largura toda: a coluna de resumo que ficava à
+          direita repetia, em outra fonte, o que os campos já mostram um palmo
+          ao lado — e custava metade da tela para isso. */}
+      <div className="grid grid-cols-1 gap-4 items-start">
+        <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-4 py-3 shadow-sm">
           {/* Favorecido Section */}
           <div>
             <div className="flex items-center gap-3 mb-3">
@@ -1817,6 +2136,28 @@ export default function LancamentoNew() {
               <div>
                 <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Favorecido / Contribuinte</h2>
                 <p className="text-xs text-slate-400 dark:text-slate-500">Selecione o tipo de pessoa</p>
+              </div>
+
+              {/* Histórico e Repetir Dízimos moravam no cabeçalho daquela
+                  coluna e eram os ÚNICOS caminhos para esse modal. Tirar a
+                  coluna sem trazê-los para cá apagaria a função em silêncio. */}
+              <div className="ml-auto flex items-center gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setModalTab('historico'); setShowHistoricoRepetirModal(true); }}
+                  title="Últimos lançamentos"
+                  className="p-1.5 rounded-[4px] hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                >
+                  <PanelRightOpen className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setModalTab('repetir'); setShowHistoricoRepetirModal(true); }}
+                  title="Repetir Dízimos"
+                  className="p-1.5 rounded-[4px] hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-violet-600 transition-colors"
+                >
+                  <Repeat2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
@@ -1945,11 +2286,22 @@ export default function LancamentoNew() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Nº do Documento</label>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  {numeroDizimoConferivel ? 'Nº do Recibo (bloco)' : 'Nº do Documento'}
+                  {numeroDizimoObrigatorio && <span className="text-rose-600 ml-0.5">*</span>}
+                </label>
                 <div className="relative">
-                  <input type="text" value={numDoc} onChange={e => setNumDoc(e.target.value)}
-                    placeholder="Opcional"
-                    className={`w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+                  <input type="text" value={numDoc}
+                    onChange={e => { setNumDoc(e.target.value); setNumDocConferido(null); }}
+                    // Conferir ao sair do campo poupa o tesoureiro de descobrir
+                    // o número errado só no fim do preenchimento.
+                    onBlur={() => { if (numeroDizimoConferivel && numDoc.trim()) void conferirNumeroDizimo(numDoc); }}
+                    placeholder={numeroDizimoObrigatorio ? 'Número do talão' : 'Opcional'}
+                    className={`w-full pl-3 pr-10 py-2 border rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+                      numDocConferido !== null
+                        ? 'border-emerald-400 dark:border-emerald-600'
+                        : 'border-slate-200 dark:border-slate-600'
+                    }`} />
                   {/* Atalho para o Contas a Pagar. Só na despesa: receita não
                       tem conta a pagar para quitar. */}
                   {modo === 'DESPESA' && (
@@ -1962,7 +2314,30 @@ export default function LancamentoNew() {
                       <FileSearch className="w-4 h-4 text-rose-600" />
                     </button>
                   )}
+                  {/* A mesma lupa do Contas a Pagar, do lado do dízimo: aqui ela
+                      abre os números que ainda sobraram no talão da igreja. */}
+                  {numeroDizimoConferivel && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDizimoPicker(true)}
+                      title="Ver os números livres do bloco desta igreja"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-600"
+                    >
+                      {numDocConferindo
+                        ? <RefreshCw className="w-4 h-4 text-emerald-600 animate-spin" />
+                        : numDocConferido !== null
+                          ? <CheckCircle className="w-4 h-4 text-emerald-600" />
+                          : <Search className="w-4 h-4 text-emerald-600" />}
+                    </button>
+                  )}
                 </div>
+                {numeroDizimoConferivel && (
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    {numeroDizimoObrigatorio
+                      ? 'Esta igreja exige o número do talão no dízimo.'
+                      : 'O número é opcional, mas se informado tem que existir no talão desta igreja.'}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -2125,114 +2500,6 @@ export default function LancamentoNew() {
           </div>
         </div>
 
-        {/* Right Column (Ticket) */}
-        <div className="relative bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden pb-10 pt-10">
-          {/* Jagged top edge simulation */}
-          <div className="absolute top-0 left-0 right-0 h-2 bg-repeat-x bg-[top_left]"
-               style={{
-                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' viewBox='0 0 12 6'%3E%3Cpath d='M0 0 L6 6 L12 0 Z' fill='%23fefefe'/%3E%3C/svg%3E")`,
-                 backgroundSize: '12px 6px'
-               }}
-          />
-
-          {/* Ticket Header */}
-          <div className="flex items-center gap-3 px-5 pt-3 pb-3">
-            <div className="w-9 h-9 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Resumo do Lançamento</h3>
-              <p className="text-xs text-slate-400 dark:text-slate-500">Confira os detalhes antes de salvar</p>
-            </div>
-            {/* Ícone Repetir Dízimos inline */}
-            <button
-              type="button"
-              onClick={() => { setModalTab('repetir'); setShowHistoricoRepetirModal(true); }}
-              className="p-1.5 rounded-[4px] hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-violet-600 transition-colors flex-shrink-0"
-              title="Repetir Dízimos"
-            >
-              <Repeat2 className="w-4 h-4" />
-            </button>
-          </div>
-
-          <hr className="border-slate-100 dark:border-slate-700 mx-5" />
-
-          {/* Ticket Details */}
-          <div className="text-xs space-y-3 px-5 py-3">
-            <div className="flex justify-between gap-4 py-1 border-b border-slate-50 dark:border-slate-700/50">
-              <span className="text-slate-500 dark:text-slate-400">Caixa de Origem</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[160px]" title={caixaNome}>{caixaNome || '—'}</span>
-            </div>
-            <div className="flex justify-between gap-4 py-1 border-b border-slate-50 dark:border-slate-700/50">
-              <span className="text-slate-500 dark:text-slate-400">Favorecido</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[160px]">{
-                (tipoPessoa === 'MEMBRO' || tipoPessoa === 'IGREJA' ? favorecidoNome : tipoPessoa === 'NAO_MEMBRO' ? naoMembroNome : pjNome) || '—'
-              }</span>
-            </div>
-            <div className="flex justify-between gap-4 py-1 border-b border-slate-50 dark:border-slate-700/50">
-              <span className="text-slate-500 dark:text-slate-400">Categoria</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[160px]">{planos.find(p => p.id === planoId)?.nome || '—'}</span>
-            </div>
-            <div className="flex justify-between gap-4 py-1 border-b border-slate-50 dark:border-slate-700/50">
-              <span className="text-slate-500 dark:text-slate-400">Forma de Pagamento</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[120px]">{formas.find(f => f.id === formaId)?.nome || '—'}</span>
-            </div>
-            <div className={`flex justify-between items-center px-3 py-2 rounded-[4px] ${isReceita ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : 'bg-red-50/60 dark:bg-red-950/20'}`}>
-              <span className="font-semibold text-slate-600 dark:text-slate-300">Valor</span>
-              <span className={`font-bold text-sm ${isReceita ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>R$ {valor || '0,00'}</span>
-            </div>
-            <div className="flex justify-between gap-4 py-1 border-b border-slate-50 dark:border-slate-700/50">
-              <span className="text-slate-500 dark:text-slate-400">Referência</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right">{referencia || '—'}</span>
-            </div>
-            <div className="flex justify-between gap-4 py-1 border-b border-slate-50 dark:border-slate-700/50">
-              <span className="text-slate-500 dark:text-slate-400">Data de Lançamento</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right">{formatData(dataLancamento)}</span>
-            </div>
-          </div>
-
-          {/* Mini Histórico — últimos 5 lançamentos */}
-          {lancamentosRecentes.length > 0 && (
-            <>
-              <hr className="border-slate-100 dark:border-slate-700 mx-5" />
-              <div className="px-5 pt-2 pb-1 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Últimos lançamentos</span>
-                <button
-                  type="button"
-                  onClick={() => { setModalTab('historico'); setShowHistoricoRepetirModal(true); }}
-                  className="text-[10px] text-emerald-600 hover:underline font-semibold"
-                >
-                  Ver todos
-                </button>
-              </div>
-              <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {lancamentosRecentes.slice(0, 5).map(l => (
-                  <div key={l.id} className="px-5 py-2 flex items-center gap-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
-                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${l.tipo === 'RECEITA' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 truncate">{l.plano_de_conta ?? '—'}</p>
-                      <p className="text-[10px] text-slate-400 truncate">{l.favorecido ?? 'Sem dados'} · {new Date(l.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
-                      {!isChurchUser && l.church_name && (
-                        <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">{l.church_name}</p>
-                      )}
-                    </div>
-                    <span className={`text-[11px] font-bold flex-shrink-0 ${l.tipo === 'RECEITA' ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {l.tipo === 'RECEITA' ? '+' : '-'} R$ {Number(l.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Jagged bottom edge simulation */}
-          <div className="absolute bottom-0 left-0 right-0 h-2 bg-repeat-x bg-[bottom_left]"
-               style={{
-                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' viewBox='0 0 12 6'%3E%3Cpath d='M0 6 L6 0 L12 6 Z' fill='%23fefefe'/%3E%3C/svg%3E")`,
-                 backgroundSize: '12px 6px'
-               }}
-          />
-        </div>
       </div>
 
       {/* Modals */}
@@ -2300,6 +2567,53 @@ export default function LancamentoNew() {
           onClose={() => setCashClosedMessage('')}
         />
       )}
+      {/* Número fora do talão / já usado. Caixa de diálogo e não toast: é uma
+          parada de fluxo, o tesoureiro precisa corrigir para seguir. */}
+      {numDocAviso && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-slate-900 dark:text-white text-base">{numDocAviso.titulo}</h3>
+                <p className="text-sm text-slate-500 mt-1">{numDocAviso.mensagem}</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setNumDocAviso(null); setShowDizimoPicker(true); }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold text-white transition-colors"
+              >
+                Ver números livres
+              </button>
+              <button
+                type="button"
+                onClick={() => setNumDocAviso(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors"
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDizimoPicker && (
+        <DizimoNumeroPickerModal
+          churchId={caixaId}
+          churchNome={caixaNome}
+          onFechar={() => setShowDizimoPicker(false)}
+          onSelecionar={numero => {
+            setNumDoc(String(numero));
+            setNumDocConferido(numero);
+            setShowDizimoPicker(false);
+          }}
+        />
+      )}
+
       {duplicateTransactionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700">

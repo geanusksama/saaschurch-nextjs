@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:53:08.675Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.990Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 820c0419401ec0ac
+-- Baseline 2e2ca6e62419bdd9
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -70,6 +70,12 @@ CREATE INDEX IF NOT EXISTS departamentos_ativo_idx ON public.departamentos USING
 CREATE UNIQUE INDEX IF NOT EXISTS departamentos_campo_codigo_key ON public.departamentos USING btree (campo_id, codigo) WHERE (codigo IS NOT NULL);
 CREATE INDEX IF NOT EXISTS departamentos_campo_id_idx ON public.departamentos USING btree (campo_id);
 CREATE INDEX IF NOT EXISTS departamentos_church_id_idx ON public.departamentos USING btree (church_id);
+CREATE UNIQUE INDEX IF NOT EXISTS dizimo_blocos_church_id_numero_bloco_key ON public.dizimo_blocos USING btree (church_id, numero_bloco);
+CREATE INDEX IF NOT EXISTS dizimo_blocos_church_id_numero_inicial_idx ON public.dizimo_blocos USING btree (church_id, numero_inicial);
+CREATE INDEX IF NOT EXISTS dizimo_numeros_bloco_id_status_idx ON public.dizimo_numeros USING btree (bloco_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS dizimo_numeros_church_id_numero_key ON public.dizimo_numeros USING btree (church_id, numero);
+CREATE INDEX IF NOT EXISTS dizimo_numeros_church_id_status_idx ON public.dizimo_numeros USING btree (church_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS dizimo_numeros_livro_caixa_id_key ON public.dizimo_numeros USING btree (livro_caixa_id);
 CREATE INDEX IF NOT EXISTS ebd_categorias_campo_id_idx ON public.ebd_categorias USING btree (campo_id);
 CREATE INDEX IF NOT EXISTS ebd_entrada_itens_entrada_id_idx ON public.ebd_entrada_itens USING btree (entrada_id);
 CREATE INDEX IF NOT EXISTS ebd_entradas_campo_id_idx ON public.ebd_entradas USING btree (campo_id);

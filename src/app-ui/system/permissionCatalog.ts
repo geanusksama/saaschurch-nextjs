@@ -155,6 +155,14 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   // tesouraria — separados de quem só lança a conta.
   { group: 'Finanças', name: 'Aprovar Contas a Pagar',  key: 'contas_pagar_aprovar',   permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
   { group: 'Finanças', name: 'Pagar Contas a Pagar',    key: 'contas_pagar_pagar',     permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+  // Blocos de numeração de dízimo. Fechada para o perfil igreja nas QUATRO
+  // ações, inclusive `view`: quem ENTREGA o talão não pode ser quem o recebe.
+  // O tesoureiro usa os números na tela de Lançamento — que confere contra o
+  // bloco da igreja dele sem depender desta chave —, mas a gestão do talão
+  // (cadastrar, exigir, excluir e até consultar a cartela das outras) é do
+  // campo para cima. Quem quiser abrir para uma igreja específica marca na
+  // matriz de permissão; o padrão é vir desmarcado.
+  { group: 'Finanças', name: 'Blocos de Numeração',     key: 'dizimo_blocos',          permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
   { group: 'Finanças', name: 'Relatórios Financeiros', key: 'finance_reports', permissions: mkPerms(mngr(), mngr(), none(), none()) },
   { group: 'Finanças', name: 'Painel Executivo Financeiro', key: 'finance_executive', permissions: mkPerms(mngr(), mngr(), none(), none()) },
   // Assistentes de IA: a tela lê livro caixa e membros de todo o campo, então

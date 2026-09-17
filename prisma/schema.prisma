@@ -235,6 +235,10 @@ model Church {
   cultoRegistros            CultoRegistro[] @relation("ChurchCultoRegistros")
   cultoRegistrosComoHost    CultoRegistro[] @relation("HostChurchCultoRegistros")
 
+  dizimoBlocos              DizimoBloco[]
+  dizimoNumeros             DizimoNumero[]
+  dizimoNumeracaoConfig     DizimoNumeracaoConfig?
+
   /// `code` NÃO é único, de propósito: é o número que a secretaria usa e ele se
   /// repete (Sede 1, Sede Brasil 1, Sede UEA 1), como o `rol` do membro. Quem
   /// identifica a linha é o id.
@@ -927,6 +931,7 @@ model LivroCaixa {
   updatedByUser User?         @relation("LivroCaixaUpdatedBy", fields: [updatedBy], references: [id])
   banco         Banco?        @relation(fields: [bancoId], references: [id], onDelete: SetNull)
   departamento  Departamento? @relation(fields: [departamentoId], references: [id], onDelete: SetNull)
+  dizimoNumero  DizimoNumero?
 
   // Índices para performance de relatórios (evita full-scan em queries por período/igreja)
   @@index([churchId, dataLancamento])
@@ -1038,6 +1043,13 @@ model PlanoDeConta {
   codigo           String?  @db.VarChar(50)
   ativo            Boolean? @default(true)
   consideraDizimo  Boolean? @map("considera_dizimo")
+  /// Lançamento neste plano exige um número do bloco de dízimos da igreja.
+  /// Diferente de `consideraDizimo`, que também é `true` em OFERTAS porque só
+  /// diz "entra no relatório de dizimistas". Quando NULL, a regra cai no nome
+  /// do plano (ver planoExigeNumeracaoDizimo em src/lib/dizimoNumeracao.ts):
+  /// sem isso a função nasceria desligada em todo banco que não marcou a
+  /// caixinha à mão.
+  exigeNumeracaoBloco Boolean? @map("exige_numeracao_bloco")
   disponivelIgreja Boolean? @map("disponivel_igreja")
   disponivelMembro Boolean? @map("disponivel_membro")
   disponivelPf     Boolean? @map("disponivel_pf")
@@ -1205,6 +1217,102 @@ model PagamentoParcela {
   @@index([parcelaId])
   @@index([churchId, dataPagamento])
   @@map("pagamentos_parcela")
+}
+
+// ─── Numeração de dízimos (blocos) ───────────────────────────────────────────
+// A igreja recebe blocos de recibo físicos e o tesoureiro amarra cada dízimo
+// lançado ao número do recibo que entregou. Ver docs/modules/dizimo-numeracao/.
+//
+// O isolamento entre igrejas é a razão de existir do módulo: o número 100 da
+// Sede e o 100 de uma congregação são recibos DIFERENTES, e nenhuma das duas
+// pode enxergar ou gastar o número da outra. Por isso `church_id` desce
+// desnormalizado até `dizimo_numeros` — é ele que entra no unique.
+
+/// Faixa de recibos entregue a uma igreja: "bloco 100, do 1 ao 100".
+model DizimoBloco {
+  id       String @id @default(uuid()) @db.Uuid
+  churchId String @map("church_id") @db.Uuid
+
+  /// Identificador do talão na mão do tesoureiro (100, 200, ...). É o que ele
+  /// lê na capa; não tem relação aritmética com a faixa.
+  numeroBloco   Int @map("numero_bloco")
+  numeroInicial Int @map("numero_inicial")
+  numeroFinal   Int @map("numero_final")
+
+  observacao String? @db.Text
+  ativo      Boolean @default(true)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  church  Church         @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  numeros DizimoNumero[]
+
+  @@unique([churchId, numeroBloco])
+  @@index([churchId, numeroInicial])
+  @@map("dizimo_blocos")
+}
+
+/// A cartela: uma linha por número do bloco, criada no cadastro.
+///
+/// Materializar os números em vez de guardar só a faixa é o que faz a tela de
+/// "usados x livres" ser uma consulta e não um cálculo, e o que torna o consumo
+/// atômico: gastar um número é `UPDATE ... WHERE status = 'LIVRE'`, então dois
+/// tesoureiros salvando ao mesmo tempo não levam o mesmo recibo.
+model DizimoNumero {
+  id       String @id @default(uuid()) @db.Uuid
+  blocoId  String @map("bloco_id") @db.Uuid
+  /// Repetido do bloco de propósito: é a coluna do unique que garante que o
+  /// número pertence a UMA igreja e não se repete nem entre blocos dela.
+  churchId String @map("church_id") @db.Uuid
+
+  numero Int
+
+  /// LIVRE | RESERVADO | USADO. RESERVADO é o estado curto entre "o tesoureiro
+  /// mandou salvar" e "o lançamento entrou no livro caixa" — se a gravação
+  /// falha, a rota de liberar devolve para LIVRE.
+  status String @default("LIVRE") @db.VarChar(20)
+
+  /// Lançamento que gastou o número. NULL enquanto LIVRE ou RESERVADO.
+  livroCaixaId String? @map("livro_caixa_id") @db.Uuid
+
+  usadoEm  DateTime? @map("usado_em") @db.Timestamptz(6)
+  usadoPor String?   @map("usado_por") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bloco      DizimoBloco @relation(fields: [blocoId], references: [id], onDelete: Cascade)
+  church     Church      @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  livroCaixa LivroCaixa? @relation(fields: [livroCaixaId], references: [id], onDelete: SetNull)
+
+  @@unique([churchId, numero])
+  @@unique([livroCaixaId])
+  @@index([blocoId, status])
+  @@index([churchId, status])
+  @@map("dizimo_numeros")
+}
+
+/// Liga/desliga a exigência do número por igreja.
+///
+/// Nasce desligada e é assim que tem que ser: as igrejas recebem os talões aos
+/// poucos, e travar todo mundo no dia do deploy pararia a tesouraria de quem
+/// ainda não pegou bloco. O switch é ligado igreja por igreja, na tela de
+/// blocos, depois que ela recebe o primeiro.
+model DizimoNumeracaoConfig {
+  churchId String @id @map("church_id") @db.Uuid
+
+  /// true = dízimo só entra com número livre do bloco desta igreja.
+  exige Boolean @default(false)
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  @@map("dizimo_numeracao_config")
 }
 
 model Event {

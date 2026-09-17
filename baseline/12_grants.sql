@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:53:08.676Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.992Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 820c0419401ec0ac
+-- Baseline 2e2ca6e62419bdd9
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -325,6 +325,15 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."discipleships" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."discipleships" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."discipleships" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."dizimo_blocos" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."dizimo_blocos" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."dizimo_blocos" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."dizimo_numeracao_config" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."dizimo_numeracao_config" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."dizimo_numeracao_config" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."dizimo_numeros" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."dizimo_numeros" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."dizimo_numeros" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."ebd_categorias" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."ebd_categorias" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."ebd_categorias" to "service_role";

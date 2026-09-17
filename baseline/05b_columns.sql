@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:53:08.667Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.983Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 820c0419401ec0ac
+-- Baseline 2e2ca6e62419bdd9
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -1453,6 +1453,31 @@ alter table "public"."discipleships" add column if not exists "created_at" times
 alter table "public"."discipleships" add column if not exists "updated_at" timestamp with time zone default now() not null;
 alter table "public"."discipleships" add column if not exists "deleted_at" timestamp with time zone;
 alter table "public"."discipleships" add column if not exists "is_active" boolean default true not null;
+alter table "public"."dizimo_blocos" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."dizimo_blocos" add column if not exists "church_id" uuid;
+alter table "public"."dizimo_blocos" add column if not exists "numero_bloco" integer;
+alter table "public"."dizimo_blocos" add column if not exists "numero_inicial" integer;
+alter table "public"."dizimo_blocos" add column if not exists "numero_final" integer;
+alter table "public"."dizimo_blocos" add column if not exists "observacao" text;
+alter table "public"."dizimo_blocos" add column if not exists "ativo" boolean default true not null;
+alter table "public"."dizimo_blocos" add column if not exists "created_at" timestamp(6) with time zone default now() not null;
+alter table "public"."dizimo_blocos" add column if not exists "updated_at" timestamp(6) with time zone default now() not null;
+alter table "public"."dizimo_blocos" add column if not exists "created_by" uuid;
+alter table "public"."dizimo_blocos" add column if not exists "deleted_at" timestamp(6) with time zone;
+alter table "public"."dizimo_numeracao_config" add column if not exists "church_id" uuid;
+alter table "public"."dizimo_numeracao_config" add column if not exists "exige" boolean default false not null;
+alter table "public"."dizimo_numeracao_config" add column if not exists "updated_at" timestamp(6) with time zone default now() not null;
+alter table "public"."dizimo_numeracao_config" add column if not exists "updated_by" uuid;
+alter table "public"."dizimo_numeros" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."dizimo_numeros" add column if not exists "bloco_id" uuid;
+alter table "public"."dizimo_numeros" add column if not exists "church_id" uuid;
+alter table "public"."dizimo_numeros" add column if not exists "numero" integer;
+alter table "public"."dizimo_numeros" add column if not exists "status" character varying(20) default 'LIVRE'::character varying not null;
+alter table "public"."dizimo_numeros" add column if not exists "livro_caixa_id" uuid;
+alter table "public"."dizimo_numeros" add column if not exists "usado_em" timestamp(6) with time zone;
+alter table "public"."dizimo_numeros" add column if not exists "usado_por" uuid;
+alter table "public"."dizimo_numeros" add column if not exists "created_at" timestamp(6) with time zone default now() not null;
+alter table "public"."dizimo_numeros" add column if not exists "updated_at" timestamp(6) with time zone default now() not null;
 alter table "public"."ebd_categorias" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."ebd_categorias" add column if not exists "campo_id" uuid;
 alter table "public"."ebd_categorias" add column if not exists "nome" character varying(100);
@@ -3084,6 +3109,7 @@ alter table "public"."plano_de_contas" add column if not exists "hash" character
 alter table "public"."plano_de_contas" add column if not exists "church_id" uuid;
 alter table "public"."plano_de_contas" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."plano_de_contas" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."plano_de_contas" add column if not exists "exige_numeracao_bloco" boolean;
 alter table "public"."prayer_request_comments" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."prayer_request_comments" add column if not exists "church_id" uuid;
 alter table "public"."prayer_request_comments" add column if not exists "prayer_request_id" uuid;

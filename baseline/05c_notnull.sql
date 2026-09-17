@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:53:08.671Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.986Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 820c0419401ec0ac
+-- Baseline 2e2ca6e62419bdd9
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -339,6 +339,14 @@ alter table "public"."discipleship_tracks" alter column "church_id" set not null
 alter table "public"."discipleship_tracks" alter column "name" set not null;
 alter table "public"."discipleship_tracks" alter column "updated_at" set not null;
 alter table "public"."discipleships" alter column "church_id" set not null;
+alter table "public"."dizimo_blocos" alter column "church_id" set not null;
+alter table "public"."dizimo_blocos" alter column "numero_bloco" set not null;
+alter table "public"."dizimo_blocos" alter column "numero_inicial" set not null;
+alter table "public"."dizimo_blocos" alter column "numero_final" set not null;
+alter table "public"."dizimo_numeracao_config" alter column "church_id" set not null;
+alter table "public"."dizimo_numeros" alter column "bloco_id" set not null;
+alter table "public"."dizimo_numeros" alter column "church_id" set not null;
+alter table "public"."dizimo_numeros" alter column "numero" set not null;
 alter table "public"."ebd_categorias" alter column "campo_id" set not null;
 alter table "public"."ebd_categorias" alter column "nome" set not null;
 alter table "public"."ebd_entrada_itens" alter column "entrada_id" set not null;

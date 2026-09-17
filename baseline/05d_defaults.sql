@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:53:08.671Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.987Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 820c0419401ec0ac
+-- Baseline 2e2ca6e62419bdd9
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -563,6 +563,16 @@ alter table "public"."discipleships" alter column "status" set default 'active':
 alter table "public"."discipleships" alter column "created_at" set default now();
 alter table "public"."discipleships" alter column "updated_at" set default now();
 alter table "public"."discipleships" alter column "is_active" set default true;
+alter table "public"."dizimo_blocos" alter column "id" set default gen_random_uuid();
+alter table "public"."dizimo_blocos" alter column "ativo" set default true;
+alter table "public"."dizimo_blocos" alter column "created_at" set default now();
+alter table "public"."dizimo_blocos" alter column "updated_at" set default now();
+alter table "public"."dizimo_numeracao_config" alter column "exige" set default false;
+alter table "public"."dizimo_numeracao_config" alter column "updated_at" set default now();
+alter table "public"."dizimo_numeros" alter column "id" set default gen_random_uuid();
+alter table "public"."dizimo_numeros" alter column "status" set default 'LIVRE'::character varying;
+alter table "public"."dizimo_numeros" alter column "created_at" set default now();
+alter table "public"."dizimo_numeros" alter column "updated_at" set default now();
 alter table "public"."ebd_categorias" alter column "id" set default gen_random_uuid();
 alter table "public"."ebd_categorias" alter column "ordem" set default 0;
 alter table "public"."ebd_categorias" alter column "created_at" set default CURRENT_TIMESTAMP;

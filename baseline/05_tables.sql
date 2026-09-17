@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-03T15:53:08.666Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.982Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 820c0419401ec0ac
+-- Baseline 2e2ca6e62419bdd9
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -1768,6 +1768,40 @@ create table if not exists "public"."discipleships" (
   "updated_at" timestamp with time zone default now() not null,
   "deleted_at" timestamp with time zone,
   "is_active" boolean default true not null
+);
+
+create table if not exists "public"."dizimo_blocos" (
+  "id" uuid default gen_random_uuid() not null,
+  "church_id" uuid not null,
+  "numero_bloco" integer not null,
+  "numero_inicial" integer not null,
+  "numero_final" integer not null,
+  "observacao" text,
+  "ativo" boolean default true not null,
+  "created_at" timestamp(6) with time zone default now() not null,
+  "updated_at" timestamp(6) with time zone default now() not null,
+  "created_by" uuid,
+  "deleted_at" timestamp(6) with time zone
+);
+
+create table if not exists "public"."dizimo_numeracao_config" (
+  "church_id" uuid not null,
+  "exige" boolean default false not null,
+  "updated_at" timestamp(6) with time zone default now() not null,
+  "updated_by" uuid
+);
+
+create table if not exists "public"."dizimo_numeros" (
+  "id" uuid default gen_random_uuid() not null,
+  "bloco_id" uuid not null,
+  "church_id" uuid not null,
+  "numero" integer not null,
+  "status" character varying(20) default 'LIVRE'::character varying not null,
+  "livro_caixa_id" uuid,
+  "usado_em" timestamp(6) with time zone,
+  "usado_por" uuid,
+  "created_at" timestamp(6) with time zone default now() not null,
+  "updated_at" timestamp(6) with time zone default now() not null
 );
 
 create table if not exists "public"."ebd_categorias" (
@@ -3752,7 +3786,8 @@ create table if not exists "public"."plano_de_contas" (
   "hash" character varying(100),
   "church_id" uuid,
   "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
-  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "exige_numeracao_bloco" boolean
 );
 
 create table if not exists "public"."prayer_request_comments" (
