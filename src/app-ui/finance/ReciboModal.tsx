@@ -27,6 +27,43 @@ export type ReciboRow = {
   churches: { name: string } | null;
 };
 
+/**
+ * Como o lançamento é identificado no recibo.
+ *
+ * A OPERAÇÃO é sempre um pedaço do UUID do registro. É ele que identifica a
+ * linha: existe em todo lançamento, não se repete e não depende de ninguém ter
+ * digitado nada. Antes o campo mostrava `legacy_id || num_doc || id`, então a
+ * "operação" de um dízimo com talão nº 33 aparecia como 33 — um número que se
+ * repete a cada bloco novo e não identifica coisa alguma sozinho.
+ *
+ * O NÚMERO DO DOCUMENTO entra ao lado, quando existe:
+ *   - dízimo  → o número do recibo do talão;
+ *   - despesa → o número da nota, que a maioria tem;
+ *   - oferta  → não tem documento, fica só a operação.
+ *
+ * `legacy_id` continua no rodapé "Doc:" para os lançamentos importados, que não
+ * têm `num_doc`: é a única trilha de volta ao sistema antigo.
+ *
+ * Esta função existe porque o mesmo identificador sai em CINCO lugares — o
+ * modal, o PDF, a impressão, o PDF do WhatsApp e o nome do arquivo baixado. Com
+ * a conta repetida em cada um, a tela e o papel entrariam em desacordo no dia
+ * em que alguém mexesse num só.
+ */
+export function identificacaoRecibo(row: ReciboRow) {
+  const operacao = String(row.id ?? '').replace(/-/g, '').slice(0, 8).toUpperCase();
+  const documento = (row.num_doc ?? '').trim();
+  return {
+    /** Pedaço do UUID. Sempre presente. */
+    operacao,
+    /** Número do documento informado no lançamento, ou '' quando não há. */
+    documento,
+    /** O que vai no cabeçalho: operação e, se houver, o documento ao lado. */
+    rotulo: documento ? `${operacao} · ${documento}` : operacao,
+    /** O que vai no rodapé "Doc:". Cai no legado quando o lançamento é importado. */
+    rodape: documento || (row.legacy_id != null ? String(row.legacy_id) : operacao),
+  };
+}
+
 type Props = {
   row: ReciboRow;
   onClose: () => void;
@@ -122,7 +159,7 @@ export async function generateReciboPdf(row: ReciboRow, incluirComprovante: bool
   const agora = new Date().toLocaleString('pt-BR');
   const extenso = valorPorExtenso(valorNum);
   const formaPg = row.forma_pg || 'DINHEIRO';
-  const docNum = row.legacy_id || row.num_doc || row.id;
+  const ident = identificacaoRecibo(row);
   const churchName = row.churches?.name || '';
   const operatorName = userName;
 
@@ -147,7 +184,7 @@ export async function generateReciboPdf(row: ReciboRow, incluirComprovante: bool
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(80, 80, 80);
-  doc.text(`Documento Nº: ${docNum}`, 20, 50);
+  doc.text(`Operação: ${ident.rotulo}`, 20, 50);
   doc.text(`Data: ${dataFmt}`, 20, 56);
   doc.text(`Tipo: ${row.tipo}`, 20, 62);
   
@@ -223,14 +260,14 @@ export async function printRecibo(row: ReciboRow, incluirComprovante: boolean, f
     try {
       const doc = await generateReciboPdf(row, incluirComprovante, foto, userName);
       const pdfBlob = doc.output('blob');
-      const docNum = row.legacy_id || row.num_doc || row.id;
-      const fileName = `recibo-${docNum}.pdf`;
+      const ident = identificacaoRecibo(row);
+      const fileName = `recibo-${ident.operacao}.pdf`;
       const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
       
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `Recibo ${docNum}`,
+          title: `Recibo ${ident.rotulo}`,
           text: `Recibo de Lançamento`,
         });
       } else {
@@ -247,14 +284,14 @@ export async function printRecibo(row: ReciboRow, incluirComprovante: boolean, f
   const agora = new Date().toLocaleString('pt-BR');
   const extenso = valorPorExtenso(valorNum);
   const formaPg = row.forma_pg || 'DINHEIRO';
-  const docNum = row.legacy_id || row.num_doc || row.id;
+  const ident = identificacaoRecibo(row);
   const churchName = row.churches?.name || '';
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recibo ${docNum}</title>
+  <title>Recibo ${ident.rotulo}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color:#000; padding:16px; max-width:640px; margin:0 auto; }
@@ -306,7 +343,7 @@ export async function printRecibo(row: ReciboRow, incluirComprovante: boolean, f
   <p class="title">RECIBO</p>
   <p class="subtitle">${row.rol ? 'ROL ' + row.rol + ' - ' : ''}${row.favorecido || ''}</p>
   <hr>
-  <p class="info">Número do Documento: ${docNum}</p>
+  <p class="info">Operação: ${ident.rotulo}</p>
   <p class="info">Referência: ${row.referencia || ''} | <span class="tipo-${row.tipo.toLowerCase()}">${row.tipo}</span></p>
   ${row.obs ? `<p class="info" style="margin-top:4px;padding:4px 6px;background:#f8f9fa;border-left:3px solid #999;"><strong>Obs:</strong> ${row.obs}</p>` : ''}
   <hr>
@@ -727,7 +764,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
         const agora = new Date().toLocaleString('pt-BR');
         const extenso = valorPorExtenso(valorNum);
         const formaPg = row.forma_pg || 'DINHEIRO';
-        const docNum = row.legacy_id || row.num_doc || row.id;
+        const ident = identificacaoRecibo(row);
         const churchName = row.churches?.name || '';
         const operatorName = userName;
 
@@ -752,7 +789,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(11);
         doc.setTextColor(80, 80, 80);
-        doc.text(`Documento Nº: ${docNum}`, 20, 50);
+        doc.text(`Operação: ${ident.rotulo}`, 20, 50);
         doc.text(`Data: ${dataFmt}`, 20, 56);
         doc.text(`Tipo: ${row.tipo}`, 20, 62);
         
@@ -859,10 +896,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
 
   const valorNum = Number(row.valor);
   const dataFmt = new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR');
-  const docNum = row.legacy_id || row.num_doc || row.id;
-  const shortDoc = String(docNum).length > 12
-    ? `${String(docNum).slice(0, 8)}…${String(docNum).slice(-4)}`
-    : String(docNum);
+  const ident = identificacaoRecibo(row);
   const isReceita = row.tipo === 'RECEITA';
   const userRaw = typeof window !== 'undefined' ? localStorage.getItem('mrm_user') : null;
   const userName = row.operador || (userRaw ? (JSON.parse(userRaw).fullName || JSON.parse(userRaw).email || 'Sistema') : 'Sistema');
@@ -870,7 +904,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
   async function handleDownloadPdf() {
     try {
       const doc = await generateReciboPdf(row, incluirComprovante, displayFoto || currentFoto, userName);
-      doc.save(`recibo-${docNum}.pdf`);
+      doc.save(`recibo-${ident.operacao}.pdf`);
     } catch (e) {
       console.error('Erro ao baixar PDF:', e);
       toast.error('Erro ao gerar PDF');
@@ -881,18 +915,18 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
     try {
       const doc = await generateReciboPdf(row, incluirComprovante, displayFoto || currentFoto, userName);
       const pdfBlob = doc.output('blob');
-      const fileName = `recibo-${docNum}.pdf`;
+      const fileName = `recibo-${ident.operacao}.pdf`;
       const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `Recibo ${docNum} — ${row.churches?.name || ''}`,
+          title: `Recibo ${ident.rotulo} — ${row.churches?.name || ''}`,
           text: `Recibo de Lançamento no valor de R$ ${fmt(valorNum)}`,
         });
       } else if (navigator.share) {
         await navigator.share({
-          title: `Recibo ${docNum}`,
+          title: `Recibo ${ident.rotulo}`,
           text: `Recibo de Lançamento no valor de R$ ${fmt(valorNum)}`,
         });
       } else {
@@ -974,7 +1008,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
           <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 dark:border-slate-900 shrink-0">
             <div className="text-center flex-1">
               <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Operação</p>
-              <p className="text-[10px] text-slate-400 font-mono">{shortDoc}</p>
+              <p className="text-[10px] text-slate-400 font-mono">{ident.rotulo}</p>
             </div>
             <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg ml-2">
               <X className="w-4 h-4 text-slate-500" />
@@ -1036,7 +1070,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
               </div>
 
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400">
-                <span>Doc: {shortDoc}</span>
+                <span>Doc: {ident.rodape}</span>
                 <span>Op: {userName}</span>
               </div>
 
@@ -1160,7 +1194,7 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
       {showViewer && currentFoto && (
         <ComprovanteViewer
           src={displayFoto || currentFoto}
-          docNum={docNum || ''}
+          docNum={ident.rodape}
           onClose={() => setShowViewer(false)}
         />
       )}
