@@ -1,8 +1,10 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.981Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.171Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 2e2ca6e62419bdd9
+-- Baseline 8bbb1b4492ffc847
 
 -- Sequences
+create sequence if not exists "public"."appv3_pedidos_numero_seq" as bigint increment by 1 minvalue 1 maxvalue 9223372036854775807 start with 1 no cycle;
+create sequence if not exists "public"."appv3_solicitacoes_protocolo_seq" as bigint increment by 1 minvalue 1 maxvalue 9223372036854775807 start with 1 no cycle;
 create sequence if not exists "public"."kan_columns_id_seq" as integer increment by 1 minvalue 1 maxvalue 2147483647 start with 1 no cycle;
 create sequence if not exists "public"."kan_matrix_rules_id_seq" as integer increment by 1 minvalue 1 maxvalue 2147483647 start with 1 no cycle;
 create sequence if not exists "public"."kan_pipelines_id_seq" as integer increment by 1 minvalue 1 maxvalue 2147483647 start with 1 no cycle;

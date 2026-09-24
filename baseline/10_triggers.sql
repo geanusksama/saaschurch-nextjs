@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.991Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.179Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 2e2ca6e62419bdd9
+-- Baseline 8bbb1b4492ffc847
 
 -- Triggers
 drop trigger if exists "trg_app_cart_items_campo_id" on "public"."app_cart_items";
@@ -29,6 +29,16 @@ drop trigger if exists "trg_app_seats_campo_id" on "public"."app_seats";
 CREATE TRIGGER trg_app_seats_campo_id BEFORE INSERT OR UPDATE ON public.app_seats FOR EACH ROW EXECUTE FUNCTION trg_fn_inherit_campo_id('app_events', 'event_id');
 drop trigger if exists "trg_app_tickets_campo_id" on "public"."app_tickets";
 CREATE TRIGGER trg_app_tickets_campo_id BEFORE INSERT OR UPDATE ON public.app_tickets FOR EACH ROW EXECUTE FUNCTION trg_fn_inherit_campo_id('app_orders', 'order_id');
+drop trigger if exists "appv3_contribuicoes_alerta" on "public"."appv3_contribuicoes";
+CREATE TRIGGER appv3_contribuicoes_alerta AFTER UPDATE OF status ON public.appv3_contribuicoes FOR EACH ROW EXECUTE FUNCTION appv3_alerta_status();
+drop trigger if exists "appv3_pedidos_alerta" on "public"."appv3_pedidos";
+CREATE TRIGGER appv3_pedidos_alerta AFTER UPDATE OF status ON public.appv3_pedidos FOR EACH ROW EXECUTE FUNCTION appv3_alerta_status();
+drop trigger if exists "appv3_reembolsos_alerta" on "public"."appv3_reembolsos";
+CREATE TRIGGER appv3_reembolsos_alerta AFTER UPDATE OF status ON public.appv3_reembolsos FOR EACH ROW EXECUTE FUNCTION appv3_alerta_status();
+drop trigger if exists "appv3_solicitacoes_alerta" on "public"."appv3_solicitacoes";
+CREATE TRIGGER appv3_solicitacoes_alerta AFTER UPDATE OF status ON public.appv3_solicitacoes FOR EACH ROW EXECUTE FUNCTION appv3_alerta_status();
+drop trigger if exists "appv3_solicitacoes_preencher" on "public"."appv3_solicitacoes";
+CREATE TRIGGER appv3_solicitacoes_preencher BEFORE INSERT ON public.appv3_solicitacoes FOR EACH ROW EXECUTE FUNCTION appv3_solicitacoes_preencher();
 drop trigger if exists "trg_department_cart_items_campo_id" on "public"."department_cart_items";
 CREATE TRIGGER trg_department_cart_items_campo_id BEFORE INSERT OR UPDATE ON public.department_cart_items FOR EACH ROW EXECUTE FUNCTION trg_fn_inherit_campo_id('department_carts', 'cart_id');
 drop trigger if exists "trg_department_carts_campo_id" on "public"."department_carts";

@@ -138,6 +138,24 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'App Móvel', name: 'Feed do App',           key: 'app_feed',           permissions: mkPerms(full(), mngr(),  mngr(),  admin()) },
   { group: 'App Móvel', name: 'CMS Departamentos',     key: 'cms_departments',    permissions: mkPerms(full(), mngr(),  mngr(),  admin()) },
 
+  // ── Mobile (App Igreja v3 — menu "Mobile", src/app-ui/mobile) ─────────────
+  // Secretaria e tesouraria abrem para o perfil igreja: a API mostra a ele só
+  // o que é da própria igreja. O resto é conteúdo do campo inteiro.
+  { group: 'Mobile', name: 'Painel do app',          key: 'mobile_painel',      permissions: mkPerms(full(), none(), none(), none()) },
+  { group: 'Mobile', name: 'Secretaria do app',      key: 'mobile_secretaria',  permissions: mkPerms(full(), none(), full(), none()) },
+  { group: 'Mobile', name: 'Dízimos e ofertas do app', key: 'mobile_tesouraria', permissions: mkPerms(full(), none(), full(), none()) },
+  { group: 'Mobile', name: 'Pedidos e ingressos',    key: 'mobile_pedidos',     permissions: mkPerms(mngr(), none(), mngr(), none()) },
+  { group: 'Mobile', name: 'Eventos do app',         key: 'mobile_eventos',     permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+  { group: 'Mobile', name: 'Notícias do app',        key: 'mobile_noticias',    permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+  { group: 'Mobile', name: 'Cultos (vídeos e áudios)', key: 'mobile_midias',    permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+  { group: 'Mobile', name: 'Pão diário do app',      key: 'mobile_pao_diario',  permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+  { group: 'Mobile', name: 'Loja do app',            key: 'mobile_loja',        permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+  { group: 'Mobile', name: 'EBD e jogos do app',     key: 'mobile_ebd',         permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+  { group: 'Mobile', name: 'Igreja e liderança (app)', key: 'mobile_comunidade', permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+  { group: 'Mobile', name: 'Avisos do app',          key: 'mobile_alertas',     permissions: mkPerms(mngr(), mngr(), none(), mngr()) },
+  { group: 'Mobile', name: 'Contas do app',          key: 'mobile_membros',     permissions: mkPerms(mngr(), none(), mngr(), none()) },
+  { group: 'Mobile', name: 'Configurações do app',   key: 'mobile_config',      permissions: mkPerms(mngr(), mngr(), mngr(), mngr()) },
+
   // ── (Contatos / Leads - futuro CRM) ─────────────────────────────────────
   { group: 'Secretaria', name: 'Contatos / Leads',      key: 'crm_leads',      permissions: mkPerms(full(), mngr(), mngr(), admin()) },
 

@@ -251,6 +251,9 @@ import AppDailyBread from "../app-ui/app/AppDailyBread";
 import AppMediaManager from "../app-ui/app/media/AppMediaManager";
 import AppNotificationManager from "../app-ui/app/AppNotificationManager";
 import FeedManager from "../app-ui/app/FeedManager";
+import MobilePainel from "../app-ui/mobile/MobilePainel";
+import MobileTela from "../app-ui/mobile/MobileTela";
+import MobileConfig from "../app-ui/mobile/MobileConfig";
 import Spreadsheet from "../app-ui/spreadsheet/Spreadsheet";
 import WordEditor from "../app-ui/word/WordEditor";
 import {
@@ -813,6 +816,10 @@ export const router = createBrowserRouter([
       { path: "app/media",        Component: AppMediaManager },
       { path: "app/notifications", Component: AppNotificationManager },
       { path: "app/feed",          Component: FeedManager },
+      // Mobile — App Igreja v3 (src/app-ui/mobile)
+      { path: "mobile",               Component: MobilePainel },
+      { path: "mobile/configuracoes", Component: MobileConfig },
+      { path: "mobile/:tela",         Component: MobileTela },
 
       // CMS de Departamentos
       { path: "cms",                                       Component: CMSDashboard },

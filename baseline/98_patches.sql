@@ -30,3 +30,67 @@
 -- é o id. O índice comum que substitui o unique vem do baseline gerado.
 DROP INDEX IF EXISTS "churches_regional_id_code_key";
 DROP INDEX IF EXISTS "churches_regional_id_code_periodo_key";
+
+-- 2026-09-24 — segurança das tabelas legadas (appv3/app/supabase/seguranca_legado.sql).
+-- O dump carrega a RLS ligada, as políticas novas (sistema_acesso,
+-- sistema_somente, dados_sistema, dados_faceid_app) e a view pastoral_timeline
+-- com o filtro. Não carrega: grants de função (e o 12_grants dá EXECUTE de toda
+-- função ao anon por default privileges), revoke em view e a remoção das
+-- políticas antigas do storage. Por isso ficam aqui.
+
+-- Funções do app antigo: ninguém de fora executa (o servidor chama pelo Prisma).
+DO $$
+DECLARE f regprocedure;
+BEGIN
+  FOR f IN SELECT p.oid::regprocedure FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.proname IN (
+              'app_cancel_order', 'app_cleanup_expired_cart', 'app_confirm_order',
+              'app_generate_seats_for_hall', 'app_reserve_seat', 'fn_apply_campo_policies',
+              'fn_setup_campo_scope', 'fn_aprovar_reembolso', 'fn_negar_reembolso',
+              'fn_publish_department_site', 'fn_register_app_user', 'get_my_crm_profile',
+              'fn_add_free_tickets', 'fn_cancel_ticket', 'fn_delete_department',
+              'fn_reserve_seat', 'fn_transfer_dept_events', 'fn_transfer_ticket')
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM public, anon, authenticated', f);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', f);
+  END LOOP;
+  FOR f IN SELECT p.oid::regprocedure FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.proname IN ('fn_campo_visible', 'fn_get_my_campo_id', 'fn_is_campo_admin', 'fn_is_master')
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM public, anon', f);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated, service_role', f);
+  END LOOP;
+END $$;
+
+-- Funções do app v3: mesmos grants de appv3_schema.sql §11, que o dump não leva.
+DO $$
+DECLARE f regprocedure;
+BEGIN
+  FOR f IN SELECT p.oid::regprocedure FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.proname IN ('appv3_localizar_membro', 'appv3_freio_vinculo', 'appv3_linha_diretorio')
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM public, anon, authenticated', f);
+  END LOOP;
+  FOR f IN SELECT p.oid::regprocedure FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.proname LIKE 'appv3\_%' AND p.prokind = 'f'
+              AND p.proname NOT IN ('appv3_localizar_membro', 'appv3_freio_vinculo', 'appv3_linha_diretorio',
+                                    'appv3_estrutura_publica', 'appv3_mundial_publico',
+                                    'appv3_digitos', 'appv3_status_membro', 'appv3_codigo',
+                                    'appv3_meu_perfil_id', 'appv3_meu_campo_id', 'appv3_campo_da_igreja')
+              AND p.prorettype <> 'trigger'::regtype
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM public, anon', f);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', f);
+  END LOOP;
+END $$;
+
+REVOKE ALL ON public.pastoral_timeline FROM anon;
+
+-- Storage: políticas "livres" (public lia, gravava e apagava tudo em dados e cultos).
+DROP POLICY IF EXISTS "livre 1krhyj_0" ON storage.objects;
+DROP POLICY IF EXISTS "livre 1krhyj_1" ON storage.objects;
+DROP POLICY IF EXISTS "livre 1krhyj_2" ON storage.objects;
+DROP POLICY IF EXISTS "livre 1krhyj_3" ON storage.objects;
+DROP POLICY IF EXISTS "liuvres2 1cprxsu_0" ON storage.objects;
+DROP POLICY IF EXISTS "liuvres2 1cprxsu_1" ON storage.objects;
+DROP POLICY IF EXISTS "liuvres2 1cprxsu_2" ON storage.objects;

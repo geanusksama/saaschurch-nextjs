@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.978Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.170Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 2e2ca6e62419bdd9
+-- Baseline 8bbb1b4492ffc847
 
 -- Extensions
 create schema if not exists extensions;
