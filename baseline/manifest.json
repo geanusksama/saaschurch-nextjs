@@ -1,6 +1,6 @@
 {
-  "version": "c7a678bfb04cf038",
-  "generatedAt": "2026-09-24T17:07:17.412Z",
+  "version": "500e39c338ad501d",
+  "generatedAt": "2026-09-24T17:33:38.075Z",
   "schemas": [
     "public",
     "app"
@@ -76,7 +76,7 @@
     },
     {
       "file": "99_version.sql",
-      "bytes": 853
+      "bytes": 1135
     }
   ]
 }

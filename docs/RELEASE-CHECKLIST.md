@@ -61,6 +61,11 @@ A versão em `baseline/manifest.json` **tem que mudar**. É o carimbo que o
 `migrate-self` compara com `public._painelchurch_baseline` no banco de cada
 igreja: versões iguais ⇒ ele não faz nada.
 
+A versão é o hash dos arquivos 01–14 **e da parte fixa do `99_version.sql`**
+(desde 2026-09-24; antes, mudar só o 99 não mudava a versão e não chegava às
+igrejas). A tabela do carimbo tem RLS: leitura aberta, escrita só pela conexão
+direta — antes o anon conseguia trocar o carimbo.
+
 ### Por que o baseline mora em dois lugares
 
 | Repositório | Papel |
