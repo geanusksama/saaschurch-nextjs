@@ -62,6 +62,27 @@ model Campo {
   cultoPosicoes        CultoPosicao[]             @relation("CampoCultoPosicoes")
   cultoRegistros       CultoRegistro[]            @relation("CampoCultoRegistros")
 
+
+  /// App v3 (appv3/app)
+  appv3Perfis            AppV3Perfil[]
+  appv3IgrejaMundial     AppV3IgrejaMundial[]
+  appv3Eventos           AppV3Evento[]
+  appv3Noticias          AppV3Noticia[]
+  appv3Midias            AppV3Midia[]
+  appv3PaoDiario         AppV3PaoDiario[]
+  appv3Lideranca         AppV3Lideranca[]
+  appv3ConviteModelos    AppV3ConviteModelo[]
+  appv3Produtos          AppV3Produto[]
+  appv3LojaDestaques     AppV3LojaDestaque[]
+  appv3Notificacoes      AppV3Notificacao[]
+  appv3Solicitacoes      AppV3Solicitacao[]
+  appv3PixConfig         AppV3PixConfig[]
+  appv3Contribuicoes     AppV3Contribuicao[]
+  appv3Pedidos           AppV3Pedido[]
+  appv3EbdLicoes         AppV3EbdLicao[]
+  appv3EbdTurmas         AppV3EbdTurma[]
+  appv3JogosConteudo     AppV3JogoConteudo[]
+
   @@map("campos")
 }
 
@@ -88,6 +109,10 @@ model Regional {
   kanCardsDestination KanCard[] @relation("KanCardDestinationRegional")
   events              Event[]   @relation("EventRegional")
   cultoRegistros      CultoRegistro[] @relation("RegionalCultoRegistros")
+
+
+  /// App v3 (appv3/app)
+  appv3Perfis AppV3Perfil[]
 
   @@unique([campoId, code])
   @@map("regionais")
@@ -242,6 +267,17 @@ model Church {
   /// `code` NÃO é único, de propósito: é o número que a secretaria usa e ele se
   /// repete (Sede 1, Sede Brasil 1, Sede UEA 1), como o `rol` do membro. Quem
   /// identifica a linha é o id.
+
+  /// App v3 (appv3/app)
+  appv3Perfis        AppV3Perfil[]
+  appv3Eventos       AppV3Evento[]
+  appv3Lideranca     AppV3Lideranca[]
+  appv3IgrejaPerfil  AppV3IgrejaPerfil?
+  appv3Solicitacoes  AppV3Solicitacao[]
+  appv3Contribuicoes AppV3Contribuicao[]
+  appv3Pedidos       AppV3Pedido[]
+  appv3EbdTurmas     AppV3EbdTurma[]
+
   @@index([regionalId, code])
   @@index([headquartersId])
   @@index([hostChurchId])
@@ -641,6 +677,14 @@ model Member {
 
   likesGiven    MemberLike[] @relation("MemberLikeGiver")
   likesReceived MemberLike[] @relation("MemberLikeReceiver")
+
+
+  /// App v3 (appv3/app)
+  appv3Perfil        AppV3Perfil?
+  appv3Lideranca     AppV3Lideranca[]
+  appv3Familiares    AppV3Familiar[]
+  appv3Solicitacoes  AppV3Solicitacao[]
+  appv3Contribuicoes AppV3Contribuicao[]
 
   @@index([churchId])
   @@index([campoId])
@@ -1568,6 +1612,10 @@ model Ministry {
   children Ministry[]       @relation("MinistryParent")
   leader   Member?          @relation("MinistryLeader", fields: [leaderId], references: [id])
   members  MinistryMember[]
+
+
+  /// App v3 (appv3/app)
+  appv3Info AppV3MinisterioInfo?
 
   @@index([campoId])
   @@map("ministries")
@@ -4475,4 +4523,802 @@ model HomeCard {
   @@unique([configId, key])
   @@index([configId, sortOrder])
   @@map("home_cards")
+}
+
+// =============================================================================
+// APP V3 — tabelas exclusivas do app Flutter novo (appv3/app).
+//
+// Criadas por prisma/migrations/20260923120000_appv3_app_tables, que é cópia
+// de appv3/app/supabase/appv3_schema.sql. RLS, triggers, funções e storage
+// vivem só no SQL (o Prisma não os representa). Documentação:
+// appv3/docs/05-BANCO-DE-DADOS.md. Nada aqui lê ou escreve nas tabelas app_*
+// do app antigo.
+// =============================================================================
+
+model AppV3Perfil {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authUserId   String    @unique @map("auth_user_id") @db.Uuid
+  campoId      String    @map("campo_id") @db.Uuid
+  regionalId   String?   @map("regional_id") @db.Uuid
+  churchId     String?   @map("church_id") @db.Uuid
+  memberId     String?   @unique @map("member_id") @db.Uuid
+  nome         String    @db.VarChar(255)
+  celular      String?   @db.VarChar(20)
+  email        String?   @db.VarChar(255)
+  avatarUrl    String?   @map("avatar_url")
+  capaUrl      String?   @map("capa_url")
+  notificacoes Boolean   @default(true)
+  publico      Boolean   @default(true)
+  vinculadoEm  DateTime? @map("vinculado_em") @db.Timestamptz(6)
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime  @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+  excluidoEm   DateTime? @map("excluido_em") @db.Timestamptz(6)
+
+  campo    Campo     @relation(fields: [campoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  regional Regional? @relation(fields: [regionalId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  church   Church?   @relation(fields: [churchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  member   Member?   @relation(fields: [memberId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  status             AppV3Status?
+  seguindo           AppV3Seguidor[]           @relation("AppV3Seguidor")
+  seguidores         AppV3Seguidor[]           @relation("AppV3Seguido")
+  familiares         AppV3Familiar[]
+  notificacoesRecebidas AppV3Notificacao[]
+  leituras           AppV3NotificacaoLeitura[]
+  solicitacoes       AppV3Solicitacao[]
+  cartoes            AppV3Cartao[]
+  contribuicoes      AppV3Contribuicao[]
+  pedidos            AppV3Pedido[]
+  ingressos          AppV3Ingresso[]
+  reembolsos         AppV3Reembolso[]
+  ebdMatriculas      AppV3EbdMatricula[]
+  jogosPontos        AppV3JogoPonto[]
+  bibliaSalvos       AppV3BibliaSalvo[]
+  bibliaAnotacoes    AppV3BibliaAnotacao[]
+
+  @@index([campoId], map: "appv3_perfis_campo_idx")
+  @@index([churchId], map: "appv3_perfis_church_idx")
+  @@map("appv3_perfis")
+}
+
+model AppV3IgrejaMundial {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chave           String   @unique @default("padrao") @db.VarChar(64)
+  campoId         String?  @map("campo_id") @db.Uuid
+  nome            String   @db.VarChar(255)
+  sigla           String   @default("AD") @db.VarChar(10)
+  nomeCurto       String   @default("ASSEMBLEIA DE DEUS") @map("nome_curto") @db.VarChar(120)
+  tituloPortal    String   @default("Uma só igreja,\nmuitos campos") @map("titulo_portal") @db.VarChar(255)
+  subtituloPortal String   @default("Conheça a liderança mundial e entre no app do seu campo.") @map("subtitulo_portal")
+  cnpj            String?  @db.VarChar(20)
+  logoUrl         String?  @map("logo_url")
+  radioNome       String?  @map("radio_nome") @db.VarChar(120)
+  radioUrl        String?  @map("radio_url")
+  ativo           Boolean  @default(true)
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm    DateTime @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  campo    Campo?                @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lideres  AppV3MundialLider[]
+  recursos AppV3MundialRecurso[]
+  eventos  AppV3Evento[]
+  noticias AppV3Noticia[]
+  pix      AppV3PixConfig[]
+
+  @@map("appv3_igreja_mundial")
+}
+
+model AppV3MundialLider {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mundialId String   @map("mundial_id") @db.Uuid
+  nome      String   @db.VarChar(255)
+  cargo     String?  @db.VarChar(255)
+  desde     String?  @db.VarChar(20)
+  paises    String?  @db.VarChar(20)
+  anos      String?  @db.VarChar(20)
+  citacao   String?
+  resumo    String?
+  fotoUrl   String?  @map("foto_url")
+  /// [{titulo, texto}]
+  bio       Json     @default("[]") @db.JsonB
+  /// [{url, legenda, proporcao, largura_total}]
+  fotos     Json     @default("[]") @db.JsonB
+  ordem     Int      @default(0)
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  mundial AppV3IgrejaMundial @relation(fields: [mundialId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([mundialId], map: "appv3_mundial_lideres_mundial_idx")
+  @@map("appv3_mundial_lideres")
+}
+
+model AppV3MundialRecurso {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mundialId String   @map("mundial_id") @db.Uuid
+  tag       String?  @db.VarChar(60)
+  titulo    String   @db.VarChar(255)
+  descricao String?
+  cta       String?  @db.VarChar(80)
+  imagemUrl String?  @map("imagem_url")
+  url       String?
+  ordem     Int      @default(0)
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  mundial AppV3IgrejaMundial @relation(fields: [mundialId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([mundialId], map: "appv3_mundial_recursos_mundial_idx")
+  @@map("appv3_mundial_recursos")
+}
+
+model AppV3Evento {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// MUNDIAL | CAMPO
+  escopo            String    @default("CAMPO") @db.VarChar(10)
+  mundialId         String?   @map("mundial_id") @db.Uuid
+  campoId           String?   @map("campo_id") @db.Uuid
+  churchId          String?   @map("church_id") @db.Uuid
+  titulo            String    @db.VarChar(255)
+  tituloCurto       String?   @map("titulo_curto") @db.VarChar(120)
+  categoria         String?   @db.VarChar(80)
+  descricao         String?
+  local             String?   @db.VarChar(255)
+  endereco          String?
+  inicio            DateTime  @db.Timestamptz(6)
+  fim               DateTime? @db.Timestamptz(6)
+  imagemUrl         String?   @map("imagem_url")
+  capacidade        Int?
+  vendidos          Int       @default(0)
+  reembolsoAteHoras Int       @default(48) @map("reembolso_ate_horas")
+  ctaTexto          String?   @map("cta_texto") @db.VarChar(80)
+  publicado         Boolean   @default(false)
+  destaque          Boolean   @default(false)
+  criadoEm          DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm      DateTime  @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  mundial     AppV3IgrejaMundial? @relation(fields: [mundialId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  campo       Campo?              @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  church      Church?             @relation(fields: [churchId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  opcoes      AppV3EventoOpcao[]
+  pedidoItens AppV3PedidoItem[]
+  ingressos   AppV3Ingresso[]
+
+  @@index([campoId, inicio], map: "appv3_eventos_campo_idx")
+  @@index([mundialId, inicio], map: "appv3_eventos_mundial_idx")
+  @@map("appv3_eventos")
+}
+
+model AppV3EventoOpcao {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventoId String  @map("evento_id") @db.Uuid
+  rotulo   String  @db.VarChar(120)
+  preco    Decimal @default(0) @db.Decimal(10, 2)
+  ordem    Int     @default(0)
+  ativo    Boolean @default(true)
+
+  evento      AppV3Evento       @relation(fields: [eventoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pedidoItens AppV3PedidoItem[]
+  ingressos   AppV3Ingresso[]
+
+  @@index([eventoId], map: "appv3_evento_opcoes_evento_idx")
+  @@map("appv3_evento_opcoes")
+}
+
+model AppV3Noticia {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  escopo      String   @default("CAMPO") @db.VarChar(10)
+  mundialId   String?  @map("mundial_id") @db.Uuid
+  campoId     String?  @map("campo_id") @db.Uuid
+  tag         String?  @db.VarChar(60)
+  titulo      String   @db.VarChar(255)
+  autor       String?  @db.VarChar(255)
+  /// Parágrafos separados por linha em branco.
+  corpo       String?
+  imagemUrl   String?  @map("imagem_url")
+  publicadoEm DateTime @default(now()) @map("publicado_em") @db.Timestamptz(6)
+  publicado   Boolean  @default(false)
+  criadoEm    DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  mundial AppV3IgrejaMundial? @relation(fields: [mundialId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  campo   Campo?              @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([campoId, publicadoEm], map: "appv3_noticias_campo_idx")
+  @@index([mundialId, publicadoEm], map: "appv3_noticias_mundial_idx")
+  @@map("appv3_noticias")
+}
+
+model AppV3Midia {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId     String   @map("campo_id") @db.Uuid
+  /// VIDEO | AUDIO
+  tipo        String   @db.VarChar(10)
+  titulo      String   @db.VarChar(255)
+  pregador    String?  @db.VarChar(255)
+  serie       String?  @db.VarChar(120)
+  descricao   String?
+  imagemUrl   String?  @map("imagem_url")
+  url         String?
+  duracaoSeg  Int      @default(0) @map("duracao_seg")
+  publicadoEm DateTime @default(dbgenerated("CURRENT_DATE")) @map("publicado_em") @db.Date
+  publicado   Boolean  @default(false)
+  criadoEm    DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  campo Campo @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([campoId, publicadoEm], map: "appv3_midias_campo_idx")
+  @@map("appv3_midias")
+}
+
+model AppV3PaoDiario {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId    String?  @map("campo_id") @db.Uuid
+  data       DateTime @db.Date
+  titulo     String   @db.VarChar(255)
+  pregador   String?  @db.VarChar(255)
+  tema       String?  @db.VarChar(80)
+  versiculo  String?
+  referencia String?  @db.VarChar(80)
+  corpo      String?
+  oracao     String?
+  audioUrl   String?  @map("audio_url")
+  publicado  Boolean  @default(false)
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  campo Campo? @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([campoId, data], map: "appv3_pao_diario_data_idx")
+  @@map("appv3_pao_diario")
+}
+
+model AppV3Lideranca {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId    String  @map("campo_id") @db.Uuid
+  churchId   String? @map("church_id") @db.Uuid
+  memberId   String? @map("member_id") @db.Uuid
+  nome       String  @db.VarChar(255)
+  cargo      String? @db.VarChar(255)
+  conjuge    String? @db.VarChar(255)
+  fotoUrl    String? @map("foto_url")
+  palavra    String?
+  presidente Boolean @default(false)
+  ordem      Int     @default(0)
+  ativo      Boolean @default(true)
+
+  campo  Campo   @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  church Church? @relation(fields: [churchId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  member Member? @relation(fields: [memberId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([campoId], map: "appv3_lideranca_campo_idx")
+  @@map("appv3_lideranca")
+}
+
+model AppV3IgrejaPerfil {
+  churchId String  @id @map("church_id") @db.Uuid
+  fotoUrl  String? @map("foto_url")
+  historia String?
+  /// [{rotulo, texto}]
+  marcos   Json    @default("[]") @db.JsonB
+
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("appv3_igreja_perfil")
+}
+
+model AppV3MinisterioInfo {
+  ministryId String  @id @map("ministry_id") @db.Uuid
+  publico    String? @db.VarChar(120)
+  agenda     String? @db.VarChar(120)
+  imagemUrl  String? @map("imagem_url")
+
+  ministry Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("appv3_ministerio_info")
+}
+
+model AppV3ConviteModelo {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId   String  @map("campo_id") @db.Uuid
+  rotulo    String  @db.VarChar(40)
+  titulo    String  @db.VarChar(120)
+  cor       String  @default("#D4F53C") @db.VarChar(9)
+  /// 0 = domingo … 6 = sábado
+  diaSemana Int     @map("dia_semana") @db.SmallInt
+  hora      String  @db.VarChar(5)
+  local     String? @db.VarChar(255)
+  endereco  String?
+  ordem     Int     @default(0)
+  ativo     Boolean @default(true)
+
+  campo Campo @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([campoId], map: "appv3_convite_modelos_campo_idx")
+  @@map("appv3_convite_modelos")
+}
+
+model AppV3Produto {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId   String   @map("campo_id") @db.Uuid
+  nome      String   @db.VarChar(255)
+  categoria String?  @db.VarChar(60)
+  descricao String?
+  preco     Decimal  @db.Decimal(10, 2)
+  novo      Boolean  @default(false)
+  tamanhos  String[] @default([])
+  estoque   Int?
+  ativo     Boolean  @default(true)
+  ordem     Int      @default(0)
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  campo       Campo                @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  cores       AppV3ProdutoCor[]
+  imagens     AppV3ProdutoImagem[]
+  pedidoItens AppV3PedidoItem[]
+
+  @@index([campoId], map: "appv3_produtos_campo_idx")
+  @@map("appv3_produtos")
+}
+
+model AppV3ProdutoCor {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  produtoId String @map("produto_id") @db.Uuid
+  nome      String @db.VarChar(60)
+  hex       String @db.VarChar(9)
+  ordem     Int    @default(0)
+
+  produto AppV3Produto         @relation(fields: [produtoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  imagens AppV3ProdutoImagem[]
+
+  @@index([produtoId], map: "appv3_produto_cores_produto_idx")
+  @@map("appv3_produto_cores")
+}
+
+model AppV3ProdutoImagem {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  produtoId String  @map("produto_id") @db.Uuid
+  corId     String? @map("cor_id") @db.Uuid
+  vista     String  @default("Frente") @db.VarChar(30)
+  url       String
+  ordem     Int     @default(0)
+
+  produto AppV3Produto     @relation(fields: [produtoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  cor     AppV3ProdutoCor? @relation(fields: [corId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([produtoId], map: "appv3_produto_imagens_produto_idx")
+  @@map("appv3_produto_imagens")
+}
+
+model AppV3LojaDestaque {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId   String  @map("campo_id") @db.Uuid
+  kicker    String? @db.VarChar(80)
+  titulo    String  @db.VarChar(120)
+  cta       String  @default("Ver coleção") @db.VarChar(60)
+  categoria String? @db.VarChar(60)
+  ativo     Boolean @default(true)
+  ordem     Int     @default(0)
+
+  campo Campo @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("appv3_loja_destaques")
+}
+
+model AppV3TentativaVinculo {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authUserId String   @map("auth_user_id") @db.Uuid
+  sucesso    Boolean  @default(false)
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([authUserId, criadoEm], map: "appv3_tentativas_vinculo_user_idx")
+  @@map("appv3_tentativas_vinculo")
+}
+
+model AppV3Status {
+  perfilId String   @id @map("perfil_id") @db.Uuid
+  texto    String   @db.VarChar(120)
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  expiraEm DateTime @default(dbgenerated("(now() + '24:00:00'::interval)")) @map("expira_em") @db.Timestamptz(6)
+
+  perfil AppV3Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("appv3_status")
+}
+
+model AppV3Seguidor {
+  seguidorId String   @map("seguidor_id") @db.Uuid
+  seguidoId  String   @map("seguido_id") @db.Uuid
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  seguidor AppV3Perfil @relation("AppV3Seguidor", fields: [seguidorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  seguido  AppV3Perfil @relation("AppV3Seguido", fields: [seguidoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([seguidorId, seguidoId])
+  @@index([seguidoId], map: "appv3_seguidores_seguido_idx")
+  @@map("appv3_seguidores")
+}
+
+model AppV3Familiar {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  perfilId        String   @map("perfil_id") @db.Uuid
+  nome            String   @db.VarChar(255)
+  parentesco      String   @db.VarChar(40)
+  geracao         Int      @db.SmallInt
+  nucleo          String   @db.VarChar(64)
+  eu              Boolean  @default(false)
+  relatedMemberId String?  @map("related_member_id") @db.Uuid
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  perfil        AppV3Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  relatedMember Member?     @relation(fields: [relatedMemberId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([perfilId], map: "appv3_familiares_perfil_idx")
+  @@map("appv3_familiares")
+}
+
+model AppV3Notificacao {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId  String   @map("campo_id") @db.Uuid
+  /// null = todos do campo
+  perfilId String?  @map("perfil_id") @db.Uuid
+  /// LIVE | USER | EVENT | SEC | GF | ORDER
+  tipo     String   @default("EVENT") @db.VarChar(10)
+  titulo   String   @db.VarChar(255)
+  corpo    String?
+  link     String?
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  campo    Campo                     @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  perfil   AppV3Perfil?              @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  leituras AppV3NotificacaoLeitura[]
+
+  @@index([campoId, criadoEm], map: "appv3_notificacoes_campo_idx")
+  @@index([perfilId], map: "appv3_notificacoes_perfil_idx")
+  @@map("appv3_notificacoes")
+}
+
+model AppV3NotificacaoLeitura {
+  notificacaoId String   @map("notificacao_id") @db.Uuid
+  perfilId      String   @map("perfil_id") @db.Uuid
+  lidaEm        DateTime @default(now()) @map("lida_em") @db.Timestamptz(6)
+
+  notificacao AppV3Notificacao @relation(fields: [notificacaoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  perfil      AppV3Perfil      @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([notificacaoId, perfilId])
+  @@map("appv3_notificacao_leituras")
+}
+
+model AppV3Solicitacao {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Exibido como #SEC-{protocolo}
+  protocolo    BigInt   @unique @default(autoincrement())
+  perfilId     String   @map("perfil_id") @db.Uuid
+  campoId      String?  @map("campo_id") @db.Uuid
+  churchId     String?  @map("church_id") @db.Uuid
+  memberId     String?  @map("member_id") @db.Uuid
+  tipo         String   @db.VarChar(60)
+  descricao    String?
+  /// EM_ANALISE | AGUARDANDO_LINK | LINK_ENVIADO | CONCLUIDA | RECUSADA | CANCELADA
+  status       String   @default("EM_ANALISE") @db.VarChar(20)
+  dados        Json     @default("{}") @db.JsonB
+  anexoPath    String?  @map("anexo_path")
+  linkUrl      String?  @map("link_url")
+  resposta     String?
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  perfil AppV3Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  campo  Campo?      @relation(fields: [campoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  church Church?     @relation(fields: [churchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  member Member?     @relation(fields: [memberId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([perfilId, criadoEm], map: "appv3_solicitacoes_perfil_idx")
+  @@index([campoId, status], map: "appv3_solicitacoes_campo_idx")
+  @@map("appv3_solicitacoes")
+}
+
+model AppV3PixConfig {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  escopo     String  @default("CAMPO") @db.VarChar(10)
+  mundialId  String? @map("mundial_id") @db.Uuid
+  campoId    String? @map("campo_id") @db.Uuid
+  /// DIZIMO | OFERTA | LOJA
+  finalidade String  @db.VarChar(10)
+  favorecido String  @db.VarChar(120)
+  cnpj       String? @db.VarChar(20)
+  cidade     String  @default("BRASIL") @db.VarChar(60)
+  /// EMAIL | TELEFONE | CNPJ | CPF | ALEATORIA
+  tipoChave  String  @map("tipo_chave") @db.VarChar(12)
+  chave      String  @db.VarChar(120)
+  ordem      Int     @default(0)
+  ativo      Boolean @default(true)
+
+  mundial AppV3IgrejaMundial? @relation(fields: [mundialId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  campo   Campo?              @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("appv3_pix_config")
+}
+
+model AppV3Cartao {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  perfilId     String   @map("perfil_id") @db.Uuid
+  bandeira     String   @db.VarChar(20)
+  final        String   @db.VarChar(4)
+  validade     String   @db.VarChar(5)
+  gateway      String   @db.VarChar(30)
+  gatewayToken String   @map("gateway_token")
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  perfil AppV3Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([perfilId], map: "appv3_cartoes_perfil_idx")
+  @@map("appv3_cartoes")
+}
+
+model AppV3Contribuicao {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  perfilId     String    @map("perfil_id") @db.Uuid
+  campoId      String    @map("campo_id") @db.Uuid
+  churchId     String?   @map("church_id") @db.Uuid
+  memberId     String?   @map("member_id") @db.Uuid
+  /// DIZIMO | OFERTA
+  tipo         String    @db.VarChar(10)
+  valor        Decimal   @db.Decimal(12, 2)
+  descricao    String?   @db.VarChar(120)
+  /// PIX | CARTAO
+  metodo       String    @db.VarChar(10)
+  cartaoDesc   String?   @map("cartao_desc") @db.VarChar(60)
+  /// AGUARDANDO_CONFERENCIA | CONFIRMADA | RECUSADA | CANCELADA
+  status       String    @default("AGUARDANDO_CONFERENCIA") @db.VarChar(25)
+  autenticacao String    @unique @db.VarChar(20)
+  pixTxid      String?   @map("pix_txid") @db.VarChar(25)
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  confirmadoEm DateTime? @map("confirmado_em") @db.Timestamptz(6)
+
+  perfil AppV3Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  campo  Campo       @relation(fields: [campoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  church Church?     @relation(fields: [churchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  member Member?     @relation(fields: [memberId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([perfilId, criadoEm], map: "appv3_contribuicoes_perfil_idx")
+  @@index([campoId, status], map: "appv3_contribuicoes_campo_idx")
+  @@map("appv3_contribuicoes")
+}
+
+model AppV3Pedido {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numero     BigInt    @unique @default(autoincrement())
+  perfilId   String    @map("perfil_id") @db.Uuid
+  campoId    String    @map("campo_id") @db.Uuid
+  churchId   String?   @map("church_id") @db.Uuid
+  subtotal   Decimal   @default(0) @db.Decimal(12, 2)
+  total      Decimal   @default(0) @db.Decimal(12, 2)
+  /// PIX | CARTAO | GRATUITO
+  metodo     String    @db.VarChar(10)
+  parcelas   Int       @default(1) @db.SmallInt
+  status     String    @default("AGUARDANDO_PAGAMENTO") @db.VarChar(25)
+  entrega    String    @default("Retirar na secretaria") @db.VarChar(120)
+  pixTxid    String?   @map("pix_txid") @db.VarChar(25)
+  gatewayRef String?   @map("gateway_ref")
+  criadoEm   DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  pagoEm     DateTime? @map("pago_em") @db.Timestamptz(6)
+
+  perfil     AppV3Perfil       @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  campo      Campo             @relation(fields: [campoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  church     Church?           @relation(fields: [churchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  itens      AppV3PedidoItem[]
+  ingressos  AppV3Ingresso[]
+  reembolsos AppV3Reembolso[]
+
+  @@index([perfilId, criadoEm], map: "appv3_pedidos_perfil_idx")
+  @@index([campoId, status], map: "appv3_pedidos_campo_idx")
+  @@map("appv3_pedidos")
+}
+
+model AppV3PedidoItem {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pedidoId   String  @map("pedido_id") @db.Uuid
+  /// PRODUTO | INGRESSO
+  tipo       String  @db.VarChar(10)
+  produtoId  String? @map("produto_id") @db.Uuid
+  eventoId   String? @map("evento_id") @db.Uuid
+  opcaoId    String? @map("opcao_id") @db.Uuid
+  nome       String  @db.VarChar(255)
+  variante   String? @db.VarChar(255)
+  tamanho    String? @db.VarChar(10)
+  cor        String? @db.VarChar(60)
+  quantidade Int
+  precoUnit  Decimal @map("preco_unit") @db.Decimal(10, 2)
+  total      Decimal @db.Decimal(12, 2)
+
+  pedido    AppV3Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produto   AppV3Produto?     @relation(fields: [produtoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  evento    AppV3Evento?      @relation(fields: [eventoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  opcao     AppV3EventoOpcao? @relation(fields: [opcaoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  ingressos AppV3Ingresso[]
+
+  @@index([pedidoId], map: "appv3_pedido_itens_pedido_idx")
+  @@map("appv3_pedido_itens")
+}
+
+model AppV3Ingresso {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pedidoId     String    @map("pedido_id") @db.Uuid
+  itemId       String?   @map("item_id") @db.Uuid
+  perfilId     String    @map("perfil_id") @db.Uuid
+  eventoId     String?   @map("evento_id") @db.Uuid
+  opcaoId      String?   @map("opcao_id") @db.Uuid
+  codigo       String    @unique @db.VarChar(20)
+  rotulo       String?   @db.VarChar(120)
+  quantidade   Int       @default(1)
+  valorPago    Decimal   @default(0) @map("valor_pago") @db.Decimal(12, 2)
+  status       String    @default("AGUARDANDO_PAGAMENTO") @db.VarChar(25)
+  reembolsoAte DateTime? @map("reembolso_ate") @db.Timestamptz(6)
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  pedido     AppV3Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  item       AppV3PedidoItem?  @relation(fields: [itemId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  perfil     AppV3Perfil       @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  evento     AppV3Evento?      @relation(fields: [eventoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  opcao      AppV3EventoOpcao? @relation(fields: [opcaoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  reembolsos AppV3Reembolso[]
+
+  @@index([perfilId, criadoEm], map: "appv3_ingressos_perfil_idx")
+  @@map("appv3_ingressos")
+}
+
+model AppV3Reembolso {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  perfilId   String   @map("perfil_id") @db.Uuid
+  pedidoId   String?  @map("pedido_id") @db.Uuid
+  ingressoId String?  @map("ingresso_id") @db.Uuid
+  motivo     String   @db.VarChar(120)
+  valor      Decimal  @db.Decimal(12, 2)
+  /// SOLICITADO | APROVADO | NEGADO | PAGO
+  status     String   @default("SOLICITADO") @db.VarChar(12)
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  perfil   AppV3Perfil    @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pedido   AppV3Pedido?   @relation(fields: [pedidoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  ingresso AppV3Ingresso? @relation(fields: [ingressoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("appv3_reembolsos")
+}
+
+model AppV3EbdLicao {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId   String   @map("campo_id") @db.Uuid
+  trimestre String   @db.VarChar(30)
+  numero    Int
+  titulo    String   @db.VarChar(255)
+  textoBase String?  @map("texto_base") @db.VarChar(120)
+  data      DateTime @db.Date
+  conteudo  String?
+  publicado Boolean  @default(false)
+
+  campo Campo              @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  jogos AppV3JogoConteudo[]
+
+  @@index([campoId, data], map: "appv3_ebd_licoes_campo_idx")
+  @@map("appv3_ebd_licoes")
+}
+
+model AppV3EbdTurma {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId   String  @map("campo_id") @db.Uuid
+  churchId  String? @map("church_id") @db.Uuid
+  nome      String  @db.VarChar(120)
+  professor String? @db.VarChar(255)
+  sala      String? @db.VarChar(60)
+  ordem     Int     @default(0)
+  ativo     Boolean @default(true)
+
+  campo      Campo               @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  church     Church?             @relation(fields: [churchId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  matriculas AppV3EbdMatricula[]
+
+  @@map("appv3_ebd_turmas")
+}
+
+model AppV3EbdMatricula {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  turmaId  String   @map("turma_id") @db.Uuid
+  perfilId String   @map("perfil_id") @db.Uuid
+  /// SOLICITADA | ATIVA | CANCELADA
+  status   String   @default("SOLICITADA") @db.VarChar(12)
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  turma  AppV3EbdTurma @relation(fields: [turmaId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  perfil AppV3Perfil   @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([turmaId, perfilId])
+  @@map("appv3_ebd_matriculas")
+}
+
+model AppV3JogoConteudo {
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId String? @map("campo_id") @db.Uuid
+  /// QUIZ | VF | FORCA | CRUZADAS
+  jogo    String  @db.VarChar(10)
+  licaoId String? @map("licao_id") @db.Uuid
+  dados   Json    @db.JsonB
+  ordem   Int     @default(0)
+  ativo   Boolean @default(true)
+
+  campo Campo?         @relation(fields: [campoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  licao AppV3EbdLicao? @relation(fields: [licaoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@map("appv3_jogos_conteudo")
+}
+
+model AppV3JogoPonto {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  perfilId String   @map("perfil_id") @db.Uuid
+  jogo     String   @db.VarChar(10)
+  pontos   Int
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  perfil AppV3Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([perfilId], map: "appv3_jogos_pontos_perfil_idx")
+  @@map("appv3_jogos_pontos")
+}
+
+model AppV3BibliaSalvo {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  perfilId   String   @map("perfil_id") @db.Uuid
+  livro      String   @db.VarChar(3)
+  capitulo   Int
+  versiculos Int[]
+  texto      String
+  anotacao   String?
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  perfil AppV3Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([perfilId, criadoEm], map: "appv3_biblia_salvos_perfil_idx")
+  @@map("appv3_biblia_salvos")
+}
+
+model AppV3BibliaAnotacao {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  perfilId     String   @map("perfil_id") @db.Uuid
+  titulo       String   @db.VarChar(120)
+  diaSemana    Int      @map("dia_semana") @db.SmallInt
+  segmentos    Json     @default("[]")
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  perfil AppV3Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([perfilId, atualizadoEm], map: "appv3_biblia_anotacoes_perfil_idx")
+  @@map("appv3_biblia_anotacoes")
+}
+
+/// Configuração do app v3 por campo (painel Mobile › Configurações): qual
+/// headquarters é a sede mostrada no app. Sem relação declarada para não
+/// alterar os modelos Campo/LegacyChurchHeadquarters; as FKs estão no SQL.
+model AppV3CampoConfig {
+  campoId        String   @id @map("campo_id") @db.Uuid
+  headquartersId String?  @map("headquarters_id") @db.Uuid
+  atualizadoEm   DateTime @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  @@map("appv3_campo_config")
+}
+
+/// Categorias de evento e de produto do app v3 (painel Mobile). O app lê o
+/// texto em appv3_eventos/appv3_produtos.categoria; esta é a lista de escolha.
+/// Sem relações declaradas para não alterar Campo/Ministry; FKs no SQL.
+model AppV3Categoria {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId    String   @map("campo_id") @db.Uuid
+  /// EVENTO | PRODUTO
+  tipo       String   @db.VarChar(10)
+  nome       String   @db.VarChar(60)
+  ministryId String?  @map("ministry_id") @db.Uuid
+  ordem      Int      @default(0)
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@map("appv3_categorias")
 }

@@ -116,6 +116,37 @@ Dois casos que já morderam, os dois pela mesma raiz:
 - **Unique afrouxado.** O índice antigo continua vivo na igreja. Precisa de
   patch.
 
+### Default, CHECK ou índice NÃO podem chamar função própria
+
+O `migrate-self` (e o provisionamento do painelchurch) cria as tabelas
+(`05_tables`) e os índices (`08`) **antes** das funções (`04_functions`) — de
+propósito, porque há função que retorna tipo de tabela. Então coluna com
+`default minha_funcao()`, CHECK ou índice que chame função do schema `public`
+quebra em todo banco que ainda não tem a função: o arquivo inteiro é
+revertido e o deploy aborta.
+
+Já aconteceu (2026-09-24, preview da advilasolange): 9 colunas `perfil_id
+default appv3_meu_perfil_id()` do app v3. Correção: gatilho `BEFORE INSERT`
+(criado no `10`, depois das funções). Views, políticas RLS e gatilhos podem
+chamar função própria — vêm depois do `04`.
+
+Conferir antes de regerar o baseline (tem que voltar vazio):
+
+```sql
+select d.classid::regclass, p.proname
+  from pg_depend d
+  join pg_proc p on p.oid = d.refobjid and d.refclassid = 'pg_proc'::regclass
+  join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+ where d.classid in ('pg_attrdef'::regclass, 'pg_constraint'::regclass)
+    or (d.classid = 'pg_class'::regclass and exists (select 1 from pg_index i where i.indexrelid = d.objid));
+```
+
+**Preview também roda o `migrate-self` no banco da igreja.** Um push em
+branch já aplica o baseline nos bancos dos projetos Vercel que fazem preview —
+e os arquivos tolerantes (`05b`–`05d`, `98_patches`) ficam aplicados mesmo
+quando os transacionais são revertidos. Não suba baseline sem a checagem
+acima.
+
 ---
 
 ## 4. Latência do banco: cuidado com transação interativa

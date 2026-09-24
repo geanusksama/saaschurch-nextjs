@@ -1,9 +1,65 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.990Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:07:17.409Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 2e2ca6e62419bdd9
+-- Baseline c7a678bfb04cf038
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
+CREATE INDEX IF NOT EXISTS appv3_biblia_anotacoes_perfil_idx ON public.appv3_biblia_anotacoes USING btree (perfil_id, atualizado_em);
+CREATE INDEX IF NOT EXISTS appv3_biblia_salvos_perfil_idx ON public.appv3_biblia_salvos USING btree (perfil_id, criado_em);
+CREATE INDEX IF NOT EXISTS appv3_cartoes_perfil_idx ON public.appv3_cartoes USING btree (perfil_id);
+CREATE UNIQUE INDEX IF NOT EXISTS appv3_categorias_nome_uq ON public.appv3_categorias USING btree (campo_id, tipo, lower((nome)::text));
+CREATE INDEX IF NOT EXISTS appv3_contribuicoes_campo_data_idx ON public.appv3_contribuicoes USING btree (campo_id, criado_em DESC);
+CREATE INDEX IF NOT EXISTS appv3_contribuicoes_campo_idx ON public.appv3_contribuicoes USING btree (campo_id, status);
+CREATE INDEX IF NOT EXISTS appv3_contribuicoes_perfil_idx ON public.appv3_contribuicoes USING btree (perfil_id, criado_em);
+CREATE INDEX IF NOT EXISTS appv3_convite_modelos_campo_idx ON public.appv3_convite_modelos USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS appv3_ebd_licoes_campo_idx ON public.appv3_ebd_licoes USING btree (campo_id, data);
+CREATE INDEX IF NOT EXISTS appv3_ebd_matriculas_perfil_idx ON public.appv3_ebd_matriculas USING btree (perfil_id);
+CREATE INDEX IF NOT EXISTS appv3_ebd_turmas_campo_idx ON public.appv3_ebd_turmas USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS appv3_evento_opcoes_evento_idx ON public.appv3_evento_opcoes USING btree (evento_id);
+CREATE INDEX IF NOT EXISTS appv3_eventos_campo_idx ON public.appv3_eventos USING btree (campo_id, inicio);
+CREATE INDEX IF NOT EXISTS appv3_eventos_mundial_idx ON public.appv3_eventos USING btree (mundial_id, inicio);
+CREATE INDEX IF NOT EXISTS appv3_familiares_perfil_idx ON public.appv3_familiares USING btree (perfil_id);
+CREATE INDEX IF NOT EXISTS appv3_ingressos_evento_idx ON public.appv3_ingressos USING btree (evento_id);
+CREATE INDEX IF NOT EXISTS appv3_ingressos_pedido_idx ON public.appv3_ingressos USING btree (pedido_id, status);
+CREATE INDEX IF NOT EXISTS appv3_ingressos_perfil_idx ON public.appv3_ingressos USING btree (perfil_id, criado_em);
+CREATE INDEX IF NOT EXISTS appv3_jogos_conteudo_campo_idx ON public.appv3_jogos_conteudo USING btree (campo_id, jogo);
+CREATE INDEX IF NOT EXISTS appv3_jogos_conteudo_licao_idx ON public.appv3_jogos_conteudo USING btree (licao_id);
+CREATE INDEX IF NOT EXISTS appv3_jogos_pontos_perfil_idx ON public.appv3_jogos_pontos USING btree (perfil_id);
+CREATE INDEX IF NOT EXISTS appv3_lideranca_campo_idx ON public.appv3_lideranca USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS appv3_loja_destaques_campo_idx ON public.appv3_loja_destaques USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS appv3_midias_campo_idx ON public.appv3_midias USING btree (campo_id, publicado_em);
+CREATE INDEX IF NOT EXISTS appv3_mundial_lideres_mundial_idx ON public.appv3_mundial_lideres USING btree (mundial_id);
+CREATE INDEX IF NOT EXISTS appv3_mundial_recursos_mundial_idx ON public.appv3_mundial_recursos USING btree (mundial_id);
+CREATE INDEX IF NOT EXISTS appv3_noticias_campo_idx ON public.appv3_noticias USING btree (campo_id, publicado_em);
+CREATE INDEX IF NOT EXISTS appv3_noticias_mundial_idx ON public.appv3_noticias USING btree (mundial_id, publicado_em);
+CREATE INDEX IF NOT EXISTS appv3_notificacao_leituras_perfil_idx ON public.appv3_notificacao_leituras USING btree (perfil_id);
+CREATE INDEX IF NOT EXISTS appv3_notificacoes_campo_idx ON public.appv3_notificacoes USING btree (campo_id, criado_em);
+CREATE INDEX IF NOT EXISTS appv3_notificacoes_perfil_idx ON public.appv3_notificacoes USING btree (perfil_id);
+CREATE INDEX IF NOT EXISTS appv3_pao_diario_data_idx ON public.appv3_pao_diario USING btree (campo_id, data);
+CREATE INDEX IF NOT EXISTS appv3_pedido_itens_evento_idx ON public.appv3_pedido_itens USING btree (evento_id);
+CREATE INDEX IF NOT EXISTS appv3_pedido_itens_opcao_idx ON public.appv3_pedido_itens USING btree (opcao_id);
+CREATE INDEX IF NOT EXISTS appv3_pedido_itens_pedido_idx ON public.appv3_pedido_itens USING btree (pedido_id);
+CREATE INDEX IF NOT EXISTS appv3_pedido_itens_produto_idx ON public.appv3_pedido_itens USING btree (produto_id);
+CREATE INDEX IF NOT EXISTS appv3_pedidos_campo_data_idx ON public.appv3_pedidos USING btree (campo_id, criado_em DESC);
+CREATE INDEX IF NOT EXISTS appv3_pedidos_campo_idx ON public.appv3_pedidos USING btree (campo_id, status);
+CREATE INDEX IF NOT EXISTS appv3_pedidos_perfil_idx ON public.appv3_pedidos USING btree (perfil_id, criado_em);
+CREATE INDEX IF NOT EXISTS appv3_perfis_campo_data_idx ON public.appv3_perfis USING btree (campo_id, criado_em DESC);
+CREATE INDEX IF NOT EXISTS appv3_perfis_campo_idx ON public.appv3_perfis USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS appv3_perfis_church_idx ON public.appv3_perfis USING btree (church_id);
+CREATE INDEX IF NOT EXISTS appv3_pix_config_campo_idx ON public.appv3_pix_config USING btree (campo_id, finalidade);
+CREATE INDEX IF NOT EXISTS appv3_pix_config_mundial_idx ON public.appv3_pix_config USING btree (mundial_id);
+CREATE INDEX IF NOT EXISTS appv3_produto_cores_produto_idx ON public.appv3_produto_cores USING btree (produto_id);
+CREATE INDEX IF NOT EXISTS appv3_produto_imagens_produto_idx ON public.appv3_produto_imagens USING btree (produto_id);
+CREATE INDEX IF NOT EXISTS appv3_produtos_campo_idx ON public.appv3_produtos USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS appv3_reembolsos_ingresso_idx ON public.appv3_reembolsos USING btree (ingresso_id);
+CREATE INDEX IF NOT EXISTS appv3_reembolsos_pedido_idx ON public.appv3_reembolsos USING btree (pedido_id);
+CREATE INDEX IF NOT EXISTS appv3_reembolsos_perfil_idx ON public.appv3_reembolsos USING btree (perfil_id, criado_em DESC);
+CREATE INDEX IF NOT EXISTS appv3_reembolsos_status_idx ON public.appv3_reembolsos USING btree (status) WHERE ((status)::text = 'SOLICITADO'::text);
+CREATE INDEX IF NOT EXISTS appv3_seguidores_seguido_idx ON public.appv3_seguidores USING btree (seguido_id);
+CREATE INDEX IF NOT EXISTS appv3_solicitacoes_campo_data_idx ON public.appv3_solicitacoes USING btree (campo_id, criado_em DESC);
+CREATE INDEX IF NOT EXISTS appv3_solicitacoes_campo_idx ON public.appv3_solicitacoes USING btree (campo_id, status);
+CREATE INDEX IF NOT EXISTS appv3_solicitacoes_perfil_idx ON public.appv3_solicitacoes USING btree (perfil_id, criado_em);
+CREATE INDEX IF NOT EXISTS appv3_tentativas_vinculo_user_idx ON public.appv3_tentativas_vinculo USING btree (auth_user_id, criado_em);
 CREATE INDEX IF NOT EXISTS asset_inventories_church_id_idx ON public.asset_inventories USING btree (church_id);
 CREATE UNIQUE INDEX IF NOT EXISTS asset_inventory_items_inventory_id_asset_id_key ON public.asset_inventory_items USING btree (inventory_id, asset_id);
 CREATE INDEX IF NOT EXISTS assets_church_id_idx ON public.assets USING btree (church_id);

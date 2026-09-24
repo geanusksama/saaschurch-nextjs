@@ -17,7 +17,6 @@ import {
   Megaphone,
   Menu,
   X,
-  Heart,
   Zap,
   CheckSquare,
   BarChart3,
@@ -72,11 +71,9 @@ import {
   Smartphone,
   QrCode,
   ShoppingCart,
-  RefreshCcw,
   Video,
   Rss,
   Globe,
-  LayoutTemplate,
   Package,
   ClipboardList,
   ClipboardCheck,
@@ -258,6 +255,8 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/system/audit-log") return "Log de Auditoria";
   if (p === "/app-ui/system/integrations") return "Integrações";
 
+  if (p === "/app-ui/mobile") return "Mobile — Painel";
+  if (p.startsWith("/app-ui/mobile/")) return `Mobile — ${p.slice("/app-ui/mobile/".length)}`;
   if (p.startsWith("/app-ui/crm/")) return "Ficha de Lead CRM";
   if (p.startsWith("/app-ui/cells/")) return "Ficha de Célula";
   if (p.startsWith("/app-ui/events/")) return "Detalhes do Evento";
@@ -284,7 +283,7 @@ const SECTION_ICONS: Record<string, any> = {
   'GF (Grupos Familiares)': Home,
   'Patrimônio': Package,
   'Eventos': Calendar,
-  'App Móvel': Smartphone,
+  'Mobile': Smartphone,
   'Finanças': DollarSign,
   'Gestão EBD': BookOpen,
   'Peniel': Dove,
@@ -368,23 +367,25 @@ export const appNavigation: NavigationSection[] = [
     ]
   },
   {
-    section: 'App Móvel',
+    // App Igreja v3 (appv3/app). Substitui a antiga "App Móvel", que editava as
+    // tabelas app_* do app anterior. Telas em src/app-ui/mobile; o que cada
+    // uma edita está em src/lib/mobile/definicoes.ts.
+    section: 'Mobile',
     items: [
-      { name: 'CMS Departamentos',      path: '/app-ui/cms',               icon: LayoutTemplate, permKey: 'cms_departments' },
-      { name: 'Dashboard App',         path: '/app-ui/app/dashboard',     icon: Smartphone,   permKey: 'app_dashboard' },
-      { name: 'Eventos com Ingressos',  path: '/app-ui/app/events',        icon: Ticket,       permKey: 'app_events' },
-      { name: 'Pedidos',                path: '/app-ui/app/orders',        icon: ShoppingCart, permKey: 'app_orders' },
-      { name: 'Check-in QR Code',       path: '/app-ui/app/checkin',       icon: QrCode,       permKey: 'app_checkin' },
-      { name: 'Reembolsos',             path: '/app-ui/app/refunds',       icon: RefreshCcw,   permKey: 'app_refunds' },
-      { name: 'Meus Pagamentos',        path: '/app-ui/stripe/meus',       icon: CreditCard,   permKey: 'stripe_meus_pagamentos' },
-      { name: 'Pão Diário',             path: '/app-ui/app/daily-bread',   icon: Sun,          permKey: 'daily_bread' },
-      { name: 'Programação',            path: '/app-ui/app/hq-schedule',   icon: Calendar,     permKey: 'app_hq_schedule' },
-      { name: 'Como Chegar',            path: '/app-ui/app/hq-access',     icon: MapPin,       permKey: 'app_hq_access' },
-      { name: 'Ministérios',            path: '/app-ui/ministries',        icon: Heart,        permKey: 'ministries' },
-      { name: 'Cadastros no App',       path: '/app-ui/app/registrations', icon: UserPlus,     permKey: 'app_registrations' },
-      { name: 'Mídia / Pregações',       path: '/app-ui/app/media',         icon: Video,        permKey: 'app_media' },
-      { name: 'Notificações App',        path: '/app-ui/app/notifications', icon: Bell,         permKey: 'app_notifications' },
-      { name: 'Feed do App',             path: '/app-ui/app/feed',          icon: Rss,          permKey: 'app_feed' },
+      { name: 'Painel',              path: '/app-ui/mobile',               icon: LayoutGrid,   permKey: 'mobile_painel',     exact: true },
+      { name: 'Secretaria',          path: '/app-ui/mobile/secretaria',    icon: FileText,     permKey: 'mobile_secretaria' },
+      { name: 'Dízimos e ofertas',   path: '/app-ui/mobile/tesouraria',    icon: Wallet,       permKey: 'mobile_tesouraria' },
+      { name: 'Pedidos e ingressos', path: '/app-ui/mobile/pedidos',       icon: ShoppingCart, permKey: 'mobile_pedidos' },
+      { name: 'Eventos',             path: '/app-ui/mobile/eventos',       icon: Calendar,     permKey: 'mobile_eventos' },
+      { name: 'Notícias',            path: '/app-ui/mobile/noticias',      icon: Rss,          permKey: 'mobile_noticias' },
+      { name: 'Cultos',              path: '/app-ui/mobile/cultos',        icon: Video,        permKey: 'mobile_midias' },
+      { name: 'Pão diário',          path: '/app-ui/mobile/pao-diario',    icon: Sun,          permKey: 'mobile_pao_diario' },
+      { name: 'Loja',                path: '/app-ui/mobile/loja',          icon: Package,      permKey: 'mobile_loja' },
+      { name: 'EBD e jogos',         path: '/app-ui/mobile/ebd',           icon: BookOpen,     permKey: 'mobile_ebd' },
+      { name: 'Igreja e liderança',  path: '/app-ui/mobile/comunidade',    icon: Users,        permKey: 'mobile_comunidade' },
+      { name: 'Avisos',              path: '/app-ui/mobile/alertas',       icon: Bell,         permKey: 'mobile_alertas' },
+      { name: 'Contas do app',       path: '/app-ui/mobile/contas',        icon: UserPlus,     permKey: 'mobile_membros' },
+      { name: 'Configurações',       path: '/app-ui/mobile/configuracoes', icon: Settings,     permKey: 'mobile_config' },
     ]
   },
   {

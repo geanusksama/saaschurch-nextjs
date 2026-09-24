@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-17T17:09:28.982Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:07:17.401Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 2e2ca6e62419bdd9
+-- Baseline c7a678bfb04cf038
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -645,6 +645,503 @@ create table if not exists "public"."app_tickets" (
   "issued_at" timestamp with time zone default now() not null,
   "cancelled_at" timestamp with time zone,
   "campo_id" uuid
+);
+
+create table if not exists "public"."appv3_biblia_anotacoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "perfil_id" uuid not null,
+  "titulo" character varying(120) not null,
+  "dia_semana" smallint not null,
+  "segmentos" jsonb default '[]'::jsonb not null,
+  "criado_em" timestamp with time zone default now() not null,
+  "atualizado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_biblia_salvos" (
+  "id" uuid default gen_random_uuid() not null,
+  "perfil_id" uuid not null,
+  "livro" character varying(3) not null,
+  "capitulo" integer not null,
+  "versiculos" integer[] not null,
+  "texto" text not null,
+  "anotacao" text,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_campo_config" (
+  "campo_id" uuid not null,
+  "headquarters_id" uuid,
+  "atualizado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_cartoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "perfil_id" uuid not null,
+  "bandeira" character varying(20) not null,
+  "final" character varying(4) not null,
+  "validade" character varying(5) not null,
+  "gateway" character varying(30) not null,
+  "gateway_token" text not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_categorias" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "tipo" character varying(10) not null,
+  "nome" character varying(60) not null,
+  "ministry_id" uuid,
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_contribuicoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "perfil_id" uuid not null,
+  "campo_id" uuid not null,
+  "church_id" uuid,
+  "member_id" uuid,
+  "tipo" character varying(10) not null,
+  "valor" numeric(12,2) not null,
+  "descricao" character varying(120),
+  "metodo" character varying(10) not null,
+  "cartao_desc" character varying(60),
+  "status" character varying(25) default 'AGUARDANDO_CONFERENCIA'::character varying not null,
+  "autenticacao" character varying(20) not null,
+  "pix_txid" character varying(25),
+  "criado_em" timestamp with time zone default now() not null,
+  "confirmado_em" timestamp with time zone
+);
+
+create table if not exists "public"."appv3_convite_modelos" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "rotulo" character varying(40) not null,
+  "titulo" character varying(120) not null,
+  "cor" character varying(9) default '#D4F53C'::character varying not null,
+  "dia_semana" smallint not null,
+  "hora" character varying(5) not null,
+  "local" character varying(255),
+  "endereco" text,
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null
+);
+
+create table if not exists "public"."appv3_ebd_licoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "trimestre" character varying(30) not null,
+  "numero" integer not null,
+  "titulo" character varying(255) not null,
+  "texto_base" character varying(120),
+  "data" date not null,
+  "conteudo" text,
+  "publicado" boolean default false not null
+);
+
+create table if not exists "public"."appv3_ebd_matriculas" (
+  "id" uuid default gen_random_uuid() not null,
+  "turma_id" uuid not null,
+  "perfil_id" uuid not null,
+  "status" character varying(12) default 'SOLICITADA'::character varying not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_ebd_turmas" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "church_id" uuid,
+  "nome" character varying(120) not null,
+  "professor" character varying(255),
+  "sala" character varying(60),
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null
+);
+
+create table if not exists "public"."appv3_evento_opcoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "evento_id" uuid not null,
+  "rotulo" character varying(120) not null,
+  "preco" numeric(10,2) default 0 not null,
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null
+);
+
+create table if not exists "public"."appv3_eventos" (
+  "id" uuid default gen_random_uuid() not null,
+  "escopo" character varying(10) default 'CAMPO'::character varying not null,
+  "mundial_id" uuid,
+  "campo_id" uuid,
+  "church_id" uuid,
+  "titulo" character varying(255) not null,
+  "titulo_curto" character varying(120),
+  "categoria" character varying(80),
+  "descricao" text,
+  "local" character varying(255),
+  "endereco" text,
+  "inicio" timestamp with time zone not null,
+  "fim" timestamp with time zone,
+  "imagem_url" text,
+  "capacidade" integer,
+  "vendidos" integer default 0 not null,
+  "reembolso_ate_horas" integer default 48 not null,
+  "cta_texto" character varying(80),
+  "publicado" boolean default false not null,
+  "destaque" boolean default false not null,
+  "criado_em" timestamp with time zone default now() not null,
+  "atualizado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_familiares" (
+  "id" uuid default gen_random_uuid() not null,
+  "perfil_id" uuid not null,
+  "nome" character varying(255) not null,
+  "parentesco" character varying(40) not null,
+  "geracao" smallint not null,
+  "nucleo" character varying(64) not null,
+  "eu" boolean default false not null,
+  "related_member_id" uuid,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_igreja_mundial" (
+  "id" uuid default gen_random_uuid() not null,
+  "chave" character varying(64) default 'padrao'::character varying not null,
+  "campo_id" uuid,
+  "nome" character varying(255) not null,
+  "sigla" character varying(10) default 'AD'::character varying not null,
+  "nome_curto" character varying(120) default 'ASSEMBLEIA DE DEUS'::character varying not null,
+  "titulo_portal" character varying(255) default 'Uma só igreja,
+muitos campos'::character varying not null,
+  "subtitulo_portal" text default 'Conheça a liderança mundial e entre no app do seu campo.'::text not null,
+  "cnpj" character varying(20),
+  "logo_url" text,
+  "radio_nome" character varying(120),
+  "radio_url" text,
+  "ativo" boolean default true not null,
+  "criado_em" timestamp with time zone default now() not null,
+  "atualizado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_igreja_perfil" (
+  "church_id" uuid not null,
+  "foto_url" text,
+  "historia" text,
+  "marcos" jsonb default '[]'::jsonb not null
+);
+
+create table if not exists "public"."appv3_ingressos" (
+  "id" uuid default gen_random_uuid() not null,
+  "pedido_id" uuid not null,
+  "item_id" uuid,
+  "perfil_id" uuid not null,
+  "evento_id" uuid,
+  "opcao_id" uuid,
+  "codigo" character varying(20) not null,
+  "rotulo" character varying(120),
+  "quantidade" integer default 1 not null,
+  "valor_pago" numeric(12,2) default 0 not null,
+  "status" character varying(25) default 'AGUARDANDO_PAGAMENTO'::character varying not null,
+  "reembolso_ate" timestamp with time zone,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_jogos_conteudo" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid,
+  "jogo" character varying(10) not null,
+  "licao_id" uuid,
+  "dados" jsonb not null,
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null
+);
+
+create table if not exists "public"."appv3_jogos_pontos" (
+  "id" uuid default gen_random_uuid() not null,
+  "perfil_id" uuid not null,
+  "jogo" character varying(10) not null,
+  "pontos" integer not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_lideranca" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "church_id" uuid,
+  "member_id" uuid,
+  "nome" character varying(255) not null,
+  "cargo" character varying(255),
+  "conjuge" character varying(255),
+  "foto_url" text,
+  "palavra" text,
+  "presidente" boolean default false not null,
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null
+);
+
+create table if not exists "public"."appv3_loja_destaques" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "kicker" character varying(80),
+  "titulo" character varying(120) not null,
+  "cta" character varying(60) default 'Ver coleção'::character varying not null,
+  "categoria" character varying(60),
+  "ativo" boolean default true not null,
+  "ordem" integer default 0 not null
+);
+
+create table if not exists "public"."appv3_midias" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "tipo" character varying(10) not null,
+  "titulo" character varying(255) not null,
+  "pregador" character varying(255),
+  "serie" character varying(120),
+  "descricao" text,
+  "imagem_url" text,
+  "url" text,
+  "duracao_seg" integer default 0 not null,
+  "publicado_em" date default CURRENT_DATE not null,
+  "publicado" boolean default false not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_ministerio_info" (
+  "ministry_id" uuid not null,
+  "publico" character varying(120),
+  "agenda" character varying(120),
+  "imagem_url" text
+);
+
+create table if not exists "public"."appv3_mundial_lideres" (
+  "id" uuid default gen_random_uuid() not null,
+  "mundial_id" uuid not null,
+  "nome" character varying(255) not null,
+  "cargo" character varying(255),
+  "desde" character varying(20),
+  "paises" character varying(20),
+  "anos" character varying(20),
+  "citacao" text,
+  "resumo" text,
+  "foto_url" text,
+  "bio" jsonb default '[]'::jsonb not null,
+  "fotos" jsonb default '[]'::jsonb not null,
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_mundial_recursos" (
+  "id" uuid default gen_random_uuid() not null,
+  "mundial_id" uuid not null,
+  "tag" character varying(60),
+  "titulo" character varying(255) not null,
+  "descricao" text,
+  "cta" character varying(80),
+  "imagem_url" text,
+  "url" text,
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_noticias" (
+  "id" uuid default gen_random_uuid() not null,
+  "escopo" character varying(10) default 'CAMPO'::character varying not null,
+  "mundial_id" uuid,
+  "campo_id" uuid,
+  "tag" character varying(60),
+  "titulo" character varying(255) not null,
+  "autor" character varying(255),
+  "corpo" text,
+  "imagem_url" text,
+  "publicado_em" timestamp with time zone default now() not null,
+  "publicado" boolean default false not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_notificacao_leituras" (
+  "notificacao_id" uuid not null,
+  "perfil_id" uuid not null,
+  "lida_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_notificacoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "perfil_id" uuid,
+  "tipo" character varying(10) default 'EVENT'::character varying not null,
+  "titulo" character varying(255) not null,
+  "corpo" text,
+  "link" text,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_pao_diario" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid,
+  "data" date not null,
+  "titulo" character varying(255) not null,
+  "pregador" character varying(255),
+  "tema" character varying(80),
+  "versiculo" text,
+  "referencia" character varying(80),
+  "corpo" text,
+  "oracao" text,
+  "audio_url" text,
+  "publicado" boolean default false not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_pedido_itens" (
+  "id" uuid default gen_random_uuid() not null,
+  "pedido_id" uuid not null,
+  "tipo" character varying(10) not null,
+  "produto_id" uuid,
+  "evento_id" uuid,
+  "opcao_id" uuid,
+  "nome" character varying(255) not null,
+  "variante" character varying(255),
+  "tamanho" character varying(10),
+  "cor" character varying(60),
+  "quantidade" integer not null,
+  "preco_unit" numeric(10,2) not null,
+  "total" numeric(12,2) not null
+);
+
+create table if not exists "public"."appv3_pedidos" (
+  "id" uuid default gen_random_uuid() not null,
+  "numero" bigint default nextval('appv3_pedidos_numero_seq'::regclass) not null,
+  "perfil_id" uuid not null,
+  "campo_id" uuid not null,
+  "church_id" uuid,
+  "subtotal" numeric(12,2) default 0 not null,
+  "total" numeric(12,2) default 0 not null,
+  "metodo" character varying(10) not null,
+  "parcelas" smallint default 1 not null,
+  "status" character varying(25) default 'AGUARDANDO_PAGAMENTO'::character varying not null,
+  "entrega" character varying(120) default 'Retirar na secretaria'::character varying not null,
+  "pix_txid" character varying(25),
+  "gateway_ref" text,
+  "criado_em" timestamp with time zone default now() not null,
+  "pago_em" timestamp with time zone
+);
+
+create table if not exists "public"."appv3_perfis" (
+  "id" uuid default gen_random_uuid() not null,
+  "auth_user_id" uuid not null,
+  "campo_id" uuid not null,
+  "regional_id" uuid,
+  "church_id" uuid,
+  "member_id" uuid,
+  "nome" character varying(255) not null,
+  "celular" character varying(20),
+  "email" character varying(255),
+  "avatar_url" text,
+  "capa_url" text,
+  "notificacoes" boolean default true not null,
+  "publico" boolean default true not null,
+  "vinculado_em" timestamp with time zone,
+  "criado_em" timestamp with time zone default now() not null,
+  "atualizado_em" timestamp with time zone default now() not null,
+  "excluido_em" timestamp with time zone
+);
+
+create table if not exists "public"."appv3_pix_config" (
+  "id" uuid default gen_random_uuid() not null,
+  "escopo" character varying(10) default 'CAMPO'::character varying not null,
+  "mundial_id" uuid,
+  "campo_id" uuid,
+  "finalidade" character varying(10) not null,
+  "favorecido" character varying(120) not null,
+  "cnpj" character varying(20),
+  "cidade" character varying(60) default 'BRASIL'::character varying not null,
+  "tipo_chave" character varying(12) not null,
+  "chave" character varying(120) not null,
+  "ordem" integer default 0 not null,
+  "ativo" boolean default true not null
+);
+
+create table if not exists "public"."appv3_produto_cores" (
+  "id" uuid default gen_random_uuid() not null,
+  "produto_id" uuid not null,
+  "nome" character varying(60) not null,
+  "hex" character varying(9) not null,
+  "ordem" integer default 0 not null
+);
+
+create table if not exists "public"."appv3_produto_imagens" (
+  "id" uuid default gen_random_uuid() not null,
+  "produto_id" uuid not null,
+  "cor_id" uuid,
+  "vista" character varying(30) default 'Frente'::character varying not null,
+  "url" text not null,
+  "ordem" integer default 0 not null
+);
+
+create table if not exists "public"."appv3_produtos" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "nome" character varying(255) not null,
+  "categoria" character varying(60),
+  "descricao" text,
+  "preco" numeric(10,2) not null,
+  "novo" boolean default false not null,
+  "tamanhos" text[] default '{}'::text[] not null,
+  "estoque" integer,
+  "ativo" boolean default true not null,
+  "ordem" integer default 0 not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_reembolsos" (
+  "id" uuid default gen_random_uuid() not null,
+  "perfil_id" uuid not null,
+  "pedido_id" uuid,
+  "ingresso_id" uuid,
+  "motivo" character varying(120) not null,
+  "valor" numeric(12,2) not null,
+  "status" character varying(12) default 'SOLICITADO'::character varying not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_seguidores" (
+  "seguidor_id" uuid not null,
+  "seguido_id" uuid not null,
+  "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_solicitacoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "protocolo" bigint default nextval('appv3_solicitacoes_protocolo_seq'::regclass) not null,
+  "perfil_id" uuid not null,
+  "campo_id" uuid,
+  "church_id" uuid,
+  "member_id" uuid,
+  "tipo" character varying(60) not null,
+  "descricao" text,
+  "status" character varying(20) default 'EM_ANALISE'::character varying not null,
+  "dados" jsonb default '{}'::jsonb not null,
+  "anexo_path" text,
+  "link_url" text,
+  "resposta" text,
+  "criado_em" timestamp with time zone default now() not null,
+  "atualizado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."appv3_status" (
+  "perfil_id" uuid not null,
+  "texto" character varying(120) not null,
+  "criado_em" timestamp with time zone default now() not null,
+  "expira_em" timestamp with time zone default (now() + '24:00:00'::interval) not null
+);
+
+create table if not exists "public"."appv3_tentativas_vinculo" (
+  "id" uuid default gen_random_uuid() not null,
+  "auth_user_id" uuid not null,
+  "sucesso" boolean default false not null,
+  "criado_em" timestamp with time zone default now() not null
 );
 
 create table if not exists "public"."asset_inventories" (
@@ -4647,8 +5144,10 @@ create table if not exists "public"."zonas" (
 -- Ownership de sequences (serial)
 alter sequence "public"."tbcarteirinha_id_seq" owned by "public"."tbcarteirinha"."id";
 alter sequence "public"."tbcredencial_id_seq" owned by "public"."tbcredencial"."id";
+alter sequence "public"."appv3_solicitacoes_protocolo_seq" owned by "public"."appv3_solicitacoes"."protocolo";
 alter sequence "public"."kan_matrix_rules_id_seq" owned by "public"."kan_matrix_rules"."id";
 alter sequence "public"."kan_columns_id_seq" owned by "public"."kan_columns"."id";
 alter sequence "public"."kan_stages_id_seq" owned by "public"."kan_stages"."id";
 alter sequence "public"."kan_pipelines_id_seq" owned by "public"."kan_pipelines"."id";
 alter sequence "public"."tbfuncoes_id_seq" owned by "public"."church_function_catalog"."legacy_id";
+alter sequence "public"."appv3_pedidos_numero_seq" owned by "public"."appv3_pedidos"."numero";
