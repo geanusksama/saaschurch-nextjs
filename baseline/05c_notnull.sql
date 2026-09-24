@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.176Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:07:17.406Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 8bbb1b4492ffc847
+-- Baseline c7a678bfb04cf038
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -152,8 +152,10 @@ alter table "public"."app_tickets" alter column "order_item_id" set not null;
 alter table "public"."app_tickets" alter column "order_id" set not null;
 alter table "public"."app_tickets" alter column "user_id" set not null;
 alter table "public"."app_tickets" alter column "event_id" set not null;
+alter table "public"."appv3_biblia_anotacoes" alter column "perfil_id" set not null;
 alter table "public"."appv3_biblia_anotacoes" alter column "titulo" set not null;
 alter table "public"."appv3_biblia_anotacoes" alter column "dia_semana" set not null;
+alter table "public"."appv3_biblia_salvos" alter column "perfil_id" set not null;
 alter table "public"."appv3_biblia_salvos" alter column "livro" set not null;
 alter table "public"."appv3_biblia_salvos" alter column "capitulo" set not null;
 alter table "public"."appv3_biblia_salvos" alter column "versiculos" set not null;
@@ -185,12 +187,14 @@ alter table "public"."appv3_ebd_licoes" alter column "numero" set not null;
 alter table "public"."appv3_ebd_licoes" alter column "titulo" set not null;
 alter table "public"."appv3_ebd_licoes" alter column "data" set not null;
 alter table "public"."appv3_ebd_matriculas" alter column "turma_id" set not null;
+alter table "public"."appv3_ebd_matriculas" alter column "perfil_id" set not null;
 alter table "public"."appv3_ebd_turmas" alter column "campo_id" set not null;
 alter table "public"."appv3_ebd_turmas" alter column "nome" set not null;
 alter table "public"."appv3_evento_opcoes" alter column "evento_id" set not null;
 alter table "public"."appv3_evento_opcoes" alter column "rotulo" set not null;
 alter table "public"."appv3_eventos" alter column "titulo" set not null;
 alter table "public"."appv3_eventos" alter column "inicio" set not null;
+alter table "public"."appv3_familiares" alter column "perfil_id" set not null;
 alter table "public"."appv3_familiares" alter column "nome" set not null;
 alter table "public"."appv3_familiares" alter column "parentesco" set not null;
 alter table "public"."appv3_familiares" alter column "geracao" set not null;
@@ -202,6 +206,7 @@ alter table "public"."appv3_ingressos" alter column "perfil_id" set not null;
 alter table "public"."appv3_ingressos" alter column "codigo" set not null;
 alter table "public"."appv3_jogos_conteudo" alter column "jogo" set not null;
 alter table "public"."appv3_jogos_conteudo" alter column "dados" set not null;
+alter table "public"."appv3_jogos_pontos" alter column "perfil_id" set not null;
 alter table "public"."appv3_jogos_pontos" alter column "jogo" set not null;
 alter table "public"."appv3_jogos_pontos" alter column "pontos" set not null;
 alter table "public"."appv3_lideranca" alter column "campo_id" set not null;
@@ -218,6 +223,7 @@ alter table "public"."appv3_mundial_recursos" alter column "mundial_id" set not 
 alter table "public"."appv3_mundial_recursos" alter column "titulo" set not null;
 alter table "public"."appv3_noticias" alter column "titulo" set not null;
 alter table "public"."appv3_notificacao_leituras" alter column "notificacao_id" set not null;
+alter table "public"."appv3_notificacao_leituras" alter column "perfil_id" set not null;
 alter table "public"."appv3_notificacoes" alter column "campo_id" set not null;
 alter table "public"."appv3_notificacoes" alter column "titulo" set not null;
 alter table "public"."appv3_pao_diario" alter column "data" set not null;
@@ -249,8 +255,11 @@ alter table "public"."appv3_produtos" alter column "preco" set not null;
 alter table "public"."appv3_reembolsos" alter column "perfil_id" set not null;
 alter table "public"."appv3_reembolsos" alter column "motivo" set not null;
 alter table "public"."appv3_reembolsos" alter column "valor" set not null;
+alter table "public"."appv3_seguidores" alter column "seguidor_id" set not null;
 alter table "public"."appv3_seguidores" alter column "seguido_id" set not null;
+alter table "public"."appv3_solicitacoes" alter column "perfil_id" set not null;
 alter table "public"."appv3_solicitacoes" alter column "tipo" set not null;
+alter table "public"."appv3_status" alter column "perfil_id" set not null;
 alter table "public"."appv3_status" alter column "texto" set not null;
 alter table "public"."appv3_tentativas_vinculo" alter column "auth_user_id" set not null;
 alter table "public"."asset_inventories" alter column "church_id" set not null;

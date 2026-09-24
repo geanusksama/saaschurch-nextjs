@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.172Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:07:17.401Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 8bbb1b4492ffc847
+-- Baseline c7a678bfb04cf038
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -649,7 +649,7 @@ create table if not exists "public"."app_tickets" (
 
 create table if not exists "public"."appv3_biblia_anotacoes" (
   "id" uuid default gen_random_uuid() not null,
-  "perfil_id" uuid default appv3_meu_perfil_id() not null,
+  "perfil_id" uuid not null,
   "titulo" character varying(120) not null,
   "dia_semana" smallint not null,
   "segmentos" jsonb default '[]'::jsonb not null,
@@ -659,7 +659,7 @@ create table if not exists "public"."appv3_biblia_anotacoes" (
 
 create table if not exists "public"."appv3_biblia_salvos" (
   "id" uuid default gen_random_uuid() not null,
-  "perfil_id" uuid default appv3_meu_perfil_id() not null,
+  "perfil_id" uuid not null,
   "livro" character varying(3) not null,
   "capitulo" integer not null,
   "versiculos" integer[] not null,
@@ -743,7 +743,7 @@ create table if not exists "public"."appv3_ebd_licoes" (
 create table if not exists "public"."appv3_ebd_matriculas" (
   "id" uuid default gen_random_uuid() not null,
   "turma_id" uuid not null,
-  "perfil_id" uuid default appv3_meu_perfil_id() not null,
+  "perfil_id" uuid not null,
   "status" character varying(12) default 'SOLICITADA'::character varying not null,
   "criado_em" timestamp with time zone default now() not null
 );
@@ -795,7 +795,7 @@ create table if not exists "public"."appv3_eventos" (
 
 create table if not exists "public"."appv3_familiares" (
   "id" uuid default gen_random_uuid() not null,
-  "perfil_id" uuid default appv3_meu_perfil_id() not null,
+  "perfil_id" uuid not null,
   "nome" character varying(255) not null,
   "parentesco" character varying(40) not null,
   "geracao" smallint not null,
@@ -859,7 +859,7 @@ create table if not exists "public"."appv3_jogos_conteudo" (
 
 create table if not exists "public"."appv3_jogos_pontos" (
   "id" uuid default gen_random_uuid() not null,
-  "perfil_id" uuid default appv3_meu_perfil_id() not null,
+  "perfil_id" uuid not null,
   "jogo" character varying(10) not null,
   "pontos" integer not null,
   "criado_em" timestamp with time zone default now() not null
@@ -963,7 +963,7 @@ create table if not exists "public"."appv3_noticias" (
 
 create table if not exists "public"."appv3_notificacao_leituras" (
   "notificacao_id" uuid not null,
-  "perfil_id" uuid default appv3_meu_perfil_id() not null,
+  "perfil_id" uuid not null,
   "lida_em" timestamp with time zone default now() not null
 );
 
@@ -1107,7 +1107,7 @@ create table if not exists "public"."appv3_reembolsos" (
 );
 
 create table if not exists "public"."appv3_seguidores" (
-  "seguidor_id" uuid default appv3_meu_perfil_id() not null,
+  "seguidor_id" uuid not null,
   "seguido_id" uuid not null,
   "criado_em" timestamp with time zone default now() not null
 );
@@ -1115,7 +1115,7 @@ create table if not exists "public"."appv3_seguidores" (
 create table if not exists "public"."appv3_solicitacoes" (
   "id" uuid default gen_random_uuid() not null,
   "protocolo" bigint default nextval('appv3_solicitacoes_protocolo_seq'::regclass) not null,
-  "perfil_id" uuid default appv3_meu_perfil_id() not null,
+  "perfil_id" uuid not null,
   "campo_id" uuid,
   "church_id" uuid,
   "member_id" uuid,
@@ -1131,7 +1131,7 @@ create table if not exists "public"."appv3_solicitacoes" (
 );
 
 create table if not exists "public"."appv3_status" (
-  "perfil_id" uuid default appv3_meu_perfil_id() not null,
+  "perfil_id" uuid not null,
   "texto" character varying(120) not null,
   "criado_em" timestamp with time zone default now() not null,
   "expira_em" timestamp with time zone default (now() + '24:00:00'::interval) not null
@@ -5144,10 +5144,10 @@ create table if not exists "public"."zonas" (
 -- Ownership de sequences (serial)
 alter sequence "public"."tbcarteirinha_id_seq" owned by "public"."tbcarteirinha"."id";
 alter sequence "public"."tbcredencial_id_seq" owned by "public"."tbcredencial"."id";
+alter sequence "public"."appv3_solicitacoes_protocolo_seq" owned by "public"."appv3_solicitacoes"."protocolo";
 alter sequence "public"."kan_matrix_rules_id_seq" owned by "public"."kan_matrix_rules"."id";
 alter sequence "public"."kan_columns_id_seq" owned by "public"."kan_columns"."id";
 alter sequence "public"."kan_stages_id_seq" owned by "public"."kan_stages"."id";
 alter sequence "public"."kan_pipelines_id_seq" owned by "public"."kan_pipelines"."id";
 alter sequence "public"."tbfuncoes_id_seq" owned by "public"."church_function_catalog"."legacy_id";
 alter sequence "public"."appv3_pedidos_numero_seq" owned by "public"."appv3_pedidos"."numero";
-alter sequence "public"."appv3_solicitacoes_protocolo_seq" owned by "public"."appv3_solicitacoes"."protocolo";

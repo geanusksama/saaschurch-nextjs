@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.171Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:07:17.401Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 8bbb1b4492ffc847
+-- Baseline c7a678bfb04cf038
 
 -- Funcoes e procedures
 set check_function_bodies = false;
@@ -1091,6 +1091,22 @@ begin
 end $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.appv3_preencher_perfil()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if tg_table_name = 'appv3_seguidores' then
+    new.seguidor_id := coalesce(new.seguidor_id, public.appv3_meu_perfil_id());
+  else
+    new.perfil_id := coalesce(new.perfil_id, public.appv3_meu_perfil_id());
+  end if;
+  return new;
+end $function$
+;
+
 CREATE OR REPLACE FUNCTION public.appv3_registrar_contribuicao(p_tipo text, p_valor numeric, p_descricao text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1549,30 +1565,6 @@ END;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.fn_register_app_user(p_user_id uuid, p_email text, p_nome text, p_headquarters_id uuid, p_is_member boolean DEFAULT false)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-DECLARE
-  v_id uuid;
-  v_existing uuid;
-BEGIN
-  -- Evita duplicatas: se já existe registro para esse user_id, retorna o existente
-  SELECT id INTO v_existing FROM app_cadastros WHERE user_id = p_user_id LIMIT 1;
-  IF v_existing IS NOT NULL THEN
-    RETURN jsonb_build_object('id', v_existing, 'already_exists', true);
-  END IF;
-
-  INSERT INTO app_cadastros (user_id, email, nome, headquarters_id, is_member, status)
-  VALUES (p_user_id, p_email, p_nome, p_headquarters_id, p_is_member, 'PENDENTE')
-  RETURNING id INTO v_id;
-
-  RETURN jsonb_build_object('id', v_id, 'already_exists', false);
-END;
-$function$
-;
-
 CREATE OR REPLACE FUNCTION public.fn_register_app_user(p_user_id uuid, p_email text, p_nome text DEFAULT ''::text, p_headquarters_id uuid DEFAULT NULL::uuid, p_is_member boolean DEFAULT false, p_campo_id uuid DEFAULT NULL::uuid)
  RETURNS void
  LANGUAGE plpgsql
@@ -1617,6 +1609,30 @@ BEGIN
         campo_id        = COALESCE(EXCLUDED.campo_id,        app_cadastros.campo_id),
         campo_name      = CASE WHEN EXCLUDED.campo_name <> '' THEN EXCLUDED.campo_name ELSE app_cadastros.campo_name END,
         updated_at      = now();
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_register_app_user(p_user_id uuid, p_email text, p_nome text, p_headquarters_id uuid, p_is_member boolean DEFAULT false)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  v_id uuid;
+  v_existing uuid;
+BEGIN
+  -- Evita duplicatas: se já existe registro para esse user_id, retorna o existente
+  SELECT id INTO v_existing FROM app_cadastros WHERE user_id = p_user_id LIMIT 1;
+  IF v_existing IS NOT NULL THEN
+    RETURN jsonb_build_object('id', v_existing, 'already_exists', true);
+  END IF;
+
+  INSERT INTO app_cadastros (user_id, email, nome, headquarters_id, is_member, status)
+  VALUES (p_user_id, p_email, p_nome, p_headquarters_id, p_is_member, 'PENDENTE')
+  RETURNING id INTO v_id;
+
+  RETURN jsonb_build_object('id', v_id, 'already_exists', false);
 END;
 $function$
 ;

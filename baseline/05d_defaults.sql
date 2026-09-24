@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.176Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:07:17.407Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 8bbb1b4492ffc847
+-- Baseline c7a678bfb04cf038
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -240,12 +240,10 @@ alter table "public"."app_tickets" alter column "ticket_code" set default (gen_r
 alter table "public"."app_tickets" alter column "is_used" set default false;
 alter table "public"."app_tickets" alter column "issued_at" set default now();
 alter table "public"."appv3_biblia_anotacoes" alter column "id" set default gen_random_uuid();
-alter table "public"."appv3_biblia_anotacoes" alter column "perfil_id" set default appv3_meu_perfil_id();
 alter table "public"."appv3_biblia_anotacoes" alter column "segmentos" set default '[]'::jsonb;
 alter table "public"."appv3_biblia_anotacoes" alter column "criado_em" set default now();
 alter table "public"."appv3_biblia_anotacoes" alter column "atualizado_em" set default now();
 alter table "public"."appv3_biblia_salvos" alter column "id" set default gen_random_uuid();
-alter table "public"."appv3_biblia_salvos" alter column "perfil_id" set default appv3_meu_perfil_id();
 alter table "public"."appv3_biblia_salvos" alter column "criado_em" set default now();
 alter table "public"."appv3_campo_config" alter column "atualizado_em" set default now();
 alter table "public"."appv3_cartoes" alter column "id" set default gen_random_uuid();
@@ -264,7 +262,6 @@ alter table "public"."appv3_convite_modelos" alter column "ativo" set default tr
 alter table "public"."appv3_ebd_licoes" alter column "id" set default gen_random_uuid();
 alter table "public"."appv3_ebd_licoes" alter column "publicado" set default false;
 alter table "public"."appv3_ebd_matriculas" alter column "id" set default gen_random_uuid();
-alter table "public"."appv3_ebd_matriculas" alter column "perfil_id" set default appv3_meu_perfil_id();
 alter table "public"."appv3_ebd_matriculas" alter column "status" set default 'SOLICITADA'::character varying;
 alter table "public"."appv3_ebd_matriculas" alter column "criado_em" set default now();
 alter table "public"."appv3_ebd_turmas" alter column "id" set default gen_random_uuid();
@@ -283,7 +280,6 @@ alter table "public"."appv3_eventos" alter column "destaque" set default false;
 alter table "public"."appv3_eventos" alter column "criado_em" set default now();
 alter table "public"."appv3_eventos" alter column "atualizado_em" set default now();
 alter table "public"."appv3_familiares" alter column "id" set default gen_random_uuid();
-alter table "public"."appv3_familiares" alter column "perfil_id" set default appv3_meu_perfil_id();
 alter table "public"."appv3_familiares" alter column "eu" set default false;
 alter table "public"."appv3_familiares" alter column "criado_em" set default now();
 alter table "public"."appv3_igreja_mundial" alter column "id" set default gen_random_uuid();
@@ -306,7 +302,6 @@ alter table "public"."appv3_jogos_conteudo" alter column "id" set default gen_ra
 alter table "public"."appv3_jogos_conteudo" alter column "ordem" set default 0;
 alter table "public"."appv3_jogos_conteudo" alter column "ativo" set default true;
 alter table "public"."appv3_jogos_pontos" alter column "id" set default gen_random_uuid();
-alter table "public"."appv3_jogos_pontos" alter column "perfil_id" set default appv3_meu_perfil_id();
 alter table "public"."appv3_jogos_pontos" alter column "criado_em" set default now();
 alter table "public"."appv3_lideranca" alter column "id" set default gen_random_uuid();
 alter table "public"."appv3_lideranca" alter column "presidente" set default false;
@@ -336,7 +331,6 @@ alter table "public"."appv3_noticias" alter column "escopo" set default 'CAMPO':
 alter table "public"."appv3_noticias" alter column "publicado_em" set default now();
 alter table "public"."appv3_noticias" alter column "publicado" set default false;
 alter table "public"."appv3_noticias" alter column "criado_em" set default now();
-alter table "public"."appv3_notificacao_leituras" alter column "perfil_id" set default appv3_meu_perfil_id();
 alter table "public"."appv3_notificacao_leituras" alter column "lida_em" set default now();
 alter table "public"."appv3_notificacoes" alter column "id" set default gen_random_uuid();
 alter table "public"."appv3_notificacoes" alter column "tipo" set default 'EVENT'::character varying;
@@ -377,16 +371,13 @@ alter table "public"."appv3_produtos" alter column "criado_em" set default now()
 alter table "public"."appv3_reembolsos" alter column "id" set default gen_random_uuid();
 alter table "public"."appv3_reembolsos" alter column "status" set default 'SOLICITADO'::character varying;
 alter table "public"."appv3_reembolsos" alter column "criado_em" set default now();
-alter table "public"."appv3_seguidores" alter column "seguidor_id" set default appv3_meu_perfil_id();
 alter table "public"."appv3_seguidores" alter column "criado_em" set default now();
 alter table "public"."appv3_solicitacoes" alter column "id" set default gen_random_uuid();
 alter table "public"."appv3_solicitacoes" alter column "protocolo" set default nextval('appv3_solicitacoes_protocolo_seq'::regclass);
-alter table "public"."appv3_solicitacoes" alter column "perfil_id" set default appv3_meu_perfil_id();
 alter table "public"."appv3_solicitacoes" alter column "status" set default 'EM_ANALISE'::character varying;
 alter table "public"."appv3_solicitacoes" alter column "dados" set default '{}'::jsonb;
 alter table "public"."appv3_solicitacoes" alter column "criado_em" set default now();
 alter table "public"."appv3_solicitacoes" alter column "atualizado_em" set default now();
-alter table "public"."appv3_status" alter column "perfil_id" set default appv3_meu_perfil_id();
 alter table "public"."appv3_status" alter column "criado_em" set default now();
 alter table "public"."appv3_status" alter column "expira_em" set default (now() + '24:00:00'::interval);
 alter table "public"."appv3_tentativas_vinculo" alter column "id" set default gen_random_uuid();

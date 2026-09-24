@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.173Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:07:17.403Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 8bbb1b4492ffc847
+-- Baseline c7a678bfb04cf038
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -525,14 +525,14 @@ alter table "public"."app_tickets" add column if not exists "issued_at" timestam
 alter table "public"."app_tickets" add column if not exists "cancelled_at" timestamp with time zone;
 alter table "public"."app_tickets" add column if not exists "campo_id" uuid;
 alter table "public"."appv3_biblia_anotacoes" add column if not exists "id" uuid default gen_random_uuid() not null;
-alter table "public"."appv3_biblia_anotacoes" add column if not exists "perfil_id" uuid default appv3_meu_perfil_id() not null;
+alter table "public"."appv3_biblia_anotacoes" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_biblia_anotacoes" add column if not exists "titulo" character varying(120);
 alter table "public"."appv3_biblia_anotacoes" add column if not exists "dia_semana" smallint;
 alter table "public"."appv3_biblia_anotacoes" add column if not exists "segmentos" jsonb default '[]'::jsonb not null;
 alter table "public"."appv3_biblia_anotacoes" add column if not exists "criado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_biblia_anotacoes" add column if not exists "atualizado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_biblia_salvos" add column if not exists "id" uuid default gen_random_uuid() not null;
-alter table "public"."appv3_biblia_salvos" add column if not exists "perfil_id" uuid default appv3_meu_perfil_id() not null;
+alter table "public"."appv3_biblia_salvos" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_biblia_salvos" add column if not exists "livro" character varying(3);
 alter table "public"."appv3_biblia_salvos" add column if not exists "capitulo" integer;
 alter table "public"."appv3_biblia_salvos" add column if not exists "versiculos" integer[];
@@ -595,7 +595,7 @@ alter table "public"."appv3_ebd_licoes" add column if not exists "conteudo" text
 alter table "public"."appv3_ebd_licoes" add column if not exists "publicado" boolean default false not null;
 alter table "public"."appv3_ebd_matriculas" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."appv3_ebd_matriculas" add column if not exists "turma_id" uuid;
-alter table "public"."appv3_ebd_matriculas" add column if not exists "perfil_id" uuid default appv3_meu_perfil_id() not null;
+alter table "public"."appv3_ebd_matriculas" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_ebd_matriculas" add column if not exists "status" character varying(12) default 'SOLICITADA'::character varying not null;
 alter table "public"."appv3_ebd_matriculas" add column if not exists "criado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_ebd_turmas" add column if not exists "id" uuid default gen_random_uuid() not null;
@@ -635,7 +635,7 @@ alter table "public"."appv3_eventos" add column if not exists "destaque" boolean
 alter table "public"."appv3_eventos" add column if not exists "criado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_eventos" add column if not exists "atualizado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_familiares" add column if not exists "id" uuid default gen_random_uuid() not null;
-alter table "public"."appv3_familiares" add column if not exists "perfil_id" uuid default appv3_meu_perfil_id() not null;
+alter table "public"."appv3_familiares" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_familiares" add column if not exists "nome" character varying(255);
 alter table "public"."appv3_familiares" add column if not exists "parentesco" character varying(40);
 alter table "public"."appv3_familiares" add column if not exists "geracao" smallint;
@@ -684,7 +684,7 @@ alter table "public"."appv3_jogos_conteudo" add column if not exists "dados" jso
 alter table "public"."appv3_jogos_conteudo" add column if not exists "ordem" integer default 0 not null;
 alter table "public"."appv3_jogos_conteudo" add column if not exists "ativo" boolean default true not null;
 alter table "public"."appv3_jogos_pontos" add column if not exists "id" uuid default gen_random_uuid() not null;
-alter table "public"."appv3_jogos_pontos" add column if not exists "perfil_id" uuid default appv3_meu_perfil_id() not null;
+alter table "public"."appv3_jogos_pontos" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_jogos_pontos" add column if not exists "jogo" character varying(10);
 alter table "public"."appv3_jogos_pontos" add column if not exists "pontos" integer;
 alter table "public"."appv3_jogos_pontos" add column if not exists "criado_em" timestamp with time zone default now() not null;
@@ -764,7 +764,7 @@ alter table "public"."appv3_noticias" add column if not exists "publicado_em" ti
 alter table "public"."appv3_noticias" add column if not exists "publicado" boolean default false not null;
 alter table "public"."appv3_noticias" add column if not exists "criado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_notificacao_leituras" add column if not exists "notificacao_id" uuid;
-alter table "public"."appv3_notificacao_leituras" add column if not exists "perfil_id" uuid default appv3_meu_perfil_id() not null;
+alter table "public"."appv3_notificacao_leituras" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_notificacao_leituras" add column if not exists "lida_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_notificacoes" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."appv3_notificacoes" add column if not exists "campo_id" uuid;
@@ -875,12 +875,12 @@ alter table "public"."appv3_reembolsos" add column if not exists "motivo" charac
 alter table "public"."appv3_reembolsos" add column if not exists "valor" numeric(12,2);
 alter table "public"."appv3_reembolsos" add column if not exists "status" character varying(12) default 'SOLICITADO'::character varying not null;
 alter table "public"."appv3_reembolsos" add column if not exists "criado_em" timestamp with time zone default now() not null;
-alter table "public"."appv3_seguidores" add column if not exists "seguidor_id" uuid default appv3_meu_perfil_id() not null;
+alter table "public"."appv3_seguidores" add column if not exists "seguidor_id" uuid;
 alter table "public"."appv3_seguidores" add column if not exists "seguido_id" uuid;
 alter table "public"."appv3_seguidores" add column if not exists "criado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_solicitacoes" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."appv3_solicitacoes" add column if not exists "protocolo" bigint default nextval('appv3_solicitacoes_protocolo_seq'::regclass) not null;
-alter table "public"."appv3_solicitacoes" add column if not exists "perfil_id" uuid default appv3_meu_perfil_id() not null;
+alter table "public"."appv3_solicitacoes" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_solicitacoes" add column if not exists "campo_id" uuid;
 alter table "public"."appv3_solicitacoes" add column if not exists "church_id" uuid;
 alter table "public"."appv3_solicitacoes" add column if not exists "member_id" uuid;
@@ -893,7 +893,7 @@ alter table "public"."appv3_solicitacoes" add column if not exists "link_url" te
 alter table "public"."appv3_solicitacoes" add column if not exists "resposta" text;
 alter table "public"."appv3_solicitacoes" add column if not exists "criado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_solicitacoes" add column if not exists "atualizado_em" timestamp with time zone default now() not null;
-alter table "public"."appv3_status" add column if not exists "perfil_id" uuid default appv3_meu_perfil_id() not null;
+alter table "public"."appv3_status" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_status" add column if not exists "texto" character varying(120);
 alter table "public"."appv3_status" add column if not exists "criado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_status" add column if not exists "expira_em" timestamp with time zone default (now() + '24:00:00'::interval) not null;

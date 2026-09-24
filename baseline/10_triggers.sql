@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.179Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:07:17.409Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 8bbb1b4492ffc847
+-- Baseline c7a678bfb04cf038
 
 -- Triggers
 drop trigger if exists "trg_app_cart_items_campo_id" on "public"."app_cart_items";
@@ -29,16 +29,34 @@ drop trigger if exists "trg_app_seats_campo_id" on "public"."app_seats";
 CREATE TRIGGER trg_app_seats_campo_id BEFORE INSERT OR UPDATE ON public.app_seats FOR EACH ROW EXECUTE FUNCTION trg_fn_inherit_campo_id('app_events', 'event_id');
 drop trigger if exists "trg_app_tickets_campo_id" on "public"."app_tickets";
 CREATE TRIGGER trg_app_tickets_campo_id BEFORE INSERT OR UPDATE ON public.app_tickets FOR EACH ROW EXECUTE FUNCTION trg_fn_inherit_campo_id('app_orders', 'order_id');
+drop trigger if exists "appv3_biblia_anotacoes_perfil" on "public"."appv3_biblia_anotacoes";
+CREATE TRIGGER appv3_biblia_anotacoes_perfil BEFORE INSERT ON public.appv3_biblia_anotacoes FOR EACH ROW EXECUTE FUNCTION appv3_preencher_perfil();
+drop trigger if exists "appv3_biblia_salvos_perfil" on "public"."appv3_biblia_salvos";
+CREATE TRIGGER appv3_biblia_salvos_perfil BEFORE INSERT ON public.appv3_biblia_salvos FOR EACH ROW EXECUTE FUNCTION appv3_preencher_perfil();
 drop trigger if exists "appv3_contribuicoes_alerta" on "public"."appv3_contribuicoes";
 CREATE TRIGGER appv3_contribuicoes_alerta AFTER UPDATE OF status ON public.appv3_contribuicoes FOR EACH ROW EXECUTE FUNCTION appv3_alerta_status();
+drop trigger if exists "appv3_ebd_matriculas_perfil" on "public"."appv3_ebd_matriculas";
+CREATE TRIGGER appv3_ebd_matriculas_perfil BEFORE INSERT ON public.appv3_ebd_matriculas FOR EACH ROW EXECUTE FUNCTION appv3_preencher_perfil();
+drop trigger if exists "appv3_familiares_perfil" on "public"."appv3_familiares";
+CREATE TRIGGER appv3_familiares_perfil BEFORE INSERT ON public.appv3_familiares FOR EACH ROW EXECUTE FUNCTION appv3_preencher_perfil();
+drop trigger if exists "appv3_jogos_pontos_perfil" on "public"."appv3_jogos_pontos";
+CREATE TRIGGER appv3_jogos_pontos_perfil BEFORE INSERT ON public.appv3_jogos_pontos FOR EACH ROW EXECUTE FUNCTION appv3_preencher_perfil();
+drop trigger if exists "appv3_notificacao_leituras_perfil" on "public"."appv3_notificacao_leituras";
+CREATE TRIGGER appv3_notificacao_leituras_perfil BEFORE INSERT ON public.appv3_notificacao_leituras FOR EACH ROW EXECUTE FUNCTION appv3_preencher_perfil();
 drop trigger if exists "appv3_pedidos_alerta" on "public"."appv3_pedidos";
 CREATE TRIGGER appv3_pedidos_alerta AFTER UPDATE OF status ON public.appv3_pedidos FOR EACH ROW EXECUTE FUNCTION appv3_alerta_status();
 drop trigger if exists "appv3_reembolsos_alerta" on "public"."appv3_reembolsos";
 CREATE TRIGGER appv3_reembolsos_alerta AFTER UPDATE OF status ON public.appv3_reembolsos FOR EACH ROW EXECUTE FUNCTION appv3_alerta_status();
+drop trigger if exists "appv3_seguidores_perfil" on "public"."appv3_seguidores";
+CREATE TRIGGER appv3_seguidores_perfil BEFORE INSERT ON public.appv3_seguidores FOR EACH ROW EXECUTE FUNCTION appv3_preencher_perfil();
 drop trigger if exists "appv3_solicitacoes_alerta" on "public"."appv3_solicitacoes";
 CREATE TRIGGER appv3_solicitacoes_alerta AFTER UPDATE OF status ON public.appv3_solicitacoes FOR EACH ROW EXECUTE FUNCTION appv3_alerta_status();
+drop trigger if exists "appv3_solicitacoes_perfil" on "public"."appv3_solicitacoes";
+CREATE TRIGGER appv3_solicitacoes_perfil BEFORE INSERT ON public.appv3_solicitacoes FOR EACH ROW EXECUTE FUNCTION appv3_preencher_perfil();
 drop trigger if exists "appv3_solicitacoes_preencher" on "public"."appv3_solicitacoes";
 CREATE TRIGGER appv3_solicitacoes_preencher BEFORE INSERT ON public.appv3_solicitacoes FOR EACH ROW EXECUTE FUNCTION appv3_solicitacoes_preencher();
+drop trigger if exists "appv3_status_perfil" on "public"."appv3_status";
+CREATE TRIGGER appv3_status_perfil BEFORE INSERT ON public.appv3_status FOR EACH ROW EXECUTE FUNCTION appv3_preencher_perfil();
 drop trigger if exists "trg_department_cart_items_campo_id" on "public"."department_cart_items";
 CREATE TRIGGER trg_department_cart_items_campo_id BEFORE INSERT OR UPDATE ON public.department_cart_items FOR EACH ROW EXECUTE FUNCTION trg_fn_inherit_campo_id('department_carts', 'cart_id');
 drop trigger if exists "trg_department_carts_campo_id" on "public"."department_carts";

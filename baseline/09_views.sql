@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T15:02:40.179Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:07:17.409Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 8bbb1b4492ffc847
+-- Baseline c7a678bfb04cf038
 
 -- Views e materialized views
 create or replace view "public"."pastoral_timeline" as
