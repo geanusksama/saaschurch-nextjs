@@ -7,7 +7,8 @@
  * O ciclo é sempre o mesmo:
  *   1. cria a campanha e monta o formulário (cada pergunta pode apontar para um
  *      campo do cadastro);
- *   2. compartilha o link, e/ou anexa pessoas e dispara por WhatsApp;
+ *   2. compartilha o link, e/ou anexa pessoas e dispara por WhatsApp e/ou
+ *      pelo App Igreja (alerta no sino de quem tem conta no app);
  *   3. as respostas caem na aba Respostas;
  *   4. conferir → aprovar (grava no cadastro) ou reprovar (devolve o link com o
  *      motivo, para a pessoa corrigir e reenviar).
@@ -64,6 +65,10 @@ interface Target {
   sent_at: string | null;
   error: string | null;
   link: string;
+  /** tem conta no App Igreja */
+  app: boolean;
+  /** quando foi avisada no app (null = ainda não) */
+  app_sent_at: string | null;
 }
 
 interface ResponseRow {
@@ -137,6 +142,7 @@ export default function SecretariaCampaigns() {
   const [confirmarExclusao, setConfirmarExclusao] = useState<Campaign | null>(null);
 
   const [enviando, setEnviando] = useState(false);
+  const [enviandoApp, setEnviandoApp] = useState(false);
   const [progresso, setProgresso] = useState<{ feito: number; total: number } | null>(null);
   const [mudandoStatus, setMudandoStatus] = useState(false);
   const [instancias, setInstancias] = useState<{ id: string; name: string; status: string }[]>([]);
@@ -291,6 +297,23 @@ export default function SecretariaCampaigns() {
     }
   };
 
+  /** Alerta no sino do App Igreja para quem tem conta no app, com o link individual. */
+  const enviarApp = async () => {
+    if (!aberta || enviandoApp) return;
+    setEnviandoApp(true);
+    try {
+      const res = await fetch(`/api/secretaria/campaigns/${aberta.id}/send-app`, { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao enviar pelo app');
+      toast.success(`Enviado no app para ${data.enviados} pessoa(s).`);
+      await recarregarTudo();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao enviar pelo app');
+    } finally {
+      setEnviandoApp(false);
+    }
+  };
+
   /** Encerra ou reabre a campanha. Encerrada, o link recusa novas respostas. */
   const mudarStatus = async (status: 'active' | 'closed') => {
     if (!aberta || mudandoStatus) return;
@@ -365,6 +388,7 @@ export default function SecretariaCampaigns() {
   if (aberta) {
     const atual = campaigns.find(c => c.id === aberta.id) ?? aberta;
     const pendentesEnvio = targets.filter(t => t.status === 'pending' && t.phone).length;
+    const pendentesApp = targets.filter(t => t.app && !t.app_sent_at && !['responded', 'approved'].includes(t.status)).length;
 
     return (
       <div className="p-6">
@@ -444,6 +468,19 @@ export default function SecretariaCampaigns() {
                   : `Enviar (${pendentesEnvio})`}
               </button>
               <button
+                onClick={enviarApp}
+                disabled={enviandoApp || !pendentesApp || atual.status !== 'active'}
+                title={
+                  atual.status !== 'active'
+                    ? 'Só campanha ativa pode ser enviada'
+                    : 'Alerta no sino do App Igreja de quem tem conta no app, com o link desta pessoa'
+                }
+                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 dark:bg-slate-600"
+              >
+                {enviandoApp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
+                {`Enviar pelo app (${pendentesApp})`}
+              </button>
+              <button
                 onClick={() => editar(atual)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
               >
@@ -481,7 +518,11 @@ export default function SecretariaCampaigns() {
 
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Metrica icone={<Users className="h-4 w-4" />} rotulo="Anexadas" valor={targets.length} />
-            <Metrica icone={<Send className="h-4 w-4" />} rotulo="Enviadas" valor={targets.filter(t => t.sent_at).length} />
+            <Metrica
+              icone={<Send className="h-4 w-4" />}
+              rotulo="Enviadas (WhatsApp · app)"
+              valor={`${targets.filter(t => t.sent_at).length} · ${targets.filter(t => t.app_sent_at).length}`}
+            />
             <Metrica icone={<MessageCircle className="h-4 w-4" />} rotulo="Responderam" valor={responses.length} />
             <Metrica
               icone={<Clock className="h-4 w-4" />}
@@ -570,6 +611,14 @@ export default function SecretariaCampaigns() {
                   <span className="hidden w-40 truncate text-slate-500 md:block">{t.church_name ?? '—'}</span>
                   <span className={`w-28 truncate ${t.phone ? 'text-slate-500' : 'text-amber-600'}`}>
                     {t.phone ?? 'sem telefone'}
+                  </span>
+                  <span
+                    className={`w-20 text-center text-[11px] font-semibold ${
+                      t.app_sent_at ? 'text-emerald-600' : t.app ? 'text-slate-500' : 'text-slate-300'
+                    }`}
+                    title={t.app_sent_at ? `Avisada no app em ${fmtData(t.app_sent_at)}` : t.app ? 'Tem conta no app' : 'Sem conta no app'}
+                  >
+                    {t.app_sent_at ? 'App ✓' : t.app ? 'App' : '—'}
                   </span>
                   <span
                     className={`w-24 text-right font-semibold ${
@@ -774,13 +823,13 @@ function Metrica({
 }: {
   icone: React.ReactNode;
   rotulo: string;
-  valor: number;
+  valor: number | string;
   destaque?: boolean;
 }) {
   return (
     <div
       className={`rounded-xl border p-3 ${
-        destaque && valor > 0
+        destaque && Number(valor) > 0
           ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20'
           : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-700/40'
       }`}

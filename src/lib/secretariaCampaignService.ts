@@ -505,3 +505,51 @@ export async function refreshCampaignCounters(campaignId: string): Promise<void>
     })
     .eq('id', campaignId)
 }
+
+// ── Entrega pelo App Igreja v3 ───────────────────────────────────────────────
+// Quem tem conta no app (appv3_perfis ligado ao membro) recebe a campanha no
+// sino do app: um alerta pessoal com o MESMO link individual do WhatsApp. O
+// alerta é a prova do envio — não há coluna nova; "avisado no app" = existe
+// alerta daquele perfil com aquele link.
+
+export interface AppDoAlvo {
+  perfilId: string
+  campoId: string
+  /** quando o alerta com o link desta pessoa foi gravado (null = ainda não) */
+  avisadoEm: Date | null
+}
+
+/** Por id do alvo: a conta do app da pessoa e se ela já foi avisada lá. */
+export async function appDosAlvos(
+  shareToken: string,
+  targets: { id: string; member_id: string | null; token: string }[]
+): Promise<Map<string, AppDoAlvo>> {
+  const out = new Map<string, AppDoAlvo>()
+  const memberIds = [...new Set(targets.map(t => t.member_id).filter(Boolean) as string[])]
+  if (!memberIds.length) return out
+
+  const perfis = await prisma.appV3Perfil.findMany({
+    where: { memberId: { in: memberIds }, excluidoEm: null },
+    select: { id: true, campoId: true, memberId: true },
+  })
+  const porMembro = new Map(perfis.map(p => [p.memberId, p]))
+  const links = targets.map(t => campaignPublicUrl(shareToken, t.token))
+  const alertas = perfis.length
+    ? await prisma.appV3Notificacao.findMany({
+        where: { perfilId: { in: perfis.map(p => p.id) }, link: { in: links } },
+        select: { perfilId: true, link: true, criadoEm: true },
+      })
+    : []
+  const avisado = new Map(alertas.map(a => [`${a.perfilId}|${a.link}`, a.criadoEm]))
+
+  for (const t of targets) {
+    const p = t.member_id ? porMembro.get(t.member_id) : undefined
+    if (!p) continue
+    out.set(t.id, {
+      perfilId: p.id,
+      campoId: p.campoId,
+      avisadoEm: avisado.get(`${p.id}|${campaignPublicUrl(shareToken, t.token)}`) ?? null,
+    })
+  }
+  return out
+}

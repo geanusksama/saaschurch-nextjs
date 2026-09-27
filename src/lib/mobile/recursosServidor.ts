@@ -15,8 +15,9 @@
  */
 import { prisma } from '@/lib/prisma';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { RECURSOS, type CampoDef, type RecursoDef } from './definicoes';
+import { RECURSOS, TIPOS_SEM_APROVACAO, type CampoDef, type RecursoDef } from './definicoes';
 import { prepararJogo, resumoJogo } from './jogoDados';
+import { planejar } from './solicitacaoExecucao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
@@ -70,6 +71,7 @@ interface Serv {
 const SERV: Record<string, Serv> = {
   solicitacoes: {
     modelo: 'appV3Solicitacao', escopo: 'campo', colIgreja: 'churchId',
+    fixo: { tipo: { notIn: TIPOS_SEM_APROVACAO } },
     ordem: [{ criadoEm: 'desc' }],
     include: { perfil: PESSOA_SEL, church: { select: { name: true } } },
     mapear: (r) => ({ protocolo: `#SEC-${r.protocolo}`, pessoa: nomePessoa(r.perfil), igreja: r.church?.name ?? null }),
@@ -409,6 +411,7 @@ export async function obter(chave: string, id: string, ctx: Contexto) {
     const { data } = await supabaseAdmin.storage.from('appv3-privado').createSignedUrl(row.anexoPath, 3600);
     out.anexo = data?.signedUrl ?? null;
   }
+  if (chave === 'solicitacoes') out.execucao = await planejar(row);
   return out;
 }
 
@@ -508,7 +511,14 @@ async function efeitos(chave: string, antes: Row, dados: Record<string, unknown>
   const novo = dados.status as string | undefined;
   if (!novo || novo === antes.status) return { proprio, ops };
 
-  if (chave === 'solicitacoes') proprio.atualizadoEm = new Date();
+  if (chave === 'solicitacoes') {
+    proprio.atualizadoEm = new Date();
+    // Matrícula da EBD recusada não fica "solicitada" para sempre no app.
+    const turma = (antes.dados as Row)?.turma_id;
+    if (antes.tipo === 'Matrícula na EBD' && turma && (novo === 'RECUSADA' || novo === 'CANCELADA')) {
+      ops.push(prisma.appV3EbdMatricula.updateMany({ where: { turmaId: String(turma), perfilId: antes.perfilId, status: 'SOLICITADA' }, data: { status: 'CANCELADA' } }));
+    }
+  }
   if (chave === 'contribuicoes') proprio.confirmadoEm = novo === 'CONFIRMADA' ? new Date() : null;
 
   if (chave === 'pedidos') {

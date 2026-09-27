@@ -68,7 +68,16 @@ export interface RecursoDef {
   /** Campos usados na busca por texto. */
   busca?: string[];
   vazio?: string;
+  /** Detalhe traz `execucao` (o que "Aprovar e executar" grava) — só solicitações. */
+  execucao?: boolean;
 }
+
+/**
+ * Solicitações que são coisa da própria pessoa (foto facial, capa): não passam
+ * por aprovação e não aparecem na Secretaria do painel. A foto facial hoje vai
+ * direto para os leitores; sobra só o histórico de versões antigas do app.
+ */
+export const TIPOS_SEM_APROVACAO = ['Envio de foto'];
 
 // ── opções reaproveitadas ───────────────────────────────────────────────────
 const STATUS_SOLICITACAO: [string, string][] = [
@@ -149,6 +158,7 @@ export const RECURSOS: Record<string, RecursoDef> = {
     filtros: ['status'], data: 'criadoEm',
     busca: ['tipo', 'descricao'],
     vazio: 'Nenhuma solicitação feita pelo app.',
+    execucao: true,
     campos: [
       { col: 'protocolo', rotulo: 'Protocolo', tipo: 'texto', lista: true, leitura: true },
       { col: 'tipo', rotulo: 'Tipo', tipo: 'texto', lista: true, leitura: true },
