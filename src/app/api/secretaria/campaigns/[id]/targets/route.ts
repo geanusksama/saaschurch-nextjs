@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
+  appDosAlvos,
   buildTargetRow,
   campaignPublicUrl,
   refreshCampaignCounters,
@@ -52,8 +53,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const { data, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    const app = await appDosAlvos(campaign.share_token, data ?? [])
     return NextResponse.json({
-      targets: (data ?? []).map(t => ({ ...t, link: campaignPublicUrl(campaign.share_token, t.token) })),
+      targets: (data ?? []).map(t => ({
+        ...t,
+        link: campaignPublicUrl(campaign.share_token, t.token),
+        // tem conta no App Igreja e, se já avisada lá, quando
+        app: app.has(t.id),
+        app_sent_at: app.get(t.id)?.avisadoEm ?? null,
+      })),
     })
   })
 }

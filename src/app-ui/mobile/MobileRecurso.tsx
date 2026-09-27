@@ -11,7 +11,7 @@
  * tela em modo compacto.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ChevronLeft, ChevronRight, ImagePlus, Info, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, ImagePlus, Info, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { usePermissions } from '../../lib/usePermissions';
@@ -272,6 +272,50 @@ function Campo({ c, valor, onChange, pasta, paiId, travado, valores }: {
   );
 }
 
+// ── aprovar e executar (solicitações) ─────────────────────────────────────
+interface Execucao {
+  executavel: boolean;
+  mudancas: { rotulo: string; de: string | null; para: string }[];
+  manual: string[];
+}
+
+/**
+ * O que a aprovação grava no cadastro (vem do servidor, calculado com o mesmo
+ * código que executa). Sem nada a gravar, só orienta: a secretaria faz o
+ * trabalho e troca o status, que avisa a pessoa.
+ */
+function PainelExecucao({ ex, podeEditar, executando, onExecutar }: {
+  ex: Execucao; podeEditar: boolean; executando: boolean; onExecutar: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/20 p-4 space-y-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+        {ex.executavel ? 'Ao aprovar, o sistema grava' : 'O que fazer'}
+      </p>
+      {ex.mudancas.length > 0 && (
+        <ul className="space-y-1.5 text-sm">
+          {ex.mudancas.map((m) => (
+            <li key={m.rotulo} className="text-slate-700 dark:text-slate-200">
+              <span className="font-semibold">{m.rotulo}:</span>{' '}
+              <span className="text-slate-400 line-through">{m.de ?? '—'}</span>{' → '}
+              <span className="font-semibold text-emerald-700 dark:text-emerald-300">{m.para}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {ex.manual.map((t) => <p key={t} className="text-sm text-slate-600 dark:text-slate-300">{t}</p>)}
+      {ex.executavel && podeEditar && (
+        <button onClick={onExecutar} disabled={executando}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold">
+          {executando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+          Aprovar e executar
+        </button>
+      )}
+      {ex.executavel && <p className="text-[11px] text-slate-500">Conclui a solicitação e a pessoa recebe o alerta no app. A resposta escrita abaixo vai junto.</p>}
+    </div>
+  );
+}
+
 // ── formulário (painel lateral) ────────────────────────────────────────────
 function Editor({ def, inicial, paiId, podeEditar, podeExcluir, onFechar, onSalvo, onExcluir }: {
   def: RecursoDef; inicial: Row | null; paiId: string | null; podeEditar: boolean; podeExcluir: boolean;
@@ -310,6 +354,20 @@ function Editor({ def, inicial, paiId, podeEditar, podeExcluir, onFechar, onSalv
     }
   };
 
+  const [executando, setExecutando] = useState(false);
+  const executar = async () => {
+    setExecutando(true);
+    try {
+      const r = await api<Row>(`${def.chave}/${inicial!.id}/executar`, { method: 'POST', body: { resposta: valores.resposta ?? '' } });
+      toast.success('Solicitação aprovada e executada. A pessoa foi avisada no app.');
+      onSalvo(r);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setExecutando(false);
+    }
+  };
+
   const travado = !podeEditar && !novo;
   const idAtual = novo ? null : (inicial!.id as string);
 
@@ -326,6 +384,9 @@ function Editor({ def, inicial, paiId, podeEditar, podeExcluir, onFechar, onSalv
               paiId={def.pai ? paiId : idAtual}
               onChange={(v) => setValores((s) => ({ ...s, [c.col]: v }))} />
           ))}
+          {!novo && def.execucao && valores.execucao && (
+            <PainelExecucao ex={valores.execucao as Execucao} podeEditar={podeEditar} executando={executando} onExecutar={executar} />
+          )}
           {!novo && def.filhos?.map((f) => (
             <div key={f} className="pt-2 border-t border-slate-200 dark:border-slate-700">
               <MobileRecurso recurso={f} paiId={idAtual} compacto />

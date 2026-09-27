@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { TIPOS_SEM_APROVACAO } from '@/lib/mobile/definicoes';
 import { jsonSemCache, rotaMobile } from '@/lib/mobile/rota';
 
 /**
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     const daIgreja = igreja ? { churchId: igreja } : {};
     const agora = new Date();
     const [solicitacoes, contribuicoes, pedidos, reembolsos, contas, eventos] = await Promise.all([
-      prisma.appV3Solicitacao.count({ where: { campoId, ...daIgreja, status: { in: ['EM_ANALISE', 'AGUARDANDO_LINK'] } } }),
+      prisma.appV3Solicitacao.count({ where: { campoId, ...daIgreja, tipo: { notIn: TIPOS_SEM_APROVACAO }, status: { in: ['EM_ANALISE', 'AGUARDANDO_LINK'] } } }),
       prisma.appV3Contribuicao.count({ where: { campoId, ...daIgreja, status: 'AGUARDANDO_CONFERENCIA' } }),
       prisma.appV3Pedido.count({ where: { campoId, ...daIgreja, status: { in: ['AGUARDANDO_CONFERENCIA', 'PAGO', 'EM_SEPARACAO'] } } }),
       prisma.appV3Reembolso.count({ where: { status: 'SOLICITADO', perfil: { campoId, ...daIgreja } } }),
