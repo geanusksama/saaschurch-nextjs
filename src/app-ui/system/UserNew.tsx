@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router';
 
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
-import { MembroBuscaModal, telefoneDoMembro, type MembroOpcao } from './MembroBusca';
+import { MembroBuscaModal, funcaoSugerida, funcoesDoMembro, telefoneDoMembro, type MembroOpcao } from './MembroBusca';
 
 type CampoOption = {
   id: string;
@@ -122,8 +122,15 @@ export default function UserNew() {
   const escolherMembro = (m: MembroOpcao) => {
     setMembroEscolhido(m);
     setBuscandoMembro(false);
+    // A função do usuário vem da função que o membro já exerce na igreja
+    // (DIRIGENTE DE CONGREGACAO → Dirigente), quando a correspondência é única.
+    const sugerida = funcaoSugerida(
+      m,
+      roles.filter((r) => !r.churchId || r.churchId === m.churchId),
+    );
     setForm((prev) => ({
       ...prev,
+      roleId: sugerida?.id ?? prev.roleId,
       fullName: m.fullName || prev.fullName,
       email: m.email?.trim() || '',
       phone: telefoneDoMembro(m),
@@ -134,6 +141,18 @@ export default function UserNew() {
   const limparMembro = () => {
     setMembroEscolhido(null);
     setForm((prev) => ({ ...prev, fullName: '', email: '', phone: '', churchId: '', regionalId: '' }));
+  };
+
+  /** Função criada em outra aba aparece sem recarregar a página. */
+  const recarregarFuncoes = () => {
+    fetch(`${apiBase}/roles`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((lista) => {
+        if (Array.isArray(lista)) setRoles(lista);
+      })
+      .catch(() => {
+        /* mantém a lista que já estava */
+      });
   };
 
   const filteredRegionais = useMemo(() => {
@@ -331,6 +350,9 @@ export default function UserNew() {
                     Preenchido do membro <strong>{membroEscolhido.fullName}</strong>
                     {membroEscolhido.rol ? ` · ROL #${membroEscolhido.rol}` : ''}
                     {membroEscolhido.church?.name ? ` · ${membroEscolhido.church.name}` : ''}
+                    {funcoesDoMembro(membroEscolhido).length > 0
+                      ? ` · função no cadastro: ${funcoesDoMembro(membroEscolhido).join(', ')}`
+                      : ''}
                     {!membroEscolhido.email?.trim() ? ' · sem email no cadastro — digite abaixo' : ''}
                   </span>
                   <button
@@ -447,6 +469,7 @@ export default function UserNew() {
                   <select
                     value={form.roleId}
                     onChange={(e) => set('roleId', e.target.value)}
+                    onFocus={recarregarFuncoes}
                     className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   >
                     <option value="">Selecione uma funcao</option>

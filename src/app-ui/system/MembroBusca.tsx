@@ -7,7 +7,7 @@
  * `limit`), que já aplica o escopo de campo/igreja de quem está logado.
  */
 import { useEffect, useState } from 'react';
-import { Loader2, Search, X } from 'lucide-react';
+import { Loader2, Pencil, Search, X } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
 
@@ -21,7 +21,53 @@ export type MembroOpcao = {
   mobile?: string | null;
   churchId: string;
   church?: { name?: string | null } | null;
+  ecclesiasticalTitle?: string | null;
+  /** Funções ativas na igreja (Dirigente de congregação, Secretário…). */
+  churchFunctions?: { function?: { name?: string | null } | null }[];
 };
+
+/** Nomes das funções ativas do membro. */
+export function funcoesDoMembro(m: MembroOpcao): string[] {
+  return (m.churchFunctions ?? [])
+    .map((f) => f.function?.name?.trim())
+    .filter((n): n is string => Boolean(n));
+}
+
+/** "SECRETÁRIO(a)" → "secretario": sem acento, sem "(a)", minúsculo. */
+function normalizar(txt: string): string {
+  return txt
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\([^)]*\)/g, ' ')
+    .toLowerCase()
+    .replace(/[^a-z ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Função de usuário (role) que corresponde à função do membro:
+ * "DIRIGENTE DE CONGREGACAO" → "Dirigente", "SECRETARIO(a)" → "Secretário (a)".
+ *
+ * As funções do membro chegam da mais recente para a mais antiga (a rota
+ * ordena por startDate desc), então vale a ÚLTIMA função ativa que casa com
+ * alguma função de usuário. Casa quando um nome começa com o outro; se uma
+ * mesma função do membro casar com duas de usuário, pula — na dúvida, quem
+ * cadastra escolhe.
+ */
+export function funcaoSugerida<R extends { id: string; name: string }>(
+  m: MembroOpcao,
+  funcoes: R[],
+): R | null {
+  for (const f of funcoesDoMembro(m).map(normalizar).filter(Boolean)) {
+    const achadas = funcoes.filter((r) => {
+      const nome = normalizar(r.name);
+      return nome && (f.startsWith(nome) || nome.startsWith(f));
+    });
+    if (achadas.length === 1) return achadas[0];
+  }
+  return null;
+}
 
 /** Telefone do membro: o celular primeiro, que é o que atende. */
 export function telefoneDoMembro(m: MembroOpcao): string {
@@ -31,7 +77,8 @@ export function telefoneDoMembro(m: MembroOpcao): string {
 /** Consulta os membros pelo nome ou ROL, no escopo de quem está logado. */
 async function buscarMembros(termo: string): Promise<MembroOpcao[]> {
   const token = localStorage.getItem('mrm_token');
-  const params = new URLSearchParams({ q: termo, limit: '20', slim: '1', memberType: 'MEMBRO' });
+  // Sem `slim`: é ele que tira as funções (churchFunctions) da resposta.
+  const params = new URLSearchParams({ q: termo, limit: '20', memberType: 'MEMBRO' });
   const r = await fetch(`${apiBase}/members?${params}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
@@ -130,19 +177,49 @@ export function MembroBuscaModal({
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg">
                 {lista.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => onEscolher(m)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
-                  >
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{m.fullName}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {m.rol ? `ROL #${m.rol} · ` : ''}
-                      {m.church?.name ?? '—'}
-                      {m.email ? ` · ${m.email}` : ' · sem email'}
-                    </p>
-                  </button>
+                  <div key={m.id} className="flex items-stretch hover:bg-slate-50 dark:hover:bg-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => onEscolher(m)}
+                      title="Usar este membro"
+                      className="flex-1 min-w-0 text-left px-4 py-2.5 cursor-pointer"
+                    >
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {m.fullName}
+                        {m.rol ? <span className="ml-1.5 text-xs font-normal text-slate-400">ROL #{m.rol}</span> : null}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {m.church?.name ?? '—'}
+                        {m.ecclesiasticalTitle ? ` · ${m.ecclesiasticalTitle}` : ''}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {m.email ? m.email : <span className="text-[#b45309]">sem e-mail — edite o membro ou digite depois</span>}
+                        {telefoneDoMembro(m) ? ` · ${telefoneDoMembro(m)}` : ''}
+                      </p>
+                      {funcoesDoMembro(m).length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {funcoesDoMembro(m).map((f) => (
+                            <span
+                              key={f}
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#e0f2fe] text-[#0369a1] dark:bg-[#082f49] dark:text-[#7dd3fc]"
+                            >
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                    {/* Edição do membro em outra aba: o formulário daqui não se
+                        perde (ex.: cadastrar o e-mail que falta e buscar de novo). */}
+                    <button
+                      type="button"
+                      onClick={() => window.open(`/app-ui/members/${m.id}/edit`, '_blank', 'noopener')}
+                      title="Editar membro (abre em outra aba)"
+                      className="px-3 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )
