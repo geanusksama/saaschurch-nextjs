@@ -40,6 +40,8 @@ export async function GET(req: NextRequest) {
       podeAprovar: scope.podeAprovar.map((a) => a.nivel),
       visaoCampo: scope.visaoCampo,
       irrestrito: scope.irrestrito,
+      // Espelha o DELETE de /culto/registros/[id]: só o perfil master exclui.
+      podeExcluir: user.profileType === 'master',
       churchIdPadrao: scope.podeEnviar[0]?.churchId ?? user.churchId ?? null,
     });
   });

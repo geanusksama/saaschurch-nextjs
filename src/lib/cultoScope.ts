@@ -262,6 +262,15 @@ export function podeEnviarBloco(scope: CultoScope, bloco: string, churchId: stri
   return scope.podeEnviar.some((p) => p.bloco === bloco && p.churchId === churchId);
 }
 
+/**
+ * Pastor Presidente (ou master/admin): o topo da árvore. Pode concluir o culto
+ * de uma vez, aprovando pelos dirigentes — decisão do dono do sistema em
+ * 2026-09-28, que revê o "presidente só olha" do desenho original.
+ */
+export function ehPresidente(scope: CultoScope): boolean {
+  return scope.irrestrito || scope.posicoes.some((p) => p.papel === 'PRESIDENTE');
+}
+
 export function podeAprovarNivel(scope: CultoScope, nivel: string, churchId: string): boolean {
   if (scope.irrestrito) return true;
   const entrada = scope.podeAprovar.find((p) => p.nivel === nivel);

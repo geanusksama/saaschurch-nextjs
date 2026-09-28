@@ -25,8 +25,14 @@ import {
   podeEnviarBloco,
   podeAprovarNivel,
   filtroDeIgrejas,
+  ehPresidente,
 } from '../src/lib/cultoScope.ts';
-import { recalcularStatus, blocosExigidos, montarPainel } from '../src/lib/cultoService.ts';
+import {
+  recalcularStatus,
+  blocosExigidos,
+  montarPainel,
+  concluirComoPresidente,
+} from '../src/lib/cultoService.ts';
 import { montarResumo } from '../src/lib/cultoResumo.ts';
 
 const prisma = new PrismaClient();
@@ -588,6 +594,88 @@ async function main() {
     'e o escopo dele fica na própria igreja, não no grupo todo',
     rSecretario.totais.igrejas,
   );
+
+  // ── 6. Pastor Presidente conclui por cima dos dirigentes ───────────────────
+  console.log('\n6. Presidente aprova e conclui');
+
+  const presidente = await novoUsuario('presidente', hospedeira.id);
+  await anexar(hospedeira.id, presidente.id, 'PRESIDENTE');
+  const escPresidente = await getCultoScope(comoUsuario(presidente, campoId));
+  ok(ehPresidente(escPresidente), 'quem tem a posição PRESIDENTE é presidente');
+  ok(!ehPresidente(escTesoureiro), 'o tesoureiro não é');
+  ok(!ehPresidente(escDirigente), 'nem o dirigente da congregação');
+
+  async function cultoComBlocos(data) {
+    const c = await prisma.cultoRegistro.create({
+      data: {
+        campoId,
+        regionalId: regional.id,
+        churchId: filha.id,
+        hostChurchId: hospedeira.id,
+        dataCulto: new Date(`${data}T00:00:00.000Z`),
+        tipoCulto: 'E2E',
+      },
+    });
+    criados.registros.push(c.id);
+    return c;
+  }
+
+  // Com os blocos faltando, nem o presidente aprova.
+  const semBlocos = await cultoComBlocos('2026-08-24');
+  await recalcularStatus(semBlocos.id);
+  const recusa = await concluirComoPresidente(semBlocos.id, presidente.id, '');
+  ok('erro' in recusa, 'sem os blocos enviados, o presidente é recusado', recusa);
+
+  const cheio = await cultoComBlocos('2026-08-25');
+  await prisma.cultoLancamento.createMany({
+    data: [
+      { registroId: cheio.id, bloco: 'FINANCEIRO', enviadoPor: tesoureiro.id, enviadoEm: new Date(), totalDizimos: '10.00' },
+      { registroId: cheio.id, bloco: 'PRESENCA', enviadoPor: secretario.id, enviadoEm: new Date(), qtdHomens: 1 },
+    ],
+  });
+  r = await recalcularStatus(cheio.id);
+  ok(r.status === 'AGUARDANDO_LOCAL', 'com os blocos, espera o dirigente', r.status);
+
+  const fechou = await concluirComoPresidente(cheio.id, presidente.id, 'conferido na sede');
+  ok(!('erro' in fechou) && fechou.status === 'CONCLUIDO', 'o presidente conclui sem os dirigentes', fechou);
+  const aprovCheio = await prisma.cultoAprovacao.findMany({ where: { registroId: cheio.id } });
+  ok(
+    aprovCheio.length === 2 && aprovCheio.every((a) => a.decisao === 'APROVADO' && a.aprovadorId === presidente.id),
+    'grava LOCAL e HOSPEDEIRA em nome do presidente',
+    aprovCheio.map((a) => `${a.nivel}:${a.decisao}`),
+  );
+  ok(
+    aprovCheio.every((a) => a.motivo === 'Aprovado pelo Pastor Presidente · conferido na sede'),
+    'com a observação dele no motivo',
+    aprovCheio.map((a) => a.motivo),
+  );
+  const concluido = await prisma.cultoRegistro.findUnique({ where: { id: cheio.id } });
+  ok(concluido.concluidoEm !== null, 'e carimba concluidoEm');
+
+  // O dirigente já aprovou: a aprovação dele fica, o presidente fecha o resto.
+  const meio = await cultoComBlocos('2026-08-26');
+  await prisma.cultoLancamento.createMany({
+    data: [
+      { registroId: meio.id, bloco: 'FINANCEIRO', enviadoPor: tesoureiro.id, enviadoEm: new Date() },
+      { registroId: meio.id, bloco: 'PRESENCA', enviadoPor: secretario.id, enviadoEm: new Date() },
+    ],
+  });
+  await prisma.cultoAprovacao.create({
+    data: { registroId: meio.id, nivel: 'LOCAL', decisao: 'APROVADO', aprovadorId: dirigente.id, motivo: 'ok do dirigente' },
+  });
+  r = await recalcularStatus(meio.id);
+  ok(r.status === 'APROVADO_LOCAL', 'dirigente aprovou: espera o hospedeiro', r.status);
+  const fechouMeio = await concluirComoPresidente(meio.id, presidente.id, '');
+  ok(!('erro' in fechouMeio) && fechouMeio.status === 'CONCLUIDO', 'o presidente conclui no lugar do hospedeiro');
+  const localMeio = await prisma.cultoAprovacao.findFirst({ where: { registroId: meio.id, nivel: 'LOCAL' } });
+  ok(
+    localMeio.aprovadorId === dirigente.id && localMeio.motivo === 'ok do dirigente',
+    'a aprovação e a observação do dirigente continuam dele',
+    localMeio,
+  );
+
+  const deNovo = await concluirComoPresidente(cheio.id, presidente.id, '');
+  ok('erro' in deNovo, 'culto já concluído não é aprovado de novo', deNovo);
 
   // ── Resultado ─────────────────────────────────────────────────────────────
   console.log(`\n${passes} passaram, ${falhas} falharam.`);

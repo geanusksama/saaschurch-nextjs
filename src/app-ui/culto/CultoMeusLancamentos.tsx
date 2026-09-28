@@ -119,7 +119,7 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
   const pendentes = registros.filter((r) => !meuEnvio(r).enviado);
 
   return (
-    <div className="p-6 space-y-5 max-w-4xl">
+    <div className="p-6 space-y-5 max-w-4xl [&_button:not(:disabled)]:cursor-pointer">
       <div>
         <button
           onClick={() => navigate('/app-ui/culto')}

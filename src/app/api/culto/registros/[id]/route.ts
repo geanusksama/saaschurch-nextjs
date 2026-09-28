@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
-import { getCultoScope, podarLancamentos } from '@/lib/cultoScope';
+import { ehPresidente, getCultoScope, podarLancamentos } from '@/lib/cultoScope';
 import { blocosExigidos, dateParaHora, horaParaDate } from '@/lib/cultoService';
 
 async function carregar(id: string) {
@@ -43,10 +43,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       blocosEnviados: enviados,
       blocosFaltando: exigidos.filter((b) => !enviados.includes(b)),
       minhasPermissoes: {
-        podeEnviar: scope.podeEnviar.filter((p) => p.churchId === registro.churchId).map((p) => p.bloco),
+        // O master grava qualquer bloco (podeEnviarBloco) — sem isto o drawer
+        // mostrava os números só para leitura e ele não tinha onde corrigir.
+        // Limitado aos blocos que o culto usa, para não abrir um EXTRA vazio.
+        podeEnviar: scope.irrestrito
+          ? Array.from(new Set([...exigidos, ...enviados]))
+          : scope.podeEnviar.filter((p) => p.churchId === registro.churchId).map((p) => p.bloco),
         podeAprovar: scope.podeAprovar
           .filter((a) => scope.irrestrito || a.churchIds.includes(registro.churchId))
           .map((a) => a.nivel),
+        podeConcluir: ehPresidente(scope),
+        // Espelha o DELETE abaixo: só o perfil master exclui.
+        podeExcluir: user.profileType === 'master',
       },
     });
   });

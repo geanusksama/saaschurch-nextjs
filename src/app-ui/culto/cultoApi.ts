@@ -136,7 +136,14 @@ export interface Registro {
   blocosExigidos: Bloco[];
   blocosEnviados: Bloco[];
   blocosFaltando: Bloco[];
-  minhasPermissoes?: { podeEnviar: Bloco[]; podeAprovar: Nivel[] };
+  minhasPermissoes?: {
+    podeEnviar: Bloco[];
+    podeAprovar: Nivel[];
+    /** Presidente/master: conclui o culto aprovando pelos dirigentes. */
+    podeConcluir?: boolean;
+    /** Só o perfil master exclui um culto. */
+    podeExcluir?: boolean;
+  };
 }
 
 export interface MeusPapeis {
@@ -153,6 +160,8 @@ export interface MeusPapeis {
   podeAprovar: Nivel[];
   visaoCampo: boolean;
   irrestrito: boolean;
+  /** Só o perfil master exclui um culto. */
+  podeExcluir?: boolean;
   churchIdPadrao: string | null;
 }
 
@@ -360,7 +369,14 @@ export const cultoApi = {
       body: JSON.stringify({ bloco, ...dados }),
     }),
 
-  decidir: (registroId: string, nivel: Nivel, decisao: 'APROVADO' | 'REJEITADO', motivo?: string) =>
+  decidir: (
+    registroId: string,
+    // PRESIDENTE não é um nível gravado: o servidor aprova LOCAL e HOSPEDEIRA
+    // em nome do presidente e conclui o culto.
+    nivel: Nivel | 'PRESIDENTE',
+    decisao: 'APROVADO' | 'REJEITADO',
+    motivo?: string,
+  ) =>
     req<{ status: StatusCulto }>(`/culto/registros/${registroId}/aprovacoes`, {
       method: 'POST',
       body: JSON.stringify({ nivel, decisao, motivo }),

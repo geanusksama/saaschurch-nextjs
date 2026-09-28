@@ -89,7 +89,7 @@ export default function CultoLancar() {
     papeis && !habilitado('FINANCEIRO') && !habilitado('PRESENCA') && !habilitado('DIRIGENTE');
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-6 space-y-5 [&_button:not(:disabled)]:cursor-pointer">
       <div>
         <h1 className="text-xl font-bold text-slate-900 dark:text-white">Lançar dados de culto</h1>
 

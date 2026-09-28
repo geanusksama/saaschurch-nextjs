@@ -29,6 +29,9 @@ import {
   Users,
   FileText,
   Printer,
+  PanelRightOpen,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import {
   cultoApi,
@@ -98,6 +101,11 @@ interface Props {
   escopoHospedeira?: boolean;
 }
 
+/** Número da linha expandida da tabela: em negrito, para saltar do rótulo. */
+function Valor({ children }: { children: React.ReactNode }) {
+  return <strong className="font-bold text-slate-900 dark:text-white">{children}</strong>;
+}
+
 export default function GestaoCulto({ escopoHospedeira = false }: Props) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -123,6 +131,10 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  // Culto aguardando confirmação de exclusão (card do Kanban ou linha da tabela).
+  const [aExcluir, setAExcluir] = useState<Registro | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
   const [resumo, setResumo] = useState<PassoResumo | null>(null);
   const [expandido, setExpandido] = useState<Record<string, boolean>>({});
   const [imprimindo, setImprimindo] = useState(false);
@@ -160,6 +172,60 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
     setCarregando(true);
     setVersao((v) => v + 1);
   }, []);
+
+  const podeExcluir = Boolean(papeis?.podeExcluir);
+
+  async function confirmarExclusao() {
+    if (!aExcluir) return;
+    setExcluindo(true);
+    setErroExclusao(null);
+    try {
+      await cultoApi.excluirRegistro(aExcluir.id);
+      setAExcluir(null);
+      recarregar();
+    } catch (e) {
+      setErroExclusao((e as Error).message);
+    } finally {
+      setExcluindo(false);
+    }
+  }
+
+  /**
+   * Editar e excluir do card/linha. Editar abre o drawer — é lá que os números,
+   * as observações e a aprovação são alterados. Excluir só para o master, que é
+   * quem o servidor aceita.
+   */
+  function acoesDoCulto(r: Registro) {
+    return (
+      <div className="flex items-center gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setAbertoId(r.id);
+          }}
+          title="Editar culto"
+          aria-label="Editar culto"
+          className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.azul}`}
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+        {podeExcluir && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setErroExclusao(null);
+              setAExcluir(r);
+            }}
+            title="Excluir culto"
+            aria-label="Excluir culto"
+            className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    );
+  }
 
   /** Muda um filtro e já acende o carregando, fora do efeito. */
   function aplicarFiltro<T>(setter: (v: T) => void, valor: T) {
@@ -372,11 +438,11 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
             <span
               key={b}
               title={`${ROTULO_BLOCO[b]}: ${ok ? 'enviado' : 'pendente'}`}
-              className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${
+              className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${
                 ok ? PASTILHA.verde : PASTILHA.cinza
               }`}
             >
-              <Icone className="w-3.5 h-3.5" />
+              <Icone className="w-[18px] h-[18px]" />
             </span>
           );
         })}
@@ -389,18 +455,20 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
     const pre = r.lancamentos.find((l) => l.bloco === 'PRESENCA');
     if (!fin && !pre) return null;
     return (
-      <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5 pl-6 pb-2">
+      <div className="text-sm text-slate-500 dark:text-slate-400 space-y-1 pl-16 pb-3">
         {fin && (
           <div>
-            <strong className="text-slate-600 dark:text-slate-300">Financeiro</strong>{' '}
-            {fmtMoeda(fin.totalDizimos)} em dízimos · {fmtMoeda(fin.totalOfertas)} em ofertas
+            <span className="font-semibold text-slate-700 dark:text-slate-200">Financeiro:</span>{' '}
+            <Valor>{fmtMoeda(fin.totalDizimos)}</Valor> em dízimos ·{' '}
+            <Valor>{fmtMoeda(fin.totalOfertas)}</Valor> em ofertas
           </div>
         )}
         {pre && (
           <div>
-            <strong className="text-slate-600 dark:text-slate-300">Presença</strong>{' '}
-            {pre.qtdHomens ?? 0} H · {pre.qtdMulheres ?? 0} M · {pre.qtdCriancas ?? 0} crianças ·{' '}
-            {pre.qtdVisitantes ?? 0} visitantes · {pre.cadeirasVazias ?? 0} cadeiras vazias
+            <span className="font-semibold text-slate-700 dark:text-slate-200">Presença:</span>{' '}
+            <Valor>{pre.qtdHomens ?? 0}</Valor> homens · <Valor>{pre.qtdMulheres ?? 0}</Valor> mulheres ·{' '}
+            <Valor>{pre.qtdCriancas ?? 0}</Valor> crianças · <Valor>{pre.qtdVisitantes ?? 0}</Valor>{' '}
+            visitantes · <Valor>{pre.cadeirasVazias ?? 0}</Valor> cadeiras vazias
           </div>
         )}
       </div>
@@ -413,7 +481,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-5 [&_button:not(:disabled)]:cursor-pointer">
       {/* Uma faixa só: voltar + título + seletor de visão + ações. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {!escopoHospedeira && (
@@ -664,14 +732,14 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                     <p className="text-xs text-slate-400 text-center py-6">vazio</p>
                   )}
                   {itens.map((r) => (
+                    <div key={r.id} className="relative">
                     <button
-                      key={r.id}
                       onClick={() => setAbertoId(r.id)}
                       className={`w-full text-left rounded-lg bg-white dark:bg-slate-800 border-l-4 ${
                         BORDA[tomDoSemaforo(r.status === 'CONCLUIDO')]
                       } border-y border-r border-slate-200 dark:border-slate-700 p-3 hover:shadow-md transition-shadow`}
                     >
-                      <div className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">
+                      <div className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate pr-20">
                         {r.church.name}
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -704,6 +772,8 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                         )}
                       </div>
                     </button>
+                    <div className="absolute top-2 right-2">{acoesDoCulto(r)}</div>
+                    </div>
                   ))}
 
                   {/* Sem registro: a igreja não abriu culto nenhum no período.
@@ -775,7 +845,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                           e.stopPropagation();
                           abrirResumoDoGrupo(chave, grupo);
                         }}
-                        className="text-emerald-600 hover:underline font-semibold"
+                        className="cursor-pointer text-emerald-600 hover:underline font-semibold"
                       >
                         resumo
                       </span>
@@ -841,10 +911,25 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                               </button>
                               <button
                                 onClick={() => setAbertoId(r.id)}
-                                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                                title="Abrir o culto para ver, editar, aprovar ou excluir"
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:brightness-95 ${PASTILHA.azul}`}
                               >
-                                abrir
+                                <PanelRightOpen className="w-4 h-4" />
+                                Abrir
                               </button>
+                              {podeExcluir && (
+                                <button
+                                  onClick={() => {
+                                    setErroExclusao(null);
+                                    setAExcluir(r);
+                                  }}
+                                  title="Excluir culto"
+                                  aria-label="Excluir culto"
+                                  className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
                           {itemAberto && resumoLancamentos(r)}
@@ -942,6 +1027,50 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
             setAbertoId(id);
           }}
         />
+      )}
+
+      {aExcluir && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          onClick={() => !excluindo && setAExcluir(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 shadow-2xl p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Excluir culto?</h2>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                <strong>{aExcluir.church.name}</strong> · {fmtData(aExcluir.dataCulto)}
+                {fmtHora(aExcluir.horaInicio, aExcluir.horaFim)
+                  ? ` · ${fmtHora(aExcluir.horaInicio, aExcluir.horaFim)}`
+                  : ''}{' '}
+                · {nomeDoTipo(aExcluir.tipoCulto)}. O culto e tudo o que foi lançado nele saem
+                das telas e dos relatórios.
+              </p>
+            </div>
+            {erroExclusao && (
+              <div className={`rounded-lg px-3 py-2 text-sm ${PASTILHA.vermelho}`}>{erroExclusao}</div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setAExcluir(null)}
+                disabled={excluindo}
+                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => void confirmarExclusao()}
+                disabled={excluindo}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${PONTO.vermelho} hover:brightness-90 text-white text-sm font-semibold disabled:opacity-50`}
+              >
+                {excluindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {abertoId && (

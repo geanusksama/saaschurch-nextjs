@@ -2,13 +2,14 @@
  * Aprovação/devolução de um culto.
  *
  * Dois níveis: LOCAL (dirigente da igreja) e HOSPEDEIRA (dirigente da igreja
- * hospedeira). O Pastor Presidente NÃO aprova — "fica só olhando no nível topo".
+ * hospedeira). O Pastor Presidente (e o master) pode concluir por cima dos dois
+ * com `nivel: PRESIDENTE` — ver ehPresidente em cultoScope.ts.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
-import { NIVEIS, getCultoScope, podeAprovarNivel, type Nivel } from '@/lib/cultoScope';
-import { recalcularStatus, temNivelHospedeira } from '@/lib/cultoService';
+import { NIVEIS, ehPresidente, getCultoScope, podeAprovarNivel, type Nivel } from '@/lib/cultoScope';
+import { concluirComoPresidente, recalcularStatus, temNivelHospedeira } from '@/lib/cultoService';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
@@ -23,6 +24,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const nivel = String(body.nivel || '').toUpperCase() as Nivel;
     const decisao = String(body.decisao || '').toUpperCase();
     const motivo = typeof body.motivo === 'string' ? body.motivo.trim() : '';
+
+    // O presidente conclui o culto de uma vez: aprova pelo dirigente local e
+    // pelo hospedeiro (quando há) sem esperar nenhum dos dois. Não pula os
+    // blocos: sem financeiro e presença enviados não há o que aprovar.
+    if (String(body.nivel || '').toUpperCase() === 'PRESIDENTE') {
+      const scope = await getCultoScope(user);
+      if (!ehPresidente(scope)) {
+        return NextResponse.json(
+          { error: 'Só o Pastor Presidente conclui o culto por cima dos dirigentes.' },
+          { status: 403 },
+        );
+      }
+      if (decisao !== 'APROVADO') {
+        return NextResponse.json(
+          { error: 'Para devolver, use o nível do dirigente (LOCAL ou HOSPEDEIRA).' },
+          { status: 400 },
+        );
+      }
+      const resultado = await concluirComoPresidente(id, user.id, motivo);
+      if ('erro' in resultado) {
+        return NextResponse.json({ error: resultado.erro }, { status: 409 });
+      }
+      return NextResponse.json(resultado);
+    }
 
     if (!NIVEIS.includes(nivel)) {
       return NextResponse.json({ error: `Nível inválido: ${body.nivel}` }, { status: 400 });

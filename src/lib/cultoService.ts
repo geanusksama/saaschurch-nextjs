@@ -138,6 +138,53 @@ export async function recalcularStatus(registroId: string): Promise<ResultadoRec
   return { status, mudou, exigidos, enviados, faltando };
 }
 
+/**
+ * O Pastor Presidente conclui o culto por cima dos dirigentes.
+ *
+ * Aprova o nível LOCAL (se o dirigente ainda não aprovou) e o HOSPEDEIRA (se a
+ * igreja tem hospedeira) em nome dele, e recalcula — o culto sai CONCLUIDO.
+ * A aprovação que o dirigente local já deu fica como está, com o nome e a
+ * observação dele. Não pula os blocos: sem os exigidos enviados, recusa.
+ *
+ * Quem pode chamar é decidido na rota (ehPresidente em cultoScope.ts).
+ */
+export async function concluirComoPresidente(
+  registroId: string,
+  aprovadorId: string | null,
+  observacao: string,
+): Promise<{ erro: string } | ResultadoRecalculo> {
+  const registro = await prisma.cultoRegistro.findFirst({
+    where: { id: registroId, deletedAt: null },
+    include: { aprovacoes: { select: { nivel: true, decisao: true } } },
+  });
+  if (!registro) return { erro: 'Registro não encontrado.' };
+  if (!['AGUARDANDO_LOCAL', 'APROVADO_LOCAL'].includes(registro.status)) {
+    return {
+      erro:
+        registro.status === 'ABERTO'
+          ? 'Ainda faltam blocos para enviar. Não há o que aprovar.'
+          : 'Este culto não está aguardando aprovação.',
+    };
+  }
+
+  const texto = observacao.trim()
+    ? `Aprovado pelo Pastor Presidente · ${observacao.trim()}`
+    : 'Aprovado pelo Pastor Presidente';
+  const jaLocal = registro.aprovacoes.some((a) => a.nivel === 'LOCAL' && a.decisao === 'APROVADO');
+  const niveis = [
+    ...(jaLocal ? [] : ['LOCAL']),
+    ...(temNivelHospedeira(registro) ? ['HOSPEDEIRA'] : []),
+  ];
+  for (const nivel of niveis) {
+    await prisma.cultoAprovacao.upsert({
+      where: { registroId_nivel: { registroId, nivel } },
+      create: { registroId, nivel, decisao: 'APROVADO', aprovadorId, motivo: texto },
+      update: { decisao: 'APROVADO', aprovadorId, motivo: texto, decididoEm: new Date() },
+    });
+  }
+  return recalcularStatus(registroId);
+}
+
 /** Verde só quando concluído. Todo o resto é vermelho para quem está acima. */
 export function corDoStatus(status: string): 'VERDE' | 'VERMELHO' {
   return status === 'CONCLUIDO' ? 'VERDE' : 'VERMELHO';

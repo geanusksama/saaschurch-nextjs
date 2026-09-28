@@ -16,6 +16,8 @@ import {
   FileText,
   AlertTriangle,
   ShieldCheck,
+  Trash2,
+  Crown,
 } from 'lucide-react';
 import {
   cultoApi,
@@ -30,7 +32,7 @@ import {
   type Nivel,
   type Registro,
 } from './cultoApi';
-import { BORDA, PASTILHA, TEXTO } from './cultoCores';
+import { BORDA, PASTILHA, PONTO, TEXTO } from './cultoCores';
 
 const CAMPOS_FINANCEIRO: { campo: string; label: string; moeda?: boolean }[] = [
   { campo: 'totalDizimos', label: 'Valor total de dízimos', moeda: true },
@@ -47,6 +49,11 @@ const CAMPOS_PRESENCA: { campo: string; label: string }[] = [
   { campo: 'qtdReconciliacoes', label: 'Reconciliações' },
   { campo: 'cadeirasVazias', label: 'Cadeiras vazias' },
 ];
+
+/** Chave da observação de um bloco no formulário do drawer. */
+function chaveObs(bloco: string): string {
+  return `observacao:${bloco}`;
+}
 
 const ICONE_BLOCO: Record<Bloco, React.ElementType> = {
   FINANCEIRO: Wallet,
@@ -71,6 +78,8 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
   const [pedindoMotivo, setPedindoMotivo] = useState<Nivel | null>(null);
   const [obsPresidente, setObsPresidente] = useState('');
   const [salvandoObs, setSalvandoObs] = useState(false);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const [papeisDoUsuario, setPapeisDoUsuario] = useState<string[]>([]);
   /**
    * Quem responde por cada bloco na igreja deste culto.
@@ -87,7 +96,9 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
     for (const l of r.lancamentos) {
       for (const [k, v] of Object.entries(l)) {
         if (v !== null && typeof v !== 'object' && k !== 'id' && k !== 'bloco') {
-          inicial[k] = String(v);
+          // Cada bloco tem a sua observação; no mapa achatado a do último
+          // bloco apagaria a dos outros.
+          inicial[k === 'observacao' ? chaveObs(l.bloco) : k] = String(v);
         }
       }
     }
@@ -175,6 +186,7 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
             : ['texto', 'anexoUrl'];
       const dados: Record<string, unknown> = {};
       for (const c of campos) dados[c] = form[c] ?? null;
+      dados.observacao = form[chaveObs(bloco)]?.trim() || null;
       await cultoApi.enviarBloco(registro.id, bloco, dados);
       recarregar();
       onMudou();
@@ -185,10 +197,10 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
     }
   }
 
-  async function decidir(nivel: Nivel, decisao: 'APROVADO' | 'REJEITADO') {
+  async function decidir(nivel: Nivel | 'PRESIDENTE', decisao: 'APROVADO' | 'REJEITADO') {
     if (!registro) return;
     if (decisao === 'REJEITADO' && !motivo.trim()) {
-      setPedindoMotivo(nivel);
+      if (nivel !== 'PRESIDENTE') setPedindoMotivo(nivel);
       return;
     }
     setDecidindo(true);
@@ -206,8 +218,28 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
     }
   }
 
+  async function excluir() {
+    if (!registro) return;
+    setExcluindo(true);
+    setErro(null);
+    try {
+      await cultoApi.excluirRegistro(registro.id);
+      onMudou();
+      onFechar();
+    } catch (e) {
+      setErro((e as Error).message);
+      setExcluindo(false);
+    }
+  }
+
   const podeEnviar = registro?.minhasPermissoes?.podeEnviar ?? [];
   const podeAprovar = registro?.minhasPermissoes?.podeAprovar ?? [];
+  const podeExcluir = registro?.minhasPermissoes?.podeExcluir ?? false;
+  // O presidente conclui por cima dos dirigentes — só enquanto o culto espera
+  // aprovação, que é quando o servidor aceita (senão volta 409).
+  const presidenteDecide =
+    Boolean(registro?.minhasPermissoes?.podeConcluir) &&
+    ['AGUARDANDO_LOCAL', 'APROVADO_LOCAL'].includes(registro?.status ?? '');
   const editavel = registro ? ['ABERTO', 'AGUARDANDO_LOCAL', 'REJEITADO'].includes(registro.status) : false;
 
   // A hospedeira só decide depois do dirigente local; o local só depois que
@@ -293,6 +325,21 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                   placeholder="O que mais precisa ser informado deste culto?"
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
                 />
+              )}
+              <label className="block mt-3">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Observação para o dirigente
+                </span>
+                <textarea
+                  rows={2}
+                  value={form[chaveObs(bloco)] ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, [chaveObs(bloco)]: e.target.value }))}
+                  disabled={!editavel}
+                  className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
+                />
+              </label>
+              {lanc?.enviadoPorUser && (
+                <p className="text-xs text-slate-400 pt-1">Enviado por {lanc.enviadoPorUser.fullName}</p>
               )}
               {editavel && (
                 <button
@@ -380,13 +427,12 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
               {registro?.church.name ?? 'Culto'}
             </h2>
             {registro && (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-xs font-bold text-slate-700 dark:text-slate-200">
                 {fmtData(registro.dataCulto)}
                 {fmtHora(registro.horaInicio, registro.horaFim)
                   ? ` · ${fmtHora(registro.horaInicio, registro.horaFim)}`
                   : ''}{' '}
-                · {registro.tipoCulto} ·{' '}
-                <span className="font-semibold">{ROTULO_STATUS[registro.status]}</span>
+                · {registro.tipoCulto} · {ROTULO_STATUS[registro.status]}
               </p>
             )}
           </div>
@@ -476,7 +522,16 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                 </div>
               )}
 
-              {(['FINANCEIRO', 'PRESENCA', 'EXTRA'] as Bloco[]).map((b) => blocoCard(b))}
+              {registro.observacao && (
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                  <strong className="text-slate-700 dark:text-slate-200">Observação do culto:</strong>{' '}
+                  {registro.observacao}
+                </div>
+              )}
+
+              {/* Presença (os membros) antes do dinheiro: é a ordem em que o dirigente
+                  confere o culto. */}
+              {(['PRESENCA', 'FINANCEIRO', 'EXTRA'] as Bloco[]).map((b) => blocoCard(b))}
 
               {/* A palavra do topo da árvore. Aparece para todos (é o parecer
                   que fecha o assunto no relatório), mas só o presidente edita. */}
@@ -525,7 +580,70 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                 </div>
               )}
 
-              {nivelAtivo && (
+              {presidenteDecide && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">
+                    <Crown className="w-4 h-4" /> Aprovação do Pastor Presidente
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                    <strong>Aprovar e concluir</strong> fecha o culto sem esperar os dirigentes.{' '}
+                    {registro.status === 'AGUARDANDO_LOCAL' && podeAprovar.includes('LOCAL') && (
+                      <>
+                        <strong>Aprovar pelo dirigente</strong> registra só a aprovação da
+                        congregação, com a observação abaixo
+                        {registro.hostChurchId ? ', e o culto segue para o hospedeiro' : ''}.
+                      </>
+                    )}
+                  </p>
+                  <textarea
+                    rows={2}
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
+                    placeholder={
+                      pedindoMotivo === nivelAtivo && nivelAtivo
+                        ? 'Motivo da devolução — obrigatório (a igreja recebe este texto)'
+                        : 'Observação do dirigente / do presidente (opcional)'
+                    }
+                    className={`w-full mb-3 border rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+                      pedindoMotivo && pedindoMotivo === nivelAtivo
+                        ? BORDA.ambar
+                        : 'border-slate-200 dark:border-slate-700'
+                    }`}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => void decidir('PRESIDENTE', 'APROVADO')}
+                      disabled={decidindo}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                    >
+                      {decidindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      Aprovar e concluir
+                    </button>
+                    {registro.status === 'AGUARDANDO_LOCAL' && podeAprovar.includes('LOCAL') && (
+                      <button
+                        onClick={() => void decidir('LOCAL', 'APROVADO')}
+                        disabled={decidindo}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-semibold disabled:opacity-50"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        Aprovar pelo dirigente
+                      </button>
+                    )}
+                    {nivelAtivo && (
+                      <button
+                        onClick={() => void decidir(nivelAtivo, 'REJEITADO')}
+                        disabled={decidindo}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-sm font-semibold disabled:opacity-50"
+                      >
+                        <Undo2 className="w-4 h-4" />
+                        Devolver
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {nivelAtivo && !presidenteDecide && (
                 <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">
                     {nivelAtivo === 'LOCAL'
@@ -567,6 +685,41 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                       Devolver
                     </button>
                   </div>
+                </div>
+              )}
+
+              {podeExcluir && (
+                <div className={`rounded-xl border ${BORDA.vermelho} bg-white dark:bg-slate-800 p-4`}>
+                  {confirmandoExclusao ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`text-sm mr-auto ${TEXTO.vermelho}`}>
+                        Excluir este culto e tudo o que foi lançado nele?
+                      </span>
+                      <button
+                        onClick={() => setConfirmandoExclusao(false)}
+                        disabled={excluindo}
+                        className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => void excluir()}
+                        disabled={excluindo}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${PONTO.vermelho} hover:brightness-90 text-white text-sm font-semibold disabled:opacity-50`}
+                      >
+                        {excluindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        Excluir
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmandoExclusao(true)}
+                      className={`inline-flex items-center gap-2 text-sm font-semibold hover:underline ${TEXTO.vermelho}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Excluir culto
+                    </button>
+                  )}
                 </div>
               )}
             </>
