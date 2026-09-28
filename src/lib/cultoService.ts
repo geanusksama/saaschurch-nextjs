@@ -185,6 +185,34 @@ export async function concluirComoPresidente(
   return recalcularStatus(registroId);
 }
 
+/**
+ * Apaga o lançamento de UM bloco (só o financeiro, só a presença…).
+ *
+ * As aprovações do culto são desfeitas junto: o dirigente aprovou um conjunto
+ * de números que deixou de existir, e sem isso o recálculo manteria o culto
+ * "concluído" sem aquele bloco. Depois o status é recalculado — em geral volta
+ * a aguardar o envio.
+ *
+ * Quem pode chamar é decidido na rota (só o perfil master, como o DELETE do
+ * culto inteiro).
+ */
+export async function excluirBloco(
+  registroId: string,
+  bloco: Bloco,
+): Promise<{ erro: string } | ResultadoRecalculo> {
+  const registro = await prisma.cultoRegistro.findFirst({
+    where: { id: registroId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!registro) return { erro: 'Registro não encontrado.' };
+
+  const apagados = await prisma.cultoLancamento.deleteMany({ where: { registroId, bloco } });
+  if (apagados.count === 0) return { erro: `Este culto não tem lançamento de ${bloco}.` };
+
+  await prisma.cultoAprovacao.deleteMany({ where: { registroId } });
+  return recalcularStatus(registroId);
+}
+
 /** Verde só quando concluído. Todo o resto é vermelho para quem está acima. */
 export function corDoStatus(status: string): 'VERDE' | 'VERMELHO' {
   return status === 'CONCLUIDO' ? 'VERDE' : 'VERMELHO';

@@ -79,6 +79,7 @@ import {
   ClipboardCheck,
   UserCog,
   PencilLine,
+  Church,
 } from 'lucide-react';
 
 function Dove(props: React.SVGProps<SVGSVGElement>) {
@@ -277,7 +278,7 @@ const FAVORITES_SECTION = '__favoritos__';
 const SECTION_ICONS: Record<string, any> = {
   'Principal': Bell,
   'Secretaria': Clipboard,
-  'Gestão de Culto': ClipboardCheck,
+  'Gestão de Culto': Church,
   'Gestão Pastoral': HeartHandshake,
   'Ministérios': Users,
   'GF (Grupos Familiares)': Home,
@@ -314,6 +315,17 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Smart Report',     path: '/app-ui/finance/assistentes',    icon: Snowflake,       permKey: 'ai_assistants' },
     ]
   },
+  // Gestão de Culto em terceiro, depois de Finanças: é onde tesoureiro,
+  // secretário e dirigente trabalham toda semana.
+  {
+    section: 'Gestão de Culto',
+    items: [
+      { name: 'Hospedeiro',       path: '/app-ui/culto',           icon: LayoutGrid,     permKey: 'culto_gestao', exact: true },
+      { name: 'Gestão',           path: '/app-ui/culto/gestao',    icon: ClipboardCheck, permKey: 'culto_gestao' },
+      { name: 'Lançamentos',      path: '/app-ui/culto/lancar',    icon: PencilLine,     permKey: 'culto_lancar' },
+      { name: 'Posições',         path: '/app-ui/culto/posicoes',  icon: UserCog,        permKey: 'culto_posicoes' },
+    ]
+  },
   {
     section: 'Secretaria',
     items: [
@@ -334,15 +346,6 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Relatórios',             path: '/app-ui/reports',                        icon: BarChart3,   permKey: 'reports' },
       { name: 'Documentos',             path: '/app-ui/secretariat/word',               icon: FileText,    permKey: 'word_docs' },
       { name: 'Aniversariantes',        path: '/app-ui/birthdays',                      icon: Cake,        permKey: 'birthdays' },
-    ]
-  },
-  {
-    section: 'Gestão de Culto',
-    items: [
-      { name: 'Hospedeiro',       path: '/app-ui/culto',           icon: LayoutGrid,     permKey: 'culto_gestao', exact: true },
-      { name: 'Gestão',           path: '/app-ui/culto/gestao',    icon: ClipboardCheck, permKey: 'culto_gestao' },
-      { name: 'Lançamentos',      path: '/app-ui/culto/lancar',    icon: PencilLine,     permKey: 'culto_lancar' },
-      { name: 'Posições',         path: '/app-ui/culto/posicoes',  icon: UserCog,        permKey: 'culto_posicoes' },
     ]
   },
   {
@@ -1495,7 +1498,9 @@ export function AppUI() {
                 <span>Apps</span>
               </Link>
 
-              {/* Favoritos — agora colapsado como as categorias; abre no painel lateral */}
+              {/* Favoritos — agora colapsado como as categorias; abre no painel lateral.
+                  Só aparece quando há favorito: vazio era uma linha que não levava a nada. */}
+              {favoriteQuickAccessItems.length > 0 && (
               <button
                 type="button"
                 data-section-trigger
@@ -1514,6 +1519,7 @@ export function AppUI() {
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0" />
               </button>
+              )}
 
               {sidebarSearchQuery.trim() ? (
                 /* Busca ativa: lista achatada dos resultados, sem precisar abrir categoria */

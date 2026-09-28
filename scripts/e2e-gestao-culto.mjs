@@ -32,6 +32,7 @@ import {
   blocosExigidos,
   montarPainel,
   concluirComoPresidente,
+  excluirBloco,
 } from '../src/lib/cultoService.ts';
 import { montarResumo } from '../src/lib/cultoResumo.ts';
 
@@ -676,6 +677,30 @@ async function main() {
 
   const deNovo = await concluirComoPresidente(cheio.id, presidente.id, '');
   ok('erro' in deNovo, 'culto já concluído não é aprovado de novo', deNovo);
+
+  // ── 7. Excluir só um bloco ──────────────────────────────────────────────
+  console.log('\n7. Excluir só um bloco');
+
+  // `cheio` foi concluído pelo presidente na seção 6.
+  const antes = await prisma.cultoRegistro.findUnique({ where: { id: cheio.id } });
+  ok(antes.status === 'CONCLUIDO', 'o culto de partida está concluído', antes.status);
+
+  const semFin = await excluirBloco(cheio.id, 'FINANCEIRO');
+  ok(!('erro' in semFin), 'apaga o bloco financeiro', semFin);
+  const blocosDepois = await prisma.cultoLancamento.findMany({ where: { registroId: cheio.id }, select: { bloco: true } });
+  ok(
+    blocosDepois.length === 1 && blocosDepois[0].bloco === 'PRESENCA',
+    'a presença continua lá',
+    blocosDepois.map((b) => b.bloco),
+  );
+  const aprovDepois = await prisma.cultoAprovacao.count({ where: { registroId: cheio.id } });
+  ok(aprovDepois === 0, 'as aprovações são desfeitas', aprovDepois);
+  ok(semFin.status === 'ABERTO', 'o culto volta a aguardar o envio', semFin.status);
+  const depois = await prisma.cultoRegistro.findUnique({ where: { id: cheio.id } });
+  ok(depois.concluidoEm === null && depois.deletedAt === null, 'perde o concluidoEm, mas o culto continua existindo');
+
+  const deNovoFin = await excluirBloco(cheio.id, 'FINANCEIRO');
+  ok('erro' in deNovoFin, 'bloco que não existe mais é recusado', deNovoFin);
 
   // ── Resultado ─────────────────────────────────────────────────────────────
   console.log(`\n${passes} passaram, ${falhas} falharam.`);

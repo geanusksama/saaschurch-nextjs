@@ -26,6 +26,8 @@ import {
   Wallet,
   Users,
   AlertTriangle,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import {
   cultoApi,
@@ -36,7 +38,7 @@ import {
   type Resumo,
   type StatusCulto,
 } from './cultoApi';
-import { PONTO, TEXTO, TOM_DO_STATUS, tomDoSemaforo } from './cultoCores';
+import { PASTILHA, PONTO, TEXTO, TOM_DO_STATUS, tomDoSemaforo } from './cultoCores';
 
 /** Um passo da trilha: o nó que o usuário abriu. */
 export interface PassoResumo {
@@ -54,6 +56,10 @@ interface Props {
   tipoCulto?: string | null;
   onFechar: () => void;
   onAbrirCulto: (registroId: string) => void;
+  /** Abre a exclusão (bloco ou culto inteiro); só vem para quem pode excluir. */
+  onExcluirCulto?: (registroId: string) => void;
+  /** Muda quando algo foi alterado fora daqui (exclusão): o resumo recarrega. */
+  versao?: number;
 }
 
 const ICONE_NIVEL: Record<string, React.ElementType> = {
@@ -98,6 +104,8 @@ export default function CultoResumoModal({
   tipoCulto,
   onFechar,
   onAbrirCulto,
+  onExcluirCulto,
+  versao = 0,
 }: Props) {
   const [trilha, setTrilha] = useState<PassoResumo[]>([inicial]);
   const [resumo, setResumo] = useState<Resumo | null>(null);
@@ -127,7 +135,7 @@ export default function CultoResumoModal({
     return () => {
       vivo = false;
     };
-  }, [atual.nivel, atual.id, atual.tipoGrupo, de, ate, tipoCulto]);
+  }, [atual.nivel, atual.id, atual.tipoGrupo, de, ate, tipoCulto, versao]);
 
   /**
    * Código gravado no culto → nome cadastrado ("CULTO" → "Culto", "EBD" →
@@ -342,6 +350,7 @@ export default function CultoResumoModal({
                       const clicavel = no.navegavel || Boolean(no.registroId);
                       return (
                         <li key={`${no.tipo}-${no.id}`}>
+                          <div className="flex items-center">
                           <button
                             onClick={() => descer(no)}
                             disabled={!clicavel}
@@ -395,10 +404,34 @@ export default function CultoResumoModal({
                               )}
                             </span>
 
-                            {clicavel && (
+                            {clicavel && no.tipo !== 'CULTO' && (
                               <ChevronRight className="w-4 h-4 shrink-0 text-slate-300" />
                             )}
                           </button>
+                          {/* Culto: editar (abre o drawer) e excluir, sem sair do resumo. */}
+                          {no.tipo === 'CULTO' && no.registroId && (
+                            <div className="flex items-center gap-1 pr-3 shrink-0">
+                              <button
+                                onClick={() => onAbrirCulto(no.registroId as string)}
+                                title="Editar culto"
+                                aria-label="Editar culto"
+                                className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.azul}`}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              {onExcluirCulto && (
+                                <button
+                                  onClick={() => onExcluirCulto(no.registroId as string)}
+                                  title="Excluir culto ou um dos envios"
+                                  aria-label="Excluir culto ou um dos envios"
+                                  className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          </div>
 
                           {/* Os recados de cada nível sobre aquele culto. O
                               consolidado diz quanto; a observação diz por quê. */}

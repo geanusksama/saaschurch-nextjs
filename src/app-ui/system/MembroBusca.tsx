@@ -125,16 +125,62 @@ export function telefoneDoMembro(m: MembroOpcao): string {
 }
 
 /** Consulta os membros pelo nome ou ROL, no escopo de quem está logado. */
-async function buscarMembros(termo: string): Promise<MembroOpcao[]> {
+async function consultarMembros(params: Record<string, string>): Promise<MembroOpcao[]> {
   const token = localStorage.getItem('mrm_token');
   // Sem `slim`: é ele que tira as funções (churchFunctions) da resposta.
-  const params = new URLSearchParams({ q: termo, limit: '20', memberType: 'MEMBRO' });
-  const r = await fetch(`${apiBase}/members?${params}`, {
+  const qs = new URLSearchParams({ memberType: 'MEMBRO', ...params });
+  const r = await fetch(`${apiBase}/members?${qs}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!r.ok) throw new Error(`Erro ${r.status} ao buscar membros.`);
   const lista = await r.json();
   return Array.isArray(lista) ? lista : [];
+}
+
+/** Igrejas do campo (nome), carregadas uma vez por sessão da tela. */
+let igrejasCache: Promise<{ id: string; name: string }[]> | null = null;
+function igrejasDoCampo(): Promise<{ id: string; name: string }[]> {
+  if (!igrejasCache) {
+    const token = localStorage.getItem('mrm_token');
+    igrejasCache = fetch(`${apiBase}/churches?slim=1`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => (Array.isArray(d) ? d : []))
+      .catch(() => {
+        igrejasCache = null;
+        return [];
+      });
+  }
+  return igrejasCache;
+}
+
+/** Até quantas igrejas o termo pode casar antes de ficar genérico demais. */
+const MAX_IGREJAS = 3;
+
+/**
+ * Busca pelo nome/ROL do membro E pelo nome da igreja: "vila yolanda" traz
+ * os membros de lá. Os que casam pelo nome vêm primeiro.
+ */
+async function buscarMembros(
+  termo: string,
+): Promise<{ membros: MembroOpcao[]; igrejas: string[] }> {
+  const alvo = normalizar(termo);
+  const [porNome, igrejas] = await Promise.all([
+    consultarMembros({ q: termo, limit: '20' }),
+    alvo.length >= 3 ? igrejasDoCampo() : Promise.resolve([]),
+  ]);
+  const casadas = igrejas.filter((c) => normalizar(c.name).includes(alvo)).slice(0, MAX_IGREJAS);
+  const porIgreja = await Promise.all(
+    casadas.map((c) => consultarMembros({ churchId: c.id, limit: '100' })),
+  );
+  const vistos = new Set<string>();
+  const membros = [...porNome, ...porIgreja.flat()].filter((m) => {
+    if (vistos.has(m.id)) return false;
+    vistos.add(m.id);
+    return true;
+  });
+  return { membros, igrejas: casadas.map((c) => c.name) };
 }
 
 /**
@@ -157,6 +203,7 @@ export function MembroBuscaModal({
   // global) — na mesma tela, sem abrir outra aba.
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [recentes, setRecentes] = useState<string[]>(lerRecentes);
+  const [igrejasAchadas, setIgrejasAchadas] = useState<string[]>([]);
   const [titulos, setTitulos] = useState<TituloOpcao[] | null>(null);
 
   function editar(id: string) {
@@ -188,7 +235,9 @@ export function MembroBuscaModal({
     setBuscando(true);
     setErro(null);
     try {
-      setLista(await buscarMembros(t));
+      const r = await buscarMembros(t);
+      setLista(r.membros);
+      setIgrejasAchadas(r.igrejas);
       setBuscou(true);
       setRecentes(guardarRecente(t));
     } catch (e) {
@@ -242,7 +291,7 @@ export function MembroBuscaModal({
                   void buscar();
                 }
               }}
-              placeholder="Nome ou ROL do membro"
+              placeholder="Nome, ROL ou igreja do membro"
               className="flex-1 min-w-0 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#059669]/30"
             />
             <button
@@ -299,6 +348,12 @@ export function MembroBuscaModal({
                 Nenhum membro encontrado. Feche e preencha os dados à mão.
               </p>
             ) : (
+              <>
+              {igrejasAchadas.length > 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Inclui os membros de: <strong>{igrejasAchadas.join(', ')}</strong>
+                </p>
+              )}
               <div className="divide-y divide-slate-100 dark:divide-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg">
                 {lista.map((m) => (
                   <div key={m.id} className="flex items-stretch hover:bg-slate-50 dark:hover:bg-slate-700">
@@ -346,6 +401,7 @@ export function MembroBuscaModal({
                   </div>
                 ))}
               </div>
+              </>
             )
           )}
         </div>
@@ -373,7 +429,7 @@ export default function MembroBusca({
     const timer = setTimeout(() => {
       setBuscando(true);
       buscarMembros(termo)
-        .then((lista) => vivo && setMembros(lista))
+        .then((r) => vivo && setMembros(r.membros))
         .catch(() => vivo && setMembros([]))
         .finally(() => vivo && setBuscando(false));
     }, 300);

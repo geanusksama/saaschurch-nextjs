@@ -175,12 +175,29 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
 
   const podeExcluir = Boolean(papeis?.podeExcluir);
 
-  async function confirmarExclusao() {
+  /** Exclusão pedida pelo resumo: o registro pode não estar na lista da tela. */
+  async function excluirPeloResumo(registroId: string) {
+    setErroExclusao(null);
+    const naTela = registros.find((r) => r.id === registroId);
+    if (naTela) {
+      setAExcluir(naTela);
+      return;
+    }
+    try {
+      setAExcluir(await cultoApi.obterRegistro(registroId));
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  }
+
+  /** Sem bloco: o culto inteiro. Com bloco: só aquele lançamento. */
+  async function confirmarExclusao(bloco?: Bloco) {
     if (!aExcluir) return;
     setExcluindo(true);
     setErroExclusao(null);
     try {
-      await cultoApi.excluirRegistro(aExcluir.id);
+      if (bloco) await cultoApi.excluirBloco(aExcluir.id, bloco);
+      else await cultoApi.excluirRegistro(aExcluir.id);
       setAExcluir(null);
       recarregar();
     } catch (e) {
@@ -1026,6 +1043,8 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
             setResumo(null);
             setAbertoId(id);
           }}
+          onExcluirCulto={podeExcluir ? (id) => void excluirPeloResumo(id) : undefined}
+          versao={versao}
         />
       )}
 
@@ -1039,34 +1058,67 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
             onClick={(e) => e.stopPropagation()}
           >
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Excluir culto?</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Excluir o quê?</h2>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                 <strong>{aExcluir.church.name}</strong> · {fmtData(aExcluir.dataCulto)}
                 {fmtHora(aExcluir.horaInicio, aExcluir.horaFim)
                   ? ` · ${fmtHora(aExcluir.horaInicio, aExcluir.horaFim)}`
                   : ''}{' '}
-                · {nomeDoTipo(aExcluir.tipoCulto)}. O culto e tudo o que foi lançado nele saem
-                das telas e dos relatórios.
+                · {nomeDoTipo(aExcluir.tipoCulto)}
               </p>
             </div>
+
+            {/* Um bloco só: o resto do culto fica. As aprovações são desfeitas
+                porque o dirigente aprovou números que deixam de existir. */}
+            {(['FINANCEIRO', 'PRESENCA'] as Bloco[])
+              .filter((b) => aExcluir.blocosEnviados.includes(b) || aExcluir.lancamentos.some((l) => l.bloco === b))
+              .map((b) => (
+                <button
+                  key={b}
+                  onClick={() => void confirmarExclusao(b)}
+                  disabled={excluindo}
+                  className={`w-full flex items-start gap-3 text-left rounded-lg border ${BORDA.vermelho} px-4 py-3 hover:bg-[#fff1f2] dark:hover:bg-[#4c0519]/40 disabled:opacity-50`}
+                >
+                  <Trash2 className="w-4 h-4 mt-0.5 shrink-0 text-[#e11d48]" />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      Excluir só {b === 'FINANCEIRO' ? 'o Financeiro (tesouraria)' : 'a Presença (secretaria)'}
+                    </span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                      Os números {b === 'FINANCEIRO' ? 'da presença' : 'do financeiro'} ficam. Se o culto já tinha
+                      aprovação, ela é desfeita e ele volta a aguardar o envio.
+                    </span>
+                  </span>
+                </button>
+              ))}
+
+            <button
+              onClick={() => void confirmarExclusao()}
+              disabled={excluindo}
+              className={`w-full flex items-start gap-3 text-left rounded-lg px-4 py-3 ${PONTO.vermelho} hover:brightness-90 text-white disabled:opacity-50`}
+            >
+              {excluindo ? (
+                <Loader2 className="w-4 h-4 mt-0.5 shrink-0 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mt-0.5 shrink-0" />
+              )}
+              <span>
+                <span className="block text-sm font-semibold">Excluir o culto inteiro</span>
+                <span className="block text-xs opacity-90">
+                  O culto e tudo o que foi lançado nele saem das telas e dos relatórios.
+                </span>
+              </span>
+            </button>
             {erroExclusao && (
               <div className={`rounded-lg px-3 py-2 text-sm ${PASTILHA.vermelho}`}>{erroExclusao}</div>
             )}
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end">
               <button
                 onClick={() => setAExcluir(null)}
                 disabled={excluindo}
                 className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
               >
                 Cancelar
-              </button>
-              <button
-                onClick={() => void confirmarExclusao()}
-                disabled={excluindo}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${PONTO.vermelho} hover:brightness-90 text-white text-sm font-semibold disabled:opacity-50`}
-              >
-                {excluindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                Excluir
               </button>
             </div>
           </div>

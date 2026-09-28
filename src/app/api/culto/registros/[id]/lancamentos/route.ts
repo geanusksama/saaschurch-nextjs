@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { BLOCOS, getCultoScope, podeEnviarBloco, type Bloco } from '@/lib/cultoScope';
-import { recalcularStatus } from '@/lib/cultoService';
+import { excluirBloco, recalcularStatus } from '@/lib/cultoService';
 
 /** Campos aceitos por bloco. O que não estiver aqui é ignorado. */
 const CAMPOS_POR_BLOCO: Record<Bloco, string[]> = {
@@ -117,5 +117,26 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const resultado = await recalcularStatus(id);
     return NextResponse.json({ lancamento, ...resultado });
+  });
+}
+
+/**
+ * Apaga o lançamento de um bloco (`?bloco=FINANCEIRO`). Só o perfil master,
+ * como a exclusão do culto inteiro. As aprovações são desfeitas junto — ver
+ * excluirBloco em cultoService.ts.
+ */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return withAuth(req, async (user) => {
+    if (user.profileType !== 'master') {
+      return NextResponse.json({ error: 'Só o perfil master exclui um lançamento.' }, { status: 403 });
+    }
+    const { id } = await params;
+    const bloco = String(new URL(req.url).searchParams.get('bloco') || '').toUpperCase() as Bloco;
+    if (!BLOCOS.includes(bloco)) {
+      return NextResponse.json({ error: `Bloco inválido: ${bloco}` }, { status: 400 });
+    }
+    const resultado = await excluirBloco(id, bloco);
+    if ('erro' in resultado) return NextResponse.json({ error: resultado.erro }, { status: 404 });
+    return NextResponse.json(resultado);
   });
 }

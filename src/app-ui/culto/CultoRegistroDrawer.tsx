@@ -79,6 +79,9 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
   const [obsPresidente, setObsPresidente] = useState('');
   const [salvandoObs, setSalvandoObs] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  // Bloco com a exclusão do envio aguardando confirmação (só o master).
+  const [excluindoBloco, setExcluindoBloco] = useState<Bloco | null>(null);
+  const [apagandoBloco, setApagandoBloco] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [papeisDoUsuario, setPapeisDoUsuario] = useState<string[]>([]);
   /**
@@ -232,6 +235,23 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
     }
   }
 
+  /** Apaga só o envio de um bloco; as aprovações são desfeitas no servidor. */
+  async function excluirEnvio(bloco: Bloco) {
+    if (!registro) return;
+    setApagandoBloco(true);
+    setErro(null);
+    try {
+      await cultoApi.excluirBloco(registro.id, bloco);
+      setExcluindoBloco(null);
+      recarregar();
+      onMudou();
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setApagandoBloco(false);
+    }
+  }
+
   const podeEnviar = registro?.minhasPermissoes?.podeEnviar ?? [];
   const podeAprovar = registro?.minhasPermissoes?.podeAprovar ?? [];
   const podeExcluir = registro?.minhasPermissoes?.podeExcluir ?? false;
@@ -299,14 +319,50 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
               <span className="text-[10px] uppercase tracking-wide text-slate-400">obrigatório</span>
             )}
           </div>
-          <span
-            className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-              enviado ? PASTILHA.verde : PASTILHA.vermelho
-            }`}
-          >
-            {enviado ? 'enviado' : 'pendente'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                enviado ? PASTILHA.verde : PASTILHA.vermelho
+              }`}
+            >
+              {enviado ? 'enviado' : 'pendente'}
+            </span>
+            {podeExcluir && lanc && (
+              <button
+                onClick={() => setExcluindoBloco(bloco)}
+                title={`Excluir o envio de ${ROTULO_BLOCO[bloco]}`}
+                aria-label={`Excluir o envio de ${ROTULO_BLOCO[bloco]}`}
+                className={`p-1 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {excluindoBloco === bloco && (
+          <div className={`flex flex-wrap items-center gap-2 px-4 py-3 border-b ${BORDA.vermelho} bg-[#fff1f2] dark:bg-[#4c0519]/30`}>
+            <span className={`text-sm mr-auto ${TEXTO.vermelho}`}>
+              Excluir só o envio de {ROTULO_BLOCO[bloco]}? O resto do culto fica; se ele já tinha
+              aprovação, ela é desfeita.
+            </span>
+            <button
+              onClick={() => setExcluindoBloco(null)}
+              disabled={apagandoBloco}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => void excluirEnvio(bloco)}
+              disabled={apagandoBloco}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${PONTO.vermelho} hover:brightness-90 text-white text-xs font-semibold disabled:opacity-50`}
+            >
+              {apagandoBloco ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+              Excluir envio
+            </button>
+          </div>
+        )}
 
         <div className="p-4">
           {souResponsavel ? (
@@ -352,7 +408,9 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                   ) : (
                     <Check className="w-4 h-4" />
                   )}
-                  {enviado ? 'Reenviar' : 'Enviar'}
+                  {/* "Reenviar" dava a entender que criaria outro lançamento:
+                      é o mesmo, com os números corrigidos. */}
+                  {enviado ? 'Atualizar' : 'Enviar'}
                 </button>
               )}
             </>

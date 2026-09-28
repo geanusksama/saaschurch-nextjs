@@ -363,6 +363,10 @@ export const cultoApi = {
 
   excluirRegistro: (id: string) => req<{ ok: true }>(`/culto/registros/${id}`, { method: 'DELETE' }),
 
+  /** Apaga só um bloco do culto; as aprovações são desfeitas junto. */
+  excluirBloco: (id: string, bloco: Bloco) =>
+    req<{ status: StatusCulto }>(`/culto/registros/${id}/lancamentos?bloco=${bloco}`, { method: 'DELETE' }),
+
   enviarBloco: (registroId: string, bloco: Bloco, dados: Record<string, unknown>) =>
     req<{ status: StatusCulto; faltando: Bloco[] }>(`/culto/registros/${registroId}/lancamentos`, {
       method: 'PUT',
