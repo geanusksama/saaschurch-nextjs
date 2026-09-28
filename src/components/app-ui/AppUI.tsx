@@ -298,6 +298,22 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Caixa de Entrada', path: '/app-ui/inbox',        icon: Inbox,   permKey: 'inbox' },
     ]
   },
+  // Finanças logo depois de Principal: é o módulo mais usado no dia a dia.
+  {
+    section: 'Finanças',
+    items: [
+      { name: 'Livro Caixa',      path: '/app-ui/finance/cashbook',       icon: BookOpen,        permKey: 'cashbook' },
+      { name: 'Lançamento',       path: '/app-ui/finance/lancamento/new', icon: TrendingUp,      permKey: 'finance_entries' },
+      { name: 'Contas a Pagar',   path: '/app-ui/finance/contas-a-pagar', icon: Receipt,         permKey: 'contas_pagar' },
+      { name: 'Blocos de Numeração', path: '/app-ui/finance/blocos-numeracao', icon: Hash,       permKey: 'dizimo_blocos' },
+      { name: 'Fluxo de Caixa',   path: '/app-ui/finance/cash-flow',      icon: Wallet,          permKey: 'cash_flow' },
+      { name: 'Banco / Santander',path: '/app-ui/finance/santander',      icon: SantanderIcon,   permKey: 'santander_view' },
+      { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },
+      { name: 'Diretoria',        path: '/app-ui/finance/diretoria',       icon: BarChart3,       permKey: 'finance_executive' },
+      { name: 'Rel. Financeiros', path: '/app-ui/financial-reports',      icon: BarChart3,       permKey: 'finance_reports' },
+      { name: 'Smart Report',     path: '/app-ui/finance/assistentes',    icon: Snowflake,       permKey: 'ai_assistants' },
+    ]
+  },
   {
     section: 'Secretaria',
     items: [
@@ -386,21 +402,6 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Avisos',              path: '/app-ui/mobile/alertas',       icon: Bell,         permKey: 'mobile_alertas' },
       { name: 'Contas do app',       path: '/app-ui/mobile/contas',        icon: UserPlus,     permKey: 'mobile_membros' },
       { name: 'Configurações',       path: '/app-ui/mobile/configuracoes', icon: Settings,     permKey: 'mobile_config' },
-    ]
-  },
-  {
-    section: 'Finanças',
-    items: [
-      { name: 'Livro Caixa',      path: '/app-ui/finance/cashbook',       icon: BookOpen,        permKey: 'cashbook' },
-      { name: 'Lançamento',       path: '/app-ui/finance/lancamento/new', icon: TrendingUp,      permKey: 'finance_entries' },
-      { name: 'Contas a Pagar',   path: '/app-ui/finance/contas-a-pagar', icon: Receipt,         permKey: 'contas_pagar' },
-      { name: 'Blocos de Numeração', path: '/app-ui/finance/blocos-numeracao', icon: Hash,       permKey: 'dizimo_blocos' },
-      { name: 'Fluxo de Caixa',   path: '/app-ui/finance/cash-flow',      icon: Wallet,          permKey: 'cash_flow' },
-      { name: 'Banco / Santander',path: '/app-ui/finance/santander',      icon: SantanderIcon,   permKey: 'santander_view' },
-      { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },
-      { name: 'Diretoria',        path: '/app-ui/finance/diretoria',       icon: BarChart3,       permKey: 'finance_executive' },
-      { name: 'Rel. Financeiros', path: '/app-ui/financial-reports',      icon: BarChart3,       permKey: 'finance_reports' },
-      { name: 'Smart Report',     path: '/app-ui/finance/assistentes',    icon: Snowflake,       permKey: 'ai_assistants' },
     ]
   },
   {
@@ -1551,7 +1552,11 @@ export function AppUI() {
                         className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
                           hasActiveItem || isOpen
                             ? 'bg-purple-100 font-semibold text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'
+                            : section.section === 'Finanças'
+                              // Verde leve em hex: as classes emerald/green são
+                              // repintadas pelo tema (globals.css) e sairiam escuras.
+                              ? 'bg-[#ecfdf5] text-[#047857] hover:bg-[#d1fae5] dark:bg-[#064e3b]/40 dark:text-[#6ee7b7] dark:hover:bg-[#064e3b]/60'
+                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'
                         }`}
                       >
                         <SectionIcon className="h-5 w-5 shrink-0" />

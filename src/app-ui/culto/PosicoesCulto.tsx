@@ -20,8 +20,10 @@ import {
   ChevronRight,
   Power,
   X,
+  UserCheck,
 } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
+import MembroBusca, { telefoneDoMembro, type MembroOpcao } from '../system/MembroBusca';
 import { cultoApi, ROTULO_PAPEL, type Papel, type Posicao } from './cultoApi';
 
 // O dirigente vem primeiro: é a pergunta que se faz ao clicar numa igreja.
@@ -71,6 +73,7 @@ interface UsuarioOpcao {
   email: string;
   profileType: string;
   role?: { name: string } | null;
+  church?: { id: string; name: string } | null;
 }
 
 function authHeaders(): Record<string, string> {
@@ -547,6 +550,37 @@ function ModalAnexarUsuario({
   // Começa pelos usuários da própria igreja: é onde está o tesoureiro e o
   // secretário. O toggle amplia para o campo quando o dirigente não é de lá.
   const [soDaIgreja, setSoDaIgreja] = useState(true);
+  // Atalho: quem vai lançar ou aprovar ainda não tem usuário, mas é membro.
+  // Cria o usuário a partir do cadastro dele e já anexa, sem sair daqui.
+  const [criando, setCriando] = useState(false);
+  const [membro, setMembro] = useState<MembroOpcao | null>(null);
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [salvandoNovo, setSalvandoNovo] = useState(false);
+  // Posições de culto que cada usuário já ocupa, no campo todo: sem isso a
+  // lista não dizia se a pessoa já é tesoureiro em outra igreja.
+  const [posicoesPorUsuario, setPosicoesPorUsuario] = useState<Map<string, Posicao[]>>(new Map());
+
+  useEffect(() => {
+    let vivo = true;
+    cultoApi
+      .listarPosicoes()
+      .then((lista) => {
+        if (!vivo) return;
+        const mapa = new Map<string, Posicao[]>();
+        for (const p of lista) {
+          if (!p.isActive || !p.user?.id) continue;
+          mapa.set(p.user.id, [...(mapa.get(p.user.id) ?? []), p]);
+        }
+        setPosicoesPorUsuario(mapa);
+      })
+      .catch(() => {
+        /* sem as posições, a lista continua — só sem esse detalhe */
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -566,6 +600,67 @@ function ModalAnexarUsuario({
     }, 300);
     return () => clearTimeout(t);
   }, [busca, soDaIgreja, churchId]);
+
+  /**
+   * Cria o login (Supabase Auth), o perfil e anexa — na mesma ordem da tela
+   * Novo Usuário. A senha é obrigatória aqui: sem ela só o perfil seria
+   * criado, e quem é anexado precisa conseguir entrar.
+   */
+  async function criarEAnexar() {
+    if (!membro) return;
+    const emailLimpo = email.trim().toLowerCase();
+    if (!emailLimpo) {
+      setErro('O e-mail é obrigatório: é com ele que a pessoa entra no sistema.');
+      return;
+    }
+    if (senha.length < 6) {
+      setErro('A senha precisa de pelo menos 6 caracteres.');
+      return;
+    }
+    setSalvandoNovo(true);
+    setErro(null);
+    try {
+      const json = { 'Content-Type': 'application/json', ...authHeaders() };
+      const auth = await fetch(`${apiBase}/users/create-supabase-auth`, {
+        method: 'POST',
+        headers: json,
+        body: JSON.stringify({ email: emailLimpo, password: senha }),
+      });
+      // 409 = o login já existe; o perfil pode faltar, então segue (como na
+      // tela Novo Usuário). Qualquer outro erro para aqui.
+      if (!auth.ok && auth.status !== 409) {
+        const d = await auth.json().catch(() => ({}));
+        throw new Error(d.error || `Erro ${auth.status} ao criar o login.`);
+      }
+
+      const perfil = await fetch(`${apiBase}/users`, {
+        method: 'POST',
+        headers: json,
+        body: JSON.stringify({
+          fullName: membro.fullName,
+          email: emailLimpo,
+          phone: telefoneDoMembro(membro) || undefined,
+          profileType: 'church',
+          // A igreja do membro; regional e campo o servidor deriva dela.
+          churchId: membro.churchId,
+        }),
+      });
+      const novo = await perfil.json().catch(() => ({}));
+      if (perfil.status === 409) {
+        throw new Error(
+          'Já existe um usuário com este e-mail. Busque-o na lista acima — desmarque "Somente usuários desta igreja" se ele for de outra igreja.',
+        );
+      }
+      if (!perfil.ok || !novo?.id) throw new Error(novo?.error || `Erro ${perfil.status} ao criar o usuário.`);
+
+      await cultoApi.anexarPosicao({ userId: novo.id, papel, churchId });
+      onAnexado();
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setSalvandoNovo(false);
+    }
+  }
 
   async function anexar(userId: string) {
     setSalvandoId(userId);
@@ -587,8 +682,8 @@ function ModalAnexarUsuario({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white">Anexar na posição</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{ROTULO_PAPEL[papel]}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Anexar como</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{ROTULO_PAPEL[papel]}</h3>
           </div>
           <button
             onClick={onFechar}
@@ -653,6 +748,25 @@ function ModalAnexarUsuario({
                       {u.email}
                       {u.role?.name ? ` · ${u.role.name}` : ''}
                     </div>
+                    {/* Onde ele está cadastrado e o que já faz no culto. */}
+                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                      Cadastro: <strong className="text-slate-700 dark:text-slate-200">{u.church?.name ?? 'sem igreja'}</strong>
+                    </div>
+                    {(posicoesPorUsuario.get(u.id) ?? []).length > 0 ? (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {(posicoesPorUsuario.get(u.id) ?? []).map((p) => (
+                          <span
+                            key={p.id}
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#e0f2fe] text-[#0369a1] dark:bg-[#082f49] dark:text-[#7dd3fc]"
+                          >
+                            {p.rotuloPapel}
+                            {p.churchName ? ` · ${p.churchName}` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-slate-400">Nenhuma posição no culto ainda.</div>
+                    )}
                   </div>
                   {salvandoId === u.id ? (
                     <Loader2 className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
@@ -662,6 +776,106 @@ function ModalAnexarUsuario({
                 </button>
               ))}
           </div>
+
+          {!criando ? (
+            <button
+              type="button"
+              onClick={() => {
+                setErro(null);
+                setCriando(true);
+              }}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              Não está na lista? Criar a partir de um membro
+            </button>
+          ) : (
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  Criar usuário a partir de um membro
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCriando(false);
+                    setMembro(null);
+                    setErro(null);
+                  }}
+                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                  title="Cancelar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {!membro ? (
+                <MembroBusca
+                  autoFocus
+                  onEscolher={(m) => {
+                    setMembro(m);
+                    setEmail(m.email?.trim() || '');
+                    setSenha('');
+                    setErro(null);
+                  }}
+                />
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 px-3 py-2">
+                    <UserCheck className="w-4 h-4 text-slate-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{membro.fullName}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        {membro.rol ? `ROL #${membro.rol} · ` : ''}
+                        {membro.church?.name ?? 'Igreja não informada'}
+                        {telefoneDoMembro(membro) ? ` · ${telefoneDoMembro(membro)}` : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMembro(null)}
+                      className="text-xs font-semibold text-slate-500 hover:underline cursor-pointer"
+                    >
+                      trocar
+                    </button>
+                  </div>
+                  <label className="block">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      E-mail (login) <span className="text-rose-600">*</span>
+                    </span>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={membro.email ? '' : 'O membro não tem e-mail no cadastro — digite'}
+                      className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      Senha de acesso <span className="text-rose-600">*</span>
+                    </span>
+                    <input
+                      type="text"
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      placeholder="Mínimo 6 caracteres — passe para a pessoa"
+                      className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void criarEAnexar()}
+                    disabled={salvandoNovo}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
+                  >
+                    {salvandoNovo ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                    Criar usuário e anexar como {ROTULO_PAPEL[papel]}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

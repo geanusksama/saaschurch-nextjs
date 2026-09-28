@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, Eye, EyeOff, Info, MapPinned, Save, Shield, Users } from 'lucide-react';
+import { Building2, Eye, EyeOff, Info, MapPinned, Save, Search, Shield, UserCheck, Users, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
+import { MembroBuscaModal, telefoneDoMembro, type MembroOpcao } from './MembroBusca';
 
 type CampoOption = {
   id: string;
@@ -66,6 +67,10 @@ export default function UserNew() {
     isAdmin: false,
     password: '',
   });
+  // Busca no cadastro de membros: escolher um preenche nome, email, telefone e
+  // igreja. Não achou? Digita à mão — criar usuário não cria membro.
+  const [membroEscolhido, setMembroEscolhido] = useState<MembroOpcao | null>(null);
+  const [buscandoMembro, setBuscandoMembro] = useState(false);
   // Campo não aparece: é derivado da igreja/regional escolhida.
   const campoVisible = useCampoVisible();
 
@@ -108,6 +113,28 @@ export default function UserNew() {
 
     loadOptions();
   }, [token]);
+
+  /**
+   * Preenche com o que o cadastro do membro tem. Regional e campo vêm da igreja
+   * (os efeitos abaixo já fazem isso, e o servidor refaz ao gravar). A função
+   * fica para quem cadastra escolher.
+   */
+  const escolherMembro = (m: MembroOpcao) => {
+    setMembroEscolhido(m);
+    setBuscandoMembro(false);
+    setForm((prev) => ({
+      ...prev,
+      fullName: m.fullName || prev.fullName,
+      email: m.email?.trim() || '',
+      phone: telefoneDoMembro(m),
+      churchId: m.churchId || prev.churchId,
+    }));
+  };
+
+  const limparMembro = () => {
+    setMembroEscolhido(null);
+    setForm((prev) => ({ ...prev, fullName: '', email: '', phone: '', churchId: '', regionalId: '' }));
+  };
 
   const filteredRegionais = useMemo(() => {
     if (!form.campoId) return regionais;
@@ -253,6 +280,17 @@ export default function UserNew() {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Novo Usuário</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">Cadastre um novo usuário do sistema</p>
           </div>
+          {/* Na linha do título: a tela não tem espaço para um card de busca.
+              Já é membro? Os dados vêm do cadastro dele. Não achou, digita —
+              criar o usuário não cria um membro. */}
+          <button
+            type="button"
+            onClick={() => setBuscandoMembro(true)}
+            className="ml-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#059669] hover:bg-[#047857] text-white text-sm font-semibold cursor-pointer"
+          >
+            <Search className="w-4 h-4" />
+            Buscar membro
+          </button>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -286,6 +324,25 @@ export default function UserNew() {
             {/* Dados Pessoais */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
               <h2 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Dados Pessoais</h2>
+              {membroEscolhido && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg bg-[#ecfdf5] dark:bg-[#064e3b]/40 px-3 py-2 text-xs text-[#047857] dark:text-[#6ee7b7]">
+                  <UserCheck className="w-4 h-4 shrink-0" />
+                  <span className="flex-1 min-w-0 truncate">
+                    Preenchido do membro <strong>{membroEscolhido.fullName}</strong>
+                    {membroEscolhido.rol ? ` · ROL #${membroEscolhido.rol}` : ''}
+                    {membroEscolhido.church?.name ? ` · ${membroEscolhido.church.name}` : ''}
+                    {!membroEscolhido.email?.trim() ? ' · sem email no cadastro — digite abaixo' : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={limparMembro}
+                    title="Limpar e digitar à mão"
+                    className="p-1 rounded cursor-pointer hover:bg-[#d1fae5] dark:hover:bg-[#064e3b]"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -526,6 +583,10 @@ export default function UserNew() {
           </div>
         </div>
       </form>
+
+      {buscandoMembro && (
+        <MembroBuscaModal onEscolher={escolherMembro} onFechar={() => setBuscandoMembro(false)} />
+      )}
     </div>
   );
 }
