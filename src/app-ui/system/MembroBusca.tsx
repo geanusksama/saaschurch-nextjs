@@ -7,9 +7,12 @@
  * `limit`), que já aplica o escopo de campo/igreja de quem está logado.
  */
 import { useEffect, useState } from 'react';
-import { Loader2, Pencil, Search, X } from 'lucide-react';
+import { Clock, Loader2, Pencil, Search, X } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
+import { MemberEditDrawer } from '../../components/app-ui/MemberEditDrawer';
+
+type TituloOpcao = { id: string; name: string; abbreviation?: string | null; level: number };
 
 /** Membro achado na busca — só o que a criação do usuário usa. */
 export type MembroOpcao = {
@@ -69,6 +72,53 @@ export function funcaoSugerida<R extends { id: string; name: string }>(
   return null;
 }
 
+/**
+ * Últimas buscas deste modal, por usuário logado, no localStorage — o mesmo
+ * padrão de src/lib/recentSearches.ts, com chave própria para não misturar
+ * com a barra de busca do topo. Conveniência de digitação: nada vai ao servidor.
+ */
+const MAX_RECENTES = 5;
+
+function chaveRecentes(): string {
+  try {
+    const u = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+    return `mrm_busca_membro_usuario:${u?.id || u?.email || 'anon'}`;
+  } catch {
+    return 'mrm_busca_membro_usuario:anon';
+  }
+}
+
+function lerRecentes(): string[] {
+  try {
+    const bruto = JSON.parse(localStorage.getItem(chaveRecentes()) || '[]');
+    return Array.isArray(bruto) ? bruto.filter((t) => typeof t === 'string').slice(0, MAX_RECENTES) : [];
+  } catch {
+    return [];
+  }
+}
+
+function guardarRecente(termo: string): string[] {
+  const limpo = termo.trim();
+  const lista = [limpo, ...lerRecentes().filter((t) => t.toLowerCase() !== limpo.toLowerCase())].slice(
+    0,
+    MAX_RECENTES,
+  );
+  try {
+    localStorage.setItem(chaveRecentes(), JSON.stringify(lista));
+  } catch {
+    /* storage bloqueado: histórico é descartável */
+  }
+  return lista;
+}
+
+function limparRecentes(): void {
+  try {
+    localStorage.removeItem(chaveRecentes());
+  } catch {
+    /* idem */
+  }
+}
+
 /** Telefone do membro: o celular primeiro, que é o que atende. */
 export function telefoneDoMembro(m: MembroOpcao): string {
   return m.mobile?.trim() || m.phone?.trim() || '';
@@ -103,9 +153,34 @@ export function MembroBuscaModal({
   const [buscando, setBuscando] = useState(false);
   const [buscou, setBuscou] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Edição no drawer de membro que o app já usa (Lista de Membros, busca
+  // global) — na mesma tela, sem abrir outra aba.
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [recentes, setRecentes] = useState<string[]>(lerRecentes);
+  const [titulos, setTitulos] = useState<TituloOpcao[] | null>(null);
 
-  async function buscar() {
-    const t = termo.trim();
+  function editar(id: string) {
+    setEditandoId(id);
+    // Os títulos são carregados na primeira edição, como no AppUI.
+    if (titulos === null) {
+      const token = localStorage.getItem('mrm_token');
+      fetch(`${apiBase}/ecclesiastical-titles`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((d) => setTitulos(Array.isArray(d) ? d : []))
+        .catch(() => setTitulos([]));
+    }
+  }
+
+  function fecharEdicao() {
+    setEditandoId(null);
+    // Busca de novo: o e-mail cadastrado agora aparece no resultado.
+    if (buscou) void buscar();
+  }
+
+  async function buscar(termoEscolhido?: string) {
+    const t = (termoEscolhido ?? termo).trim();
     if (t.length < 2) {
       setErro('Digite pelo menos 2 letras do nome, ou o número do ROL.');
       return;
@@ -115,11 +190,25 @@ export function MembroBuscaModal({
     try {
       setLista(await buscarMembros(t));
       setBuscou(true);
+      setRecentes(guardarRecente(t));
     } catch (e) {
       setErro((e as Error).message);
     } finally {
       setBuscando(false);
     }
+  }
+
+  // Durante a edição só o drawer aparece; ao fechar, o modal volta com a busca.
+  if (editandoId) {
+    return (
+      <MemberEditDrawer
+        memberId={editandoId}
+        open
+        onClose={fecharEdicao}
+        onSaved={fecharEdicao}
+        titles={titulos ?? []}
+      />
+    );
   }
 
   return (
@@ -169,6 +258,41 @@ export function MembroBuscaModal({
 
           {erro && <p className="text-sm text-[#be123c]">{erro}</p>}
 
+          {/* Antes da primeira busca: as últimas feitas aqui, para repetir num clique. */}
+          {!buscou && !buscando && recentes.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Últimas buscas</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    limparRecentes();
+                    setRecentes([]);
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-600 hover:underline cursor-pointer"
+                >
+                  limpar
+                </button>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg">
+                {recentes.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      setTermo(t);
+                      void buscar(t);
+                    }}
+                    className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {buscou && !buscando && (
             lista.length === 0 ? (
               <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
@@ -209,12 +333,12 @@ export function MembroBuscaModal({
                         </div>
                       )}
                     </button>
-                    {/* Edição do membro em outra aba: o formulário daqui não se
-                        perde (ex.: cadastrar o e-mail que falta e buscar de novo). */}
+                    {/* Edita no drawer de membro, sem sair da tela (ex.: cadastrar
+                        o e-mail que falta). */}
                     <button
                       type="button"
-                      onClick={() => window.open(`/app-ui/members/${m.id}/edit`, '_blank', 'noopener')}
-                      title="Editar membro (abre em outra aba)"
+                      onClick={() => editar(m.id)}
+                      title="Editar membro"
                       className="px-3 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
                     >
                       <Pencil className="w-4 h-4" />
