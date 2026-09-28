@@ -90,6 +90,16 @@ function umaHoraDepois(hhmm: string): string {
   return `${String(hora).padStart(2, '0')}:${m[2]}`;
 }
 
+/** "2026-09-28" → "2026-09-22": começo da janela de cultos recentes. */
+function seisDiasAntes(iso: string): string {
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() - 6);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Valor do dropdown de horário quando a hora do culto não está no cadastro. */
+const HORA_AVULSA = '__hora_do_culto__';
+
 /** Todos os campos do bloco, sem os grupos — para ler e gravar o lançamento. */
 function camposDoBloco(bloco: Bloco): Campo[] {
   return CAMPOS[bloco].flatMap((g) => g.campos);
@@ -132,9 +142,10 @@ export default function CultoLancarModal({
   const [churchId, setChurchId] = useState<string | null>(churchIdPadrao);
   const [igrejas, setIgrejas] = useState<IgrejaOpcao[]>([]);
   const [form, setForm] = useState<Record<string, string>>({});
-  // Todos os cultos da igreja naquela data — manhã, noite, EBD. Quem abre o
-  // modal vê o que o tesoureiro ou o secretário já lançou antes de digitar.
-  const [doDia, setDoDia] = useState<Registro[]>([]);
+  // Cultos da igreja nos 7 dias até a data escolhida — manhã, noite, EBD.
+  // Quem abre o modal vê o que o tesoureiro ou o secretário já lançou antes de
+  // digitar, mesmo quando a data ainda está em "hoje" e o culto foi ontem.
+  const [recentes, setRecentes] = useState<Registro[]>([]);
   const [buscando, setBuscando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -202,27 +213,33 @@ export default function CultoLancarModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [precisaEscolherIgreja]);
 
-  /** Busca os cultos daquela igreja/data para mostrar o que já foi lançado. */
-  const buscarDoDia = useCallback(async (): Promise<Registro[]> => {
+  /** Busca os cultos da igreja na semana que termina na data escolhida. */
+  const buscarRecentes = useCallback(async (): Promise<Registro[]> => {
     if (!churchId || !data) return [];
-    return cultoApi.listarRegistros({ de: data, ate: data, churchId });
+    return cultoApi.listarRegistros({ de: seisDiasAntes(data), ate: data, churchId });
   }, [churchId, data]);
 
   useEffect(() => {
     let vivo = true;
-    buscarDoDia()
+    buscarRecentes()
       .then((lista) => {
         if (!vivo) return;
         setErro(null);
         setSalvo(false);
-        setDoDia(lista);
+        setRecentes(lista);
       })
       .catch((e) => vivo && setErro((e as Error).message))
       .finally(() => vivo && setBuscando(false));
     return () => {
       vivo = false;
     };
-  }, [buscarDoDia]);
+  }, [buscarRecentes]);
+
+  /** Só os da data escolhida: é entre eles que o formulário procura o culto. */
+  const doDia = useMemo(
+    () => recentes.filter((r) => r.dataCulto.slice(0, 10) === data),
+    [recentes, data],
+  );
 
   /** Dentre os cultos do dia, o que corresponde ao tipo/horário escolhido. */
   const registro = useMemo(() => {
@@ -272,6 +289,11 @@ export default function CultoLancarModal({
 
   /** Abre no formulário um culto que já existe no dia (linha da tabela). */
   function abrirExistente(r: Registro) {
+    const dia = r.dataCulto.slice(0, 10);
+    if (dia !== data) {
+      setBuscando(true);
+      setData(dia);
+    }
     setTipoCulto(r.tipoCulto);
     setHoraInicio(r.horaInicio ?? '');
     setHoraFim(r.horaFim ?? '');
@@ -279,7 +301,19 @@ export default function CultoLancarModal({
     setSalvo(false);
   }
 
+  // Os do dia quando há; senão, a semana — para quem abriu com a data errada.
+  const tabela = doDia.length > 0 ? doDia : recentes;
+
   const nomeDoTipo = (codigo: string) => tipos.find((t) => t.codigo === codigo)?.nome ?? codigo;
+
+  // O dropdown mostra o horário do culto aberto mesmo quando a igreja não tem
+  // aquele horário no cadastro (ou não tem cadastro nenhum): o culto já
+  // lançado às 18:00 não pode aparecer como "Sem horário definido".
+  const horarioExibido =
+    horarios.find((h) => h.codigo === horarioCodigo && h.hora_inicio === horaInicio)?.codigo ??
+    horarios.find((h) => h.hora_inicio === horaInicio)?.codigo ??
+    (horaInicio ? HORA_AVULSA : '');
+  const tipoForaDoCadastro = tipoCulto && !tipos.some((t) => t.codigo === tipoCulto);
 
   /**
    * Situação de um bloco na tabela do dia. Usa blocosEnviados, que o servidor
@@ -326,7 +360,7 @@ export default function CultoLancarModal({
 
       // Recarregar o dia atualiza a tabela e reaponta o formulário para o
       // culto recém-aberto (o efeito de seleção roda com a lista nova).
-      setDoDia(await buscarDoDia());
+      setRecentes(await buscarRecentes());
       setSalvo(true);
     } catch (e) {
       setErro((e as Error).message);
@@ -412,15 +446,21 @@ export default function CultoLancarModal({
               </span>
               <div className="mt-1 flex items-center gap-1">
                 <select
-                  value={horarioCodigo}
+                  value={horarioExibido}
                   onChange={(e) => {
+                    if (e.target.value === HORA_AVULSA) return;
                     const h = horarios.find((x) => x.codigo === e.target.value);
                     setHorarioCodigo(e.target.value);
+                    // "Sem horário definido" limpa as horas: senão a hora antiga
+                    // continuaria valendo e o dropdown voltaria para ela.
+                    if (!h) {
+                      setHoraInicio('');
+                      setHoraFim('');
+                    }
                     // Escolher o horário preenche Início com a hora cadastrada
                     // e Fim uma hora depois; quem lança ajusta ao lado quando o
                     // culto passa disso.
                     if (h) {
-                      setBuscando(true);
                       setHoraInicio(h.hora_inicio ?? '');
                       // O fim vem do cadastro; sem ele, uma hora depois do
                       // início, que era o comportamento anterior.
@@ -432,6 +472,11 @@ export default function CultoLancarModal({
                   className="w-full sm:w-44 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 >
                   <option value="">Sem horário definido</option>
+                  {horarioExibido === HORA_AVULSA && (
+                    <option value={HORA_AVULSA}>
+                      {horaFim ? `${horaInicio}–${horaFim}` : horaInicio}
+                    </option>
+                  )}
                   {horarios.map((h) => (
                     // Só o nome: a hora aparece nos campos ao lado assim que o
                     // horário é escolhido — repeti-la aqui era ler duas vezes a
@@ -463,10 +508,7 @@ export default function CultoLancarModal({
               <input
                 type="time"
                 value={horaInicio}
-                onChange={(e) => {
-                  setBuscando(true);
-                  setHoraInicio(e.target.value);
-                }}
+                onChange={(e) => setHoraInicio(e.target.value)}
                 className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               />
             </label>
@@ -488,13 +530,14 @@ export default function CultoLancarModal({
               <div className="mt-1 flex items-center gap-1">
                 <select
                   value={tipoCulto}
-                  onChange={(e) => {
-                    setBuscando(true);
-                    setTipoCulto(e.target.value);
-                  }}
+                  onChange={(e) => setTipoCulto(e.target.value)}
                   className="w-full sm:w-44 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 >
-                  {tipos.length === 0 && <option value="CULTO">Culto</option>}
+                  {tipos.length === 0 && tipoCulto !== 'CULTO' && <option value="CULTO">Culto</option>}
+                  {/* Culto lançado com um tipo que saiu do cadastro (ou antes
+                      dele existir) aparece com o código gravado, não com o
+                      primeiro tipo da lista. */}
+                  {tipoForaDoCadastro && <option value={tipoCulto}>{tipoCulto}</option>}
                   {tipos.map((t) => (
                     <option key={t.id} value={t.codigo}>
                       {t.nome}
@@ -517,21 +560,29 @@ export default function CultoLancarModal({
             )}
           </div>
 
-          {doDia.length > 0 && (
+          {tabela.length > 0 && (
             <div className={`rounded-lg px-4 py-3 text-sm space-y-2 ${PASTILHA.azul}`}>
-              <p>
-                <strong>
-                  {doDia.length === 1
-                    ? 'Já existe 1 culto lançado'
-                    : `Já existem ${doDia.length} cultos lançados`}{' '}
-                  em {fmtData(data)}.
-                </strong>{' '}
-                Clique em um para abri-lo, ou escolha outro horário para lançar um culto novo.
-              </p>
+              {doDia.length > 0 ? (
+                <p>
+                  <strong>
+                    {doDia.length === 1
+                      ? 'Já existe 1 culto lançado'
+                      : `Já existem ${doDia.length} cultos lançados`}{' '}
+                    em {fmtData(data)}.
+                  </strong>{' '}
+                  Clique em um para abri-lo, ou escolha outro horário para lançar um culto novo.
+                </p>
+              ) : (
+                <p>
+                  <strong>Nenhum culto lançado em {fmtData(data)}.</strong> Estes são os
+                  lançados nesta igreja nos 7 dias anteriores — clique em um para abri-lo.
+                </p>
+              )}
               <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
                 <table className="w-full text-xs text-slate-700 dark:text-slate-200">
                   <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                     <tr>
+                      <th className="px-3 py-2 text-left font-medium">Data</th>
                       <th className="px-3 py-2 text-left font-medium">Horário</th>
                       <th className="px-3 py-2 text-left font-medium">Culto</th>
                       <th className="px-3 py-2 text-left font-medium">Financeiro</th>
@@ -541,7 +592,7 @@ export default function CultoLancarModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {doDia.map((r) => {
+                    {tabela.map((r) => {
                       const atual = registro?.id === r.id;
                       return (
                         <tr
@@ -551,6 +602,9 @@ export default function CultoLancarModal({
                             atual ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : ''
                           }`}
                         >
+                          <td className="px-3 py-2 whitespace-nowrap tabular-nums">
+                            {fmtData(r.dataCulto)}
+                          </td>
                           <td className="px-3 py-2 whitespace-nowrap tabular-nums">
                             {r.horaInicio
                               ? `${r.horaInicio}${r.horaFim ? `–${r.horaFim}` : ''}`
