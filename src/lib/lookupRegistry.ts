@@ -211,8 +211,8 @@ export const LOOKUPS: Record<string, LookupConfig> = {
     fields: [
       { key: "codigo", label: "Código", type: "text", required: true, inList: true, help: "Estável, sem acento: CULTO, EBD, ORACAO. É o que fica gravado no registro." },
       { key: "nome", label: "Nome", type: "text", required: true, inList: true, help: "O que o usuário lê no dropdown." },
-      { key: "descricao", label: "Descrição", type: "text" },
-      { key: "ordem", label: "Ordem", type: "number", inList: true, help: "Ordem no dropdown." },
+      // Descrição e Ordem saíram do formulário: ninguém preenchia. As colunas
+      // continuam no banco — ordem assume o default 0 e a lista cai em nome.
       { key: "ativo", label: "Ativo", type: "boolean", inList: true, help: "Só os ativos aparecem no dropdown." },
       { key: "is_default", label: "Padrão", type: "boolean", inList: true, help: "Pré-selecionado no formulário de lançamento." },
     ],

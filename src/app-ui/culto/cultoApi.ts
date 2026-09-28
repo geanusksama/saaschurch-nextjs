@@ -250,7 +250,6 @@ export interface TipoCulto {
   id: string;
   codigo: string;
   nome: string;
-  ordem: number | null;
   ativo: boolean;
   is_default: boolean;
 }

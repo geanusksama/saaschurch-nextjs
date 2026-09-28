@@ -178,7 +178,9 @@ export default function CultoLancar() {
         <CultoLancarModal
           bloco={aberto}
           churchIdPadrao={igrejaDo(aberto) ?? papeis.churchIdPadrao}
-          precisaEscolherIgreja={papeis.irrestrito && !igrejaDo(aberto)}
+          // A igreja já chega escolhida; o administrador pode trocar mesmo
+          // quando também tem posição de lançador numa delas.
+          precisaEscolherIgreja={papeis.irrestrito}
           onFechar={() => setAberto(null)}
         />
       )}

@@ -8,7 +8,7 @@
  * Reenvio é permitido enquanto o dirigente não aprovou. Depois de aprovado, o
  * servidor recusa (409) e o modal explica que precisa pedir a devolução.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, Loader2, Check, AlertTriangle, CalendarDays, Clock, Settings2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
@@ -132,7 +132,9 @@ export default function CultoLancarModal({
   const [churchId, setChurchId] = useState<string | null>(churchIdPadrao);
   const [igrejas, setIgrejas] = useState<IgrejaOpcao[]>([]);
   const [form, setForm] = useState<Record<string, string>>({});
-  const [registro, setRegistro] = useState<Registro | null>(null);
+  // Todos os cultos da igreja naquela data — manhã, noite, EBD. Quem abre o
+  // modal vê o que o tesoureiro ou o secretário já lançou antes de digitar.
+  const [doDia, setDoDia] = useState<Registro[]>([]);
   const [buscando, setBuscando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -200,48 +202,96 @@ export default function CultoLancarModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [precisaEscolherIgreja]);
 
-  /** Procura o culto daquela igreja/data para já trazer o que foi lançado. */
+  /** Busca os cultos daquela igreja/data para mostrar o que já foi lançado. */
+  const buscarDoDia = useCallback(async (): Promise<Registro[]> => {
+    if (!churchId || !data) return [];
+    return cultoApi.listarRegistros({ de: data, ate: data, churchId });
+  }, [churchId, data]);
+
   useEffect(() => {
-    if (!churchId || !data) return;
     let vivo = true;
-    cultoApi
-      .listarRegistros({ de: data, ate: data, churchId })
+    buscarDoDia()
       .then((lista) => {
         if (!vivo) return;
         setErro(null);
         setSalvo(false);
-        // Manhã e noite do mesmo dia são cultos distintos: quando há horário
-        // escolhido, ele entra na busca — senão o lançamento da noite abriria
-        // em cima do da manhã.
-        const doTipo = lista.filter((r) => r.tipoCulto === tipoCulto);
-        const achado =
-          (horaInicio ? doTipo.find((r) => r.horaInicio === horaInicio) : null) ??
-          (horaInicio ? null : doTipo[0]) ??
-          null;
-        setRegistro(achado);
-        if (achado) {
-          setHoraInicio(achado.horaInicio ?? '');
-          setHoraFim(achado.horaFim ?? '');
-        }
-        const valores: Record<string, string> = {};
-        const lanc = achado?.lancamentos.find((l) => l.bloco === bloco);
-        if (lanc) {
-          for (const c of camposDoBloco(bloco)) {
-            const v = lanc[c.campo as keyof typeof lanc];
-            if (v === null || v === undefined) continue;
-            // Dinheiro volta formatado; contagem volta como número puro.
-            valores[c.campo] = c.moeda ? numeroParaMoeda(v as string) : String(v);
-          }
-        }
-        setObservacao(lanc?.observacao ?? '');
-        setForm(valores);
+        setDoDia(lista);
       })
       .catch((e) => vivo && setErro((e as Error).message))
       .finally(() => vivo && setBuscando(false));
     return () => {
       vivo = false;
     };
-  }, [churchId, data, tipoCulto, horaInicio, bloco]);
+  }, [buscarDoDia]);
+
+  /** Dentre os cultos do dia, o que corresponde ao tipo/horário escolhido. */
+  const registro = useMemo(() => {
+    // Manhã e noite do mesmo dia são cultos distintos: quando há horário
+    // escolhido, ele entra na busca — senão o lançamento da noite abriria
+    // em cima do da manhã.
+    const doTipo = doDia.filter((r) => r.tipoCulto === tipoCulto);
+    return (
+      (horaInicio ? doTipo.find((r) => r.horaInicio === horaInicio) : null) ??
+      (horaInicio ? null : doTipo[0]) ??
+      null
+    );
+  }, [doDia, tipoCulto, horaInicio]);
+
+  // Trocou a lista do dia, o tipo ou o horário: o formulário passa a mostrar
+  // o que já foi lançado naquele culto (ou fica vazio, se é culto novo).
+  // Ajuste durante o render, não em efeito — evita um render a mais.
+  const [preenchidoPara, setPreenchidoPara] = useState<{
+    lista: Registro[];
+    tipoCulto: string;
+    horaInicio: string;
+  } | null>(null);
+  if (
+    !preenchidoPara ||
+    preenchidoPara.lista !== doDia ||
+    preenchidoPara.tipoCulto !== tipoCulto ||
+    preenchidoPara.horaInicio !== horaInicio
+  ) {
+    setPreenchidoPara({ lista: doDia, tipoCulto, horaInicio });
+    if (registro) {
+      setHoraInicio(registro.horaInicio ?? '');
+      setHoraFim(registro.horaFim ?? '');
+    }
+    const valores: Record<string, string> = {};
+    const lanc = registro?.lancamentos.find((l) => l.bloco === bloco);
+    if (lanc) {
+      for (const c of camposDoBloco(bloco)) {
+        const v = lanc[c.campo as keyof typeof lanc];
+        if (v === null || v === undefined) continue;
+        // Dinheiro volta formatado; contagem volta como número puro.
+        valores[c.campo] = c.moeda ? numeroParaMoeda(v as string) : String(v);
+      }
+    }
+    setObservacao(lanc?.observacao ?? '');
+    setForm(valores);
+  }
+
+  /** Abre no formulário um culto que já existe no dia (linha da tabela). */
+  function abrirExistente(r: Registro) {
+    setTipoCulto(r.tipoCulto);
+    setHoraInicio(r.horaInicio ?? '');
+    setHoraFim(r.horaFim ?? '');
+    setHorarioCodigo(horarios.find((h) => h.hora_inicio === r.horaInicio)?.codigo ?? '');
+    setSalvo(false);
+  }
+
+  const nomeDoTipo = (codigo: string) => tipos.find((t) => t.codigo === codigo)?.nome ?? codigo;
+
+  /**
+   * Situação de um bloco na tabela do dia. Usa blocosEnviados, que o servidor
+   * calcula antes de podar os lançamentos: o secretário sabe que o financeiro
+   * foi enviado sem ver os valores.
+   */
+  function situacaoBloco(r: Registro, b: Bloco): string {
+    if (!r.blocosExigidos.includes(b)) return '—';
+    if (!r.blocosEnviados.includes(b)) return 'Falta';
+    const autor = r.lancamentos.find((l) => l.bloco === b)?.enviadoPorUser?.fullName;
+    return autor ? `Enviado · ${autor}` : 'Enviado';
+  }
 
   const jaAprovado = registro
     ? ['APROVADO_LOCAL', 'CONCLUIDO'].includes(registro.status)
@@ -274,11 +324,9 @@ export default function CultoLancarModal({
       }
       await cultoApi.enviarBloco(alvo.id, bloco, dados);
 
-      const lista = await cultoApi.listarRegistros({ de: data, ate: data, churchId });
-      const doTipo = lista.filter((r) => r.tipoCulto === tipoCulto);
-      setRegistro(
-        (horaInicio ? doTipo.find((r) => r.horaInicio === horaInicio) : doTipo[0]) ?? null,
-      );
+      // Recarregar o dia atualiza a tabela e reaponta o formulário para o
+      // culto recém-aberto (o efeito de seleção roda com a lista nova).
+      setDoDia(await buscarDoDia());
       setSalvo(true);
     } catch (e) {
       setErro((e as Error).message);
@@ -321,6 +369,28 @@ export default function CultoLancarModal({
               igreja ocupam a linha toda e só Início/Fim dividem espaço — são
               os dois campos estreitos, e um do lado do outro é como se lê a
               duração do culto. A partir do sm volta a ser uma linha corrida. */}
+          {/* A igreja vem primeiro: é ela que decide os horários e os cultos
+              já lançados no dia. Já chega escolhida; o administrador troca. */}
+          {precisaEscolherIgreja && (
+            <label className="block">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Igreja</span>
+              <select
+                value={churchId ?? ''}
+                onChange={(e) => {
+                  setBuscando(true);
+                  setChurchId(e.target.value);
+                }}
+                className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+              >
+                {igrejas.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <div className="grid grid-cols-2 gap-3 items-end sm:flex sm:flex-wrap">
             <label className="col-span-2 block sm:w-auto">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
@@ -442,29 +512,65 @@ export default function CultoLancarModal({
                 </button>
               </div>
             </label>
-            {precisaEscolherIgreja && (
-              <label className="col-span-2 block sm:flex-1 sm:min-w-[14rem]">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Igreja</span>
-                <select
-                  value={churchId ?? ''}
-                  onChange={(e) => {
-                    setBuscando(true);
-                    setChurchId(e.target.value);
-                  }}
-                  className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-                >
-                  {igrejas.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
             {buscando && (
               <Loader2 className="col-span-2 w-4 h-4 animate-spin text-slate-400 sm:mb-3" />
             )}
           </div>
+
+          {doDia.length > 0 && (
+            <div className={`rounded-lg px-4 py-3 text-sm space-y-2 ${PASTILHA.azul}`}>
+              <p>
+                <strong>
+                  {doDia.length === 1
+                    ? 'Já existe 1 culto lançado'
+                    : `Já existem ${doDia.length} cultos lançados`}{' '}
+                  em {fmtData(data)}.
+                </strong>{' '}
+                Clique em um para abri-lo, ou escolha outro horário para lançar um culto novo.
+              </p>
+              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                <table className="w-full text-xs text-slate-700 dark:text-slate-200">
+                  <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Horário</th>
+                      <th className="px-3 py-2 text-left font-medium">Culto</th>
+                      <th className="px-3 py-2 text-left font-medium">Financeiro</th>
+                      <th className="px-3 py-2 text-left font-medium">Presença</th>
+                      <th className="px-3 py-2 text-left font-medium">Situação</th>
+                      <th className="px-3 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {doDia.map((r) => {
+                      const atual = registro?.id === r.id;
+                      return (
+                        <tr
+                          key={r.id}
+                          onClick={() => abrirExistente(r)}
+                          className={`border-t border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                            atual ? 'bg-slate-100 dark:bg-slate-800 font-semibold' : ''
+                          }`}
+                        >
+                          <td className="px-3 py-2 whitespace-nowrap tabular-nums">
+                            {r.horaInicio
+                              ? `${r.horaInicio}${r.horaFim ? `–${r.horaFim}` : ''}`
+                              : 'Sem horário'}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">{nomeDoTipo(r.tipoCulto)}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{situacaoBloco(r, 'FINANCEIRO')}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{situacaoBloco(r, 'PRESENCA')}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{ROTULO_STATUS[r.status]}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-right">
+                            {atual ? 'Aberto' : 'Abrir'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {erro && (
             <div className="flex items-start gap-2 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
