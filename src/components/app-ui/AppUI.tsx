@@ -29,7 +29,6 @@ import {
   UserCheck,
   Droplets,
   GraduationCap,
-  HeartHandshake,
   HandHeart,
   Cake,
   Building,
@@ -279,7 +278,7 @@ const SECTION_ICONS: Record<string, any> = {
   'Principal': Bell,
   'Secretaria': Clipboard,
   'Gestão de Culto': Church,
-  'Gestão Pastoral': HeartHandshake,
+  'Comunicação': Megaphone,
   'Ministérios': Users,
   'GF (Grupos Familiares)': Home,
   'Patrimônio': Package,
@@ -349,7 +348,7 @@ export const appNavigation: NavigationSection[] = [
     ]
   },
   {
-    section: 'Gestão Pastoral',
+    section: 'Comunicação',
     items: [
       { name: 'Gestão',               path: '/app-ui/pastoral-kanban',        icon: LayoutGrid,    permKey: 'pastoral_visits' },
       { name: 'Discipulado',          path: '/app-ui/discipleship-tracking',  icon: GraduationCap,  permKey: 'discipleship' },

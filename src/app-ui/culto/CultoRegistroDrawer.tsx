@@ -18,12 +18,16 @@ import {
   ShieldCheck,
   Trash2,
   Crown,
+  Pencil,
 } from 'lucide-react';
 import {
   cultoApi,
   fmtData,
   fmtHora,
   fmtMoeda,
+  mascaraMoeda,
+  moedaParaNumero,
+  numeroParaMoeda,
   ROTULO_BLOCO,
   ROTULO_STATUS,
   type Bloco,
@@ -50,6 +54,9 @@ const CAMPOS_PRESENCA: { campo: string; label: string }[] = [
   { campo: 'cadeirasVazias', label: 'Cadeiras vazias' },
 ];
 
+/** Campos de dinheiro: mostrados e digitados como R$ 1.234,56. */
+const CAMPOS_MOEDA = new Set(['totalDizimos', 'totalOfertas']);
+
 /** Chave da observação de um bloco no formulário do drawer. */
 function chaveObs(bloco: string): string {
   return `observacao:${bloco}`;
@@ -74,8 +81,14 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
   const [salvando, setSalvando] = useState<Bloco | null>(null);
   const [decidindo, setDecidindo] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
-  const [motivo, setMotivo] = useState('');
+  // Cada nível escreve a sua observação: o dirigente da congregação e o
+  // hospedeiro decidem em cartões lado a lado.
+  const [obsNivel, setObsNivel] = useState<Record<Nivel, string>>({ LOCAL: '', HOSPEDEIRA: '' });
   const [pedindoMotivo, setPedindoMotivo] = useState<Nivel | null>(null);
+  // Presidente corrigindo a observação que um dirigente já deixou.
+  const [editandoObs, setEditandoObs] = useState<Nivel | null>(null);
+  const [textoEdicao, setTextoEdicao] = useState('');
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [obsPresidente, setObsPresidente] = useState('');
   const [salvandoObs, setSalvandoObs] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
@@ -101,7 +114,9 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
         if (v !== null && typeof v !== 'object' && k !== 'id' && k !== 'bloco') {
           // Cada bloco tem a sua observação; no mapa achatado a do último
           // bloco apagaria a dos outros.
-          inicial[k === 'observacao' ? chaveObs(l.bloco) : k] = String(v);
+          inicial[k === 'observacao' ? chaveObs(l.bloco) : k] = CAMPOS_MOEDA.has(k)
+            ? numeroParaMoeda(v as string | number)
+            : String(v);
         }
       }
     }
@@ -188,7 +203,10 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
             ? CAMPOS_PRESENCA.map((c) => c.campo)
             : ['texto', 'anexoUrl'];
       const dados: Record<string, unknown> = {};
-      for (const c of campos) dados[c] = form[c] ?? null;
+      for (const c of campos) {
+        const bruto = form[c] ?? '';
+        dados[c] = CAMPOS_MOEDA.has(c) ? moedaParaNumero(bruto) : bruto || null;
+      }
       dados.observacao = form[chaveObs(bloco)]?.trim() || null;
       await cultoApi.enviarBloco(registro.id, bloco, dados);
       recarregar();
@@ -202,15 +220,16 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
 
   async function decidir(nivel: Nivel | 'PRESIDENTE', decisao: 'APROVADO' | 'REJEITADO') {
     if (!registro) return;
-    if (decisao === 'REJEITADO' && !motivo.trim()) {
+    const motivo = nivel === 'PRESIDENTE' ? '' : obsNivel[nivel].trim();
+    if (decisao === 'REJEITADO' && !motivo) {
       if (nivel !== 'PRESIDENTE') setPedindoMotivo(nivel);
       return;
     }
     setDecidindo(true);
     setErro(null);
     try {
-      await cultoApi.decidir(registro.id, nivel, decisao, motivo.trim() || undefined);
-      setMotivo('');
+      await cultoApi.decidir(registro.id, nivel, decisao, motivo || undefined);
+      setObsNivel({ LOCAL: '', HOSPEDEIRA: '' });
       setPedindoMotivo(null);
       recarregar();
       onMudou();
@@ -218,6 +237,22 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
       setErro((e as Error).message);
     } finally {
       setDecidindo(false);
+    }
+  }
+
+  async function salvarEdicaoObs(nivel: Nivel) {
+    if (!registro) return;
+    setSalvandoEdicao(true);
+    setErro(null);
+    try {
+      await cultoApi.editarObservacaoAprovacao(registro.id, nivel, textoEdicao);
+      setEditandoObs(null);
+      recarregar();
+      onMudou();
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setSalvandoEdicao(false);
     }
   }
 
@@ -277,15 +312,29 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
     return (
       <label key={campo} className="block">
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
-        <input
-          type="number"
-          min={0}
-          step={moeda ? '0.01' : '1'}
-          value={form[campo] ?? ''}
-          onChange={(e) => setForm((f) => ({ ...f, [campo]: e.target.value }))}
-          disabled={!editavel}
-          className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
-        />
+        <div className="mt-1 relative">
+          {moeda && (
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">
+              R$
+            </span>
+          )}
+          <input
+            // Dinheiro com máscara pt-BR (1.234,56), igual ao formulário de
+            // lançamento; contagem continua número puro.
+            type={moeda ? 'text' : 'number'}
+            inputMode={moeda ? 'numeric' : undefined}
+            min={moeda ? undefined : 0}
+            placeholder={moeda ? '0,00' : '0'}
+            value={form[campo] ?? ''}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, [campo]: moeda ? mascaraMoeda(e.target.value) : e.target.value }))
+            }
+            disabled={!editavel}
+            className={`w-full border border-slate-200 dark:border-slate-700 rounded-lg py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60 ${
+              moeda ? 'pl-9 pr-3 text-right tabular-nums' : 'px-3'
+            }`}
+          />
+        </div>
       </label>
     );
   }
@@ -473,10 +522,178 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
     );
   }
 
+  /**
+   * Cartão de um nível de aprovação: o dirigente da congregação (LOCAL) e o
+   * dirigente hospedeiro (HOSPEDEIRA). Mostra a decisão e a observação de quem
+   * decidiu; aprovar/devolver aparecem só no nível que está na vez e para quem
+   * pode decidir nele. O presidente corrige a observação já dada.
+   */
+  function cartaoNivel(nivel: Nivel) {
+    if (!registro) return null;
+    const decisao = registro.aprovacoes.find((a) => a.nivel === nivel);
+    const titulo = nivel === 'LOCAL' ? 'Dirigente da congregação' : 'Dirigente hospedeiro';
+    const quem =
+      nivel === 'LOCAL'
+        ? aprovadorLocal
+        : registro.hostChurch
+          ? registro.hostChurch.name
+          : null;
+    const naVez = nivelAtivo === nivel;
+    const editando = editandoObs === nivel;
+
+    return (
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+          <div className="flex items-center gap-2 min-w-0">
+            <ShieldCheck className={`w-4 h-4 shrink-0 ${TEXTO.verde}`} />
+            <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{titulo}</span>
+          </div>
+          <span
+            className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+              decisao?.decisao === 'APROVADO'
+                ? PASTILHA.verde
+                : decisao?.decisao === 'REJEITADO'
+                  ? PASTILHA.ambar
+                  : naVez
+                    ? PASTILHA.azul
+                    : PASTILHA.cinza
+            }`}
+          >
+            {decisao?.decisao === 'APROVADO'
+              ? 'aprovou'
+              : decisao?.decisao === 'REJEITADO'
+                ? 'devolveu'
+                : naVez
+                  ? 'na vez dele'
+                  : 'aguardando'}
+          </span>
+        </div>
+
+        <div className="p-4 space-y-3 text-sm">
+          {quem && <p className="text-xs text-slate-500 dark:text-slate-400">{quem}</p>}
+
+          {decisao ? (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {decisao.aprovador?.fullName ?? '—'} · {fmtData(decisao.decididoEm)}
+              </p>
+              {editando ? (
+                <>
+                  <textarea
+                    rows={3}
+                    value={textoEdicao}
+                    onChange={(e) => setTextoEdicao(e.target.value)}
+                    className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => void salvarEdicaoObs(nivel)}
+                      disabled={salvandoEdicao}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold disabled:opacity-50"
+                    >
+                      {salvandoEdicao ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      Salvar
+                    </button>
+                    <button
+                      onClick={() => setEditandoObs(null)}
+                      disabled={salvandoEdicao}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-start gap-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 px-3 py-2">
+                  <p className="flex-1 text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
+                    {decisao.motivo || <span className="text-slate-400">Sem observação.</span>}
+                  </p>
+                  {souPresidente && (
+                    <button
+                      onClick={() => {
+                        setTextoEdicao(decisao.motivo ?? '');
+                        setEditandoObs(nivel);
+                      }}
+                      title="Editar a observação (presidente)"
+                      aria-label="Editar a observação"
+                      className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : naVez ? (
+            <>
+              <textarea
+                rows={3}
+                value={obsNivel[nivel]}
+                onChange={(e) => setObsNivel((o) => ({ ...o, [nivel]: e.target.value }))}
+                placeholder={
+                  pedindoMotivo === nivel
+                    ? 'Motivo da devolução — obrigatório (a igreja recebe este texto)'
+                    : 'Observação do dirigente (opcional ao aprovar)'
+                }
+                className={`w-full border rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+                  pedindoMotivo === nivel ? BORDA.ambar : 'border-slate-200 dark:border-slate-700'
+                }`}
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => void decidir(nivel, 'APROVADO')}
+                  disabled={decidindo}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                >
+                  {decidindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  {souPresidente ? 'Aprovar pelo dirigente' : 'Aprovar'}
+                </button>
+                <button
+                  onClick={() => void decidir(nivel, 'REJEITADO')}
+                  disabled={decidindo}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-sm font-semibold disabled:opacity-50"
+                >
+                  <Undo2 className="w-4 h-4" />
+                  Devolver
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* O campo aparece sempre, para o cartão ter a mesma cara em todo
+                  culto — mas travado: o servidor recusa decidir fora da vez. */}
+              <textarea
+                rows={3}
+                disabled
+                placeholder="Observação do dirigente"
+                className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 disabled:opacity-60 cursor-not-allowed"
+              />
+              <p className="text-xs text-slate-400">
+                {nivel === 'LOCAL'
+                  ? registro.blocosFaltando.length > 0
+                    ? `Libera quando chegar ${registro.blocosFaltando
+                        .map((b) => (b === 'FINANCEIRO' ? 'o Financeiro' : b === 'PRESENCA' ? 'a Presença' : 'o Complemento'))
+                        .join(' e ')}.`
+                    : podeAprovar.includes('LOCAL')
+                      ? 'Ainda não decidiu.'
+                      : 'Só o dirigente da congregação decide aqui.'
+                  : registro.status === 'APROVADO_LOCAL' && !podeAprovar.includes('HOSPEDEIRA')
+                    ? 'Só o dirigente hospedeiro decide aqui.'
+                    : 'Libera depois que o dirigente da congregação aprovar.'}
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40" onClick={onFechar}>
+      {/* Largo: Presença | Financeiro, embaixo Dirigente | Hospedeiro, e o
+          parecer do presidente no fim — a ordem em que o culto é conferido. */}
       <div
-        className="w-full max-w-2xl h-full bg-slate-50 dark:bg-slate-900 shadow-2xl overflow-y-auto"
+        className="w-full max-w-5xl h-full bg-slate-50 dark:bg-slate-900 shadow-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 flex items-start justify-between px-5 py-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
@@ -518,27 +735,6 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
 
           {registro && !carregando && (
             <>
-              {registro.aprovacoes.map((a) => (
-                <div
-                  key={a.id}
-                  className={`rounded-lg px-4 py-3 text-sm border ${
-                    a.decisao === 'APROVADO'
-                      ? BORDA.verde + ' ' + PASTILHA.verde
-                      : BORDA.ambar + ' ' + PASTILHA.ambar
-                  }`}
-                >
-                  <div className="flex items-center gap-2 font-semibold">
-                    <ShieldCheck className="w-4 h-4" />
-                    {a.nivel === 'LOCAL' ? 'Dirigente da igreja' : 'Dirigente da hospedeira'} —{' '}
-                    {a.decisao === 'APROVADO' ? 'aprovou' : 'devolveu'}
-                  </div>
-                  <div className="text-xs mt-1 opacity-80">
-                    {a.aprovador?.fullName ?? '—'} · {fmtData(a.decididoEm)}
-                    {a.motivo ? ` · ${a.motivo}` : ''}
-                  </div>
-                </div>
-              ))}
-
               {registro.blocosFaltando.length > 0 && (
                 <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                   Faltando enviar:{' '}
@@ -554,32 +750,6 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                 </div>
               )}
 
-              {/* De quem se espera a decisão AGORA — e o nome de quem é, quando
-                  há alguém anexado. Sem isto, "aguardando aprovação" não diz se
-                  a bola está com a congregação ou com a hospedeira. */}
-              {(registro.status === 'AGUARDANDO_LOCAL' || registro.status === 'APROVADO_LOCAL') && (
-                <div className={`rounded-lg px-4 py-3 text-sm ${PASTILHA.ambar}`}>
-                  {registro.status === 'AGUARDANDO_LOCAL' ? (
-                    <>
-                      Aguardando a aprovação do <strong>dirigente da congregação</strong>
-                      {aprovadorLocal ? ` — ${aprovadorLocal}` : ' (ninguém anexado nesta igreja)'}.
-                      {registro.hostChurchId
-                        ? ` Depois dele, ainda passa pelo dirigente hospedeiro${
-                            registro.hostChurch ? ` (${registro.hostChurch.name})` : ''
-                          }.`
-                        : ' Como esta igreja não é anexa de nenhuma hospedeira, a decisão dele já conclui o culto.'}
-                    </>
-                  ) : (
-                    <>
-                      O dirigente da congregação já aprovou. Aguardando o{' '}
-                      <strong>dirigente hospedeiro</strong>
-                      {registro.hostChurch ? ` — ${registro.hostChurch.name}` : ''}, que conclui o
-                      culto.
-                    </>
-                  )}
-                </div>
-              )}
-
               {registro.observacao && (
                 <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                   <strong className="text-slate-700 dark:text-slate-200">Observação do culto:</strong>{' '}
@@ -587,27 +757,35 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                 </div>
               )}
 
-              {/* Presença (os membros) antes do dinheiro: é a ordem em que o dirigente
-                  confere o culto. */}
-              {(['PRESENCA', 'FINANCEIRO', 'EXTRA'] as Bloco[]).map((b) => blocoCard(b))}
+              {/* 1. Os envios: Presença (os membros) à esquerda, Financeiro à direita. */}
+              <div className="grid gap-4 lg:grid-cols-2 items-start">
+                {blocoCard('PRESENCA')}
+                {blocoCard('FINANCEIRO')}
+              </div>
+              {blocoCard('EXTRA')}
 
-              {/* A palavra do topo da árvore. Aparece para todos (é o parecer
-                  que fecha o assunto no relatório), mas só o presidente edita. */}
+              {/* 2. Quem aprova: dirigente da congregação e, se houver, o hospedeiro. */}
+              <div className={`grid gap-4 items-start ${registro.hostChurchId ? 'lg:grid-cols-2' : ''}`}>
+                {cartaoNivel('LOCAL')}
+                {registro.hostChurchId && cartaoNivel('HOSPEDEIRA')}
+              </div>
+
+              {/* 3. O parecer do Pastor Presidente, que olha tudo acima. */}
               {(souPresidente || registro.observacaoPresidente) && (
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
-                    Observação do Pastor Presidente
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    <Crown className="w-4 h-4" /> Parecer do Pastor Presidente
                   </p>
                   {souPresidente ? (
                     <>
                       <textarea
-                        rows={2}
+                        rows={3}
                         value={obsPresidente}
                         onChange={(e) => setObsPresidente(e.target.value)}
                         placeholder="O parecer do presidente sobre este culto — sai nos relatórios."
                         className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       />
-                      <div className="mt-2 flex justify-end">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={async () => {
                             setSalvandoObs(true);
@@ -623,126 +801,30 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                             }
                           }}
                           disabled={salvandoObs}
-                          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
                         >
                           {salvandoObs ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                          Salvar observação
+                          Salvar parecer
                         </button>
+                        {/* Fecha o culto sem esperar os dirigentes: aprova pelos
+                            níveis que faltam, em nome do presidente. */}
+                        {presidenteDecide && (
+                          <button
+                            onClick={() => void decidir('PRESIDENTE', 'APROVADO')}
+                            disabled={decidindo}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                          >
+                            {decidindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            Aprovar e concluir
+                          </button>
+                        )}
                       </div>
                     </>
                   ) : (
-                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
                       {registro.observacaoPresidente}
                     </p>
                   )}
-                </div>
-              )}
-
-              {presidenteDecide && (
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-                  <p className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">
-                    <Crown className="w-4 h-4" /> Aprovação do Pastor Presidente
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                    <strong>Aprovar e concluir</strong> fecha o culto sem esperar os dirigentes.{' '}
-                    {registro.status === 'AGUARDANDO_LOCAL' && podeAprovar.includes('LOCAL') && (
-                      <>
-                        <strong>Aprovar pelo dirigente</strong> registra só a aprovação da
-                        congregação, com a observação abaixo
-                        {registro.hostChurchId ? ', e o culto segue para o hospedeiro' : ''}.
-                      </>
-                    )}
-                  </p>
-                  <textarea
-                    rows={2}
-                    value={motivo}
-                    onChange={(e) => setMotivo(e.target.value)}
-                    placeholder={
-                      pedindoMotivo === nivelAtivo && nivelAtivo
-                        ? 'Motivo da devolução — obrigatório (a igreja recebe este texto)'
-                        : 'Observação do dirigente / do presidente (opcional)'
-                    }
-                    className={`w-full mb-3 border rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-                      pedindoMotivo && pedindoMotivo === nivelAtivo
-                        ? BORDA.ambar
-                        : 'border-slate-200 dark:border-slate-700'
-                    }`}
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => void decidir('PRESIDENTE', 'APROVADO')}
-                      disabled={decidindo}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
-                    >
-                      {decidindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      Aprovar e concluir
-                    </button>
-                    {registro.status === 'AGUARDANDO_LOCAL' && podeAprovar.includes('LOCAL') && (
-                      <button
-                        onClick={() => void decidir('LOCAL', 'APROVADO')}
-                        disabled={decidindo}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-semibold disabled:opacity-50"
-                      >
-                        <ShieldCheck className="w-4 h-4" />
-                        Aprovar pelo dirigente
-                      </button>
-                    )}
-                    {nivelAtivo && (
-                      <button
-                        onClick={() => void decidir(nivelAtivo, 'REJEITADO')}
-                        disabled={decidindo}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-sm font-semibold disabled:opacity-50"
-                      >
-                        <Undo2 className="w-4 h-4" />
-                        Devolver
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {nivelAtivo && !presidenteDecide && (
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">
-                    {nivelAtivo === 'LOCAL'
-                      ? 'Você é o dirigente desta igreja — confira e decida.'
-                      : 'Você é o dirigente da hospedeira — confira e decida.'}
-                  </p>
-                  {/* Serve para os dois: obrigatório ao devolver, opcional ao
-                      aprovar (o dirigente às vezes quer registrar um porquê). */}
-                  <textarea
-                    rows={2}
-                    value={motivo}
-                    onChange={(e) => setMotivo(e.target.value)}
-                    placeholder={
-                      pedindoMotivo === nivelAtivo
-                        ? 'Motivo da devolução — obrigatório (a igreja recebe este texto)'
-                        : 'Observação (opcional)'
-                    }
-                    className={`w-full mb-3 border rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-                      pedindoMotivo === nivelAtivo
-                        ? BORDA.ambar
-                        : 'border-slate-200 dark:border-slate-700'
-                    }`}
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => void decidir(nivelAtivo, 'APROVADO')}
-                      disabled={decidindo}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
-                    >
-                      {decidindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      Aprovar
-                    </button>
-                    <button
-                      onClick={() => void decidir(nivelAtivo, 'REJEITADO')}
-                      disabled={decidindo}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-sm font-semibold disabled:opacity-50"
-                    >
-                      <Undo2 className="w-4 h-4" />
-                      Devolver
-                    </button>
-                  </div>
                 </div>
               )}
 

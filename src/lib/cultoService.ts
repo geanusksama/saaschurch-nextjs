@@ -186,6 +186,34 @@ export async function concluirComoPresidente(
 }
 
 /**
+ * O presidente corrige a observação que um dirigente deixou ao decidir.
+ *
+ * Só o texto muda: a decisão, quem decidiu e quando continuam os do dirigente.
+ * Quem pode chamar é decidido na rota (ehPresidente).
+ */
+export async function editarObservacaoAprovacao(
+  registroId: string,
+  nivel: 'LOCAL' | 'HOSPEDEIRA',
+  observacao: string,
+): Promise<{ erro: string } | { ok: true }> {
+  const aprovacao = await prisma.cultoAprovacao.findUnique({
+    where: { registroId_nivel: { registroId, nivel } },
+    select: { id: true, decisao: true },
+  });
+  if (!aprovacao) return { erro: 'Este nível ainda não decidiu — não há observação para editar.' };
+  const texto = observacao.trim();
+  // A devolução sem motivo deixaria a igreja sem saber o que corrigir.
+  if (aprovacao.decisao === 'REJEITADO' && !texto) {
+    return { erro: 'Uma devolução precisa do motivo.' };
+  }
+  await prisma.cultoAprovacao.update({
+    where: { id: aprovacao.id },
+    data: { motivo: texto || null },
+  });
+  return { ok: true };
+}
+
+/**
  * Apaga o lançamento de UM bloco (só o financeiro, só a presença…).
  *
  * As aprovações do culto são desfeitas junto: o dirigente aprovou um conjunto

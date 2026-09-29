@@ -33,6 +33,7 @@ import {
   montarPainel,
   concluirComoPresidente,
   excluirBloco,
+  editarObservacaoAprovacao,
 } from '../src/lib/cultoService.ts';
 import { montarResumo } from '../src/lib/cultoResumo.ts';
 
@@ -677,6 +678,19 @@ async function main() {
 
   const deNovo = await concluirComoPresidente(cheio.id, presidente.id, '');
   ok('erro' in deNovo, 'culto já concluído não é aprovado de novo', deNovo);
+
+  // ── 6b. Presidente edita a observação do dirigente ─────────────────────
+  // `meio` tem a aprovação LOCAL do dirigente, com 'ok do dirigente'.
+  const edita = await editarObservacaoAprovacao(meio.id, 'LOCAL', 'texto corrigido pelo presidente');
+  ok(!('erro' in edita), 'o presidente edita a observação do dirigente', edita);
+  const localEditado = await prisma.cultoAprovacao.findFirst({ where: { registroId: meio.id, nivel: 'LOCAL' } });
+  ok(localEditado.motivo === 'texto corrigido pelo presidente', 'o texto novo fica gravado', localEditado.motivo);
+  ok(
+    localEditado.aprovadorId === dirigente.id && localEditado.decisao === 'APROVADO',
+    'a decisão e o autor continuam os do dirigente',
+  );
+  const semDecisao = await editarObservacaoAprovacao(semBlocos.id, 'LOCAL', 'x');
+  ok('erro' in semDecisao, 'nível que ainda não decidiu não tem observação para editar', semDecisao);
 
   // ── 7. Excluir só um bloco ──────────────────────────────────────────────
   console.log('\n7. Excluir só um bloco');

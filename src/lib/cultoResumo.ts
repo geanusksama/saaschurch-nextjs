@@ -266,7 +266,10 @@ export async function montarResumo(params: {
     };
   }
 
-  const igrejas = await prisma.church.findMany({
+  // Três consultas independentes (só dependem de idsIgrejas): saem juntas.
+  // Em sequência, cada ida ao banco somava sua latência à do resumo inteiro.
+  const [igrejas, registros, dirigentes] = await Promise.all([
+  prisma.church.findMany({
     where: { id: { in: idsIgrejas }, deletedAt: null },
     select: {
       id: true,
@@ -277,9 +280,8 @@ export async function montarResumo(params: {
       currentLeaderName: true,
       regional: { select: { id: true, name: true } },
     },
-  });
-
-  const registros = await prisma.cultoRegistro.findMany({
+  }),
+  prisma.cultoRegistro.findMany({
     where: {
       churchId: { in: idsIgrejas },
       deletedAt: null,
@@ -304,7 +306,17 @@ export async function montarResumo(params: {
       },
     },
     orderBy: { dataCulto: 'desc' },
-  });
+  }),
+  prisma.cultoPosicao.findMany({
+    where: {
+      churchId: { in: idsIgrejas },
+      isActive: true,
+      deletedAt: null,
+      papel: { in: ['APROVADOR_LOCAL', 'APROVADOR_HOSPEDEIRA'] },
+    },
+    select: { churchId: true, papel: true, user: { select: { fullName: true } } },
+  }),
+  ]);
 
   const lancamentos: LinhaLancamento[] =
     registros.length && blocosVisiveis.length
@@ -352,15 +364,6 @@ export async function montarResumo(params: {
     registrosPorIgreja.set(r.churchId, lista);
   }
 
-  const dirigentes = await prisma.cultoPosicao.findMany({
-    where: {
-      churchId: { in: idsIgrejas },
-      isActive: true,
-      deletedAt: null,
-      papel: { in: ['APROVADOR_LOCAL', 'APROVADOR_HOSPEDEIRA'] },
-    },
-    select: { churchId: true, papel: true, user: { select: { fullName: true } } },
-  });
   const dirLocal = new Map<string, string>();
   const dirHosp = new Map<string, string>();
   for (const d of dirigentes) {

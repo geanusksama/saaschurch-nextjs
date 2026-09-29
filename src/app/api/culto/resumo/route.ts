@@ -41,15 +41,16 @@ export async function GET(req: NextRequest) {
       tipoGrupoRaw === 'REGIONAL' || tipoGrupoRaw === 'HOSPEDEIRA' ? tipoGrupoRaw : null;
 
     const { de, ate } = periodoDaQuery(searchParams);
-    const scope = await getCultoScope(user);
-
     // Um lançador que peça o resumo do campo recebe o resumo da própria igreja:
     // churchIdsPermitidos poda o conjunto, então o total nunca vaza para fora
-    // do escopo dele.
-    const campo = await prisma.campo.findUnique({
-      where: { id: user.campoId },
-      select: { name: true },
-    });
+    // do escopo dele. Escopo e nome do campo não dependem um do outro: juntos.
+    const [scope, campo] = await Promise.all([
+      getCultoScope(user),
+      prisma.campo.findUnique({
+        where: { id: user.campoId },
+        select: { name: true },
+      }),
+    ]);
 
     const resumo = await montarResumo({
       campoId: user.campoId,

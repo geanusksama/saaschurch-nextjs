@@ -279,7 +279,9 @@ function detalheDoCulto(r: Registro): string {
     linhas.push(
       a.decisao === 'REJEITADO'
         ? `<strong>Devolvido</strong> por ${quem}${a.motivo ? `: ${a.motivo}` : ''}`
-        : `Aprovado (${a.nivel === 'LOCAL' ? 'igreja' : 'hospedeira'}) por ${quem}`,
+        : // A observação do dirigente sai também na aprovação — antes só a
+          // devolução mostrava o texto, e o que o dirigente comentou sumia.
+          `Aprovado (${a.nivel === 'LOCAL' ? 'igreja' : 'hospedeira'}) por ${quem}${a.motivo ? `: ${a.motivo}` : ''}`,
     );
   }
 

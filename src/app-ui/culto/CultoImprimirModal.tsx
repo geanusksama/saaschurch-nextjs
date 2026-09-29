@@ -20,7 +20,51 @@ interface Props {
   onFechar: () => void;
 }
 
-export default function CultoImprimirModal({ registros, titulo, periodo, onFechar }: Props) {
+/** Hospedeira do culto: a da igreja, ou a própria igreja quando ela é hospedeira (a regra da Tabela). */
+function hospedeiraDo(r: Registro): { id: string; name: string } | null {
+  if (r.hostChurchId) return { id: r.hostChurchId, name: r.hostChurch?.name ?? r.church.name };
+  return r.church.isHost ? { id: r.church.id, name: r.church.name } : null;
+}
+
+/** Opções únicas, em ordem alfabética. */
+function unicos(lista: ({ id: string; name: string } | null | undefined)[]) {
+  const mapa = new Map<string, string>();
+  for (const o of lista) if (o) mapa.set(o.id, o.name);
+  return Array.from(mapa, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export default function CultoImprimirModal({ registros: todos, titulo, periodo, onFechar }: Props) {
+  // Filtros do papel: escolhem entre os cultos que a tela já carregou.
+  const [regionalId, setRegionalId] = useState('');
+  const [hospedeiraId, setHospedeiraId] = useState('');
+  const [igrejaId, setIgrejaId] = useState('');
+
+  const regionais = useMemo(() => unicos(todos.map((r) => r.regional)), [todos]);
+  const hospedeiras = useMemo(
+    () => unicos(todos.filter((r) => !regionalId || r.regional?.id === regionalId).map(hospedeiraDo)),
+    [todos, regionalId],
+  );
+  const igrejas = useMemo(
+    () =>
+      unicos(
+        todos
+          .filter((r) => !regionalId || r.regional?.id === regionalId)
+          .filter((r) => !hospedeiraId || hospedeiraDo(r)?.id === hospedeiraId)
+          .map((r) => ({ id: r.church.id, name: r.church.name })),
+      ),
+    [todos, regionalId, hospedeiraId],
+  );
+  const registros = useMemo(
+    () =>
+      todos.filter(
+        (r) =>
+          (!regionalId || r.regional?.id === regionalId) &&
+          (!hospedeiraId || hospedeiraDo(r)?.id === hospedeiraId) &&
+          (!igrejaId || r.church.id === igrejaId),
+      ),
+    [todos, regionalId, hospedeiraId, igrejaId],
+  );
+
   const [escolhidas, setEscolhidas] = useState<string[]>(
     COLUNAS_RELATORIO.filter((c) => c.padrao).map((c) => c.chave),
   );
@@ -58,12 +102,17 @@ export default function CultoImprimirModal({ registros, titulo, periodo, onFecha
     const ordenadas = COLUNAS_RELATORIO.filter((c) => escolhidas.includes(c.chave)).map(
       (c) => c.chave,
     );
+    const recorte = [
+      regionais.find((o) => o.id === regionalId)?.name,
+      hospedeiras.find((o) => o.id === hospedeiraId)?.name,
+      igrejas.find((o) => o.id === igrejaId)?.name,
+    ].filter(Boolean);
     const abriu = imprimirRelatorioCulto({
       registros,
       colunas: ordenadas,
       orientacao,
       titulo,
-      periodo,
+      periodo: recorte.length ? `${periodo} · ${recorte.join(' · ')}` : periodo,
       totalizar,
       detalhar,
     });
@@ -99,6 +148,42 @@ export default function CultoImprimirModal({ registros, titulo, periodo, onFecha
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <div className="space-y-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              O que imprimir
+            </span>
+            {(
+              [
+                ['Regional', regionalId, regionais, 'Todas as regionais', (v: string) => {
+                  setRegionalId(v);
+                  setHospedeiraId('');
+                  setIgrejaId('');
+                }],
+                ['Hospedeira', hospedeiraId, hospedeiras, 'Todas as hospedeiras', (v: string) => {
+                  setHospedeiraId(v);
+                  setIgrejaId('');
+                }],
+                ['Igreja', igrejaId, igrejas, 'Todas as igrejas', (v: string) => setIgrejaId(v)],
+              ] as [string, string, { id: string; name: string }[], string, (v: string) => void][]
+            ).map(([rotulo, valor, opcoes, todasRotulo, mudar]) => (
+              <label key={rotulo} className="flex items-center gap-3 text-sm">
+                <span className="w-24 shrink-0 text-slate-600 dark:text-slate-300">{rotulo}</span>
+                <select
+                  value={valor}
+                  onChange={(e) => mudar(e.target.value)}
+                  className="flex-1 min-w-0 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                >
+                  <option value="">{todasRotulo}</option>
+                  {opcoes.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+
           <div>
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Orientação da folha

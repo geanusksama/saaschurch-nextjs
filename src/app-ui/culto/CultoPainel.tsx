@@ -6,11 +6,12 @@
  * Grupos do tipo REGIONAL aparecem enquanto a organização por hospedeiras não
  * estiver feita — hoje isso é a maioria das igrejas (ver D3 da SPEC).
  */
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Building2, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ROTULO_STATUS, type GrupoDoPainel, type StatusCulto } from './cultoApi';
 import type { PassoResumo } from './CultoResumoModal';
 import { BORDA, PASTILHA, TEXTO } from './cultoCores';
+import { CampoBusca, CarregarMais, INICIAL, PASSO, casaBusca } from './listaLeve';
 
 interface Props {
   grupos: GrupoDoPainel[];
@@ -23,6 +24,27 @@ function rotuloSituacao(status: StatusCulto | 'SEM_REGISTRO'): string {
 }
 
 export default function CultoPainel({ grupos, onAbrirResumo }: Props) {
+  // Busca nos grupos já carregados: casa o nome do grupo (hospedeira/regional)
+  // ou o de uma igreja dele. Quando é a igreja que casa, o cartão mostra só ela.
+  const [busca, setBusca] = useState('');
+  const [limite, setLimite] = useState(INICIAL);
+
+  // Cada item guarda o grupo inteiro (para os números do cartão) e as listas
+  // já filtradas (para o que aparece).
+  const filtrados = useMemo(() => {
+    const saida: { g: GrupoDoPainel; concluidas: GrupoDoPainel['concluidas']; pendentes: GrupoDoPainel['pendentes'] }[] = [];
+    for (const g of grupos) {
+      if (!busca.trim() || casaBusca(g.nome, busca)) {
+        saida.push({ g, concluidas: g.concluidas, pendentes: g.pendentes });
+        continue;
+      }
+      const concluidas = g.concluidas.filter((i) => casaBusca(i.nome, busca));
+      const pendentes = g.pendentes.filter((i) => casaBusca(i.nome, busca));
+      if (concluidas.length || pendentes.length) saida.push({ g, concluidas, pendentes });
+    }
+    return saida;
+  }, [grupos, busca]);
+
   if (grupos.length === 0) {
     return (
       <div className="text-center py-20 text-slate-400 dark:text-slate-500">
@@ -32,8 +54,24 @@ export default function CultoPainel({ grupos, onAbrirResumo }: Props) {
   }
 
   return (
+    <div className="space-y-4">
+    <div className="max-w-sm">
+      <CampoBusca
+        valor={busca}
+        onChange={(v) => {
+          setBusca(v);
+          setLimite(INICIAL);
+        }}
+        placeholder="Buscar igreja ou hospedeira…"
+      />
+    </div>
+    {filtrados.length === 0 && (
+      <p className="text-center py-12 text-sm text-slate-400">Nenhuma igreja com esse nome.</p>
+    )}
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {grupos.map((g) => {
+      {/* Os números do cartão (x/y) continuam os do grupo inteiro; a busca só
+          escolhe quais igrejas aparecem na lista. */}
+      {filtrados.slice(0, limite).map(({ g, concluidas, pendentes }) => {
         const verde = g.cor === 'VERDE';
         const Icone = g.tipo === 'HOSPEDEIRA' ? Building2 : MapPin;
         return (
@@ -79,11 +117,11 @@ export default function CultoPainel({ grupos, onAbrirResumo }: Props) {
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Concluídas {g.concluidas.length}
                 </div>
-                {g.concluidas.length === 0 ? (
+                {concluidas.length === 0 ? (
                   <p className="text-slate-400 text-xs mt-1">nenhuma ainda</p>
                 ) : (
                   <ul className="mt-1 space-y-0.5">
-                    {g.concluidas.map((i) => (
+                    {concluidas.map((i) => (
                       <li
                         key={i.churchId}
                         onClick={() =>
@@ -106,11 +144,11 @@ export default function CultoPainel({ grupos, onAbrirResumo }: Props) {
                   <AlertCircle className="w-3.5 h-3.5" />
                   Falta {g.pendentes.length}
                 </div>
-                {g.pendentes.length === 0 ? (
+                {pendentes.length === 0 ? (
                   <p className="text-slate-400 text-xs mt-1">todas fecharam</p>
                 ) : (
                   <ul className="mt-1 space-y-0.5">
-                    {g.pendentes.map((i) => (
+                    {pendentes.map((i) => (
                       <li
                         key={i.churchId}
                         onClick={() =>
@@ -138,6 +176,8 @@ export default function CultoPainel({ grupos, onAbrirResumo }: Props) {
           </div>
         );
       })}
+    </div>
+    <CarregarMais restantes={filtrados.length - Math.min(limite, filtrados.length)} onMais={() => setLimite((l) => l + PASSO)} />
     </div>
   );
 }

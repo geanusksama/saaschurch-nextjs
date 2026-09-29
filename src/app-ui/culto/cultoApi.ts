@@ -363,6 +363,13 @@ export const cultoApi = {
 
   excluirRegistro: (id: string) => req<{ ok: true }>(`/culto/registros/${id}`, { method: 'DELETE' }),
 
+  /** Presidente corrige a observação de uma aprovação; a decisão não muda. */
+  editarObservacaoAprovacao: (registroId: string, nivel: Nivel, motivo: string) =>
+    req<{ ok: true }>(`/culto/registros/${registroId}/aprovacoes`, {
+      method: 'PATCH',
+      body: JSON.stringify({ nivel, motivo }),
+    }),
+
   /** Apaga só um bloco do culto; as aprovações são desfeitas junto. */
   excluirBloco: (id: string, bloco: Bloco) =>
     req<{ status: StatusCulto }>(`/culto/registros/${id}/lancamentos?bloco=${bloco}`, { method: 'DELETE' }),

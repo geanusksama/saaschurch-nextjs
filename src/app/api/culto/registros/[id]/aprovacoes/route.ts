@@ -9,7 +9,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { NIVEIS, ehPresidente, getCultoScope, podeAprovarNivel, type Nivel } from '@/lib/cultoScope';
-import { concluirComoPresidente, recalcularStatus, temNivelHospedeira } from '@/lib/cultoService';
+import {
+  concluirComoPresidente,
+  editarObservacaoAprovacao,
+  recalcularStatus,
+  temNivelHospedeira,
+} from '@/lib/cultoService';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
@@ -105,6 +110,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const resultado = await recalcularStatus(id);
+    return NextResponse.json(resultado);
+  });
+}
+
+/**
+ * O presidente corrige a observação de uma aprovação já dada
+ * (`{ nivel: 'LOCAL' | 'HOSPEDEIRA', motivo }`). A decisão não muda.
+ */
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return withAuth(req, async (user) => {
+    const { id } = await params;
+    const scope = await getCultoScope(user);
+    if (!ehPresidente(scope)) {
+      return NextResponse.json(
+        { error: 'Só o Pastor Presidente edita a observação de um dirigente.' },
+        { status: 403 },
+      );
+    }
+    const body = await req.json().catch(() => ({}));
+    const nivel = String(body.nivel || '').toUpperCase();
+    if (nivel !== 'LOCAL' && nivel !== 'HOSPEDEIRA') {
+      return NextResponse.json({ error: `Nível inválido: ${body.nivel}` }, { status: 400 });
+    }
+    const motivo = typeof body.motivo === 'string' ? body.motivo : '';
+    const resultado = await editarObservacaoAprovacao(id, nivel, motivo);
+    if ('erro' in resultado) return NextResponse.json({ error: resultado.erro }, { status: 409 });
     return NextResponse.json(resultado);
   });
 }

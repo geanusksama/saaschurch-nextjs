@@ -54,6 +54,7 @@ import CultoOrganograma from './CultoOrganograma';
 import CultoResumoModal, { type PassoResumo } from './CultoResumoModal';
 import CultoMeusLancamentos from './CultoMeusLancamentos';
 import { BORDA, PASTILHA, PONTO, TOM_DO_STATUS, tomDoSemaforo } from './cultoCores';
+import { CampoBusca, CarregarMais, INICIAL, PASSO, casaBusca } from './listaLeve';
 import CultoRegistroDrawer from './CultoRegistroDrawer';
 import CultoImprimirModal from './CultoImprimirModal';
 
@@ -133,6 +134,12 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
   const [abertoId, setAbertoId] = useState<string | null>(null);
   // Culto aguardando confirmação de exclusão (card do Kanban ou linha da tabela).
   const [aExcluir, setAExcluir] = useState<Registro | null>(null);
+  // Busca e renderização em partes: por coluna no Kanban, uma só na Tabela.
+  // Filtram o que já foi carregado; ver listaLeve.tsx.
+  const [buscaColuna, setBuscaColuna] = useState<Record<string, string>>({});
+  const [limiteColuna, setLimiteColuna] = useState<Record<string, number>>({});
+  const [buscaTabela, setBuscaTabela] = useState('');
+  const [limiteTabela, setLimiteTabela] = useState(INICIAL);
   const [excluindo, setExcluindo] = useState(false);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
   const [resumo, setResumo] = useState<PassoResumo | null>(null);
@@ -262,7 +269,8 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
         if (permitidos.length > 0) {
           if (escopoHospedeira) setModo('organograma');
           else if (modoInicial && permitidos.includes(modoInicial)) setModo(modoInicial);
-          else if (p.visaoCampo && !p.podeEnviar.length) setModo('organograma');
+          // Abre no Kanban (a primeira permitida) também para o presidente:
+          // é por onde o dono do sistema quer começar.
           else setModo(permitidos[0]);
         }
       })
@@ -422,6 +430,42 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
     }
     return Array.from(mapa.entries()).sort((a, b) => a[1].nome.localeCompare(b[1].nome));
   }, [registros]);
+
+  /**
+   * O que a tabela desenha agora: filtrado pela busca (nome da igreja ou do
+   * grupo) e cortado em `limiteTabela` linhas, contando cultos, igrejas sem
+   * culto de cada grupo e as órfãs do fim, nessa ordem.
+   */
+  const modeloTabela = useMemo(() => {
+    const termo = buscaTabela;
+    const semFiltradas = igrejasSemLancamento.filter((i) => casaBusca(i.nome, termo) || casaBusca(i.grupo, termo));
+    let orcamento = limiteTabela;
+    let total = 0;
+    let mostradas = 0;
+    const grupos: {
+      chave: string;
+      grupo: { nome: string; tipo: string; itens: Registro[] };
+      itensVis: Registro[];
+      semVis: typeof igrejasSemLancamento;
+    }[] = [];
+    for (const [chave, grupo] of agrupados) {
+      const itens = grupo.itens.filter((r) => casaBusca(r.church.name, termo) || casaBusca(grupo.nome, termo));
+      const sem = semFiltradas.filter((i) => i.grupo === grupo.nome);
+      total += itens.length + sem.length;
+      const itensVis = itens.slice(0, Math.max(0, orcamento));
+      orcamento -= itensVis.length;
+      const semVis = sem.slice(0, Math.max(0, orcamento));
+      orcamento -= semVis.length;
+      mostradas += itensVis.length + semVis.length;
+      if (itensVis.length || semVis.length) grupos.push({ chave, grupo, itensVis, semVis });
+    }
+    const nomesDosGrupos = new Set(agrupados.map(([, g]) => g.nome));
+    const orfas = semFiltradas.filter((i) => !nomesDosGrupos.has(i.grupo));
+    total += orfas.length;
+    const orfasVis = orfas.slice(0, Math.max(0, orcamento));
+    mostradas += orfasVis.length;
+    return { grupos, orfasVis, orfasTotal: orfas.length, restantes: total - mostradas, total };
+  }, [agrupados, igrejasSemLancamento, buscaTabela, limiteTabela]);
 
   /**
    * A tabela agrupa pela chave `H:<hostId>` / `R:<regionalId>`; o resumo pede o
@@ -726,10 +770,19 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
       {!carregando && modo === 'kanban' && (
         <div className="flex flex-col lg:flex-row gap-4 pb-4 min-w-0">
           {COLUNAS_KANBAN.map((coluna) => {
-            const itens = registros.filter((r) => coluna.status.includes(r.status));
+            const termo = buscaColuna[coluna.chave] ?? '';
+            const todosItens = registros.filter((r) => coluna.status.includes(r.status));
             // As igrejas que não abriram culto nenhum entram na primeira
             // coluna: é lá que se olha para saber quem ainda deve.
-            const semLancamento = coluna.chave === 'enviar' ? igrejasSemLancamento : [];
+            const todosSem = coluna.chave === 'enviar' ? igrejasSemLancamento : [];
+            const itens = todosItens.filter((r) => casaBusca(r.church.name, termo));
+            const semLancamento = todosSem.filter((i) => casaBusca(i.nome, termo));
+            // Desenha em partes: primeiro os cultos, depois quem não abriu.
+            const limite = limiteColuna[coluna.chave] ?? INICIAL;
+            const itensVis = itens.slice(0, limite);
+            const semVis = semLancamento.slice(0, Math.max(0, limite - itensVis.length));
+            const restantes = itens.length + semLancamento.length - itensVis.length - semVis.length;
+            const total = todosItens.length + todosSem.length;
             return (
               /* min-w só a partir do lg: no celular as colunas empilham e a
                  largura mínima de 18rem furava a tela de 360px. */
@@ -741,14 +794,25 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                     {coluna.titulo}
                   </span>
                   <span className="text-xs font-bold text-slate-400">
-                    {itens.length + semLancamento.length}
+                    {termo ? `${itens.length + semLancamento.length} de ${total}` : total}
                   </span>
                 </div>
                 <div className="space-y-2 p-2 rounded-b-xl bg-slate-100/70 dark:bg-slate-900/50 border-x border-b border-slate-200 dark:border-slate-700 min-h-[8rem]">
-                  {itens.length === 0 && semLancamento.length === 0 && (
-                    <p className="text-xs text-slate-400 text-center py-6">vazio</p>
+                  {total > 0 && (
+                    <CampoBusca
+                      valor={termo}
+                      onChange={(v) => {
+                        setBuscaColuna((b) => ({ ...b, [coluna.chave]: v }));
+                        setLimiteColuna((l) => ({ ...l, [coluna.chave]: INICIAL }));
+                      }}
+                    />
                   )}
-                  {itens.map((r) => (
+                  {itens.length === 0 && semLancamento.length === 0 && (
+                    <p className="text-xs text-slate-400 text-center py-6">
+                      {termo ? 'nenhuma igreja com esse nome' : 'vazio'}
+                    </p>
+                  )}
+                  {itensVis.map((r) => (
                     <div key={r.id} className="relative">
                     <button
                       onClick={() => setAbertoId(r.id)}
@@ -795,7 +859,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
 
                   {/* Sem registro: a igreja não abriu culto nenhum no período.
                       Borda tracejada para não se confundir com culto aberto. */}
-                  {semLancamento.map((i) => (
+                  {semVis.map((i) => (
                     <button
                       key={`sem:${i.churchId}`}
                       onClick={() =>
@@ -820,6 +884,12 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                       </div>
                     </button>
                   ))}
+                  <CarregarMais
+                    restantes={restantes}
+                    onMais={() =>
+                      setLimiteColuna((l) => ({ ...l, [coluna.chave]: (l[coluna.chave] ?? INICIAL) + PASSO }))
+                    }
+                  />
                 </div>
               </div>
             );
@@ -833,12 +903,27 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
       {!carregando && modo === 'tabela' && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto shadow-sm">
           <div className="min-w-[44rem] sm:min-w-0">
-          {agrupados.length === 0 ? (
+          {/* Uma busca só: filtra cultos e igrejas já carregados pelo nome. */}
+          <div className="p-3 border-b border-slate-100 dark:border-slate-700 max-w-sm">
+            <CampoBusca
+              valor={buscaTabela}
+              onChange={(v) => {
+                setBuscaTabela(v);
+                setLimiteTabela(INICIAL);
+              }}
+              placeholder="Buscar igreja ou hospedeira…"
+            />
+          </div>
+          {buscaTabela && modeloTabela.total === 0 ? (
+            <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+              Nenhuma igreja com esse nome.
+            </div>
+          ) : agrupados.length === 0 ? (
             <div className="text-center py-20 text-slate-400 dark:text-slate-500">
               Nenhum culto registrado no período.
             </div>
           ) : (
-            agrupados.map(([chave, grupo]) => {
+            modeloTabela.grupos.map(({ chave, grupo, itensVis, semVis }) => {
               const concluidas = grupo.itens.filter((r) => r.status === 'CONCLUIDO').length;
               const aberto = expandido[chave] ?? true;
               return (
@@ -878,7 +963,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                   </button>
 
                   {aberto &&
-                    grupo.itens.map((r) => {
+                    itensVis.map((r) => {
                       const chaveItem = `${chave}:${r.id}`;
                       const itemAberto = expandido[chaveItem] ?? false;
                       return (
@@ -957,8 +1042,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                   {/* As que não abriram culto nenhum fecham o grupo: é a lista
                       de quem o dirigente da hospedeira ainda precisa cobrar. */}
                   {aberto &&
-                    igrejasSemLancamento
-                      .filter((i) => i.grupo === grupo.nome)
+                    semVis
                       .map((i) => (
                         <div
                           key={`sem:${i.churchId}`}
@@ -997,15 +1081,14 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
               tabela é montada a partir dos registros). Estas igrejas ficariam
               invisíveis justamente por não terem lançado nada. */}
           {(() => {
-            const gruposNaTabela = new Set(agrupados.map(([, g]) => g.nome));
-            const orfas = igrejasSemLancamento.filter((i) => !gruposNaTabela.has(i.grupo));
+            const orfas = modeloTabela.orfasVis;
             if (orfas.length === 0) return null;
             return (
               <div className="border-b border-slate-100 dark:border-slate-700 last:border-0">
                 <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/40 text-sm font-semibold text-slate-800 dark:text-slate-100">
                   Sem nenhum culto no período
                   <span className="ml-1 text-xs font-normal text-slate-400">
-                    ({orfas.length} igreja{orfas.length > 1 ? 's' : ''})
+                    ({modeloTabela.orfasTotal} igreja{modeloTabela.orfasTotal > 1 ? 's' : ''})
                   </span>
                 </div>
                 {orfas.map((i) => (
@@ -1028,6 +1111,10 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
               </div>
             );
           })()}
+          <CarregarMais
+            restantes={modeloTabela.restantes}
+            onMais={() => setLimiteTabela((l) => l + PASSO)}
+          />
           </div>
         </div>
       )}
