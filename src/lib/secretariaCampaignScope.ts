@@ -185,7 +185,7 @@ export async function canAccessCampaign(
   user: AuthUser,
   campaign: { owner_user_id: string; church_id: string | null }
 ): Promise<boolean> {
-  if (user.profileType === 'master') return true
+  if (user.profileType === 'master' && !user.campoId) return true
   if (String(user.id) === campaign.owner_user_id) return true
   if (!campaign.church_id) return false
 

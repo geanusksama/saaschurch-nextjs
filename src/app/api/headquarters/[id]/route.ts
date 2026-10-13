@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { sedeNoCampoAtivo } from "@/lib/campoAtivo";
 import { serializeBigInts } from "@/lib/helpers";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -24,6 +25,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
     }
     const { id } = await params;
+    if (!(await sedeNoCampoAtivo(user, id))) {
+      return NextResponse.json({ error: "Sede de outro campo." }, { status: 403 });
+    }
     const body = await req.json().catch(() => ({}));
     const data: Record<string, unknown> = {};
     const fields = ["churchName", "fieldName", "regionalName", "cnpj", "contact", "email", "whatsapp", "street", "number", "neighborhood", "city", "state", "country", "zipcode", "instagram", "youtube", "site", "tiktok", "facebook", "pix", "bank", "fieldIcons"];

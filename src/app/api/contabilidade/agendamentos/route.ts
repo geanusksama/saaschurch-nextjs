@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
+import { campoTextoEhDoCampoAtivo, nomesDoCampoAtivo } from '@/lib/contabilidadeCampo'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { podeAcessarContabilidadeAgendamento } from '@/lib/contabilidadeAgendamentoRole'
 
@@ -36,7 +37,9 @@ export async function GET(req: NextRequest) {
       if (!ultimoStatusPorAcesso.has(h.acesso_id)) ultimoStatusPorAcesso.set(h.acesso_id, h.status)
     }
 
-    const items = (acessos ?? []).map((acc) => ({
+    // Só os contadores do campo ativo (master inclusive).
+    const nomesCampo = await nomesDoCampoAtivo(user)
+    const items = (acessos ?? []).filter((acc) => campoTextoEhDoCampoAtivo(acc.campo, nomesCampo)).map((acc) => ({
       ...acc,
       agendamento: byAcesso.get(acc.id) ?? null,
       ultimo_status_envio: ultimoStatusPorAcesso.get(acc.id) ?? null,

@@ -28,7 +28,8 @@ import type { AuthUser } from '@/lib/auth'
 export async function resolveScopeChurchIds(user: AuthUser): Promise<string[]> {
   const where: Record<string, unknown> = { deletedAt: null }
 
-  if (user.profileType !== 'master') {
+  // Master também fica no campo ativo; só o master sem campo vê tudo.
+  if (user.profileType !== 'master' || user.campoId) {
     if (!user.campoId) return []
     where.regional = { campoId: user.campoId }
   }

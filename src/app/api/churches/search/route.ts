@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
       where.id = user.churchId;
     } else {
       if (regionalId) where.regionalId = regionalId;
-      const scopedCampoId = ["master", "admin"].includes(user.profileType) ? campoId : (user.campoId || campoId);
+      // Campo ativo para todo perfil; o pedido só vale para o master sem campo.
+      const scopedCampoId = user.campoId || (user.profileType === "master" ? campoId : null) || "00000000-0000-0000-0000-000000000000";
       if (scopedCampoId) where.regional = { ...(where.regional || {}), is: { campoId: scopedCampoId } };
     }
 

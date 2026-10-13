@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "./supabase-admin";
 import { prisma } from "./prisma";
 import { logMutationAudit } from "./audit";
+import { barreiraDeCampo } from "./campoAtivo";
 
 export interface AuthUser {
   id: string | null;
@@ -145,6 +146,16 @@ function resolverToken(token: string, resolver: () => Promise<AuthUser>): Promis
 }
 
 /**
+ * Esquece o usuário em cache deste token. A troca de campo chama isto: sem
+ * isso, a tela recarregada logo depois ainda leria o campo antigo por até
+ * TTL_MS e mostraria dados do campo de onde a pessoa saiu.
+ */
+export function esquecerSessao(req: NextRequest) {
+  const authHeader = req.headers.get("authorization") || "";
+  if (authHeader.startsWith("Bearer ")) authCache.delete(authHeader.slice(7));
+}
+
+/**
  * Extrai e valida o Bearer token. Retorna o AuthUser ou lança NextResponse 401.
  */
 export async function getAuthUser(req: NextRequest): Promise<AuthUser> {
@@ -210,6 +221,10 @@ export async function withAuth(
 ): Promise<NextResponse> {
   try {
     const user = await getAuthUser(req);
+    // Isolamento entre campos: filtro da URL apontando para outro campo nem
+    // chega na rota. Vale para todo perfil, master inclusive (ver campoAtivo.ts).
+    const bloqueio = await barreiraDeCampo(user, req.url);
+    if (bloqueio) return bloqueio;
     const res = await handler(user);
 
     // Auto log mutations on success

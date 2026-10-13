@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:33:38.067Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.708Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 500e39c338ad501d
+-- Baseline d23a12c3d91c0f1a
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -3972,6 +3972,13 @@ alter table "public"."unknown_faces" add column if not exists "reviewed_by" uuid
 alter table "public"."unknown_faces" add column if not exists "reviewed_at" timestamp with time zone;
 alter table "public"."unknown_faces" add column if not exists "identified_member_id" uuid;
 alter table "public"."unknown_faces" add column if not exists "created_at" timestamp with time zone default '2026-06-16 01:24:59.472137+00'::timestamp with time zone not null;
+alter table "public"."user_campos" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."user_campos" add column if not exists "user_id" uuid;
+alter table "public"."user_campos" add column if not exists "campo_id" uuid;
+alter table "public"."user_campos" add column if not exists "church_id" uuid;
+alter table "public"."user_campos" add column if not exists "regional_id" uuid;
+alter table "public"."user_campos" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."user_campos" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."user_notes" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."user_notes" add column if not exists "user_id" uuid;
 alter table "public"."user_notes" add column if not exists "date" character varying(10);

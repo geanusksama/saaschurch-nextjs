@@ -49,12 +49,18 @@ export function isAtHeadquartersChurch(user: AuthUser) {
   return Boolean(user.churchId) && !user.parentChurchId;
 }
 
+/**
+ * Campo que a rota deve filtrar: sempre o campo ativo do usuário, para todo
+ * perfil (master inclusive). O campo pedido na tela não muda nada — campo de
+ * fora já é barrado pelo withAuth (lib/campoAtivo.ts).
+ *
+ * `null` (= sem filtro) só sobra para o master sem campo definido; qualquer
+ * outro perfil sem campo recebe um id que não casa com nada.
+ */
 export function resolveScopedFieldId(user: AuthUser, requestedFieldId?: string) {
-  if (isRestrictedToOwnChurch(user) && user.campoId) return user.campoId;
-  if (user.profileType !== "master" && user.profileType !== "admin" && user.campoId) {
-    return requestedFieldId || user.campoId;
-  }
-  return requestedFieldId || null;
+  if (user.campoId) return user.campoId;
+  if (user.profileType === "master") return requestedFieldId || null;
+  return "00000000-0000-0000-0000-000000000000";
 }
 
 export function getManagedCampoId(user: AuthUser) {
@@ -64,7 +70,8 @@ export function getManagedCampoId(user: AuthUser) {
 
 export function kanScopeFilter(user: AuthUser) {
   const pt = user.profileType;
-  if (pt === "master") return {};
+  // Master fica no campo ativo como todo mundo; só o master sem campo vê tudo.
+  if (pt === "master") return user.campoId ? { church: { regional: { campoId: user.campoId } } } : {};
 
   // All non-master users must be restricted to their own campo
   if (!user.campoId) {
@@ -120,10 +127,17 @@ export async function assertChurchAccess(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prisma: any
 ): Promise<boolean> {
+  // Primeiro o campo ativo, para todo perfil (master inclusive): igreja de
+  // outro campo não abre, não edita e não exclui. Ver lib/campoAtivo.ts.
+  if (!churchId || !user.campoId) return false;
+  const igreja = await prisma.church.findFirst({
+    where: { id: churchId, regional: { campoId: user.campoId } },
+    select: { id: true },
+  });
+  if (!igreja) return false;
   if (user.profileType === "master" || user.profileType === "admin") return true;
   if (!isRestrictedToOwnChurch(user)) return true;
-  if (user.churchId === churchId) return true;
-  return false;
+  return user.churchId === churchId;
 }
 
 export function isPastMonth(year: number, month: number): boolean {

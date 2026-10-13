@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:33:38.070Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.712Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 500e39c338ad501d
+-- Baseline d23a12c3d91c0f1a
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -920,6 +920,8 @@ alter table "public"."unknown_faces" alter column "id" set not null;
 alter table "public"."unknown_faces" alter column "session_id" set not null;
 alter table "public"."unknown_faces" alter column "confidence" set not null;
 alter table "public"."unknown_faces" alter column "status" set not null;
+alter table "public"."user_campos" alter column "user_id" set not null;
+alter table "public"."user_campos" alter column "campo_id" set not null;
 alter table "public"."user_notes" alter column "user_id" set not null;
 alter table "public"."user_notes" alter column "date" set not null;
 alter table "public"."user_notes" alter column "content" set not null;

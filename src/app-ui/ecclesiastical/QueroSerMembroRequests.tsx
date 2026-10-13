@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { UserPlus, Search, Calendar, User, Check, X, ShieldAlert, Loader2, Info, FileCheck2, FileClock, Eye } from 'lucide-react';
 import { MembershipReviewModal, type MembershipRequestFull } from './MembershipReviewModal';
 import { Link, useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
 import { usePermissions } from '../../lib/usePermissions';
 import { toast } from 'sonner';
+import { AvisoDefinaFiltros, BotaoBuscar } from '../../components/app-ui/BotaoBuscar';
 
 interface MembershipRequest {
   id: string;
@@ -51,7 +52,10 @@ export default function QueroSerMembroRequests() {
   const podeDecidir = canEdit('membership_requests');
 
   const [requests, setRequests] = useState<MembershipRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  // A tela abre vazia: só consulta ao clicar em Buscar, com os filtros
+  // daquele momento. Aprovar/reprovar recarrega com os filtros da última busca.
+  const [filtrosAplicados, setFiltrosAplicados] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [formStatus, setFormStatus] = useState('all');
@@ -66,17 +70,11 @@ export default function QueroSerMembroRequests() {
     return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
   });
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (filtros: string | null = filtrosAplicados) => {
+    if (filtros === null) return;
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (status !== 'all') params.append('status', status);
-      if (formStatus !== 'all') params.append('formStatus', formStatus);
-      if (dateFrom) params.append('dateFrom', dateFrom);
-      if (dateTo) params.append('dateTo', dateTo);
-
-      const res = await fetch(`${apiBase}/membership-requests?${params.toString()}`, {
+      const res = await fetch(`${apiBase}/membership-requests?${filtros}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Falha ao buscar solicitações');
@@ -89,9 +87,17 @@ export default function QueroSerMembroRequests() {
     }
   };
 
-  useEffect(() => {
-    fetchRequests();
-  }, [search, status, formStatus, dateFrom, dateTo]);
+  const buscar = () => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (status !== 'all') params.append('status', status);
+    if (formStatus !== 'all') params.append('formStatus', formStatus);
+    if (dateFrom) params.append('dateFrom', dateFrom);
+    if (dateTo) params.append('dateTo', dateTo);
+    const filtros = params.toString();
+    setFiltrosAplicados(filtros);
+    void fetchRequests(filtros);
+  };
 
   const handleApprove = async (req: MembershipRequest) => {
     try {
@@ -205,6 +211,7 @@ export default function QueroSerMembroRequests() {
               placeholder="Buscar candidato por nome..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') buscar(); }}
               className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
             />
           </div>
@@ -247,6 +254,11 @@ export default function QueroSerMembroRequests() {
             />
           </div>
 
+          {/* Consulta explícita: nada é buscado até clicar aqui. */}
+          <div className="w-full xl:w-auto">
+            <BotaoBuscar onClick={buscar} buscando={loading} />
+          </div>
+
           {(search || status !== 'all' || dateFrom || dateTo) && (
             <button
               onClick={() => { setSearch(''); setStatus('all'); setDateFrom(''); setDateTo(''); }}
@@ -260,7 +272,9 @@ export default function QueroSerMembroRequests() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        {loading ? (
+        {filtrosAplicados === null && !loading ? (
+          <AvisoDefinaFiltros />
+        ) : loading ? (
           <div className="flex items-center justify-center py-20 text-slate-500 text-sm gap-2">
             <Loader2 className="w-5 h-5 animate-spin" /> Carregando solicitações...
           </div>
@@ -374,7 +388,7 @@ export default function QueroSerMembroRequests() {
           request={reviewing}
           podeDecidir={podeDecidir}
           onClose={() => setReviewing(null)}
-          onDone={fetchRequests}
+          onDone={() => fetchRequests()}
         />
       )}
     </div>

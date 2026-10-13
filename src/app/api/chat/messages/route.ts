@@ -22,7 +22,12 @@ export async function GET(req: NextRequest) {
         user.roleName.toLowerCase().includes("master")
       ));
 
-    if (isMasterSupportOrAdmin) {
+    // Campo ativo manda para todo perfil (lib/campoAtivo.ts): estando em Aguaí,
+    // conversa de outro campo não aparece. O filtro de campos do chat só vale
+    // para o master sem campo.
+    if (user.campoId) {
+      campoIds = [user.campoId];
+    } else if (isMasterSupportOrAdmin) {
       if (paramCampoIds !== null) {
         campoIds = paramCampoIds.split(",").filter(Boolean);
       } else if (paramCampoId) {
@@ -30,8 +35,6 @@ export async function GET(req: NextRequest) {
       } else {
         restrictCampo = false;
       }
-    } else if (user.campoId) {
-      campoIds = [user.campoId];
     }
 
     try {

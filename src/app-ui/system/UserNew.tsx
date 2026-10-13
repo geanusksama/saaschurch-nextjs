@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { MembroBuscaModal, funcaoSugerida, funcoesDoMembro, telefoneDoMembro, type MembroOpcao } from './MembroBusca';
+import { CamposNavegaveis, type CampoNavegavelForm } from './CamposNavegaveis';
 
 type CampoOption = {
   id: string;
@@ -73,6 +74,11 @@ export default function UserNew() {
   const [buscandoMembro, setBuscandoMembro] = useState(false);
   // Campo não aparece: é derivado da igreja/regional escolhida.
   const campoVisible = useCampoVisible();
+  // Só o master libera outros campos para o usuário (seletor "Alternar Campo").
+  const isMaster = (() => {
+    try { return JSON.parse(localStorage.getItem('mrm_user') || '{}').profileType === 'master'; } catch { return false; }
+  })();
+  const [camposNavegaveis, setCamposNavegaveis] = useState<CampoNavegavelForm[]>([]);
 
   const token = localStorage.getItem('mrm_token');
 
@@ -113,6 +119,31 @@ export default function UserNew() {
 
     loadOptions();
   }, [token]);
+
+  // O master cadastra usuário de outro campo: regionais e igrejas vêm do campo
+  // escolhido. Sem isto as listas traziam só o campo em que o master está, e
+  // escolher "Aguai" estando em Campinas deixava regional e igreja vazias.
+  useEffect(() => {
+    if (!isMaster || !form.campoId) return;
+    let cancelado = false;
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    const id = encodeURIComponent(form.campoId);
+    Promise.all([
+      fetch(`${apiBase}/regionais?campoId=${id}`, { headers }).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${apiBase}/churches?fieldId=${id}`, { headers }).then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([regionaisData, churchesData]) => {
+        if (cancelado) return;
+        if (Array.isArray(regionaisData)) setRegionais(regionaisData);
+        if (Array.isArray(churchesData)) setChurches(churchesData);
+      })
+      .catch(() => {
+        /* mantém as listas que já estavam */
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [isMaster, form.campoId, token]);
 
   /**
    * Preenche com o que o cadastro do membro tem. Regional e campo vêm da igreja
@@ -269,6 +300,7 @@ export default function UserNew() {
           churchId: form.churchId || undefined,
           roleId: form.roleId || undefined,
           isAdmin: form.isAdmin,
+          ...(isMaster ? { camposNavegaveis } : {}),
         }),
       });
       if (!res.ok) {
@@ -485,6 +517,15 @@ export default function UserNew() {
                 Defina o campo, a regional e a igreja do perfil para que os filtros e o contexto do usuario respeitem a hierarquia da organização.
               </p>
             </div>
+
+            {isMaster && (
+              <CamposNavegaveis
+                campos={campos}
+                campoPrincipalId={form.campoId}
+                value={camposNavegaveis.filter((c) => c.campoId !== form.campoId)}
+                onChange={setCamposNavegaveis}
+              />
+            )}
 
             {/* Senha */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">

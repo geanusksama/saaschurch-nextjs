@@ -56,6 +56,9 @@ export function negado(msg = 'Sem permissão para esta ação.') {
 
 /** Campo em que o painel trabalha, ou null quando o usuário não tem campo. */
 export async function campoDoPainel(user: AuthUser, pedido?: string | null): Promise<string | null> {
+  // Campo ativo primeiro, para todo perfil (lib/campoAtivo.ts): o master vê
+  // outro campo trocando de campo, não mandando ?campoId=.
+  if (user.campoId) return user.campoId;
   if (user.profileType === 'master') {
     if (pedido) {
       const c = await prisma.campo.findFirst({ where: { id: pedido, deletedAt: null }, select: { id: true } });

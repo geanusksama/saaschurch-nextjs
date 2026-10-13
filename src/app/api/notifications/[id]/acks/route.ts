@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const metadata = (notification.data as Record<string, unknown>) || {};
     const notificationCampoId = metadata.campoId as string | undefined;
 
-    if (user.profileType !== "master" && notificationCampoId && notificationCampoId !== user.campoId) {
+    if ((user.profileType !== "master" || user.campoId) && notificationCampoId && notificationCampoId !== user.campoId) {
       return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
     }
 

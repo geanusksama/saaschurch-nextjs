@@ -97,7 +97,7 @@ A caixa no topo procura membro por **nome** ou por **número de ROL**.
 O que cada pessoa enxerga é limitado em duas camadas.
 
 ## 1. Escopo
-De qual campo, regional e igreja você faz parte. Perfil de igreja e as funções de secretaria e tesouraria enxergam só a própria igreja; o perfil de campo enxerga o campo; o master enxerga tudo.
+De qual campo, regional e igreja você faz parte. Perfil de igreja e as funções de secretaria e tesouraria enxergam só a própria igreja; o perfil de campo enxerga o campo; o master enxerga o campo em que está. Ninguém vê dados de outro campo: para isso é preciso trocar de campo em "Alternar Campo" — o master com a senha do campo, os demais só nos campos que o master liberou no cadastro do usuário.
 
 O escopo vale para os **dados**: mesmo com permissão de ver a Lista de Membros, você só vê os membros das igrejas que alcança.
 

@@ -18,7 +18,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       }
 
       // Segurança: Apenas quem criou/campo dono ou master pode alterar
-      if (agent.campoId && agent.campoId !== user.campoId && user.profileType !== "master") {
+      if (agent.campoId && agent.campoId !== user.campoId && (user.profileType !== "master" || user.campoId)) {
         return NextResponse.json({ error: "Sem permissão para alterar este agente." }, { status: 403 });
       }
 
@@ -64,7 +64,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
         return NextResponse.json({ error: "Agente não encontrado." }, { status: 404 });
       }
 
-      if (agent.campoId && agent.campoId !== user.campoId && user.profileType !== "master") {
+      if (agent.campoId && agent.campoId !== user.campoId && (user.profileType !== "master" || user.campoId)) {
         return NextResponse.json({ error: "Sem permissão para deletar este agente." }, { status: 403 });
       }
 

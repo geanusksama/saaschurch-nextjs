@@ -50,7 +50,7 @@ export async function handleGetInner(user: any, sp: URLSearchParams) {
     }
 
     // Isolate by user's campoId if they are not master
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (!user.campoId) {
         throw new Error("Sem acesso. Campo não definido.");
       }

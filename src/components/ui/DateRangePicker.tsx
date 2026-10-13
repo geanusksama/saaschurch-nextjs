@@ -5,10 +5,10 @@ import { createPortal } from 'react-dom';
 import { DayPicker, type DateRange } from 'react-day-picker';
 import {
   format, isValid, parse, isSameDay,
-  startOfMonth, endOfMonth, subMonths, addMonths, subDays, startOfWeek, endOfWeek,
+  startOfMonth, endOfMonth, subMonths, subDays, startOfWeek, endOfWeek, isBefore,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays, ChevronRight, ChevronLeft } from 'lucide-react';
+import { CalendarDays, ChevronRight } from 'lucide-react';
 
 const rdpCss = `
 .rdp-root{--rdp-accent:#1e293b;font-family:inherit;font-size:.82rem;user-select:none;width:100%}
@@ -80,7 +80,11 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [style, setStyle] = useState<React.CSSProperties>({});
   const [isMobile, setIsMobile] = useState(false);
-  const [displayMonth, setDisplayMonth] = useState<Date>(now());
+  // Um mês para cada calendário: "De" e "Até" navegam sozinhos. Antes era um
+  // DayPicker só com 2 meses — o da direita era sempre o da esquerda + 1, e
+  // mudar o ano de um arrastava o outro (não dava para ir de 2021 a 2026).
+  const [monthFrom, setMonthFrom] = useState<Date>(now());
+  const [monthTo, setMonthTo] = useState<Date>(now());
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const styleId = useId();
@@ -105,7 +109,7 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
         zIndex: 9999,
       });
     } else {
-      const popWidth = 520; // presets(140) + calendar(380)
+      const popWidth = Math.min(700, vw - 16); // presets(144) + 2 calendários
       let left = rect.left + window.scrollX;
       if (left + popWidth > vw - 8) left = vw - popWidth - 8;
       if (left < 8) left = 8;
@@ -122,20 +126,34 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
   function openPicker() {
     calcPosition();
     setDraft({ from: fromDate, to: toDateVal_ });
-    setDisplayMonth(fromDate ?? now());
+    setMonthFrom(fromDate ?? now());
+    setMonthTo(toDateVal_ ?? fromDate ?? now());
     setActivePreset(null);
     setOpen(true);
   }
 
-  function handleSelect(r: DateRange | undefined) {
-    setDraft(r ?? {});
+  /** Clique no calendário "De": muda só o início. */
+  function escolherInicio(dia: Date) {
+    setDraft((atual) => ({ from: dia, to: atual.to && !isBefore(atual.to, dia) ? atual.to : undefined }));
+    setActivePreset(null);
+  }
+
+  /** Clique no calendário "Até": muda só o fim (antes do início, os dois trocam). */
+  function escolherFim(dia: Date) {
+    setDraft((atual) => {
+      if (!atual.from) return { from: dia, to: dia };
+      if (isBefore(dia, atual.from)) return { from: dia, to: atual.from };
+      return { from: atual.from, to: dia };
+    });
     setActivePreset(null);
   }
 
   function applyPreset(preset: typeof PRESETS[0]) {
     const f = preset.from();
-    setDraft({ from: f, to: preset.to() });
-    setDisplayMonth(f);
+    const t = preset.to();
+    setDraft({ from: f, to: t });
+    setMonthFrom(f);
+    setMonthTo(t);
     setActivePreset(preset.label);
   }
 
@@ -185,7 +203,6 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
         ? `${format(draft.from, "dd 'de' MMM", { locale: ptBR })} → selecione a data final`
         : 'Clique em um dia para iniciar';
 
-  const months = isMobile ? 1 : 2;
 
   const popover = open ? (
     <div ref={popRef} style={style} className="rounded-2xl border border-slate-200 bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
@@ -235,43 +252,38 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
             </div>
           )}
 
-          <DayPicker
-            mode="range"
-            selected={draft as DateRange}
-            onSelect={handleSelect}
-            locale={ptBR}
-            month={displayMonth}
-            onMonthChange={setDisplayMonth}
-            numberOfMonths={months}
-            captionLayout="dropdown"
-            startMonth={new Date(2015, 0)}
-            endMonth={new Date(now().getFullYear() + 2, 11)}
-          />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            {([
+              { titulo: 'De', data: draft.from, mes: monthFrom, setMes: setMonthFrom, escolher: escolherInicio },
+              { titulo: 'Até', data: draft.to, mes: monthTo, setMes: setMonthTo, escolher: escolherFim },
+            ] as const).map((cal) => (
+              <div key={cal.titulo} className="min-w-0 flex-1">
+                <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  {cal.titulo}
+                  <span className="ml-1.5 normal-case tracking-normal font-semibold text-slate-700">
+                    {cal.data ? format(cal.data, 'dd/MM/yyyy') : '—'}
+                  </span>
+                </p>
+                <DayPicker
+                  mode="range"
+                  selected={draft as DateRange}
+                  onSelect={(_faixa, dia) => cal.escolher(dia)}
+                  locale={ptBR}
+                  month={cal.mes}
+                  onMonthChange={cal.setMes}
+                  numberOfMonths={1}
+                  captionLayout="dropdown"
+                  startMonth={new Date(2015, 0)}
+                  endMonth={new Date(now().getFullYear() + 2, 11)}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Footer */}
       <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-3 py-2.5 gap-2">
-        {/* Setas de navegação de mês */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            title="Mês anterior"
-            onClick={() => setDisplayMonth(m => subMonths(m, 1))}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:border-slate-300 transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            title="Próximo mês"
-            onClick={() => setDisplayMonth(m => addMonths(m, 1))}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:border-slate-300 transition-colors"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-
         <span className="truncate text-xs text-slate-400 min-w-0 flex-1 text-center">{draftLabel}</span>
 
         <div className="flex shrink-0 gap-2">

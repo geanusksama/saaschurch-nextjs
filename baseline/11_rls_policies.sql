@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:33:38.073Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.717Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 500e39c338ad501d
+-- Baseline d23a12c3d91c0f1a
 
 -- Row Level Security
 alter table "public"."_prisma_migrations" enable row level security;
@@ -300,6 +300,7 @@ alter table "public"."tipos_credor" enable row level security;
 alter table "public"."tipos_departamento" enable row level security;
 alter table "public"."transactions" enable row level security;
 alter table "public"."unknown_faces" enable row level security;
+alter table "public"."user_campos" enable row level security;
 alter table "public"."user_notes" enable row level security;
 alter table "public"."user_sticky_notes" enable row level security;
 alter table "public"."users" enable row level security;
@@ -734,7 +735,7 @@ create policy "church_schedule_select_public" on "public"."church_schedule" as p
    FROM headquarters hq
   WHERE ((hq.id = church_schedule.headquarters_id) AND (COALESCE(hq.show, true) = true)))));
 drop policy if exists "sistema_acesso" on "public"."churches";
-create policy "sistema_acesso" on "public"."churches" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
+create policy "sistema_acesso" on "public"."churches" as permissive for all to "authenticated" using ((( SELECT fn_usuario_sistema() AS fn_usuario_sistema) AND (id = ANY (( SELECT fn_igrejas_do_meu_campo() AS fn_igrejas_do_meu_campo)::uuid[])))) with check ((( SELECT fn_usuario_sistema() AS fn_usuario_sistema) AND (id = ANY (( SELECT fn_igrejas_do_meu_campo() AS fn_igrejas_do_meu_campo)::uuid[]))));
 drop policy if exists "sistema_acesso" on "public"."communication_campaigns";
 create policy "sistema_acesso" on "public"."communication_campaigns" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
 drop policy if exists "sistema_acesso" on "public"."communication_templates";
@@ -1052,7 +1053,7 @@ create policy "sistema_acesso" on "public"."lead_activities" as permissive for a
 drop policy if exists "sistema_acesso" on "public"."leads";
 create policy "sistema_acesso" on "public"."leads" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
 drop policy if exists "sistema_acesso" on "public"."livro_caixa";
-create policy "sistema_acesso" on "public"."livro_caixa" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
+create policy "sistema_acesso" on "public"."livro_caixa" as permissive for all to "authenticated" using ((( SELECT fn_usuario_sistema() AS fn_usuario_sistema) AND (church_id = ANY (( SELECT fn_igrejas_do_meu_campo() AS fn_igrejas_do_meu_campo)::uuid[])))) with check ((( SELECT fn_usuario_sistema() AS fn_usuario_sistema) AND (church_id = ANY (( SELECT fn_igrejas_do_meu_campo() AS fn_igrejas_do_meu_campo)::uuid[]))));
 drop policy if exists "sistema_acesso" on "public"."livro_caixa_baixa_importacao_backup";
 create policy "sistema_acesso" on "public"."livro_caixa_baixa_importacao_backup" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
 drop policy if exists "sistema_acesso" on "public"."manual_reviews";
@@ -1078,7 +1079,7 @@ create policy "sistema_acesso" on "public"."member_tags" as permissive for all t
 drop policy if exists "sistema_acesso" on "public"."member_title_history";
 create policy "sistema_acesso" on "public"."member_title_history" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
 drop policy if exists "sistema_acesso" on "public"."members";
-create policy "sistema_acesso" on "public"."members" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
+create policy "sistema_acesso" on "public"."members" as permissive for all to "authenticated" using ((( SELECT fn_usuario_sistema() AS fn_usuario_sistema) AND (church_id = ANY (( SELECT fn_igrejas_do_meu_campo() AS fn_igrejas_do_meu_campo)::uuid[])))) with check ((( SELECT fn_usuario_sistema() AS fn_usuario_sistema) AND (church_id = ANY (( SELECT fn_igrejas_do_meu_campo() AS fn_igrejas_do_meu_campo)::uuid[]))));
 drop policy if exists "sistema_acesso" on "public"."messages";
 create policy "sistema_acesso" on "public"."messages" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
 drop policy if exists "ministries_public_read" on "public"."ministries";
@@ -1284,9 +1285,9 @@ create policy "sistema_somente" on "public"."prayer_requests" as restrictive for
 drop policy if exists "sistema_acesso" on "public"."region";
 create policy "sistema_acesso" on "public"."region" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
 drop policy if exists "sistema_acesso" on "public"."regionais";
-create policy "sistema_acesso" on "public"."regionais" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
+create policy "sistema_acesso" on "public"."regionais" as permissive for all to "authenticated" using ((( SELECT fn_usuario_sistema() AS fn_usuario_sistema) AND (campo_id = ( SELECT fn_meu_campo_id() AS fn_meu_campo_id)))) with check ((( SELECT fn_usuario_sistema() AS fn_usuario_sistema) AND (campo_id = ( SELECT fn_meu_campo_id() AS fn_meu_campo_id))));
 drop policy if exists "sistema_acesso" on "public"."roles";
-create policy "sistema_acesso" on "public"."roles" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
+create policy "sistema_acesso" on "public"."roles" as permissive for select to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
 drop policy if exists "santander_accounts_service_only" on "public"."santander_accounts";
 create policy "santander_accounts_service_only" on "public"."santander_accounts" as permissive for all to public using ((auth.role() = 'service_role'::text));
 drop policy if exists "sistema_somente" on "public"."santander_accounts";
@@ -1350,7 +1351,7 @@ create policy "sistema_acesso" on "public"."user_notes" as permissive for all to
 drop policy if exists "sistema_acesso" on "public"."user_sticky_notes";
 create policy "sistema_acesso" on "public"."user_sticky_notes" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
 drop policy if exists "sistema_acesso" on "public"."users";
-create policy "sistema_acesso" on "public"."users" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
+create policy "sistema_acesso" on "public"."users" as permissive for select to "authenticated" using ((( SELECT fn_usuario_sistema() AS fn_usuario_sistema) AND ((campo_id = ( SELECT fn_meu_campo_id() AS fn_meu_campo_id)) OR (lower((email)::text) = lower(NULLIF((auth.jwt() ->> 'email'::text), ''::text))))));
 drop policy if exists "sistema_acesso" on "public"."webhook_logs";
 create policy "sistema_acesso" on "public"."webhook_logs" as permissive for all to "authenticated" using (( SELECT fn_usuario_sistema() AS fn_usuario_sistema)) with check (( SELECT fn_usuario_sistema() AS fn_usuario_sistema));
 drop policy if exists "sistema_acesso" on "public"."webhooks";

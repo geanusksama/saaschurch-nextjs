@@ -1,25 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuth } from "@/lib/auth";
+import { esquecerSessao, withAuth } from "@/lib/auth";
 import bcryptjs from "bcryptjs";
 import { serializeBigInts } from "@/lib/helpers";
+import { CampoNavegavelError, campoLiberadoParaUsuario, trocarDeCampo } from "@/lib/camposNavegaveis";
 
+/**
+ * Troca de campo.
+ *
+ * - master: qualquer campo, com a senha do campo;
+ * - demais perfis: só os campos que o master liberou para eles (user_campos),
+ *   sem senha. Sem liberação, 403 — inclusive para admin.
+ *
+ * A troca grava o novo campo e a lotação dele no usuário (ver
+ * lib/camposNavegaveis.ts). getAuthUser relê o usuário do banco a cada
+ * requisição, então dali em diante tudo — rotas e RLS — enxerga só o campo novo.
+ */
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
-    // Trocar de campo muda o escopo de TUDO que o usuario enxerga, entao so
-    // master e admin podem. Perfil campo para baixo fica preso ao seu campo.
-    if (!["master", "admin"].includes(user.profileType)) {
-      return NextResponse.json(
-        { error: "Seu perfil não permite trocar de campo." },
-        { status: 403 }
-      );
-    }
-
     const body = await req.json().catch(() => ({}));
     const { campoId, fieldId, password } = body;
     const resolvedCampoId = campoId || fieldId;
-    if (!resolvedCampoId || !password) {
-      return NextResponse.json({ error: "campoId e password são obrigatórios." }, { status: 400 });
+    if (!resolvedCampoId) {
+      return NextResponse.json({ error: "campoId é obrigatório." }, { status: 400 });
     }
 
     const campo = await prisma.campo.findFirst({
@@ -27,61 +30,27 @@ export async function POST(req: NextRequest) {
       select: { id: true, name: true, accessPasswordHash: true },
     });
     if (!campo) return NextResponse.json({ error: "Campo não encontrado." }, { status: 404 });
-    if (!campo.accessPasswordHash) {
-      return NextResponse.json({ error: "Este campo não possui senha de acesso configurada." }, { status: 400 });
-    }
 
-    const isValid = await bcryptjs.compare(password, campo.accessPasswordHash);
-    if (!isValid) {
-      return NextResponse.json({ error: "Senha incorreta." }, { status: 401 });
-    }
-
-    // Senha aceita = o usuario passa a PERTENCER a este campo.
-    //
-    // Sem isto a troca era so visual: o backend continuava lendo users.campo_id
-    // (getAuthUser recarrega o perfil do banco a cada requisicao) e o usuario
-    // seguia enxergando o campo antigo — ou, no caso do master, todos eles.
-    if (user.id && user.campoId !== campo.id) {
-      // Master: a troca de campo mexe SO no campo. A igreja de lotacao dele
-      // (a sede de onde ele e) nao limita nada — o escopo do master ja vem do
-      // campo selecionado —, entao zera-la so quebrava o perfil e as telas que
-      // dependem de users.church_id.
-      if (user.profileType === "master") {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { campoId: campo.id },
-        });
-        const safeCampo = { id: campo.id, name: campo.name };
-        return NextResponse.json({ success: true, campo: serializeBigInts(safeCampo) });
+    if (user.profileType === "master") {
+      if (!password) return NextResponse.json({ error: "Informe a senha do campo." }, { status: 400 });
+      if (!campo.accessPasswordHash) {
+        return NextResponse.json({ error: "Este campo não possui senha de acesso configurada." }, { status: 400 });
       }
-
-      // Admin: igreja/regional do campo anterior nao valem mais — se apontam
-      // para outro campo, sao zeradas para nao vazar escopo nem gravar registro
-      // no lugar errado. Se ja pertencem ao campo novo, ficam como estao.
-      const currentChurch = user.churchId
-        ? await prisma.church.findFirst({
-            where: { id: user.churchId },
-            select: { id: true, regional: { select: { campoId: true } } },
-          })
-        : null;
-      const churchBelongs = currentChurch?.regional?.campoId === campo.id;
-
-      const currentRegional = user.regionalId
-        ? await prisma.regional.findFirst({ where: { id: user.regionalId }, select: { campoId: true } })
-        : null;
-      const regionalBelongs = currentRegional?.campoId === campo.id;
-
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          campoId: campo.id,
-          ...(user.churchId && !churchBelongs ? { churchId: null } : {}),
-          ...(user.regionalId && !regionalBelongs ? { regionalId: null } : {}),
-        },
-      });
+      const isValid = await bcryptjs.compare(password, campo.accessPasswordHash);
+      if (!isValid) return NextResponse.json({ error: "Senha incorreta." }, { status: 401 });
+    } else if (!(await campoLiberadoParaUsuario(user.id, campo.id))) {
+      return NextResponse.json({ error: "Seu usuário não tem acesso a este campo." }, { status: 403 });
     }
 
-    const safeCampo = { id: campo.id, name: campo.name };
-    return NextResponse.json({ success: true, campo: serializeBigInts(safeCampo) });
+    try {
+      const resultado = await trocarDeCampo(user, campo.id);
+      esquecerSessao(req);
+      return NextResponse.json(serializeBigInts({ success: true, ...resultado }));
+    } catch (err) {
+      if (err instanceof CampoNavegavelError) {
+        return NextResponse.json({ error: err.message }, { status: 400 });
+      }
+      throw err;
+    }
   });
 }

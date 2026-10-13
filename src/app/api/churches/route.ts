@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { regionalNoCampoAtivo } from "@/lib/campoAtivo";
 
 function isRestrictedToOwnChurch(user: { profileType: string; roleName?: string | null; churchId?: string | null }) {
   if (user.profileType === "church" && user.churchId) return true;
@@ -97,6 +98,10 @@ export async function POST(req: NextRequest) {
     const { regionalId, name, code } = body;
     if (!regionalId || !name || !code) {
       return NextResponse.json({ error: "regionalId, name and code are required" }, { status: 400 });
+    }
+    // Igreja nova só numa regional do campo ativo (master inclusive).
+    if (!(await regionalNoCampoAtivo(user, String(regionalId)))) {
+      return NextResponse.json({ error: "Regional de outro campo." }, { status: 403 });
     }
     const church = await prisma.church.create({ data: { ...body } });
     return NextResponse.json(church, { status: 201 });

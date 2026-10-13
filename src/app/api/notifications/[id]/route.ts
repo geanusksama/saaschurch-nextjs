@@ -82,7 +82,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ((user.profileType === "campo" || isFieldAdmin(user)) && metadata.campoId === user.campoId);
 
       if (canManage && metadata.batchId) {
-        const campoFilter = user.profileType === "master" ? null : user.campoId;
+        const campoFilter = user.profileType === "master" && !user.campoId ? null : user.campoId;
         const notificationIds = await listNotificationIdsByBatch(metadata.batchId as string, campoFilter);
         if (notificationIds.length) {
           await prisma.notification.updateMany({
@@ -109,7 +109,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (!canEdit || !metadata.batchId) {
         return NextResponse.json({ error: "Você não tem permissão para editar esta notificação." }, { status: 403 });
       }
-      const campoFilter = user.profileType === "master" ? null : user.campoId;
+      const campoFilter = user.profileType === "master" && !user.campoId ? null : user.campoId;
       const notificationIds = await listNotificationIdsByBatch(metadata.batchId as string, campoFilter);
       if (!notificationIds.length) return NextResponse.json({ error: "Lote de notificações não encontrado." }, { status: 404 });
 
@@ -153,7 +153,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       ((user.profileType === "campo" || isFieldAdmin(user)) && metadata.campoId === user.campoId);
 
     if (canManage && metadata.batchId) {
-      const campoFilter = user.profileType === "master" ? null : user.campoId;
+      const campoFilter = user.profileType === "master" && !user.campoId ? null : user.campoId;
       const notificationIds = await listNotificationIdsByBatch(metadata.batchId as string, campoFilter);
       if (notificationIds.length) {
         await prisma.notification.deleteMany({ where: { id: { in: notificationIds } } });

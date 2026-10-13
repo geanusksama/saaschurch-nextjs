@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       churchWhere.regional = { campoId: user.campoId };
     }
 
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (!user.campoId) {
         return NextResponse.json({ error: "Sem acesso. Campo não definido." }, { status: 403 });
       }

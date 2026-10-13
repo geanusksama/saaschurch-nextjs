@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { itemDaSedeNoCampoAtivo, sedeNoCampoAtivo } from "@/lib/campoAtivo";
 import { serializeBigInts } from "@/lib/helpers";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
     }
     const { id } = await params;
+    if (!(await sedeNoCampoAtivo(user, id))) {
+      return NextResponse.json({ error: "Item de outro campo." }, { status: 403 });
+    }
     const body = await req.json().catch(() => ({}));
     const { dayOfWeek, name, time, icon = "Sun", order = 0 } = body;
     if (!dayOfWeek || !name || !time) return NextResponse.json({ error: "dayOfWeek, name e time são obrigatórios." }, { status: 400 });
@@ -37,6 +41,9 @@ export async function PATCH(req: NextRequest, { params: _params }: { params: Pro
     }
     const body = await req.json().catch(() => ({}));
     const { id: scheduleId, dayOfWeek, name, time, icon, order } = body;
+    if (!(await itemDaSedeNoCampoAtivo(user, "horario", scheduleId))) {
+      return NextResponse.json({ error: "Item de outro campo." }, { status: 403 });
+    }
     if (!scheduleId) return NextResponse.json({ error: "id do item é obrigatório." }, { status: 400 });
     const data: Record<string, unknown> = {};
     if (dayOfWeek !== undefined) data.dayOfWeek = dayOfWeek;
@@ -55,6 +62,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
     }
     const { id } = await params;
+    if (!(await itemDaSedeNoCampoAtivo(user, "horario", id))) {
+      return NextResponse.json({ error: "Item de outro campo." }, { status: 403 });
+    }
     await prisma.churchSchedule.delete({ where: { id } });
     return new NextResponse(null, { status: 204 });
   });

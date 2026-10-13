@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:33:38.072Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.715Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 500e39c338ad501d
+-- Baseline d23a12c3d91c0f1a
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -601,6 +601,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_dept_products_slug ON public.department_pro
 CREATE UNIQUE INDEX IF NOT EXISTS uq_ministries_campo_slug ON public.ministries USING btree (campo_id, lower(slug)) WHERE ((deleted_at IS NULL) AND (slug IS NOT NULL) AND (slug <> ''::text));
 CREATE UNIQUE INDEX IF NOT EXISTS uq_new_member_requests_form_token ON public.new_member_requests USING btree (form_token) WHERE (form_token IS NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pastoral_journey_enrollment_attendance ON public.pastoral_journey_enrollments USING btree (journey_id, attendance_id) WHERE (attendance_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS user_campos_campo_id_idx ON public.user_campos USING btree (campo_id);
+CREATE UNIQUE INDEX IF NOT EXISTS user_campos_user_id_campo_id_key ON public.user_campos USING btree (user_id, campo_id);
 CREATE UNIQUE INDEX IF NOT EXISTS user_notes_user_id_date_key ON public.user_notes USING btree (user_id, date);
 CREATE INDEX IF NOT EXISTS users_campo_id_idx ON public.users USING btree (campo_id);
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_key ON public.users USING btree (email);

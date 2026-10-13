@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
+import { acessoContabilNoCampoAtivo, campoTextoEhDoCampoAtivo, nomesDoCampoAtivo } from '@/lib/contabilidadeCampo'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { resolverCampoId } from '@/lib/contabilidadeService'
 import { podeAcessarContabilidadeAgendamento } from '@/lib/contabilidadeAgendamentoRole'
@@ -15,6 +16,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Acesso restrito à função de Tesouraria.' }, { status: 403 })
     }
     const { id } = await params
+    if (!(await acessoContabilNoCampoAtivo(user, id))) {
+      return NextResponse.json({ error: 'Contador não encontrado neste campo.' }, { status: 404 })
+    }
     const body = await req.json().catch(() => ({}))
 
     const { data: acesso } = await supabaseAdmin
@@ -39,6 +43,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Campo inválido.'
         return NextResponse.json({ error: msg }, { status: 400 })
+      }
+      // Contador só nasce (ou muda) para o campo ativo — nunca para outro campo.
+      if (!campoTextoEhDoCampoAtivo(campo, await nomesDoCampoAtivo(user))) {
+        return NextResponse.json({ error: 'O contador precisa ser do campo em que você está.' }, { status: 403 })
       }
       updates.campo = campo
     }
@@ -86,6 +94,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Acesso restrito à função de Tesouraria.' }, { status: 403 })
     }
     const { id } = await params
+    if (!(await acessoContabilNoCampoAtivo(user, id))) {
+      return NextResponse.json({ error: 'Contador não encontrado neste campo.' }, { status: 404 })
+    }
 
     // contabilidade_agendamentos / historico / periodos têm FK ON DELETE CASCADE para acesso_id.
     const { error } = await supabaseAdmin

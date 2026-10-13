@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
+import { AvisoDefinaFiltros, BotaoBuscar, type FiltrosConsulta } from "../../components/app-ui/BotaoBuscar";
 import { useCampoVisible } from "../../lib/campoVisibility";
 import { PrintModal } from "../../components/app-ui/shared/PrintModal";
 import { printReport } from "../../lib/printReport";
@@ -278,6 +279,10 @@ export default function Requerimentos() {
   const { start: defaultFrom, end: defaultTo } = getMonthDateRange();
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
+  // A tela abre vazia: nada é consultado até o clique em Buscar, que congela
+  // os filtros daquele momento. Mexer num filtro não consulta sozinho (antes
+  // cada tecla na busca disparava uma consulta).
+  const [aplicados, setAplicados] = useState<FiltrosConsulta | null>(null);
   const [page, setPage] = useState(1);
 
   // Modal
@@ -368,15 +373,16 @@ export default function Requerimentos() {
   );
 
   // Load cards using the same dashboard-style source as the other ecclesiastical modules.
-  const loadCards = () => {
+  const loadCards = (filtros: FiltrosConsulta | null = aplicados) => {
+    if (!filtros) return;
     setCardsLoading(true);
     const params = new URLSearchParams();
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
-    if (q) params.set("q", q);
-    if (selectedFieldId) params.set("campoId", selectedFieldId);
-    if (selectedRegionalId) params.set("regionalId", selectedRegionalId);
-    if (selectedChurchId) params.set("churchId", selectedChurchId);
+    if (filtros.dateFrom) params.set("from", filtros.dateFrom);
+    if (filtros.dateTo) params.set("to", filtros.dateTo);
+    if (filtros.searchTerm) params.set("q", filtros.searchTerm);
+    if (filtros.fieldId) params.set("campoId", filtros.fieldId);
+    if (filtros.regionalId) params.set("regionalId", filtros.regionalId);
+    if (filtros.churchId) params.set("churchId", filtros.churchId);
     if (activeServiceId != null) params.set("serviceId", String(activeServiceId));
 
     authFetch(`${apiBase}/requirements/dashboard?${params}`)
@@ -397,10 +403,25 @@ export default function Requerimentos() {
       .finally(() => setCardsLoading(false));
   };
 
+  // Busca de novo quando os filtros são aplicados (Buscar) ou quando o tipo
+  // muda depois de já ter havido uma busca.
   useEffect(() => {
     setPage(1);
     loadCards();
-  }, [activeServiceId, from, to, q, selectedFieldId, selectedRegionalId, selectedChurchId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aplicados, activeServiceId]);
+
+  const buscar = () => {
+    setAplicados({
+      searchTerm: q,
+      fieldId: selectedFieldId,
+      regionalId: selectedRegionalId,
+      churchId: selectedChurchId,
+      status: filterStatus,
+      dateFrom: from,
+      dateTo: to,
+    });
+  };
 
   // Flatten cards from all columns
   const allCards = useMemo(
@@ -432,23 +453,24 @@ export default function Requerimentos() {
 
   // Filter + paginate
   const filteredCards = useMemo(() => {
-    const target = filterStatus.toLowerCase();
+    if (!aplicados) return [];
+    const target = aplicados.status.toLowerCase();
     const targetLabel = (STATUS_LABELS[target]?.label || target).toLowerCase();
     return allCards.filter((c) => {
       const churchMeta = churches.find((church) => church.id === c.church?.id);
-      const fieldMatch = !selectedFieldId || churchMeta?.regional?.campoId === selectedFieldId || churchMeta?.regional?.campo?.id === selectedFieldId;
-      const regionalMatch = !selectedRegionalId || churchMeta?.regional?.id === selectedRegionalId || churchMeta?.regionalId === selectedRegionalId;
-      const churchMatch = !selectedChurchId || c.church?.id === selectedChurchId;
+      const fieldMatch = !aplicados.fieldId || churchMeta?.regional?.campoId === aplicados.fieldId || churchMeta?.regional?.campo?.id === aplicados.fieldId;
+      const regionalMatch = !aplicados.regionalId || churchMeta?.regional?.id === aplicados.regionalId || churchMeta?.regionalId === aplicados.regionalId;
+      const churchMatch = !aplicados.churchId || c.church?.id === aplicados.churchId;
       if (!fieldMatch || !regionalMatch || !churchMatch) return false;
-      if (!filterStatus) return true;
+      if (!aplicados.status) return true;
       const eff = effectiveStatusKey(c);
       return eff === target || eff === targetLabel;
     });
-  }, [allCards, filterStatus, churches, selectedFieldId, selectedRegionalId, selectedChurchId]);
+  }, [allCards, churches, aplicados]);
 
   useEffect(() => {
     setPage(1);
-  }, [q, filterStatus, from, to, activeServiceId, selectedFieldId, selectedRegionalId, selectedChurchId]);
+  }, [aplicados, activeServiceId]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE));
   const pageCards = filteredCards.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -540,7 +562,14 @@ export default function Requerimentos() {
 
       {/* Filters */}
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(170px,1.25fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(115px,0.68fr)_minmax(115px,0.68fr)_minmax(165px,0.95fr)] xl:items-end">
+        {/* Botão Buscar na mesma linha: coluna própria no fim. */}
+        <div
+          className={`grid gap-3 md:grid-cols-2 xl:items-end ${
+            campoVisible
+              ? "xl:grid-cols-[minmax(170px,1.25fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(115px,0.68fr)_minmax(115px,0.68fr)_minmax(165px,0.95fr)_auto]"
+              : "xl:grid-cols-[minmax(170px,1.25fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(115px,0.68fr)_minmax(115px,0.68fr)_minmax(165px,0.95fr)_auto]"
+          }`}
+        >
           <div>
             <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Busca</label>
             <div className="relative">
@@ -548,6 +577,7 @@ export default function Requerimentos() {
               <input
                 value={q}
                 onChange={(e) => { setQ(e.target.value); setPage(1); }}
+                onKeyDown={(e) => { if (e.key === "Enter") buscar(); }}
                 placeholder="Buscar por protocolo, membro, igreja..."
                 className="w-full border border-slate-200 rounded-lg pl-8 pr-8 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
@@ -672,6 +702,11 @@ export default function Requerimentos() {
             )}
           </div>
 
+          {/* Consulta explícita: nada é buscado até clicar aqui. */}
+          <div className="flex items-end">
+            <BotaoBuscar onClick={buscar} buscando={cardsLoading} />
+          </div>
+
           <div className="text-xs text-slate-400 xl:col-span-full xl:text-right">
             {filteredCards.length} registro{filteredCards.length !== 1 ? "s" : ""}
           </div>
@@ -680,7 +715,9 @@ export default function Requerimentos() {
 
       {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-        {cardsLoading ? (
+        {!aplicados ? (
+          <AvisoDefinaFiltros />
+        ) : cardsLoading ? (
           <div className="flex justify-center py-14">
             <Loader2 size={24} className="animate-spin text-indigo-500" />
           </div>

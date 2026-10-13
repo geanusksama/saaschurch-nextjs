@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
     // Force security constraints in AND to prevent any client filters from overwriting them in JS
     const securityConditions: any[] = [];
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (!user.campoId) {
         return NextResponse.json({ queue: [] });
       }

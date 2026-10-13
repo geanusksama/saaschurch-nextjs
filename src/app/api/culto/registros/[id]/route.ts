@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { filtroDoCampoAtivo } from '@/lib/campoAtivo';
 import { ehPresidente, getCultoScope, podarLancamentos } from '@/lib/cultoScope';
 import { blocosExigidos, dateParaHora, horaParaDate } from '@/lib/cultoService';
 
-async function carregar(id: string) {
+async function carregar(id: string, campo: { campoId?: string }) {
   return prisma.cultoRegistro.findFirst({
-    where: { id, deletedAt: null },
+    // Registro de outro campo não abre por id (master inclusive).
+    where: { id, deletedAt: null, ...campo },
     include: {
       church: {
         select: { id: true, name: true, isHost: true, hostChurchId: true, currentLeaderName: true },
@@ -22,7 +24,7 @@ async function carregar(id: string) {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
-    const registro = await carregar(id);
+    const registro = await carregar(id, filtroDoCampoAtivo(user));
     if (!registro) return NextResponse.json({ error: 'Registro não encontrado.' }, { status: 404 });
 
     const scope = await getCultoScope(user);
@@ -63,7 +65,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
-    const registro = await prisma.cultoRegistro.findFirst({ where: { id, deletedAt: null } });
+    const registro = await prisma.cultoRegistro.findFirst({ where: { id, deletedAt: null, ...filtroDoCampoAtivo(user) } });
     if (!registro) return NextResponse.json({ error: 'Registro não encontrado.' }, { status: 404 });
 
     const scope = await getCultoScope(user);
@@ -128,7 +130,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Só o perfil master exclui um registro.' }, { status: 403 });
     }
     const { id } = await params;
-    const registro = await prisma.cultoRegistro.findFirst({ where: { id, deletedAt: null } });
+    const registro = await prisma.cultoRegistro.findFirst({ where: { id, deletedAt: null, ...filtroDoCampoAtivo(user) } });
     if (!registro) return NextResponse.json({ error: 'Registro não encontrado.' }, { status: 404 });
 
     await prisma.cultoRegistro.update({ where: { id }, data: { deletedAt: new Date() } });

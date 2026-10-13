@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { isRestrictedToOwnChurch } from "@/lib/helpers";
+import { campoAtivoId } from "@/lib/campoAtivo";
 
 // Define se o caixa de uma ou mais igrejas fica permanentemente aberto.
 // Quando permanentemente aberto, o caixa nunca é fechado nem monitorado.
@@ -21,8 +22,11 @@ export async function POST(req: NextRequest) {
     }
 
     const updated = await prisma.$executeRawUnsafe(
-      `UPDATE churches SET cashbook_permanent_open = $1::boolean, updated_at = now() WHERE id = ANY($2::uuid[]) AND deleted_at IS NULL`,
-      permanentOpen, ids
+      // Só igrejas do campo ativo (master inclusive) — id de outro campo é ignorado.
+      `UPDATE churches SET cashbook_permanent_open = $1::boolean, updated_at = now()
+        WHERE id = ANY($2::uuid[]) AND deleted_at IS NULL
+          AND regional_id IN (SELECT id FROM regionais WHERE campo_id = $3::uuid)`,
+      permanentOpen, ids, campoAtivoId(user)
     );
 
     return NextResponse.json({ updatedCount: updated, permanentOpen });

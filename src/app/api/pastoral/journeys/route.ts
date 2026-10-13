@@ -24,9 +24,10 @@ export async function GET(req: NextRequest) {
       .select('*')
       .order('created_at', { ascending: true })
 
-    // master enxerga tudo quando não filtra igreja; os demais ficam na sua
+    // Sem igreja filtrada não há o que listar — vale para o master também
+    // quando ele está num campo (senão via jornada de todos os campos).
     if (churchId) query = query.eq('church_id', churchId)
-    else if (user.profileType !== 'master') return NextResponse.json({ journeys: [] })
+    else if (user.profileType !== 'master' || user.campoId) return NextResponse.json({ journeys: [] })
 
     const { data, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

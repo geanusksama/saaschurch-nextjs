@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:33:38.065Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.704Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 500e39c338ad501d
+-- Baseline d23a12c3d91c0f1a
 
 -- Funcoes e procedures
 set check_function_bodies = false;
@@ -1433,6 +1433,19 @@ AS $function$
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.fn_igrejas_do_meu_campo()
+ RETURNS uuid[]
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(array_agg(c.id), '{}'::uuid[])
+    from public.churches c
+    join public.regionais r on r.id = c.regional_id
+   where r.campo_id = public.fn_meu_campo_id()
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.fn_is_campo_admin()
  RETURNS boolean
  LANGUAGE sql
@@ -1459,6 +1472,24 @@ AS $function$
      WHERE u.id = auth.uid()
        AND (u.is_admin = true OR lower(coalesce(u.profile_type,'')) = 'master')
   );
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_meu_campo_id()
+ RETURNS uuid
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(u.campo_id, r.campo_id, rc.campo_id)
+    from public.users u
+    left join public.regionais r on r.id = u.regional_id
+    left join public.churches c on c.id = u.church_id
+    left join public.regionais rc on rc.id = c.regional_id
+   where u.deleted_at is null
+     and u.profile_type in ('master', 'admin', 'campo', 'church')
+     and lower(u.email) = lower(nullif(auth.jwt() ->> 'email', ''))
+   limit 1
 $function$
 ;
 

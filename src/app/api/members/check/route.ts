@@ -41,9 +41,7 @@ export async function GET(req: NextRequest) {
 
         if (memberByCpf) {
           const memberCampoId = memberByCpf.campoId || memberByCpf.church?.regional?.campoId;
-          const sameCampo = !!(memberCampoId && user.campoId && memberCampoId === user.campoId) ||
-            user.profileType === 'master' ||
-            user.profileType === 'admin';
+          const sameCampo = !!(memberCampoId && user.campoId && memberCampoId === user.campoId);
 
           return NextResponse.json({
             exists: true,
@@ -86,9 +84,7 @@ export async function GET(req: NextRequest) {
 
           if (memberByRol) {
             const memberCampoId = memberByRol.campoId || memberByRol.church?.regional?.campoId;
-            const sameCampo = !!(memberCampoId && user.campoId && memberCampoId === user.campoId) ||
-              user.profileType === 'master' ||
-              user.profileType === 'admin';
+            const sameCampo = !!(memberCampoId && user.campoId && memberCampoId === user.campoId);
 
             if (sameCampo) {
               return NextResponse.json({
@@ -129,9 +125,7 @@ export async function GET(req: NextRequest) {
 
         if (memberByName) {
           const memberCampoId = memberByName.campoId || memberByName.church?.regional?.campoId;
-          const sameCampo = !!(memberCampoId && user.campoId && memberCampoId === user.campoId) ||
-            user.profileType === 'master' ||
-            user.profileType === 'admin';
+          const sameCampo = !!(memberCampoId && user.campoId && memberCampoId === user.campoId);
 
           return NextResponse.json({
             exists: true,

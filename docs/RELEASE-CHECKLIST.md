@@ -321,6 +321,26 @@ dois lados (`board/cardFilter.ts` é o exemplo).
 
 ---
 
+## 10. Campo ativo filtra tudo — master inclusive
+
+O campo em que o usuário está (`users.campo_id`) é o filtro de tudo, para todo
+perfil. Rota que libera o master (`if (user.profileType !== "master") filtrar`)
+mostra Campinas para quem está em Aguaí — foi exatamente o furo encontrado
+depois da migração de Aguaí (2026-10-13).
+
+- Use os helpers de `src/lib/campoAtivo.ts` (`igrejaDoCampoWhere`,
+  `igrejaNoCampoAtivo`, `regionalNoCampoAtivo`, `filtroDoCampoAtivo`) ou
+  `assertChurchAccess`, que já conferem o campo.
+- A barreira do `withAuth` recusa querystring fora do campo, mas **não vê o
+  corpo** nem o id do caminho: confira esses ids na rota.
+- Tabela nova lida pelo navegador com `church_id`: política RLS com
+  `fn_igrejas_do_meu_campo()`, como `livro_caixa`.
+
+Detalhes: [architecture/ISOLAMENTO-CAMPO.md](architecture/ISOLAMENTO-CAMPO.md).
+Teste: `node scripts/e2e-isolamento-campo.mjs`.
+
+---
+
 ## Resumo — checklist
 
 - [ ] Migration aditiva e idempotente em `prisma/migrations/`
@@ -335,3 +355,4 @@ dois lados (`board/cardFilter.ts` é o exemplo).
 - [ ] E2E de gravação executado e passando
 - [ ] Nenhum `findMany` sem `take` em rota de listagem que cresce
 - [ ] Paginação com ordem total (campo + `id`) e total vindo de `count`
+- [ ] Rota nova filtra pelo campo ativo também para o master (seção 10)

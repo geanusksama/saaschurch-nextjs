@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     // Verify tenant authorization (unless master user)
-    if (user.profileType !== "master" && event.campoId !== user.campoId) {
+    if ((user.profileType !== "master" || user.campoId) && event.campoId !== user.campoId) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
 
@@ -82,7 +82,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Evento não encontrado." }, { status: 404 });
     }
 
-    if (user.profileType !== "master" && event.campoId !== user.campoId) {
+    if ((user.profileType !== "master" || user.campoId) && event.campoId !== user.campoId) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
 

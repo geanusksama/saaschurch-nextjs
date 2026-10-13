@@ -171,8 +171,11 @@ export async function POST(req: NextRequest) {
     }
 
     const resolvedScope: string = scope || "field"; // "field" | "church"
-    // master pode passar campoId no body; outros usam o próprio campoId
-    const effectiveCampoId: string | undefined = (body as Record<string, unknown>).campoId as string || user.campoId || undefined;
+    // Aviso vai sempre para o campo ativo. O campoId do corpo só vale para o
+    // master sem campo — antes qualquer usuário mandava aviso para outro campo.
+    const effectiveCampoId: string | undefined = user.campoId
+      || (user.profileType === "master" ? (body as Record<string, unknown>).campoId as string : undefined)
+      || undefined;
 
     const profile = user.profile as Record<string, unknown>;
     const batchId = crypto.randomUUID();

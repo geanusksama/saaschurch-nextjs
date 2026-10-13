@@ -535,7 +535,8 @@ export function ChatFAB() {
         }
       }
 
-      const targetCampoId = (isMasterSupportOrAdmin && selectedContact?.campoId)
+      // Mensagem fica no campo ativo; o do contato só vale para o master sem campo.
+      const targetCampoId = (isMasterSupportOrAdmin && !storedUser.campoId && selectedContact?.campoId)
         ? selectedContact.campoId
         : (activeFieldId || storedUser.campoId || '');
 
@@ -679,7 +680,7 @@ export function ChatFAB() {
       const mapsUrl = `https://www.google.com/maps?q=${gpsCoords.lat},${gpsCoords.lng}`;
       const bodyText = `📍 ${locationName}\n${mapsUrl}`;
 
-      const targetCampoId = (isMasterSupportOrAdmin && selectedContact?.campoId)
+      const targetCampoId = (isMasterSupportOrAdmin && !storedUser.campoId && selectedContact?.campoId)
         ? selectedContact.campoId
         : (activeFieldId || storedUser.campoId || '');
 
@@ -748,7 +749,7 @@ export function ChatFAB() {
 
           const { data: urlData } = supabase.storage.from('dados').getPublicUrl(path);
           
-          const targetCampoId = (isMasterSupportOrAdmin && selectedContact?.campoId)
+          const targetCampoId = (isMasterSupportOrAdmin && !storedUser.campoId && selectedContact?.campoId)
             ? selectedContact.campoId
             : (activeFieldId || storedUser.campoId || '');
 
@@ -1068,7 +1069,8 @@ export function ChatFAB() {
               )}
 
               {/* Multiselect dropdown for Master user to select campuses to listen to */}
-              {!selectedContact && isMasterSupportOrAdmin && campoVisible && (
+              {/* Filtro de campos só para o master sem campo: com campo ativo, o chat é do campo. */}
+              {!selectedContact && isMasterSupportOrAdmin && campoVisible && !storedUser.campoId && (
                 <div className="relative mt-2 px-1">
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                     Filtro de Campos (Ouvir Mensagens)

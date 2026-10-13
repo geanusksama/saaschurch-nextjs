@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
+import { CampoNavegavelError, podeAtribuirPerfil, salvarCamposNavegaveis } from "@/lib/camposNavegaveis";
 
 const CreateUserSchema = z.object({
   fullName: z.string().min(1, "fullName é obrigatório").max(255),
@@ -14,6 +15,12 @@ const CreateUserSchema = z.object({
   campoId: z.string().uuid("campoId deve ser UUID").optional().nullable(),
   roleId: z.string().uuid("roleId deve ser UUID").optional().nullable(),
   isAdmin: z.boolean().optional(),
+  // Campos além do próprio que o usuário pode navegar (só o master define).
+  camposNavegaveis: z.array(z.object({
+    campoId: z.string().uuid(),
+    churchId: z.string().uuid().optional().nullable(),
+    regionalId: z.string().uuid().optional().nullable(),
+  })).optional(),
 });
 
 function getManagedCampoId(user: import("@/lib/auth").AuthUser) {
@@ -58,6 +65,8 @@ function buildManagedUsersWhere(user: import("@/lib/auth").AuthUser, query: Reco
     if (user.profileType === "master" && search) {
       fieldClauses.push({ AND: [{ campoId: null }, { regionalId: null }, { churchId: null }] });
     }
+    // Quem foi liberado para navegar neste campo também aparece na lista dele.
+    fieldClauses.push({ camposNavegaveis: { some: { campoId: effectiveCampoId } } });
 
     andClauses.push({ OR: fieldClauses });
   }
@@ -127,12 +136,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { fullName, email, phone, profileType, churchId, regionalId, campoId, roleId, isAdmin } = parsed.data;
+    const { fullName, email, phone, profileType, churchId, regionalId, campoId, roleId, isAdmin, camposNavegaveis } = parsed.data;
+
+    // Ninguém cria perfil acima do próprio; master/admin e o flag de admin
+    // são só do master. Antes um perfil campo conseguia criar um master.
+    const perfil = profileType || "church";
+    if (!podeAtribuirPerfil(user, perfil)) {
+      return NextResponse.json({ error: "Seu perfil não pode criar usuário com este perfil." }, { status: 403 });
+    }
+    if (isAdmin && user.profileType !== "master") {
+      return NextResponse.json({ error: "Só o master marca administrador do sistema." }, { status: 403 });
+    }
+    if (camposNavegaveis?.length && user.profileType !== "master") {
+      return NextResponse.json({ error: "Só o master libera outros campos para um usuário." }, { status: 403 });
+    }
 
     const existing = await prisma.user.findFirst({ where: { email } });
     if (existing) return NextResponse.json({ error: "Email já cadastrado." }, { status: 409 });
 
-    const managedCampoId = getManagedCampoId(user);
+    // O master cadastra usuário de qualquer campo (criar a usuária de Aguaí
+    // estando em Campinas); admin e campo só no próprio.
+    const managedCampoId = user.profileType === "master" ? null : getManagedCampoId(user);
     let nextCampoId = managedCampoId || campoId || null;
     let nextRegionalId = regionalId || null;
     let nextChurchId = churchId || null;
@@ -163,7 +187,7 @@ export async function POST(req: NextRequest) {
       newUser = await prisma.user.create({
         data: {
           fullName, email, phone,
-          profileType: profileType || "church",
+          profileType: perfil,
           churchId: nextChurchId || undefined,
           regionalId: nextRegionalId || undefined,
           campoId: nextCampoId || undefined,
@@ -179,6 +203,16 @@ export async function POST(req: NextRequest) {
       }
       console.error("[POST /api/users] user.create failed");
       return NextResponse.json({ error: "Erro ao criar usuário." }, { status: 500 });
+    }
+    if (camposNavegaveis?.length) {
+      try {
+        await salvarCamposNavegaveis(newUser, camposNavegaveis);
+      } catch (err) {
+        if (err instanceof CampoNavegavelError) {
+          return NextResponse.json({ error: `Usuário criado, mas os campos liberados não foram salvos: ${err.message}` }, { status: 400 });
+        }
+        throw err;
+      }
     }
     return NextResponse.json(serializeBigInts(newUser), { status: 201 });
   });

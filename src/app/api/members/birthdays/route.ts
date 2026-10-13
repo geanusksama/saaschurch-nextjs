@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { campoAtivoId } from "@/lib/campoAtivo";
 import { serializeBigInts, isRestrictedToOwnChurch } from "@/lib/helpers";
 
 export async function GET(req: NextRequest) {
@@ -23,8 +24,10 @@ export async function GET(req: NextRequest) {
       churchWhere.regionalId = regionalId;
     } else if (campoId) {
       churchWhere.regional = { campoId };
-    } else if (user.campoId && user.profileType !== "master" && user.profileType !== "admin") {
-      churchWhere.regional = { campoId: user.campoId };
+    }
+    // Campo ativo sempre, master e admin inclusive (lib/campoAtivo.ts).
+    if (user.campoId || user.profileType !== "master") {
+      churchWhere.regional = { ...((churchWhere.regional as Record<string, unknown>) || {}), campoId: campoAtivoId(user) };
     }
     if (isRestrictedToOwnChurch(user)) {
       if (!user.churchId) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });

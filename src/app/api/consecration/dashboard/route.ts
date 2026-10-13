@@ -10,7 +10,8 @@ function buildScheduleScope(user: {
   churchId?: string;
 }): { clause: string; params: string[] } {
   const pt = user?.profileType;
-  if (pt === "master") return { clause: "", params: [] };
+  // Master fica no campo ativo como todo mundo; só sem campo ele vê tudo.
+  if (pt === "master" && !user?.campoId) return { clause: "", params: [] };
 
   // User bound to a campo directly
   if (user?.campoId) {

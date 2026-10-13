@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { AlertTriangle, ArrowUpDown, Building2, ChevronDown, Download, Eye, Mail, MapPin, Pencil, Phone, Plus, Trash2, User, UserRound, Users, Search, Loader2 } from 'lucide-react';
+import { AlertTriangle, ArrowUpDown, Building2, ChevronDown, Download, Mail, MoreVertical, MapPin, Pencil, Phone, Plus, Trash2, User, UserRound, Users, Search, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MemberEditDrawer } from './MemberEditDrawer';
@@ -1245,7 +1245,15 @@ export function Members() {
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.25fr)_repeat(7,minmax(145px,0.8fr))] xl:items-end">
+        {/* Botão Buscar na mesma linha dos filtros: coluna própria no fim
+            (7 filtros com o Campo visível, 6 sem ele). */}
+        <div
+          className={`grid gap-3 md:grid-cols-2 xl:items-end ${
+            campoVisible
+              ? 'xl:grid-cols-[minmax(200px,1.25fr)_repeat(7,minmax(120px,0.8fr))_auto]'
+              : 'xl:grid-cols-[minmax(200px,1.25fr)_repeat(6,minmax(130px,0.8fr))_auto]'
+          }`}
+        >
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
             <div className="relative">
@@ -1375,7 +1383,7 @@ export function Members() {
               type="button"
               onClick={handleSearchMembers}
               disabled={membersQuery.isFetching}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full xl:w-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Search className="h-4 w-4" />
               {membersQuery.isFetching ? 'Buscando...' : 'Buscar'}
@@ -1481,6 +1489,15 @@ export function Members() {
                   <tr key={member.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                     <td className="px-4 py-4 align-top">
                       <div className="flex items-center gap-3">
+                        {/* Atalho para o perfil, à frente do nome (antes era o olho nas ações). */}
+                        <Link
+                          to={`/app-ui/members/${member.id}`}
+                          className="-ml-2 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition-colors flex-shrink-0"
+                          title="Abrir perfil do membro"
+                          aria-label={`Abrir perfil de ${member.fullName}`}
+                        >
+                          <MoreVertical className="h-5 w-5" />
+                        </Link>
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-700 overflow-hidden flex-shrink-0">
                           {member.photoUrl ? (
                             <img src={member.photoUrl} alt={member.fullName} className="w-full h-full object-cover" />
@@ -1556,14 +1573,6 @@ export function Members() {
                         >
                           <Pencil className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                         </button>
-
-                        <Link
-                          to={`/app-ui/members/${member.id}`}
-                          className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                          title="Detalhes"
-                        >
-                          <Eye className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                        </Link>
 
                         <button
                           type="button"

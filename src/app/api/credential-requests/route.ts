@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     const churchId = searchParams.get("church_id");
 
     let allowedChurchIds: string[] = [];
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (!user.campoId) {
         return NextResponse.json([]);
       }
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query: any = supabaseAdmin.from("tbcredencial").select("*").order("created_at", { ascending: false });
 
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (isRestrictedToOwnChurch(user)) {
         if (!user.churchId || !allowedChurchIds.includes(user.churchId)) {
           return NextResponse.json([]);
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (churchId) {
-      if (user.profileType !== "master" && !allowedChurchIds.includes(churchId)) {
+      if ((user.profileType !== "master" || user.campoId) && !allowedChurchIds.includes(churchId)) {
         return NextResponse.json([]);
       }
       if (isRestrictedToOwnChurch(user) && user.churchId && churchId !== user.churchId) {

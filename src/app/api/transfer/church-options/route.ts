@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
     const regionalId = searchParams.get("regionalId");
     const excludeChurchId = searchParams.get("excludeChurchId");
     const limit = Math.min(Number(searchParams.get("limit") || "50"), 100);
-    const scopedCampoId = ["master", "admin"].includes(user.profileType) ? (campoId || user.campoId || "") : (user.campoId || campoId || "");
+    // Campo ativo para todo perfil (lib/campoAtivo.ts).
+    const scopedCampoId = user.campoId || (user.profileType === "master" ? campoId || "" : "00000000-0000-0000-0000-000000000000");
 
     const churches = await prisma.church.findMany({
       where: {

@@ -31,8 +31,9 @@ import {
 const ADMIN_PROFILES = ["master", "admin", "campo"];
 
 function campoDoUsuario(user: AuthUser, bodyCampoId?: unknown): string | null {
-  // Só o master pode editar a home de outro campo — os demais ficam no seu.
-  if (user.profileType === "master" && typeof bodyCampoId === "string" && bodyCampoId) {
+  // Todos editam a home do campo ativo; o campo do corpo só vale para o
+  // master sem campo (a tela não manda campoId).
+  if (user.profileType === "master" && !user.campoId && typeof bodyCampoId === "string" && bodyCampoId) {
     return bodyCampoId;
   }
   return user.campoId ?? null;

@@ -16,11 +16,13 @@ import { getCultoScope } from '@/lib/cultoScope';
 async function podeMexer(user: {
   profileType: string;
   id: string | null;
+  campoId: string | null;
 }): Promise<boolean> {
   if (user.profileType === 'master' || user.profileType === 'admin') return true;
   if (!user.id) return false;
   const presidente = await prisma.cultoPosicao.findFirst({
-    where: { userId: user.id, papel: 'PRESIDENTE', isActive: true, deletedAt: null },
+    // Presidente do campo ATIVO — o de outro campo não manda aqui.
+    where: { userId: user.id, papel: 'PRESIDENTE', isActive: true, deletedAt: null, campoId: user.campoId ?? '00000000-0000-0000-0000-000000000000' },
     select: { id: true },
   });
   return Boolean(presidente);

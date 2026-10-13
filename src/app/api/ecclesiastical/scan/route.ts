@@ -26,7 +26,8 @@ const CARD_INCLUDE = {
 };
 
 function assertScope(user: AuthUser, card: { churchId: string; church?: { regional?: { campoId?: string | null } | null } | null }) {
-  if (user.profileType === "master") return null;
+  // Master sem campo vê tudo; com campo, fica nele como todo mundo.
+  if (user.profileType === "master" && !user.campoId) return null;
   if (!user.campoId || card.church?.regional?.campoId !== user.campoId) {
     return "Sem acesso a registros de outro campo.";
   }

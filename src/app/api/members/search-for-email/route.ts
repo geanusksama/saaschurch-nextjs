@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (user.campoId) {
         where.campoId = user.campoId;
       } else if (user.churchId) {

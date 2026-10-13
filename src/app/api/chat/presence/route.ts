@@ -25,6 +25,8 @@ export async function GET(req: NextRequest) {
         // Regular users: see their own campus users OR any administrative users from any campus
         whereClause.OR = [
           { campoId: user.campoId || "00000000-0000-0000-0000-000000000000" },
+          // quem foi liberado para navegar neste campo também é do campo
+          { camposNavegaveis: { some: { campoId: user.campoId || "00000000-0000-0000-0000-000000000000" } } },
           { profileType: { in: ["master", "admin"] } },
           {
             role: {
@@ -36,6 +38,14 @@ export async function GET(req: NextRequest) {
               ]
             }
           }
+        ];
+      } else if (user.campoId) {
+        // Master/admin/suporte: só o campo ativo (e quem navega nele). O
+        // filtro "campos" do chat não abre outro campo — para isso, troca-se
+        // de campo (lib/campoAtivo.ts).
+        whereClause.OR = [
+          { campoId: user.campoId },
+          { camposNavegaveis: { some: { campoId: user.campoId } } },
         ];
       } else {
         const { searchParams } = new URL(req.url);
@@ -60,6 +70,7 @@ export async function GET(req: NextRequest) {
           lastActiveAt: true,
           profileType: true,
           campoId: true,
+          camposNavegaveis: { select: { campoId: true } },
           role: {
             select: {
               name: true,
@@ -104,7 +115,10 @@ export async function GET(req: NextRequest) {
         }
 
         // Non-administrative users are only visible within their own campus (unless the querier is admin/support/master themselves)
-        const isSameCampo = isMasterSupportOrAdmin || u.campoId === user.campoId;
+        const isSameCampo =
+          isMasterSupportOrAdmin ||
+          u.campoId === user.campoId ||
+          u.camposNavegaveis.some((c) => c.campoId === user.campoId);
         if (!isSameCampo) {
           return false;
         }

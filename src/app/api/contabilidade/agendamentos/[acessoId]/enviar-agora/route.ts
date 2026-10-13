@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
+import { acessoContabilNoCampoAtivo } from '@/lib/contabilidadeCampo'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
   calcularProximoEnvio,
@@ -16,6 +17,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ace
       return NextResponse.json({ error: 'Acesso restrito à função de Tesouraria.' }, { status: 403 })
     }
     const { acessoId } = await params
+    if (!(await acessoContabilNoCampoAtivo(user, acessoId))) {
+      return NextResponse.json({ error: 'Contador não encontrado neste campo.' }, { status: 404 })
+    }
 
     const { data: acesso } = await supabaseAdmin
       .from('contabilidade_acessos')

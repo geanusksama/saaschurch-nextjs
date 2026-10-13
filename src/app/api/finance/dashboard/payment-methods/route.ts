@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { escopoDoDashboard } from "@/lib/financeDashboardScope";
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
@@ -17,20 +18,12 @@ export async function POST(req: NextRequest) {
     let p = 1;
     let needsJoin = false;
 
-    if (user?.churchId && user?.profileType === "church") {
-      conditions.push(`lc.church_id = $${p}::uuid`);
-      params.push(user.churchId);
-      p++;
-    } else if (reqChurchId) {
-      conditions.push(`lc.church_id = $${p}::uuid`);
-      params.push(reqChurchId);
-      p++;
-    } else if (user?.campoId) {
-      conditions.push(`r.campo_id = $${p}::uuid`);
-      params.push(user.campoId);
-      p++;
-      needsJoin = true;
-    }
+    // Campo ativo sempre (master inclusive); a igreja pedida só estreita.
+    const escopo = escopoDoDashboard(user, reqChurchId, p);
+    conditions.push(...escopo.conditions);
+    params.push(...escopo.params);
+    p = escopo.p;
+    needsJoin = true;
 
     const where = conditions.join(" AND ");
 

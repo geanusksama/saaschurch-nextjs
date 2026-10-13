@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const dateFrom = sp.get('dateFrom')
     const dateTo = sp.get('dateTo')
 
-    if (!churchId && user.profileType !== 'master') {
+    if (!churchId && (user.profileType !== 'master' || user.campoId)) {
       return NextResponse.json({ error: 'Igreja não identificada' }, { status: 400 })
     }
 

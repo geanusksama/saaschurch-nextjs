@@ -61,6 +61,7 @@ model Campo {
   departamentos        Departamento[]
   cultoPosicoes        CultoPosicao[]             @relation("CampoCultoPosicoes")
   cultoRegistros       CultoRegistro[]            @relation("CampoCultoRegistros")
+  usuariosNavegaveis   UserCampo[]
 
 
   /// App v3 (appv3/app)
@@ -104,6 +105,7 @@ model Regional {
   coordinator         User?     @relation("RegionalCoordinator", fields: [coordinatorId], references: [id])
   churches            Church[]
   users               User[]    @relation("RegionalUsers")
+  usuariosNavegaveis  UserCampo[]
   members             Member[]
   kanCardsOrigin      KanCard[] @relation("KanCardOriginRegional")
   kanCardsDestination KanCard[] @relation("KanCardDestinationRegional")
@@ -196,6 +198,7 @@ model Church {
   headquarters   LegacyChurchHeadquarters? @relation("ChurchHeadquarters", fields: [headquartersId], references: [id])
 
   users                  User[]                  @relation("ChurchUsers")
+  usuariosNavegaveis     UserCampo[]
   roles                  Role[]
   members                Member[]
   contacts               ChurchContact[]
@@ -500,7 +503,38 @@ model User {
   cultoLancamentos      CultoLancamento[] @relation("UserCultoLancamentos")
   cultoAprovacoes       CultoAprovacao[]  @relation("UserCultoAprovacoes")
 
+  /// Campos que o usuario pode navegar pelo seletor de campo (ver UserCampo)
+  camposNavegaveis UserCampo[]
+
   @@map("users")
+}
+
+/// Campos que um usuario pode navegar pelo seletor "Alternar Campo".
+///
+/// Quem define e o master, na tela do usuario. Uma linha por campo, com a
+/// lotacao (igreja/regional) que o usuario assume quando entra nele: perfil
+/// igreja, secretaria e tesouraria ficam presos a propria igreja, entao sem a
+/// igreja daquele campo eles nao enxergariam nada depois da troca.
+///
+/// A troca grava users.campo_id/church_id/regional_id a partir desta linha, e
+/// todo o resto do sistema continua lendo o usuario como sempre.
+model UserCampo {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  campoId    String   @map("campo_id") @db.Uuid
+  churchId   String?  @map("church_id") @db.Uuid
+  regionalId String?  @map("regional_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campo    Campo     @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  church   Church?   @relation(fields: [churchId], references: [id], onDelete: SetNull)
+  regional Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, campoId])
+  @@index([campoId])
+  @@map("user_campos")
 }
 
 model Role {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess } from "@/lib/helpers";
+import { igrejaNoCampoAtivo, regionalNoCampoAtivo } from "@/lib/campoAtivo";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,7 +10,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const church = await prisma.church.findFirst({
       where: { id, deletedAt: null },
       include: {
-        regional: { include: { campo: true } },
+        // Sem o hash da senha do campo: esta rota GET é pública.
+        regional: { include: { campo: { omit: { accessPasswordHash: true } } } },
         headquarters: true,
       },
     });
@@ -26,6 +28,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
     const { id } = await params;
+    // Igreja de outro campo não se altera nem exclui (master inclusive).
+    if (!(await igrejaNoCampoAtivo(user, id))) {
+      return NextResponse.json({ error: "Igreja de outro campo." }, { status: 403 });
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let body: any;
@@ -48,6 +54,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const nextHostChurchId = host === true ? null : toIdOrNull(hostChurchId);
     if (nextHostChurchId && nextHostChurchId === id) {
       return NextResponse.json({ error: "Uma igreja não pode ser hospedeira dela mesma." }, { status: 400 });
+    }
+    // Não leva a igreja (nem a hospedeira dela) para outro campo.
+    if (rest.regionalId && !(await regionalNoCampoAtivo(user, String(rest.regionalId)))) {
+      return NextResponse.json({ error: "Regional de outro campo." }, { status: 403 });
+    }
+    if (nextHostChurchId && !(await igrejaNoCampoAtivo(user, nextHostChurchId))) {
+      return NextResponse.json({ error: "Hospedeira de outro campo." }, { status: 403 });
     }
 
     try {
@@ -86,6 +99,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
     const { id } = await params;
+    // Igreja de outro campo não se altera nem exclui (master inclusive).
+    if (!(await igrejaNoCampoAtivo(user, id))) {
+      return NextResponse.json({ error: "Igreja de outro campo." }, { status: 403 });
+    }
     await prisma.church.update({ where: { id }, data: { deletedAt: new Date() } });
     return new NextResponse(null, { status: 204 });
   });

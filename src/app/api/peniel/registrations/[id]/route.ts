@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     // Verify tenant authorization
-    if (user.profileType !== "master" && registration.event.campoId !== user.campoId) {
+    if ((user.profileType !== "master" || user.campoId) && registration.event.campoId !== user.campoId) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
 
@@ -88,7 +88,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Inscrição não encontrada." }, { status: 404 });
     }
 
-    if (user.profileType !== "master" && registration.event.campoId !== user.campoId) {
+    if ((user.profileType !== "master" || user.campoId) && registration.event.campoId !== user.campoId) {
       return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
     }
 

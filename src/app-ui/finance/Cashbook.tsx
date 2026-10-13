@@ -181,7 +181,8 @@ function RibbonGroup({
   return (
     <div className={`flex flex-col items-center min-w-fit ${className}`.trim()}>
       <div className={`flex w-full items-end gap-1 px-1 ${bodyClassName}`.trim()}>{children}</div>
-      <div className="text-[9px] uppercase tracking-[0.18em] text-slate-600 whitespace-nowrap leading-tight">{label}</div>
+      {/* Respiro entre os botões e o nome do grupo: colado, ficava apertado. */}
+      <div className="mt-1.5 text-[9px] uppercase tracking-[0.18em] text-slate-600 whitespace-nowrap leading-tight">{label}</div>
     </div>
   );
 }

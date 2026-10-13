@@ -86,7 +86,8 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // Use active user's campoId (or override if master)
-    const targetCampoId = user.profileType === "master" && body.campoId ? body.campoId : user.campoId;
+    // Campo ativo; o do corpo só vale para o master sem campo.
+    const targetCampoId = user.campoId || (user.profileType === "master" ? body.campoId : null);
 
     if (!targetCampoId) {
       return NextResponse.json({ error: "O campoId é obrigatório." }, { status: 400 });

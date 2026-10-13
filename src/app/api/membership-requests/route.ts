@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
         .order("created_at", { ascending: false });
 
       // Enforce field filter
-      if (user.profileType !== "master" && user.campoId) {
+      if ((user.profileType !== "master" || user.campoId) && user.campoId) {
         // Since new_member_requests is related to churches, we can query only for churches in the campo.
         // But for simplicity, we query by church_id of the user if they belong to a church.
         // Let's filter by church_id if they are a secretary, or if they are regional/campo, filter accordingly.

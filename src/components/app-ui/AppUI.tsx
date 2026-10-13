@@ -620,6 +620,10 @@ export function AppUI() {
   // Campo é invisível na interface por padrão (inclusive para o master). Só
   // aparece depois do destravamento com senha, feito em Configurações.
   const campoVisible = useCampoVisible();
+  // Quem o master liberou em mais de um campo (user_campos) vê o seletor de
+  // campo sem destravar nada; o master continua precisando destravar.
+  const [canSwitchField, setCanSwitchField] = useState(false);
+  const switcherVisible = campoVisible || canSwitchField;
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [churchSwitcherOpen, setChurchSwitcherOpen] = useState(false);
@@ -890,6 +894,39 @@ export function AppUI() {
         }
 
         const data = await response.json();
+        setCanSwitchField(Boolean(data.canSwitchField));
+
+        // O navegador acompanha o servidor. Se o mrm_user guardado aponta para
+        // outro campo, igreja ou regional, corrige, limpa os filtros guardados
+        // e recarrega uma vez — depois disso os dois batem e não recarrega mais.
+        if ('activeFieldId' in data) {
+          try {
+            const local = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+            const diferente =
+              (local.campoId || null) !== (data.activeFieldId || null) ||
+              (local.churchId || null) !== (data.activeChurchId || null) ||
+              (local.regionalId || null) !== (data.activeRegionalId || null);
+            if (diferente) {
+              const campoNome = (data.fields || []).find((f: { id: string; name: string }) => f.id === data.activeFieldId)?.name;
+              localStorage.setItem('mrm_user', JSON.stringify({
+                ...local,
+                campoId: data.activeFieldId || null,
+                campoName: campoNome ?? local.campoName ?? null,
+                churchId: data.activeChurchId || null,
+                churchName: data.activeChurchName || null,
+                regionalId: data.activeRegionalId || null,
+                regionalName: data.activeRegionalName || null,
+              }));
+              for (const key of Object.keys(localStorage)) {
+                if (key.startsWith('secretaria-') && key.endsWith('-filters')) localStorage.removeItem(key);
+              }
+              localStorage.removeItem('mrm_permissions');
+              await del('secretaria-cache').catch(() => undefined);
+              window.location.reload();
+              return;
+            }
+          } catch { /* mrm_user ilegível: segue com o que tem */ }
+        }
         const nextItems: ContextSwitcherItem[] = [
           ...(data.fields || []).map((field) => ({
             id: field.id,
@@ -916,6 +953,16 @@ export function AppUI() {
 
         if (nextItems.length) {
           setSelectedContext((current) => {
+            // O servidor manda: é o campo dele que filtra os dados.
+            const serverField = data.activeFieldId
+              ? nextItems.find((item) => item.level === 'field' && item.id === data.activeFieldId)
+              : null;
+            if (serverField) {
+              localStorage.setItem('mrm_selected_context', JSON.stringify(serverField));
+              localStorage.setItem('mrm_active_field_id', serverField.id);
+              localStorage.setItem('mrm_active_field_name', serverField.name);
+              return serverField;
+            }
             const matchedItem = nextItems.find((item) => item.id === current.id && item.level === current.level);
             const explicitField = nextItems.find((item) => item.level === 'field' && item.id === explicitActiveFieldId)
               || (explicitActiveFieldName
@@ -984,63 +1031,12 @@ export function AppUI() {
     loadNotificationCount();
   }, []);
 
-  const applyContextSelection = async (item: ContextSwitcherItem) => {
-    setSelectedContext(item);
-    localStorage.setItem('mrm_selected_context', JSON.stringify(item));
-    localStorage.setItem('mrm_active_field_id', item.id);
-    localStorage.setItem('mrm_active_field_name', item.name);
-
-    // Troca de campo: o backend ja gravou o novo campo no usuario, entao o que
-    // esta guardado no navegador precisa acompanhar. Sem isto a tela continua
-    // montando requisicao com o campo antigo e mostrando dados de outro campo.
-    if (item.level === 'field') {
-      try {
-        const user = JSON.parse(localStorage.getItem('mrm_user') || '{}');
-        if (user.campoId !== item.id) {
-          user.campoId = item.id;
-          user.campoName = item.name;
-          // Master: so o campo muda. A igreja de lotacao dele nao limita o que
-          // ele ve (o escopo vem do campo escolhido), entao ele continua na
-          // igreja dele — o backend faz o mesmo em verify-field.
-          if (user.profileType !== 'master') {
-            // Demais perfis: igreja/regional do campo anterior deixam de valer
-            // (o backend zera quando nao pertencem ao campo novo)
-            user.churchId = null;
-            user.churchName = null;
-            user.regionalId = null;
-            user.regionalName = null;
-          }
-          localStorage.setItem('mrm_user', JSON.stringify(user));
-        }
-      } catch { /* noop */ }
-
-      // Caches com dados do campo anterior
-      localStorage.removeItem('mrm_permissions');
-      await del('secretaria-cache').catch(() => undefined);
-    }
-
-    setFieldPassword('');
-    setFieldPasswordPrompt(null);
-    setChurchSwitcherOpen(false);
-    window.location.reload();
-  };
-
-  const handleContextSelection = (item: ContextSwitcherItem) => {
-    if (item.level === 'field' && item.requiresPassword) {
-      setFieldPassword('');
-      setSwitcherError('');
-      setFieldPasswordPrompt(item);
-      return;
-    }
-
-    void applyContextSelection(item);
-  };
-
-  const handleFieldPasswordSubmit = async () => {
-    if (!fieldPasswordPrompt) {
-      return;
-    }
-
+  /**
+   * Troca de campo. Toda troca passa pelo servidor (context-switcher/verify-field):
+   * é ele que grava o novo campo e a lotação nele, e daí em diante rotas e RLS
+   * só enxergam o campo novo. Antes, campo sem senha trocava só no navegador.
+   */
+  const switchField = async (item: ContextSwitcherItem, password: string) => {
     try {
       setSwitchingContext(true);
       setSwitcherError('');
@@ -1051,20 +1047,76 @@ export function AppUI() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ fieldId: fieldPasswordPrompt.id, password: fieldPassword }),
+        body: JSON.stringify({ fieldId: item.id, password }),
       });
-
+      const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Senha do campo inválida.');
+        throw new Error(payload.error || 'Não foi possível trocar de campo.');
       }
-
-      await applyContextSelection(fieldPasswordPrompt);
+      await applyContextSelection(item, payload);
     } catch (error) {
-      setSwitcherError(getRequestErrorMessage(error, 'Falha ao validar senha do campo.'));
+      setSwitcherError(getRequestErrorMessage(error, 'Falha ao trocar de campo.'));
     } finally {
       setSwitchingContext(false);
     }
+  };
+
+  const applyContextSelection = async (
+    item: ContextSwitcherItem,
+    lotacao: { churchId?: string | null; churchName?: string | null; regionalId?: string | null; regionalName?: string | null },
+  ) => {
+    setSelectedContext(item);
+    localStorage.setItem('mrm_selected_context', JSON.stringify(item));
+    localStorage.setItem('mrm_active_field_id', item.id);
+    localStorage.setItem('mrm_active_field_name', item.name);
+
+    // O navegador acompanha o que o servidor gravou: campo novo e a igreja/
+    // regional da pessoa NESSE campo. Sem isto as telas abriam com a igreja do
+    // campo anterior pré-selecionada e mostravam dados dele.
+    try {
+      const user = JSON.parse(localStorage.getItem('mrm_user') || '{}');
+      user.campoId = item.id;
+      user.campoName = item.name;
+      user.churchId = lotacao.churchId ?? null;
+      user.churchName = lotacao.churchName ?? null;
+      user.regionalId = lotacao.regionalId ?? null;
+      user.regionalName = lotacao.regionalName ?? null;
+      localStorage.setItem('mrm_user', JSON.stringify(user));
+    } catch { /* noop */ }
+
+    // Caches e filtros guardados com dados do campo anterior.
+    localStorage.removeItem('mrm_permissions');
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('secretaria-') && key.endsWith('-filters')) localStorage.removeItem(key);
+    }
+    await del('secretaria-cache').catch(() => undefined);
+
+    setFieldPassword('');
+    setFieldPasswordPrompt(null);
+    setChurchSwitcherOpen(false);
+    window.location.reload();
+  };
+
+  const handleContextSelection = (item: ContextSwitcherItem) => {
+    if (item.level !== 'field' || item.id === activeFieldContext.id) {
+      setChurchSwitcherOpen(false);
+      return;
+    }
+    if (item.requiresPassword) {
+      setFieldPassword('');
+      setSwitcherError('');
+      setFieldPasswordPrompt(item);
+      return;
+    }
+
+    void switchField(item, '');
+  };
+
+  const handleFieldPasswordSubmit = async () => {
+    if (!fieldPasswordPrompt) {
+      return;
+    }
+    await switchField(fieldPasswordPrompt, fieldPassword);
   };
 
   const handleLogout = async () => {
@@ -1444,7 +1496,7 @@ export function AppUI() {
             </div>
 
             {/* Church Switcher — só existe com a visão de campo destravada */}
-            {campoVisible && <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+            {switcherVisible && <div className="p-4 border-b border-slate-200 dark:border-slate-700">
               <button
                 onClick={() => setChurchSwitcherOpen(!churchSwitcherOpen)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors"
@@ -1611,7 +1663,7 @@ export function AppUI() {
 
       {/* Church Switcher Modal */}
       <AnimatePresence>
-        {churchSwitcherOpen && campoVisible && (
+        {churchSwitcherOpen && switcherVisible && (
           <>
             <motion.div
               initial={{ opacity: 0 }}

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const dataInicial = searchParams.get("data_inicial");
     let campoId = searchParams.get("campo_id") || user.campoId;
 
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (!user.campoId) {
         return NextResponse.json([]);
       }
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Validate churchId scope against allowed campo
-    if (churchId && user.profileType !== "master" && campoId) {
+    if (churchId && (user.profileType !== "master" || user.campoId) && campoId) {
       const church = await prisma.church.findFirst({
         where: {
           id: churchId,
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     let targetCampoId = campoId || user.campoId;
 
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (!user.campoId) {
         return NextResponse.json({ error: "Contexto de campo não identificado." }, { status: 400 });
       }
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
         where: { 
           id: churchId, 
           deletedAt: null,
-          ...(user.profileType !== "master" && targetCampoId ? { regional: { campoId: targetCampoId } } : {})
+          ...((user.profileType !== "master" || user.campoId) && targetCampoId ? { regional: { campoId: targetCampoId } } : {})
         },
         include: { regional: true }
       });

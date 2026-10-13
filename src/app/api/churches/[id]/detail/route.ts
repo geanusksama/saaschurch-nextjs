@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const church = await prisma.church.findFirst({
       where: { id, deletedAt: null },
       include: {
-        regional: { include: { campo: true } },
+        regional: { include: { campo: { omit: { accessPasswordHash: true } } } },
         parentChurch: { select: { id: true, name: true, code: true } },
         hostChurch: { select: { id: true, name: true, code: true, zone: true } },
         _count: { select: { hostedChurches: true } },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { itemDaSedeNoCampoAtivo } from "@/lib/campoAtivo";
 import { serializeBigInts } from "@/lib/helpers";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ accessId: string }> }) {
@@ -9,6 +10,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ac
       return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
     }
     const { accessId } = await params;
+    if (!(await itemDaSedeNoCampoAtivo(user, "acesso", accessId))) {
+      return NextResponse.json({ error: "Item de outro campo." }, { status: 403 });
+    }
     const body = await req.json().catch(() => ({}));
     const { type, description, mapUrl, icon, order } = body;
     const data: Record<string, unknown> = {};
@@ -28,6 +32,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ a
       return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
     }
     const { accessId } = await params;
+    if (!(await itemDaSedeNoCampoAtivo(user, "acesso", accessId))) {
+      return NextResponse.json({ error: "Item de outro campo." }, { status: 403 });
+    }
     await prisma.churchAccessInfo.delete({ where: { id: accessId } });
     return new NextResponse(null, { status: 204 });
   });

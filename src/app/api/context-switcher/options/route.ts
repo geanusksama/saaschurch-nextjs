@@ -31,28 +31,27 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const churchWhere: any = { deletedAt: null };
 
-    // master e admin sao os unicos que podem trocar de campo (a senha do campo
-    // e verificada em verify-field), entao sao os unicos que enxergam a lista
-    // completa de campos. Regional e igreja continuam presas ao campo atual —
-    // ao trocar de campo, o proprio campoId do usuario muda e a lista segue.
-    const canSwitchField = user.profileType === "master" || user.profileType === "admin";
+    // Quem troca de campo: o master (qualquer campo, com senha) e quem o
+    // master liberou em user_campos (só aqueles campos, sem senha). Regionais
+    // e igrejas ficam sempre no campo ATIVO, para todo perfil — inclusive o
+    // master (ver lib/campoAtivo.ts).
+    const camposLiberados = user.profileType === "master" || !user.id
+      ? []
+      : (await prisma.userCampo.findMany({ where: { userId: user.id }, select: { campoId: true } })).map((l) => l.campoId);
 
-    if (user.profileType === "master") {
-      // sees everything
-    } else {
-      // For all non-master profiles (admin, campo, church, etc.), restrict strictly to their campoId.
-      if (user.campoId) {
-        fieldWhere.id = user.campoId;
-        regionalWhere.campoId = user.campoId;
-        churchWhere.regional = { campoId: user.campoId };
-      } else {
-        // If they don't even have a campoId, restrict to nothing
-        fieldWhere.id = "00000000-0000-0000-0000-000000000000";
-        regionalWhere.campoId = "00000000-0000-0000-0000-000000000000";
-        churchWhere.id = "00000000-0000-0000-0000-000000000000";
-      }
+    if (user.campoId) {
+      regionalWhere.campoId = user.campoId;
+      churchWhere.regional = { campoId: user.campoId };
+    } else if (user.profileType !== "master") {
+      regionalWhere.campoId = "00000000-0000-0000-0000-000000000000";
+      churchWhere.id = "00000000-0000-0000-0000-000000000000";
+    }
 
-      // If restricted to a specific church, apply further restrictions
+    if (user.profileType !== "master") {
+      const permitidos = Array.from(new Set([user.campoId, ...camposLiberados].filter(Boolean))) as string[];
+      fieldWhere.id = { in: permitidos.length ? permitidos : ["00000000-0000-0000-0000-000000000000"] };
+
+      // Perfil preso à própria igreja: só a igreja e a regional dela.
       if (isRestrictedToOwnChurch(user)) {
         if (user.churchId) {
           const scopedChurch = await prisma.church.findFirst({
@@ -60,26 +59,17 @@ export async function GET(req: NextRequest) {
             include: { regional: { select: { id: true, campoId: true } } },
           });
           if (scopedChurch && scopedChurch.regional) {
-            fieldWhere.id = scopedChurch.regional.campoId;
             regionalWhere.id = scopedChurch.regional.id;
             churchWhere.id = user.churchId;
           } else {
-            // Church or regional not found/deleted
             regionalWhere.id = "00000000-0000-0000-0000-000000000000";
             churchWhere.id = "00000000-0000-0000-0000-000000000000";
           }
         } else {
-          // Restricted to own church but has no churchId assigned (e.g. Gabriel)
-          // They should see only their own campo, and see no regionals or churches
           regionalWhere.id = "00000000-0000-0000-0000-000000000000";
           churchWhere.id = "00000000-0000-0000-0000-000000000000";
         }
       }
-
-      // Ultimo passo de proposito: o admin pode trocar de campo, entao precisa
-      // enxergar a lista completa de campos mesmo depois das restricoes acima.
-      // Regionais e igrejas seguem presas ao campo atual.
-      if (canSwitchField) delete fieldWhere.id;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -113,12 +103,28 @@ export async function GET(req: NextRequest) {
     const campoPasswordHashMap = await getCampoPasswordHashMap(fields.map((f) => f.id));
 
     return NextResponse.json({
+      // Seletor de campo visível para quem foi liberado em mais de um campo.
+      // O master segue a regra antiga (só depois de destravar em Configurações).
+      canSwitchField: user.profileType !== "master" && fields.length > 1,
+      // Campo ativo de verdade (users.campo_id). A tela usa este, não o que
+      // ficou guardado no navegador.
+      activeFieldId: user.campoId,
+      // Lotação de verdade no campo ativo. O navegador guarda uma cópia em
+      // mrm_user; se ela ficou para trás (troca de campo feita em outro
+      // aparelho, ou antes desta versão), as telas abrem com igreja de outro
+      // campo pré-selecionada e o servidor recusa o filtro.
+      activeChurchId: user.churchId,
+      activeChurchName: user.churchName,
+      activeRegionalId: user.regionalId,
+      activeRegionalName: user.regionalName,
       fields: fields.map((field) => ({
         id: field.id,
         name: field.name,
         code: field.code,
         level: "field",
-        requiresPassword: Boolean(campoPasswordHashMap.get(field.id)),
+        // Só o master digita senha; para quem foi liberado em user_campos a
+        // liberação já é a autorização.
+        requiresPassword: user.profileType === "master" && Boolean(campoPasswordHashMap.get(field.id)),
       })),
       regionals: regionals.map((regional) => ({
         id: regional.id,

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
+import { CamposNavegaveis, type CampoNavegavelForm } from './CamposNavegaveis';
 
 type CampoOption = {
   id: string;
@@ -73,6 +74,8 @@ export default function UserEdit() {
   const token = localStorage.getItem('mrm_token');
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; } })();
   const isMaster = currentUser.profileType === 'master';
+  // Outros campos que este usuário pode navegar (só o master vê e grava).
+  const [camposNavegaveis, setCamposNavegaveis] = useState<CampoNavegavelForm[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -117,6 +120,10 @@ export default function UserEdit() {
           isAdmin: data.isAdmin ?? false,
           isActive: data.isActive ?? true,
         });
+        setCamposNavegaveis(
+          (Array.isArray(data.camposNavegaveis) ? data.camposNavegaveis : [])
+            .map((c: { campoId: string; churchId?: string | null }) => ({ campoId: c.campoId, churchId: c.churchId ?? null })),
+        );
       } catch (err: any) {
         setError(err.message || 'Falha ao carregar usuário.');
       } finally {
@@ -128,6 +135,30 @@ export default function UserEdit() {
 
   const set = (field: string, value: any) =>
     setForm((prev) => ({ ...prev, [field]: value }));
+
+  // Usuário de outro campo: regionais e igrejas vêm do campo dele, não do
+  // campo em que o master está (mesma regra do cadastro).
+  useEffect(() => {
+    if (!isMaster || !form.campoId) return;
+    let cancelado = false;
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    const campo = encodeURIComponent(form.campoId);
+    Promise.all([
+      fetch(`${apiBase}/regionais?campoId=${campo}`, { headers }).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${apiBase}/churches?fieldId=${campo}`, { headers }).then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([regionaisData, churchesData]) => {
+        if (cancelado) return;
+        if (Array.isArray(regionaisData)) setRegionais(regionaisData);
+        if (Array.isArray(churchesData)) setChurches(churchesData);
+      })
+      .catch(() => {
+        /* mantém as listas que já estavam */
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [isMaster, form.campoId, token]);
 
   const filteredRegionais = useMemo(() => {
     if (!form.campoId) return regionais;
@@ -218,6 +249,7 @@ export default function UserEdit() {
           isActive: form.isActive,
           // only master may change profile type, role and admin flag
           ...(isMaster ? {
+            camposNavegaveis: camposNavegaveis.filter((c) => c.campoId !== form.campoId),
             profileType: form.profileType,
             roleId: form.roleId || null,
             isAdmin: form.isAdmin,
@@ -442,6 +474,15 @@ export default function UserEdit() {
                 O perfil do usuario pode ficar vinculado ao campo, a regional e a igreja para refletir corretamente a hierarquia de acesso.
               </p>
             </div>
+
+            {isMaster && (
+              <CamposNavegaveis
+                campos={campos}
+                campoPrincipalId={form.campoId}
+                value={camposNavegaveis.filter((c) => c.campoId !== form.campoId)}
+                onChange={setCamposNavegaveis}
+              />
+            )}
 
             {/* Status */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">

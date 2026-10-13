@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { assertChurchAccess } from "@/lib/helpers";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
-    const canSeeAll = user.profileType === "master" || user.profileType === "admin" || user.profileType === "campo";
+    // Antes o PATCH não conferia nada: qualquer usuário logado editava a
+    // credencial de qualquer igreja. Agora: igreja do campo ativo, e perfil
+    // igreja/secretaria/tesouraria só na própria (assertChurchAccess).
+    const { data: existing } = await supabaseAdmin.from("tbcredencial").select("church_id").eq("id", id).single();
+    if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
+    if (!(await assertChurchAccess(user, existing.church_id, prisma))) {
+      return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
+    }
     const body = await req.json().catch(() => ({}));
     const { situacao, obs, datavalidade, dataemissao, nome, numero } = body;
     const data: Record<string, unknown> = {};
@@ -26,10 +34,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
-    const canSeeAll = user.profileType === "master" || user.profileType === "admin" || user.profileType === "campo";
     const { data: existing } = await supabaseAdmin.from("tbcredencial").select("*").eq("id", id).single();
     if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
-    if (!canSeeAll && user.churchId && existing.church_id !== user.churchId) {
+    if (!(await assertChurchAccess(user, existing.church_id, prisma))) {
       return NextResponse.json({ error: "Sem acesso." }, { status: 403 });
     }
     const { error } = await supabaseAdmin.from("tbcredencial").delete().eq("id", id);

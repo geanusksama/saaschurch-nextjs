@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { podeGerenciarUsuario } from "@/lib/camposNavegaveis";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
 
@@ -51,10 +52,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
     const { permissions } = body;
-    const existing = await prisma.user.findFirst({ where: { id, deletedAt: null }, select: { id: true, campoId: true } });
+    const existing = await prisma.user.findFirst({ where: { id, deletedAt: null }, select: { id: true, campoId: true, profileType: true } });
     if (!existing) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
     const ok = await assertUserManagementAccess(user, existing);
     if (!ok) return NextResponse.json({ error: "Sem acesso a usuários de outro campo." }, { status: 403 });
+    // Ninguém amplia as próprias permissões, e só o master mexe nas de um master.
+    if (!podeGerenciarUsuario(user, existing) || (existing.id === user.id && user.profileType !== "master")) {
+      return NextResponse.json({ error: "Seu perfil não pode alterar as permissões deste usuário." }, { status: 403 });
+    }
     const updated = await prisma.user.update({
       where: { id },
       data: { permissions },

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:33:38.066Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.704Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 500e39c338ad501d
+-- Baseline d23a12c3d91c0f1a
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -4867,6 +4867,16 @@ create table if not exists "public"."unknown_faces" (
   "reviewed_at" timestamp with time zone,
   "identified_member_id" uuid,
   "created_at" timestamp with time zone default '2026-06-16 01:24:59.472137+00'::timestamp with time zone not null
+);
+
+create table if not exists "public"."user_campos" (
+  "id" uuid default gen_random_uuid() not null,
+  "user_id" uuid not null,
+  "campo_id" uuid not null,
+  "church_id" uuid,
+  "regional_id" uuid,
+  "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
 );
 
 create table if not exists "public"."user_notes" (

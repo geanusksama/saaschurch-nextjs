@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { podeGerenciarUsuario } from "@/lib/camposNavegaveis";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
@@ -19,9 +20,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const targetUser = await prisma.user.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true, email: true, campoId: true },
+      select: { id: true, email: true, campoId: true, profileType: true },
     });
     if (!targetUser) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
+    if (!podeGerenciarUsuario(user, targetUser)) {
+      return NextResponse.json({ error: "Seu perfil não pode trocar a senha deste usuário." }, { status: 403 });
+    }
 
     // Admin/campo can only reset users within their own campo
     if (["admin", "campo"].includes(user.profileType) && user.campoId && targetUser.campoId !== user.campoId) {

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:33:38.075Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.720Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 500e39c338ad501d
+-- Baseline d23a12c3d91c0f1a
 
 -- Carimbo da versao do baseline aplicada neste banco.
 -- Usado pelo painel para detectar instancias desatualizadas.
@@ -11,7 +11,7 @@ create table if not exists public._painelchurch_baseline (
   applied_at timestamptz not null default now()
 );
 insert into public._painelchurch_baseline (id, version, generated_at, applied_at)
-values (true, '500e39c338ad501d', '2026-09-24T17:33:38.050Z', now())
+values (true, 'd23a12c3d91c0f1a', '2026-10-13T11:23:50.690Z', now())
 on conflict (id) do update set version = excluded.version,
   generated_at = excluded.generated_at, applied_at = now();
 grant select on public._painelchurch_baseline to anon, authenticated, service_role;

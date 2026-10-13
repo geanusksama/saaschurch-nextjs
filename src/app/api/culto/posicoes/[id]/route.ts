@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!posicao || posicao.deletedAt) {
       return NextResponse.json({ error: 'Posição não encontrada.' }, { status: 404 });
     }
-    if (posicao.campoId !== user.campoId && user.profileType !== 'master') {
+    if (posicao.campoId !== user.campoId && (user.profileType !== 'master' || user.campoId)) {
       return NextResponse.json({ error: 'Sem acesso a esta posição.' }, { status: 403 });
     }
 
@@ -43,7 +43,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!posicao || posicao.deletedAt) {
       return NextResponse.json({ error: 'Posição não encontrada.' }, { status: 404 });
     }
-    if (posicao.campoId !== user.campoId && user.profileType !== 'master') {
+    if (posicao.campoId !== user.campoId && (user.profileType !== 'master' || user.campoId)) {
       return NextResponse.json({ error: 'Sem acesso a esta posição.' }, { status: 403 });
     }
 

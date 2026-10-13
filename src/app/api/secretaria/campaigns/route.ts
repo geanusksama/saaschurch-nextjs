@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     if (q) query = query.ilike('name', `%${q}%`)
 
     // Não-master enxerga o que é dele OU o que está numa igreja do seu escopo.
-    if (user.profileType !== 'master') {
+    if (user.profileType !== 'master' || user.campoId) {
       try {
         const churches = await resolveVisibleChurches(user)
         const ids = churches.map(c => c.id)

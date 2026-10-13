@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useDebounce } from '../../lib/secretariaHooks';
+import { AvisoDefinaFiltros, BotaoBuscar, type FiltrosConsulta } from './BotaoBuscar';
 import { qk } from '../../lib/queryClient';
 import { ArrowRightLeft, ArrowUpDown, Building2, Download, Pencil, Plus, Printer, Search, Trash2, UserRound, X } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
@@ -228,19 +228,34 @@ export function Transfer() {
   // ── TanStack Query para o dashboard de transferências ──────────────────
   const [dateFrom, setDateFrom] = useState(defaultDateRange.start);
   const [dateTo, setDateTo] = useState(defaultDateRange.end);
+  // A tela abre vazia: a tabela só mostra resultado depois do clique em
+  // Buscar, com os filtros daquele momento. Até lá a consulta usa o período
+  // padrão — ela também alimenta o resto da tela (status, agenda, modais).
+  const filtrosPadrao = useMemo<FiltrosConsulta>(() => ({
+    searchTerm: '',
+    fieldId: activeFieldId,
+    regionalId: defaultRegionalFilter,
+    churchId: defaultChurchFilter,
+    status: '',
+    dateFrom: defaultDateRange.start,
+    dateTo: defaultDateRange.end,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
+  const [aplicados, setAplicados] = useState<FiltrosConsulta | null>(null);
+  const vigentes = aplicados ?? filtrosPadrao;
   // O intervalo de datas vai para o servidor e entra na chave do cache: cada
   // janela e uma consulta propria, e mudar as datas refaz o fetch ja recortado.
   // Antes o painel baixava a fila inteira e o navegador descartava tudo que
   // estava fora do mes corrente — 23.243 cards para exibir 51, no batismo.
   const dashboardRange = useMemo(() => {
     const params = new URLSearchParams();
-    if (dateFrom) params.set('dateFrom', dateFrom);
-    if (dateTo) params.set('dateTo', dateTo);
+    if (vigentes.dateFrom) params.set('dateFrom', vigentes.dateFrom);
+    if (vigentes.dateTo) params.set('dateTo', vigentes.dateTo);
     return params.toString();
-  }, [dateFrom, dateTo]);
+  }, [vigentes.dateFrom, vigentes.dateTo]);
   const dashboardKey = useMemo(
-    () => qk.transfer({ dateFrom, dateTo }),
-    [dateFrom, dateTo],
+    () => qk.transfer({ dateFrom: vigentes.dateFrom, dateTo: vigentes.dateTo }),
+    [vigentes.dateFrom, vigentes.dateTo],
   );
 
   const dashboardQuery = useQuery<DashboardPayload>({
@@ -260,7 +275,6 @@ export function Transfer() {
   // datas em cache, nao apenas a que esta na tela.
   const loadDashboard = () => qc.invalidateQueries({ queryKey: ['secretaria', 'transfer'] });
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearch = useDebounce(searchTerm, 350);
   const [selectedRegionalId, setSelectedRegionalId] = useState(defaultRegionalFilter);
   const [selectedChurchId, setSelectedChurchId] = useState(defaultChurchFilter);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
@@ -367,7 +381,7 @@ export function Transfer() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, selectedFieldId, selectedRegionalId, selectedChurchId, selectedStatusFilter, dateFrom, dateTo, pageSize]);
+  }, [aplicados, pageSize]);
 
   useEffect(() => {
     churchOptionRefs.current = churchOptionRefs.current.slice(0, destinationPickerChurches.length);
@@ -380,16 +394,34 @@ export function Transfer() {
     }
   }, [activeChurchIndex]);
 
+  // Clique em Buscar: congela os filtros. Mesmo período = mesma chave de
+  // cache, então refaz a consulta para trazer o que mudou desde a última.
+  const buscar = () => {
+    const novos: FiltrosConsulta = {
+      searchTerm,
+      fieldId: selectedFieldId,
+      regionalId: selectedRegionalId,
+      churchId: selectedChurchId,
+      status: selectedStatusFilter,
+      dateFrom,
+      dateTo,
+    };
+    const mesmoPeriodo = novos.dateFrom === vigentes.dateFrom && novos.dateTo === vigentes.dateTo;
+    setAplicados(novos);
+    if (mesmoPeriodo) void dashboardQuery.refetch();
+  };
+
   const visibleRows = useMemo(() => {
-    const query = normalizeText(debouncedSearch);
+    if (!aplicados) return [];
+    const query = normalizeText(aplicados.searchTerm);
     const rows = (dashboard?.queue || []).filter((item) => {
       const churchMeta = churches.find((church) => church.id === item.church?.id);
-      const fieldMatch = !selectedFieldId || churchMeta?.regional?.campoId === selectedFieldId || churchMeta?.regional?.campo?.id === selectedFieldId;
-      const regionalMatch = !selectedRegionalId || churchMeta?.regional?.id === selectedRegionalId || churchMeta?.regionalId === selectedRegionalId;
-      const churchMatch = !selectedChurchId || item.church?.id === selectedChurchId;
-      const statusMatch = !selectedStatusFilter || String(item.columnIndex) === selectedStatusFilter;
+      const fieldMatch = !aplicados.fieldId || churchMeta?.regional?.campoId === aplicados.fieldId || churchMeta?.regional?.campo?.id === aplicados.fieldId;
+      const regionalMatch = !aplicados.regionalId || churchMeta?.regional?.id === aplicados.regionalId || churchMeta?.regionalId === aplicados.regionalId;
+      const churchMatch = !aplicados.churchId || item.church?.id === aplicados.churchId;
+      const statusMatch = !aplicados.status || String(item.columnIndex) === aplicados.status;
       const textMatch = !query || normalizeText(`${item.member?.fullName || ''} ${item.protocol} ${item.church?.name || ''} ${item.destinationChurch?.name || ''} ${item.currentTitle || ''} ${item.notes || ''}`).includes(query);
-      const dateMatch = dateInRange(item.openedAt, dateFrom, dateTo);
+      const dateMatch = dateInRange(item.openedAt, aplicados.dateFrom, aplicados.dateTo);
       return fieldMatch && regionalMatch && churchMatch && statusMatch && textMatch && dateMatch;
     });
     return [...rows].sort((left, right) => {
@@ -398,7 +430,7 @@ export function Transfer() {
       const comparison = String(leftValue).localeCompare(String(rightValue), 'pt-BR');
       return sortDirection === 'asc' ? comparison : comparison * -1;
     });
-  }, [dashboard?.queue, churches, selectedFieldId, selectedRegionalId, selectedChurchId, selectedStatusFilter, debouncedSearch, dateFrom, dateTo, sortKey, sortDirection]);
+  }, [dashboard?.queue, churches, aplicados, sortKey, sortDirection]);
 
   const paginatedRows = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -712,12 +744,18 @@ export function Transfer() {
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(135px,0.72fr)_minmax(135px,0.72fr)_minmax(150px,0.8fr)_minmax(120px,0.62fr)_minmax(125px,0.62fr)_minmax(125px,0.62fr)] xl:items-end">
+        <div
+          className={`grid gap-3 md:grid-cols-2 xl:items-end ${
+            campoVisible
+              ? 'xl:grid-cols-[minmax(180px,1fr)_minmax(135px,0.72fr)_minmax(135px,0.72fr)_minmax(150px,0.8fr)_minmax(120px,0.62fr)_minmax(125px,0.62fr)_minmax(125px,0.62fr)_auto]'
+              : 'xl:grid-cols-[minmax(180px,1fr)_minmax(135px,0.72fr)_minmax(150px,0.8fr)_minmax(120px,0.62fr)_minmax(125px,0.62fr)_minmax(125px,0.62fr)_auto]'
+          }`}
+        >
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input type="text" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por membro, protocolo, igreja, observacao" className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              <input type="text" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') buscar(); }} placeholder="Buscar por membro, protocolo, igreja, observacao" className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
             </div>
           </div>
           {campoVisible && (
@@ -758,6 +796,10 @@ export function Transfer() {
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Data final</label>
             <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
           </div>
+          {/* Consulta explícita: a tabela só muda ao clicar aqui. */}
+          <div className="flex items-end">
+            <BotaoBuscar onClick={buscar} buscando={aplicados !== null && dashboardQuery.isFetching} />
+          </div>
         </div>
       </div>
 
@@ -794,7 +836,7 @@ export function Transfer() {
             </tbody>
           </table>
         </div>
-        {!loading && !paginatedRows.length ? <div className="px-6 py-10 text-center text-sm text-slate-500">Nenhuma transferencia encontrada para os filtros selecionados.</div> : null}
+        {!aplicados ? <AvisoDefinaFiltros /> : !loading && !paginatedRows.length ? <div className="px-6 py-10 text-center text-sm text-slate-500">Nenhuma transferencia encontrada para os filtros selecionados.</div> : null}
         <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-slate-500">Exibindo {paginatedRows.length ? (page - 1) * pageSize + 1 : 0} a {Math.min(page * pageSize, visibleRows.length)} de {visibleRows.length} registros</p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

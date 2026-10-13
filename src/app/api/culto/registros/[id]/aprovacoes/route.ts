@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { filtroDoCampoAtivo } from '@/lib/campoAtivo';
 import { NIVEIS, ehPresidente, getCultoScope, podeAprovarNivel, type Nivel } from '@/lib/cultoScope';
 import {
   concluirComoPresidente,
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   return withAuth(req, async (user) => {
     const { id } = await params;
     const registro = await prisma.cultoRegistro.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, deletedAt: null, ...filtroDoCampoAtivo(user) },
       include: { aprovacoes: true },
     });
     if (!registro) return NextResponse.json({ error: 'Registro não encontrado.' }, { status: 404 });

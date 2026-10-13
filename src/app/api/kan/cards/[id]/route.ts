@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
     if (!card || card.deletedAt) return NextResponse.json({ error: "card not found" }, { status: 404 });
 
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (!user.campoId || card.church?.regional?.campoId !== user.campoId) {
         return NextResponse.json({ error: "Sem acesso a registros de outro campo." }, { status: 403 });
       }
@@ -64,7 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
     if (!card || card.deletedAt) return NextResponse.json({ error: "card not found" }, { status: 404 });
 
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (!user.campoId || card.church?.regional?.campoId !== user.campoId) {
         return NextResponse.json({ error: "Sem acesso para alterar registros de outro campo." }, { status: 403 });
       }
@@ -162,7 +162,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     });
     if (!existing) return NextResponse.json({ error: "card not found" }, { status: 404 });
 
-    if (user.profileType !== "master") {
+    if (user.profileType !== "master" || user.campoId) {
       if (!user.campoId || existing.church?.regional?.campoId !== user.campoId) {
         return NextResponse.json({ error: "Sem acesso para excluir registros de outro campo." }, { status: 403 });
       }

@@ -1,39 +1,35 @@
 import type { AuthUser } from "./auth";
+import { NENHUM_ID, campoAtivoId } from "./campoAtivo";
+import { isRestrictedToOwnChurch } from "./helpers";
 
 /**
- * Builds the WHERE conditions, params array, and JOIN clause for livro_caixa dashboard queries.
- * Priority: church user scope > explicit churchId > explicit regionalId > campo scope.
+ * Escopo das consultas de livro_caixa do dashboard financeiro.
+ *
+ * O campo ativo entra SEMPRE, para todo perfil (master inclusive). A igreja
+ * pedida no corpo da requisição só estreita dentro dele — e perfil igreja,
+ * secretaria e tesouraria ficam na própria igreja, peçam o que pedirem.
+ *
+ * A consulta precisa de `JOIN churches c ... JOIN regionais r ...` (alias c e r).
  */
-export function buildDashboardScope(
-  user: AuthUser,
-  reqChurchId?: string | null,
-  reqRegionalId?: string | null,
-) {
-  const conditions: string[] = ["lc.deleted_at IS NULL"];
+export function escopoDoDashboard(user: AuthUser, reqChurchId: unknown, primeiroParam: number) {
+  const conditions: string[] = [];
   const params: unknown[] = [];
-  let p = 1;
-  let joinClause = "";
+  let p = primeiroParam;
 
-  if (user?.churchId && user?.profileType === "church") {
+  conditions.push(`r.campo_id = $${p}::uuid`);
+  params.push(campoAtivoId(user));
+  p++;
+
+  const churchId = isRestrictedToOwnChurch(user)
+    ? user.churchId || NENHUM_ID
+    : typeof reqChurchId === "string" && reqChurchId
+      ? reqChurchId
+      : null;
+  if (churchId) {
     conditions.push(`lc.church_id = $${p}::uuid`);
-    params.push(user.churchId);
+    params.push(churchId);
     p++;
-  } else if (reqChurchId) {
-    conditions.push(`lc.church_id = $${p}::uuid`);
-    params.push(reqChurchId);
-    p++;
-  } else if (reqRegionalId) {
-    // Only needs churches join (regional_id is in churches table)
-    conditions.push(`c.regional_id = $${p}::uuid`);
-    params.push(reqRegionalId);
-    p++;
-    joinClause = "JOIN churches c ON c.id = lc.church_id";
-  } else if (user?.campoId) {
-    conditions.push(`r.campo_id = $${p}::uuid`);
-    params.push(user.campoId);
-    p++;
-    joinClause = "JOIN churches c ON c.id = lc.church_id JOIN regionais r ON r.id = c.regional_id";
   }
 
-  return { conditions, params, p, joinClause };
+  return { conditions, params, p };
 }

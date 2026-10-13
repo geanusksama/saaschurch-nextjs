@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verifica tenant (exceto master)
-    if (user.profileType !== "master" && registration.event.campoId !== user.campoId) {
+    if ((user.profileType !== "master" || user.campoId) && registration.event.campoId !== user.campoId) {
       return NextResponse.json({ error: "Ingresso de outro campo." }, { status: 403 });
     }
 

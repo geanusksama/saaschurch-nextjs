@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { withAuth } from '@/lib/auth'
+import { campoTextoEhDoCampoAtivo, nomesDoCampoAtivo } from '@/lib/contabilidadeCampo'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { resolverCampoId } from '@/lib/contabilidadeService'
 import { podeAcessarContabilidadeAgendamento } from '@/lib/contabilidadeAgendamentoRole'
@@ -45,6 +46,10 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Campo inválido.'
       return NextResponse.json({ error: msg }, { status: 400 })
+    }
+    // Contador só nasce (ou muda) para o campo ativo — nunca para outro campo.
+    if (!campoTextoEhDoCampoAtivo(campo, await nomesDoCampoAtivo(user))) {
+      return NextResponse.json({ error: 'O contador precisa ser do campo em que você está.' }, { status: 403 })
     }
 
     // Telefone é único: não deixa duplicar acesso.

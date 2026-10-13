@@ -122,17 +122,15 @@ export async function GET(req: NextRequest) {
       churchWhere.regional = { campoId: user.campoId };
     }
 
-    // Force user's campoId scope if they are not master
-    if (user.profileType !== "master") {
-      if (!user.campoId) {
-        return NextResponse.json({ error: "Sem acesso. Campo não definido." }, { status: 403 });
-      }
-      // Ensure the regional relation is defined and filters by user's campoId
-      churchWhere.regional = {
-        ...(churchWhere.regional as Record<string, unknown> || {}),
-        campoId: user.campoId,
-      };
+    // Campo ativo vale para todo perfil, master inclusive: estando em Aguaí,
+    // nada de Campinas aparece (ver lib/campoAtivo.ts).
+    if (!user.campoId) {
+      return NextResponse.json({ error: "Sem acesso. Campo não definido." }, { status: 403 });
     }
+    churchWhere.regional = {
+      ...(churchWhere.regional as Record<string, unknown> || {}),
+      campoId: user.campoId,
+    };
 
     if (isRestrictedToOwnChurch(user)) {
       if (!user.churchId) return NextResponse.json({ error: "Sem acesso." }, { status: 403 });

@@ -68,6 +68,14 @@ Resumo do que já mordeu:
   do Postgres, 60 MB por request e 2,4 GB derramados em disco temporário.
   Liste com teto no banco e pagine. `pg_stat_statements` com `temp_blks_written`
   alto denuncia as que restaram. Detalhes na seção 9 do checklist.
+- **Campo ativo filtra tudo, master inclusive.** Nada de
+  `if (user.profileType !== "master") filtrar`: o master em Aguaí via dado de
+  Campinas. Use `src/lib/campoAtivo.ts`; id vindo no corpo ou no caminho se
+  confere na rota. Ver `docs/architecture/ISOLAMENTO-CAMPO.md`.
+- **Tela de consulta abre vazia e só busca no botão.** Membros, Requerimentos,
+  Batismo, Consagração, Transferência e Quero ser Membro: os filtros só valem
+  ao clicar em Buscar (`src/components/app-ui/BotaoBuscar.tsx`, com o retrato
+  `FiltrosConsulta`). Filtro que consulta sozinho a cada tecla é regressão.
 - **Typecheck e GET 200 não cobrem gravação.** Rode o E2E de escrita
   (`scripts/e2e-*.mjs`) antes de dizer que está pronto. Eles gravam no banco de
   referência e restauram no fim — confirme que ninguém está editando a tela.

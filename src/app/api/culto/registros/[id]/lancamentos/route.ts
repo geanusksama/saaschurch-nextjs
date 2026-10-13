@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { filtroDoCampoAtivo } from '@/lib/campoAtivo';
 import { BLOCOS, getCultoScope, podeEnviarBloco, type Bloco } from '@/lib/cultoScope';
 import { excluirBloco, recalcularStatus } from '@/lib/cultoService';
 
@@ -59,7 +60,7 @@ function normalizar(bloco: Bloco, body: Record<string, unknown>): Record<string,
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
     const { id } = await params;
-    const registro = await prisma.cultoRegistro.findFirst({ where: { id, deletedAt: null } });
+    const registro = await prisma.cultoRegistro.findFirst({ where: { id, deletedAt: null, ...filtroDoCampoAtivo(user) } });
     if (!registro) return NextResponse.json({ error: 'Registro não encontrado.' }, { status: 404 });
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

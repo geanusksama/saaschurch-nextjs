@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-09-24T17:33:38.070Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.712Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 500e39c338ad501d
+-- Baseline d23a12c3d91c0f1a
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -1396,6 +1396,9 @@ alter table "public"."transactions" alter column "status" set default 'pending':
 alter table "public"."transactions" alter column "is_recurring" set default false;
 alter table "public"."transactions" alter column "created_at" set default CURRENT_TIMESTAMP;
 alter table "public"."unknown_faces" alter column "created_at" set default '2026-06-16 01:24:59.472137+00'::timestamp with time zone;
+alter table "public"."user_campos" alter column "id" set default gen_random_uuid();
+alter table "public"."user_campos" alter column "created_at" set default CURRENT_TIMESTAMP;
+alter table "public"."user_campos" alter column "updated_at" set default CURRENT_TIMESTAMP;
 alter table "public"."user_notes" alter column "id" set default gen_random_uuid();
 alter table "public"."user_notes" alter column "created_at" set default CURRENT_TIMESTAMP;
 alter table "public"."user_notes" alter column "updated_at" set default CURRENT_TIMESTAMP;

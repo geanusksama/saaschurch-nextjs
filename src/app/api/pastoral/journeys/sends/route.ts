@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       .limit(limit)
 
     if (churchId) query = query.eq('church_id', churchId)
-    else if (user.profileType !== 'master') return NextResponse.json({ sends: [], steps: [] })
+    else if (user.profileType !== 'master' || user.campoId) return NextResponse.json({ sends: [], steps: [] })
 
     if (journeyId) query = query.eq('journey_id', journeyId)
     if (status) query = query.eq('status', status)

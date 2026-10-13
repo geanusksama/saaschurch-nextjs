@@ -32,13 +32,12 @@ export function escopoDeIgrejas(
     churchWhere.regional = { campoId: user.campoId };
   }
 
-  if (user.profileType !== "master") {
-    if (!user.campoId) return { ok: false, erro: "Sem acesso. Campo não definido." };
-    churchWhere.regional = {
-      ...((churchWhere.regional as Record<string, unknown>) || {}),
-      campoId: user.campoId,
-    };
-  }
+  // Campo ativo para todo perfil, master inclusive (lib/campoAtivo.ts).
+  if (!user.campoId) return { ok: false, erro: "Sem acesso. Campo não definido." };
+  churchWhere.regional = {
+    ...((churchWhere.regional as Record<string, unknown>) || {}),
+    campoId: user.campoId,
+  };
 
   if (isRestrictedToOwnChurch(user)) {
     if (!user.churchId) return { ok: false, erro: "Sem acesso." };
@@ -64,12 +63,11 @@ export async function podeAcessarIgreja(
   db: any
 ): Promise<boolean> {
   if (!churchId) return false;
-  if (user.profileType === "master") return true;
 
   // Perfil igreja (e secretaria/tesouraria): só a própria igreja.
   if (isRestrictedToOwnChurch(user)) return user.churchId === churchId;
 
-  // Campo/admin: qualquer igreja DO SEU CAMPO.
+  // Master/campo/admin: qualquer igreja DO CAMPO ATIVO.
   if (!user.campoId) return false;
   const igreja = await db.church.findFirst({
     where: { id: churchId, deletedAt: null, regional: { campoId: user.campoId } },

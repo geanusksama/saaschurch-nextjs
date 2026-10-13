@@ -12,6 +12,7 @@
  */
 import { prisma } from './prisma';
 import type { AuthUser } from './auth';
+import { filtroDoCampoAtivo } from './campoAtivo';
 
 export const PAPEIS = [
   'FINANCEIRO',
@@ -125,7 +126,9 @@ export async function getCultoScope(user: AuthUser): Promise<CultoScope> {
 
   const posicoesRaw = user.id
     ? await prisma.cultoPosicao.findMany({
-        where: { userId: user.id, isActive: true, deletedAt: null },
+        // Só as posições do campo ativo: estando em Aguaí, o anexo de
+        // dirigente em Campinas não vale (nem aparece) — lib/campoAtivo.ts.
+        where: { userId: user.id, isActive: true, deletedAt: null, ...filtroDoCampoAtivo(user) },
         select: { papel: true, churchId: true, titulo: true },
       })
     : [];
