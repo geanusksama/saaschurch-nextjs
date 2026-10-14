@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Download, Share, Plus, X } from 'lucide-react';
 
 /**
@@ -34,7 +34,17 @@ function ehIOS() {
   return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
 }
 
-export function InstallAppCard({ isDark }: { isDark: boolean }) {
+export function InstallAppCard({
+  isDark,
+  botao,
+}: {
+  isDark: boolean;
+  /**
+   * Desenho do botão, para telas com visual próprio (a home nova). A lógica —
+   * esconder quando já instalado, passos do iPhone — continua aqui.
+   */
+  botao?: (instalar: () => void) => ReactNode;
+}) {
   const [prompt, setPrompt] = useState<PromptDeInstalacao | null>(null);
   const [instalado, setInstalado] = useState(true); // esconde até termos certeza
   const [mostrarPassosIOS, setMostrarPassosIOS] = useState(false);
@@ -96,6 +106,7 @@ export function InstallAppCard({ isDark }: { isDark: boolean }) {
 
   return (
     <>
+      {botao ? botao(() => { void instalar(); }) : (
       <button onClick={instalar} className="flex items-start gap-4 group hover:opacity-80 transition-opacity text-left">
         <div
           className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex items-center justify-center transition-colors"
@@ -113,6 +124,7 @@ export function InstallAppCard({ isDark }: { isDark: boolean }) {
           </p>
         </div>
       </button>
+      )}
 
       {mostrarPassosIOS && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4">

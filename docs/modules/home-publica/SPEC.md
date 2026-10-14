@@ -275,3 +275,43 @@ E2E_CONFIRMO=sim node scripts/e2e-home-publica.mjs
 A confirmação é obrigatória porque o teste **grava na configuração real e
 restaura no fim**: rodando enquanto alguém edita a tela, a restauração desfaz o
 que a pessoa salvou — foi o que aconteceu na primeira execução.
+
+## Hero "Ciclo da fé" (2026-10-14)
+
+A partir de 2026-10-14 o miolo da home é uma cena 3D (three.js 0.169) em
+`src/components/public/CicloDaFe3D.tsx`, inspirada no site "Biotech A"
+(`D:\projetos\BIOTECK`). Ela é **decoração interativa**: todo conteúdo continua
+vindo de `home_configs`/`home_cards`, renderizado em HTML por cima, então a
+home funciona sem WebGL (o `WebGLRenderer` falha em silêncio e sobra o HTML).
+
+**O ciclo** (caminho de terra fechado sobre a malha, percorrido por uma pessoa):
+01 Receber o Evangelho → 02 Aceitar Jesus → 03 Acolhimento (igreja) →
+04 Discipulado → 05 Peniel → 06 Casa de Paz e GF → 07 Maturidade → 08 EBD →
+09 Multiplicar → volta ao 01. No centro, **Ensino da Palavra** (livro aberto),
+ligado a todas as etapas. A pilha "Demandas de pessoas" alimenta o 01. As
+etapas e as referências bíblicas ficam em `ETAPAS_DO_CICLO` — fixas no código,
+iguais para todas as igrejas (não vêm do banco).
+
+**Interação**
+- automático: avança uma etapa a cada ~4 s;
+- clique numa etapa da lista de baixo ou nas setas ‹ ›: só navega;
+- clique num nó do ciclo (ícone/plataforma ou rótulo na cena): abre o card
+  central com a explicação;
+- qualquer clique pausa o automático, que volta sozinho após 8 s (`RETOMA_EM`);
+  o botão ▶/❚❚ pausa até apertar de novo;
+- zoom de 0,7× a 1,8× (`ZOOM_MIN`/`ZOOM_MAX`): botões − / +, Ctrl + roda
+  (pinça do touchpad) e pinça com dois dedos. A roda sozinha rola a página;
+- `prefers-reduced-motion`: sem automático.
+
+**Cabeçalho e cards**
+- `heroEyebrow` + `heroTitle` ("Nossa missão é / REINAR") ficam ao lado da logo;
+  `heroText` e o versículo no topo do hero;
+- os `home_cards` visíveis viraram `CardDoCiclo` (número, título, descrição,
+  seta; o 1º em verde) dentro de um único ícone de apps (`MenuDeOpcoes`), que
+  abre um painel animado — 2 colunas em tela larga, 1 no celular. Ações iguais
+  às de antes; o card de instalar o app usa `InstallAppCard` com `botao`
+  (continua sumindo quando já instalado).
+
+**Responsivo**: em tela < 760 px a câmera aproxima e segue a pessoa, só os
+rótulos da etapa atual e vizinhas aparecem, e a lista de etapas vira grade de
+3 colunas. Tema claro: linhas tracejadas quase pretas (o dourado sumia no fundo).

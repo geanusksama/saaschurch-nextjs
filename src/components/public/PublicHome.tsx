@@ -10,12 +10,12 @@ import { apiBase } from '../../lib/apiBase';
 import { toast } from 'sonner';
 import { ScrollHint } from './ScrollHint';
 import { InstallAppCard } from '../pwa/InstallAppCard';
+import { CicloDaFe3D, CardDoCiclo, MenuDeOpcoes } from './CicloDaFe3D';
 import {
   EMPTY_FICHA, faltandoNaFicha, MembershipFullFormFields,
   type FichaCompleta, type IgrejaPublica,
 } from './MembershipFullFormFields';
 import { cpfValido, digitos, mascaraTelefone } from './fichaHelpers';
-import { resolveHomeIcon } from './homeIcons';
 import {
   DEFAULT_HOME_PAYLOAD, mapsUrlFor, mergeHomePayload, resolveCardUrl,
   type HomeCard, type HomeConfigPayload, type HomeSede,
@@ -237,6 +237,7 @@ export function PublicHome() {
 
   const cfg = home.config;
   const sede = home.sede;
+  const cardsVisiveis = home.cards.filter(card => card.visible);
 
   const [showMembroLogin, setShowMembroLogin] = useState(false);
   const [showPenielModal, setShowPenielModal] = useState(false);
@@ -391,8 +392,6 @@ export function PublicHome() {
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSub   = isDark ? 'text-slate-400' : 'text-gray-500';
   const textMuted = isDark ? 'text-slate-500' : 'text-gray-400';
-  const border    = isDark ? 'border-slate-600' : 'border-gray-300';
-  const iconColor = isDark ? 'text-slate-200' : 'text-gray-600';
   const avatarCls = isDark
     ? 'bg-slate-800 border border-slate-700 hover:bg-slate-700'
     : 'bg-white border border-gray-200 hover:bg-gray-50';
@@ -588,15 +587,8 @@ export function PublicHome() {
   };
 
   // ── Cartões da home ───────────────────────────────────────────────────────
-  // Cada ícone da tela é uma linha de `home_cards`. O JSX abaixo é o mesmo de
-  // antes (mesmas classes, mesmos tamanhos); o que mudou é de onde vêm título,
-  // ícone, cor e destino.
-
-  /** "linha 1\nlinha 2" → linha 1<br />linha 2 */
-  const comQuebras = (texto: string) =>
-    texto.split('\n').map((linha, i) => (
-      <span key={i}>{i > 0 && <br />}{linha}</span>
-    ));
+  // Cada card da tela é uma linha de `home_cards`: título, destino e ordem vêm
+  // de Sistema → Home Pública. O desenho é o da home nova (CardDoCiclo).
 
   /** Programação da sede agrupada por dia, na ordem cadastrada. */
   const agendaPorDia = (dados: HomeSede) => {
@@ -610,111 +602,74 @@ export function PublicHome() {
     return dias;
   };
 
-  const corpoDoCartao = (card: HomeCard) => {
-    if (card.action === 'maps') {
-      return (
-        <p className={`text-xs leading-relaxed ${textSub}`}>
-          {sede.address}
-          {sede.phone && <><br />Telefone/WhatsApp: {sede.phone}</>}
-        </p>
-      );
+  /** Clique dos cards que abrem algo dentro da home (membro, Peniel, versículo, GF). */
+  const aoClicarCard = (card: HomeCard) => (e: React.MouseEvent) => {
+    if (card.action === 'membro') return setShowMembroLogin(true);
+    if (card.action === 'peniel') return setShowPenielModal(true);
+    if (card.action === 'verse') return setShowVerseModal(true);
+    if (card.action === 'gf') {
+      // A navegação só acontece quando o círculo termina de cobrir a tela.
+      setGfOrigin({ x: e.clientX, y: e.clientY });
+      setGfSliding(true);
     }
-
-    if (card.action === 'agenda') {
-      return (
-        <div className={`text-xs leading-relaxed space-y-0.5 ${textSub}`}>
-          {agendaPorDia(sede).map(({ dia, itens }) => (
-            <p key={dia}>
-              <strong className={textPrimary}>{dia}:</strong> {itens.join(' · ')}
-            </p>
-          ))}
-        </div>
-      );
-    }
-
-    if (!card.subtitle) return null;
-
-    return (
-      <p className={`text-xs leading-relaxed ${card.liveDot ? 'flex items-center gap-2' : ''} ${textSub}`}>
-        {comQuebras(card.subtitle)}
-        {card.liveDot && <span className="w-2.5 h-2.5 rounded-full bg-[#00b894] animate-pulse" />}
-      </p>
-    );
   };
 
-  const renderCard = (card: HomeCard) => {
-    // O convite de instalar o app tem lógica própria (some se já instalado ou
-    // se o navegador não sabe instalar) e é padrão da plataforma.
-    if (card.action === 'pwa') return <InstallAppCard key={card.key} isDark={isDark} />;
+  /** Descrição curta do card na home nova: uma ou duas linhas (a agenda inteira). */
+  const descricaoCurta = (card: HomeCard): string | null => {
+    if (card.action === 'maps') return sede.address || null;
+    if (card.action === 'agenda') {
+      const linhas = agendaPorDia(sede).map(({ dia, itens }) => `${dia}: ${itens.join(' · ')}`);
+      return linhas.join(' — ') || null;
+    }
+    return card.subtitle ? card.subtitle.split('\n').join(' ') : null;
+  };
 
-    const Icone = resolveHomeIcon(card.icon);
-    const destacado = !!card.iconColor;
+  /**
+   * Card da home nova (número, título, descrição e seta). Mesmos destinos e
+   * ações do card antigo — só muda o desenho.
+   */
+  const renderCardCiclo = (card: HomeCard, i: number) => {
+    const visual = (titulo: string, descricao: string | null) => (
+      <CardDoCiclo
+        numero={String(i + 1).padStart(2, '0')}
+        titulo={titulo}
+        descricao={descricao}
+        destaque={i === 0}
+        isDark={isDark}
+        accent={accent}
+        extra={card.liveDot ? <span className="w-2 h-2 rounded-full bg-[#00b894] animate-pulse" /> : undefined}
+      />
+    );
+    const classe = 'group block w-full h-full text-left';
 
-    const anel = (
-      <div
-        className={`home-card-ring flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center transition-colors ${
-          destacado ? 'border-2' : `border ${border}`
-        } ${card.pulse ? 'animate-pulse' : ''}`}
-        style={destacado ? {
-          borderColor: card.iconColor as string,
-          background: `${card.iconColor}1f`,
-          ...(card.pulse ? { boxShadow: `0 0 16px ${card.iconColor}73` } : {}),
-        } : undefined}
-      >
-        <Icone
-          className={`home-card-icon w-6 h-6 transition-colors ${destacado ? '' : iconColor}`}
-          style={destacado ? { color: card.iconColor as string } : undefined}
+    if (card.action === 'pwa') {
+      return (
+        <InstallAppCard
+          key={card.key}
+          isDark={isDark}
+          botao={(instalar) => (
+            <button type="button" onClick={instalar} className={classe} data-card-acao data-card-pwa>
+              {visual('Instalar o app', 'Adicione à tela de início e abra direto, sem navegador.')}
+            </button>
+          )}
         />
-      </div>
-    );
-
-    const conteudo = (
-      <>
-        {anel}
-        <div className="flex flex-col justify-center min-h-[3.5rem]">
-          <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>{card.title}</h3>
-          {corpoDoCartao(card)}
-        </div>
-      </>
-    );
-
-    const classe = `home-card flex items-start gap-4 group hover:opacity-80 transition-opacity text-left${
-      card.fullWidth ? ' lg:col-span-2' : ''
-    }`;
-    // Cor de hover vira variável CSS: classe Tailwind dinâmica não existe em
-    // build time, e a cor vem do banco.
-    const estilo = card.hoverColor ? ({ ['--hv' as any]: card.hoverColor }) : undefined;
-
+      );
+    }
     if (card.action === 'link' || card.action === 'maps') {
       const href = card.action === 'maps' ? mapsUrlFor(sede) : resolveCardUrl(card, sede);
-      // Link sem destino (rede social ainda não cadastrada em Informações da
-      // Igreja) não vira um <a> quebrado — vira um bloco sem clique.
-      if (!href) return <div key={card.key} className={classe} style={estilo}>{conteudo}</div>;
+      if (!href) return <div key={card.key} className={classe}>{visual(card.title, descricaoCurta(card))}</div>;
       return (
-        <a key={card.key} href={href} target="_blank" rel="noopener noreferrer" className={classe} style={estilo}>
-          {conteudo}
+        <a key={card.key} href={href} target="_blank" rel="noopener noreferrer" className={classe} data-card-acao>
+          {visual(card.title, descricaoCurta(card))}
         </a>
       );
     }
-
     if (card.action === 'agenda') {
-      return <div key={card.key} className={classe} style={estilo}>{conteudo}</div>;
+      return <div key={card.key} className={classe}>{visual(card.title, descricaoCurta(card))}</div>;
     }
-
-    const aoClicar = (e: React.MouseEvent) => {
-      if (card.action === 'membro') return setShowMembroLogin(true);
-      if (card.action === 'peniel') return setShowPenielModal(true);
-      if (card.action === 'verse') return setShowVerseModal(true);
-      if (card.action === 'gf') {
-        // A navegação só acontece quando o círculo termina de cobrir a tela.
-        setGfOrigin({ x: e.clientX, y: e.clientY });
-        setGfSliding(true);
-      }
-    };
-
     return (
-      <button key={card.key} onClick={aoClicar} className={classe} style={estilo}>
-        {conteudo}
+      <button key={card.key} type="button" onClick={aoClicarCard(card)} className={classe} data-card-acao>
+        {visual(card.title, descricaoCurta(card))}
       </button>
     );
   };
@@ -846,22 +801,38 @@ export function PublicHome() {
       )}
 
       {/* Header */}
-      <header className="flex items-center justify-between p-6 md:px-12 relative z-10">
+      <header className="flex items-center justify-between p-6 md:px-12 absolute top-0 inset-x-0 z-30">
         {/* Sem logo cadastrada, um círculo neutro: melhor um espaço vazio do
             que a marca de outra igreja (ou o ícone de imagem quebrada). */}
-        {cfg.logoUrl ? (
-          <img
-            src={cfg.logoUrl}
-            alt={cfg.siteTitle || 'Logo da igreja'}
-            className={`w-12 h-12 md:w-14 md:h-14 rounded-full object-cover opacity-95 hover:opacity-100 transition-opacity ring-1 ${isDark ? 'ring-white/10' : 'ring-black/10'}`}
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className={`w-12 h-12 md:w-14 md:h-14 rounded-full ring-1 ${isDark ? 'ring-white/10 bg-white/5' : 'ring-black/10 bg-black/5'}`}
-          />
-        )}
-        <div className="flex items-center gap-3">
+        {/* Logo e, ao lado, a chamada da igreja ("Nossa missão é / REINAR"). */}
+        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          {cfg.logoUrl ? (
+            <img
+              src={cfg.logoUrl}
+              alt={cfg.siteTitle || 'Logo da igreja'}
+              className={`w-12 h-12 md:w-14 md:h-14 rounded-full object-cover opacity-95 hover:opacity-100 transition-opacity ring-1 ${isDark ? 'ring-white/10' : 'ring-black/10'}`}
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className={`w-12 h-12 md:w-14 md:h-14 rounded-full ring-1 ${isDark ? 'ring-white/10 bg-white/5' : 'ring-black/10 bg-black/5'}`}
+            />
+          )}
+          <div className="min-w-0">
+            {cfg.heroEyebrow && (
+              <div className="font-mono uppercase flex items-center gap-2 truncate" style={{ fontSize: 10, letterSpacing: '0.14em', color: accent }}>
+                <span className="w-[6px] h-[6px] rounded-full animate-pulse shrink-0" style={{ background: accent }} />
+                {cfg.heroEyebrow}
+              </div>
+            )}
+            {/* Texto ainda não cadastrado vira um traço — a home nasce em branco
+                e espera o cadastro, em vez de exibir o texto de outra igreja. */}
+            <h1 className={`font-extrabold truncate ${textPrimary}`} style={{ fontSize: 'clamp(22px,2.6vw,38px)', lineHeight: 1.05, letterSpacing: '-0.035em' }}>
+              {cfg.heroTitle || cfg.siteTitle || '—'}
+            </h1>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
           {/* Contabilidade — gatilho invisivel a esquerda do icone de tema:
               7 toques abrem o modal do contador. Mesmo formato do icone de
               login, porem sem nenhuma pista visual. */}
@@ -881,42 +852,40 @@ export function PublicHome() {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 md:px-24 py-12 relative z-10 gap-16 lg:gap-32">
-        <div className="w-full md:w-1/2 max-w-lg">
-          {/* Texto ainda não cadastrado vira um traço — a home nasce em branco
-              e espera o cadastro, em vez de exibir o texto de outra igreja. */}
-          {cfg.heroEyebrow && (
-            <p className={`font-medium mb-2 text-sm tracking-wide ${textMuted}`}>{cfg.heroEyebrow}</p>
-          )}
-          <h1 className={`text-6xl md:text-7xl lg:text-[5.5rem] font-medium mb-8 tracking-tight ${textPrimary}`}>
-            {cfg.heroTitle || cfg.siteTitle || '—'}
-          </h1>
-          {cfg.heroText && (
-            <p className={`leading-relaxed mb-6 text-sm md:text-base font-light ${textSub}`}>
-              {cfg.heroText}
-            </p>
-          )}
-          {cfg.showVerse && (
-            <div className="flex items-center gap-2">
-              <p className={`text-xs tracking-wide ${textMuted}`}>{cfg.verseRef}</p>
-              <button
-                onClick={() => setShowVerseModal(true)}
-                className="text-xs font-semibold tracking-wide underline decoration-dotted underline-offset-4 hover:opacity-70 transition-opacity"
-                style={{ color: accent }}
-              >
-                {cfg.verseLabel}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Os ícones vêm de `home_cards`: a igreja reordena, oculta, renomeia e
-            troca o destino de cada um em Sistema → Home Pública. */}
-        <div className="w-full md:w-1/2 max-w-xl grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-7">
-          {home.cards.filter(card => card.visible).map(renderCard)}
-        </div>
-      </main>
+      {/* Hero: o ciclo de vida do crente em 3D, com os textos e os cards da
+          igreja por cima. Os 3 primeiros cards ficam no hero; os demais vêm
+          logo abaixo, no mesmo desenho. A ordem é a de Sistema → Home Pública. */}
+      <CicloDaFe3D
+        isDark={isDark}
+        accent={accent}
+        topo={
+          <>
+            {cfg.heroText && (
+              <p style={{ fontSize: 'clamp(15px,1.15vw,17px)', lineHeight: 1.6, maxWidth: 480, color: isDark ? '#B7C7D6' : '#43607A' }}>
+                {cfg.heroText}
+              </p>
+            )}
+            {cfg.showVerse && (
+              <div className="flex items-center gap-2 mt-4">
+                <p className={`text-xs tracking-wide ${textMuted}`}>{cfg.verseRef}</p>
+                <button
+                  onClick={() => setShowVerseModal(true)}
+                  className="text-xs font-semibold tracking-wide underline decoration-dotted underline-offset-4 hover:opacity-70 transition-opacity"
+                  style={{ color: accent }}
+                >
+                  {cfg.verseLabel}
+                </button>
+              </div>
+            )}
+          </>
+        }
+        cards={
+          // Todas as opções da igreja num ícone só; o painel abre ao lado.
+          <MenuDeOpcoes isDark={isDark} accent={accent} total={cardsVisiveis.length}>
+            {cardsVisiveis.map(renderCardCiclo)}
+          </MenuDeOpcoes>
+        }
+      />
 
       {/* Indicador de "tem mais abaixo" — mobile, onde a barra de rolagem
           está escondida pelo CSS global desta página */}
