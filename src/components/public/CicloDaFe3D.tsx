@@ -38,13 +38,13 @@ const CENTRO = { nome: 'Ensino da Palavra', ref: 'Sl 119:105' };
 
 type Tema = {
   fundo: string; fog: number; ceu: number; chao: number; grade: [number, number];
-  terra: number; pedra: number; plataforma: number; papel: number; apagado: number; portal: number; borda: number;
+  terra: number; pedra: number; folha: number; tronco: number; rocha: number; grama: number; plataforma: number; papel: number; apagado: number; portal: number; borda: number;
   texto: string; textoSub: string; rotuloBg: string; rotuloBorda: string; painelBg: string; painelBorda: string;
 };
 
 const TEMA_ESCURO: Tema = {
   fundo: 'radial-gradient(120% 80% at 60% 55%,#0F3354 0%,#071C30 65%)', fog: 0x071c30, ceu: 0xe6f3ff, chao: 0x0b2a45,
-  grade: [0x2b5c86, 0x1a4469], terra: 0x8b7352, pedra: 0x5e5446, plataforma: 0x123a5c, papel: 0xf4f7fa,
+  grade: [0x2b5c86, 0x1a4469], terra: 0x8b7352, pedra: 0x5e5446, folha: 0x2f8a57, tronco: 0x6b4a2b, rocha: 0x6b7a8a, grama: 0x2c7a4d, plataforma: 0x123a5c, papel: 0xf4f7fa,
   apagado: 0x2d5577, portal: 0x6f8fa8, borda: 0x0b2a45,
   texto: '#F4F7FA', textoSub: '#B7C7D6', rotuloBg: 'rgba(7,28,48,0.78)', rotuloBorda: 'rgba(244,247,250,0.18)',
   painelBg: 'rgba(13,39,64,0.85)', painelBorda: 'rgba(244,247,250,0.12)',
@@ -52,7 +52,7 @@ const TEMA_ESCURO: Tema = {
 
 const TEMA_CLARO: Tema = {
   fundo: 'radial-gradient(120% 80% at 60% 55%,#F4F8FC 0%,#DCE8F3 70%)', fog: 0xdce8f3, ceu: 0xffffff, chao: 0x9fb8cf,
-  grade: [0x9fb9d1, 0xbfd1e2], terra: 0xc9ac80, pedra: 0x8f7c63, plataforma: 0xc6d9ea, papel: 0xffffff,
+  grade: [0x9fb9d1, 0xbfd1e2], terra: 0xc9ac80, pedra: 0x8f7c63, folha: 0x58b06e, tronco: 0x8a6440, rocha: 0x9aa7b4, grama: 0x8fcf87, plataforma: 0xc6d9ea, papel: 0x3d5f80,
   apagado: 0xa7bfd4, portal: 0x6f8fa8, borda: 0x2d4a63,
   texto: '#0B2239', textoSub: '#43607A', rotuloBg: 'rgba(255,255,255,0.86)', rotuloBorda: 'rgba(11,34,57,0.16)',
   painelBg: 'rgba(255,255,255,0.88)', painelBorda: 'rgba(11,34,57,0.12)',
@@ -79,6 +79,7 @@ export function CicloDaFe3D({
   accent,
   topo,
   cards,
+  infoCentro,
 }: {
   isDark: boolean;
   /** Cor de destaque da igreja (configuração da home). */
@@ -87,6 +88,8 @@ export function CicloDaFe3D({
   topo: ReactNode;
   /** Cards principais da home, à direita no topo. */
   cards: ReactNode;
+  /** Horários dos cultos e endereço da sede, mostrados no centro do ciclo. */
+  infoCentro?: { endereco: string; horarios: { dia: string; itens: string[] }[] } | null;
 }) {
   const tema = isDark ? TEMA_ESCURO : TEMA_CLARO;
   const hostRef = useRef<HTMLDivElement>(null);
@@ -428,6 +431,77 @@ export function CicloDaFe3D({
       posRotulos.push(q.addScaledVector(l, 3.4 * sinal).setY(0.4));
     }
 
+    // ── Cenário: manchas de grama, árvores low-poly e rochas ────────────────
+    // Sorteio com semente fixa: o cenário é o mesmo a cada visita. Nada nasce
+    // em cima do caminho, das estações, do centro ou da pilha de demandas.
+    let semente = 20261014;
+    const sorte = () => { semente = (semente * 1664525 + 1013904223) % 4294967296; return semente / 4294967296; };
+    const amostrasCaminho = Array.from({ length: 240 }, (_, k) => curva.getPointAt(k / 240));
+    const livre = (x: number, z: number, folga: number) => {
+      const q = new THREE.Vector3(x, 0, z);
+      if (amostrasCaminho.some((a) => a.distanceTo(q) < 1.4 + folga)) return false;
+      if (estacoes.some((st) => st.g.position.distanceTo(q) < 1.7 + folga)) return false;
+      if (centroPos.distanceTo(q) < 3.2 + folga) return false;
+      if (demandasPos.distanceTo(q) < 1.9 + folga) return false;
+      return true;
+    };
+    const sortearLugar = (folga: number, dentroDoCiclo = false) => {
+      for (let t = 0; t < 400; t++) {
+        const x = (sorte() * 2 - 1) * (dentroDoCiclo ? 10 : 20), z = (sorte() * 2 - 1) * (dentroDoCiclo ? 3.6 : 10);
+        const fora = (x / (A + 2.6)) ** 2 + (z / (B + 2.4)) ** 2 > 1;
+        if ((dentroDoCiclo || fora) && livre(x, z, folga)) return new THREE.Vector2(x, z);
+      }
+      return null;
+    };
+    const gramaMat = new THREE.MeshStandardMaterial({ color: tema.grama, roughness: 1, transparent: true, opacity: isDark ? 0.32 : 0.5, depthWrite: false });
+    const tufos: THREE.Vector3[] = [];
+    for (let k = 0; k < 16; k++) {
+      const l = sortearLugar(0, k % 4 === 0); if (!l) continue;
+      const r = 1 + sorte() * 1.6;
+      const mancha = new THREE.Mesh(new THREE.CircleGeometry(r, 9), gramaMat);
+      mancha.rotation.x = -Math.PI / 2; mancha.rotation.z = sorte() * Math.PI; mancha.scale.set(1, 0.55 + sorte() * 0.5, 1);
+      mancha.position.set(l.x, 0.006 + k * 0.0004, l.y); mancha.receiveShadow = true; scene.add(mancha);
+      for (let j = 0; j < 14; j++) {
+        const a = sorte() * Math.PI * 2, d = Math.sqrt(sorte()) * r * 0.75;
+        tufos.push(new THREE.Vector3(l.x + Math.cos(a) * d, 0, l.y + Math.sin(a) * d * 0.7));
+      }
+    }
+    const tufoMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(0.035, 0.2, 4), new THREE.MeshStandardMaterial({ color: tema.folha, roughness: 0.9, flatShading: true }), Math.max(1, tufos.length));
+    tufos.forEach((q, k) => {
+      dummy.position.set(q.x, 0.1, q.z); dummy.rotation.set((sorte() - 0.5) * 0.4, 0, (sorte() - 0.5) * 0.4); dummy.scale.setScalar(0.7 + sorte() * 0.8); dummy.updateMatrix();
+      tufoMesh.setMatrixAt(k, dummy.matrix);
+    });
+    tufoMesh.count = tufos.length;
+    dummy.scale.setScalar(1);
+    scene.add(tufoMesh);
+
+    const folhaMat = new THREE.MeshStandardMaterial({ color: tema.folha, roughness: 0.85, flatShading: true });
+    const troncoMat = new THREE.MeshStandardMaterial({ color: tema.tronco, roughness: 0.9, flatShading: true });
+    const arvore = (x: number, z: number, escala: number, redonda: boolean) => {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(escala); g.rotation.y = sorte() * Math.PI;
+      const tronco = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 0.55, 6), troncoMat); tronco.position.y = 0.27; tronco.castShadow = true; g.add(tronco);
+      if (redonda) {
+        const copa = new THREE.Mesh(new THREE.IcosahedronGeometry(0.48, 0), folhaMat); copa.position.y = 0.88; copa.castShadow = true; g.add(copa);
+      } else {
+        [[0.55, 0.85, 0.75], [0.42, 0.7, 1.18]].forEach(([r, h, y]) => {
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), folhaMat); cone.position.y = y; cone.castShadow = true; g.add(cone);
+        });
+      }
+      scene.add(g);
+    };
+    for (let k = 0; k < 18; k++) {
+      const l = sortearLugar(0.4, k < 3); if (!l) continue;
+      arvore(l.x, l.y, 0.75 + sorte() * 0.55, k % 3 === 0);
+    }
+    const rochaMat = new THREE.MeshStandardMaterial({ color: tema.rocha, roughness: 0.95, flatShading: true });
+    for (let k = 0; k < 12; k++) {
+      const l = sortearLugar(0.2, k < 2); if (!l) continue;
+      const r = 0.22 + sorte() * 0.38;
+      const rocha = new THREE.Mesh(k % 2 ? new THREE.DodecahedronGeometry(r, 0) : new THREE.IcosahedronGeometry(r, 0), rochaMat);
+      rocha.position.set(l.x, r * 0.35, l.y); rocha.scale.set(1, 0.6 + sorte() * 0.3, 0.85); rocha.rotation.set(sorte(), sorte() * 3, sorte());
+      rocha.castShadow = true; rocha.receiveShadow = true; scene.add(rocha);
+    }
+
     // ── Pessoas ─────────────────────────────────────────────────────────────
     const PELE = [0xf1c9a5, 0xc68a5e, 0x8d5a3b];
     const ROUPA = [new THREE.Color(accent).getHex(), 0x22b566, 0xf4f7fa, 0xffab00, 0x2684ff, 0xe5493a, 0xa78bfa];
@@ -724,6 +798,33 @@ export function CicloDaFe3D({
           </span>
         ))}
       </div>
+
+      {/* Cultos e endereço: no topo, ao centro (só onde há espaço livre). */}
+        {infoCentro && (infoCentro.endereco || infoCentro.horarios.length > 0) && (
+          <div
+            className="hidden xl:block absolute left-1/2 -translate-x-1/2 z-[31] rounded-xl"
+            style={{
+              top: 22, width: 300, padding: '10px 14px',
+              background: tema.painelBg, border: `1px solid ${tema.painelBorda}`, backdropFilter: 'blur(10px)',
+              color: tema.texto, fontSize: 11, lineHeight: 1.45,
+            }}
+          >
+            {infoCentro.horarios.length > 0 && (
+              <>
+                <div className="font-mono uppercase mb-1" style={{ fontSize: 9, letterSpacing: '0.1em', color: isDark ? accent : tema.textoSub }}>Cultos</div>
+                {infoCentro.horarios.map(({ dia, itens }) => (
+                  <div key={dia}><strong>{dia}:</strong> <span style={{ color: tema.textoSub }}>{itens.join(' · ')}</span></div>
+                ))}
+              </>
+            )}
+            {infoCentro.endereco && (
+              <div className={infoCentro.horarios.length > 0 ? 'mt-1.5' : ''} style={{ color: tema.textoSub }}>
+                <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: '0.1em', color: isDark ? accent : tema.textoSub }}>Endereço </span>
+                {infoCentro.endereco}
+              </div>
+            )}
+          </div>
+        )}
 
       {/* Topo: textos da igreja à esquerda, cards principais à direita. */}
       <div

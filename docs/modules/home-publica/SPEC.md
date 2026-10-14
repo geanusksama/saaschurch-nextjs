@@ -278,6 +278,13 @@ que a pessoa salvou — foi o que aconteceu na primeira execução.
 
 ## Hero "Ciclo da fé" (2026-10-14)
 
+**Modo clássico e modo animado.** A home sempre abre no **modo clássico** (a
+tela de antes: título grande e a grade de cards). Ao lado do "Sou Membro" fica o
+card "Ciclo da fé", com um joystick grande, que liga o **modo animado** descrito
+abaixo. No modo animado, o botão "Modo clássico" (ao lado do ícone de opções)
+volta. A escolha não é guardada: cada visita começa no clássico
+(`modoAnimado` em `PublicHome.tsx`).
+
 A partir de 2026-10-14 o miolo da home é uma cena 3D (three.js 0.169) em
 `src/components/public/CicloDaFe3D.tsx`, inspirada no site "Biotech A"
 (`D:\projetos\BIOTECK`). Ela é **decoração interativa**: todo conteúdo continua
@@ -311,6 +318,14 @@ iguais para todas as igrejas (não vêm do banco).
   abre um painel animado — 2 colunas em tela larga, 1 no celular. Ações iguais
   às de antes; o card de instalar o app usa `InstallAppCard` com `botao`
   (continua sumindo quando já instalado).
+
+**Cenário**: malha + caminho de terra, manchas de grama com tufos, árvores
+low-poly e rochas espalhadas por sorteio de semente fixa (o mesmo a cada
+visita), sem nascer em cima do caminho, das estações, do centro ou da pilha.
+No topo, ao centro (só em tela ≥ 1280 px), um cartão com os horários dos
+cultos e o endereço da sede (`infoCentro`, dos mesmos dados de "Dias de culto"
+e "Nossa Sede"). Tema claro: formas das estações em azul-marinho (brancas não
+apareciam).
 
 **Responsivo**: em tela < 760 px a câmera aproxima e segue a pessoa, só os
 rótulos da etapa atual e vizinhas aparecem, e a lista de etapas vira grade de
