@@ -157,7 +157,7 @@ export default function Cobrar() {
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2 max-w-5xl">
+    <div className="grid gap-5 lg:grid-cols-2">
       <Cartao className="p-5">
         <p className="text-xs font-semibold text-slate-500">Valor</p>
         <p className="text-4xl font-black text-slate-800 dark:text-white my-2 tabular-nums">{brl(valor)}</p>

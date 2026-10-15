@@ -217,10 +217,18 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Pagamentos', name: 'Reembolsos',               key: 'stripe_reembolsos',     permissions: mkPerms(mngr(), mngr(), none(), none()) },
   { group: 'Pagamentos', name: 'Config. Stripe',           key: 'stripe_config',         permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Pagamentos', name: 'Meus Pagamentos (App)',    key: 'stripe_meus_pagamentos', permissions: mkPerms(full(), full(), full(), full()) },
-  // Asaas (src/app-ui/asaas): ver = visão/vendas/financeiro; criar = cobrança rápida e links;
-  // editar = links e recorrências; excluir = estornar/cancelar cobrança.
-  { group: 'Pagamentos', name: 'Pagamentos Asaas',         key: 'asaas_pagamentos',      permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
-  { group: 'Pagamentos', name: 'Config. Asaas',            key: 'asaas_config',          permissions: mkPerms(admin(), admin(), admin(), admin()) },
+  // Asaas (src/app-ui/asaas) — uma chave por tela; a API confere a mesma chave.
+  { group: 'Pagamentos', name: 'Asaas · Visão geral',             key: 'asaas_visao',        permissions: mkPerms(mngr(), none(), none(), none()) },
+  // criar = gerar cobrança, marcar recebido em dinheiro e cancelar a cobrança que acabou de gerar
+  { group: 'Pagamentos', name: 'Asaas · Cobrança rápida',         key: 'asaas_cobrar',       permissions: mkPerms(mngr(), mngr(), none(), none()) },
+  // excluir = estornar e cancelar cobrança
+  { group: 'Pagamentos', name: 'Asaas · Contribuições e vendas',  key: 'asaas_vendas',       permissions: mkPerms(mngr(), mngr(), none(), admin()) },
+  // editar = pausar/retomar/alterar valor; excluir = cancelar a recorrência
+  { group: 'Pagamentos', name: 'Asaas · Recorrências',            key: 'asaas_recorrencias', permissions: mkPerms(mngr(), none(), mngr(), admin()) },
+  { group: 'Pagamentos', name: 'Asaas · Links e campanhas',       key: 'asaas_links',        permissions: mkPerms(mngr(), mngr(), mngr(), none()) },
+  // saldo e extrato da conta inteira
+  { group: 'Pagamentos', name: 'Asaas · Financeiro da conta',     key: 'asaas_financeiro',   permissions: mkPerms(admin(), none(), none(), none()) },
+  { group: 'Configurações', name: 'Pagamentos Asaas (chave e webhook)', key: 'asaas_config', permissions: mkPerms(admin(), admin(), admin(), admin()) },
 
   // ── Comunicação — WhatsApp (sub-permissões) ──────────────────────────────
   {

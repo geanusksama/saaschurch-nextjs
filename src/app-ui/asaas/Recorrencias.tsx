@@ -8,6 +8,7 @@ import { Pause, Play, Repeat, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePermissions } from '../../lib/usePermissions';
 import { api, brl, Botao, Cartao, Carregando, confirmar, dataBr, Erro, Metrica, perfilAtual, Selo, useDados, Vazio, inputCls, Campo } from './comum';
+import { Tabela } from './tabela';
 import { DetalheCobranca } from './Vendas';
 
 interface Ass {
@@ -15,6 +16,8 @@ interface Ass {
   descricao: string | null; cartao: string | null; pessoa: string; igreja: string | null; totalPago: number; qtdPagas: number; criadaEm: string;
 }
 interface Linha { id: string; estado: string; status: string; valor: number; vencimento: string | null; pagoEm: string | null; formaRotulo: string }
+
+const STATUS: Record<string, string> = { ATIVA: 'Ativa', PAUSADA: 'Pausada', INADIMPLENTE: 'Em aberto', CANCELADA: 'Cancelada' };
 
 export default function Recorrencias() {
   const { canEdit, canDelete } = usePermissions(perfilAtual());
@@ -43,55 +46,47 @@ export default function Recorrencias() {
         <Metrica icone={Repeat} tom="amber" rotulo="Em aberto" valor={lista.filter((a) => a.status === 'INADIMPLENTE').length} sub="Mensalidade vencida sem pagamento" />
         <Metrica icone={Repeat} tom="emerald" rotulo="Total já recebido" valor={brl(lista.reduce((s, a) => s + a.totalPago, 0))} />
       </div>
-      <Cartao className="p-3 flex flex-wrap gap-2 items-end">
-        <Campo rotulo="Status">
-          <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">Todas</option><option value="ATIVA">Ativas</option><option value="INADIMPLENTE">Em aberto</option><option value="PAUSADA">Pausadas</option><option value="CANCELADA">Canceladas</option>
-          </select>
-        </Campo>
-      </Cartao>
       {erro && <Erro msg={erro} onTentar={recarregar} />}
-      {carregando && !dados ? <Carregando /> : (
-        <Cartao className="overflow-hidden">
-          {lista.length === 0 ? (
-            <Vazio icone={Repeat} titulo="Nenhuma contribuição recorrente" sub="No app, a pessoa liga Repetir todo mês ao dizimar ou ofertar, no cartão ou no Pix." />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-900/40 text-xs text-slate-500">
-                  <tr>
-                    <th className="text-left font-semibold px-4 py-2">Pessoa</th><th className="text-left font-semibold px-4 py-2">Tipo</th><th className="text-left font-semibold px-4 py-2">Forma</th>
-                    <th className="text-left font-semibold px-4 py-2">Próxima</th><th className="text-left font-semibold px-4 py-2">Status</th><th className="text-right font-semibold px-4 py-2">Valor</th>
-                    <th className="text-right font-semibold px-4 py-2">Recebido</th><th className="px-4 py-2" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {lista.map((a) => (
-                    <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                      <td className="px-4 py-2 cursor-pointer" onClick={() => setAberta(a)}><p className="font-semibold">{a.pessoa}</p><p className="text-xs text-slate-500">{a.igreja}</p></td>
-                      <td className="px-4 py-2">{a.tipo === 'DIZIMO' ? 'Dízimo' : 'Oferta'} mensal</td>
-                      <td className="px-4 py-2">{a.formaRotulo}{a.cartao ? <span className="block text-xs text-slate-500">{a.cartao}</span> : null}</td>
-                      <td className="px-4 py-2">{a.status === 'CANCELADA' ? '—' : dataBr(a.proximo)}</td>
-                      <td className="px-4 py-2"><Selo estado={a.status} /></td>
-                      <td className="px-4 py-2 text-right font-semibold">{brl(a.valor)}</td>
-                      <td className="px-4 py-2 text-right text-slate-500">{brl(a.totalPago)} <span className="text-xs">({a.qtdPagas})</span></td>
-                      <td className="px-4 py-2 text-right whitespace-nowrap">
-                        {canEdit('asaas_pagamentos') && a.status !== 'CANCELADA' && (a.status === 'PAUSADA'
-                          ? <button title="Retomar" onClick={() => acao(a, 'retomar', `Retomar a contribuição de ${a.pessoa}?`)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Play className="w-4 h-4" /></button>
-                          : <button title="Pausar" onClick={() => acao(a, 'pausar', `Pausar a contribuição de ${a.pessoa}? Novas cobranças deixam de ser geradas.`)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Pause className="w-4 h-4" /></button>)}
-                        {canDelete('asaas_pagamentos') && a.status !== 'CANCELADA' && (
-                          <button title="Cancelar" onClick={() => acao(a, 'cancelar', `Cancelar de vez a contribuição de ${a.pessoa}?`)} className="p-1.5 rounded hover:bg-rose-50 text-rose-600"><Trash2 className="w-4 h-4" /></button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Cartao>
-      )}
-      {aberta && <Historico a={aberta} onFechar={() => setAberta(null)} onCobranca={setCobranca} onValor={(v) => acao(aberta, 'valor', `Mudar o valor para ${brl(v)}? Vale também para a cobrança em aberto.`, { valor: v })} podeEditar={canEdit('asaas_pagamentos')} />}
+      <Tabela<Ass>
+        titulo="Recorrências"
+        linhas={lista}
+        carregando={carregando}
+        chave={(a) => a.id}
+        aoClicar={setAberta}
+        ordemInicial={{ chave: 'pessoa' }}
+        barra={
+          <Campo rotulo="Status">
+            <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="">Todas</option><option value="ATIVA">Ativas</option><option value="INADIMPLENTE">Em aberto</option><option value="PAUSADA">Pausadas</option><option value="CANCELADA">Canceladas</option>
+            </select>
+          </Campo>
+        }
+        vazio={<Vazio icone={Repeat} titulo="Nenhuma contribuição recorrente" sub="No app, a pessoa liga Repetir todo mês ao dizimar ou ofertar, no cartão ou no Pix." />}
+        colunas={[
+          { chave: 'pessoa', rotulo: 'Pessoa', valor: (a) => a.pessoa, render: (a) => <><p className="font-semibold">{a.pessoa}</p><p className="text-xs text-slate-500">{a.igreja}</p></> },
+          { chave: 'tipo', rotulo: 'Tipo', valor: (a) => `${a.tipo === 'DIZIMO' ? 'Dízimo' : 'Oferta'} mensal` },
+          { chave: 'forma', rotulo: 'Forma', valor: (a) => a.cartao ?? a.formaRotulo, render: (a) => <>{a.formaRotulo}{a.cartao ? <span className="block text-xs text-slate-500">{a.cartao}</span> : null}</> },
+          { chave: 'desde', rotulo: 'Desde', valor: (a) => a.criadaEm, texto: (a) => dataBr(a.criadaEm), classe: 'whitespace-nowrap text-slate-500' },
+          { chave: 'proximo', rotulo: 'Próxima', valor: (a) => (a.status === 'CANCELADA' ? '' : a.proximo ?? ''), texto: (a) => (a.status === 'CANCELADA' ? '' : dataBr(a.proximo)), classe: 'whitespace-nowrap' },
+          { chave: 'status', rotulo: 'Status', valor: (a) => STATUS[a.status] ?? a.status, render: (a) => <Selo estado={a.status} /> },
+          { chave: 'valor', rotulo: 'Valor', alinhar: 'direita', valor: (a) => a.valor, texto: (a) => brl(a.valor), render: (a) => <b>{brl(a.valor)}</b> },
+          { chave: 'recebido', rotulo: 'Recebido', alinhar: 'direita', valor: (a) => a.totalPago, texto: (a) => `${brl(a.totalPago)} (${a.qtdPagas})`, classe: 'text-slate-500 whitespace-nowrap' },
+          {
+            chave: 'acoes', rotulo: '', acao: true, valor: () => '', alinhar: 'direita', classe: 'whitespace-nowrap',
+            render: (a) => (
+              <>
+                {canEdit('asaas_recorrencias') && a.status !== 'CANCELADA' && (a.status === 'PAUSADA'
+                  ? <button title="Retomar" onClick={() => acao(a, 'retomar', `Retomar a contribuição de ${a.pessoa}?`)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Play className="w-4 h-4" /></button>
+                  : <button title="Pausar" onClick={() => acao(a, 'pausar', `Pausar a contribuição de ${a.pessoa}? Novas cobranças deixam de ser geradas.`)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Pause className="w-4 h-4" /></button>)}
+                {canDelete('asaas_recorrencias') && a.status !== 'CANCELADA' && (
+                  <button title="Cancelar" onClick={() => acao(a, 'cancelar', `Cancelar de vez a contribuição de ${a.pessoa}?`)} className="p-1.5 rounded hover:bg-rose-50 text-rose-600"><Trash2 className="w-4 h-4" /></button>
+                )}
+              </>
+            ),
+          },
+        ]}
+      />
+      {aberta && <Historico a={aberta} onFechar={() => setAberta(null)} onCobranca={setCobranca} onValor={(v) => acao(aberta, 'valor', `Mudar o valor para ${brl(v)}? Vale também para a cobrança em aberto.`, { valor: v })} podeEditar={canEdit('asaas_recorrencias')} />}
       <DetalheCobranca id={cobranca} onFechar={() => setCobranca(null)} onMudou={recarregar} />
     </div>
   );

@@ -18,15 +18,18 @@ como estava.
 
 ## Configuração por campo
 
-- Pagamentos › Configurações: cola a chave (`$aact_prod_…` ou `$aact_hmlg_…`).
+- **Sistema › Configurações › Integrações › Pagamentos Asaas**
+  (`/app-ui/system/pagamentos-asaas`): cola a chave (`$aact_prod_…` ou `$aact_hmlg_…`).
   O servidor valida com `GET /myAccount`, guarda **criptografada**
   (AES-256-GCM; chave `ASAAS_ENCRYPTION_KEY` ou derivada da
   `SUPABASE_SERVICE_ROLE_KEY`) e só mostra os 6 últimos caracteres.
 - O ambiente sai do prefixo da chave. Nenhuma chave em `.env`, código ou app.
 - Ligar/desligar Pix, cartão, recorrência e parcelas máximas (loja: até 3,
   limite de `appv3_criar_pedido`).
-- **Master: "Em quais campos esta conta recebe"** — copia a chave e o webhook
-  para outro campo, ou desliga. Cada campo continua vendo só as próprias
+- **Master: "Campos que vão usar esta chave"** — caixas de marcar junto da
+  chave. Salvar copia a chave e o webhook para os campos marcados; os que
+  usavam esta conta e foram desmarcados são desligados; campo com outra conta
+  só é trocado se for marcado (o painel confirma). Cada campo continua vendo só as próprias
   cobranças (isolamento por campo); saldo e extrato são da conta inteira e a
   tela avisa quando a conta é compartilhada.
 - Webhook: botão "Registrar automaticamente" cria/atualiza o webhook no Asaas
@@ -47,9 +50,19 @@ Sem config ativa o app continua exatamente como antes: Pix por BR Code com
 A rota do app **não usa `withAuth`** de propósito: ele cria `users` "pending"
 para todo login, e membro do app não é usuário do painel.
 
-Permissões (Funções e Permissões): `asaas_pagamentos` (ver; criar = cobrança
-rápida e links; editar = links e recorrências; excluir = estornar/cancelar) e
-`asaas_config`. Secretário/tesoureiro restrito à igreja vê só a igreja dele e
+Telas: uma página por item do menu Pagamentos (sem abas). Permissões
+(Funções e Permissões), uma por tela, conferidas também na API:
+
+| Tela | Chave | Ações |
+| --- | --- | --- |
+| Visão geral `/app-ui/pagamentos` | `asaas_visao` | ver |
+| Cobrança rápida `/pagamentos/cobrar` | `asaas_cobrar` | ver; criar = cobrar, recebido em dinheiro, cancelar a que gerou |
+| Contribuições e vendas `/pagamentos/vendas` | `asaas_vendas` | ver; criar = recebido em dinheiro; excluir = estornar/cancelar |
+| Recorrências `/pagamentos/recorrencias` | `asaas_recorrencias` | ver; editar = pausar/retomar/valor; excluir = cancelar |
+| Links e campanhas `/pagamentos/links` | `asaas_links` | ver, criar, editar |
+| Financeiro `/pagamentos/financeiro` | `asaas_financeiro` | ver (padrão: master/admin) |
+| Configuração `/system/pagamentos-asaas` | `asaas_config` | ver/editar (padrão: master/admin) |
+ Secretário/tesoureiro restrito à igreja vê só a igreja dele e
 não vê o financeiro da conta.
 
 ## Regras

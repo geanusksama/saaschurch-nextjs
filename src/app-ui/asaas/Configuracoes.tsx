@@ -3,10 +3,11 @@
  * exibida de volta), formas aceitas no app, webhook e — para o master — em
  * quais campos esta mesma conta recebe.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CheckCircle2, KeyRound, Plug, RefreshCcw, ShieldCheck, Webhook, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, Botao, Campo, Cartao, Carregando, confirmar, CopiaECola, cx, dataBr, Erro, inputCls, Interruptor, perfilAtual, useDados } from './comum';
+import { Tabela } from './tabela';
 
 interface Config {
   configurado: boolean; ambiente?: string; chave?: string; contaNome?: string | null; contaDocumento?: string | null; ativo?: boolean;
@@ -26,6 +27,27 @@ export default function Configuracoes() {
   const [email, setEmail] = useState('');
   const [registrando, setRegistrando] = useState(false);
   const master = perfilAtual() === 'master';
+  const [campos, setCampos] = useState<CampoConta[] | null>(null);
+  const [marcados, setMarcados] = useState<Set<string>>(new Set());
+
+  // Master: lista de campos para escolher onde a chave vale (marcados = este campo + os que já usam esta conta).
+  useEffect(() => {
+    if (!master) return;
+    api<CampoConta[]>('config/campos')
+      .then((l) => {
+        setCampos(l);
+        setMarcados(new Set(l.filter((c) => c.atual || (c.mesmaConta && c.ativo)).map((c) => c.campoId)));
+      })
+      .catch(() => setCampos([]));
+  }, [master, c?.configurado]);
+
+  const alternarCampo = (id: string) =>
+    setMarcados((m) => {
+      const n = new Set(m);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
 
   async function salvar(mudanca: Record<string, unknown>) {
     setSalvando(true);
@@ -33,6 +55,7 @@ export default function Configuracoes() {
       const r = await api<Config>('config', { method: 'POST', body: mudanca });
       setDados(r);
       setChave('');
+      if (master && 'campos' in mudanca) api<CampoConta[]>('config/campos').then(setCampos).catch(() => {});
       toast.success('Configuração salva');
     } catch (e) {
       toast.error((e as Error).message);
@@ -70,7 +93,8 @@ export default function Configuracoes() {
   if (!c) return null;
 
   return (
-    <div className="grid gap-4 xl:grid-cols-2 max-w-6xl">
+    <div className="space-y-4">
+    <div className="grid gap-4 lg:grid-cols-2">
       <Cartao className="p-5 space-y-4">
         <div className="flex items-center gap-2">
           <KeyRound className="w-5 h-5 text-purple-600" />
@@ -91,7 +115,7 @@ export default function Configuracoes() {
           <input className={inputCls} type="password" autoComplete="off" value={chave} onChange={(e) => setChave(e.target.value)} placeholder="$aact_prod_…" />
         </Campo>
         <div className="flex flex-wrap gap-2">
-          <Botao carregando={salvando} disabled={!chave.trim()} onClick={() => salvar({ apiKey: chave.trim() })}>Salvar chave</Botao>
+          <Botao carregando={salvando} disabled={!chave.trim()} onClick={() => salvar({ apiKey: chave.trim(), ...(master && campos ? { campos: [...marcados] } : {}) })}>Salvar chave</Botao>
           {c.configurado && <Botao tipo="secundario" carregando={testando} onClick={testar}><Plug className="w-4 h-4" />Testar conexão</Botao>}
         </div>
         {teste && (
@@ -134,83 +158,91 @@ export default function Configuracoes() {
               <Botao carregando={registrando} disabled={!email.includes('@')} onClick={registrar}><ShieldCheck className="w-4 h-4" />{c.webhookRegistrado ? 'Registrar de novo' : 'Registrar automaticamente'}</Botao>
             </div>
             <p className="text-xs text-slate-500">Último evento recebido: {c.ultimoEventoEm ? dataBr(c.ultimoEventoEm, true) : 'nenhum ainda'}</p>
-            <Eventos eventos={c.eventos} onMudou={recarregar} />
           </Cartao>
         )}
-        {master && c.configurado && <CamposDaConta />}
       </div>
     </div>
-  );
-}
 
-function Eventos({ eventos, onMudou }: { eventos: Config['eventos']; onMudou: () => void }) {
-  const [ver, setVer] = useState(false);
-  if (!eventos.length) return null;
-  const comErro = eventos.filter((e) => e.erro);
-  return (
-    <div>
-      <button className="text-xs font-semibold text-purple-600" onClick={() => setVer(!ver)}>{ver ? 'Ocultar' : 'Ver'} últimos eventos {comErro.length ? `(${comErro.length} com erro)` : ''}</button>
-      {ver && (
-        <div className="mt-2 max-h-72 overflow-auto divide-y divide-slate-100 dark:divide-slate-700 text-xs">
-          {eventos.map((e) => (
-            <div key={e.id} className="flex items-center gap-2 py-1.5">
-              <span className={cx('w-2 h-2 rounded-full', e.erro ? 'bg-rose-500' : e.ignorado ? 'bg-slate-300' : 'bg-emerald-500')} />
-              <span className="flex-1"><b>{e.evento}</b> · {dataBr(e.recebidoEm, true)}{e.ignorado ? ' · de outro sistema' : ''}{e.erro ? <span className="block text-rose-600">{e.erro}</span> : null}</span>
-              {e.erro && (
-                <Botao tipo="secundario" className="!px-2 !py-1" onClick={async () => {
-                  try { await api(`evento/${encodeURIComponent(e.id)}/reprocessar`, { method: 'POST' }); toast.success('Reprocessado'); onMudou(); } catch (er) { toast.error((er as Error).message); }
-                }}><RefreshCcw className="w-3 h-3" /></Botao>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+    {master && campos && campos.length > 1 && (
+      <TabelaCampos
+        campos={campos}
+        marcados={marcados}
+        onAlternar={alternarCampo}
+        acoes={
+          <>
+            {chave.trim() && <Botao carregando={salvando} onClick={() => salvar({ apiKey: chave.trim(), campos: [...marcados] })}>Salvar chave e campos</Botao>}
+            {c.configurado && !chave.trim() && (
+              <Botao carregando={salvando} onClick={() => {
+                const trocar = campos.filter((cp) => marcados.has(cp.campoId) && cp.configurado && !cp.mesmaConta).map((cp) => cp.nome);
+                if (trocar.length && !confirmar(`Substituir a conta Asaas de: ${trocar.join(', ')}?`)) return;
+                salvar({ campos: [...marcados] });
+              }}>Salvar campos</Botao>
+            )}
+          </>
+        }
+      />
+    )}
+
+    {c.configurado && <Eventos eventos={c.eventos} onMudou={recarregar} />}
     </div>
   );
 }
 
-function CamposDaConta() {
-  const [lista, setLista] = useState<CampoConta[] | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  const carregar = () => api<CampoConta[]>('config/campos').then(setLista).catch((e) => setErro((e as Error).message));
-  useEffect(() => {
-    carregar();
-  }, []);
+const EVENTO_ROTULO: Record<string, string> = {
+  PAYMENT_CREATED: 'Cobrança criada', PAYMENT_UPDATED: 'Cobrança alterada', PAYMENT_CONFIRMED: 'Pagamento confirmado', PAYMENT_RECEIVED: 'Pagamento recebido',
+  PAYMENT_OVERDUE: 'Vencida', PAYMENT_DELETED: 'Cancelada', PAYMENT_REFUNDED: 'Estornada', SUBSCRIPTION_CREATED: 'Recorrência criada',
+  SUBSCRIPTION_UPDATED: 'Recorrência alterada', SUBSCRIPTION_DELETED: 'Recorrência cancelada', SUBSCRIPTION_INACTIVATED: 'Recorrência pausada',
+};
 
-  async function mudar(c: CampoConta, ativo: boolean) {
-    const msg = ativo
-      ? c.configurado && !c.mesmaConta
-        ? `O campo ${c.nome} já tem outra conta Asaas. Substituir pela conta deste campo?`
-        : `Receber os pagamentos do campo ${c.nome} nesta mesma conta Asaas?`
-      : `Desligar o pagamento online no campo ${c.nome}?`;
-    if (!confirmar(msg)) return;
-    try {
-      await api('config/campos', { method: 'POST', body: { campoId: c.campoId, ativo } });
-      toast.success('Feito');
-      carregar();
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }
-
+function Eventos({ eventos, onMudou }: { eventos: Config['eventos']; onMudou: () => void }) {
+  const situacao = (e: Config['eventos'][number]) => (e.erro ? 'Erro' : e.ignorado ? 'De outro sistema' : e.processadoEm ? 'Processado' : 'Recebido');
   return (
-    <Cartao className="p-5 space-y-3">
-      <p className="font-bold">Em quais campos esta conta recebe</p>
-      <p className="text-xs text-slate-500">Só o master vê. Ligar um campo copia a chave e o webhook desta conta para ele; cada campo continua vendo só os próprios pagamentos.</p>
-      {erro && <Erro msg={erro} />}
-      {!lista ? <Carregando /> : (
-        <div className="divide-y divide-slate-100 dark:divide-slate-700">
-          {lista.map((c) => (
-            <div key={c.campoId} className="flex items-center gap-3 py-2">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">{c.nome} {c.atual && <span className="text-[11px] text-purple-600">(este campo)</span>}</p>
-                <p className="text-xs text-slate-500">{!c.configurado ? 'Sem Asaas' : c.mesmaConta ? 'Esta conta' : `Outra conta: ${c.contaNome ?? '—'}`}</p>
-              </div>
-              <Interruptor ligado={c.ativo && (c.mesmaConta || !c.configurado)} onChange={(v) => mudar(c, v)} rotulo="" />
-            </div>
-          ))}
-        </div>
-      )}
-    </Cartao>
+    <Tabela<Config['eventos'][number]>
+      titulo="Últimos eventos do webhook"
+      linhas={eventos}
+      chave={(e) => e.id}
+      ordemInicial={{ chave: 'data', desc: true }}
+      porPagina={10}
+      vazio={<p className="py-6 text-center text-sm text-slate-400">Nenhum evento recebido ainda.</p>}
+      colunas={[
+        { chave: 'data', rotulo: 'Recebido em', valor: (e) => e.recebidoEm, texto: (e) => dataBr(e.recebidoEm, true), classe: 'whitespace-nowrap text-slate-500' },
+        { chave: 'evento', rotulo: 'Evento', valor: (e) => EVENTO_ROTULO[e.evento] ?? e.evento, render: (e) => <><p className="font-semibold">{EVENTO_ROTULO[e.evento] ?? e.evento}</p><p className="text-[11px] text-slate-400">{e.evento}</p></> },
+        {
+          chave: 'situacao', rotulo: 'Situação', valor: situacao,
+          render: (e) => <span className="inline-flex items-center gap-1.5 text-xs"><span className={cx('w-2 h-2 rounded-full', e.erro ? 'bg-rose-500' : e.ignorado ? 'bg-slate-300' : 'bg-emerald-500')} />{situacao(e)}</span>,
+        },
+        { chave: 'erro', rotulo: 'Detalhe', valor: (e) => e.erro ?? '', classe: 'text-xs text-rose-600' },
+        {
+          chave: 'acoes', rotulo: '', acao: true, valor: () => '', alinhar: 'direita',
+          render: (e) => e.erro ? (
+            <Botao tipo="secundario" className="!px-2 !py-1" title="Reprocessar" onClick={async () => {
+              try { await api(`evento/${encodeURIComponent(e.id)}/reprocessar`, { method: 'POST' }); toast.success('Reprocessado'); onMudou(); } catch (er) { toast.error((er as Error).message); }
+            }}><RefreshCcw className="w-3 h-3" />Reprocessar</Botao>
+          ) : null,
+        },
+      ]}
+    />
+  );
+}
+
+/** Master: campos que usam a chave — tabela padrão (busca, ordenação, paginação, exportação) com um switch por campo. */
+function TabelaCampos({ campos, marcados, onAlternar, acoes }: { campos: CampoConta[]; marcados: Set<string>; onAlternar: (id: string) => void; acoes: ReactNode }) {
+  const ligados = campos.filter((cp) => marcados.has(cp.campoId)).length;
+  const situacao = (cp: CampoConta) => (!cp.configurado ? 'Sem Asaas' : cp.mesmaConta ? (cp.ativo ? 'Usando esta conta' : 'Esta conta, desligado') : `Outra conta: ${cp.contaNome ?? '—'}`);
+  return (
+    <Tabela<CampoConta>
+      titulo="Campos que usam esta chave"
+      linhas={campos}
+      chave={(cp) => cp.campoId}
+      ordemInicial={{ chave: 'campo' }}
+      porPagina={10}
+      barra={<div className="flex flex-wrap items-end gap-2"><div><p className="text-sm font-bold">Campos que vão usar esta chave</p><p className="text-xs text-slate-500">{ligados} de {campos.length} ligados · desligar tira o pagamento online do campo; outra conta só é trocada se você ligar</p></div>{acoes}</div>}
+      colunas={[
+        { chave: 'campo', rotulo: 'Campo', valor: (cp) => cp.nome, render: (cp) => <span className="font-semibold">{cp.nome}{cp.atual && <span className="ml-1 text-[11px] font-normal text-purple-600">(este campo)</span>}</span> },
+        { chave: 'situacao', rotulo: 'Situação hoje', valor: situacao, render: (cp) => <span className={cx('text-xs', cp.configurado && !cp.mesmaConta ? 'text-amber-600' : 'text-slate-500')}>{situacao(cp)}</span> },
+        { chave: 'usar', rotulo: 'Usar esta chave', alinhar: 'direita', valor: (cp) => (marcados.has(cp.campoId) ? 'Sim' : 'Não'),
+          render: (cp) => <div className="flex justify-end" onClick={(e) => e.stopPropagation()}><Interruptor ligado={marcados.has(cp.campoId)} onChange={() => onAlternar(cp.campoId)} rotulo="" /></div> },
+      ]}
+    />
   );
 }
