@@ -79,6 +79,10 @@ import {
   UserCog,
   PencilLine,
   Church,
+  Repeat as RepeatIcon,
+  Link2 as Link2Icon,
+  Banknote as BanknoteIcon,
+  ListChecks as ListChecksIcon,
 } from 'lucide-react';
 
 function Dove(props: React.SVGProps<SVGSVGElement>) {
@@ -255,6 +259,7 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/system/audit-log") return "Log de Auditoria";
   if (p === "/app-ui/system/integrations") return "Integrações";
 
+  if (p.startsWith("/app-ui/pagamentos")) return "Pagamentos";
   if (p === "/app-ui/mobile") return "Mobile — Painel";
   if (p.startsWith("/app-ui/mobile/")) return `Mobile — ${p.slice("/app-ui/mobile/".length)}`;
   if (p.startsWith("/app-ui/crm/")) return "Ficha de Lead CRM";
@@ -404,6 +409,20 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Avisos',              path: '/app-ui/mobile/alertas',       icon: Bell,         permKey: 'mobile_alertas' },
       { name: 'Contas do app',       path: '/app-ui/mobile/contas',        icon: UserPlus,     permKey: 'mobile_membros' },
       { name: 'Configurações',       path: '/app-ui/mobile/configuracoes', icon: Settings,     permKey: 'mobile_config' },
+    ]
+  },
+  {
+    // Asaas: Pix, cartão e recorrência do App Igreja v3 + cobrança no balcão.
+    // Telas em src/app-ui/asaas; API em /api/asaas/admin.
+    section: 'Pagamentos',
+    items: [
+      { name: 'Visão geral',            path: '/app-ui/pagamentos',               icon: BanknoteIcon,   permKey: 'asaas_pagamentos', exact: true },
+      { name: 'Cobrança rápida',        path: '/app-ui/pagamentos/cobrar',        icon: QrCode,         permKey: 'asaas_pagamentos' },
+      { name: 'Contribuições e vendas', path: '/app-ui/pagamentos/vendas',        icon: ListChecksIcon, permKey: 'asaas_pagamentos' },
+      { name: 'Recorrências',           path: '/app-ui/pagamentos/recorrencias',  icon: RepeatIcon,     permKey: 'asaas_pagamentos' },
+      { name: 'Links e campanhas',      path: '/app-ui/pagamentos/links',         icon: Link2Icon,      permKey: 'asaas_pagamentos' },
+      { name: 'Financeiro',             path: '/app-ui/pagamentos/financeiro',    icon: Wallet,         permKey: 'asaas_pagamentos' },
+      { name: 'Configurações',          path: '/app-ui/pagamentos/configuracoes', icon: Settings,       permKey: 'asaas_config' },
     ]
   },
   {

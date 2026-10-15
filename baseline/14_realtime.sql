@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.720Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.360Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline d23a12c3d91c0f1a
+-- Baseline 4aedde4892a5816f
 
 -- Realtime: tabelas publicadas
 do $$ begin alter publication supabase_realtime add table "public"."app_push_notifications";

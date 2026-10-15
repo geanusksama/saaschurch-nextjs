@@ -5356,3 +5356,192 @@ model AppV3Categoria {
 
   @@map("appv3_categorias")
 }
+
+// ── Pagamentos Asaas (migration 20261015120000_asaas_pagamentos) ───────────
+// Gateway do App Igreja v3 e menu Pagamentos do painel. Config por campo, chave
+// criptografada (src/lib/asaas). As FKs para campos/churches/appv3_* existem no
+// banco; aqui ficam só as relações entre as tabelas asaas_* para não mexer nos
+// modelos existentes. Doc: docs/architecture/ASAAS-PAGAMENTOS.md.
+
+model AsaasConfig {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId          String    @unique @map("campo_id") @db.Uuid
+  apiKeyEnc        String    @map("api_key_enc")
+  apiKeyFinal      String?   @map("api_key_final") @db.VarChar(8)
+  /// sandbox | production
+  ambiente         String    @default("production") @db.VarChar(12)
+  webhookTokenEnc  String?   @map("webhook_token_enc")
+  webhookId        String?   @map("webhook_id") @db.VarChar(60)
+  contaNome        String?   @map("conta_nome") @db.VarChar(255)
+  contaDocumento   String?   @map("conta_documento") @db.VarChar(20)
+  ativo            Boolean   @default(false)
+  pixAtivo         Boolean   @default(true) @map("pix_ativo")
+  cartaoAtivo      Boolean   @default(true) @map("cartao_ativo")
+  recorrenciaAtiva Boolean   @default(true) @map("recorrencia_ativa")
+  maxParcelas      Int       @default(3) @map("max_parcelas") @db.SmallInt
+  ultimoEventoEm   DateTime? @map("ultimo_evento_em") @db.Timestamptz(6)
+  createdBy        String?   @map("created_by") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  clientes    AsaasCliente[]
+  cobrancas   AsaasCobranca[]
+  assinaturas AsaasAssinatura[]
+  links       AsaasLink[]
+
+  @@map("asaas_configs")
+}
+
+model AsaasCliente {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configId        String   @map("config_id") @db.Uuid
+  perfilId        String?  @map("perfil_id") @db.Uuid
+  memberId        String?  @map("member_id") @db.Uuid
+  asaasCustomerId String   @map("asaas_customer_id") @db.VarChar(40)
+  nome            String   @db.VarChar(255)
+  cpfCnpj         String?  @map("cpf_cnpj") @db.VarChar(14)
+  email           String?  @db.VarChar(255)
+  celular         String?  @db.VarChar(20)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  config AsaasConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, asaasCustomerId])
+  @@index([perfilId])
+  @@index([memberId])
+  @@index([configId, cpfCnpj], map: "asaas_clientes_cpf_cnpj_idx")
+  @@map("asaas_clientes")
+}
+
+model AsaasAssinatura {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configId            String    @map("config_id") @db.Uuid
+  campoId             String    @map("campo_id") @db.Uuid
+  churchId            String?   @map("church_id") @db.Uuid
+  perfilId            String?   @map("perfil_id") @db.Uuid
+  memberId            String?   @map("member_id") @db.Uuid
+  asaasSubscriptionId String    @unique @map("asaas_subscription_id") @db.VarChar(40)
+  asaasCustomerId     String?   @map("asaas_customer_id") @db.VarChar(40)
+  /// DIZIMO | OFERTA
+  tipo                String    @default("DIZIMO") @db.VarChar(10)
+  valor               Decimal   @db.Decimal(12, 2)
+  /// WEEKLY | BIWEEKLY | MONTHLY | ... (ciclos do Asaas)
+  ciclo               String    @default("MONTHLY") @db.VarChar(15)
+  /// PIX | CREDIT_CARD | BOLETO | UNDEFINED
+  forma               String    @db.VarChar(15)
+  proximoVencimento   DateTime? @map("proximo_vencimento") @db.Date
+  /// ATIVA | PAUSADA | INADIMPLENTE | CANCELADA
+  status              String    @default("ATIVA") @db.VarChar(15)
+  descricao           String?   @db.VarChar(255)
+  cartaoBandeira      String?   @map("cartao_bandeira") @db.VarChar(20)
+  cartaoFinal         String?   @map("cartao_final") @db.VarChar(4)
+  canceladaEm         DateTime? @map("cancelada_em") @db.Timestamptz(6)
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  config    AsaasConfig     @relation(fields: [configId], references: [id], onDelete: Cascade)
+  cobrancas AsaasCobranca[]
+
+  @@index([campoId, status])
+  @@index([perfilId])
+  @@map("asaas_assinaturas")
+}
+
+model AsaasLink {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configId     String    @map("config_id") @db.Uuid
+  campoId      String    @map("campo_id") @db.Uuid
+  asaasLinkId  String    @unique @map("asaas_link_id") @db.VarChar(60)
+  nome         String    @db.VarChar(255)
+  descricao    String?   @db.VarChar(500)
+  /// OFERTA | DIZIMO | CAMPANHA | EVENTO | OUTRO
+  finalidade   String    @default("OFERTA") @db.VarChar(15)
+  /// null = quem paga digita o valor
+  valor        Decimal?  @db.Decimal(12, 2)
+  forma        String    @default("UNDEFINED") @db.VarChar(15)
+  /// DETACHED | INSTALLMENT | RECURRENT
+  tipoCobranca String    @default("DETACHED") @map("tipo_cobranca") @db.VarChar(15)
+  maxParcelas  Int       @default(1) @map("max_parcelas") @db.SmallInt
+  ciclo        String?   @db.VarChar(15)
+  url          String
+  ativo        Boolean   @default(true)
+  encerraEm    DateTime? @map("encerra_em") @db.Date
+  criadoPor    String?   @map("criado_por") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  config    AsaasConfig     @relation(fields: [configId], references: [id], onDelete: Cascade)
+  cobrancas AsaasCobranca[]
+
+  @@index([campoId])
+  @@map("asaas_links")
+}
+
+model AsaasCobranca {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configId           String    @map("config_id") @db.Uuid
+  campoId            String    @map("campo_id") @db.Uuid
+  churchId           String?   @map("church_id") @db.Uuid
+  perfilId           String?   @map("perfil_id") @db.Uuid
+  memberId           String?   @map("member_id") @db.Uuid
+  /// CONTRIBUICAO | PEDIDO | ASSINATURA | AVULSA | LINK
+  origem             String    @db.VarChar(15)
+  contribuicaoId     String?   @map("contribuicao_id") @db.Uuid
+  pedidoId           String?   @map("pedido_id") @db.Uuid
+  assinaturaId       String?   @map("assinatura_id") @db.Uuid
+  linkId             String?   @map("link_id") @db.Uuid
+  asaasPaymentId     String    @unique @map("asaas_payment_id") @db.VarChar(40)
+  asaasInstallmentId String?   @map("asaas_installment_id") @db.VarChar(40)
+  asaasCustomerId    String?   @map("asaas_customer_id") @db.VarChar(40)
+  /// PIX | CREDIT_CARD | DEBIT_CARD | BOLETO | UNDEFINED
+  forma              String    @db.VarChar(15)
+  /// status do Asaas (PENDING, RECEIVED, CONFIRMED, OVERDUE, REFUNDED...)
+  status             String    @default("PENDING") @db.VarChar(40)
+  valor              Decimal   @db.Decimal(12, 2)
+  valorLiquido       Decimal?  @map("valor_liquido") @db.Decimal(12, 2)
+  valorEstornado     Decimal   @default(0) @map("valor_estornado") @db.Decimal(12, 2)
+  parcelas           Int       @default(1) @db.SmallInt
+  descricao          String?   @db.VarChar(255)
+  pagadorNome        String?   @map("pagador_nome") @db.VarChar(255)
+  invoiceUrl         String?   @map("invoice_url")
+  pixPayload         String?   @map("pix_payload")
+  pixExpira          DateTime? @map("pix_expira") @db.Timestamptz(6)
+  cartaoBandeira     String?   @map("cartao_bandeira") @db.VarChar(20)
+  cartaoFinal        String?   @map("cartao_final") @db.VarChar(4)
+  vencimento         DateTime? @db.Date
+  pagoEm             DateTime? @map("pago_em") @db.Timestamptz(6)
+  estornadoEm        DateTime? @map("estornado_em") @db.Timestamptz(6)
+  criadoPor          String?   @map("criado_por") @db.Uuid
+  dados              Json?     @db.JsonB
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  config     AsaasConfig      @relation(fields: [configId], references: [id], onDelete: Cascade)
+  assinatura AsaasAssinatura? @relation(fields: [assinaturaId], references: [id], onDelete: SetNull)
+  link       AsaasLink?       @relation(fields: [linkId], references: [id], onDelete: SetNull)
+
+  @@index([campoId, createdAt])
+  @@index([campoId, status], map: "asaas_cobrancas_status_idx")
+  @@index([contribuicaoId])
+  @@index([pedidoId])
+  @@index([assinaturaId])
+  @@index([perfilId])
+  @@index([asaasInstallmentId], map: "asaas_cobrancas_installment_idx")
+  @@map("asaas_cobrancas")
+}
+
+model AsaasWebhookEvento {
+  id           String    @id @db.VarChar(80)
+  configId     String?   @map("config_id") @db.Uuid
+  evento       String    @db.VarChar(60)
+  payload      Json      @db.JsonB
+  recebidoEm   DateTime  @default(now()) @map("recebido_em") @db.Timestamptz(6)
+  processadoEm DateTime? @map("processado_em") @db.Timestamptz(6)
+  ignorado     Boolean   @default(false)
+  erro         String?
+
+  @@index([configId, recebidoEm], map: "asaas_webhook_eventos_config_recebido_idx")
+  @@map("asaas_webhook_eventos")
+}

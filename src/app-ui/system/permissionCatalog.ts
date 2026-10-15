@@ -217,6 +217,10 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Pagamentos', name: 'Reembolsos',               key: 'stripe_reembolsos',     permissions: mkPerms(mngr(), mngr(), none(), none()) },
   { group: 'Pagamentos', name: 'Config. Stripe',           key: 'stripe_config',         permissions: mkPerms(admin(), admin(), none(), none()) },
   { group: 'Pagamentos', name: 'Meus Pagamentos (App)',    key: 'stripe_meus_pagamentos', permissions: mkPerms(full(), full(), full(), full()) },
+  // Asaas (src/app-ui/asaas): ver = visão/vendas/financeiro; criar = cobrança rápida e links;
+  // editar = links e recorrências; excluir = estornar/cancelar cobrança.
+  { group: 'Pagamentos', name: 'Pagamentos Asaas',         key: 'asaas_pagamentos',      permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  { group: 'Pagamentos', name: 'Config. Asaas',            key: 'asaas_config',          permissions: mkPerms(admin(), admin(), admin(), admin()) },
 
   // ── Comunicação — WhatsApp (sub-permissões) ──────────────────────────────
   {

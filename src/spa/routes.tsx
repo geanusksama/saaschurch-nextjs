@@ -196,6 +196,7 @@ import EbdHistorico from "../app-ui/ebd/EbdHistorico";
 import EbdRelatorios from "../app-ui/ebd/EbdRelatorios";
 // Stripe / Pagamentos
 import StripeAdmin from "../app-ui/stripe/StripeAdmin";
+import AsaasPagamentos from "../app-ui/asaas/AsaasPagamentos";
 import MeusPagamentos from "../app-ui/stripe/MeusPagamentos";
 
 
@@ -800,6 +801,10 @@ export const router = createBrowserRouter([
       { path: "stripe/reembolsos",   Component: StripeAdmin },
       { path: "stripe/config",       Component: StripeAdmin },
       { path: "stripe/meus",         Component: MeusPagamentos },
+
+      // Pagamentos Asaas (src/app-ui/asaas) — uma tela com abas pela URL
+      { path: "pagamentos",          Component: AsaasPagamentos },
+      { path: "pagamentos/:aba",     Component: AsaasPagamentos },
 
       { path: "app/dashboard",          Component: AppDashboard },
       { path: "app/events",             Component: AppEvents },

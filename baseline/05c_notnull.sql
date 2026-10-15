@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.712Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.355Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline d23a12c3d91c0f1a
+-- Baseline 4aedde4892a5816f
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -262,6 +262,30 @@ alter table "public"."appv3_solicitacoes" alter column "tipo" set not null;
 alter table "public"."appv3_status" alter column "perfil_id" set not null;
 alter table "public"."appv3_status" alter column "texto" set not null;
 alter table "public"."appv3_tentativas_vinculo" alter column "auth_user_id" set not null;
+alter table "public"."asaas_assinaturas" alter column "config_id" set not null;
+alter table "public"."asaas_assinaturas" alter column "campo_id" set not null;
+alter table "public"."asaas_assinaturas" alter column "asaas_subscription_id" set not null;
+alter table "public"."asaas_assinaturas" alter column "valor" set not null;
+alter table "public"."asaas_assinaturas" alter column "forma" set not null;
+alter table "public"."asaas_clientes" alter column "config_id" set not null;
+alter table "public"."asaas_clientes" alter column "asaas_customer_id" set not null;
+alter table "public"."asaas_clientes" alter column "nome" set not null;
+alter table "public"."asaas_cobrancas" alter column "config_id" set not null;
+alter table "public"."asaas_cobrancas" alter column "campo_id" set not null;
+alter table "public"."asaas_cobrancas" alter column "origem" set not null;
+alter table "public"."asaas_cobrancas" alter column "asaas_payment_id" set not null;
+alter table "public"."asaas_cobrancas" alter column "forma" set not null;
+alter table "public"."asaas_cobrancas" alter column "valor" set not null;
+alter table "public"."asaas_configs" alter column "campo_id" set not null;
+alter table "public"."asaas_configs" alter column "api_key_enc" set not null;
+alter table "public"."asaas_links" alter column "config_id" set not null;
+alter table "public"."asaas_links" alter column "campo_id" set not null;
+alter table "public"."asaas_links" alter column "asaas_link_id" set not null;
+alter table "public"."asaas_links" alter column "nome" set not null;
+alter table "public"."asaas_links" alter column "url" set not null;
+alter table "public"."asaas_webhook_eventos" alter column "id" set not null;
+alter table "public"."asaas_webhook_eventos" alter column "evento" set not null;
+alter table "public"."asaas_webhook_eventos" alter column "payload" set not null;
 alter table "public"."asset_inventories" alter column "church_id" set not null;
 alter table "public"."asset_inventories" alter column "started_by_user_id" set not null;
 alter table "public"."asset_inventory_items" alter column "inventory_id" set not null;

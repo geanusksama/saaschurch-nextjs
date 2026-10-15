@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.712Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.355Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline d23a12c3d91c0f1a
+-- Baseline 4aedde4892a5816f
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -383,6 +383,40 @@ alter table "public"."appv3_status" alter column "expira_em" set default (now() 
 alter table "public"."appv3_tentativas_vinculo" alter column "id" set default gen_random_uuid();
 alter table "public"."appv3_tentativas_vinculo" alter column "sucesso" set default false;
 alter table "public"."appv3_tentativas_vinculo" alter column "criado_em" set default now();
+alter table "public"."asaas_assinaturas" alter column "id" set default gen_random_uuid();
+alter table "public"."asaas_assinaturas" alter column "tipo" set default 'DIZIMO'::character varying;
+alter table "public"."asaas_assinaturas" alter column "ciclo" set default 'MONTHLY'::character varying;
+alter table "public"."asaas_assinaturas" alter column "status" set default 'ATIVA'::character varying;
+alter table "public"."asaas_assinaturas" alter column "created_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_assinaturas" alter column "updated_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_clientes" alter column "id" set default gen_random_uuid();
+alter table "public"."asaas_clientes" alter column "created_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_clientes" alter column "updated_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_cobrancas" alter column "id" set default gen_random_uuid();
+alter table "public"."asaas_cobrancas" alter column "status" set default 'PENDING'::character varying;
+alter table "public"."asaas_cobrancas" alter column "valor_estornado" set default 0;
+alter table "public"."asaas_cobrancas" alter column "parcelas" set default 1;
+alter table "public"."asaas_cobrancas" alter column "created_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_cobrancas" alter column "updated_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_configs" alter column "id" set default gen_random_uuid();
+alter table "public"."asaas_configs" alter column "ambiente" set default 'production'::character varying;
+alter table "public"."asaas_configs" alter column "ativo" set default false;
+alter table "public"."asaas_configs" alter column "pix_ativo" set default true;
+alter table "public"."asaas_configs" alter column "cartao_ativo" set default true;
+alter table "public"."asaas_configs" alter column "recorrencia_ativa" set default true;
+alter table "public"."asaas_configs" alter column "max_parcelas" set default 3;
+alter table "public"."asaas_configs" alter column "created_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_configs" alter column "updated_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_links" alter column "id" set default gen_random_uuid();
+alter table "public"."asaas_links" alter column "finalidade" set default 'OFERTA'::character varying;
+alter table "public"."asaas_links" alter column "forma" set default 'UNDEFINED'::character varying;
+alter table "public"."asaas_links" alter column "tipo_cobranca" set default 'DETACHED'::character varying;
+alter table "public"."asaas_links" alter column "max_parcelas" set default 1;
+alter table "public"."asaas_links" alter column "ativo" set default true;
+alter table "public"."asaas_links" alter column "created_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_links" alter column "updated_at" set default CURRENT_TIMESTAMP;
+alter table "public"."asaas_webhook_eventos" alter column "recebido_em" set default now();
+alter table "public"."asaas_webhook_eventos" alter column "ignorado" set default false;
 alter table "public"."asset_inventories" alter column "id" set default gen_random_uuid();
 alter table "public"."asset_inventories" alter column "started_at" set default CURRENT_TIMESTAMP;
 alter table "public"."asset_inventories" alter column "status" set default 'in_progress'::character varying;
