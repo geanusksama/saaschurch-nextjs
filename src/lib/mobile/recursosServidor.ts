@@ -483,7 +483,7 @@ async function devolverVagas(ingressos: { eventoId: string | null; quantidade: n
     prisma.appV3Evento.update({ where: { id: eventoId }, data: { vendidos: { decrement: n } } }));
 }
 
-async function cancelarIngressosDoPedido(pedidoId: string) {
+export async function cancelarIngressosDoPedido(pedidoId: string) {
   const vivos = await prisma.appV3Ingresso.findMany({
     where: { pedidoId, status: { in: ['AGUARDANDO_PAGAMENTO', 'ATIVO', 'REEMBOLSO_SOLICITADO'] } },
     select: { eventoId: true, quantidade: true },

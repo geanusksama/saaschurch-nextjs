@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.717Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.358Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline d23a12c3d91c0f1a
+-- Baseline 4aedde4892a5816f
 
 -- Row Level Security
 alter table "public"."_prisma_migrations" enable row level security;
@@ -84,6 +84,12 @@ alter table "public"."appv3_seguidores" enable row level security;
 alter table "public"."appv3_solicitacoes" enable row level security;
 alter table "public"."appv3_status" enable row level security;
 alter table "public"."appv3_tentativas_vinculo" enable row level security;
+alter table "public"."asaas_assinaturas" enable row level security;
+alter table "public"."asaas_clientes" enable row level security;
+alter table "public"."asaas_cobrancas" enable row level security;
+alter table "public"."asaas_configs" enable row level security;
+alter table "public"."asaas_links" enable row level security;
+alter table "public"."asaas_webhook_eventos" enable row level security;
 alter table "public"."asset_inventories" enable row level security;
 alter table "public"."asset_inventory_items" enable row level security;
 alter table "public"."assets" enable row level security;

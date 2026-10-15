@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.704Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.351Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline d23a12c3d91c0f1a
+-- Baseline 4aedde4892a5816f
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -1142,6 +1142,134 @@ create table if not exists "public"."appv3_tentativas_vinculo" (
   "auth_user_id" uuid not null,
   "sucesso" boolean default false not null,
   "criado_em" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."asaas_assinaturas" (
+  "id" uuid default gen_random_uuid() not null,
+  "config_id" uuid not null,
+  "campo_id" uuid not null,
+  "church_id" uuid,
+  "perfil_id" uuid,
+  "member_id" uuid,
+  "asaas_subscription_id" character varying(40) not null,
+  "asaas_customer_id" character varying(40),
+  "tipo" character varying(10) default 'DIZIMO'::character varying not null,
+  "valor" numeric(12,2) not null,
+  "ciclo" character varying(15) default 'MONTHLY'::character varying not null,
+  "forma" character varying(15) not null,
+  "proximo_vencimento" date,
+  "status" character varying(15) default 'ATIVA'::character varying not null,
+  "descricao" character varying(255),
+  "cartao_bandeira" character varying(20),
+  "cartao_final" character varying(4),
+  "cancelada_em" timestamp with time zone,
+  "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+);
+
+create table if not exists "public"."asaas_clientes" (
+  "id" uuid default gen_random_uuid() not null,
+  "config_id" uuid not null,
+  "perfil_id" uuid,
+  "member_id" uuid,
+  "asaas_customer_id" character varying(40) not null,
+  "nome" character varying(255) not null,
+  "cpf_cnpj" character varying(14),
+  "email" character varying(255),
+  "celular" character varying(20),
+  "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+);
+
+create table if not exists "public"."asaas_cobrancas" (
+  "id" uuid default gen_random_uuid() not null,
+  "config_id" uuid not null,
+  "campo_id" uuid not null,
+  "church_id" uuid,
+  "perfil_id" uuid,
+  "member_id" uuid,
+  "origem" character varying(15) not null,
+  "contribuicao_id" uuid,
+  "pedido_id" uuid,
+  "assinatura_id" uuid,
+  "link_id" uuid,
+  "asaas_payment_id" character varying(40) not null,
+  "asaas_installment_id" character varying(40),
+  "asaas_customer_id" character varying(40),
+  "forma" character varying(15) not null,
+  "status" character varying(40) default 'PENDING'::character varying not null,
+  "valor" numeric(12,2) not null,
+  "valor_liquido" numeric(12,2),
+  "valor_estornado" numeric(12,2) default 0 not null,
+  "parcelas" smallint default 1 not null,
+  "descricao" character varying(255),
+  "pagador_nome" character varying(255),
+  "invoice_url" text,
+  "pix_payload" text,
+  "pix_expira" timestamp with time zone,
+  "cartao_bandeira" character varying(20),
+  "cartao_final" character varying(4),
+  "vencimento" date,
+  "pago_em" timestamp with time zone,
+  "estornado_em" timestamp with time zone,
+  "criado_por" uuid,
+  "dados" jsonb,
+  "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+);
+
+create table if not exists "public"."asaas_configs" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "api_key_enc" text not null,
+  "api_key_final" character varying(8),
+  "ambiente" character varying(12) default 'production'::character varying not null,
+  "webhook_token_enc" text,
+  "webhook_id" character varying(60),
+  "conta_nome" character varying(255),
+  "conta_documento" character varying(20),
+  "ativo" boolean default false not null,
+  "pix_ativo" boolean default true not null,
+  "cartao_ativo" boolean default true not null,
+  "recorrencia_ativa" boolean default true not null,
+  "max_parcelas" smallint default 3 not null,
+  "ultimo_evento_em" timestamp with time zone,
+  "created_by" uuid,
+  "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "deleted_at" timestamp(3) without time zone
+);
+
+create table if not exists "public"."asaas_links" (
+  "id" uuid default gen_random_uuid() not null,
+  "config_id" uuid not null,
+  "campo_id" uuid not null,
+  "asaas_link_id" character varying(60) not null,
+  "nome" character varying(255) not null,
+  "descricao" character varying(500),
+  "finalidade" character varying(15) default 'OFERTA'::character varying not null,
+  "valor" numeric(12,2),
+  "forma" character varying(15) default 'UNDEFINED'::character varying not null,
+  "tipo_cobranca" character varying(15) default 'DETACHED'::character varying not null,
+  "max_parcelas" smallint default 1 not null,
+  "ciclo" character varying(15),
+  "url" text not null,
+  "ativo" boolean default true not null,
+  "encerra_em" date,
+  "criado_por" uuid,
+  "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+);
+
+create table if not exists "public"."asaas_webhook_eventos" (
+  "id" character varying(80) not null,
+  "config_id" uuid,
+  "evento" character varying(60) not null,
+  "payload" jsonb not null,
+  "recebido_em" timestamp with time zone default now() not null,
+  "processado_em" timestamp with time zone,
+  "ignorado" boolean default false not null,
+  "erro" text
 );
 
 create table if not exists "public"."asset_inventories" (

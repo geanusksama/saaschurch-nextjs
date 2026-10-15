@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-13T11:23:50.719Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.359Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline d23a12c3d91c0f1a
+-- Baseline 4aedde4892a5816f
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -230,6 +230,24 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, select, update on table "public"."appv3_status" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."appv3_status" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."appv3_tentativas_vinculo" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_assinaturas" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_assinaturas" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_assinaturas" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_clientes" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_clientes" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_clientes" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_cobrancas" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_cobrancas" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_cobrancas" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_configs" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_configs" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_configs" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_links" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_links" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_links" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_webhook_eventos" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_webhook_eventos" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."asaas_webhook_eventos" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."asset_inventories" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."asset_inventories" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."asset_inventories" to "service_role";
