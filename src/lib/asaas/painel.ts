@@ -23,27 +23,38 @@ function inicioDoDiaBR(somaDias = 0) {
 }
 
 // ── Visão geral ────────────────────────────────────────────────────────────
-export async function resumo(e: Escopo) {
+/** Período (de/até, AAAA-MM-DD, fuso de Brasília) da querystring; padrão: últimos 30 dias. */
+export function periodoDe(sp: URLSearchParams, diasPadrao = 29) {
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  const de = iso.test(sp.get('de') ?? '') ? sp.get('de')! : hojeBR(-diasPadrao);
+  const ate = iso.test(sp.get('ate') ?? '') ? sp.get('ate')! : hojeBR();
+  return { de, ate, gte: new Date(`${de}T00:00:00-03:00`), lte: new Date(`${ate}T23:59:59.999-03:00`) };
+}
+
+export async function resumo(e: Escopo, sp: URLSearchParams) {
   const w = whereCobranca(e);
   const hoje = inicioDoDiaBR();
-  const mes = new Date(`${hojeBR().slice(0, 8)}01T00:00:00-03:00`);
-  const desde30 = inicioDoDiaBR(-29);
+  const per = periodoDe(sp);
+  const noPeriodo = { gte: per.gte, lte: per.lte };
   const pagos = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'];
 
   const [hojeAgg, mesAgg, aReceber, pendentes, ultimas, ult30, porForma, assinaturas, config] = await Promise.all([
     prisma.asaasCobranca.aggregate({ where: { ...w, status: { in: pagos }, pagoEm: { gte: hoje } }, _sum: { valor: true }, _count: true }),
-    prisma.asaasCobranca.aggregate({ where: { ...w, status: { in: pagos }, pagoEm: { gte: mes } }, _sum: { valor: true, valorLiquido: true }, _count: true }),
+    prisma.asaasCobranca.aggregate({ where: { ...w, status: { in: pagos }, pagoEm: noPeriodo }, _sum: { valor: true, valorLiquido: true }, _count: true }),
     prisma.asaasCobranca.aggregate({ where: { ...w, status: 'CONFIRMED' }, _sum: { valorLiquido: true, valor: true }, _count: true }),
     prisma.asaasCobranca.aggregate({ where: { ...w, status: { in: ['PENDING', 'OVERDUE'] } }, _sum: { valor: true }, _count: true }),
-    prisma.asaasCobranca.findMany({ where: w, orderBy: { createdAt: 'desc' }, take: 10 }),
-    prisma.asaasCobranca.findMany({ where: { ...w, status: { in: pagos }, pagoEm: { gte: desde30 } }, select: { valor: true, pagoEm: true } }),
-    prisma.asaasCobranca.groupBy({ by: ['forma'], where: { ...w, status: { in: pagos }, pagoEm: { gte: mes } }, _sum: { valor: true }, _count: true }),
+    prisma.asaasCobranca.findMany({ where: { ...w, createdAt: noPeriodo }, orderBy: { createdAt: 'desc' }, take: 2000 }),
+    prisma.asaasCobranca.findMany({ where: { ...w, status: { in: pagos }, pagoEm: noPeriodo }, select: { valor: true, pagoEm: true } }),
+    prisma.asaasCobranca.groupBy({ by: ['forma'], where: { ...w, status: { in: pagos }, pagoEm: noPeriodo }, _sum: { valor: true }, _count: true }),
     prisma.asaasAssinatura.groupBy({ by: ['status'], where: { campoId: e.campoId, ...(e.igreja ? { churchId: e.igreja } : {}) }, _sum: { valor: true }, _count: true }),
     prisma.asaasConfig.findFirst({ where: { campoId: e.campoId, deletedAt: null } }),
   ]);
 
+  // Um ponto por dia do período (até 366).
   const dias = new Map<string, number>();
-  for (let i = 29; i >= 0; i--) dias.set(hojeBR(-i), 0);
+  for (let d = new Date(`${per.de}T12:00:00Z`), n = 0; d <= new Date(`${per.ate}T12:00:00Z`) && n < 366; d = new Date(d.getTime() + 86_400_000), n++) {
+    dias.set(d.toISOString().slice(0, 10), 0);
+  }
   for (const c of ult30) {
     const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(c.pagoEm!);
     if (dias.has(d)) dias.set(d, n2((dias.get(d) ?? 0) + n2(c.valor)));
@@ -64,6 +75,8 @@ export async function resumo(e: Escopo) {
     ativo: Boolean(config?.ativo),
     ambiente: config?.ambiente ?? null,
     recebidoHoje: n2(hojeAgg._sum.valor),
+    de: per.de,
+    ate: per.ate,
     recebidoMes: n2(mesAgg._sum.valor),
     liquidoMes: n2(mesAgg._sum.valorLiquido),
     qtdMes: mesAgg._count,
@@ -116,7 +129,8 @@ export function linhaCobranca(c: Prisma.AsaasCobrancaGetPayload<object>) {
 
 export async function listarCobrancas(e: Escopo, sp: URLSearchParams) {
   const pagina = Math.max(1, Number(sp.get('pagina')) || 1);
-  const tamanho = Math.min(200, Math.max(10, Number(sp.get('tamanho')) || 30));
+  // tudo=1: o período inteiro (a tabela da tela ordena, pagina e exporta).
+  const tamanho = sp.get('tudo') ? 5000 : Math.min(200, Math.max(10, Number(sp.get('tamanho')) || 30));
   const where: Prisma.AsaasCobrancaWhereInput = { ...whereCobranca(e) };
   const de = sp.get('de');
   const ate = sp.get('ate');
@@ -395,14 +409,26 @@ const ROTULO_EXTRATO: Record<string, string> = {
 export async function financeiro(e: Escopo, sp: URLSearchParams) {
   if (e.igreja) throw new Recusado('O financeiro da conta é visível só para o campo.');
   const { config, api } = await configDoCampo(e.campoId, false);
-  const ate = sp.get('ate') || hojeBR();
-  const de = sp.get('de') || `${hojeBR().slice(0, 8)}01`;
-  const offset = Math.max(0, Number(sp.get('offset')) || 0);
+  const { de, ate } = periodoDe(sp);
+  const offset = 0;
+  // Extrato do período inteiro (100 por chamada; até 2.000 lançamentos).
+  async function extratoTodo() {
+    const todos: Awaited<ReturnType<typeof api.financeiro.extrato>>['data'] = [];
+    let total = 0;
+    let mais = true;
+    for (let o = 0; mais && o < 2000; o += 100) {
+      const pg = await api.financeiro.extrato(de, ate, o, 100);
+      todos.push(...pg.data);
+      total = pg.totalCount;
+      mais = pg.hasMore;
+    }
+    return { data: todos, hasMore: mais, totalCount: total };
+  }
   const [saldo, aReceber, recebido, extrato, outrosCampos] = await Promise.all([
     api.financeiro.saldo(),
     api.financeiro.estatisticas({ status: 'CONFIRMED' }).catch(() => null),
     api.financeiro.estatisticas({ status: 'RECEIVED', 'paymentDate[ge]': de, 'paymentDate[le]': ate }).catch(() => null),
-    api.financeiro.extrato(de, ate, offset, 50),
+    extratoTodo(),
     prisma.asaasConfig.count({ where: { deletedAt: null, id: { not: config.id }, apiKeyFinal: config.apiKeyFinal } }),
   ]);
   let entradas = 0, saidas = 0, taxas = 0;
@@ -582,6 +608,24 @@ export async function aplicarContaNoCampo(e: Escopo, campoDestino: string, ativo
   }
   if (!ativo) return null;
   return prisma.asaasConfig.create({ data: { ...copia, campoId: destino.id, createdBy: e.userId } });
+}
+
+/**
+ * Ao salvar a chave, o master marca em quais campos ela vale: os marcados
+ * recebem a mesma conta (ligada); os que usavam esta conta e foram
+ * desmarcados são desligados. Campo com outra conta não marcado fica como está.
+ */
+export async function aplicarNosCampos(e: Escopo, campos: unknown) {
+  if (!Array.isArray(campos) || !e.master) return;
+  const marcados = new Set(campos.map(String));
+  const atual = await prisma.asaasConfig.findFirst({ where: { campoId: e.campoId, deletedAt: null } });
+  if (!atual) return;
+  for (const id of marcados) await aplicarContaNoCampo(e, id, true);
+  const desmarcar = await prisma.asaasConfig.findMany({
+    where: { deletedAt: null, ativo: true, apiKeyFinal: atual.apiKeyFinal, campoId: { notIn: [...marcados] } },
+    select: { campoId: true },
+  });
+  for (const c of desmarcar) await aplicarContaNoCampo(e, c.campoId, false);
 }
 
 export async function reprocessarEvento(e: Escopo, id: string) {

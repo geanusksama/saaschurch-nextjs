@@ -149,6 +149,7 @@ export const settingsSections: SettingsSection[] = [
     color: 'bg-pink-500',
     items: [
       { id: 'integrations', name: 'Integrações', description: 'Conectar apps externos',   path: '/app-ui/system/integrations', permKey: 'integrations' },
+      { id: 'asaas',        name: 'Pagamentos Asaas', description: 'Chave, formas aceitas, webhook e campos', path: '/app-ui/system/pagamentos-asaas', permKey: 'asaas_config' },
       { id: 'webhooks',     name: 'Webhooks',    description: 'Eventos e callbacks',       path: '/app-ui/system/webhooks',     permKey: 'settings_webhooks' },
       { id: 'api',          name: 'API',         description: 'Documentação e acesso',     path: '/app-ui/system/api',          permKey: 'settings_api' },
     ]

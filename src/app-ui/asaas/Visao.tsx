@@ -1,12 +1,14 @@
-/** Pagamentos › Visão geral: o que entrou, o que vai entrar e o que está em aberto. */
-import { Link } from 'react-router';
+/** Pagamentos › Visão geral: o que entrou no período, o que vai entrar e o que está em aberto. */
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { AlertTriangle, CalendarClock, CircleDollarSign, Clock, CreditCard, Link2, QrCode, Receipt, Repeat, Wallet } from 'lucide-react';
 import { brl, Botao, Cartao, Carregando, dataBr, Erro, Metrica, ORIGENS, Selo, useDados, Vazio } from './comum';
+import { FiltroPeriodo, periodoPadrao, rotuloPeriodo, Tabela, type Periodo } from './tabela';
 
-interface Linha { id: string; estado: string; status: string; valor: number; formaRotulo: string; origem: string; pagadorNome: string | null; descricao: string | null; criadoEm: string }
+interface Linha { id: string; estado: string; status: string; valor: number; valorLiquido: number | null; formaRotulo: string; origem: string; pagadorNome: string | null; descricao: string | null; criadoEm: string }
 interface Resumo {
-  configurado: boolean; ativo: boolean; ambiente: string | null;
+  configurado: boolean; ativo: boolean; ambiente: string | null; de: string; ate: string;
   recebidoHoje: number; recebidoMes: number; liquidoMes: number; qtdMes: number; ticketMedio: number;
   aReceber: number; qtdAReceber: number; pendentes: number; qtdPendentes: number;
   saldo: number | null; erroSaldo: string | null; recorrenteMensal: number; assinaturas: Record<string, number>;
@@ -14,43 +16,53 @@ interface Resumo {
 }
 
 export default function Visao() {
-  const { dados: r, erro, carregando, recarregar } = useDados<Resumo>('resumo');
+  const ir = useNavigate();
+  const [periodo, setPeriodo] = useState<Periodo>(periodoPadrao());
+  const { dados: r, erro, carregando, recarregar } = useDados<Resumo>(`resumo?de=${periodo.de}&ate=${periodo.ate}`);
   if (carregando && !r) return <Carregando />;
-  if (erro) return <Erro msg={erro} onTentar={recarregar} />;
+  if (erro && !r) return <Erro msg={erro} onTentar={recarregar} />;
   if (!r) return null;
 
   if (!r.configurado || !r.ativo) {
     return (
       <Cartao>
         <Vazio icone={Wallet} titulo={r.configurado ? 'Pagamento online desligado neste campo' : 'Asaas ainda não configurado neste campo'}
-          sub="Cole a chave de API do Asaas em Configurações e ative. O app passa a aceitar Pix com baixa automática, cartão e dízimo recorrente."
-          acao={<Link to="/app-ui/pagamentos/configuracoes"><Botao>Ir para Configurações</Botao></Link>} />
+          sub="Cole a chave de API do Asaas em Sistema › Configurações › Pagamentos Asaas e ative. O app passa a aceitar Pix com baixa automática, cartão e dízimo recorrente."
+          acao={<Link to="/app-ui/system/pagamentos-asaas"><Botao>Ir para Configurações</Botao></Link>} />
       </Cartao>
     );
   }
 
   const totalForma = r.porForma.reduce((s, f) => s + f.valor, 0) || 1;
+  const rotulo = rotuloPeriodo(periodo);
   return (
     <div className="space-y-5">
+      <Cartao className="p-3 flex flex-wrap items-end gap-3">
+        <FiltroPeriodo valor={periodo} onChange={setPeriodo} />
+        {carregando && <span className="text-xs text-slate-400 pb-2">Atualizando…</span>}
+        <div className="flex-1" />
+        <Link to="/app-ui/pagamentos/cobrar"><Botao><QrCode className="w-4 h-4" />Nova cobrança</Botao></Link>
+        <Link to="/app-ui/pagamentos/links"><Botao tipo="secundario"><Link2 className="w-4 h-4" />Novo link</Botao></Link>
+      </Cartao>
       {r.ambiente === 'sandbox' && (
         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-50 text-amber-800 text-sm dark:bg-amber-900/20 dark:text-amber-300">
           <AlertTriangle className="w-4 h-4" /> Ambiente de testes (Sandbox): nada aqui é dinheiro de verdade.
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <Metrica icone={CircleDollarSign} tom="emerald" rotulo="Recebido hoje" valor={brl(r.recebidoHoje)} />
-        <Metrica icone={Receipt} tom="purple" rotulo="Recebido no mês" valor={brl(r.recebidoMes)} sub={`${r.qtdMes} pagamentos · líquido ${brl(r.liquidoMes)} · ticket médio ${brl(r.ticketMedio)}`} />
-        <Metrica icone={CalendarClock} tom="sky" rotulo="A receber (cartão confirmado)" valor={brl(r.aReceber)} sub={`${r.qtdAReceber} cobranças aguardando liquidação`} />
-        <Metrica icone={Wallet} tom="slate" rotulo="Saldo disponível na conta Asaas" valor={r.saldo === null ? '—' : brl(r.saldo)} sub={r.erroSaldo ?? 'Conta inteira (pode atender outros campos)'} />
-        <Metrica icone={Clock} tom="amber" rotulo="Em aberto (Pix/boleto não pagos)" valor={brl(r.pendentes)} sub={`${r.qtdPendentes} cobranças`} />
-        <Metrica icone={Repeat} tom="purple" rotulo="Recorrente por mês (ativas)" valor={brl(r.recorrenteMensal)}
+        <Metrica icone={Receipt} tom="purple" rotulo={`Recebido · ${rotulo}`} valor={brl(r.recebidoMes)} sub={`${r.qtdMes} pagamentos · líquido ${brl(r.liquidoMes)} · ticket ${brl(r.ticketMedio)}`} />
+        <Metrica icone={CalendarClock} tom="sky" rotulo="A receber (cartão confirmado)" valor={brl(r.aReceber)} sub={`${r.qtdAReceber} aguardando liquidação`} />
+        <Metrica icone={Wallet} tom="slate" rotulo="Saldo na conta Asaas" valor={r.saldo === null ? '—' : brl(r.saldo)} sub={r.erroSaldo ?? 'Conta inteira'} />
+        <Metrica icone={Clock} tom="amber" rotulo="Em aberto" valor={brl(r.pendentes)} sub={`${r.qtdPendentes} Pix/boletos não pagos`} />
+        <Metrica icone={Repeat} tom="purple" rotulo="Recorrente por mês" valor={brl(r.recorrenteMensal)}
           sub={`${r.assinaturas.ATIVA ?? 0} ativas · ${r.assinaturas.INADIMPLENTE ?? 0} em aberto · ${r.assinaturas.PAUSADA ?? 0} pausadas`} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Cartao className="p-4 lg:col-span-2">
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3">Recebimentos dos últimos 30 dias</p>
-          <div className="h-56">
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3">Recebimentos por dia · {rotulo}</p>
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={r.porDia} margin={{ left: 0, right: 8, top: 4 }}>
                 <defs>
@@ -60,7 +72,7 @@ export default function Visao() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="dia" tickFormatter={(d: string) => d.slice(8, 10)} tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                <XAxis dataKey="dia" tickFormatter={(d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`} tick={{ fontSize: 11, fill: '#94a3b8' }} minTickGap={16} />
                 <YAxis tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} tick={{ fontSize: 11, fill: '#94a3b8' }} width={40} />
                 <Tooltip formatter={(v) => brl(v)} labelFormatter={(d) => dataBr(String(d))} />
                 <Area type="monotone" dataKey="valor" stroke="#9333ea" strokeWidth={2} fill="url(#gAsaas)" />
@@ -69,8 +81,8 @@ export default function Visao() {
           </div>
         </Cartao>
         <Cartao className="p-4">
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3">Por forma de pagamento (mês)</p>
-          {r.porForma.length === 0 ? <p className="text-sm text-slate-400">Nada recebido no mês ainda.</p> : (
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3">Por forma de pagamento</p>
+          {r.porForma.length === 0 ? <p className="text-sm text-slate-400">Nada recebido no período.</p> : (
             <div className="space-y-3">
               {r.porForma.map((f) => (
                 <div key={f.forma}>
@@ -80,35 +92,27 @@ export default function Visao() {
               ))}
             </div>
           )}
-          <div className="flex flex-wrap gap-2 mt-5">
-            <Link to="/app-ui/pagamentos/cobrar"><Botao><QrCode className="w-4 h-4" />Nova cobrança</Botao></Link>
-            <Link to="/app-ui/pagamentos/links"><Botao tipo="secundario"><Link2 className="w-4 h-4" />Novo link</Botao></Link>
-          </div>
         </Cartao>
       </div>
 
-      <Cartao>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Últimas movimentações</p>
-          <Link to="/app-ui/pagamentos/vendas" className="text-xs font-semibold text-purple-600 hover:underline">Ver todas</Link>
-        </div>
-        {r.ultimas.length === 0 ? (
-          <Vazio icone={Receipt} titulo="Nenhum pagamento ainda" sub="Quando alguém contribuir pelo app ou você gerar uma cobrança, aparece aqui." />
-        ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-700">
-            {r.ultimas.map((l) => (
-              <Link key={l.id} to={`/app-ui/pagamentos/vendas?id=${l.id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{l.pagadorNome || 'Sem identificação'}</p>
-                  <p className="text-xs text-slate-500 truncate">{ORIGENS[l.origem] ?? l.origem} · {l.formaRotulo} · {dataBr(l.criadoEm, true)}</p>
-                </div>
-                <Selo estado={l.estado} status={l.status} />
-                <span className="w-28 text-right text-sm font-bold">{brl(l.valor)}</span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </Cartao>
+      <Tabela<Linha>
+        titulo="Movimentações"
+        subtitulo={rotulo}
+        linhas={r.ultimas}
+        chave={(l) => l.id}
+        aoClicar={(l) => ir(`/app-ui/pagamentos/vendas?id=${l.id}`)}
+        ordemInicial={{ chave: 'data', desc: true }}
+        porPagina={10}
+        vazio={<Vazio icone={Receipt} titulo="Nenhum pagamento no período" sub="Quando alguém contribuir pelo app ou você gerar uma cobrança, aparece aqui." />}
+        colunas={[
+          { chave: 'data', rotulo: 'Data', valor: (l) => l.criadoEm, texto: (l) => dataBr(l.criadoEm, true), classe: 'whitespace-nowrap text-slate-500' },
+          { chave: 'pagador', rotulo: 'Pagador', valor: (l) => l.pagadorNome ?? '', render: (l) => <span className="font-semibold">{l.pagadorNome || 'Sem identificação'}</span> },
+          { chave: 'origem', rotulo: 'Origem', valor: (l) => ORIGENS[l.origem] ?? l.origem },
+          { chave: 'forma', rotulo: 'Forma', valor: (l) => l.formaRotulo },
+          { chave: 'status', rotulo: 'Status', valor: (l) => l.estado, render: (l) => <Selo estado={l.estado} status={l.status} /> },
+          { chave: 'valor', rotulo: 'Valor', alinhar: 'direita', valor: (l) => l.valor, texto: (l) => brl(l.valor), render: (l) => <b>{brl(l.valor)}</b> },
+        ]}
+      />
     </div>
   );
 }

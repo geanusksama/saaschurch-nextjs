@@ -8,7 +8,8 @@ import { Copy, Download, ExternalLink, Link2, MessageCircle, Pencil, Plus, Power
 import QRCode from 'qrcode';
 import { toast } from 'sonner';
 import { usePermissions } from '../../lib/usePermissions';
-import { api, brl, Botao, Campo, Cartao, Carregando, copiar, dataBr, Erro, Gaveta, inputCls, Interruptor, perfilAtual, Qr, useDados, Vazio } from './comum';
+import { api, brl, Botao, Campo, Cartao, copiar, dataBr, Erro, Gaveta, inputCls, Interruptor, perfilAtual, Qr, useDados, Vazio } from './comum';
+import { Tabela } from './tabela';
 
 interface LinkP {
   id: string; nome: string; descricao: string | null; finalidade: string; valor: number | null; forma: string; tipoCobranca: string;
@@ -71,37 +72,45 @@ export default function Links() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="flex-1 text-sm text-slate-500">Cada pagamento feito por um link aparece em Contribuições e vendas, com a origem &ldquo;Link de pagamento&rdquo;.</p>
-        {canCreate('asaas_pagamentos') && <Botao onClick={() => abrir()}><Plus className="w-4 h-4" />Novo link</Botao>}
+        {canCreate('asaas_links') && <Botao onClick={() => abrir()}><Plus className="w-4 h-4" />Novo link</Botao>}
       </div>
       {erro && <Erro msg={erro} onTentar={recarregar} />}
-      {carregando && !dados ? <Carregando /> : dados && dados.length === 0 ? (
-        <Cartao><Vazio icone={Link2} titulo="Nenhum link ainda" sub="Crie um link de oferta com valor livre para o telão, ou um link de campanha para o WhatsApp." /></Cartao>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {dados?.map((l) => (
-            <Cartao key={l.id} className={`p-4 flex flex-col gap-3 ${l.ativo ? '' : 'opacity-60'}`}>
-              <div className="flex items-start gap-3">
-                <button onClick={() => setQr(l)} title="Ver QR"><Qr texto={l.url} tamanho={64} /></button>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold truncate">{l.nome}</p>
-                  <p className="text-xs text-slate-500">{FINALIDADES[l.finalidade] ?? l.finalidade} · {l.valor === null ? 'valor livre' : brl(l.valor)}{l.tipoCobranca === 'RECURRENT' ? ' · mensal' : l.maxParcelas > 1 ? ` · até ${l.maxParcelas}x` : ''}</p>
-                  <p className="text-xs text-slate-500">{l.forma === 'UNDEFINED' ? 'Pix, cartão e mais' : l.forma === 'PIX' ? 'Só Pix' : l.forma === 'CREDIT_CARD' ? 'Só cartão' : 'Boleto'}{l.encerraEm ? ` · até ${dataBr(l.encerraEm)}` : ''}</p>
-                </div>
-                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${l.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{l.ativo ? 'Ativo' : 'Inativo'}</span>
+      <Tabela<LinkP>
+        titulo="Links e campanhas"
+        linhas={dados ?? []}
+        carregando={carregando}
+        chave={(l) => l.id}
+        ordemInicial={{ chave: 'nome' }}
+        vazio={<Vazio icone={Link2} titulo="Nenhum link ainda" sub="Crie um link de oferta com valor livre para o telão, ou um link de campanha para o WhatsApp." />}
+        colunas={[
+          { chave: 'qr', rotulo: 'QR', acao: true, valor: () => '', render: (l) => <button onClick={() => setQr(l)} title="Ver QR"><Qr texto={l.url} tamanho={44} /></button> },
+          { chave: 'nome', rotulo: 'Nome', valor: (l) => l.nome, render: (l) => <><p className="font-semibold">{l.nome}</p>{l.descricao && <p className="text-xs text-slate-500 truncate max-w-xs">{l.descricao}</p>}</> },
+          { chave: 'finalidade', rotulo: 'Finalidade', valor: (l) => FINALIDADES[l.finalidade] ?? l.finalidade },
+          { chave: 'valor', rotulo: 'Valor', alinhar: 'direita', valor: (l) => l.valor ?? -1, texto: (l) => (l.valor === null ? 'Valor livre' : brl(l.valor)) },
+          {
+            chave: 'formas', rotulo: 'Formas', valor: (l) => `${l.forma === 'UNDEFINED' ? 'Pix, cartão e mais' : l.forma === 'PIX' ? 'Só Pix' : l.forma === 'CREDIT_CARD' ? 'Só cartão' : 'Boleto'}${l.tipoCobranca === 'RECURRENT' ? ' · mensal' : l.maxParcelas > 1 ? ` · até ${l.maxParcelas}x` : ''}`,
+            classe: 'text-xs text-slate-500',
+          },
+          { chave: 'encerra', rotulo: 'Encerra', valor: (l) => l.encerraEm ?? '', texto: (l) => (l.encerraEm ? dataBr(l.encerraEm) : ''), classe: 'whitespace-nowrap text-slate-500' },
+          { chave: 'pagamentos', rotulo: 'Pagamentos', alinhar: 'direita', valor: (l) => l.pagamentos },
+          { chave: 'recebido', rotulo: 'Recebido', alinhar: 'direita', valor: (l) => l.recebido, texto: (l) => brl(l.recebido), render: (l) => <b>{brl(l.recebido)}</b> },
+          { chave: 'status', rotulo: 'Status', valor: (l) => (l.ativo ? 'Ativo' : 'Inativo'), render: (l) => <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${l.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{l.ativo ? 'Ativo' : 'Inativo'}</span> },
+          { chave: 'url', rotulo: 'Link', valor: (l) => l.url, render: (l) => <span className="text-xs text-slate-400 truncate inline-block max-w-[160px] align-middle">{l.url}</span> },
+          {
+            chave: 'acoes', rotulo: '', acao: true, valor: () => '', alinhar: 'direita', classe: 'whitespace-nowrap',
+            render: (l) => (
+              <div className="inline-flex gap-1">
+                <Botao tipo="secundario" className="!px-2 !py-1.5" title="Copiar link" onClick={() => copiar(l.url, 'Link copiado')}><Copy className="w-3.5 h-3.5" /></Botao>
+                <a href={`https://wa.me/?text=${encodeURIComponent(`${l.nome}: ${l.url}`)}`} target="_blank" rel="noreferrer"><Botao tipo="secundario" className="!px-2 !py-1.5" title="Enviar por WhatsApp"><MessageCircle className="w-3.5 h-3.5" /></Botao></a>
+                <a href={l.url} target="_blank" rel="noreferrer"><Botao tipo="secundario" className="!px-2 !py-1.5" title="Abrir"><ExternalLink className="w-3.5 h-3.5" /></Botao></a>
+                <Botao tipo="secundario" className="!px-2 !py-1.5" title="Baixar QR para imprimir" onClick={() => baixarQr(l)}><Download className="w-3.5 h-3.5" /></Botao>
+                {canEdit('asaas_links') && <Botao tipo="secundario" className="!px-2 !py-1.5" title="Editar" onClick={() => abrir(l)}><Pencil className="w-3.5 h-3.5" /></Botao>}
+                {canEdit('asaas_links') && <Botao tipo="fantasma" className="!px-2 !py-1.5" title={l.ativo ? 'Desativar' : 'Ativar'} onClick={() => alternar(l)}><Power className="w-3.5 h-3.5" /></Botao>}
               </div>
-              <div className="flex items-baseline justify-between text-sm"><span className="text-slate-500">{l.pagamentos} pagamentos</span><span className="font-bold">{brl(l.recebido)}</span></div>
-              <div className="flex flex-wrap gap-1.5">
-                <Botao tipo="secundario" className="!px-2.5 !py-1.5" onClick={() => copiar(l.url, 'Link copiado')}><Copy className="w-3.5 h-3.5" />Copiar</Botao>
-                <a href={`https://wa.me/?text=${encodeURIComponent(`${l.nome}: ${l.url}`)}`} target="_blank" rel="noreferrer"><Botao tipo="secundario" className="!px-2.5 !py-1.5"><MessageCircle className="w-3.5 h-3.5" /></Botao></a>
-                <a href={l.url} target="_blank" rel="noreferrer"><Botao tipo="secundario" className="!px-2.5 !py-1.5"><ExternalLink className="w-3.5 h-3.5" /></Botao></a>
-                <Botao tipo="secundario" className="!px-2.5 !py-1.5" title="Baixar QR para imprimir" onClick={() => baixarQr(l)}><Download className="w-3.5 h-3.5" /></Botao>
-                {canEdit('asaas_pagamentos') && <Botao tipo="secundario" className="!px-2.5 !py-1.5" onClick={() => abrir(l)}><Pencil className="w-3.5 h-3.5" /></Botao>}
-                {canEdit('asaas_pagamentos') && <Botao tipo="fantasma" className="!px-2.5 !py-1.5" title={l.ativo ? 'Desativar' : 'Ativar'} onClick={() => alternar(l)}><Power className="w-3.5 h-3.5" /></Botao>}
-              </div>
-            </Cartao>
-          ))}
-        </div>
-      )}
+            ),
+          },
+        ]}
+      />
 
       <Gaveta aberta={Boolean(form)} onFechar={() => setForm(null)} titulo={editando ? 'Editar link' : 'Novo link de pagamento'}>
         {form && (

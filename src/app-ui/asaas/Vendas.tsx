@@ -1,16 +1,17 @@
 /**
- * Pagamentos › Contribuições e vendas: tudo o que passou pelo Asaas no campo,
- * com filtros, exportação CSV e o detalhe com linha do tempo, taxa e ações
- * (estornar, cancelar, atualizar do Asaas).
+ * Pagamentos › Contribuições e vendas: tudo o que passou pelo Asaas no campo
+ * no período, em tabela (ordenar, paginar, exportar, imprimir) e o detalhe
+ * com linha do tempo, taxa e ações (estornar, cancelar, atualizar do Asaas).
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Download, ExternalLink, Receipt, RefreshCcw, RotateCcw, Search, X } from 'lucide-react';
+import { ExternalLink, Receipt, RefreshCcw, RotateCcw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePermissions } from '../../lib/usePermissions';
 import {
-  api, brl, Botao, Campo, Cartao, Carregando, confirmar, copiar, cx, dataBr, Erro, Gaveta, hojeIso, inputCls, ORIGENS, perfilAtual, Selo, useDados, Vazio,
+  api, brl, Botao, Campo, Cartao, Carregando, confirmar, copiar, cx, dataBr, Erro, Gaveta, inputCls, ORIGENS, perfilAtual, Selo, useDados, Vazio,
 } from './comum';
+import { FiltroPeriodo, periodoPadrao, rotuloPeriodo, Tabela, type Periodo } from './tabela';
 
 interface Linha {
   id: string; asaasPaymentId: string; origem: string; forma: string; formaRotulo: string; status: string; estado: string;
@@ -34,114 +35,69 @@ const EVENTOS: Record<string, string> = {
 
 export default function Vendas() {
   const [sp, setSp] = useSearchParams();
-  const [filtro, setFiltro] = useState({ de: hojeIso(-30), ate: hojeIso(), estado: '', forma: '', origem: '', q: '' });
-  const [pagina, setPagina] = useState(1);
+  const [periodo, setPeriodo] = useState<Periodo>(periodoPadrao());
+  const [filtro, setFiltro] = useState({ estado: '', forma: '', origem: '' });
   const qs = useMemo(() => {
-    const p = new URLSearchParams({ pagina: String(pagina), tamanho: '30' });
+    const p = new URLSearchParams({ tudo: '1', de: periodo.de, ate: periodo.ate });
     Object.entries(filtro).forEach(([k, v]) => v && p.set(k, v));
     return p.toString();
-  }, [filtro, pagina]);
+  }, [filtro, periodo]);
   const { dados, erro, carregando, recarregar } = useDados<Pagina>(`cobrancas?${qs}`);
   const aberto = sp.get('id');
-
-  const muda = (k: keyof typeof filtro, v: string) => {
-    setPagina(1);
-    setFiltro((f) => ({ ...f, [k]: v }));
-  };
-
-  async function exportar() {
-    const p = new URLSearchParams(qs);
-    p.set('tamanho', '200');
-    const todas: Linha[] = [];
-    for (let i = 1; i <= 25; i++) {
-      p.set('pagina', String(i));
-      const pg = await api<Pagina>(`cobrancas?${p}`);
-      todas.push(...pg.linhas);
-      if (todas.length >= pg.total) break;
-    }
-    const cab = ['Data', 'Pagador', 'Origem', 'Descrição', 'Forma', 'Parcelas', 'Status', 'Valor', 'Taxa', 'Líquido', 'Pago em', 'Id Asaas'];
-    const linhas = todas.map((l) => [dataBr(l.criadoEm, true), l.pagadorNome ?? '', ORIGENS[l.origem] ?? l.origem, l.descricao ?? '', l.formaRotulo, l.parcelas, l.status,
-      l.valor.toFixed(2).replace('.', ','), l.taxa?.toFixed(2).replace('.', ',') ?? '', l.valorLiquido?.toFixed(2).replace('.', ',') ?? '', dataBr(l.pagoEm, true), l.asaasPaymentId]);
-    const csv = [cab, ...linhas].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' }));
-    a.download = `pagamentos-${filtro.de}-a-${filtro.ate}.csv`;
-    a.click();
-  }
+  const muda = (k: keyof typeof filtro, v: string) => setFiltro((f) => ({ ...f, [k]: v }));
 
   return (
     <div className="space-y-4">
-      <Cartao className="p-3 flex flex-wrap items-end gap-2">
-        <Campo rotulo="De"><input type="date" className={inputCls} value={filtro.de} onChange={(e) => muda('de', e.target.value)} /></Campo>
-        <Campo rotulo="Até"><input type="date" className={inputCls} value={filtro.ate} onChange={(e) => muda('ate', e.target.value)} /></Campo>
-        <Campo rotulo="Status">
-          <select className={inputCls} value={filtro.estado} onChange={(e) => muda('estado', e.target.value)}>
-            <option value="">Todos</option><option value="PAGO">Pago</option><option value="PENDENTE">Aguardando</option><option value="VENCIDO">Vencido</option>
-            <option value="ESTORNADO">Estornado</option><option value="CANCELADO">Cancelado</option>
-          </select>
-        </Campo>
-        <Campo rotulo="Forma">
-          <select className={inputCls} value={filtro.forma} onChange={(e) => muda('forma', e.target.value)}>
-            <option value="">Todas</option><option value="PIX">Pix</option><option value="CREDIT_CARD">Crédito</option><option value="DEBIT_CARD">Débito</option><option value="BOLETO">Boleto</option>
-          </select>
-        </Campo>
-        <Campo rotulo="Origem">
-          <select className={inputCls} value={filtro.origem} onChange={(e) => muda('origem', e.target.value)}>
-            <option value="">Todas</option>{Object.entries(ORIGENS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </Campo>
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-          <input className={cx(inputCls, 'pl-9')} placeholder="Pagador, descrição ou id" value={filtro.q} onChange={(e) => muda('q', e.target.value)} />
-        </div>
-        <Botao tipo="secundario" onClick={() => exportar().catch((e) => toast.error((e as Error).message))}><Download className="w-4 h-4" />CSV</Botao>
-      </Cartao>
-
       {erro && <Erro msg={erro} onTentar={recarregar} />}
-      {carregando && !dados ? <Carregando /> : dados && (
-        <Cartao className="overflow-hidden">
-          <div className="flex flex-wrap gap-4 px-4 py-2.5 text-xs text-slate-500 border-b border-slate-100 dark:border-slate-700">
-            <span><b className="text-slate-700 dark:text-slate-200">{dados.total}</b> registros</span>
+      <Tabela<Linha>
+        titulo="Contribuições e vendas"
+        subtitulo={rotuloPeriodo(periodo)}
+        linhas={dados?.linhas ?? []}
+        carregando={carregando}
+        chave={(l) => l.id}
+        aoClicar={(l) => setSp({ id: l.id })}
+        ordemInicial={{ chave: 'data', desc: true }}
+        barra={
+          <>
+            <FiltroPeriodo valor={periodo} onChange={setPeriodo} />
+            <Campo rotulo="Status">
+              <select className={inputCls} value={filtro.estado} onChange={(e) => muda('estado', e.target.value)}>
+                <option value="">Todos</option><option value="PAGO">Pago</option><option value="PENDENTE">Aguardando</option><option value="VENCIDO">Vencido</option>
+                <option value="ESTORNADO">Estornado</option><option value="CANCELADO">Cancelado</option>
+              </select>
+            </Campo>
+            <Campo rotulo="Forma">
+              <select className={inputCls} value={filtro.forma} onChange={(e) => muda('forma', e.target.value)}>
+                <option value="">Todas</option><option value="PIX">Pix</option><option value="CREDIT_CARD">Crédito</option><option value="DEBIT_CARD">Débito</option><option value="BOLETO">Boleto</option>
+              </select>
+            </Campo>
+            <Campo rotulo="Origem">
+              <select className={inputCls} value={filtro.origem} onChange={(e) => muda('origem', e.target.value)}>
+                <option value="">Todas</option>{Object.entries(ORIGENS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </Campo>
+          </>
+        }
+        resumo={dados && (
+          <>
+            <span><b className="text-slate-700 dark:text-slate-200">{dados.total}</b> registros no período</span>
             <span>Total <b className="text-slate-700 dark:text-slate-200">{brl(dados.somaValor)}</b></span>
             <span>Líquido conhecido <b className="text-slate-700 dark:text-slate-200">{brl(dados.somaLiquido)}</b></span>
-          </div>
-          {dados.linhas.length === 0 ? (
-            <Vazio icone={Receipt} titulo="Nada neste filtro" sub="Contribuições do app, cobranças rápidas e pagamentos por link aparecem aqui." />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-900/40 text-xs text-slate-500">
-                  <tr>
-                    <th className="text-left font-semibold px-4 py-2">Data</th><th className="text-left font-semibold px-4 py-2">Pagador</th>
-                    <th className="text-left font-semibold px-4 py-2">Origem</th><th className="text-left font-semibold px-4 py-2">Forma</th>
-                    <th className="text-left font-semibold px-4 py-2">Status</th><th className="text-right font-semibold px-4 py-2">Valor</th><th className="text-right font-semibold px-4 py-2">Líquido</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {dados.linhas.map((l) => (
-                    <tr key={l.id} onClick={() => setSp({ id: l.id })} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                      <td className="px-4 py-2 whitespace-nowrap text-slate-500">{dataBr(l.criadoEm, true)}</td>
-                      <td className="px-4 py-2"><p className="font-semibold">{l.pagadorNome || '—'}</p><p className="text-xs text-slate-500 truncate max-w-xs">{l.descricao}</p></td>
-                      <td className="px-4 py-2 text-slate-600 dark:text-slate-300">{ORIGENS[l.origem] ?? l.origem}</td>
-                      <td className="px-4 py-2 whitespace-nowrap">{l.formaRotulo}{l.parcelas > 1 ? ` ${l.parcelas}x` : ''}</td>
-                      <td className="px-4 py-2"><Selo estado={l.estado} status={l.status} /></td>
-                      <td className="px-4 py-2 text-right font-semibold whitespace-nowrap">{brl(l.valor)}</td>
-                      <td className="px-4 py-2 text-right text-slate-500 whitespace-nowrap">{brl(l.valorLiquido)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {dados.total > dados.tamanho && (
-            <div className="flex items-center justify-end gap-2 px-4 py-2 border-t border-slate-100 dark:border-slate-700 text-sm">
-              <Botao tipo="secundario" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>Anterior</Botao>
-              <span className="text-slate-500">Página {pagina} de {Math.ceil(dados.total / dados.tamanho)}</span>
-              <Botao tipo="secundario" disabled={pagina * dados.tamanho >= dados.total} onClick={() => setPagina((p) => p + 1)}>Próxima</Botao>
-            </div>
-          )}
-        </Cartao>
-      )}
+          </>
+        )}
+        vazio={<Vazio icone={Receipt} titulo="Nada neste filtro" sub="Contribuições do app, cobranças rápidas e pagamentos por link aparecem aqui." />}
+        colunas={[
+          { chave: 'data', rotulo: 'Data', valor: (l) => l.criadoEm, texto: (l) => dataBr(l.criadoEm, true), classe: 'whitespace-nowrap text-slate-500' },
+          { chave: 'pagador', rotulo: 'Pagador', valor: (l) => l.pagadorNome ?? '', render: (l) => <><p className="font-semibold">{l.pagadorNome || '—'}</p><p className="text-xs text-slate-500 truncate max-w-xs">{l.descricao}</p></> },
+          { chave: 'origem', rotulo: 'Origem', valor: (l) => ORIGENS[l.origem] ?? l.origem },
+          { chave: 'forma', rotulo: 'Forma', valor: (l) => `${l.formaRotulo}${l.parcelas > 1 ? ` ${l.parcelas}x` : ''}`, classe: 'whitespace-nowrap' },
+          { chave: 'status', rotulo: 'Status', valor: (l) => l.estado, texto: (l) => `${l.estado} (${l.status})`, render: (l) => <Selo estado={l.estado} status={l.status} /> },
+          { chave: 'pago', rotulo: 'Pago em', valor: (l) => l.pagoEm ?? '', texto: (l) => dataBr(l.pagoEm, true), classe: 'whitespace-nowrap text-slate-500' },
+          { chave: 'valor', rotulo: 'Valor', alinhar: 'direita', valor: (l) => l.valor, texto: (l) => brl(l.valor), render: (l) => <b>{brl(l.valor)}</b> },
+          { chave: 'taxa', rotulo: 'Taxa', alinhar: 'direita', valor: (l) => l.taxa, texto: (l) => brl(l.taxa), classe: 'text-slate-500 whitespace-nowrap' },
+          { chave: 'liquido', rotulo: 'Líquido', alinhar: 'direita', valor: (l) => l.valorLiquido, texto: (l) => brl(l.valorLiquido), classe: 'text-slate-500 whitespace-nowrap' },
+        ]}
+      />
       <DetalheCobranca id={aberto} onFechar={() => setSp({})} onMudou={recarregar} />
     </div>
   );
@@ -225,12 +181,12 @@ export function DetalheCobranca({ id, onFechar, onMudou }: { id: string | null; 
             <Botao tipo="secundario" carregando={ocupado === 'sincronizar'} onClick={() => acao('sincronizar', '')}><RefreshCcw className="w-4 h-4" />Atualizar do Asaas</Botao>
             {d.invoiceUrl && <a href={d.invoiceUrl} target="_blank" rel="noreferrer"><Botao tipo="secundario"><ExternalLink className="w-4 h-4" />Fatura / comprovante</Botao></a>}
             {d.invoiceUrl && d.estado === 'PENDENTE' && <Botao tipo="secundario" onClick={() => copiar(d.invoiceUrl!, 'Link copiado')}>Copiar link</Botao>}
-            {canDelete('asaas_pagamentos') && ['PENDENTE', 'VENCIDO'].includes(d.estado) && (
+            {canDelete('asaas_vendas') && ['PENDENTE', 'VENCIDO'].includes(d.estado) && (
               <Botao tipo="secundario" carregando={ocupado === 'cancelar'} onClick={() => acao('cancelar', 'Cancelar esta cobrança em aberto?')}><X className="w-4 h-4" />Cancelar cobrança</Botao>
             )}
           </div>
 
-          {canDelete('asaas_pagamentos') && d.estado === 'PAGO' && (
+          {canDelete('asaas_vendas') && d.estado === 'PAGO' && (
             <Cartao className="p-4 space-y-2 border-rose-200">
               <p className="text-sm font-bold text-rose-700 flex items-center gap-2"><RotateCcw className="w-4 h-4" />Estornar</p>
               <p className="text-xs text-slate-500">Devolve o dinheiro para quem pagou (Pix volta para a conta; cartão, para a fatura). O pedido/contribuição no app é atualizado.</p>
