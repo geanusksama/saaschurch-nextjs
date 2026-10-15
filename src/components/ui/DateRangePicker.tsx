@@ -85,6 +85,10 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
   // mudar o ano de um arrastava o outro (não dava para ir de 2021 a 2026).
   const [monthFrom, setMonthFrom] = useState<Date>(now());
   const [monthTo, setMonthTo] = useState<Date>(now());
+  // Intervalo em dois cliques, em qualquer um dos calendários: o 1º marca o
+  // dia (início = fim) e o 2º fecha o intervalo e já aplica. Sem isso cada
+  // ponta exigia escolher e aplicar separado (pedido do dono, 2026-10-15).
+  const [esperandoFim, setEsperandoFim] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const styleId = useId();
@@ -129,23 +133,30 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
     setMonthFrom(fromDate ?? now());
     setMonthTo(toDateVal_ ?? fromDate ?? now());
     setActivePreset(null);
+    setEsperandoFim(false);
     setOpen(true);
   }
 
-  /** Clique no calendário "De": muda só o início. */
-  function escolherInicio(dia: Date) {
-    setDraft((atual) => ({ from: dia, to: atual.to && !isBefore(atual.to, dia) ? atual.to : undefined }));
-    setActivePreset(null);
+  function aplicar(f: Date, t: Date) {
+    onChangeFrom(toIso(f));
+    onChangeTo(toIso(t));
+    setOpen(false);
   }
 
-  /** Clique no calendário "Até": muda só o fim (antes do início, os dois trocam). */
-  function escolherFim(dia: Date) {
-    setDraft((atual) => {
-      if (!atual.from) return { from: dia, to: dia };
-      if (isBefore(dia, atual.from)) return { from: dia, to: atual.from };
-      return { from: atual.from, to: dia };
-    });
+  /** Clique num dia (qualquer calendário): 1º clique marca o dia, 2º fecha o intervalo e aplica. */
+  function escolherDia(dia: Date) {
     setActivePreset(null);
+    if (!esperandoFim || !draft.from) {
+      setDraft({ from: dia, to: dia });
+      setEsperandoFim(true);
+      // O calendário "Até" acompanha quando estava num mês anterior ao início.
+      if (isBefore(monthTo, startOfMonth(dia))) setMonthTo(dia);
+      return;
+    }
+    const [f, t] = isBefore(dia, draft.from) ? [dia, draft.from] : [draft.from, dia];
+    setDraft({ from: f, to: t });
+    setEsperandoFim(false);
+    aplicar(f, t);
   }
 
   function applyPreset(preset: typeof PRESETS[0]) {
@@ -155,14 +166,13 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
     setMonthFrom(f);
     setMonthTo(t);
     setActivePreset(preset.label);
+    setEsperandoFim(false);
+    aplicar(f, t);
   }
 
   function handleApply() {
-    if (draft.from) {
-      onChangeFrom(toIso(draft.from));
-      onChangeTo(toIso(draft.to ?? draft.from));
-    }
-    setOpen(false);
+    if (draft.from) aplicar(draft.from, draft.to ?? draft.from);
+    else setOpen(false);
   }
 
   function handleClear(e: React.MouseEvent) {
@@ -197,7 +207,9 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
   const draftLabel =
     draft.from && draft.to
       ? isSameDay(draft.from, draft.to)
-        ? format(draft.from, "dd 'de' MMM 'de' yyyy", { locale: ptBR })
+        ? esperandoFim
+          ? `${format(draft.from, "dd 'de' MMM 'de' yyyy", { locale: ptBR })} — clique na data final (ou Aplicar para só este dia)`
+          : format(draft.from, "dd 'de' MMM 'de' yyyy", { locale: ptBR })
         : `${format(draft.from, "dd 'de' MMM", { locale: ptBR })} → ${format(draft.to, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}`
       : draft.from
         ? `${format(draft.from, "dd 'de' MMM", { locale: ptBR })} → selecione a data final`
@@ -254,8 +266,8 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
 
           <div className="flex flex-col gap-3 sm:flex-row">
             {([
-              { titulo: 'De', data: draft.from, mes: monthFrom, setMes: setMonthFrom, escolher: escolherInicio },
-              { titulo: 'Até', data: draft.to, mes: monthTo, setMes: setMonthTo, escolher: escolherFim },
+              { titulo: 'De', data: draft.from, mes: monthFrom, setMes: setMonthFrom },
+              { titulo: 'Até', data: draft.to, mes: monthTo, setMes: setMonthTo },
             ] as const).map((cal) => (
               <div key={cal.titulo} className="min-w-0 flex-1">
                 <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -267,7 +279,7 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
                 <DayPicker
                   mode="range"
                   selected={draft as DateRange}
-                  onSelect={(_faixa, dia) => cal.escolher(dia)}
+                  onSelect={(_faixa, dia) => escolherDia(dia)}
                   locale={ptBR}
                   month={cal.mes}
                   onMonthChange={cal.setMes}
