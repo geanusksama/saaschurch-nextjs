@@ -19,6 +19,7 @@ import {
   Trash2,
   Crown,
   Pencil,
+  Printer,
 } from 'lucide-react';
 import {
   cultoApi,
@@ -37,6 +38,7 @@ import {
   type Registro,
 } from './cultoApi';
 import { BORDA, PASTILHA, PONTO, TEXTO } from './cultoCores';
+import { imprimirFichaCulto } from './cultoRelatorio';
 import { Permissao } from '../../lib/permissoes/Permissao';
 
 const CAMPOS_FINANCEIRO: { campo: string; label: string; moeda?: boolean }[] = [
@@ -722,12 +724,31 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
               </p>
             )}
           </div>
-          <button
-            onClick={onFechar}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {/* A ficha deste culto como está na tela — o que foi gravado, não o
+                que está sendo digitado e ainda não foi enviado. */}
+            {registro && (
+              <Permissao chave="tela_culto_registro.culto_registro_drawer.imprimir" rotulo="Imprimir — Culto Registro Drawer" herda="tela_culto_registro.view">
+                <button
+                  onClick={() => {
+                    const abriu = imprimirFichaCulto({ registro, aprovadorLocal, responsavel });
+                    if (!abriu) setErro('O navegador bloqueou a janela de impressão. Libere pop-ups deste site.');
+                  }}
+                  title="Imprimir este culto"
+                  aria-label="Imprimir este culto"
+                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+                >
+                  <Printer className="w-5 h-5" />
+                </button>
+              </Permissao>
+            )}
+            <button
+              onClick={onFechar}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="p-5 space-y-4">

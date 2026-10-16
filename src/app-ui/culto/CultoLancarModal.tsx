@@ -8,8 +8,19 @@
  * Reenvio é permitido enquanto o dirigente não aprovou. Depois de aprovado, o
  * servidor recusa (409) e o modal explica que precisa pedir a devolução.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { X, Loader2, Check, AlertTriangle, CalendarDays, Clock, Settings2 } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  X,
+  Loader2,
+  Check,
+  AlertTriangle,
+  CalendarDays,
+  Clock,
+  Settings2,
+  Plus,
+  ChevronRight,
+  ArrowLeftRight,
+} from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
 import {
@@ -101,6 +112,53 @@ function seisDiasAntes(iso: string): string {
 /** Valor do dropdown de horário quando a hora do culto não está no cadastro. */
 const HORA_AVULSA = '__hora_do_culto__';
 
+/** "19:30" → 1170. Null quando a hora não é válida. */
+function emMinutos(hhmm: string | null | undefined): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec((hhmm ?? '').trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+/**
+ * Faixa [início, fim) de um culto em minutos. Sem fim, vale uma hora; fim
+ * menor que o início é vigília que vira o dia.
+ */
+function faixa(inicio: string | null, fim: string | null): [number, number] | null {
+  const a = emMinutos(inicio);
+  if (a === null) return null;
+  let b = emMinutos(fim) ?? a + 60;
+  if (b <= a) b += 24 * 60;
+  return [a, b];
+}
+
+/**
+ * O culto ainda espera o bloco de quem está lançando: o bloco é exigido, não
+ * foi enviado e o dirigente não aprovou.
+ */
+function faltaOBloco(r: Registro, bloco: Bloco): boolean {
+  return (
+    r.blocosExigidos.includes(bloco) &&
+    !r.blocosEnviados.includes(bloco) &&
+    !['APROVADO_LOCAL', 'CONCLUIDO'].includes(r.status)
+  );
+}
+
+/**
+ * Situação de um bloco na tabela do dia. Usa blocosEnviados, que o servidor
+ * calcula antes de podar os lançamentos: o secretário sabe que o financeiro
+ * foi enviado sem ver os valores.
+ */
+function situacaoBloco(r: Registro, b: Bloco): string {
+  if (!r.blocosExigidos.includes(b)) return '—';
+  if (!r.blocosEnviados.includes(b)) return 'Falta';
+  const autor = r.lancamentos.find((l) => l.bloco === b)?.enviadoPorUser?.fullName;
+  return autor ? `Enviado · ${autor}` : 'Enviado';
+}
+
+/** "09:00–10:00", "09:00" ou "Sem horário". */
+function rotuloHorario(r: Registro): string {
+  return r.horaInicio ? `${r.horaInicio}${r.horaFim ? `–${r.horaFim}` : ''}` : 'Sem horário';
+}
+
 /** Todos os campos do bloco, sem os grupos — para ler e gravar o lançamento. */
 function camposDoBloco(bloco: Bloco): Campo[] {
   return CAMPOS[bloco].flatMap((g) => g.campos);
@@ -151,6 +209,24 @@ export default function CultoLancarModal({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
+  // Antes do formulário, a escolha do culto: quem abre vê os cultos do dia que
+  // ainda esperam o seu bloco e escolhe um, ou pede um lançamento novo. Começa
+  // aberta (carregando) e fecha sozinha se o dia não tiver nenhum pendente.
+  const [escolhendo, setEscolhendo] = useState(true);
+  const [avisoEscolha, setAvisoEscolha] = useState<string | null>(null);
+  // Igreja+data já avaliadas: a escolha reabre ao trocar de dia, não a cada
+  // recarga da mesma lista.
+  const avaliadoPara = useRef<string | null>(null);
+  // Trava síncrona do envio: o estado `salvando` só chega no próximo render, e
+  // dois cliques rápidos no Enviar passavam os dois.
+  const enviandoAgora = useRef(false);
+  // Enviou e não sobrou culto pendente no dia: mostra o verde e fecha tudo.
+  const [fechando, setFechando] = useState(false);
+  useEffect(() => {
+    if (!fechando) return;
+    const t = setTimeout(onFechar, 1500);
+    return () => clearTimeout(t);
+  }, [fechando, onFechar]);
 
   // Tipos vêm do cadastro (Configurações › Listas), nunca de lista fixa.
   useEffect(() => {
@@ -228,13 +304,29 @@ export default function CultoLancarModal({
         setErro(null);
         setSalvo(false);
         setRecentes(lista);
+        const chave = `${churchId ?? ''}|${data}`;
+        if (avaliadoPara.current === chave) return;
+        const primeira = avaliadoPara.current === null;
+        avaliadoPara.current = chave;
+        // Qualquer culto já lançado no dia passa pela escolha — inclusive os
+        // concluídos, que a pessoa pode querer abrir para conferir.
+        const temCulto = lista.some((r) => r.dataCulto.slice(0, 10) === data);
+        // Ao abrir o modal num dia sem culto, vai direto ao formulário. Depois
+        // disso, trocar o dia só abre a escolha — fechar fica com o usuário,
+        // que pode estar trocando a data dentro dela.
+        if (temCulto) setEscolhendo(true);
+        else if (primeira) setEscolhendo(false);
       })
-      .catch((e) => vivo && setErro((e as Error).message))
+      .catch((e) => {
+        if (!vivo) return;
+        setErro((e as Error).message);
+        setEscolhendo(false);
+      })
       .finally(() => vivo && setBuscando(false));
     return () => {
       vivo = false;
     };
-  }, [buscarRecentes]);
+  }, [buscarRecentes, churchId, data, bloco]);
 
   /** Só os da data escolhida: é entre eles que o formulário procura o culto. */
   const doDia = useMemo(
@@ -307,6 +399,54 @@ export default function CultoLancarModal({
 
   const nomeDoTipo = (codigo: string) => tipos.find((t) => t.codigo === codigo)?.nome ?? codigo;
 
+  /** Cultos do dia que ainda esperam o bloco de quem lança — os da escolha. */
+  const pendentes = useMemo(() => doDia.filter((r) => faltaOBloco(r, bloco)), [doDia, bloco]);
+  /** Os cultos do dia na escolha: os que esperam este bloco vêm primeiro. */
+  const paraEscolher = useMemo(
+    () => [...pendentes, ...doDia.filter((r) => !faltaOBloco(r, bloco))],
+    [pendentes, doDia, bloco],
+  );
+
+  /**
+   * Culto novo que cai no horário de um culto já lançado no dia.
+   *
+   * É a duplicação que a escolha evita: o secretário lançou a EBD das 9h e o
+   * tesoureiro, com "Culto" no nome, abriria outro culto das 9h na mesma
+   * igreja. O servidor só recusa quando tipo e hora são idênticos; aqui
+   * qualquer sobreposição de horário trava o envio.
+   */
+  const conflito = useMemo(() => {
+    if (registro) return null;
+    const minha = faixa(horaInicio, horaFim);
+    if (!minha) return null;
+    return (
+      doDia.find((r) => {
+        const outra = faixa(r.horaInicio, r.horaFim);
+        return outra !== null && minha[0] < outra[1] && outra[0] < minha[1];
+      }) ?? null
+    );
+  }, [registro, horaInicio, horaFim, doDia]);
+
+  /** Fecha a escolha e deixa o formulário pronto para um culto novo. */
+  function novoLancamento() {
+    const tipoPadrao = tipos.find((t) => t.is_default) ?? tipos[0];
+    setTipoCulto(tipoPadrao?.codigo ?? 'CULTO');
+    const h = horarios.find((x) => x.is_default);
+    setHorarioCodigo(h?.codigo ?? '');
+    setHoraInicio(h?.hora_inicio ?? '');
+    setHoraFim(h ? (h.hora_fim ?? (h.hora_inicio ? umaHoraDepois(h.hora_inicio) : '')) : '');
+    setSalvo(false);
+    setAvisoEscolha(null);
+    setEscolhendo(false);
+  }
+
+  /** Escolheu um culto na lista: o formulário passa a ser o dele. */
+  function escolher(r: Registro) {
+    abrirExistente(r);
+    setAvisoEscolha(null);
+    setEscolhendo(false);
+  }
+
   // O dropdown mostra o horário do culto aberto mesmo quando a igreja não tem
   // aquele horário no cadastro (ou não tem cadastro nenhum): o culto já
   // lançado às 18:00 não pode aparecer como "Sem horário definido".
@@ -315,18 +455,6 @@ export default function CultoLancarModal({
     horarios.find((h) => h.hora_inicio === horaInicio)?.codigo ??
     (horaInicio ? HORA_AVULSA : '');
   const tipoForaDoCadastro = tipoCulto && !tipos.some((t) => t.codigo === tipoCulto);
-
-  /**
-   * Situação de um bloco na tabela do dia. Usa blocosEnviados, que o servidor
-   * calcula antes de podar os lançamentos: o secretário sabe que o financeiro
-   * foi enviado sem ver os valores.
-   */
-  function situacaoBloco(r: Registro, b: Bloco): string {
-    if (!r.blocosExigidos.includes(b)) return '—';
-    if (!r.blocosEnviados.includes(b)) return 'Falta';
-    const autor = r.lancamentos.find((l) => l.bloco === b)?.enviadoPorUser?.fullName;
-    return autor ? `Enviado · ${autor}` : 'Enviado';
-  }
 
   const jaAprovado = registro
     ? ['APROVADO_LOCAL', 'CONCLUIDO'].includes(registro.status)
@@ -337,6 +465,12 @@ export default function CultoLancarModal({
       setErro('Escolha a igreja.');
       return;
     }
+    if (conflito) {
+      setErro('Já existe um culto neste horário. Abra-o na lista em vez de lançar outro.');
+      return;
+    }
+    if (enviandoAgora.current || salvo) return;
+    enviandoAgora.current = true;
     setSalvando(true);
     setErro(null);
     try {
@@ -344,13 +478,26 @@ export default function CultoLancarModal({
       // criar o registro antes de digitar.
       let alvo = registro;
       if (!alvo) {
-        alvo = await cultoApi.abrirRegistro({
-          churchId,
-          dataCulto: data,
-          horaInicio: horaInicio || null,
-          horaFim: horaFim || null,
-          tipoCulto,
-        });
+        try {
+          alvo = await cultoApi.abrirRegistro({
+            churchId,
+            dataCulto: data,
+            horaInicio: horaInicio || null,
+            horaFim: horaFim || null,
+            tipoCulto,
+          });
+        } catch (e) {
+          // Outra pessoa abriu o mesmo culto entre a lista e o envio (o
+          // servidor recusa a duplicata com 409): lança nele em vez de falhar.
+          const mesmo = (await buscarRecentes()).find(
+            (r) =>
+              r.dataCulto.slice(0, 10) === data &&
+              r.tipoCulto === tipoCulto.toUpperCase() &&
+              (r.horaInicio ?? '') === horaInicio,
+          );
+          if (!mesmo) throw e;
+          alvo = mesmo;
+        }
       }
       const dados: Record<string, unknown> = { observacao: observacao.trim() || null };
       for (const c of camposDoBloco(bloco)) {
@@ -361,11 +508,24 @@ export default function CultoLancarModal({
 
       // Recarregar o dia atualiza a tabela e reaponta o formulário para o
       // culto recém-aberto (o efeito de seleção roda com a lista nova).
-      setRecentes(await buscarRecentes());
+      const lista = await buscarRecentes();
+      setRecentes(lista);
       setSalvo(true);
+      // Ainda há cultos do dia esperando este bloco: volta à escolha, já com
+      // um a menos, para emendar o próximo.
+      const restam = lista.filter(
+        (r) => r.dataCulto.slice(0, 10) === data && faltaOBloco(r, bloco),
+      ).length;
+      if (restam > 0) {
+        setAvisoEscolha(`${ROTULO_BLOCO[bloco]} enviado.`);
+        setEscolhendo(true);
+      } else {
+        setFechando(true);
+      }
     } catch (e) {
       setErro((e as Error).message);
     } finally {
+      enviandoAgora.current = false;
       setSalvando(false);
     }
   }
@@ -565,24 +725,41 @@ export default function CultoLancarModal({
             )}
           </div>
 
-          {tabela.length > 0 && (
+          {/* Os cultos do dia moram na escolha; aqui fica só qual está aberto
+              e o caminho de volta para ela. */}
+          {doDia.length > 0 && (
+            <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-4 py-3 text-sm ${PASTILHA.azul}`}>
+              <span>
+                {registro ? (
+                  <>
+                    Lançando em: <strong>{rotuloHorario(registro)} · {nomeDoTipo(registro.tipoCulto)}</strong>
+                  </>
+                ) : (
+                  <strong>Culto novo em {fmtData(data)}</strong>
+                )}
+              </span>
+              <Permissao chave="culto_lancar.culto_lancar_modal.escolher_outro_culto" rotulo="Escolher outro culto — Culto Lancar Modal" herda="culto_lancar.view">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvisoEscolha(null);
+                    setEscolhendo(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  Escolher outro culto ({doDia.length} no dia)
+                </button>
+              </Permissao>
+            </div>
+          )}
+
+          {tabela.length > 0 && doDia.length === 0 && (
             <div className={`rounded-lg px-4 py-3 text-sm space-y-2 ${PASTILHA.azul}`}>
-              {doDia.length > 0 ? (
-                <p>
-                  <strong>
-                    {doDia.length === 1
-                      ? 'Já existe 1 culto lançado'
-                      : `Já existem ${doDia.length} cultos lançados`}{' '}
-                    em {fmtData(data)}.
-                  </strong>{' '}
-                  Clique em um para abri-lo, ou escolha outro horário para lançar um culto novo.
-                </p>
-              ) : (
-                <p>
-                  <strong>Nenhum culto lançado em {fmtData(data)}.</strong> Estes são os
-                  lançados nesta igreja nos 7 dias anteriores — clique em um para abri-lo.
-                </p>
-              )}
+              <p>
+                <strong>Nenhum culto lançado em {fmtData(data)}.</strong> Estes são os
+                lançados nesta igreja nos 7 dias anteriores — clique em um para abri-lo.
+              </p>
               <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
                 <table className="w-full text-xs text-slate-700 dark:text-slate-200">
                   <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
@@ -611,9 +788,7 @@ export default function CultoLancarModal({
                             {fmtData(r.dataCulto)}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap tabular-nums">
-                            {r.horaInicio
-                              ? `${r.horaInicio}${r.horaFim ? `–${r.horaFim}` : ''}`
-                              : 'Sem horário'}
+                            {rotuloHorario(r)}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">{nomeDoTipo(r.tipoCulto)}</td>
                           <td className="px-3 py-2 whitespace-nowrap">{situacaoBloco(r, 'FINANCEIRO')}</td>
@@ -628,6 +803,19 @@ export default function CultoLancarModal({
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {conflito && (
+            <div className={`flex items-start gap-2 rounded-lg px-4 py-3 text-sm ${PASTILHA.ambar}`}>
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>
+                <strong>
+                  Já existe {nomeDoTipo(conflito.tipoCulto)} das {rotuloHorario(conflito)} neste dia.
+                </strong>{' '}
+                Para não lançar o mesmo culto duas vezes, abra-o em Escolher outro culto ou escolha
+                outro horário.
+              </span>
             </div>
           )}
 
@@ -739,17 +927,173 @@ export default function CultoLancarModal({
             <Permissao chave="culto_lancar.culto_lancar_modal.enviar" rotulo="Enviar — Culto Lancar Modal" herda="culto_lancar.view">
               <button
                 onClick={() => void salvar()}
-                disabled={salvando || jaAprovado || !churchId}
+                // Enviado fica travado até escolher outro culto: reenviar o
+                // mesmo formulário era o envio duplicado.
+                disabled={salvando || salvo || jaAprovado || !churchId || Boolean(conflito)}
                 className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
               >
                 {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Enviar
+                {salvo ? 'Enviado' : 'Enviar'}
               </button>
             </Permissao>
           </div>
         </div>
       </div>
     </div>
+
+    {/* A escolha do culto, por cima do formulário. Fechar aqui fecha tudo:
+        quem quer lançar um culto novo usa o botão próprio. */}
+    {escolhendo && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4" onClick={onFechar}>
+        <div
+          className="w-full max-w-2xl max-h-[85vh] flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                Qual culto você vai lançar?
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {precisaEscolherIgreja && igrejas.find((c) => c.id === churchId)
+                  ? `${igrejas.find((c) => c.id === churchId)?.name} · `
+                  : ''}
+                {ROTULO_BLOCO[bloco]} · escolha um culto já aberto neste dia
+              </p>
+            </div>
+            <button
+              onClick={onFechar}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            {avisoEscolha && (
+              <div className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${PASTILHA.verde}`}>
+                <Check className="w-4 h-4 shrink-0" />
+                <span>{avisoEscolha}</span>
+              </div>
+            )}
+
+            <label className="block">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <CalendarDays className="w-3.5 h-3.5" /> Data do culto
+              </span>
+              <input
+                type="date"
+                value={data}
+                onChange={(e) => {
+                  setBuscando(true);
+                  setAvisoEscolha(null);
+                  setData(e.target.value);
+                }}
+                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+              />
+            </label>
+
+            {buscando ? (
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin" /> Buscando os cultos do dia…
+              </div>
+            ) : paraEscolher.length === 0 ? (
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Nenhum culto lançado em {fmtData(data)}. Use <strong>Novo lançamento</strong> para
+                abrir um.
+              </p>
+            ) : (
+              <div className={`rounded-lg px-4 py-3 text-sm space-y-2 ${PASTILHA.azul}`}>
+                {/* A conta do que falta é a que diminui a cada envio; os já
+                    lançados continuam na tabela para conferir ou corrigir. */}
+                <p>
+                  <strong>
+                    {doDia.length === 1
+                      ? 'Já existe 1 culto lançado'
+                      : `Já existem ${doDia.length} cultos lançados`}{' '}
+                    em {fmtData(data)}.
+                  </strong>{' '}
+                  {pendentes.length === 0
+                    ? `Todos já têm o ${ROTULO_BLOCO[bloco].toLowerCase()}. Clique em um para conferir, ou lance um culto novo.`
+                    : `${pendentes.length === 1 ? 'Falta 1' : `Faltam ${pendentes.length}`} com o ${ROTULO_BLOCO[bloco].toLowerCase()}. Clique no culto que você vai lançar.`}
+                </p>
+                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                  <table className="w-full text-xs text-slate-700 dark:text-slate-200">
+                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium">Horário</th>
+                        <th className="px-3 py-2 text-left font-medium">Culto</th>
+                        <th className="px-3 py-2 text-left font-medium">Financeiro</th>
+                        <th className="px-3 py-2 text-left font-medium">Presença</th>
+                        <th className="px-3 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Quem lançou cada parte fica à vista: é o que diz ao
+                          tesoureiro qual culto o secretário já abriu. */}
+                      {paraEscolher.map((r) => {
+                        const falta = faltaOBloco(r, bloco);
+                        return (
+                          <tr
+                            key={r.id}
+                            onClick={() => escolher(r)}
+                            className={`border-t border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                              falta ? 'font-semibold' : ''
+                            }`}
+                          >
+                            <td className="px-3 py-2 whitespace-nowrap tabular-nums">{rotuloHorario(r)}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{nomeDoTipo(r.tipoCulto)}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{situacaoBloco(r, 'FINANCEIRO')}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{situacaoBloco(r, 'PRESENCA')}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-right">
+                              {/* Botão de verdade, na cor do Enviar: um "Abrir"
+                                  em texto passava despercebido e a pessoa não
+                                  via que precisava escolher o culto. */}
+                              <Permissao chave="culto_lancar.culto_lancar_modal.selecionar_e_lancar" rotulo="Selecionar e lançar — Culto Lancar Modal" herda="culto_lancar.view">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    escolher(r);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold"
+                                >
+                                  Selecionar e lançar
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+                              </Permissao>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-200 dark:border-slate-700">
+            <button
+              onClick={onFechar}
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            >
+              Fechar
+            </button>
+            <Permissao chave="culto_lancar.culto_lancar_modal.novo_lancamento" rotulo="Novo lançamento — Culto Lancar Modal" herda="culto_lancar.view">
+              <button
+                onClick={novoLancamento}
+                disabled={buscando}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                Novo lançamento
+              </button>
+            </Permissao>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Cadastro dos horários desta igreja, por cima do lançamento — sai daqui
         com a lista já recarregada quando algo mudou. */}

@@ -846,6 +846,24 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/culto/CultoLancarModal.tsx"
   },
   {
+    "chave": "culto_lancar.culto_lancar_modal.escolher_outro_culto",
+    "rotulo": "Escolher outro culto — Culto Lancar Modal",
+    "herda": "culto_lancar.view",
+    "arquivo": "src/app-ui/culto/CultoLancarModal.tsx"
+  },
+  {
+    "chave": "culto_lancar.culto_lancar_modal.novo_lancamento",
+    "rotulo": "Novo lançamento — Culto Lancar Modal",
+    "herda": "culto_lancar.view",
+    "arquivo": "src/app-ui/culto/CultoLancarModal.tsx"
+  },
+  {
+    "chave": "culto_lancar.culto_lancar_modal.selecionar_e_lancar",
+    "rotulo": "Selecionar e lançar — Culto Lancar Modal",
+    "herda": "culto_lancar.view",
+    "arquivo": "src/app-ui/culto/CultoLancarModal.tsx"
+  },
+  {
     "chave": "culto_lancar.horarios_culto_modal.excluir_horario",
     "rotulo": "Excluir horário — Horarios Culto Modal",
     "herda": "culto_lancar.view",
@@ -3560,6 +3578,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "tela_culto_registro.culto_registro_drawer.excluir_envio",
     "rotulo": "Excluir envio — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.imprimir",
+    "rotulo": "Imprimir — Culto Registro Drawer",
     "herda": "tela_culto_registro.view",
     "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
   },
