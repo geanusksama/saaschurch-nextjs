@@ -16,6 +16,7 @@ import type { ReciboRow } from './ReciboModal';
 import { RelatorioModal } from './RelatorioModal';
 import { AnalyticsModal } from './AnalyticsModal';
 import { ChurchPickerModal, type ChurchOption } from './ChurchPickerModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -637,10 +638,12 @@ function EditDrawer({
             className="flex-1 py-2.5 border border-slate-300 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">
             Cancelar
           </button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 flex items-center justify-center gap-2">
-            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><Save className="w-4 h-4" /> Salvar</>}
-          </button>
+          <Permissao chave="cashbook.cashbook.salvar_edicao" rotulo="Salvar edição do lançamento — Cashbook" herda="cashbook.cashbook.editar_lancamento">
+            <button onClick={handleSave} disabled={saving}
+              className="flex-1 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><Save className="w-4 h-4" /> Salvar</>}
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>
@@ -1813,24 +1816,30 @@ export default function Cashbook() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => printRecibo(row, !!row.foto, row.foto)} title="Imprimir recibo"
-                          className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-500 hover:text-sky-700 border border-sky-200 transition-all">
-                          <Printer className="w-4 h-4" />
-                        </button>
+                        <Permissao chave="cashbook.cashbook.imprimir_recibo" rotulo="Imprimir recibo — Cashbook" herda="cashbook.view">
+                          <button onClick={() => printRecibo(row, !!row.foto, row.foto)} title="Imprimir recibo"
+                            className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-500 hover:text-sky-700 border border-sky-200 transition-all">
+                            <Printer className="w-4 h-4" />
+                          </button>
+                        </Permissao>
                         <button onClick={() => setSelectedRow(row)} title="Visualizar detalhes"
                           className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setEditRow(row)} title="Editar lançamento"
-                          className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={async () => {
-                          setDeleteTarget(row);
-                        }} title="Excluir"
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <Permissao chave="cashbook.cashbook.editar_lancamento" rotulo="Editar lançamento — Cashbook" herda="cashbook.view">
+                          <button onClick={() => setEditRow(row)} title="Editar lançamento"
+                            className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </Permissao>
+                        <Permissao chave="cashbook.cashbook.excluir" rotulo="Excluir — Cashbook" herda="cashbook.view">
+                          <button onClick={async () => {
+                            setDeleteTarget(row);
+                          }} title="Excluir"
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </Permissao>
                       </div>
                     </td>
                   </tr>
@@ -1992,42 +2001,44 @@ export default function Cashbook() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={async () => {
-                  setDeleting(true);
-                  setDeleteError('');
-                  try {
-                    // Passa pela API: lançamento que veio do Contas a Pagar não
-                    // pode ser apagado direto — vira estorno, senão a parcela
-                    // ficaria quitada sem a despesa correspondente.
-                    const token = localStorage.getItem('mrm_token');
-                    const res = await fetch(`${apiBase}/livro-caixa/${deleteTarget.id}`, {
-                      method: 'DELETE',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                      },
-                      body: JSON.stringify({ motivo: 'Lançamento excluído pelo Livro Caixa' }),
-                    });
-                    const json = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(json.error || 'Falha ao excluir o lançamento.');
-                    setRows(prev => prev.filter(r => r.id !== deleteTarget.id));
-                    setDeleteTarget(null);
-                    if (json.estornado) {
-                      setError(`Pagamento estornado: a parcela ${json.parcela} da conta ${json.conta} voltou a ficar em aberto no Contas a Pagar.`);
+              <Permissao chave="cashbook.cashbook.excluir" rotulo="Excluir — Cashbook" herda="cashbook.view">
+                <button
+                  onClick={async () => {
+                    setDeleting(true);
+                    setDeleteError('');
+                    try {
+                      // Passa pela API: lançamento que veio do Contas a Pagar não
+                      // pode ser apagado direto — vira estorno, senão a parcela
+                      // ficaria quitada sem a despesa correspondente.
+                      const token = localStorage.getItem('mrm_token');
+                      const res = await fetch(`${apiBase}/livro-caixa/${deleteTarget.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        },
+                        body: JSON.stringify({ motivo: 'Lançamento excluído pelo Livro Caixa' }),
+                      });
+                      const json = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error(json.error || 'Falha ao excluir o lançamento.');
+                      setRows(prev => prev.filter(r => r.id !== deleteTarget.id));
+                      setDeleteTarget(null);
+                      if (json.estornado) {
+                        setError(`Pagamento estornado: a parcela ${json.parcela} da conta ${json.conta} voltou a ficar em aberto no Contas a Pagar.`);
+                      }
+                      void fetchAPagar();
+                    } catch (e) {
+                      setDeleteError('Erro: ' + (e instanceof Error ? e.message : 'desconhecido'));
+                    } finally {
+                      setDeleting(false);
                     }
-                    void fetchAPagar();
-                  } catch (e) {
-                    setDeleteError('Erro: ' + (e instanceof Error ? e.message : 'desconhecido'));
-                  } finally {
-                    setDeleting(false);
-                  }
-                }}
-                disabled={deleting}
-                className="flex-1 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
-              >
-                {deleting ? 'Excluindo...' : 'Excluir'}
-              </button>
+                  }}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {deleting ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

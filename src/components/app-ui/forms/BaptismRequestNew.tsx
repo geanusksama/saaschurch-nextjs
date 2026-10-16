@@ -1,5 +1,6 @@
 import { ArrowLeft, Save, Droplets, User, Calendar, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 export function BaptismRequestNew() {
   return (
@@ -103,10 +104,12 @@ export function BaptismRequestNew() {
             >
               Cancelar
             </Link>
-            <button className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors">
-              <Save className="w-5 h-5" />
-              Salvar Pedido
-            </button>
+            <Permissao chave="baptism.baptism_request_new.salvar_pedido" rotulo="Salvar Pedido — Baptism Request New" herda="baptism.view">
+              <button className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors">
+                <Save className="w-5 h-5" />
+                Salvar Pedido
+              </button>
+            </Permissao>
           </div>
         </div>
 

@@ -37,6 +37,7 @@ import {
   type Registro,
 } from './cultoApi';
 import { BORDA, PASTILHA, PONTO, TEXTO } from './cultoCores';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const CAMPOS_FINANCEIRO: { campo: string; label: string; moeda?: boolean }[] = [
   { campo: 'totalDizimos', label: 'Valor total de dízimos', moeda: true },
@@ -402,14 +403,16 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
             >
               Cancelar
             </button>
-            <button
-              onClick={() => void excluirEnvio(bloco)}
-              disabled={apagandoBloco}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${PONTO.vermelho} hover:brightness-90 text-white text-xs font-semibold disabled:opacity-50`}
-            >
-              {apagandoBloco ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              Excluir envio
-            </button>
+            <Permissao chave="tela_culto_registro.culto_registro_drawer.excluir_envio" rotulo="Excluir envio — Culto Registro Drawer" herda="tela_culto_registro.view">
+              <button
+                onClick={() => void excluirEnvio(bloco)}
+                disabled={apagandoBloco}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${PONTO.vermelho} hover:brightness-90 text-white text-xs font-semibold disabled:opacity-50`}
+              >
+                {apagandoBloco ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Excluir envio
+              </button>
+            </Permissao>
           </div>
         )}
 
@@ -447,20 +450,22 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                 <p className="text-xs text-slate-400 pt-1">Enviado por {lanc.enviadoPorUser.fullName}</p>
               )}
               {editavel && (
-                <button
-                  onClick={() => void enviar(bloco)}
-                  disabled={salvando === bloco}
-                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
-                >
-                  {salvando === bloco ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                  {/* "Reenviar" dava a entender que criaria outro lançamento:
-                      é o mesmo, com os números corrigidos. */}
-                  {enviado ? 'Atualizar' : 'Enviar'}
-                </button>
+                <Permissao chave="tela_culto_registro.culto_registro_drawer.atualizar_enviar" rotulo="Atualizar Enviar — Culto Registro Drawer" herda="tela_culto_registro.view">
+                  <button
+                    onClick={() => void enviar(bloco)}
+                    disabled={salvando === bloco}
+                    className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                  >
+                    {salvando === bloco ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                    {/* "Reenviar" dava a entender que criaria outro lançamento:
+                        é o mesmo, com os números corrigidos. */}
+                    {enviado ? 'Atualizar' : 'Enviar'}
+                  </button>
+                </Permissao>
               )}
             </>
           ) : lanc ? (
@@ -586,14 +591,16 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                     className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => void salvarEdicaoObs(nivel)}
-                      disabled={salvandoEdicao}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold disabled:opacity-50"
-                    >
-                      {salvandoEdicao ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                      Salvar
-                    </button>
+                    <Permissao chave="tela_culto_registro.culto_registro_drawer.salvar" rotulo="Salvar — Culto Registro Drawer" herda="tela_culto_registro.view">
+                      <button
+                        onClick={() => void salvarEdicaoObs(nivel)}
+                        disabled={salvandoEdicao}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold disabled:opacity-50"
+                      >
+                        {salvandoEdicao ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        Salvar
+                      </button>
+                    </Permissao>
                     <button
                       onClick={() => setEditandoObs(null)}
                       disabled={salvandoEdicao}
@@ -609,17 +616,19 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                     {decisao.motivo || <span className="text-slate-400">Sem observação.</span>}
                   </p>
                   {souPresidente && (
-                    <button
-                      onClick={() => {
-                        setTextoEdicao(decisao.motivo ?? '');
-                        setEditandoObs(nivel);
-                      }}
-                      title="Editar a observação (presidente)"
-                      aria-label="Editar a observação"
-                      className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                    <Permissao chave="tela_culto_registro.culto_registro_drawer.editar_a_observacao_presidente" rotulo="Editar a observação (presidente) — Culto Registro Drawer" herda="tela_culto_registro.view">
+                      <button
+                        onClick={() => {
+                          setTextoEdicao(decisao.motivo ?? '');
+                          setEditandoObs(nivel);
+                        }}
+                        title="Editar a observação (presidente)"
+                        aria-label="Editar a observação"
+                        className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </Permissao>
                   )}
                 </div>
               )}
@@ -640,14 +649,16 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                 }`}
               />
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => void decidir(nivel, 'APROVADO')}
-                  disabled={decidindo}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
-                >
-                  {decidindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  {souPresidente ? 'Aprovar pelo dirigente' : 'Aprovar'}
-                </button>
+                <Permissao chave="tela_culto_registro.culto_registro_drawer.aprovar_pelo_dirigente_aprovar" rotulo="Aprovar pelo dirigente Aprovar — Culto Registro Drawer" herda="tela_culto_registro.view">
+                  <button
+                    onClick={() => void decidir(nivel, 'APROVADO')}
+                    disabled={decidindo}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                  >
+                    {decidindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {souPresidente ? 'Aprovar pelo dirigente' : 'Aprovar'}
+                  </button>
+                </Permissao>
                 <button
                   onClick={() => void decidir(nivel, 'REJEITADO')}
                   disabled={decidindo}
@@ -786,37 +797,41 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                         className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       />
                       <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          onClick={async () => {
-                            setSalvandoObs(true);
-                            setErro(null);
-                            try {
-                              await cultoApi.observacaoPresidente(registro.id, obsPresidente);
-                              recarregar();
-                              onMudou();
-                            } catch (e) {
-                              setErro((e as Error).message);
-                            } finally {
-                              setSalvandoObs(false);
-                            }
-                          }}
-                          disabled={salvandoObs}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
-                        >
-                          {salvandoObs ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                          Salvar parecer
-                        </button>
+                        <Permissao chave="tela_culto_registro.culto_registro_drawer.salvar_parecer" rotulo="Salvar parecer — Culto Registro Drawer" herda="tela_culto_registro.view">
+                          <button
+                            onClick={async () => {
+                              setSalvandoObs(true);
+                              setErro(null);
+                              try {
+                                await cultoApi.observacaoPresidente(registro.id, obsPresidente);
+                                recarregar();
+                                onMudou();
+                              } catch (e) {
+                                setErro((e as Error).message);
+                              } finally {
+                                setSalvandoObs(false);
+                              }
+                            }}
+                            disabled={salvandoObs}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
+                          >
+                            {salvandoObs ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                            Salvar parecer
+                          </button>
+                        </Permissao>
                         {/* Fecha o culto sem esperar os dirigentes: aprova pelos
                             níveis que faltam, em nome do presidente. */}
                         {presidenteDecide && (
-                          <button
-                            onClick={() => void decidir('PRESIDENTE', 'APROVADO')}
-                            disabled={decidindo}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
-                          >
-                            {decidindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            Aprovar e concluir
-                          </button>
+                          <Permissao chave="tela_culto_registro.culto_registro_drawer.aprovar_e_concluir" rotulo="Aprovar e concluir — Culto Registro Drawer" herda="tela_culto_registro.view">
+                            <button
+                              onClick={() => void decidir('PRESIDENTE', 'APROVADO')}
+                              disabled={decidindo}
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                            >
+                              {decidindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                              Aprovar e concluir
+                            </button>
+                          </Permissao>
                         )}
                       </div>
                     </>
@@ -842,23 +857,27 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
                       >
                         Cancelar
                       </button>
-                      <button
-                        onClick={() => void excluir()}
-                        disabled={excluindo}
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${PONTO.vermelho} hover:brightness-90 text-white text-sm font-semibold disabled:opacity-50`}
-                      >
-                        {excluindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        Excluir
-                      </button>
+                      <Permissao chave="tela_culto_registro.culto_registro_drawer.excluir" rotulo="Excluir — Culto Registro Drawer" herda="tela_culto_registro.view">
+                        <button
+                          onClick={() => void excluir()}
+                          disabled={excluindo}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${PONTO.vermelho} hover:brightness-90 text-white text-sm font-semibold disabled:opacity-50`}
+                        >
+                          {excluindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                          Excluir
+                        </button>
+                      </Permissao>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => setConfirmandoExclusao(true)}
-                      className={`inline-flex items-center gap-2 text-sm font-semibold hover:underline ${TEXTO.vermelho}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Excluir culto
-                    </button>
+                    <Permissao chave="tela_culto_registro.culto_registro_drawer.excluir_culto" rotulo="Excluir culto — Culto Registro Drawer" herda="tela_culto_registro.view">
+                      <button
+                        onClick={() => setConfirmandoExclusao(true)}
+                        className={`inline-flex items-center gap-2 text-sm font-semibold hover:underline ${TEXTO.vermelho}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Excluir culto
+                      </button>
+                    </Permissao>
                   )}
                 </div>
               )}

@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { montarCruzada, palavrasDaCruzada, vazioDoJogo, type PalavraCruzada } from '../../lib/mobile/jogoDados';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Dados = Record<string, any>;
@@ -119,9 +120,11 @@ function Cruzadas({ palavras, onChange, travado }: { palavras: PalavraCruzada[];
             <span className="text-xs font-bold text-slate-400 w-16">Palavra {i + 1}</span>
             <input className={inputCls} placeholder="Palavra" disabled={travado} value={p.palavra} onChange={(e) => muda(i, { palavra: e.target.value })} />
             {!travado && palavras.length > 1 && (
-              <button type="button" title="Remover" onClick={() => onChange(palavras.filter((_, k) => k !== i))} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <Permissao chave="tela_mobile_recursos.jogo_editor.remover" rotulo="Remover — Jogo Editor" herda="tela_mobile_recursos.view">
+                <button type="button" title="Remover" onClick={() => onChange(palavras.filter((_, k) => k !== i))} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </Permissao>
             )}
           </div>
           <input className={inputCls} placeholder="Dica" disabled={travado} value={p.dica} onChange={(e) => muda(i, { dica: e.target.value })} />
@@ -138,10 +141,12 @@ function Cruzadas({ palavras, onChange, travado }: { palavras: PalavraCruzada[];
         </div>
       ))}
       {!travado && (
-        <button type="button" onClick={() => onChange([...palavras, { palavra: '', dica: '', direcao: 'V', linha: 1, coluna: 1 }])}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold">
-          <Plus className="w-4 h-4" /> Adicionar palavra
-        </button>
+        <Permissao chave="tela_mobile_recursos.jogo_editor.adicionar_palavra" rotulo="Adicionar palavra — Jogo Editor" herda="tela_mobile_recursos.view">
+          <button type="button" onClick={() => onChange([...palavras, { palavra: '', dica: '', direcao: 'V', linha: 1, coluna: 1 }])}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold">
+            <Plus className="w-4 h-4" /> Adicionar palavra
+          </button>
+        </Permissao>
       )}
       <div>
         <p className={rotulo}>Como fica no app</p>

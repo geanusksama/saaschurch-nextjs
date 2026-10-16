@@ -36,6 +36,25 @@ import {
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao, usePode } from '../../lib/permissoes/Permissao';
+import { definirPermissao } from '../../lib/permissoes/definir';
+
+/**
+ * Cada card de relatório é um ponto da árvore de permissões. Herda "Ver" de
+ * Relatórios: quem abre a tela hoje continua vendo todos os cards (SPEC, D6).
+ */
+const PERM_CARD_RELATORIO: Record<string, string> = {
+  members: definirPermissao({ chave: 'reports.membros.abrir', rotulo: 'Relatório de membros', herda: 'reports.view' }),
+  baptism: definirPermissao({ chave: 'reports.batismo.abrir', rotulo: 'Relatório de batismo', herda: 'reports.view' }),
+  consecration: definirPermissao({ chave: 'reports.consagracao.abrir', rotulo: 'Relatório de consagração', herda: 'reports.view' }),
+  transfers: definirPermissao({ chave: 'reports.transferencias.abrir', rotulo: 'Relatório de transferências', herda: 'reports.view' }),
+  requirements: definirPermissao({ chave: 'reports.requerimentos.abrir', rotulo: 'Relatório de requerimentos', herda: 'reports.view' }),
+  churches: definirPermissao({ chave: 'reports.igrejas.abrir', rotulo: 'Relatório de igrejas', herda: 'reports.view' }),
+  roles: definirPermissao({ chave: 'reports.funcoes.abrir', rotulo: 'Relatório de funções', herda: 'reports.view' }),
+  attendance: definirPermissao({ chave: 'reports.presenca.abrir', rotulo: 'Relatório de presença', herda: 'reports.view' }),
+  credentials: definirPermissao({ chave: 'reports.credenciais.abrir', rotulo: 'Relatório de credenciais', herda: 'reports.view' }),
+  users: definirPermissao({ chave: 'reports.usuarios.abrir', rotulo: 'Relatório de usuários', herda: 'reports.view' }),
+};
 import {
   Dialog,
   DialogContent,
@@ -3527,6 +3546,7 @@ export function Reports() {
   const storedUser = useMemo(readStoredUser, []);
   const profileType = storedUser.profileType || 'church';
   const { canCreate, canEdit } = usePermissions(profileType);
+  const pode = usePode();
   const canManageDashboards = ['master', 'admin', 'campo'].includes(profileType) && (canCreate('reports') || canEdit('reports'));
   const activeFieldId = localStorage.getItem('mrm_active_field_id') || storedUser.campoId || '';
   const normalizedRole = String(storedUser.roleName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -8104,14 +8124,16 @@ export function Reports() {
             </button>
           ) : null}
           {activeTab === 'dashboards' && canManageDashboards ? (
-            <button
-              type="button"
-              onClick={openNewChartModal}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-            >
-              <Plus className="h-4 w-4" />
-              Adicionar gráfico
-            </button>
+            <Permissao chave="reports.dashboards.gerenciar" rotulo="Adicionar, editar e excluir gráficos" herda="reports.dashboards.aba">
+              <button
+                type="button"
+                onClick={openNewChartModal}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                <Plus className="h-4 w-4" />
+                Adicionar gráfico
+              </button>
+            </Permissao>
           ) : null}
         </div>
       </div>
@@ -8125,12 +8147,14 @@ export function Reports() {
               label="Relatórios"
               onClick={() => setActiveTab('reports')}
             />
-            <ReportsTabButton
-              active={activeTab === 'dashboards'}
-              icon={<BarChart3 className="h-4 w-4" />}
-              label="Dashboards"
-              onClick={() => setActiveTab('dashboards')}
-            />
+            <Permissao chave="reports.dashboards.aba" rotulo="Aba Dashboards" herda="reports.view">
+              <ReportsTabButton
+                active={activeTab === 'dashboards'}
+                icon={<BarChart3 className="h-4 w-4" />}
+                label="Dashboards"
+                onClick={() => setActiveTab('dashboards')}
+              />
+            </Permissao>
           </div>
 
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200">
@@ -8167,7 +8191,7 @@ export function Reports() {
       {activeTab === 'reports' ? (
         <div className="space-y-6">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {reportLauncherCards.map((card) => {
+            {reportLauncherCards.filter((card) => pode(PERM_CARD_RELATORIO[card.key] ?? 'reports.view')).map((card) => {
               const Icon = card.icon;
 
               return (
@@ -8220,136 +8244,164 @@ export function Reports() {
                   </div>
                   {isMembersReport ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleExportMemberReportExcel}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Exportar Excel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleExportMemberReportPdf}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                      >
-                        <Printer className="h-4 w-4" />
-                        Imprimir
-                      </button>
+                      <Permissao chave="reports.membros.exportar_excel" rotulo="Exportar Excel" herda="reports.membros.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportMemberReportExcel}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Exportar Excel
+                        </button>
+                      </Permissao>
+                      <Permissao chave="reports.membros.imprimir" rotulo="Imprimir" herda="reports.membros.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportMemberReportPdf}
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          <Printer className="h-4 w-4" />
+                          Imprimir
+                        </button>
+                      </Permissao>
                     </div>
                   ) : isChurchesReport ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleExportChurchReportExcel}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Exportar Excel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleExportChurchReportPdf}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                      >
-                        <Printer className="h-4 w-4" />
-                        Imprimir
-                      </button>
+                      <Permissao chave="reports.igrejas.exportar_excel" rotulo="Exportar Excel" herda="reports.igrejas.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportChurchReportExcel}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Exportar Excel
+                        </button>
+                      </Permissao>
+                      <Permissao chave="reports.igrejas.imprimir" rotulo="Imprimir" herda="reports.igrejas.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportChurchReportPdf}
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          <Printer className="h-4 w-4" />
+                          Imprimir
+                        </button>
+                      </Permissao>
                     </div>
                   ) : isBaptismReport ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleExportBaptismReportExcel}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Exportar Excel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleExportBaptismReportPdf}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                      >
-                        <Printer className="h-4 w-4" />
-                        Imprimir
-                      </button>
+                      <Permissao chave="reports.batismo.exportar_excel" rotulo="Exportar Excel" herda="reports.batismo.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportBaptismReportExcel}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Exportar Excel
+                        </button>
+                      </Permissao>
+                      <Permissao chave="reports.batismo.imprimir" rotulo="Imprimir" herda="reports.batismo.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportBaptismReportPdf}
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          <Printer className="h-4 w-4" />
+                          Imprimir
+                        </button>
+                      </Permissao>
                     </div>
                   ) : isConsecrationReport ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleExportConsecrationReportExcel}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Exportar Excel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleExportConsecrationReportPdf}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                      >
-                        <Printer className="h-4 w-4" />
-                        Imprimir
-                      </button>
+                      <Permissao chave="reports.consagracao.exportar_excel" rotulo="Exportar Excel" herda="reports.consagracao.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportConsecrationReportExcel}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Exportar Excel
+                        </button>
+                      </Permissao>
+                      <Permissao chave="reports.consagracao.imprimir" rotulo="Imprimir" herda="reports.consagracao.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportConsecrationReportPdf}
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          <Printer className="h-4 w-4" />
+                          Imprimir
+                        </button>
+                      </Permissao>
                     </div>
                   ) : isTransferReport ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleExportTransferReportExcel}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Exportar Excel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleExportTransferReportPdf}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                      >
-                        <Printer className="h-4 w-4" />
-                        Imprimir
-                      </button>
+                      <Permissao chave="reports.transferencias.exportar_excel" rotulo="Exportar Excel" herda="reports.transferencias.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportTransferReportExcel}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Exportar Excel
+                        </button>
+                      </Permissao>
+                      <Permissao chave="reports.transferencias.imprimir" rotulo="Imprimir" herda="reports.transferencias.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportTransferReportPdf}
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          <Printer className="h-4 w-4" />
+                          Imprimir
+                        </button>
+                      </Permissao>
                     </div>
                   ) : isRequirementsReport ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleExportRequirementsReportExcel}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Exportar Excel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleExportRequirementsReportPdf}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                      >
-                        <Printer className="h-4 w-4" />
-                        Imprimir
-                      </button>
+                      <Permissao chave="reports.requerimentos.exportar_excel" rotulo="Exportar Excel" herda="reports.requerimentos.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportRequirementsReportExcel}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Exportar Excel
+                        </button>
+                      </Permissao>
+                      <Permissao chave="reports.requerimentos.imprimir" rotulo="Imprimir" herda="reports.requerimentos.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportRequirementsReportPdf}
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          <Printer className="h-4 w-4" />
+                          Imprimir
+                        </button>
+                      </Permissao>
                     </div>
                   ) : isCredentialsReport ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleExportCredentialReportExcel}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Exportar Excel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleExportCredentialReportPdf}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                      >
-                        <Printer className="h-4 w-4" />
-                        Imprimir
-                      </button>
+                      <Permissao chave="reports.credenciais.exportar_excel" rotulo="Exportar Excel" herda="reports.credenciais.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportCredentialReportExcel}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Exportar Excel
+                        </button>
+                      </Permissao>
+                      <Permissao chave="reports.credenciais.imprimir" rotulo="Imprimir" herda="reports.credenciais.abrir">
+                        <button
+                          type="button"
+                          onClick={handleExportCredentialReportPdf}
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          <Printer className="h-4 w-4" />
+                          Imprimir
+                        </button>
+                      </Permissao>
                     </div>
                   ) : null}
                 </div>
@@ -8542,16 +8594,18 @@ export function Reports() {
                                   >
                                     Descer
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      removeMemberGroupField(option.value);
-                                    }}
-                                    className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-                                  >
-                                    Remover
-                                  </button>
+                                  <Permissao chave="reports.reports.remover" rotulo="Remover — Reports" herda="reports.view">
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        removeMemberGroupField(option.value);
+                                      }}
+                                      className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                                    >
+                                      Remover
+                                    </button>
+                                  </Permissao>
                                 </div>
                               ) : null}
                             </div>
@@ -8766,29 +8820,35 @@ export function Reports() {
                         </label>
 
                         <div className="grid gap-2">
-                          <button
-                            type="button"
-                            onClick={handleSaveMemberReportTemplate}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                          >
-                            <Save className="h-4 w-4" />
-                            {activeMemberReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleStartNewMemberReportTemplate}
-                            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            Novo modelo
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDuplicateMemberReportTemplate()}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <Copy className="h-4 w-4" />
-                            Duplicar modelo atual
-                          </button>
+                          <Permissao chave="reports.membros.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.membros.abrir">
+                            <button
+                              type="button"
+                              onClick={handleSaveMemberReportTemplate}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                            >
+                              <Save className="h-4 w-4" />
+                              {activeMemberReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}
+                            </button>
+                          </Permissao>
+                          <Permissao chave="reports.membros.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.membros.abrir">
+                            <button
+                              type="button"
+                              onClick={handleStartNewMemberReportTemplate}
+                              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              Novo modelo
+                            </button>
+                          </Permissao>
+                          <Permissao chave="reports.membros.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.membros.abrir">
+                            <button
+                              type="button"
+                              onClick={() => handleDuplicateMemberReportTemplate()}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              <Copy className="h-4 w-4" />
+                              Duplicar modelo atual
+                            </button>
+                          </Permissao>
                         </div>
 
                         {activeMemberReportTemplate ? (
@@ -8841,20 +8901,24 @@ export function Reports() {
                                 >
                                   Carregar
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDuplicateMemberReportTemplate(template)}
-                                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteMemberReportTemplate(template.id)}
-                                  className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                <Permissao chave="reports.membros.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.membros.abrir">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDuplicateMemberReportTemplate(template)}
+                                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </button>
+                                </Permissao>
+                                <Permissao chave="reports.membros.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.membros.abrir">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteMemberReportTemplate(template.id)}
+                                    className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </Permissao>
                               </div>
                             </div>
                           );
@@ -9432,9 +9496,15 @@ export function Reports() {
                           className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-sky-400"
                         />
                         <div className="grid gap-2">
-                          <button type="button" onClick={handleSaveChurchReportTemplate} className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">{activeChurchReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}</button>
-                          <button type="button" onClick={handleStartNewChurchReportTemplate} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Novo modelo</button>
-                          <button type="button" onClick={() => handleDuplicateChurchReportTemplate()} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Duplicar modelo atual</button>
+                          <Permissao chave="reports.igrejas.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.igrejas.abrir">
+                            <button type="button" onClick={handleSaveChurchReportTemplate} className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">{activeChurchReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}</button>
+                          </Permissao>
+                          <Permissao chave="reports.igrejas.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.igrejas.abrir">
+                            <button type="button" onClick={handleStartNewChurchReportTemplate} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Novo modelo</button>
+                          </Permissao>
+                          <Permissao chave="reports.igrejas.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.igrejas.abrir">
+                            <button type="button" onClick={() => handleDuplicateChurchReportTemplate()} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Duplicar modelo atual</button>
+                          </Permissao>
                         </div>
                       </div>
                       <div className="mt-3 space-y-2">
@@ -9448,7 +9518,9 @@ export function Reports() {
                               </button>
                               <div className="mt-2 flex gap-2">
                                 <button type="button" onClick={() => handleLoadChurchReportTemplate(template)} className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700">Carregar</button>
-                                <button type="button" onClick={() => handleDeleteChurchReportTemplate(template.id)} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">Excluir</button>
+                                <Permissao chave="reports.igrejas.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.igrejas.abrir">
+                                  <button type="button" onClick={() => handleDeleteChurchReportTemplate(template.id)} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">Excluir</button>
+                                </Permissao>
                               </div>
                             </div>
                           );
@@ -9629,7 +9701,9 @@ export function Reports() {
                                 <div className="mt-3 flex gap-2">
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveBaptismGroupField(option.value, 'up'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === 0}>Subir</button>
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveBaptismGroupField(option.value, 'down'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === baptismReportBuilder.groupBy.length - 1}>Descer</button>
-                                  <button type="button" onClick={(event) => { event.stopPropagation(); removeBaptismGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  <Permissao chave="reports.reports.remover" rotulo="Remover — Reports" herda="reports.view">
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); removeBaptismGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  </Permissao>
                                 </div>
                               ) : null}
                             </div>
@@ -9853,29 +9927,35 @@ export function Reports() {
                         </label>
 
                         <div className="grid gap-2">
-                          <button
-                            type="button"
-                            onClick={handleSaveBaptismReportTemplate}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                          >
-                            <Save className="h-4 w-4" />
-                            {activeBaptismReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleStartNewBaptismReportTemplate}
-                            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            Novo modelo
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDuplicateBaptismReportTemplate()}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <Copy className="h-4 w-4" />
-                            Duplicar modelo atual
-                          </button>
+                          <Permissao chave="reports.batismo.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.batismo.abrir">
+                            <button
+                              type="button"
+                              onClick={handleSaveBaptismReportTemplate}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                            >
+                              <Save className="h-4 w-4" />
+                              {activeBaptismReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}
+                            </button>
+                          </Permissao>
+                          <Permissao chave="reports.batismo.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.batismo.abrir">
+                            <button
+                              type="button"
+                              onClick={handleStartNewBaptismReportTemplate}
+                              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              Novo modelo
+                            </button>
+                          </Permissao>
+                          <Permissao chave="reports.batismo.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.batismo.abrir">
+                            <button
+                              type="button"
+                              onClick={() => handleDuplicateBaptismReportTemplate()}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              <Copy className="h-4 w-4" />
+                              Duplicar modelo atual
+                            </button>
+                          </Permissao>
                         </div>
 
                         {activeBaptismReportTemplate ? (
@@ -9928,20 +10008,24 @@ export function Reports() {
                                 >
                                   Carregar
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDuplicateBaptismReportTemplate(template)}
-                                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteBaptismReportTemplate(template.id)}
-                                  className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                <Permissao chave="reports.batismo.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.batismo.abrir">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDuplicateBaptismReportTemplate(template)}
+                                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </button>
+                                </Permissao>
+                                <Permissao chave="reports.batismo.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.batismo.abrir">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteBaptismReportTemplate(template.id)}
+                                    className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </Permissao>
                               </div>
                             </div>
                           );
@@ -10107,7 +10191,9 @@ export function Reports() {
                                 <div className="mt-3 flex gap-2">
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveConsecrationGroupField(option.value, 'up'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === 0}>Subir</button>
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveConsecrationGroupField(option.value, 'down'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === consecrationReportBuilder.groupBy.length - 1}>Descer</button>
-                                  <button type="button" onClick={(event) => { event.stopPropagation(); removeConsecrationGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  <Permissao chave="reports.reports.remover" rotulo="Remover — Reports" herda="reports.view">
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); removeConsecrationGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  </Permissao>
                                 </div>
                               ) : null}
                             </div>
@@ -10326,9 +10412,15 @@ export function Reports() {
                           <input type="text" value={consecrationReportTemplateName} onChange={(event) => setConsecrationReportTemplateName(event.target.value)} placeholder="Ex.: Consagração por título" className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-emerald-400" />
                         </label>
                         <div className="grid gap-2">
-                          <button type="button" onClick={handleSaveConsecrationReportTemplate} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"><Save className="h-4 w-4" />{activeConsecrationReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}</button>
-                          <button type="button" onClick={handleStartNewConsecrationReportTemplate} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Novo modelo</button>
-                          <button type="button" onClick={() => handleDuplicateConsecrationReportTemplate()} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><Copy className="h-4 w-4" />Duplicar modelo atual</button>
+                          <Permissao chave="reports.consagracao.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.consagracao.abrir">
+                            <button type="button" onClick={handleSaveConsecrationReportTemplate} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"><Save className="h-4 w-4" />{activeConsecrationReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}</button>
+                          </Permissao>
+                          <Permissao chave="reports.consagracao.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.consagracao.abrir">
+                            <button type="button" onClick={handleStartNewConsecrationReportTemplate} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Novo modelo</button>
+                          </Permissao>
+                          <Permissao chave="reports.consagracao.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.consagracao.abrir">
+                            <button type="button" onClick={() => handleDuplicateConsecrationReportTemplate()} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><Copy className="h-4 w-4" />Duplicar modelo atual</button>
+                          </Permissao>
                         </div>
                         {activeConsecrationReportTemplate ? (
                           <div className={`rounded-2xl px-4 py-3 text-sm ${isConsecrationReportTemplateDirty ? 'border border-amber-200 bg-amber-50 text-amber-800' : 'border border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
@@ -10369,8 +10461,12 @@ export function Reports() {
                               </button>
                               <div className="mt-3 flex gap-2">
                                 <button type="button" onClick={() => handleLoadConsecrationReportTemplate(template)} className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white">Carregar</button>
-                                <button type="button" onClick={() => handleDuplicateConsecrationReportTemplate(template)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"><Copy className="h-4 w-4" /></button>
-                                <button type="button" onClick={() => handleDeleteConsecrationReportTemplate(template.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
+                                <Permissao chave="reports.consagracao.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.consagracao.abrir">
+                                  <button type="button" onClick={() => handleDuplicateConsecrationReportTemplate(template)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"><Copy className="h-4 w-4" /></button>
+                                </Permissao>
+                                <Permissao chave="reports.consagracao.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.consagracao.abrir">
+                                  <button type="button" onClick={() => handleDeleteConsecrationReportTemplate(template.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
+                                </Permissao>
                               </div>
                             </div>
                           );
@@ -10512,7 +10608,9 @@ export function Reports() {
                                 <div className="mt-3 flex gap-2">
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveTransferGroupField(option.value, 'up'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === 0}>Subir</button>
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveTransferGroupField(option.value, 'down'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === transferReportBuilder.groupBy.length - 1}>Descer</button>
-                                  <button type="button" onClick={(event) => { event.stopPropagation(); removeTransferGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  <Permissao chave="reports.reports.remover" rotulo="Remover — Reports" herda="reports.view">
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); removeTransferGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  </Permissao>
                                 </div>
                               ) : null}
                             </div>
@@ -10731,9 +10829,15 @@ export function Reports() {
                           <input type="text" value={transferReportTemplateName} onChange={(event) => setTransferReportTemplateName(event.target.value)} placeholder="Ex.: Transferências por destino" className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-orange-400" />
                         </label>
                         <div className="grid gap-2">
-                          <button type="button" onClick={handleSaveTransferReportTemplate} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"><Save className="h-4 w-4" />{activeTransferReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}</button>
-                          <button type="button" onClick={handleStartNewTransferReportTemplate} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Novo modelo</button>
-                          <button type="button" onClick={() => handleDuplicateTransferReportTemplate()} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><Copy className="h-4 w-4" />Duplicar modelo atual</button>
+                          <Permissao chave="reports.transferencias.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.transferencias.abrir">
+                            <button type="button" onClick={handleSaveTransferReportTemplate} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"><Save className="h-4 w-4" />{activeTransferReportTemplateId ? 'Atualizar modelo' : 'Salvar modelo'}</button>
+                          </Permissao>
+                          <Permissao chave="reports.transferencias.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.transferencias.abrir">
+                            <button type="button" onClick={handleStartNewTransferReportTemplate} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Novo modelo</button>
+                          </Permissao>
+                          <Permissao chave="reports.transferencias.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.transferencias.abrir">
+                            <button type="button" onClick={() => handleDuplicateTransferReportTemplate()} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><Copy className="h-4 w-4" />Duplicar modelo atual</button>
+                          </Permissao>
                         </div>
                         {activeTransferReportTemplate ? (
                           <div className={`rounded-2xl px-4 py-3 text-sm ${isTransferReportTemplateDirty ? 'border border-amber-200 bg-amber-50 text-amber-800' : 'border border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
@@ -10774,8 +10878,12 @@ export function Reports() {
                               </button>
                               <div className="mt-3 flex gap-2">
                                 <button type="button" onClick={() => handleLoadTransferReportTemplate(template)} className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white">Carregar</button>
-                                <button type="button" onClick={() => handleDuplicateTransferReportTemplate(template)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"><Copy className="h-4 w-4" /></button>
-                                <button type="button" onClick={() => handleDeleteTransferReportTemplate(template.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
+                                <Permissao chave="reports.transferencias.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.transferencias.abrir">
+                                  <button type="button" onClick={() => handleDuplicateTransferReportTemplate(template)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"><Copy className="h-4 w-4" /></button>
+                                </Permissao>
+                                <Permissao chave="reports.transferencias.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.transferencias.abrir">
+                                  <button type="button" onClick={() => handleDeleteTransferReportTemplate(template.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
+                                </Permissao>
                               </div>
                             </div>
                           );
@@ -10993,14 +11101,16 @@ export function Reports() {
                           onChange={(e) => setRequirementsReportBuilder((p) => ({ ...p, templateName: e.target.value }))}
                           className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-emerald-400"
                         />
-                        <button
-                          type="button"
-                          onClick={handleSaveRequirementsReportTemplate}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                        >
-                          <Save className="h-4 w-4" />
-                          Salvar
-                        </button>
+                        <Permissao chave="reports.requerimentos.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.requerimentos.abrir">
+                          <button
+                            type="button"
+                            onClick={handleSaveRequirementsReportTemplate}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                          >
+                            <Save className="h-4 w-4" />
+                            Salvar
+                          </button>
+                        </Permissao>
                       </div>
                       {requirementsReportTemplates.length > 0 && (
                         <div className="mt-4 space-y-2">
@@ -11013,7 +11123,9 @@ export function Reports() {
                                     <p className={`truncate text-sm font-semibold ${isActive ? 'text-emerald-900' : 'text-slate-900'}`}>{tpl.name}</p>
                                     <p className="text-xs text-slate-500">{tpl.builder.columns.length} colunas</p>
                                   </button>
-                                  <button type="button" onClick={() => handleDeleteRequirementsReportTemplate(tpl.id)} className="rounded-xl border border-rose-200 bg-rose-50 p-1.5 text-rose-700 transition hover:bg-rose-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                                  <Permissao chave="reports.requerimentos.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.requerimentos.abrir">
+                                    <button type="button" onClick={() => handleDeleteRequirementsReportTemplate(tpl.id)} className="rounded-xl border border-rose-200 bg-rose-50 p-1.5 text-rose-700 transition hover:bg-rose-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                                  </Permissao>
                                 </div>
                               </div>
                             );
@@ -11566,9 +11678,11 @@ export function Reports() {
                           onChange={(e) => setCredentialReportBuilder((p) => ({ ...p, templateName: e.target.value }))}
                           className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400"
                         />
-                        <button type="button" onClick={handleSaveCredentialReportTemplate} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700">
-                          <Save className="h-4 w-4" />Salvar
-                        </button>
+                        <Permissao chave="reports.credenciais.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.credenciais.abrir">
+                          <button type="button" onClick={handleSaveCredentialReportTemplate} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700">
+                            <Save className="h-4 w-4" />Salvar
+                          </button>
+                        </Permissao>
                       </div>
                       {credentialReportTemplates.length > 0 && (
                         <div className="mt-4 space-y-2">
@@ -11581,7 +11695,9 @@ export function Reports() {
                                     <p className={`truncate text-sm font-semibold ${isActive ? 'text-violet-900' : 'text-slate-900'}`}>{tpl.name}</p>
                                     <p className="text-xs text-slate-500">{tpl.builder.columns.length} colunas</p>
                                   </button>
-                                  <button type="button" onClick={() => handleDeleteCredentialReportTemplate(tpl.id)} className="rounded-xl border border-rose-200 bg-rose-50 p-1.5 text-rose-700 transition hover:bg-rose-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                                  <Permissao chave="reports.credenciais.modelos" rotulo="Salvar e gerenciar modelos" herda="reports.credenciais.abrir">
+                                    <button type="button" onClick={() => handleDeleteCredentialReportTemplate(tpl.id)} className="rounded-xl border border-rose-200 bg-rose-50 p-1.5 text-rose-700 transition hover:bg-rose-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                                  </Permissao>
                                 </div>
                               </div>
                             );
@@ -12350,27 +12466,31 @@ export function Reports() {
                     {dashboard.name}
                   </button>
                   {canManageDashboards && dashboardsState.dashboards.length > 1 ? (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteDashboard(dashboard.id)}
-                      className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
-                      title="Excluir dashboard"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <Permissao chave="reports.reports.excluir_dashboard" rotulo="Excluir dashboard — Reports" herda="reports.view">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDashboard(dashboard.id)}
+                        className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                        title="Excluir dashboard"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </Permissao>
                   ) : null}
                 </div>
               ))}
 
               {canManageDashboards ? (
-                <button
-                  type="button"
-                  onClick={handleAddDashboard}
-                  className="inline-flex items-center gap-2 rounded-full border border-dashed border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-600 dark:hover:text-emerald-300"
-                >
-                  <Plus className="h-4 w-4" />
-                  Novo dashboard
-                </button>
+                <Permissao chave="reports.reports.novo_dashboard" rotulo="Novo dashboard — Reports" herda="reports.view">
+                  <button
+                    type="button"
+                    onClick={handleAddDashboard}
+                    className="inline-flex items-center gap-2 rounded-full border border-dashed border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-600 dark:hover:text-emerald-300"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Novo dashboard
+                  </button>
+                </Permissao>
               ) : null}
             </div>
           </div>
@@ -12395,22 +12515,26 @@ export function Reports() {
                       </div>
                       {canManageDashboards ? (
                         <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEditChartModal(chart.id)}
-                            className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                            title="Editar gráfico"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteChart(chart.id)}
-                            className="rounded-xl p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
-                            title="Excluir gráfico"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <Permissao chave="reports.dashboards.gerenciar" rotulo="Adicionar, editar e excluir gráficos" herda="reports.dashboards.aba">
+                            <button
+                              type="button"
+                              onClick={() => openEditChartModal(chart.id)}
+                              className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                              title="Editar gráfico"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          </Permissao>
+                          <Permissao chave="reports.dashboards.gerenciar" rotulo="Adicionar, editar e excluir gráficos" herda="reports.dashboards.aba">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteChart(chart.id)}
+                              className="rounded-xl p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+                              title="Excluir gráfico"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </Permissao>
                         </div>
                       ) : null}
                     </div>
@@ -12514,14 +12638,16 @@ export function Reports() {
               <h3 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">Este dashboard ainda não tem gráficos</h3>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Crie painéis quantos quiser e agrupe os gráficos por tema, processo ou perfil de acompanhamento.</p>
               {canManageDashboards ? (
-                <button
-                  type="button"
-                  onClick={openNewChartModal}
-                  className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                >
-                  <Plus className="h-4 w-4" />
-                  Criar primeiro gráfico
-                </button>
+                <Permissao chave="reports.dashboards.gerenciar" rotulo="Adicionar, editar e excluir gráficos" herda="reports.dashboards.aba">
+                  <button
+                    type="button"
+                    onClick={openNewChartModal}
+                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Criar primeiro gráfico
+                  </button>
+                </Permissao>
               ) : null}
             </div>
           )}
@@ -12770,14 +12896,16 @@ export function Reports() {
               >
                 Cancelar
               </button>
-              <button
-                type="button"
-                onClick={handleSaveChart}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-              >
-                <Save className="h-4 w-4" />
-                Salvar gráfico
-              </button>
+              <Permissao chave="reports.reports.salvar_grafico" rotulo="Salvar gráfico — Reports" herda="reports.view">
+                <button
+                  type="button"
+                  onClick={handleSaveChart}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  <Save className="h-4 w-4" />
+                  Salvar gráfico
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

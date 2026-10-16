@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { X, Upload, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { apiBase } from '@/lib/apiBase'
+import { Permissao } from '../../../../lib/permissoes/Permissao';
 
 interface ImportarFebrabanModalProps {
   credentials: { id: string; apelido: string }[]
@@ -216,11 +217,13 @@ export function ImportarFebrabanModal({ credentials, accounts, onClose, onImport
               className="h-8 px-4 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-100 transition-colors">
               Cancelar
             </button>
-            <button onClick={() => void handleImport()}
-              disabled={!file || !credentialId || !accountId || loading}
-              className="h-8 px-4 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors">
-              {loading ? 'Importando...' : 'Importar Movimentos'}
-            </button>
+            <Permissao chave="santander_view.importar_febraban_modal.importar_movimentos" rotulo="Importar Movimentos — Importar Febraban Modal" herda="santander_view.view">
+              <button onClick={() => void handleImport()}
+                disabled={!file || !credentialId || !accountId || loading}
+                className="h-8 px-4 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors">
+                {loading ? 'Importando...' : 'Importar Movimentos'}
+              </button>
+            </Permissao>
           </div>
         )}
       </div>

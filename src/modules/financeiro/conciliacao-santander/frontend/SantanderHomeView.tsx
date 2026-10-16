@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Eye, EyeOff, RefreshCw, Settings, Upload, ChevronRight, Building2 } from 'lucide-react'
 import { apiBase } from '@/lib/apiBase'
+import { Permissao } from '../../../../lib/permissoes/Permissao';
 
 export interface SantanderAccount {
   id: string
@@ -100,11 +101,13 @@ export function SantanderHomeView({
         </div>
         <div className="flex items-center gap-2">
           {canImport && accounts.length > 0 && (
-            <button onClick={() => onOpenImport(accounts)}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors">
-              <Upload className="h-3.5 w-3.5 text-slate-500" />
-              Importar FEBRABAN
-            </button>
+            <Permissao chave="santander_view.santander_home_view.importar_febraban" rotulo="Importar FEBRABAN — Santander Home View" herda="santander_view.view">
+              <button onClick={() => onOpenImport(accounts)}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors">
+                <Upload className="h-3.5 w-3.5 text-slate-500" />
+                Importar FEBRABAN
+              </button>
+            </Permissao>
           )}
           {canConfig && (
             <button onClick={onOpenConfig}

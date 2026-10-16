@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { apiBase } from '../../lib/apiBase';
 import { printAssetLabels } from './printAssetLabels';
 import { locationLabel } from '../../lib/assetLocationOptions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const STATUS_LABELS: Record<string, string> = { active: 'Ativo', baixado: 'Baixado', manutencao: 'Manutenção' };
 
@@ -79,12 +80,14 @@ export default function AssetDetail() {
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6 text-center">
           <p className="text-xs font-semibold uppercase text-slate-500 mb-3 flex items-center justify-center gap-1"><QrCode className="w-3.5 h-3.5" /> QR de identificação</p>
           {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="mx-auto w-40 h-40" />}
-          <button
-            onClick={() => printAssetLabels({ preset: 'zebra-50x25', assets: [asset] })}
-            className="mt-4 w-full px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900"
-          >
-            Imprimir etiqueta
-          </button>
+          <Permissao chave="tela_patrimonio.asset_detail.imprimir_etiqueta" rotulo="Imprimir etiqueta — Asset Detail" herda="tela_patrimonio.view">
+            <button
+              onClick={() => printAssetLabels({ preset: 'zebra-50x25', assets: [asset] })}
+              className="mt-4 w-full px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900"
+            >
+              Imprimir etiqueta
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

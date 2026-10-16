@@ -4,6 +4,7 @@ import { X, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Loader2
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { exportRows } from '../pastoral/exportUtils';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Props {
   onClose: () => void;
@@ -113,12 +114,14 @@ export function AssetImportModal({ onClose, onImported }: Props) {
 
           {step === 'upload' && (
             <div className="space-y-4">
-              <button
-                onClick={downloadTemplate}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700"
-              >
-                <Download className="w-4 h-4" /> Baixar modelo de planilha
-              </button>
+              <Permissao chave="assets.asset_import_modal.baixar_modelo_de_planilha" rotulo="Baixar modelo de planilha — Asset Import Modal" herda="assets.view">
+                <button
+                  onClick={downloadTemplate}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700"
+                >
+                  <Download className="w-4 h-4" /> Baixar modelo de planilha
+                </button>
+              </Permissao>
 
               <div
                 className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center cursor-pointer hover:border-amber-400 transition-colors"
@@ -177,13 +180,15 @@ export function AssetImportModal({ onClose, onImported }: Props) {
 
               <div className="flex items-center justify-between pt-2">
                 <button onClick={() => setStep('upload')} className="text-sm text-slate-500 hover:text-slate-800">← Trocar arquivo</button>
-                <button
-                  onClick={handleImport}
-                  disabled={willImport === 0}
-                  className="flex items-center gap-2 bg-amber-600 text-white px-6 py-2.5 rounded-lg hover:bg-amber-700 font-semibold disabled:opacity-50"
-                >
-                  <Package className="w-4 h-4" /> Confirmar e importar {willImport}
-                </button>
+                <Permissao chave="assets.asset_import_modal.confirmar_e_importar" rotulo="Confirmar e importar — Asset Import Modal" herda="assets.view">
+                  <button
+                    onClick={handleImport}
+                    disabled={willImport === 0}
+                    className="flex items-center gap-2 bg-amber-600 text-white px-6 py-2.5 rounded-lg hover:bg-amber-700 font-semibold disabled:opacity-50"
+                  >
+                    <Package className="w-4 h-4" /> Confirmar e importar {willImport}
+                  </button>
+                </Permissao>
               </div>
             </div>
           )}

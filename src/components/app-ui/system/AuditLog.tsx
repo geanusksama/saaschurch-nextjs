@@ -1,6 +1,7 @@
 import { Database, Search, Filter, Download, User, Calendar, Clock, FileText, AlertTriangle, Loader2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { apiBase } from '../../../lib/apiBase';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 export function AuditLog() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -461,13 +462,15 @@ export function AuditLog() {
               <option value="system">Sistema</option>
             </select>
 
-            <button 
-              onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2.5 bg-purple-650 hover:bg-purple-705 text-white rounded-lg transition-colors font-semibold text-sm shadow-sm hover:shadow active:scale-98"
-            >
-              <Download className="w-4 h-4" />
-              <span>Exportar</span>
-            </button>
+            <Permissao chave="audit_log.audit_log.exportar" rotulo="Exportar — Audit Log" herda="audit_log.view">
+              <button 
+                onClick={handleExport}
+                className="flex items-center gap-2 px-4 py-2.5 bg-purple-650 hover:bg-purple-705 text-white rounded-lg transition-colors font-semibold text-sm shadow-sm hover:shadow active:scale-98"
+              >
+                <Download className="w-4 h-4" />
+                <span>Exportar</span>
+              </button>
+            </Permissao>
           </div>
         </div>
       </div>

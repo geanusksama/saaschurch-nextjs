@@ -44,6 +44,7 @@ import { exportRows } from './exportUtils';
 import ImportCsvModal, { downloadTemplate } from './ImportCsvModal';
 import ConversationModal from './ConversationModal';
 import { toast } from 'sonner';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function currentProfileType(): string {
   try {
@@ -757,17 +758,21 @@ export default function PastoralMassSend() {
           Buscar
         </button>
         {/* importação de lista externa (CSV/Excel) — fluxo próprio em 3 fases */}
-        <button onClick={() => setShowImport(true)} disabled={!canSendCampaign}
-          title={!canSendCampaign ? 'Sem permissão para enviar campanhas de WhatsApp' : 'Importar contatos de um arquivo CSV/Excel'}
-          className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium inline-flex items-center gap-2 hover:bg-emerald-500 disabled:opacity-50">
-          <Upload className="w-4 h-4" />
-          Importar CSV
-        </button>
-        <button onClick={downloadTemplate} title="Baixar o arquivo-modelo com as colunas aceitas"
-          className="h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-600 inline-flex items-center gap-2 hover:bg-slate-50">
-          <Download className="w-4 h-4" />
-          Modelo
-        </button>
+        <Permissao chave="pastoral_visits.pastoral_mass_send.importar_csv" rotulo="Importar CSV — Pastoral Mass Send" herda="pastoral_visits.view">
+          <button onClick={() => setShowImport(true)} disabled={!canSendCampaign}
+            title={!canSendCampaign ? 'Sem permissão para enviar campanhas de WhatsApp' : 'Importar contatos de um arquivo CSV/Excel'}
+            className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium inline-flex items-center gap-2 hover:bg-emerald-500 disabled:opacity-50">
+            <Upload className="w-4 h-4" />
+            Importar CSV
+          </button>
+        </Permissao>
+        <Permissao chave="pastoral_visits.pastoral_mass_send.baixar_o_arquivo_modelo_com_as_colunas_a" rotulo="Baixar o arquivo-modelo com as colunas aceitas — Pastoral Mass Send" herda="pastoral_visits.view">
+          <button onClick={downloadTemplate} title="Baixar o arquivo-modelo com as colunas aceitas"
+            className="h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-600 inline-flex items-center gap-2 hover:bg-slate-50">
+            <Download className="w-4 h-4" />
+            Modelo
+          </button>
+        </Permissao>
         {campaignId && (
           <button onClick={() => setViewSummary(v => !v)}
             className="h-9 px-3 rounded-lg border border-slate-200 text-sm inline-flex items-center gap-2 hover:bg-slate-50">
@@ -871,24 +876,30 @@ export default function PastoralMassSend() {
                 )}
                 <div className="ml-auto flex items-center gap-1.5">
                   <span className="text-xs text-slate-400 hidden sm:inline">Exportar:</span>
-                  <button onClick={() => exportContacts('csv')} disabled={!contacts.length}
-                    title={selected.size ? 'Exportar selecionados (CSV)' : 'Exportar todos os listados (CSV)'}
-                    className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
-                    <Download className="w-3.5 h-3.5" />
-                    CSV
-                  </button>
-                  <button onClick={() => exportContacts('xlsx')} disabled={!contacts.length}
-                    title={selected.size ? 'Exportar selecionados (Excel)' : 'Exportar todos os listados (Excel)'}
-                    className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
-                    Excel
-                  </button>
-                  <button onClick={gerarParecerPdf} disabled={!contacts.length || gerandoParecer}
-                    title={selected.size ? 'Parecer de consolidação dos selecionados (PDF)' : 'Parecer de consolidação de todos os listados (PDF)'}
-                    className="h-8 px-2.5 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
-                    {gerandoParecer ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                    Parecer PDF
-                  </button>
+                  <Permissao chave="pastoral_visits.pastoral_mass_send.csv" rotulo="CSV — Pastoral Mass Send" herda="pastoral_visits.view">
+                    <button onClick={() => exportContacts('csv')} disabled={!contacts.length}
+                      title={selected.size ? 'Exportar selecionados (CSV)' : 'Exportar todos os listados (CSV)'}
+                      className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+                      <Download className="w-3.5 h-3.5" />
+                      CSV
+                    </button>
+                  </Permissao>
+                  <Permissao chave="pastoral_visits.pastoral_mass_send.excel" rotulo="Excel — Pastoral Mass Send" herda="pastoral_visits.view">
+                    <button onClick={() => exportContacts('xlsx')} disabled={!contacts.length}
+                      title={selected.size ? 'Exportar selecionados (Excel)' : 'Exportar todos os listados (Excel)'}
+                      className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      Excel
+                    </button>
+                  </Permissao>
+                  <Permissao chave="pastoral_visits.pastoral_mass_send.parecer_pdf" rotulo="Parecer PDF — Pastoral Mass Send" herda="pastoral_visits.view">
+                    <button onClick={gerarParecerPdf} disabled={!contacts.length || gerandoParecer}
+                      title={selected.size ? 'Parecer de consolidação dos selecionados (PDF)' : 'Parecer de consolidação de todos os listados (PDF)'}
+                      className="h-8 px-2.5 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+                      {gerandoParecer ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                      Parecer PDF
+                    </button>
+                  </Permissao>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
@@ -930,12 +941,14 @@ export default function PastoralMassSend() {
                           ? (c.category ?? 'Lista')
                           : 'Pipeline'}
                     </span>
-                    <button
-                      onClick={e => { e.preventDefault(); e.stopPropagation(); openDirect(c); }}
-                      title="Enviar mensagem individual pela instância selecionada"
-                      className="p-1 rounded hover:bg-emerald-50 text-emerald-600">
-                      <MessageCircle className="w-4 h-4" />
-                    </button>
+                    <Permissao chave="pastoral_visits.pastoral_mass_send.enviar_mensagem_individual_pela_instanci" rotulo="Enviar mensagem individual pela instância selecionada — Pastoral Mass Send" herda="pastoral_visits.view">
+                      <button
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); openDirect(c); }}
+                        title="Enviar mensagem individual pela instância selecionada"
+                        className="p-1 rounded hover:bg-emerald-50 text-emerald-600">
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
+                    </Permissao>
                   </label>
                 ))}
                 {!loadingContacts && !contacts.length && (

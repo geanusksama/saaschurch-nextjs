@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { podeAcessarContabilidadeAgendamento } from '../../lib/contabilidadeAgendamentoRole';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Acesso = {
   id: string;
@@ -192,12 +193,14 @@ export default function ContabilidadeAgendamentos() {
             Agende o envio periódico do relatório contábil por WhatsApp aos contadores cadastrados.
           </p>
         </div>
-        <button
-          onClick={() => setNovoContadorOpen(true)}
-          className="px-4 py-2 rounded-lg bg-slate-900 dark:bg-purple-600 text-white flex items-center gap-2 shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Novo Contador
-        </button>
+        <Permissao chave="contabilidade_agendamentos.contabilidade_agendamentos.novo_contador" rotulo="Novo Contador — Contabilidade Agendamentos" herda="contabilidade_agendamentos.view">
+          <button
+            onClick={() => setNovoContadorOpen(true)}
+            className="px-4 py-2 rounded-lg bg-slate-900 dark:bg-purple-600 text-white flex items-center gap-2 shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Novo Contador
+          </button>
+        </Permissao>
       </div>
 
       {error && <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">{error}</div>}
@@ -297,27 +300,33 @@ export default function ContabilidadeAgendamentos() {
               >
                 <History className="w-3.5 h-3.5" /> Histórico de envios
               </button>
-              <button
-                onClick={() => { setPreviewTarget(acc); setOpenMenu(null); }}
-                disabled={!acc.ativo}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50"
-              >
-                <Send className="w-3.5 h-3.5" />
-                Enviar agora
-              </button>
+              <Permissao chave="contabilidade_agendamentos.contabilidade_agendamentos.enviar_agora" rotulo="Enviar agora — Contabilidade Agendamentos" herda="contabilidade_agendamentos.view">
+                <button
+                  onClick={() => { setPreviewTarget(acc); setOpenMenu(null); }}
+                  disabled={!acc.ativo}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Enviar agora
+                </button>
+              </Permissao>
               <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-              <button
-                onClick={() => { setEditTarget(acc); setOpenMenu(null); }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
-              >
-                <Pencil className="w-3.5 h-3.5" /> Editar contador
-              </button>
-              <button
-                onClick={() => { setDeleteTarget(acc); setOpenMenu(null); }}
-                className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 flex items-center gap-2"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Excluir contador
-              </button>
+              <Permissao chave="contabilidade_agendamentos.contabilidade_agendamentos.editar_contador" rotulo="Editar contador — Contabilidade Agendamentos" herda="contabilidade_agendamentos.view">
+                <button
+                  onClick={() => { setEditTarget(acc); setOpenMenu(null); }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Editar contador
+                </button>
+              </Permissao>
+              <Permissao chave="contabilidade_agendamentos.contabilidade_agendamentos.excluir_contador" rotulo="Excluir contador — Contabilidade Agendamentos" herda="contabilidade_agendamentos.view">
+                <button
+                  onClick={() => { setDeleteTarget(acc); setOpenMenu(null); }}
+                  className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 flex items-center gap-2"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir contador
+                </button>
+              </Permissao>
             </div>
           );
         })(),
@@ -484,13 +493,15 @@ function NovoContadorModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </div>
             <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
               <button onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700">Cancelar</button>
-              <button
-                onClick={salvar}
-                disabled={saving || !nome.trim() || !campo || !telefone.trim()}
-                className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50 flex items-center gap-2"
-              >
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />} Cadastrar
-              </button>
+              <Permissao chave="contabilidade_agendamentos.contabilidade_agendamentos.cadastrar" rotulo="Cadastrar — Contabilidade Agendamentos" herda="contabilidade_agendamentos.view">
+                <button
+                  onClick={salvar}
+                  disabled={saving || !nome.trim() || !campo || !telefone.trim()}
+                  className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50 flex items-center gap-2"
+                >
+                  {saving && <Loader2 className="w-4 h-4 animate-spin" />} Cadastrar
+                </button>
+              </Permissao>
             </div>
           </>
         )}
@@ -606,13 +617,15 @@ function EditarContadorModal({ acesso, onClose, onSaved }: { acesso: Acesso; onC
 
         <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
           <button onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700">Cancelar</button>
-          <button
-            onClick={salvar}
-            disabled={saving || !nome.trim() || !campo || !telefone.trim()}
-            className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50 flex items-center gap-2"
-          >
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
-          </button>
+          <Permissao chave="contabilidade_agendamentos.contabilidade_agendamentos.salvar" rotulo="Salvar — Contabilidade Agendamentos" herda="contabilidade_agendamentos.view">
+            <button
+              onClick={salvar}
+              disabled={saving || !nome.trim() || !campo || !telefone.trim()}
+              className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>
@@ -655,13 +668,15 @@ function ExcluirContadorModal({ acesso, onClose, onDeleted }: { acesso: Acesso; 
         </div>
         <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
           <button onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700">Cancelar</button>
-          <button
-            onClick={excluir}
-            disabled={deleting}
-            className="px-4 py-2 rounded-lg bg-red-600 text-white disabled:opacity-50 flex items-center gap-2"
-          >
-            {deleting && <Loader2 className="w-4 h-4 animate-spin" />} Excluir
-          </button>
+          <Permissao chave="contabilidade_agendamentos.contabilidade_agendamentos.excluir" rotulo="Excluir — Contabilidade Agendamentos" herda="contabilidade_agendamentos.view">
+            <button
+              onClick={excluir}
+              disabled={deleting}
+              className="px-4 py-2 rounded-lg bg-red-600 text-white disabled:opacity-50 flex items-center gap-2"
+            >
+              {deleting && <Loader2 className="w-4 h-4 animate-spin" />} Excluir
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>
@@ -812,9 +827,11 @@ function ConfigModal({ acesso, onClose, onSaved }: { acesso: Acesso; onClose: ()
 
         <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
           <button onClick={onClose} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700">Cancelar</button>
-          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50 flex items-center gap-2">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
-          </button>
+          <Permissao chave="contabilidade_agendamentos.contabilidade_agendamentos.salvar" rotulo="Salvar — Contabilidade Agendamentos" herda="contabilidade_agendamentos.view">
+            <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50 flex items-center gap-2">
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

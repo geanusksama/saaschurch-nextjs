@@ -17,6 +17,7 @@ import {
   memberFieldsByGroup,
   type MemberFieldKey,
 } from '@/lib/secretariaCampaignFields';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const GRUPOS = memberFieldsByGroup();
 
@@ -169,13 +170,15 @@ export function MemberFieldPickerModal({ open, jaUsados, onConfirm, onClose }: P
             >
               Cancelar
             </button>
-            <button
-              onClick={confirmar}
-              disabled={!selecionados.size}
-              className="rounded-lg bg-purple-600 px-5 py-2 text-xs font-bold text-white disabled:opacity-40"
-            >
-              Adicionar {selecionados.size || ''} {selecionados.size === 1 ? 'campo' : 'campos'}
-            </button>
+            <Permissao chave="secretaria_campanhas.member_field_picker_modal.adicionar_campo_campos" rotulo="Adicionar campo campos — Member Field Picker Modal" herda="secretaria_campanhas.view">
+              <button
+                onClick={confirmar}
+                disabled={!selecionados.size}
+                className="rounded-lg bg-purple-600 px-5 py-2 text-xs font-bold text-white disabled:opacity-40"
+              >
+                Adicionar {selecionados.size || ''} {selecionados.size === 1 ? 'campo' : 'campos'}
+              </button>
+            </Permissao>
           </div>
         </div>
       </div>

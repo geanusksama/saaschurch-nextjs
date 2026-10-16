@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getCurrentChurchId, getPastoralDashboardSummary, listRecentPrayerRequests } from '../../lib/pastoralService';
 import { useCounselings, useDiscipleships, usePastoralVisits } from '../../lib/pastoralHooks';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export function Pastoral() {
   const churchId = getCurrentChurchId();
@@ -39,13 +40,15 @@ export function Pastoral() {
             <p className="text-slate-600 dark:text-slate-400">Gerencie visitas, aconselhamentos e pedidos de oração</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-          <Plus className="w-5 h-5" />
-          {activeTab === 'visits' && 'Nova Visita'}
-          {activeTab === 'prayer' && 'Novo Pedido'}
-          {activeTab === 'counseling' && 'Novo Aconselhamento'}
-          {activeTab === 'discipleship' && 'Novo Discipulado'}
-        </button>
+        <Permissao chave="tela_pastoral.pastoral.nova" rotulo="Nova — Pastoral" herda="tela_pastoral.view">
+          <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+            <Plus className="w-5 h-5" />
+            {activeTab === 'visits' && 'Nova Visita'}
+            {activeTab === 'prayer' && 'Novo Pedido'}
+            {activeTab === 'counseling' && 'Novo Aconselhamento'}
+            {activeTab === 'discipleship' && 'Novo Discipulado'}
+          </button>
+        </Permissao>
       </div>
 
       {/* Stats */}

@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface ChatMessage {
   id: string;
@@ -1040,12 +1041,14 @@ export function ChatFAB() {
                         maxLength={100}
                         className="flex-1 bg-white dark:bg-slate-900 text-xs px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-purple-500"
                       />
-                      <button
-                        onClick={handleSavePhrase}
-                        className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-semibold text-white transition"
-                      >
-                        Ok
-                      </button>
+                      <Permissao chave="tela_moldura.chat_fab.salvar_frase_rapida" rotulo="Salvar frase rápida — Chat FAB" herda="tela_moldura.view">
+                        <button
+                          onClick={handleSavePhrase}
+                          className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-semibold text-white transition"
+                        >
+                          Ok
+                        </button>
+                      </Permissao>
                       <button
                         onClick={() => setIsEditingStatusPhrase(false)}
                         className="px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-355 dark:hover:bg-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-300"
@@ -1560,19 +1563,21 @@ export function ChatFAB() {
                       </button>
                       {/* Delete */}
                       {(isSelfMsg || canDeleteAnyMessage) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm("Deseja excluir esta mensagem para todos?")) {
-                              handleDeleteMessage(activeDropdownMsgId);
-                            }
-                            setActiveDropdownMsgId(null);
-                          }}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl flex items-center gap-2 font-bold text-rose-600 dark:text-rose-400 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Excluir
-                        </button>
+                        <Permissao chave="internal_chat.chat_fab.excluir" rotulo="Excluir — Chat FAB" herda="internal_chat.delete">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm("Deseja excluir esta mensagem para todos?")) {
+                                handleDeleteMessage(activeDropdownMsgId);
+                              }
+                              setActiveDropdownMsgId(null);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl flex items-center gap-2 font-bold text-rose-600 dark:text-rose-400 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Excluir
+                          </button>
+                        </Permissao>
                       )}
                       {/* Cancel */}
                       <button
@@ -1614,12 +1619,14 @@ export function ChatFAB() {
                     >
                       Descartar
                     </button>
-                    <button
-                      onClick={stopRecording}
-                      className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 rounded-xl font-bold text-white shadow-md transition"
-                    >
-                      Enviar
-                    </button>
+                    <Permissao chave="tela_moldura.chat_fab.enviar" rotulo="Enviar — Chat FAB" herda="tela_moldura.view">
+                      <button
+                        onClick={stopRecording}
+                        className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 rounded-xl font-bold text-white shadow-md transition"
+                      >
+                        Enviar
+                      </button>
+                    </Permissao>
                   </div>
                 </motion.div>
               )}
@@ -1693,19 +1700,21 @@ export function ChatFAB() {
 
                   {/* Attachment popover trigger */}
                   <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setAttachmentMenuOpen(!attachmentMenuOpen)}
-                      disabled={fileLoading || loading}
-                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition disabled:opacity-50"
-                      title="Anexar"
-                    >
-                      {fileLoading ? (
-                        <Loader className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Paperclip className="w-5 h-5" />
-                      )}
-                    </button>
+                    <Permissao chave="tela_moldura.chat_fab.anexar" rotulo="Anexar — Chat FAB" herda="tela_moldura.view">
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentMenuOpen(!attachmentMenuOpen)}
+                        disabled={fileLoading || loading}
+                        className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition disabled:opacity-50"
+                        title="Anexar"
+                      >
+                        {fileLoading ? (
+                          <Loader className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Paperclip className="w-5 h-5" />
+                        )}
+                      </button>
+                    </Permissao>
 
                     {/* Attachment options dropdown */}
                     <AnimatePresence>
@@ -1949,14 +1958,16 @@ export function ChatFAB() {
                       >
                         Cancelar
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleSendLocation}
-                        className="flex-1 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow transition flex items-center justify-center gap-1.5"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        Enviar Localização
-                      </button>
+                      <Permissao chave="tela_moldura.chat_fab.enviar_localizacao" rotulo="Enviar Localização — Chat FAB" herda="tela_moldura.view">
+                        <button
+                          type="button"
+                          onClick={handleSendLocation}
+                          className="flex-1 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow transition flex items-center justify-center gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Enviar Localização
+                        </button>
+                      </Permissao>
                     </div>
                   </>
                 ) : null}

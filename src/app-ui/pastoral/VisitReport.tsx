@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePastoralVisits } from '../../lib/pastoralHooks';
 import { getCurrentChurchId, replaceVisitPrayerPoints, updatePastoralVisit } from '../../lib/pastoralService';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const prayerTopics = ['Saude', 'Familia', 'Trabalho', 'Financas', 'Relacionamentos', 'Vida Espiritual', 'Decisoes', 'Outro'];
 const nextStepsOptions = ['Nova visita agendada', 'Encaminhamento para aconselhamento', 'Oracao continua', 'Acompanhamento semanal', 'Visita ao culto', 'Integracao a celula', 'Outro'];
@@ -156,10 +157,12 @@ export default function VisitReport() {
           <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
             <h3 className="font-bold text-slate-900">Acoes</h3>
             {errorMessage && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{errorMessage}</div>}
-            <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full flex items-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg disabled:opacity-60">
-              <Save className="w-4 h-4" />
-              {saveMutation.isPending ? 'Salvando...' : 'Salvar Relatorio'}
-            </button>
+            <Permissao chave="tela_pastoral.visit_report.salvar_relatorio" rotulo="Salvar Relatorio — Visit Report" herda="tela_pastoral.view">
+              <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full flex items-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg disabled:opacity-60">
+                <Save className="w-4 h-4" />
+                {saveMutation.isPending ? 'Salvando...' : 'Salvar Relatorio'}
+              </button>
+            </Permissao>
             <Link to={`/app-ui/pastoral/visit-detail?id=${visit.id}`} className="w-full flex items-center gap-2 px-4 py-3 bg-slate-100 text-slate-700 rounded-lg">
               <ArrowLeft className="w-4 h-4" />
               Cancelar

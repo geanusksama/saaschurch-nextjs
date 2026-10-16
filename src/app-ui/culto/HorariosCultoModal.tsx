@@ -13,6 +13,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { X, Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { cultoApi, type HorarioCulto } from './cultoApi';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 /**
  * Código estável a partir do nome ("Culto da manhã" → "CULTO_DA_MANHA").
@@ -217,19 +218,21 @@ export default function HorariosCultoModal({ churchId, onFechar }: Props) {
                   <p className="min-w-0 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
                     {h.nome}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => void excluir(h)}
-                    disabled={excluindo === h.id}
-                    title="Excluir horário"
-                    className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-50"
-                  >
-                    {excluindo === h.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+                  <Permissao chave="culto_lancar.horarios_culto_modal.excluir_horario" rotulo="Excluir horário — Horarios Culto Modal" herda="culto_lancar.view">
+                    <button
+                      type="button"
+                      onClick={() => void excluir(h)}
+                      disabled={excluindo === h.id}
+                      title="Excluir horário"
+                      className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-50"
+                    >
+                      {excluindo === h.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  </Permissao>
                 </li>
               ))}
             </ul>

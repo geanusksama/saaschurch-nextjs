@@ -8,6 +8,7 @@ import {
   useDiscipleships,
 } from '../../lib/pastoralHooks';
 import { getCurrentChurchId } from '../../lib/pastoralService';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export default function DiscipleshipCurriculum() {
   const churchId = getCurrentChurchId();
@@ -60,13 +61,15 @@ export default function DiscipleshipCurriculum() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowProgramForm((value) => !value)}
-            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Programa
-          </button>
+          <Permissao chave="discipleship.discipleship_curriculum.novo_programa" rotulo="Novo Programa — Discipleship Curriculum" herda="discipleship.view">
+            <button
+              onClick={() => setShowProgramForm((value) => !value)}
+              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+            >
+              <Plus className="w-4 h-4" />
+              Novo Programa
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -103,24 +106,26 @@ export default function DiscipleshipCurriculum() {
             />
           </div>
           <div className="mt-3">
-            <button
-              className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100 disabled:opacity-60"
-              disabled={createProgram.isPending || !churchId || !programName.trim()}
-              onClick={() => {
-                void createProgram.mutateAsync({
-                  churchId: churchId!,
-                  name: programName.trim(),
-                  description: programDescription.trim() || undefined,
-                  stage: programStage,
-                  lessonsCount: Number(programLessonsCount || 0),
-                });
-                setProgramName('');
-                setProgramDescription('');
-              }}
-            >
-              <Save className="w-4 h-4" />
-              Salvar Programa
-            </button>
+            <Permissao chave="discipleship.discipleship_curriculum.salvar_programa" rotulo="Salvar Programa — Discipleship Curriculum" herda="discipleship.view">
+              <button
+                className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100 disabled:opacity-60"
+                disabled={createProgram.isPending || !churchId || !programName.trim()}
+                onClick={() => {
+                  void createProgram.mutateAsync({
+                    churchId: churchId!,
+                    name: programName.trim(),
+                    description: programDescription.trim() || undefined,
+                    stage: programStage,
+                    lessonsCount: Number(programLessonsCount || 0),
+                  });
+                  setProgramName('');
+                  setProgramDescription('');
+                }}
+              >
+                <Save className="w-4 h-4" />
+                Salvar Programa
+              </button>
+            </Permissao>
           </div>
         </div>
       )}
@@ -198,34 +203,36 @@ export default function DiscipleshipCurriculum() {
                       />
                     </div>
                     <div className="mt-2">
-                      <button
-                        className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
-                        disabled={createLesson.isPending || !churchId || !lessonTitle.trim()}
-                        onClick={() => {
-                          const maxExistingLesson = activeProgramLessons.reduce(
-                            (acc, lesson) => Math.max(acc, Number(lesson.lesson_number || 0)),
-                            0,
-                          );
-                          const nextLessonNumber = maxExistingLesson + 1;
-                          void createLesson.mutateAsync({
-                            churchId: churchId!,
-                            programId: program.id,
-                            lessonNumber: nextLessonNumber,
-                            title: lessonTitle.trim(),
-                            contentSummary: lessonSummary.trim() || undefined,
-                            durationMinutes: Number(lessonDuration || 0),
-                            materials: lessonMaterials
-                              .split(',')
-                              .map((item) => item.trim())
-                              .filter(Boolean),
-                          });
-                          setLessonTitle('');
-                          setLessonSummary('');
-                        }}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Adicionar matéria
-                      </button>
+                      <Permissao chave="discipleship.discipleship_curriculum.adicionar_materia" rotulo="Adicionar matéria — Discipleship Curriculum" herda="discipleship.view">
+                        <button
+                          className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                          disabled={createLesson.isPending || !churchId || !lessonTitle.trim()}
+                          onClick={() => {
+                            const maxExistingLesson = activeProgramLessons.reduce(
+                              (acc, lesson) => Math.max(acc, Number(lesson.lesson_number || 0)),
+                              0,
+                            );
+                            const nextLessonNumber = maxExistingLesson + 1;
+                            void createLesson.mutateAsync({
+                              churchId: churchId!,
+                              programId: program.id,
+                              lessonNumber: nextLessonNumber,
+                              title: lessonTitle.trim(),
+                              contentSummary: lessonSummary.trim() || undefined,
+                              durationMinutes: Number(lessonDuration || 0),
+                              materials: lessonMaterials
+                                .split(',')
+                                .map((item) => item.trim())
+                                .filter(Boolean),
+                            });
+                            setLessonTitle('');
+                            setLessonSummary('');
+                          }}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Adicionar matéria
+                        </button>
+                      </Permissao>
                     </div>
                   </div>
 

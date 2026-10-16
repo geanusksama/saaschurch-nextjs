@@ -1,5 +1,6 @@
 import { Mail, Server, User, Lock, Send, Check, AlertTriangle, Save, TestTube } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 export function EmailSettings() {
   const [config, setConfig] = useState({
@@ -299,10 +300,12 @@ export function EmailSettings() {
           <button className="px-6 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
-          <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
-            <Save className="w-5 h-5" />
-            Salvar Configurações
-          </button>
+          <Permissao chave="settings_email_config.email_settings.salvar_configuracoes" rotulo="Salvar Configurações — Email Settings" herda="settings_email_config.view">
+            <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
+              <Save className="w-5 h-5" />
+              Salvar Configurações
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

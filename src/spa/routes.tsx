@@ -117,6 +117,7 @@ import UserNew from "../app-ui/system/UserNew";
 import UserEdit from "../app-ui/system/UserEdit";
 import { PermissionsMatrix } from "../app-ui/system/PermissionsMatrix";
 import UserPermissions from "../app-ui/system/UserPermissions";
+import GruposUsuarios from "../app-ui/system/GruposUsuarios";
 import FieldPasswordAdmin from "../app-ui/system/FieldPasswordAdmin";
 import ContabilidadeAgendamentos from "../app-ui/system/ContabilidadeAgendamentos";
 import {
@@ -605,6 +606,7 @@ export const router = createBrowserRouter([
       { path: "system/home-publica", Component: HomePublica },
       { path: "system/localization", Component: Localization },
       { path: "system/roles", Component: Roles },
+      { path: "system/grupos-usuarios", Component: GruposUsuarios },
       { path: "system/permissions", Component: PermissionsMatrix },
       { path: "system/security", Component: Security },
       { path: "system/audit-log", Component: SystemAuditLog },

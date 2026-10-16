@@ -5,6 +5,7 @@ import { Camera, CameraOff, CheckCircle2, Loader2, MapPin, QrCode, RotateCcw, XC
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { normalizeAssetCode } from './assetScanRules';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const SCANNER_ID = 'mrm-asset-inventory-qr-reader';
 
@@ -264,9 +265,11 @@ export default function AssetInventoryScan() {
                   />
                   <div className="flex justify-end gap-2 pt-1">
                     <button onClick={() => setShowObsForm(false)} className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-600">Cancelar</button>
-                    <button onClick={saveObservation} disabled={saving || !locationFound.trim()} className="px-3 py-1.5 text-sm rounded-lg bg-amber-600 text-white font-semibold disabled:opacity-50">
-                      {saving ? 'Salvando...' : 'Confirmar'}
-                    </button>
+                    <Permissao chave="asset_inventory.asset_inventory_scan.confirmar" rotulo="Confirmar — Asset Inventory Scan" herda="asset_inventory.view">
+                      <button onClick={saveObservation} disabled={saving || !locationFound.trim()} className="px-3 py-1.5 text-sm rounded-lg bg-amber-600 text-white font-semibold disabled:opacity-50">
+                        {saving ? 'Salvando...' : 'Confirmar'}
+                      </button>
+                    </Permissao>
                   </div>
                 </div>
               )}

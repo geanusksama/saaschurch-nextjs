@@ -36,6 +36,7 @@ import {
 } from './cultoApi';
 import CultoRegistroDrawer from './CultoRegistroDrawer';
 import { BORDA, PASTILHA, TEXTO } from './cultoCores';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const ICONE_BLOCO: Record<Bloco, React.ElementType> = {
   FINANCEIRO: Wallet,
@@ -230,60 +231,62 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
             const devolvido = r.status === 'REJEITADO';
             const travado = r.status === 'CONCLUIDO' || r.status === 'APROVADO_LOCAL';
             return (
-              <button
-                key={r.id}
-                onClick={() => setAbertoId(r.id)}
-                className={`w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border bg-white dark:bg-slate-800 text-left hover:shadow-md transition-shadow ${
-                  devolvido ? BORDA.ambar : enviado ? BORDA.verde : BORDA.vermelho
-                }`}
-              >
-                <span
-                  className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center ${
-                    enviado ? PASTILHA.verde : PASTILHA.vermelho
+              <Permissao key={r.id} chave="culto_gestao.culto_meus_lancamentos.ver_editar_lancar" rotulo="· · ver editar lançar — Culto Meus Lancamentos" herda="culto_gestao.view">
+                <button
+                  key={r.id}
+                  onClick={() => setAbertoId(r.id)}
+                  className={`w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border bg-white dark:bg-slate-800 text-left hover:shadow-md transition-shadow ${
+                    devolvido ? BORDA.ambar : enviado ? BORDA.verde : BORDA.vermelho
                   }`}
                 >
-                  <Icone className="w-4 h-4" />
-                </span>
-
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold text-slate-800 dark:text-slate-100">
-                    {fmtData(r.dataCulto)}
-                    {turnoDoCulto(r.horaInicio) ? ` · ${turnoDoCulto(r.horaInicio)}` : ''}
-                    {fmtHora(r.horaInicio, r.horaFim)
-                      ? ` · ${fmtHora(r.horaInicio, r.horaFim)}`
-                      : ''}{' '}
-                    · {r.tipoCulto}
-                  </span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-400">
-                    {r.church.name} · {ROTULO_STATUS[r.status]}
-                  </span>
-                </span>
-
-                <span className="shrink-0 flex items-center gap-2 text-xs font-semibold">
-                  {devolvido ? (
-                    <span className={`inline-flex items-center gap-1 ${TEXTO.ambar}`}>
-                      <Undo2 className="w-3.5 h-3.5" /> devolvido — corrigir
-                    </span>
-                  ) : enviado ? (
-                    <span className={`inline-flex items-center gap-1 ${TEXTO.verde}`}>
-                      <Check className="w-3.5 h-3.5" /> enviado
-                    </span>
-                  ) : (
-                    <span className={`inline-flex items-center gap-1 ${TEXTO.vermelho}`}>
-                      <Clock className="w-3.5 h-3.5" /> falta lançar
-                    </span>
-                  )}
                   <span
-                    className={`px-3 py-1.5 rounded-lg ${
-                      travado
-                        ? 'bg-slate-100 dark:bg-slate-700 text-slate-500'
-                        : 'bg-emerald-500 text-white'
+                    className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center ${
+                      enviado ? PASTILHA.verde : PASTILHA.vermelho
                     }`}
                   >
-                    {travado ? 'ver' : enviado ? 'editar' : 'lançar'}
+                    <Icone className="w-4 h-4" />
                   </span>
-                </span>
-              </button>
+  
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-slate-800 dark:text-slate-100">
+                      {fmtData(r.dataCulto)}
+                      {turnoDoCulto(r.horaInicio) ? ` · ${turnoDoCulto(r.horaInicio)}` : ''}
+                      {fmtHora(r.horaInicio, r.horaFim)
+                        ? ` · ${fmtHora(r.horaInicio, r.horaFim)}`
+                        : ''}{' '}
+                      · {r.tipoCulto}
+                    </span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                      {r.church.name} · {ROTULO_STATUS[r.status]}
+                    </span>
+                  </span>
+  
+                  <span className="shrink-0 flex items-center gap-2 text-xs font-semibold">
+                    {devolvido ? (
+                      <span className={`inline-flex items-center gap-1 ${TEXTO.ambar}`}>
+                        <Undo2 className="w-3.5 h-3.5" /> devolvido — corrigir
+                      </span>
+                    ) : enviado ? (
+                      <span className={`inline-flex items-center gap-1 ${TEXTO.verde}`}>
+                        <Check className="w-3.5 h-3.5" /> enviado
+                      </span>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1 ${TEXTO.vermelho}`}>
+                        <Clock className="w-3.5 h-3.5" /> falta lançar
+                      </span>
+                    )}
+                    <span
+                      className={`px-3 py-1.5 rounded-lg ${
+                        travado
+                          ? 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                          : 'bg-emerald-500 text-white'
+                      }`}
+                    >
+                      {travado ? 'ver' : enviado ? 'editar' : 'lançar'}
+                    </span>
+                  </span>
+                </button>
+              </Permissao>
             );
           })}
       </div>

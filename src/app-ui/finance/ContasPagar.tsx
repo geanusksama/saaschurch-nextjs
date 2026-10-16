@@ -34,6 +34,7 @@ import {
 } from '../../lib/contasPagarRules';
 import { ContaPagarFormDrawer, rotuloComCodigo } from './ContaPagarFormDrawer';
 import { ParcelaDetailModal } from './ParcelaDetailModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
@@ -636,16 +637,22 @@ export default function ContasPagar() {
           <button onClick={recarregar} className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium">
             <RefreshCw className="w-4 h-4" /> Atualizar
           </button>
-          <button onClick={exportarExcel} className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium">
-            <Download className="w-4 h-4" /> Exportar
-          </button>
-          <button onClick={() => setImprimirAberto(true)} className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium">
-            <Printer className="w-4 h-4" /> Imprimir
-          </button>
-          {canCreate('contas_pagar') && (
-            <button onClick={() => setDrawer({ aberto: true, contaId: null })} className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 text-sm font-medium">
-              <Plus className="w-4 h-4" /> Nova Conta
+          <Permissao chave="contas_pagar.contas_pagar.exportar" rotulo="Exportar — Contas Pagar" herda="contas_pagar.view">
+            <button onClick={exportarExcel} className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium">
+              <Download className="w-4 h-4" /> Exportar
             </button>
+          </Permissao>
+          <Permissao chave="contas_pagar.contas_pagar.imprimir" rotulo="Imprimir — Contas Pagar" herda="contas_pagar.view">
+            <button onClick={() => setImprimirAberto(true)} className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium">
+              <Printer className="w-4 h-4" /> Imprimir
+            </button>
+          </Permissao>
+          {canCreate('contas_pagar') && (
+            <Permissao chave="contas_pagar.contas_pagar.nova_conta" rotulo="Nova Conta — Contas Pagar" herda="contas_pagar.create">
+              <button onClick={() => setDrawer({ aberto: true, contaId: null })} className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 text-sm font-medium">
+                <Plus className="w-4 h-4" /> Nova Conta
+              </button>
+            </Permissao>
           )}
         </div>
       </div>
@@ -1137,13 +1144,15 @@ function MenuFiltroColuna({ opcoes, selecionados, onMudar }: FiltroColuna) {
             <button onClick={() => onMudar(opcoes.map((o) => o.valor))} className="text-rose-600 hover:underline">
               Selecionar todos
             </button>
-            <button
-              onClick={() => onMudar([])}
-              disabled={!selecionados.length}
-              className="text-slate-500 hover:underline disabled:opacity-40 disabled:no-underline"
-            >
-              Remover todos
-            </button>
+            <Permissao chave="contas_pagar.contas_pagar.remover_todos" rotulo="Remover todos — Contas Pagar" herda="contas_pagar.view">
+              <button
+                onClick={() => onMudar([])}
+                disabled={!selecionados.length}
+                className="text-slate-500 hover:underline disabled:opacity-40 disabled:no-underline"
+              >
+                Remover todos
+              </button>
+            </Permissao>
           </div>
 
           <div className="max-h-60 overflow-y-auto py-1">
@@ -1312,12 +1321,16 @@ function TabelaContas({
                       <Eye className={`w-4 h-4 ${expandida === c.id ? 'text-rose-600' : 'text-slate-500'}`} />
                     </button>
                     {c.statusAprovacao === 'AGUARDANDO' && (
-                      <button onClick={() => onAprovar(c.id, true)} className="p-1.5 rounded-lg hover:bg-emerald-100" title="Aprovar">
-                        <ThumbsUp className="w-4 h-4 text-emerald-600" />
-                      </button>
+                      <Permissao chave="contas_pagar.contas_pagar.aprovar" rotulo="Aprovar — Contas Pagar" herda="contas_pagar.view">
+                        <button onClick={() => onAprovar(c.id, true)} className="p-1.5 rounded-lg hover:bg-emerald-100" title="Aprovar">
+                          <ThumbsUp className="w-4 h-4 text-emerald-600" />
+                        </button>
+                      </Permissao>
                     )}
                     {onEditar && (
-                      <button onClick={() => onEditar(c.id)} className="px-2 py-1 rounded-lg text-xs font-semibold hover:bg-blue-100 text-blue-600">Editar</button>
+                      <Permissao chave="contas_pagar.contas_pagar.editar" rotulo="Editar — Contas Pagar" herda="contas_pagar.view">
+                        <button onClick={() => onEditar(c.id)} className="px-2 py-1 rounded-lg text-xs font-semibold hover:bg-blue-100 text-blue-600">Editar</button>
+                      </Permissao>
                     )}
                     {onCancelar && (
                       <button onClick={() => onCancelar(c)} className="p-1.5 rounded-lg hover:bg-red-100" title="Cancelar">

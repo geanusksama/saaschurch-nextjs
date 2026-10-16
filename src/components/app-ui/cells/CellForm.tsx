@@ -12,6 +12,7 @@ import { Loader2, Save, Search, Upload, User, X } from 'lucide-react';
 import { apiBase } from '../../../lib/apiBase';
 import { formatZipcode, lookupZipcode, normalizeZipcode } from '../../../lib/geo';
 import { LocationPicker } from '../shared/LocationPicker';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 interface MemberOption {
   id: string;
@@ -301,14 +302,16 @@ export function CellForm({ values, onChange, onSubmit, saving, error, submitLabe
                         Tornar principal
                       </button>
                     )}
-                    <button
-                      type="button"
-                      title="Remover líder"
-                      onClick={() => set({ leaders: values.leaders.filter((l) => l.id !== lider.id) })}
-                      className="text-slate-400 hover:text-red-500"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                    <Permissao chave="tela_gf.cell_form.remover_lider" rotulo="Remover líder — Cell Form" herda="tela_gf.view">
+                      <button
+                        type="button"
+                        title="Remover líder"
+                        onClick={() => set({ leaders: values.leaders.filter((l) => l.id !== lider.id) })}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </Permissao>
                   </div>
                 </div>
               ))}

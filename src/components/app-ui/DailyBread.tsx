@@ -7,6 +7,7 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 
 import { apiBase as API } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Icon catalogue ──────────────────────────────────────────────────────────
 
@@ -374,10 +375,12 @@ export function DailyBread() {
           <button onClick={load} className="rounded-xl p-2 text-slate-400 hover:text-slate-600 hover:bg-white dark:hover:bg-slate-800 transition-colors">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={openCreate}
-            className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-purple-700 transition-colors">
-            <Plus className="h-4 w-4" /> Nova reflexao
-          </button>
+          <Permissao chave="daily_bread.daily_bread.nova_reflexao" rotulo="Nova reflexao — Daily Bread" herda="daily_bread.view">
+            <button onClick={openCreate}
+              className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-purple-700 transition-colors">
+              <Plus className="h-4 w-4" /> Nova reflexao
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -404,9 +407,11 @@ export function DailyBread() {
             <BookOpen className="h-8 w-8 text-purple-400" />
           </div>
           <p className="text-slate-500 dark:text-slate-400 font-medium">Nenhuma reflexao encontrada</p>
-          <button onClick={openCreate} className="mt-4 text-sm font-semibold text-purple-600 hover:underline dark:text-purple-400">
-            Adicionar primeira reflexao
-          </button>
+          <Permissao chave="daily_bread.daily_bread.adicionar_primeira_reflexao" rotulo="Adicionar primeira reflexao — Daily Bread" herda="daily_bread.view">
+            <button onClick={openCreate} className="mt-4 text-sm font-semibold text-purple-600 hover:underline dark:text-purple-400">
+              Adicionar primeira reflexao
+            </button>
+          </Permissao>
         </div>
       )}
 
@@ -521,14 +526,18 @@ export function DailyBread() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
-              <button onClick={() => { openEdit(previewEntry); }}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
-                <Pencil className="h-3.5 w-3.5" /> Editar
-              </button>
-              <button onClick={() => { setDelId(previewEntry.id); setPreviewEntry(null); }}
-                className="flex items-center gap-1.5 rounded-xl border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20">
-                <Trash2 className="h-3.5 w-3.5" /> Excluir
-              </button>
+              <Permissao chave="daily_bread.daily_bread.editar" rotulo="Editar — Daily Bread" herda="daily_bread.view">
+                <button onClick={() => { openEdit(previewEntry); }}
+                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                  <Pencil className="h-3.5 w-3.5" /> Editar
+                </button>
+              </Permissao>
+              <Permissao chave="daily_bread.daily_bread.excluir" rotulo="Excluir — Daily Bread" herda="daily_bread.view">
+                <button onClick={() => { setDelId(previewEntry.id); setPreviewEntry(null); }}
+                  className="flex items-center gap-1.5 rounded-xl border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20">
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -807,11 +816,13 @@ export function DailyBread() {
                 className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
                 Cancelar
               </button>
-              <button onClick={save} disabled={saving}
-                className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-purple-700 disabled:opacity-60 transition-colors">
-                {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
+              <Permissao chave="daily_bread.daily_bread.salvar" rotulo="Salvar — Daily Bread" herda="daily_bread.view">
+                <button onClick={save} disabled={saving}
+                  className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-purple-700 disabled:opacity-60 transition-colors">
+                  {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -836,10 +847,12 @@ export function DailyBread() {
                 className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
                 Cancelar
               </button>
-              <button onClick={confirmDelete} disabled={deleting}
-                className="flex-1 rounded-xl bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60 transition-colors">
-                {deleting ? 'Excluindo...' : 'Excluir'}
-              </button>
+              <Permissao chave="daily_bread.daily_bread.excluir" rotulo="Excluir — Daily Bread" herda="daily_bread.view">
+                <button onClick={confirmDelete} disabled={deleting}
+                  className="flex-1 rounded-xl bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60 transition-colors">
+                  {deleting ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

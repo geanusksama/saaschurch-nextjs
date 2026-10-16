@@ -7,6 +7,7 @@ import { useCampoVisible } from '../../lib/campoVisibility';
 import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
 import * as XLSX from 'xlsx';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type CampoOption = { id: string; name: string; code?: string | null };
@@ -445,17 +446,23 @@ export function Credentials() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={exportToExcel} disabled={exportingExcel}
-            className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed">
-            {exportingExcel ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} className="text-green-600" />}
-            {exportingExcel ? 'Gerando...' : 'Excel'}
-          </button>
-          <button onClick={() => setPrintModalOpen(true)} className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm">
-            <Printer size={16} /> Imprimir
-          </button>
-          <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-            <Plus size={16} /> Nova Credencial
-          </button>
+          <Permissao chave="credentials.credentials.excel" rotulo="Excel — Credentials" herda="credentials.view">
+            <button onClick={exportToExcel} disabled={exportingExcel}
+              className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+              {exportingExcel ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} className="text-green-600" />}
+              {exportingExcel ? 'Gerando...' : 'Excel'}
+            </button>
+          </Permissao>
+          <Permissao chave="credentials.credentials.imprimir" rotulo="Imprimir — Credentials" herda="credentials.view">
+            <button onClick={() => setPrintModalOpen(true)} className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm">
+              <Printer size={16} /> Imprimir
+            </button>
+          </Permissao>
+          <Permissao chave="credentials.credentials.nova_credencial" rotulo="Nova Credencial — Credentials" herda="credentials.view">
+            <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              <Plus size={16} /> Nova Credencial
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -600,10 +607,12 @@ export function Credentials() {
                           className="rounded-lg p-1.5 transition-colors hover:bg-blue-50" title="Ver detalhes">
                           <Eye className="h-4 w-4 text-blue-500" />
                         </button>
-                        <button type="button" onClick={() => setDeleteTarget(c)}
-                          className="rounded-lg p-1.5 transition-colors hover:bg-rose-50" title="Excluir">
-                          <Trash2 className="h-4 w-4 text-rose-500" />
-                        </button>
+                        <Permissao chave="credentials.credentials.excluir" rotulo="Excluir — Credentials" herda="credentials.view">
+                          <button type="button" onClick={() => setDeleteTarget(c)}
+                            className="rounded-lg p-1.5 transition-colors hover:bg-rose-50" title="Excluir">
+                            <Trash2 className="h-4 w-4 text-rose-500" />
+                          </button>
+                        </Permissao>
                       </div>
                     </td>
                   </tr>
@@ -665,33 +674,35 @@ export function Credentials() {
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeleteTarget(null)} disabled={deleteLoading}
                 className="px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-60">Cancelar</button>
-              <button disabled={deleteLoading} onClick={async () => {
-                // Optimistic: remove do cache imediatamente
-                const queryKey = qk.credentials({});
-                const snapshot = qc.getQueryData<Credential[]>(queryKey);
-                if (snapshot) {
-                  qc.setQueryData<Credential[]>(queryKey, snapshot.filter((c) => c.id !== deleteTarget.id));
-                }
-                setDeleteTarget(null);
-                setDeleteLoading(true);
-                try {
-                  const res = await authFetch(`${apiBase}/credential-requests/${deleteTarget.id}`, { method: 'DELETE' });
-                  if (res.ok || res.status === 204) {
-                    showToast(true, 'Credencial excluída.');
-                    void qc.invalidateQueries({ queryKey }); // refetch silencioso
-                  } else {
-                    if (snapshot) qc.setQueryData<Credential[]>(queryKey, snapshot); // rollback
-                    const d = await res.json().catch(() => ({}));
-                    showToast(false, d.error || 'Erro ao excluir.');
+              <Permissao chave="credentials.credentials.excluir" rotulo="Excluir — Credentials" herda="credentials.view">
+                <button disabled={deleteLoading} onClick={async () => {
+                  // Optimistic: remove do cache imediatamente
+                  const queryKey = qk.credentials({});
+                  const snapshot = qc.getQueryData<Credential[]>(queryKey);
+                  if (snapshot) {
+                    qc.setQueryData<Credential[]>(queryKey, snapshot.filter((c) => c.id !== deleteTarget.id));
                   }
-                } catch {
-                  if (snapshot) qc.setQueryData<Credential[]>(queryKey, snapshot); // rollback
-                  showToast(false, 'Erro de conexão.');
-                } finally { setDeleteLoading(false); }
-              }} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60">
-                {deleteLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                {deleteLoading ? 'Excluindo...' : 'Excluir'}
-              </button>
+                  setDeleteTarget(null);
+                  setDeleteLoading(true);
+                  try {
+                    const res = await authFetch(`${apiBase}/credential-requests/${deleteTarget.id}`, { method: 'DELETE' });
+                    if (res.ok || res.status === 204) {
+                      showToast(true, 'Credencial excluída.');
+                      void qc.invalidateQueries({ queryKey }); // refetch silencioso
+                    } else {
+                      if (snapshot) qc.setQueryData<Credential[]>(queryKey, snapshot); // rollback
+                      const d = await res.json().catch(() => ({}));
+                      showToast(false, d.error || 'Erro ao excluir.');
+                    }
+                  } catch {
+                    if (snapshot) qc.setQueryData<Credential[]>(queryKey, snapshot); // rollback
+                    showToast(false, 'Erro de conexão.');
+                  } finally { setDeleteLoading(false); }
+                }} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60">
+                  {deleteLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {deleteLoading ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

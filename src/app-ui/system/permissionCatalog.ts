@@ -286,6 +286,20 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
       { master: true, admin: false, campo: false, church: false },
     ),
   },
+  // Grupos de usuários (modelo Active Directory): regras granulares e igrejas
+  // por grupo. Nasce só para o master, como Funções e a Matriz.
+  // Ver docs/modules/permissoes-granulares/SPEC.md.
+  {
+    group: 'Sistema',
+    name: 'Grupos de Usuários',
+    key: 'system_grupos_usuarios',
+    permissions: mkPerms(
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+    ),
+  },
   {
     group: 'Sistema',
     name: 'Permissões (Matriz)',
@@ -412,6 +426,36 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
       { master: true, admin: false, campo: false, church: false },
     ),
   },
+
+  // ── Telas sem trava no menu (raízes da árvore de permissões) ──────────────
+  // Estas telas abrem hoje para qualquer usuário logado (nenhum item do menu
+  // guarda a rota) ou são compartilhadas por dois menus. Cada área vira uma
+  // raiz da árvore para os botões dela poderem ser liberados/bloqueados por
+  // grupo. LIBERADAS para todos os perfis e em OPT_OUT_PERMISSION_KEYS: fora de
+  // grupo nada muda. Não reaproveitam app_* porque 61 usuários da adcampinas
+  // têm app_*.view bloqueado explicitamente — os botões sumiriam para eles.
+  // Ver docs/modules/permissoes-granulares/SPEC.md (D10).
+  { group: 'Principal',       name: 'Moldura do painel (cabeçalho, busca, chat e atalhos)', key: 'tela_moldura',             permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'App Móvel',       name: 'App — gestão (pedidos, eventos, inscrições, feed…)',  key: 'tela_app',                 permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'App Móvel',       name: 'Site / CMS (construtor, produtos, departamentos)',     key: 'tela_cms',                 permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Secretaria',      name: 'CRM (leads, pipeline e prospecção)',                   key: 'tela_crm',                 permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Secretaria',      name: 'Credenciais — modelos e solicitações (fora do menu)',  key: 'tela_credenciais',         permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Gestão de Culto', name: 'Registro do culto (Gestão e Lançar culto)',            key: 'tela_culto_registro',      permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Gestão Pastoral', name: 'Pastoral — visitas, aconselhamento e oração (fora do menu)', key: 'tela_pastoral',      permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Ministérios',     name: 'Ministérios — detalhe (fora do menu)',                 key: 'tela_ministerios',         permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'GF (Grupos Familiares)', name: 'GF — lista e formulário (fora do menu)',         key: 'tela_gf',                  permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Patrimônio',      name: 'Patrimônio — detalhe e formulário (fora do menu)',     key: 'tela_patrimonio',          permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Comunicação',     name: 'Comunicação — WhatsApp e e-mail (fora do menu)',       key: 'tela_comunicacao',         permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Eventos',         name: 'Eventos — detalhe (fora do menu)',                     key: 'tela_eventos',             permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Mobile',          name: 'Mobile — editor de recursos e jogos',                  key: 'tela_mobile_recursos',     permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Finanças',        name: 'Lançamento e recibo (Livro Caixa e Lançamentos)',      key: 'tela_lancamento_recibo',   permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Finanças',        name: 'Finanças — telas antigas (fora do menu)',              key: 'tela_financas',            permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Finanças',        name: 'Assistentes de IA (pela Central de Configurações)',    key: 'tela_assistentes_ia',      permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Pagamentos / Stripe', name: 'Stripe — assinaturas e reembolsos (fora do menu)', key: 'tela_stripe',              permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Sistema',         name: 'Cadastros auxiliares (Central de Configurações)',      key: 'tela_cadastros_auxiliares', permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Sistema',         name: 'Importar e exportar dados',                            key: 'tela_import_export',       permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Sistema',         name: 'Permissões — árvore e busca de membro',                key: 'tela_permissoes',          permissions: mkPerms(full(), full(), full(), full()) },
+  { group: 'Sistema',         name: 'Sistema — tela antiga (fora do menu)',                 key: 'tela_sistema_antiga',      permissions: mkPerms(full(), full(), full(), full()) },
 ];
 
 /**
@@ -429,7 +473,12 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
  * que eram liberados para todo mundo antes de ganharem controle na matriz.
  * Bloquear continua possível: basta marcar vermelho na tela do usuário.
  */
-export const OPT_OUT_PERMISSION_KEYS = new Set<string>(['internal_chat']);
+export const OPT_OUT_PERMISSION_KEYS = new Set<string>([
+  'internal_chat',
+  // Raízes das telas sem trava no menu: abriam para todos antes de ganharem
+  // controle — continuam abrindo para quem não está em grupo.
+  ...DEFAULT_PERMISSION_MODULES.filter((m) => m.key.startsWith('tela_')).map((m) => m.key),
+]);
 
 /**
  * Mescla uma matriz salva (do banco/localStorage, possivelmente desatualizada)

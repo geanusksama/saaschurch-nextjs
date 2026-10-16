@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { StatusBadge } from "./PedidosKanban";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -154,7 +155,9 @@ function printQR(qr: QRCode, eventName: string, orderNum: string) {
       <img src="${url}" width="200" height="200" />
       <br/><span class="code">${qr.ticketCode}</span>
       <p style="margin-top:12px;color:#aaa;font-size:11px">Apresente este QR Code na entrada</p>
-      <button class="btn" onclick="window.print()">🖨 Imprimir</button>
+      <Permissao chave="tela_app.pedido_detail_panel.imprimir" rotulo="🖨 Imprimir — Pedido Detail Panel" herda="tela_app.view">
+        <button class="btn" onclick="window.print()">🖨 Imprimir</button>
+      </Permissao>
     </body></html>
   `);
   win.document.close();
@@ -670,10 +673,12 @@ export function PedidoDetailPanel({
                         </div>
                       ) : (
                         <div className="mt-3 flex gap-2">
-                          <button onClick={() => refundMut.mutate("approve")} disabled={isProcessing}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-                            {isProcessing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />} ✅ Aprovar Reembolso
-                          </button>
+                          <Permissao chave="tela_app.pedido_detail_panel.aprovar_reembolso" rotulo="✅ Aprovar Reembolso — Pedido Detail Panel" herda="tela_app.view">
+                            <button onClick={() => refundMut.mutate("approve")} disabled={isProcessing}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
+                              {isProcessing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />} ✅ Aprovar Reembolso
+                            </button>
+                          </Permissao>
                           <button onClick={() => setDenyMode(true)} disabled={isProcessing}
                             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
                             <Ban className="w-3.5 h-3.5" /> ❌ Negar Reembolso
@@ -686,10 +691,12 @@ export function PedidoDetailPanel({
                   {["AGUARDANDO_PAGAMENTO", "PAGO"].includes(order.status) && (
                     <section>
                       {!showTransfer ? (
-                        <button onClick={() => setShowTransfer(true)}
-                          className="w-full flex items-center gap-2 px-4 py-2.5 border border-indigo-300 dark:border-indigo-600 rounded-xl text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
-                          <ArrowRightLeft className="w-4 h-4" /> Transferir ingresso para outro membro
-                        </button>
+                        <Permissao chave="tela_app.pedido_detail_panel.transferir_ingresso_para_outro_membro" rotulo="Transferir ingresso para outro membro — Pedido Detail Panel" herda="tela_app.view">
+                          <button onClick={() => setShowTransfer(true)}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 border border-indigo-300 dark:border-indigo-600 rounded-xl text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                            <ArrowRightLeft className="w-4 h-4" /> Transferir ingresso para outro membro
+                          </button>
+                        </Permissao>
                       ) : (
                         <div>
                           <div className="flex justify-end mb-2">
@@ -704,12 +711,14 @@ export function PedidoDetailPanel({
                   {/* Zona de perigo — exclusão permanente */}
                   <section className="pt-2">
                     {!showDeleteZone ? (
-                      <button
-                        onClick={() => setShowDeleteZone(true)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl border border-dashed border-red-200 dark:border-red-800 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Excluir pedido permanentemente
-                      </button>
+                      <Permissao chave="tela_app.pedido_detail_panel.excluir_pedido_permanentemente" rotulo="Excluir pedido permanentemente — Pedido Detail Panel" herda="tela_app.view">
+                        <button
+                          onClick={() => setShowDeleteZone(true)}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl border border-dashed border-red-200 dark:border-red-800 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Excluir pedido permanentemente
+                        </button>
+                      </Permissao>
                     ) : (
                       <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-xl p-4 space-y-3">
                         <div className="flex items-center gap-2">
@@ -722,14 +731,16 @@ export function PedidoDetailPanel({
                           O cliente poderá refazer a compra normalmente.
                         </p>
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => setConfirmDialog({ title: "Excluir pedido", message: `Excluir PERMANENTEMENTE o pedido ${order.numeroPedido ?? orderId}? Esta ação não pode ser desfeita.`, onConfirm: () => deleteMut.mutate() })}
-                            disabled={deleteMut.isPending}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                          >
-                            {deleteMut.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                            {deleteMut.isPending ? "Excluindo..." : "Excluir definitivamente"}
-                          </button>
+                          <Permissao chave="tela_app.pedido_detail_panel.excluir_definitivamente" rotulo="Excluir definitivamente — Pedido Detail Panel" herda="tela_app.view">
+                            <button
+                              onClick={() => setConfirmDialog({ title: "Excluir pedido", message: `Excluir PERMANENTEMENTE o pedido ${order.numeroPedido ?? orderId}? Esta ação não pode ser desfeita.`, onConfirm: () => deleteMut.mutate() })}
+                              disabled={deleteMut.isPending}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                            >
+                              {deleteMut.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              {deleteMut.isPending ? "Excluindo..." : "Excluir definitivamente"}
+                            </button>
+                          </Permissao>
                           <button
                             onClick={() => setShowDeleteZone(false)}
                             className="px-3 py-2 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
@@ -854,11 +865,13 @@ export function PedidoDetailPanel({
                                           className="px-2 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300 flex items-center gap-1 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
                                           <Copy className="w-3 h-3" /> Copiar
                                         </button>
-                                        <button
-                                          onClick={() => printQR(qr, order.event?.nome ?? "", order.numeroPedido ?? "")}
-                                          className="px-2 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300 flex items-center gap-1 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
-                                          <Printer className="w-3 h-3" /> Imprimir
-                                        </button>
+                                        <Permissao chave="tela_app.pedido_detail_panel.imprimir_2" rotulo="Imprimir — Pedido Detail Panel" herda="tela_app.view">
+                                          <button
+                                            onClick={() => printQR(qr, order.event?.nome ?? "", order.numeroPedido ?? "")}
+                                            className="px-2 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300 flex items-center gap-1 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
+                                            <Printer className="w-3 h-3" /> Imprimir
+                                          </button>
+                                        </Permissao>
                                       </div>
                                     </div>
                                   </div>
@@ -867,19 +880,23 @@ export function PedidoDetailPanel({
                             ))}
                           </div>
                           {order.status === "PAGO" && activeQRs.length === 0 && (
-                            <button onClick={() => qrMut.mutate()} disabled={qrMut.isPending}
-                              className="mt-3 w-full px-4 py-2 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 justify-center">
-                              {qrMut.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <QrCode className="w-3.5 h-3.5" />}
-                              Gerar QR Codes para todos os assentos
-                            </button>
+                            <Permissao chave="tela_app.pedido_detail_panel.gerar_qr_codes_para_todos_os_assentos" rotulo="Gerar QR Codes para todos os assentos — Pedido Detail Panel" herda="tela_app.view">
+                              <button onClick={() => qrMut.mutate()} disabled={qrMut.isPending}
+                                className="mt-3 w-full px-4 py-2 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 justify-center">
+                                {qrMut.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <QrCode className="w-3.5 h-3.5" />}
+                                Gerar QR Codes para todos os assentos
+                              </button>
+                            </Permissao>
                           )}
                           {order.status === "PAGO" && activeQRs.length > 0 && (
-                            <button
-                              onClick={() => setConfirmDialog({ title: "Regenerar QR Codes", message: "Os QR Codes atuais serão cancelados e novos serão gerados. Continuar?", onConfirm: () => qrMut.mutate() })}
-                              disabled={qrMut.isPending}
-                              className="mt-3 w-full px-4 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-1.5 justify-center">
-                              <RefreshCw className={`w-3.5 h-3.5 ${qrMut.isPending ? "animate-spin" : ""}`} /> Regenerar QR Codes
-                            </button>
+                            <Permissao chave="tela_app.pedido_detail_panel.regenerar_qr_codes" rotulo="Regenerar QR Codes — Pedido Detail Panel" herda="tela_app.view">
+                              <button
+                                onClick={() => setConfirmDialog({ title: "Regenerar QR Codes", message: "Os QR Codes atuais serão cancelados e novos serão gerados. Continuar?", onConfirm: () => qrMut.mutate() })}
+                                disabled={qrMut.isPending}
+                                className="mt-3 w-full px-4 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-1.5 justify-center">
+                                <RefreshCw className={`w-3.5 h-3.5 ${qrMut.isPending ? "animate-spin" : ""}`} /> Regenerar QR Codes
+                              </button>
+                            </Permissao>
                           )}
                         </section>
                       );
@@ -930,22 +947,26 @@ export function PedidoDetailPanel({
                       <QrCode className="w-10 h-10 mx-auto opacity-30" />
                       <p className="text-sm">Nenhum QR Code gerado</p>
                       {order.status === "PAGO" && (
-                        <button onClick={() => qrMut.mutate()} disabled={qrMut.isPending}
-                          className="px-5 py-2.5 text-sm bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2 mx-auto">
-                          {qrMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-                          Gerar QR Codes
-                        </button>
+                        <Permissao chave="tela_app.pedido_detail_panel.gerar_qr_codes" rotulo="Gerar QR Codes — Pedido Detail Panel" herda="tela_app.view">
+                          <button onClick={() => qrMut.mutate()} disabled={qrMut.isPending}
+                            className="px-5 py-2.5 text-sm bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2 mx-auto">
+                            {qrMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                            Gerar QR Codes
+                          </button>
+                        </Permissao>
                       )}
                     </div>
                   ) : (
                     <>
                       {order.status === "PAGO" && (
                         <div className="flex justify-end">
-                          <button onClick={() => setConfirmDialog({ title: "Regenerar QR Codes", message: "Os QR Codes atuais serão cancelados e novos serão gerados. Continuar?", onConfirm: () => qrMut.mutate() })}
-                            disabled={qrMut.isPending}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">
-                            <RefreshCw className={`w-3 h-3 ${qrMut.isPending ? "animate-spin" : ""}`} /> Regenerar
-                          </button>
+                          <Permissao chave="tela_app.pedido_detail_panel.regenerar" rotulo="Regenerar — Pedido Detail Panel" herda="tela_app.view">
+                            <button onClick={() => setConfirmDialog({ title: "Regenerar QR Codes", message: "Os QR Codes atuais serão cancelados e novos serão gerados. Continuar?", onConfirm: () => qrMut.mutate() })}
+                              disabled={qrMut.isPending}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">
+                              <RefreshCw className={`w-3 h-3 ${qrMut.isPending ? "animate-spin" : ""}`} /> Regenerar
+                            </button>
+                          </Permissao>
                         </div>
                       )}
                       {activeQRs.map((qr) => (
@@ -965,15 +986,19 @@ export function PedidoDetailPanel({
                             </div>
                           </div>
                           <div className="grid grid-cols-3 gap-2">
-                            <button onClick={() => printQR(qr, order.event?.nome ?? "Evento", order.numeroPedido ?? "")}
-                              className="flex items-center justify-center gap-1.5 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                              <Printer className="w-3.5 h-3.5" /> Imprimir
-                            </button>
-                            {order.buyerPhone ? (
-                              <button onClick={() => shareQR(qr)}
-                                className="flex items-center justify-center gap-1.5 py-2 text-xs border border-green-300 dark:border-green-700 rounded-lg text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
-                                <Share2 className="w-3.5 h-3.5" /> Enviar
+                            <Permissao chave="tela_app.pedido_detail_panel.imprimir_2" rotulo="Imprimir — Pedido Detail Panel" herda="tela_app.view">
+                              <button onClick={() => printQR(qr, order.event?.nome ?? "Evento", order.numeroPedido ?? "")}
+                                className="flex items-center justify-center gap-1.5 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                <Printer className="w-3.5 h-3.5" /> Imprimir
                               </button>
+                            </Permissao>
+                            {order.buyerPhone ? (
+                              <Permissao chave="tela_app.pedido_detail_panel.enviar" rotulo="Enviar — Pedido Detail Panel" herda="tela_app.view">
+                                <button onClick={() => shareQR(qr)}
+                                  className="flex items-center justify-center gap-1.5 py-2 text-xs border border-green-300 dark:border-green-700 rounded-lg text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                                  <Share2 className="w-3.5 h-3.5" /> Enviar
+                                </button>
+                              </Permissao>
                             ) : (
                               <div />
                             )}

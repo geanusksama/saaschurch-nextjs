@@ -35,6 +35,7 @@ import { usePermissions } from '../../lib/usePermissions';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { ChurchPickerModal, type ChurchOption } from './ChurchPickerModal';
 import { MAX_NUMEROS_POR_BLOCO, STATUS_LIVRE, validarFaixa } from '../../lib/dizimoNumeracao';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
@@ -326,12 +327,14 @@ export default function DizimoBlocos() {
           </p>
         </div>
         {canCreate(PERM_KEY) && (
-          <button
-            onClick={() => setCadastroAberto(true)}
-            className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"
-          >
-            <Plus className="w-4 h-4" /> Cadastrar bloco
-          </button>
+          <Permissao chave="dizimo_blocos.dizimo_blocos.cadastrar_bloco" rotulo="Cadastrar bloco — Dizimo Blocos" herda="dizimo_blocos.create">
+            <button
+              onClick={() => setCadastroAberto(true)}
+              className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"
+            >
+              <Plus className="w-4 h-4" /> Cadastrar bloco
+            </button>
+          </Permissao>
         )}
       </div>
 
@@ -558,13 +561,15 @@ function TabelaBlocos({
               <td className="px-4 py-2 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">{b.livres}</td>
               <td className="px-4 py-2 text-right">
                 {podeExcluir && b.usados === 0 && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onExcluir(b); }}
-                    title="Excluir bloco"
-                    className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <Permissao chave="dizimo_blocos.dizimo_blocos.excluir_bloco" rotulo="Excluir bloco — Dizimo Blocos" herda="dizimo_blocos.view">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onExcluir(b); }}
+                      title="Excluir bloco"
+                      className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </Permissao>
                 )}
               </td>
             </tr>
@@ -832,14 +837,16 @@ function CadastroBlocoModal({
           <button onClick={onFechar} className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300">
             Cancelar
           </button>
-          <button
-            onClick={salvar}
-            disabled={salvando}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold"
-          >
-            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            Gerar bloco
-          </button>
+          <Permissao chave="dizimo_blocos.dizimo_blocos.gerar_bloco" rotulo="Gerar bloco — Dizimo Blocos" herda="dizimo_blocos.view">
+            <button
+              onClick={salvar}
+              disabled={salvando}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold"
+            >
+              {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Gerar bloco
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -998,13 +1005,15 @@ function CartelaModal({
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={() => setExcluirBlocoAberto(true)}
-              title="Excluir este bloco e todos os seus números"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30"
-            >
-              <Trash2 className="w-4 h-4" /> Excluir bloco
-            </button>
+            <Permissao chave="dizimo_blocos.dizimo_blocos.excluir_bloco" rotulo="Excluir bloco — Dizimo Blocos" herda="dizimo_blocos.view">
+              <button
+                onClick={() => setExcluirBlocoAberto(true)}
+                title="Excluir este bloco e todos os seus números"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30"
+              >
+                <Trash2 className="w-4 h-4" /> Excluir bloco
+              </button>
+            </Permissao>
             <button onClick={onFechar} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
               <X className="w-4 h-4 text-slate-500" />
             </button>

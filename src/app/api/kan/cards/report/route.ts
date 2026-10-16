@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, kanScopeFilter } from "@/lib/helpers";
+import { exigirPermissao } from "@/lib/permissoes/servidor";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
+    // Só o Relatório de requerimentos usa esta rota: a chave do card vale aqui
+    // também, não só na tela (SPEC permissoes-granulares, D4).
+    const negado = await exigirPermissao(user, "reports.requerimentos.abrir");
+    if (negado) return negado;
     const { searchParams } = new URL(req.url);
     const from = searchParams.get("from");
     const to = searchParams.get("to");

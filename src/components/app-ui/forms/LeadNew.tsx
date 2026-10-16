@@ -1,5 +1,6 @@
 import { ArrowLeft, Save, User, Phone, Mail, Globe, Tag, Calendar, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 export function LeadNew() {
   return (
@@ -145,10 +146,12 @@ export function LeadNew() {
             >
               Cancelar
             </Link>
-            <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
-              <Save className="w-5 h-5" />
-              Salvar Lead
-            </button>
+            <Permissao chave="tela_crm.lead_new.salvar_lead" rotulo="Salvar Lead — Lead New" herda="tela_crm.view">
+              <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
+                <Save className="w-5 h-5" />
+                Salvar Lead
+              </button>
+            </Permissao>
           </div>
         </div>
 

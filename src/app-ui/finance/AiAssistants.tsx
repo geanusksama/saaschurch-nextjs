@@ -19,6 +19,7 @@ import {
 import { apiBase } from '../../lib/apiBase';
 import { renderMessageContent } from '../../components/app-ui/shared/renderMessageContent';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface AiAgent {
   id: string;
@@ -500,21 +501,25 @@ export default function AiAssistants() {
             </p>
           </div>
 
-          <button
-            onClick={() => handleOpenChat(chatAgent)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors"
-            title="Começar uma conversa nova com este assistente"
-          >
-            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nova conversa</span>
-          </button>
-          {sessionId && (
+          <Permissao chave="tela_assistentes_ia.ai_assistants.nova_conversa" rotulo="Nova conversa — Ai Assistants" herda="tela_assistentes_ia.view">
             <button
-              onClick={() => handleDeleteSession(sessionId, chatAgent?.name)}
-              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-              title="Excluir esta conversa"
+              onClick={() => handleOpenChat(chatAgent)}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors"
+              title="Começar uma conversa nova com este assistente"
             >
-              <Trash2 className="w-4 h-4" />
+              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nova conversa</span>
             </button>
+          </Permissao>
+          {sessionId && (
+            <Permissao chave="tela_assistentes_ia.ai_assistants.excluir_esta_conversa" rotulo="Excluir esta conversa — Ai Assistants" herda="tela_assistentes_ia.view">
+              <button
+                onClick={() => handleDeleteSession(sessionId, chatAgent?.name)}
+                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                title="Excluir esta conversa"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </Permissao>
           )}
         </div>
 
@@ -587,13 +592,15 @@ export default function AiAssistants() {
           >
             {gravando ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
-          <button
-            onClick={handleSendMessage}
-            disabled={chatLoading || !inputMessage.trim()}
-            className="px-4 h-[46px] flex-shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white transition-colors flex items-center justify-center"
-          >
-            <Send className="w-4 h-4" />
-          </button>
+          <Permissao chave="tela_assistentes_ia.ai_assistants.enviar_mensagem" rotulo="Enviar mensagem ao assistente — Ai Assistants" herda="tela_assistentes_ia.view">
+            <button
+              onClick={handleSendMessage}
+              disabled={chatLoading || !inputMessage.trim()}
+              className="px-4 h-[46px] flex-shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white transition-colors flex items-center justify-center"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </Permissao>
         </div>
         </div>
 
@@ -665,14 +672,16 @@ export default function AiAssistants() {
                       existia para quem usa toque, e mesmo no desktop era preciso
                       descobrir que ele estava ali. Discreto por padrão, vermelho
                       ao passar o mouse — dá para achar sem convidar ao clique. */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeleteSession(sess.id, sess.title); }}
-                    className="p-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                    title="Excluir conversa"
-                    aria-label={`Excluir conversa ${sess.title || 'sem título'}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <Permissao chave="tela_assistentes_ia.ai_assistants.excluir_conversa" rotulo="Excluir conversa — Ai Assistants" herda="tela_assistentes_ia.view">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteSession(sess.id, sess.title); }}
+                      className="p-1 rounded-md text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                      title="Excluir conversa"
+                      aria-label={`Excluir conversa ${sess.title || 'sem título'}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </Permissao>
                 </div>
               </div>
             ))}
@@ -755,13 +764,15 @@ export default function AiAssistants() {
             </button>
           </div>
 
-          <button
-            onClick={handleOpenCreate}
-            className="bg-indigo-600 text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-indigo-700 active:scale-98 shadow-sm flex items-center gap-2 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Criar Assistente</span>
-          </button>
+          <Permissao chave="tela_assistentes_ia.ai_assistants.criar_assistente" rotulo="Criar Assistente — Ai Assistants" herda="tela_assistentes_ia.view">
+            <button
+              onClick={handleOpenCreate}
+              className="bg-indigo-600 text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-indigo-700 active:scale-98 shadow-sm flex items-center gap-2 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Criar Assistente</span>
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -855,13 +866,15 @@ export default function AiAssistants() {
               >
                 <ArrowRight className="w-4 h-4" />
               </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id, session.title); }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                title="Excluir conversa"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <Permissao chave="tela_assistentes_ia.ai_assistants.excluir_conversa" rotulo="Excluir conversa — Ai Assistants" herda="tela_assistentes_ia.view">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id, session.title); }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                  title="Excluir conversa"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </Permissao>
             </div>
           ))}
         </div>
@@ -930,20 +943,24 @@ export default function AiAssistants() {
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <BotaoChat agent={agent} />
-                      <button
-                        onClick={() => handleOpenEdit(agent)}
-                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-                        title="Editar assistente"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(agent.id, agent.name)}
-                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
-                        title="Excluir assistente"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="tela_assistentes_ia.ai_assistants.editar_assistente" rotulo="Editar assistente — Ai Assistants" herda="tela_assistentes_ia.view">
+                        <button
+                          onClick={() => handleOpenEdit(agent)}
+                          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                          title="Editar assistente"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </Permissao>
+                      <Permissao chave="tela_assistentes_ia.ai_assistants.excluir_assistente" rotulo="Excluir assistente — Ai Assistants" herda="tela_assistentes_ia.view">
+                        <button
+                          onClick={() => handleDelete(agent.id, agent.name)}
+                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                          title="Excluir assistente"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     </div>
                   </td>
                 </tr>
@@ -1019,20 +1036,24 @@ export default function AiAssistants() {
 
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex gap-2 items-center">
                 <BotaoChat agent={agent} grande />
-                <button
-                  onClick={() => handleOpenEdit(agent)}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-                  title="Editar assistente"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(agent.id, agent.name)}
-                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
-                  title="Excluir assistente"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <Permissao chave="tela_assistentes_ia.ai_assistants.editar_assistente" rotulo="Editar assistente — Ai Assistants" herda="tela_assistentes_ia.view">
+                  <button
+                    onClick={() => handleOpenEdit(agent)}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                    title="Editar assistente"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                </Permissao>
+                <Permissao chave="tela_assistentes_ia.ai_assistants.excluir_assistente" rotulo="Excluir assistente — Ai Assistants" herda="tela_assistentes_ia.view">
+                  <button
+                    onClick={() => handleDelete(agent.id, agent.name)}
+                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                    title="Excluir assistente"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </Permissao>
               </div>
             </div>
           ))}
@@ -1247,12 +1268,14 @@ export default function AiAssistants() {
                 >
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold active:scale-98 transition-all"
-                >
-                  {editingAgent ? 'Atualizar Assistente' : 'Criar Assistente'}
-                </button>
+                <Permissao chave="tela_assistentes_ia.ai_assistants.atualizar_assistente_criar_assistente" rotulo="Atualizar Assistente Criar Assistente — Ai Assistants" herda="tela_assistentes_ia.view">
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold active:scale-98 transition-all"
+                  >
+                    {editingAgent ? 'Atualizar Assistente' : 'Criar Assistente'}
+                  </button>
+                </Permissao>
               </div>
             </form>
           </div>

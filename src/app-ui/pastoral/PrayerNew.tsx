@@ -3,6 +3,7 @@ import { Heart, User, FileText, ArrowLeft, Save, Lock, Globe, Users, Tag, AlertC
 import { Link, useNavigate } from 'react-router';
 import { useCreatePrayerRequest } from '../../lib/pastoralHooks';
 import { getCurrentChurchId } from '../../lib/pastoralService';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const categories = [
   { id: 'saude', name: 'Saúde', color: 'red', icon: '🏥' },
@@ -324,14 +325,16 @@ export default function PrayerNew() {
                 </div>
               )}
 
-              <button
-                onClick={handleSubmit}
-                disabled={createPrayer.isPending}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-60"
-              >
-                <Save className="w-5 h-5" />
-                {createPrayer.isPending ? 'Enviando...' : 'Enviar Pedido'}
-              </button>
+              <Permissao chave="tela_pastoral.prayer_new.enviar_pedido" rotulo="Enviar Pedido — Prayer New" herda="tela_pastoral.view">
+                <button
+                  onClick={handleSubmit}
+                  disabled={createPrayer.isPending}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-60"
+                >
+                  <Save className="w-5 h-5" />
+                  {createPrayer.isPending ? 'Enviando...' : 'Enviar Pedido'}
+                </button>
+              </Permissao>
               <Link to="/app-ui/prayer-wall" className="w-full flex items-center gap-3 px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors">
                 <ArrowLeft className="w-5 h-5" />
                 Cancelar

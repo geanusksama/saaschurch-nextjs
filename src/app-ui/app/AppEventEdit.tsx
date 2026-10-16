@@ -7,6 +7,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function getStoredUser() {
   try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
@@ -290,12 +291,14 @@ export default function AppEventEdit() {
             className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50">
             Cancelar
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={mutation.isPending}
-            className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 shadow">
-            {mutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
-          </button>
+          <Permissao chave="tela_app.app_event_edit.salvar_alteracoes" rotulo="Salvar Alterações — App Event Edit" herda="tela_app.view">
+            <button
+              onClick={handleSubmit}
+              disabled={mutation.isPending}
+              className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 shadow">
+              {mutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -541,10 +544,12 @@ export default function AppEventEdit() {
                   <h2 className="font-semibold text-slate-800 dark:text-slate-200">Participantes</h2>
                   <p className="text-xs text-slate-500 mt-0.5">Cantores, pregadores, convidados</p>
                 </div>
-                <button type="button" onClick={addParticipant}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600">
-                  <UserPlus className="w-4 h-4" /> Adicionar
-                </button>
+                <Permissao chave="tela_app.app_event_edit.adicionar" rotulo="Adicionar — App Event Edit" herda="tela_app.view">
+                  <button type="button" onClick={addParticipant}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600">
+                    <UserPlus className="w-4 h-4" /> Adicionar
+                  </button>
+                </Permissao>
               </div>
 
               {participants.length === 0 && (
@@ -571,10 +576,12 @@ export default function AppEventEdit() {
                       placeholder="URL da foto"
                       className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
                   </div>
-                  <button type="button" onClick={() => removeParticipant(p._id)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 shrink-0">
-                    <X className="w-4 h-4" />
-                  </button>
+                  <Permissao chave="tela_app.app_event_edit.remover_participant" rotulo="Remover (participant) — App Event Edit" herda="tela_app.view">
+                    <button type="button" onClick={() => removeParticipant(p._id)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </Permissao>
                 </div>
               ))}
             </section>

@@ -7,6 +7,7 @@ import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type CampoOption = {
   id: string;
@@ -716,16 +717,20 @@ export function Transfer() {
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
-            onClick={() => setPrintModalOpen(true)}
-          >
-            <Printer className="h-4 w-4" />
-            Imprimir
-          </button>
-          <button onClick={() => openRequestModal()} className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700">
-            <Plus className="h-4 w-4" />
-            Nova Transferencia
-          </button>
+          <Permissao chave="transfer.transfer.imprimir" rotulo="Imprimir — Transfer" herda="transfer.view">
+            <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
+              onClick={() => setPrintModalOpen(true)}
+            >
+              <Printer className="h-4 w-4" />
+              Imprimir
+            </button>
+          </Permissao>
+          <Permissao chave="transfer.transfer.nova_transferencia" rotulo="Nova Transferencia — Transfer" herda="transfer.view">
+            <button onClick={() => openRequestModal()} className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700">
+              <Plus className="h-4 w-4" />
+              Nova Transferencia
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -830,7 +835,11 @@ export function Transfer() {
                   <td className="px-4 py-4 align-top"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item, dashboard?.statusOptions || [])}`}>{item.statusLabel}</span></td>
                   <td className="px-4 py-4 align-top text-sm text-slate-600">{formatDate(item.openedAt)}</td>
                   <td className="px-4 py-4 align-top text-sm text-slate-600">{item.notes || '-'}</td>
-                  <td className="px-4 py-4 align-top"><div className="flex items-center justify-end gap-1"><button type="button" onClick={() => openRequestModal(item)} className="rounded-lg p-2 transition-colors hover:bg-slate-100" title="Editar"><Pencil className="h-4 w-4 text-slate-600" /></button><button type="button" onClick={() => setDeleteTarget(item)} className="rounded-lg p-2 transition-colors hover:bg-red-50" title="Excluir"><Trash2 className="h-4 w-4 text-red-600" /></button></div></td>
+                  <td className="px-4 py-4 align-top"><div className="flex items-center justify-end gap-1"><Permissao chave="transfer.transfer.editar" rotulo="Editar — Transfer" herda="transfer.view">
+                    <button type="button" onClick={() => openRequestModal(item)} className="rounded-lg p-2 transition-colors hover:bg-slate-100" title="Editar"><Pencil className="h-4 w-4 text-slate-600" /></button>
+                  </Permissao><Permissao chave="transfer.transfer.excluir" rotulo="Excluir — Transfer" herda="transfer.view">
+                    <button type="button" onClick={() => setDeleteTarget(item)} className="rounded-lg p-2 transition-colors hover:bg-red-50" title="Excluir"><Trash2 className="h-4 w-4 text-red-600" /></button>
+                  </Permissao></div></td>
                 </tr>
               ))}
             </tbody>
@@ -898,7 +907,9 @@ export function Transfer() {
                 <textarea rows={4} value={requestForm.notes} onChange={(event) => setRequestForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Detalhes da transferencia e historico da igreja anterior" className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 rounded-b-2xl border-t border-slate-200 bg-slate-50 px-6 py-4"><button onClick={closeRequestModal} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</button><button onClick={handleRequestSubmit} disabled={requestSubmitting} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">{requestSubmitting ? 'Salvando...' : editingRequest ? 'Salvar Alteracoes' : 'Criar Transferencia'}</button></div>
+            <div className="flex items-center justify-end gap-3 rounded-b-2xl border-t border-slate-200 bg-slate-50 px-6 py-4"><button onClick={closeRequestModal} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</button><Permissao chave="transfer.transfer.salvar_alteracoes_criar_transferencia" rotulo="Salvar Alteracoes Criar Transferencia — Transfer" herda="transfer.view">
+              <button onClick={handleRequestSubmit} disabled={requestSubmitting} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">{requestSubmitting ? 'Salvando...' : editingRequest ? 'Salvar Alteracoes' : 'Criar Transferencia'}</button>
+            </Permissao></div>
           </div>
         </div>
       ) : null}
@@ -971,7 +982,9 @@ export function Transfer() {
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
             <div className="border-b border-slate-200 px-6 py-4"><h3 className="text-lg font-bold text-slate-900">Excluir Transferencia</h3></div>
             <div className="px-6 py-5 text-sm text-slate-600">Deseja excluir a transferencia de <span className="font-semibold text-slate-900">{deleteTarget.member?.fullName || deleteTarget.protocol}</span>?</div>
-            <div className="flex items-center justify-end gap-3 rounded-b-2xl border-t border-slate-200 bg-slate-50 px-6 py-4"><button onClick={() => setDeleteTarget(null)} disabled={deleteLoading} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</button><button onClick={handleDeleteRequest} disabled={deleteLoading} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">{deleteLoading ? 'Excluindo...' : 'Excluir'}</button></div>
+            <div className="flex items-center justify-end gap-3 rounded-b-2xl border-t border-slate-200 bg-slate-50 px-6 py-4"><button onClick={() => setDeleteTarget(null)} disabled={deleteLoading} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</button><Permissao chave="transfer.transfer.excluir" rotulo="Excluir — Transfer" herda="transfer.view">
+              <button onClick={handleDeleteRequest} disabled={deleteLoading} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">{deleteLoading ? 'Excluindo...' : 'Excluir'}</button>
+            </Permissao></div>
           </div>
         </div>
       ) : null}

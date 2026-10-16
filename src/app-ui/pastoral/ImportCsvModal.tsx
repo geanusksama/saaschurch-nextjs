@@ -25,6 +25,7 @@ import {
 import { ATTENDANCE_TYPE_LABELS, type AttendanceType } from '../../lib/pastoralKanbanService';
 import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
 import { exportRows } from './exportUtils';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // campos do sistema (a chave é a variável {{...}} da mensagem)
 const IMPORT_FIELDS = [
@@ -406,10 +407,12 @@ export default function ImportCsvModal({ onClose }: { onClose: () => void }) {
                   (<span className="font-mono text-xs">nome, telefone, email, igreja, regional, tipo, rol, cargo, observacao</span>).
                   Só <b>nome</b> e <b>telefone</b> são obrigatórios.
                 </div>
-                <button onClick={downloadTemplate}
-                  className="h-9 px-3 rounded-lg bg-slate-800 text-white text-sm font-medium inline-flex items-center gap-2 hover:bg-slate-700 flex-shrink-0">
-                  <Download className="w-4 h-4" /> Baixar modelo
-                </button>
+                <Permissao chave="pastoral_visits.import_csv_modal.baixar_modelo" rotulo="Baixar modelo — Import Csv Modal" herda="pastoral_visits.view">
+                  <button onClick={downloadTemplate}
+                    className="h-9 px-3 rounded-lg bg-slate-800 text-white text-sm font-medium inline-flex items-center gap-2 hover:bg-slate-700 flex-shrink-0">
+                    <Download className="w-4 h-4" /> Baixar modelo
+                  </button>
+                </Permissao>
               </div>
             </div>
           )}

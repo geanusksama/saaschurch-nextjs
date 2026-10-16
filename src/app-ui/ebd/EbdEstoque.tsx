@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Package, Plus, Loader2, Save, Search, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
 import { authFetch } from "../../lib/secretariaHooks";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface EstoqueItem {
   id: string; quantidade: number;
@@ -245,16 +246,20 @@ export default function EbdEstoque() {
                     </p>
                   </div>
                   <div className="col-span-1 flex justify-end pb-1">
-                    <button onClick={() => removeItem(idx)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded">
-                      ✕
-                    </button>
+                    <Permissao chave="ebd_estoque.ebd_estoque.remover_item" rotulo="Remover (item) — Ebd Estoque" herda="ebd_estoque.view">
+                      <button onClick={() => removeItem(idx)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded">
+                        ✕
+                      </button>
+                    </Permissao>
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={addItem} className="flex items-center gap-1 text-sm text-purple-600 hover:underline">
-              <Plus className="w-4 h-4" /> Adicionar item
-            </button>
+            <Permissao chave="ebd_estoque.ebd_estoque.adicionar_item" rotulo="Adicionar item — Ebd Estoque" herda="ebd_estoque.view">
+              <button onClick={addItem} className="flex items-center gap-1 text-sm text-purple-600 hover:underline">
+                <Plus className="w-4 h-4" /> Adicionar item
+              </button>
+            </Permissao>
 
             <div className="border-t pt-4 flex items-center justify-between">
               <p className="text-sm text-slate-500">
@@ -265,10 +270,12 @@ export default function EbdEstoque() {
                 <button onClick={() => setTab("saldo")} className="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50">
                   Cancelar
                 </button>
-                <button onClick={saveEntrada} disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar Entrada
-                </button>
+                <Permissao chave="ebd_estoque.ebd_estoque.salvar_entrada" rotulo="Salvar Entrada — Ebd Estoque" herda="ebd_estoque.view">
+                  <button onClick={saveEntrada} disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar Entrada
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>
@@ -308,10 +315,12 @@ export default function EbdEstoque() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => saveEditEntrada(e.id)} disabled={savingEdit}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
-                      {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
-                    </button>
+                    <Permissao chave="ebd_estoque.ebd_estoque.salvar" rotulo="Salvar — Ebd Estoque" herda="ebd_estoque.view">
+                      <button onClick={() => saveEditEntrada(e.id)} disabled={savingEdit}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
+                        {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
+                      </button>
+                    </Permissao>
                     <button onClick={() => setEditingEntrada(null)}
                       className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
                       Cancelar
@@ -332,10 +341,12 @@ export default function EbdEstoque() {
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => deleteEntrada(e.id)} disabled={deletingEntId === e.id}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50">
-                        {deletingEntId === e.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                      </button>
+                      <Permissao chave="ebd_estoque.ebd_estoque.excluir_entrada" rotulo="Excluir (entrada) — Ebd Estoque" herda="ebd_estoque.view">
+                        <button onClick={() => deleteEntrada(e.id)} disabled={deletingEntId === e.id}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50">
+                          {deletingEntId === e.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </Permissao>
                     </div>
                   </div>
                   <div className="space-y-1">

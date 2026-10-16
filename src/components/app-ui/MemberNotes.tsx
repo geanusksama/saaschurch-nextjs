@@ -3,6 +3,7 @@ import { StickyNote, Plus, Search, Lock } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export function MemberNotes() {
   const { id } = useParams();
@@ -62,10 +63,12 @@ export function MemberNotes() {
             <p className="text-slate-600 dark:text-slate-400">Anotações e observações importantes</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
-          <Plus className="w-5 h-5" />
-          Nova Nota
-        </button>
+        <Permissao chave="members.member_notes.nova_nota" rotulo="Nova Nota — Member Notes" herda="members.view">
+          <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
+            <Plus className="w-5 h-5" />
+            Nova Nota
+          </button>
+        </Permissao>
       </div>
 
       {/* Stats */}
@@ -137,9 +140,11 @@ export function MemberNotes() {
           <p className="text-slate-600 mb-6">
             {searchTerm ? 'Tente ajustar sua busca' : 'Comece adicionando uma nova nota'}
           </p>
-          <button className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-            Adicionar Primeira Nota
-          </button>
+          <Permissao chave="members.member_notes.adicionar_primeira_nota" rotulo="Adicionar Primeira Nota — Member Notes" herda="members.view">
+            <button className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+              Adicionar Primeira Nota
+            </button>
+          </Permissao>
         </div>
       )}
 

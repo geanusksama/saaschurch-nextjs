@@ -16,6 +16,7 @@ const Instagram = Share2;
 const Facebook = Globe;
 
 import { apiBase } from '../../../lib/apiBase';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 const DAYS = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
 
@@ -381,10 +382,12 @@ export function ChurchInfo() {
           <Check className="h-4 w-4" /> Salvo com sucesso!
         </span>
       )}
-      <button type="button" onClick={saveMain} disabled={saving}
-        className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">
-        <Save className="h-4 w-4" />{saving ? 'Salvando...' : 'Salvar Alteracoes'}
-      </button>
+      <Permissao chave="settings_church_info.church_info.salvar_alteracoes" rotulo="Salvar Alteracoes — Church Info" herda="settings_church_info.view">
+        <button type="button" onClick={saveMain} disabled={saving}
+          className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">
+          <Save className="h-4 w-4" />{saving ? 'Salvando...' : 'Salvar Alteracoes'}
+        </button>
+      </Permissao>
     </div>
   );
 
@@ -593,10 +596,12 @@ export function ChurchInfo() {
                 })}
               </div>
             </div>
-            <button type="button" onClick={addSchedule} disabled={!scheduleForm.name || !scheduleForm.time}
-              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-50">
-              <Plus className="h-4 w-4" /> Adicionar
-            </button>
+            <Permissao chave="settings_church_info.church_info.adicionar" rotulo="Adicionar — Church Info" herda="settings_church_info.view">
+              <button type="button" onClick={addSchedule} disabled={!scheduleForm.name || !scheduleForm.time}
+                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-50">
+                <Plus className="h-4 w-4" /> Adicionar
+              </button>
+            </Permissao>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
             {hq.schedules.length === 0 ? (
@@ -649,7 +654,9 @@ export function ChurchInfo() {
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <button type="button" onClick={() => saveScheduleEdit({ ...s, name: (s as any)._editName ?? s.name, dayOfWeek: (s as any)._editDay ?? s.dayOfWeek, time: (s as any)._editTime ?? s.time })} className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-semibold text-white"><Check className="h-4 w-4" /> Salvar</button>
+                              <Permissao chave="settings_church_info.church_info.salvar" rotulo="Salvar — Church Info" herda="settings_church_info.view">
+                                <button type="button" onClick={() => saveScheduleEdit({ ...s, name: (s as any)._editName ?? s.name, dayOfWeek: (s as any)._editDay ?? s.dayOfWeek, time: (s as any)._editTime ?? s.time })} className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-semibold text-white"><Check className="h-4 w-4" /> Salvar</button>
+                              </Permissao>
                               <button type="button" onClick={() => { setScheduleEditing(null); setScheduleEditIcon(''); }} className="rounded-lg bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200"><X className="h-4 w-4" /></button>
                             </div>
                           </td>
@@ -668,7 +675,9 @@ export function ChurchInfo() {
                             <td className="px-4 py-3"><span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">{s.time}</span></td>
                             <td className="px-4 py-3"><div className="flex gap-2 justify-end">
                               <button type="button" onClick={() => { setScheduleEditing(s.id); setScheduleEditIcon(s.icon || 'Sun'); }} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 dark:border-slate-700"><Pencil className="h-4 w-4" /></button>
-                              <button type="button" onClick={() => deleteSchedule(s.id)} className="rounded-lg border border-red-200 p-1.5 text-red-500 hover:bg-red-50 dark:border-red-800"><Trash2 className="h-4 w-4" /></button>
+                              <Permissao chave="settings_church_info.church_info.excluir_schedule" rotulo="Excluir (schedule) — Church Info" herda="settings_church_info.view">
+                                <button type="button" onClick={() => deleteSchedule(s.id)} className="rounded-lg border border-red-200 p-1.5 text-red-500 hover:bg-red-50 dark:border-red-800"><Trash2 className="h-4 w-4" /></button>
+                              </Permissao>
                             </div></td>
                           </>
                         )}
@@ -710,10 +719,12 @@ export function ChurchInfo() {
                 })}
               </div>
             </div>
-            <button type="button" onClick={addAccess} disabled={!accessForm.description}
-              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-50">
-              <Plus className="h-4 w-4" /> Adicionar
-            </button>
+            <Permissao chave="settings_church_info.church_info.adicionar" rotulo="Adicionar — Church Info" herda="settings_church_info.view">
+              <button type="button" onClick={addAccess} disabled={!accessForm.description}
+                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-50">
+                <Plus className="h-4 w-4" /> Adicionar
+              </button>
+            </Permissao>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
             {hq.accessInfos.length === 0 ? (
@@ -753,7 +764,9 @@ export function ChurchInfo() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <button type="button" onClick={() => saveAccessEdit(a.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-semibold text-white"><Check className="h-4 w-4" /> Salvar</button>
+                            <Permissao chave="settings_church_info.church_info.salvar" rotulo="Salvar — Church Info" herda="settings_church_info.view">
+                              <button type="button" onClick={() => saveAccessEdit(a.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-semibold text-white"><Check className="h-4 w-4" /> Salvar</button>
+                            </Permissao>
                             <button type="button" onClick={() => { setAccessEditing(null); setAccessEditError(''); setAccessEditIcon(''); }} className="rounded-lg bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200"><X className="h-4 w-4" /></button>
                           </div>
                           {accessEditError && <p className="mt-2 text-xs text-red-500">{accessEditError}</p>}
@@ -775,7 +788,9 @@ export function ChurchInfo() {
                           </div>
                           <div className="flex gap-2 shrink-0">
                             <button type="button" onClick={() => { setAccessEditing(a.id); setAccessEditForm({ description: a.description, mapUrl: a.mapUrl, type: a.type }); setAccessEditIcon(a.icon || 'Bus'); setAccessEditError(''); }} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 dark:border-slate-700"><Pencil className="h-4 w-4" /></button>
-                            <button type="button" onClick={() => deleteAccess(a.id)} className="rounded-lg border border-red-200 p-1.5 text-red-500 hover:bg-red-50 dark:border-red-800"><Trash2 className="h-4 w-4" /></button>
+                            <Permissao chave="settings_church_info.church_info.excluir_access" rotulo="Excluir (access) — Church Info" herda="settings_church_info.view">
+                              <button type="button" onClick={() => deleteAccess(a.id)} className="rounded-lg border border-red-200 p-1.5 text-red-500 hover:bg-red-50 dark:border-red-800"><Trash2 className="h-4 w-4" /></button>
+                            </Permissao>
                           </div>
                         </div>
                       )}

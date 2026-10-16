@@ -57,6 +57,7 @@ import { BORDA, PASTILHA, PONTO, TOM_DO_STATUS, tomDoSemaforo } from './cultoCor
 import { CampoBusca, CarregarMais, INICIAL, PASSO, casaBusca } from './listaLeve';
 import CultoRegistroDrawer from './CultoRegistroDrawer';
 import CultoImprimirModal from './CultoImprimirModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Modo = 'kanban' | 'tabela' | 'painel' | 'organograma';
 
@@ -222,30 +223,34 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
   function acoesDoCulto(r: Registro) {
     return (
       <div className="flex items-center gap-1">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setAbertoId(r.id);
-          }}
-          title="Editar culto"
-          aria-label="Editar culto"
-          className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.azul}`}
-        >
-          <Pencil className="w-4 h-4" />
-        </button>
-        {podeExcluir && (
+        <Permissao chave="culto_gestao.gestao_culto.editar_culto" rotulo="Editar culto — Gestao Culto" herda="culto_gestao.view">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setErroExclusao(null);
-              setAExcluir(r);
+              setAbertoId(r.id);
             }}
-            title="Excluir culto"
-            aria-label="Excluir culto"
-            className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+            title="Editar culto"
+            aria-label="Editar culto"
+            className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.azul}`}
           >
-            <Trash2 className="w-4 h-4" />
+            <Pencil className="w-4 h-4" />
           </button>
+        </Permissao>
+        {podeExcluir && (
+          <Permissao chave="culto_gestao.gestao_culto.excluir_culto" rotulo="Excluir culto — Gestao Culto" herda="culto_gestao.view">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setErroExclusao(null);
+                setAExcluir(r);
+              }}
+              title="Excluir culto"
+              aria-label="Excluir culto"
+              className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </Permissao>
         )}
       </div>
     );
@@ -614,14 +619,16 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
 
           {/* O que sai no papel é o que o filtro deixou na lista — por isso o
               botão fica junto dos filtros, e não numa tela de relatórios. */}
-          <button
-            onClick={() => setImprimindo(true)}
-            title="Imprimir relatório dos cultos filtrados"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
-            <Printer className="w-4 h-4" />
-            <span className="hidden xl:inline">Imprimir</span>
-          </button>
+          <Permissao chave="culto_gestao.gestao_culto.imprimir" rotulo="Imprimir — Gestao Culto" herda="culto_gestao.view">
+            <button
+              onClick={() => setImprimindo(true)}
+              title="Imprimir relatório dos cultos filtrados"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden xl:inline">Imprimir</span>
+            </button>
+          </Permissao>
 
           {/* Período: lado a lado no desktop, um sobre o outro no celular —
               dois campos de data na mesma linha de 360px não cabem legíveis. */}
@@ -1011,26 +1018,30 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                               >
                                 resumo
                               </button>
-                              <button
-                                onClick={() => setAbertoId(r.id)}
-                                title="Abrir o culto para ver, editar, aprovar ou excluir"
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:brightness-95 ${PASTILHA.azul}`}
-                              >
-                                <PanelRightOpen className="w-4 h-4" />
-                                Abrir
-                              </button>
-                              {podeExcluir && (
+                              <Permissao chave="culto_gestao.gestao_culto.abrir_o_culto_para_ver_editar_aprovar_ou" rotulo="Abrir o culto para ver, editar, aprovar ou excluir — Gestao Culto" herda="culto_gestao.view">
                                 <button
-                                  onClick={() => {
-                                    setErroExclusao(null);
-                                    setAExcluir(r);
-                                  }}
-                                  title="Excluir culto"
-                                  aria-label="Excluir culto"
-                                  className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+                                  onClick={() => setAbertoId(r.id)}
+                                  title="Abrir o culto para ver, editar, aprovar ou excluir"
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:brightness-95 ${PASTILHA.azul}`}
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <PanelRightOpen className="w-4 h-4" />
+                                  Abrir
                                 </button>
+                              </Permissao>
+                              {podeExcluir && (
+                                <Permissao chave="culto_gestao.gestao_culto.excluir_culto" rotulo="Excluir culto — Gestao Culto" herda="culto_gestao.view">
+                                  <button
+                                    onClick={() => {
+                                      setErroExclusao(null);
+                                      setAExcluir(r);
+                                    }}
+                                    title="Excluir culto"
+                                    aria-label="Excluir culto"
+                                    className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </Permissao>
                               )}
                             </div>
                           </div>
@@ -1160,42 +1171,46 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
             {(['FINANCEIRO', 'PRESENCA'] as Bloco[])
               .filter((b) => aExcluir.blocosEnviados.includes(b) || aExcluir.lancamentos.some((l) => l.bloco === b))
               .map((b) => (
-                <button
-                  key={b}
-                  onClick={() => void confirmarExclusao(b)}
-                  disabled={excluindo}
-                  className={`w-full flex items-start gap-3 text-left rounded-lg border ${BORDA.vermelho} px-4 py-3 hover:bg-[#fff1f2] dark:hover:bg-[#4c0519]/40 disabled:opacity-50`}
-                >
-                  <Trash2 className="w-4 h-4 mt-0.5 shrink-0 text-[#e11d48]" />
-                  <span>
-                    <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      Excluir só {b === 'FINANCEIRO' ? 'o Financeiro (tesouraria)' : 'a Presença (secretaria)'}
+                <Permissao key={b} chave="culto_gestao.gestao_culto.excluir_so_o" rotulo="Excluir só o — Gestao Culto" herda="culto_gestao.view">
+                  <button
+                    key={b}
+                    onClick={() => void confirmarExclusao(b)}
+                    disabled={excluindo}
+                    className={`w-full flex items-start gap-3 text-left rounded-lg border ${BORDA.vermelho} px-4 py-3 hover:bg-[#fff1f2] dark:hover:bg-[#4c0519]/40 disabled:opacity-50`}
+                  >
+                    <Trash2 className="w-4 h-4 mt-0.5 shrink-0 text-[#e11d48]" />
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        Excluir só {b === 'FINANCEIRO' ? 'o Financeiro (tesouraria)' : 'a Presença (secretaria)'}
+                      </span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400">
+                        Os números {b === 'FINANCEIRO' ? 'da presença' : 'do financeiro'} ficam. Se o culto já tinha
+                        aprovação, ela é desfeita e ele volta a aguardar o envio.
+                      </span>
                     </span>
-                    <span className="block text-xs text-slate-500 dark:text-slate-400">
-                      Os números {b === 'FINANCEIRO' ? 'da presença' : 'do financeiro'} ficam. Se o culto já tinha
-                      aprovação, ela é desfeita e ele volta a aguardar o envio.
-                    </span>
-                  </span>
-                </button>
+                  </button>
+                </Permissao>
               ))}
 
-            <button
-              onClick={() => void confirmarExclusao()}
-              disabled={excluindo}
-              className={`w-full flex items-start gap-3 text-left rounded-lg px-4 py-3 ${PONTO.vermelho} hover:brightness-90 text-white disabled:opacity-50`}
-            >
-              {excluindo ? (
-                <Loader2 className="w-4 h-4 mt-0.5 shrink-0 animate-spin" />
-              ) : (
-                <Trash2 className="w-4 h-4 mt-0.5 shrink-0" />
-              )}
-              <span>
-                <span className="block text-sm font-semibold">Excluir o culto inteiro</span>
-                <span className="block text-xs opacity-90">
-                  O culto e tudo o que foi lançado nele saem das telas e dos relatórios.
+            <Permissao chave="culto_gestao.gestao_culto.excluir_o_culto_inteiro" rotulo="Excluir o culto inteiro — Gestao Culto" herda="culto_gestao.view">
+              <button
+                onClick={() => void confirmarExclusao()}
+                disabled={excluindo}
+                className={`w-full flex items-start gap-3 text-left rounded-lg px-4 py-3 ${PONTO.vermelho} hover:brightness-90 text-white disabled:opacity-50`}
+              >
+                {excluindo ? (
+                  <Loader2 className="w-4 h-4 mt-0.5 shrink-0 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mt-0.5 shrink-0" />
+                )}
+                <span>
+                  <span className="block text-sm font-semibold">Excluir o culto inteiro</span>
+                  <span className="block text-xs opacity-90">
+                    O culto e tudo o que foi lançado nele saem das telas e dos relatórios.
+                  </span>
                 </span>
-              </span>
-            </button>
+              </button>
+            </Permissao>
             {erroExclusao && (
               <div className={`rounded-lg px-3 py-2 text-sm ${PASTILHA.vermelho}`}>{erroExclusao}</div>
             )}

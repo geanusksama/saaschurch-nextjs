@@ -1,5 +1,6 @@
 import { Plus, Search, Mail, Users, TrendingUp, Eye, MousePointerClick, Send } from 'lucide-react';
 import { Link } from 'react-router';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const campaigns = [
   { 
@@ -214,10 +215,12 @@ export function EmailCampaigns() {
               </div>
             ))}
 
-            <button className="w-full py-3 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-purple-300 hover:text-purple-600 transition-colors flex items-center justify-center gap-2">
-              <Plus className="w-5 h-5" />
-              Novo Template
-            </button>
+            <Permissao chave="tela_comunicacao.email_campaigns.novo_template" rotulo="Novo Template — Email Campaigns" herda="tela_comunicacao.view">
+              <button className="w-full py-3 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-purple-300 hover:text-purple-600 transition-colors flex items-center justify-center gap-2">
+                <Plus className="w-5 h-5" />
+                Novo Template
+              </button>
+            </Permissao>
           </div>
         </div>
       </div>

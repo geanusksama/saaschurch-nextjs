@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Pencil, Trash2, Plus, GitBranch, ChevronUp, ChevronDown } from "lucide-react";
 
 import { apiBase } from "../../lib/apiBase";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function authFetch(url: string, init: RequestInit = {}) {
   const token = localStorage.getItem("mrm_token");
@@ -148,13 +149,15 @@ function PipelinesView({
             <p className="text-sm text-slate-500 dark:text-slate-400">Gerencie os pipelines do sistema</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
-        >
-          <Plus className="w-4 h-4" />
-          Novo pipeline
-        </button>
+        <Permissao chave="pipeline_config.pipelines_admin.novo_pipeline" rotulo="Novo pipeline — Pipelines Admin" herda="pipeline_config.view">
+          <button
+            onClick={() => setShowModal(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
+          >
+            <Plus className="w-4 h-4" />
+            Novo pipeline
+          </button>
+        </Permissao>
       </div>
 
       {/* Search */}
@@ -209,12 +212,16 @@ function PipelinesView({
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => onEdit(p)} title="Editar" className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-100">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(p.id)} title="Excluir" className="text-red-400 hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="pipeline_config.pipelines_admin.editar" rotulo="Editar — Pipelines Admin" herda="pipeline_config.view">
+                        <button onClick={() => onEdit(p)} title="Editar" className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-100">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </Permissao>
+                      <Permissao chave="pipeline_config.pipelines_admin.excluir" rotulo="Excluir — Pipelines Admin" herda="pipeline_config.view">
+                        <button onClick={() => handleDelete(p.id)} title="Excluir" className="text-red-400 hover:text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     </div>
                   </td>
                 </tr>
@@ -316,13 +323,15 @@ function PipelineEditView({
             />
           </div>
         </div>
-        <button
-          onClick={savePipeline}
-          disabled={saving}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {saving ? "Salvando..." : "Salvar Alterações"}
-        </button>
+        <Permissao chave="pipeline_config.pipelines_admin.salvar_alteracoes" rotulo="Salvar Alterações — Pipelines Admin" herda="pipeline_config.view">
+          <button
+            onClick={savePipeline}
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+          >
+            {saving ? "Salvando..." : "Salvar Alterações"}
+          </button>
+        </Permissao>
       </div>
 
       {/* Stages / Artifacts */}
@@ -332,13 +341,15 @@ function PipelineEditView({
             <p className="text-sm font-semibold text-slate-700">Serviços / Artefatos</p>
             <p className="text-xs text-slate-400">Gerencie os serviços deste pipeline</p>
           </div>
-          <button
-            onClick={() => { setEditStage(null); setShowStageModal(true); }}
-            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Serviço
-          </button>
+          <Permissao chave="pipeline_config.pipelines_admin.novo_servico" rotulo="Novo Serviço — Pipelines Admin" herda="pipeline_config.view">
+            <button
+              onClick={() => { setEditStage(null); setShowStageModal(true); }}
+              className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+            >
+              <Plus className="w-4 h-4" />
+              Novo Serviço
+            </button>
+          </Permissao>
         </div>
         <table className="w-full">
           <thead>
@@ -383,9 +394,11 @@ function PipelineEditView({
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => deleteStage(st.id)} className="text-red-400 hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="pipeline_config.pipelines_admin.excluir_stage" rotulo="Excluir (stage) — Pipelines Admin" herda="pipeline_config.view">
+                        <button onClick={() => deleteStage(st.id)} className="text-red-400 hover:text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     </div>
                   </td>
                 </tr>
@@ -508,13 +521,15 @@ function StageEditView({
             />
           </div>
         </div>
-        <button
-          onClick={saveStage}
-          disabled={saving}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {saving ? "Salvando..." : "Salvar Alterações"}
-        </button>
+        <Permissao chave="pipeline_config.pipelines_admin.salvar_alteracoes" rotulo="Salvar Alterações — Pipelines Admin" herda="pipeline_config.view">
+          <button
+            onClick={saveStage}
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+          >
+            {saving ? "Salvando..." : "Salvar Alterações"}
+          </button>
+        </Permissao>
       </div>
 
       {/* Columns */}
@@ -524,13 +539,15 @@ function StageEditView({
             <p className="text-sm font-semibold text-slate-700">Colunas do Stage</p>
             <p className="text-xs text-slate-400">Configure as etapas deste serviço</p>
           </div>
-          <button
-            onClick={() => setEditCol("new")}
-            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
-          >
-            <Plus className="w-4 h-4" />
-            Nova Coluna
-          </button>
+          <Permissao chave="pipeline_config.pipelines_admin.nova_coluna" rotulo="Nova Coluna — Pipelines Admin" herda="pipeline_config.view">
+            <button
+              onClick={() => setEditCol("new")}
+              className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+            >
+              <Plus className="w-4 h-4" />
+              Nova Coluna
+            </button>
+          </Permissao>
         </div>
         <table className="w-full">
           <thead>
@@ -583,20 +600,24 @@ function StageEditView({
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => setEditCol(col)}
-                        className="rounded p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                        title="Editar"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => deleteColumn(col.id)}
-                        className="rounded p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50"
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <Permissao chave="pipeline_config.pipelines_admin.editar" rotulo="Editar — Pipelines Admin" herda="pipeline_config.view">
+                        <button
+                          onClick={() => setEditCol(col)}
+                          className="rounded p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                          title="Editar"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </Permissao>
+                      <Permissao chave="pipeline_config.pipelines_admin.excluir" rotulo="Excluir — Pipelines Admin" herda="pipeline_config.view">
+                        <button
+                          onClick={() => deleteColumn(col.id)}
+                          className="rounded p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </Permissao>
                     </div>
                   </td>
                 </tr>
@@ -660,9 +681,11 @@ function PipelineModal({
           <button onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
             Cancelar
           </button>
-          <button onClick={submit} disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50">
-            {saving ? "Salvando..." : "Salvar"}
-          </button>
+          <Permissao chave="pipeline_config.pipelines_admin.salvar" rotulo="Salvar — Pipelines Admin" herda="pipeline_config.view">
+            <button onClick={submit} disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50">
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </Permissao>
         </div>
       </div>
     </ModalShell>
@@ -714,9 +737,11 @@ function StageModal({
           <button onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
             Cancelar
           </button>
-          <button onClick={submit} disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50">
-            {saving ? "Salvando..." : "Salvar"}
-          </button>
+          <Permissao chave="pipeline_config.pipelines_admin.salvar" rotulo="Salvar — Pipelines Admin" herda="pipeline_config.view">
+            <button onClick={submit} disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50">
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </Permissao>
         </div>
       </div>
     </ModalShell>
@@ -850,13 +875,15 @@ function ColumnModal({
           >
             Cancelar
           </button>
-          <button
-            onClick={submit}
-            disabled={saving || !name.trim()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : isNew ? "Criar Coluna" : "Salvar Alterações"}
-          </button>
+          <Permissao chave="pipeline_config.pipelines_admin.criar_coluna_salvar_alteracoes" rotulo="Criar Coluna Salvar Alterações — Pipelines Admin" herda="pipeline_config.view">
+            <button
+              onClick={submit}
+              disabled={saving || !name.trim()}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+            >
+              {saving ? "Salvando..." : isNew ? "Criar Coluna" : "Salvar Alterações"}
+            </button>
+          </Permissao>
         </div>
       </div>
     </ModalShell>

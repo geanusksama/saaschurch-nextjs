@@ -6,6 +6,7 @@ import { ConfirmDialog } from './shared/ConfirmDialog';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type CampoOption = {
   id: string;
@@ -459,17 +460,19 @@ export function Ministries() {
           </div>
         </div>
         {canCreate('ministries') ? (
-          <button
-            type="button"
-            onClick={() => {
-              setFormState(initialFormState);
-              setFormOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            Novo Ministério
-          </button>
+          <Permissao chave="ministries.ministries.novo_ministerio" rotulo="Novo Ministério — Ministries" herda="ministries.create">
+            <button
+              type="button"
+              onClick={() => {
+                setFormState(initialFormState);
+                setFormOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              Novo Ministério
+            </button>
+          </Permissao>
         ) : null}
       </div>
 
@@ -720,9 +723,11 @@ export function Ministries() {
             <button type="button" onClick={resetForm} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
               Cancelar
             </button>
-            <button type="submit" disabled={saving} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-60">
-              {saving ? 'Salvando...' : formState.id ? 'Atualizar Ministério' : 'Criar Ministério'}
-            </button>
+            <Permissao chave="ministries.ministries.atualizar_ministerio_criar_ministerio" rotulo="Atualizar Ministério Criar Ministério — Ministries" herda="ministries.view">
+              <button type="submit" disabled={saving} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-60">
+                {saving ? 'Salvando...' : formState.id ? 'Atualizar Ministério' : 'Criar Ministério'}
+              </button>
+            </Permissao>
           </div>
         </form>
       ) : null}
@@ -815,15 +820,19 @@ export function Ministries() {
                 {canEdit('ministries') || canDelete('ministries') ? (
                   <div className="flex gap-2">
                     {canEdit('ministries') ? (
-                      <button type="button" onClick={() => handleEdit(ministry)} className="flex-1 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 font-medium flex items-center justify-center gap-2">
-                        <Pencil className="w-4 h-4" />
-                        Editar
-                      </button>
+                      <Permissao chave="ministries.ministries.editar" rotulo="Editar — Ministries" herda="ministries.edit">
+                        <button type="button" onClick={() => handleEdit(ministry)} className="flex-1 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 font-medium flex items-center justify-center gap-2">
+                          <Pencil className="w-4 h-4" />
+                          Editar
+                        </button>
+                      </Permissao>
                     ) : null}
                     {canDelete('ministries') ? (
-                      <button type="button" onClick={() => handleDelete(ministry.id)} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="ministries.ministries.confirmar_exclusao" rotulo="Confirmar exclusão — Ministries" herda="ministries.ministries.excluir">
+                        <button type="button" onClick={() => handleDelete(ministry.id)} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     ) : null}
                   </div>
                 ) : null}
@@ -876,14 +885,18 @@ export function Ministries() {
                         {canEdit('ministries') || canDelete('ministries') ? (
                           <div className="flex items-center justify-end gap-2">
                             {canEdit('ministries') ? (
-                              <button type="button" onClick={() => handleEdit(ministry)} className="rounded-lg border border-purple-200 p-2 text-purple-600 hover:bg-purple-50" title="Editar">
-                                <Pencil className="w-4 h-4" />
-                              </button>
+                              <Permissao chave="ministries.ministries.editar" rotulo="Editar — Ministries" herda="ministries.edit">
+                                <button type="button" onClick={() => handleEdit(ministry)} className="rounded-lg border border-purple-200 p-2 text-purple-600 hover:bg-purple-50" title="Editar">
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              </Permissao>
                             ) : null}
                             {canDelete('ministries') ? (
-                              <button type="button" onClick={() => handleDelete(ministry.id)} className="rounded-lg bg-slate-900 p-2 text-white hover:bg-slate-800" title="Excluir">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <Permissao chave="ministries.ministries.excluir" rotulo="Excluir — Ministries" herda="ministries.delete">
+                                <button type="button" onClick={() => handleDelete(ministry.id)} className="rounded-lg bg-slate-900 p-2 text-white hover:bg-slate-800" title="Excluir">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </Permissao>
                             ) : null}
                           </div>
                         ) : null}

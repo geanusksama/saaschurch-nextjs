@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { Check, X, Loader2, AlertTriangle, Copy, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export interface MembershipRequestFull {
   id: string;
@@ -209,15 +210,17 @@ export function MembershipReviewModal({
                     >
                       <Copy className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={enviarFicha}
-                      disabled={enviando}
-                      title="Envia o link pelo WhatsApp da igreja (Z-API)"
-                      className="px-2 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold inline-flex items-center gap-1 disabled:opacity-50"
-                    >
-                      {enviando ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                      Enviar por WhatsApp
-                    </button>
+                    <Permissao chave="membership_requests.membership_review_modal.enviar_por_whatsapp" rotulo="Enviar por WhatsApp — Membership Review Modal" herda="membership_requests.view">
+                      <button
+                        onClick={enviarFicha}
+                        disabled={enviando}
+                        title="Envia o link pelo WhatsApp da igreja (Z-API)"
+                        className="px-2 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold inline-flex items-center gap-1 disabled:opacity-50"
+                      >
+                        {enviando ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                        Enviar por WhatsApp
+                      </button>
+                    </Permissao>
                   </div>
                 )}
               </div>
@@ -324,35 +327,41 @@ export function MembershipReviewModal({
             <button onClick={onClose} className="px-5 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">
               Fechar
             </button>
-            <button
-              onClick={() => decide('rejected')}
-              disabled={!!saving}
-              className="px-5 py-2 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 inline-flex items-center gap-1.5 disabled:opacity-50"
-            >
-              {saving === 'rejected' ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-              Reprovar
-            </button>
+            <Permissao chave="membership_requests.membership_review_modal.reprovar" rotulo="Reprovar — Membership Review Modal" herda="membership_requests.view">
+              <button
+                onClick={() => decide('rejected')}
+                disabled={!!saving}
+                className="px-5 py-2 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {saving === 'rejected' ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                Reprovar
+              </button>
+            </Permissao>
             {/* exceção: aprova E encerra o acolhimento de uma vez */}
-            <button
-              onClick={() => decide('approved', true)}
-              disabled={!!saving || !preenchido}
-              title="Aprova o cadastro e encerra o acompanhamento do 1º mês junto — use só quando a pessoa não precisa passar pelo processo"
-              className="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium inline-flex items-center gap-1.5 hover:bg-slate-100 disabled:opacity-50"
-            >
-              {saving === 'closed' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Aprovar e encerrar acolhimento
-            </button>
-            <button
-              onClick={() => decide('approved')}
-              disabled={!!saving || !preenchido}
-              title={!preenchido
-                ? 'A ficha precisa estar preenchida para aprovar'
-                : 'Cria o membro com ROL. O card segue no pipeline e a pessoa continua recebendo o cronograma.'}
-              className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
-            >
-              {saving === 'approved' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Aprovar cadastro
-            </button>
+            <Permissao chave="membership_requests.membership_review_modal.aprovar_e_encerrar_acolhimento" rotulo="Aprovar e encerrar acolhimento — Membership Review Modal" herda="membership_requests.view">
+              <button
+                onClick={() => decide('approved', true)}
+                disabled={!!saving || !preenchido}
+                title="Aprova o cadastro e encerra o acompanhamento do 1º mês junto — use só quando a pessoa não precisa passar pelo processo"
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium inline-flex items-center gap-1.5 hover:bg-slate-100 disabled:opacity-50"
+              >
+                {saving === 'closed' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Aprovar e encerrar acolhimento
+              </button>
+            </Permissao>
+            <Permissao chave="membership_requests.membership_review_modal.aprovar_cadastro" rotulo="Aprovar cadastro — Membership Review Modal" herda="membership_requests.view">
+              <button
+                onClick={() => decide('approved')}
+                disabled={!!saving || !preenchido}
+                title={!preenchido
+                  ? 'A ficha precisa estar preenchida para aprovar'
+                  : 'Cria o membro com ROL. O card segue no pipeline e a pessoa continua recebendo o cronograma.'}
+                className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {saving === 'approved' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Aprovar cadastro
+              </button>
+            </Permissao>
           </div>
         )}
       </div>

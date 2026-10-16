@@ -14,7 +14,7 @@
  * The hook also exposes `refreshPermissions()` so the PermissionsMatrix page
  * can force a refetch after saving.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   DEFAULT_PERMISSION_MODULES,
   mergeModules,
@@ -22,6 +22,7 @@ import {
   type ProfileKey,
 } from '../app-ui/system/permissionCatalog';
 import { resolvePermission } from './resolvePermission';
+import { podeChave } from './permissoes/resolver';
 
 import { apiBase as API_BASE } from './apiBase';
 const LS_KEY = 'mrm_permissions';
@@ -70,8 +71,23 @@ function readUserRoleId(): string | null {
   } catch { return null; }
 }
 
-// Retorna PermissionModule[] se ok, 'forbidden' se 403, null em outros erros
-async function fetchMatrixFromServer(): Promise<PermissionModule[] | 'forbidden' | null> {
+// Retorna PermissionModule[] se ok, 'forbidden' se 403, null em outros erros.
+//
+// Uma busca compartilhada: cada <Permissao> monta este hook, e sem isto uma
+// tela com 50 botões marcados fazia 50 GET /permissions/matrix ao abrir.
+let _matrixPromise: Promise<PermissionModule[] | 'forbidden' | null> | null = null;
+let _matrixQuando = 0;
+const MATRIX_TTL_MS = 30_000;
+
+function fetchMatrixFromServer(forcar = false): Promise<PermissionModule[] | 'forbidden' | null> {
+  const agora = Date.now();
+  if (!forcar && _matrixPromise && agora - _matrixQuando < MATRIX_TTL_MS) return _matrixPromise;
+  _matrixQuando = agora;
+  _matrixPromise = buscarMatrix();
+  return _matrixPromise;
+}
+
+async function buscarMatrix(): Promise<PermissionModule[] | 'forbidden' | null> {
   try {
     const storedUser = JSON.parse(localStorage.getItem('mrm_user') || '{}');
     const token: string | null = storedUser?.token ?? localStorage.getItem('mrm_token') ?? null;
@@ -86,6 +102,33 @@ async function fetchMatrixFromServer(): Promise<PermissionModule[] | 'forbidden'
   } catch {
     return null;
   }
+}
+
+/**
+ * Grupos de usuários: quem está em grupo vale só pela regra do grupo (whitelist).
+ * O servidor devolve o mapa já resolvido em /permissoes/efetivas; ele é buscado
+ * ao abrir, porque o mrm_user só é gravado no login. Cache de módulo: uma
+ * busca por carga de página, compartilhada por todos os componentes.
+ */
+type Efetivas = { emGrupo: boolean; permissoes: Record<string, boolean> | null };
+let _efetivas: Efetivas | null = null;
+let _efetivasPromise: Promise<Efetivas | null> | null = null;
+
+function buscarEfetivas(forcar = false): Promise<Efetivas | null> {
+  if (_efetivasPromise && !forcar) return _efetivasPromise;
+  const token = localStorage.getItem('mrm_token');
+  if (!token) return Promise.resolve(null);
+  _efetivasPromise = fetch(`${API_BASE}/permissoes/efetivas`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d: Efetivas | null) => {
+      if (d && typeof d.emGrupo === 'boolean') _efetivas = d;
+      return _efetivas;
+    })
+    .catch(() => _efetivas);
+  return _efetivasPromise;
 }
 
 // Listeners to notify all hook instances when matrix changes
@@ -103,6 +146,7 @@ export function usePermissions(profileType?: string) {
   const [modules, setModules] = useState<PermissionModule[]>(getInitialModules);
   const [userOverrides, setUserOverrides] = useState<Record<string, boolean>>(readUserOverrides);
   const [userRoleId, setUserRoleId] = useState<string | null>(readUserRoleId);
+  const [efetivas, setEfetivas] = useState<Efetivas | null>(_efetivas);
 
   // Subscribe to global changes (e.g., after save in PermissionsMatrix)
   useEffect(() => {
@@ -146,10 +190,11 @@ export function usePermissions(profileType?: string) {
     // Also refresh user overrides and roleId from localStorage (may have been updated after login)
     setUserOverrides(readUserOverrides());
     setUserRoleId(readUserRoleId());
+    buscarEfetivas().then((e) => e && setEfetivas(e));
   }, []);
 
   const refreshPermissions = useCallback(async () => {
-    const result = await fetchMatrixFromServer();
+    const result = await fetchMatrixFromServer(true);
     if (result === 'forbidden') {
       _moduleCache = null;
       try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
@@ -160,16 +205,33 @@ export function usePermissions(profileType?: string) {
       setModules(merged);
     }
     setUserOverrides(readUserOverrides());
+    const e = await buscarEfetivas(true);
+    if (e) setEfetivas(e);
   }, []);
 
   const pt = (profileType ?? 'church') as ProfileKey;
+  const emGrupo = efetivas?.emGrupo === true;
+  // Em grupo, o mapa efetivo do servidor substitui categoria e sobrescrita.
+  const overridesEfetivos = useMemo(
+    () => (emGrupo ? (efetivas?.permissoes ?? {}) : userOverrides),
+    [emGrupo, efetivas, userOverrides],
+  );
 
   // Memoized resolve — stable reference avoids unnecessary re-renders in consumers.
   // A regra em si vive em resolvePermission.ts (função pura, testável fora do React).
   const resolve = useCallback(
     (key: string, action: string): boolean =>
-      resolvePermission({ key, action, profileType: pt, modules, userOverrides, userRoleId }),
-    [modules, userOverrides, userRoleId, pt],
+      emGrupo
+        ? overridesEfetivos[`${key}.${action}`] === true
+        : resolvePermission({ key, action, profileType: pt, modules, userOverrides, userRoleId }),
+    [modules, userOverrides, userRoleId, pt, emGrupo, overridesEfetivos],
+  );
+
+  /** Chave completa: de módulo ("members.view") ou granular ("members.lista.exportar"). */
+  const pode = useCallback(
+    (chave: string): boolean =>
+      podeChave(chave, { profileType: pt, modules, userOverrides: overridesEfetivos, userRoleId, emGrupo }),
+    [pt, modules, overridesEfetivos, userRoleId, emGrupo],
   );
 
   // Memoize each action helper — stable references avoid unnecessary re-renders in consumers
@@ -185,9 +247,11 @@ export function usePermissions(profileType?: string) {
       canCreate: () => true,
       canEdit:   () => true,
       canDelete: () => true,
+      pode: () => true,
+      emGrupo: false,
       refreshPermissions,
     };
   }
 
-  return { canView, canCreate, canEdit, canDelete, refreshPermissions };
+  return { canView, canCreate, canEdit, canDelete, pode, emGrupo, refreshPermissions };
 }

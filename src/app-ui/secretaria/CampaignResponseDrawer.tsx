@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SecretariaCampaignField } from '@/lib/secretariaCampaignFields';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Change {
   field: string;
@@ -315,22 +316,26 @@ export function CampaignResponseDrawer({
 
             {data.response.status === 'pending' ? (
               <div className="flex gap-2 border-t border-slate-200 p-4 dark:border-slate-700">
-                <button
-                  onClick={() => decidir('rejected')}
-                  disabled={salvando}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 py-2.5 text-xs font-bold text-amber-700 disabled:opacity-50"
-                >
-                  {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsDown className="h-4 w-4" />}
-                  Reprovar e pedir correção
-                </button>
-                <button
-                  onClick={() => decidir('approved')}
-                  disabled={salvando || !data.member}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-xs font-bold text-white disabled:opacity-50"
-                >
-                  {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsUp className="h-4 w-4" />}
-                  Aprovar e atualizar cadastro
-                </button>
+                <Permissao chave="secretaria_campanhas.campaign_response_drawer.reprovar_e_pedir_correcao" rotulo="Reprovar e pedir correção — Campaign Response Drawer" herda="secretaria_campanhas.view">
+                  <button
+                    onClick={() => decidir('rejected')}
+                    disabled={salvando}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 py-2.5 text-xs font-bold text-amber-700 disabled:opacity-50"
+                  >
+                    {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsDown className="h-4 w-4" />}
+                    Reprovar e pedir correção
+                  </button>
+                </Permissao>
+                <Permissao chave="secretaria_campanhas.campaign_response_drawer.aprovar_e_atualizar_cadastro" rotulo="Aprovar e atualizar cadastro — Campaign Response Drawer" herda="secretaria_campanhas.view">
+                  <button
+                    onClick={() => decidir('approved')}
+                    disabled={salvando || !data.member}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsUp className="h-4 w-4" />}
+                    Aprovar e atualizar cadastro
+                  </button>
+                </Permissao>
               </div>
             ) : (
               <div className="border-t border-slate-200 p-4 text-center dark:border-slate-700">

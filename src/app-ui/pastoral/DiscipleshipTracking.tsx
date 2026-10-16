@@ -3,6 +3,7 @@ import { BookOpen, User, TrendingUp, CheckCircle, Clock, Award, Target, Calendar
 import { Link } from 'react-router';
 import { useCreateDiscipleshipMeeting, useDiscipleshipPrograms, useDiscipleships } from '../../lib/pastoralHooks';
 import { getCurrentChurchId } from '../../lib/pastoralService';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const stages = [
   { 
@@ -288,26 +289,28 @@ export default function DiscipleshipTracking() {
                   <button className="px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg border border-purple-200 transition-colors">
                     Ver Progresso
                   </button>
-                  <button
-                    className="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors disabled:opacity-60"
-                    disabled={createMeeting.isPending || !churchId}
-                    onClick={() => {
-                      const nextLesson = Math.max(1, currentLesson + 1);
-                      const total = Math.max(1, totalLessons || 1);
-                      const progressPercent = Math.min(100, Math.round((nextLesson / total) * 100));
-                      void createMeeting.mutateAsync({
-                        churchId: churchId!,
-                        discipleshipId: disciple.id,
-                        meetingDate: new Date().toISOString(),
-                        lessonNumber: nextLesson,
-                        lessonTitle: `Lição ${nextLesson}`,
-                        notes: `Encontro registrado rapidamente pela tela de acompanhamento.`,
-                        progressPercent,
-                      });
-                    }}
-                  >
-                    Registrar Encontro
-                  </button>
+                  <Permissao chave="discipleship.discipleship_tracking.registrar_encontro" rotulo="Registrar Encontro — Discipleship Tracking" herda="discipleship.view">
+                    <button
+                      className="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors disabled:opacity-60"
+                      disabled={createMeeting.isPending || !churchId}
+                      onClick={() => {
+                        const nextLesson = Math.max(1, currentLesson + 1);
+                        const total = Math.max(1, totalLessons || 1);
+                        const progressPercent = Math.min(100, Math.round((nextLesson / total) * 100));
+                        void createMeeting.mutateAsync({
+                          churchId: churchId!,
+                          discipleshipId: disciple.id,
+                          meetingDate: new Date().toISOString(),
+                          lessonNumber: nextLesson,
+                          lessonTitle: `Lição ${nextLesson}`,
+                          notes: `Encontro registrado rapidamente pela tela de acompanhamento.`,
+                          progressPercent,
+                        });
+                      }}
+                    >
+                      Registrar Encontro
+                    </button>
+                  </Permissao>
                 </div>
               </div>
             </div>

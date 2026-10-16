@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CredentialRequest {
@@ -291,13 +292,15 @@ export default function SolicitacoesCredencial() {
                           </a>
                         )}
                         {r.situacao === "Pendente" && (
-                          <button
-                            onClick={() => setApproveTarget(r)}
-                            className="p-1.5 rounded hover:bg-blue-100 text-slate-500 hover:text-blue-700"
-                            title="Aprovar"
-                          >
-                            <ThumbsUp size={15} />
-                          </button>
+                          <Permissao chave="tela_credenciais.solicitacoes_credencial.aprovar" rotulo="Aprovar — Solicitacoes Credencial" herda="tela_credenciais.view">
+                            <button
+                              onClick={() => setApproveTarget(r)}
+                              className="p-1.5 rounded hover:bg-blue-100 text-slate-500 hover:text-blue-700"
+                              title="Aprovar"
+                            >
+                              <ThumbsUp size={15} />
+                            </button>
+                          </Permissao>
                         )}
                       </div>
                     </td>
@@ -340,15 +343,17 @@ export default function SolicitacoesCredencial() {
             <p className="text-sm text-slate-700">Selecione o novo status para a solicitação <span className="font-medium">{approveTarget.numero}</span>:</p>
             <div className="space-y-2">
               {(["Aprovado", "Entregue", "Cancelado"] as Situacao[]).map((s) => (
-                <button
-                  key={s}
-                  disabled={approving}
-                  onClick={() => handleApprove(s)}
-                  className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-left hover:bg-slate-50 flex items-center justify-between"
-                >
-                  <SituacaoBadge s={s} />
-                  {approving ? <Loader2 size={14} className="animate-spin text-slate-400" /> : null}
-                </button>
+                <Permissao key={s} chave="tela_credenciais.solicitacoes_credencial.alterar_situacao" rotulo="Alterar situação da solicitação — Solicitacoes Credencial" herda="tela_credenciais.view">
+                  <button
+                    key={s}
+                    disabled={approving}
+                    onClick={() => handleApprove(s)}
+                    className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-left hover:bg-slate-50 flex items-center justify-between"
+                  >
+                    <SituacaoBadge s={s} />
+                    {approving ? <Loader2 size={14} className="animate-spin text-slate-400" /> : null}
+                  </button>
+                </Permissao>
               ))}
             </div>
             <button onClick={() => setApproveTarget(null)} className="w-full border border-slate-200 rounded-lg py-2 text-sm text-slate-700 hover:bg-slate-50">Cancelar</button>
@@ -416,12 +421,14 @@ export default function SolicitacoesCredencial() {
                 </a>
               )}
               {viewTarget.situacao === "Pendente" && (
-                <button
-                  onClick={() => { setViewTarget(null); setApproveTarget(viewTarget); }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2"
-                >
-                  <ThumbsUp size={14} /> Aprovar
-                </button>
+                <Permissao chave="tela_credenciais.solicitacoes_credencial.aprovar" rotulo="Aprovar — Solicitacoes Credencial" herda="tela_credenciais.view">
+                  <button
+                    onClick={() => { setViewTarget(null); setApproveTarget(viewTarget); }}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    <ThumbsUp size={14} /> Aprovar
+                  </button>
+                </Permissao>
               )}
               <button onClick={() => setViewTarget(null)} className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-700 hover:bg-slate-50">Fechar</button>
             </div>

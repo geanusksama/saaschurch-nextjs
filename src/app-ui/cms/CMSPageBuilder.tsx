@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { DEPT_MAP, type DeptSlug, type DeptConfig } from "../../components/public/portal/departments/deptConfig";
 import { useDeptPage, useSaveDeptPage, uploadDeptMedia, type PageBlock } from "../../hooks/useDeptPage";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ── Block type registry ───────────────────────────────────────────────────────
 
@@ -330,11 +331,13 @@ export default function CMSPageBuilder() {
             })}
           </Reorder.Group>
 
-          <button onClick={() => setShowLibrary(true)}
-            className="w-full mt-3 flex items-center justify-center gap-2 py-2 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-400 hover:text-violet-600 hover:border-violet-400 transition-colors">
-            <Plus size={13} />
-            Adicionar bloco
-          </button>
+          <Permissao chave="tela_cms.cmspage_builder.adicionar_bloco" rotulo="Adicionar bloco — CMSPage Builder" herda="tela_cms.view">
+            <button onClick={() => setShowLibrary(true)}
+              className="w-full mt-3 flex items-center justify-center gap-2 py-2 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-400 hover:text-violet-600 hover:border-violet-400 transition-colors">
+              <Plus size={13} />
+              Adicionar bloco
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -351,11 +354,13 @@ export default function CMSPageBuilder() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
               <Eye size={13} /> Preview
             </button>
-            <button onClick={handleSave} disabled={saveMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-60 transition-colors">
-              {saveMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : savedOk ? <CheckCircle size={13} /> : <Save size={13} />}
-              {saveMutation.isPending ? "Salvando..." : savedOk ? "Salvo!" : "Salvar"}
-            </button>
+            <Permissao chave="tela_cms.cmspage_builder.salvo_salvar" rotulo="Salvo! Salvar — CMSPage Builder" herda="tela_cms.view">
+              <button onClick={handleSave} disabled={saveMutation.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-60 transition-colors">
+                {saveMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : savedOk ? <CheckCircle size={13} /> : <Save size={13} />}
+                {saveMutation.isPending ? "Salvando..." : savedOk ? "Salvo!" : "Salvar"}
+              </button>
+            </Permissao>
           </div>
         </div>
 
@@ -438,10 +443,12 @@ export default function CMSPageBuilder() {
             </div>
             {!editingHeader && selectedBlock && (
               <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
-                <button onClick={() => removeBlock(selectedBlock.id)}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 transition-colors">
-                  <Trash2 size={12} /> Remover bloco
-                </button>
+                <Permissao chave="tela_cms.cmspage_builder.remover_bloco" rotulo="Remover bloco — CMSPage Builder" herda="tela_cms.view">
+                  <button onClick={() => removeBlock(selectedBlock.id)}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 transition-colors">
+                    <Trash2 size={12} /> Remover bloco
+                  </button>
+                </Permissao>
               </div>
             )}
           </motion.div>
@@ -464,16 +471,18 @@ export default function CMSPageBuilder() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {BLOCK_LIBRARY.map((block) => (
-                  <button key={block.type} onClick={() => addBlock(block.type)}
-                    className="flex items-start gap-3 p-3 rounded-xl text-left border border-slate-200 dark:border-slate-700 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-800 flex-shrink-0">
-                      <block.icon size={15} className="text-slate-600 dark:text-slate-300" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white">{block.label}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{block.desc}</p>
-                    </div>
-                  </button>
+                  <Permissao key={block.type} chave="tela_cms.cmspage_builder.adicionar_block" rotulo="Adicionar (block) — CMSPage Builder" herda="tela_cms.view">
+                    <button key={block.type} onClick={() => addBlock(block.type)}
+                      className="flex items-start gap-3 p-3 rounded-xl text-left border border-slate-200 dark:border-slate-700 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+                        <block.icon size={15} className="text-slate-600 dark:text-slate-300" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white">{block.label}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{block.desc}</p>
+                      </div>
+                    </button>
+                  </Permissao>
                 ))}
               </div>
             </motion.div>

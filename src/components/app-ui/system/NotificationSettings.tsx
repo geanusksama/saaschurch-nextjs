@@ -1,5 +1,6 @@
 import { Bell, Mail, MessageSquare, Smartphone, Users, DollarSign, Calendar, UserPlus, Save, Volume2, VolumeX } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 interface NotificationChannel {
   email: boolean;
@@ -310,10 +311,12 @@ export function NotificationSettings() {
           <button className="px-6 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
-          <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
-            <Save className="w-5 h-5" />
-            Salvar Configurações
-          </button>
+          <Permissao chave="settings_notifications.notification_settings.salvar_configuracoes" rotulo="Salvar Configurações — Notification Settings" herda="settings_notifications.view">
+            <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
+              <Save className="w-5 h-5" />
+              Salvar Configurações
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

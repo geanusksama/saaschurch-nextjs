@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import { apiBase } from '../../lib/apiBase';
 import { ASSET_LOCATION_OPTIONS } from '../../lib/assetLocationOptions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Church = { id: string; name: string; code?: string | null };
 
@@ -253,10 +254,12 @@ export default function AssetForm() {
 
         <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
           <Link to="/app-ui/assets" className="px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800">Cancelar</Link>
-          <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Salvando...' : 'Salvar'}
-          </button>
+          <Permissao chave="tela_patrimonio.asset_form.salvar" rotulo="Salvar — Asset Form" herda="tela_patrimonio.view">
+            <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold disabled:opacity-50">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </Permissao>
         </div>
       </form>
     </div>

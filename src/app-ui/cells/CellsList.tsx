@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Users, Plus, Search, MapPin, Calendar, TrendingUp, User, X, Save } from 'lucide-react';
 import { Link } from 'react-router';
+import { Permissao } from '../../lib/permissoes/Permissao';
 const cells = [
   {
     id: 1,
@@ -133,13 +134,15 @@ export default function CellsList() {
             />
           </div>
 
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            Nova Célula
-          </button>
+          <Permissao chave="tela_gf.cells_list.nova_celula" rotulo="Nova Célula — Cells List" herda="tela_gf.view">
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              Nova Célula
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -342,13 +345,15 @@ export default function CellsList() {
                   >
                     Cancelar
                   </button>
-                  <button
-                    type="submit"
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium transition-colors"
-                  >
-                    <Save className="w-4 h-4" />
-                    Salvar Célula
-                  </button>
+                  <Permissao chave="tela_gf.cells_list.salvar_celula" rotulo="Salvar Célula — Cells List" herda="tela_gf.view">
+                    <button
+                      type="submit"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium transition-colors"
+                    >
+                      <Save className="w-4 h-4" />
+                      Salvar Célula
+                    </button>
+                  </Permissao>
                 </div>
               </form>
             </div>

@@ -7,6 +7,7 @@ import { supabaseAdmin } from "./supabase-admin";
 import { prisma } from "./prisma";
 import { logMutationAudit } from "./audit";
 import { barreiraDeCampo } from "./campoAtivo";
+import { permissoesEfetivasDosGrupos } from "./permissoes/resolver";
 
 export interface AuthUser {
   id: string | null;
@@ -23,6 +24,14 @@ export interface AuthUser {
   roleId: string | null;
   roleName: string | null;
   permissions: Record<string, boolean> | null;
+  /**
+   * Está em ao menos um Grupo de usuários ativo do campo ativo. Quando true,
+   * `permissions` é o mapa EFETIVO dos grupos (whitelist: chave ausente é
+   * negada) e a categoria e a sobrescrita pessoal não contam.
+   * Ver docs/modules/permissoes-granulares/SPEC.md.
+   */
+  emGrupo: boolean;
+  grupos: { id: string; name: string }[];
   isAdmin: boolean;
   parentChurchId: string | null;
   parentChurch: unknown;
@@ -50,6 +59,11 @@ async function loadUserProfileByEmail(email: string) {
     where: { email, deletedAt: null },
     include: {
       role: { select: { id: true, name: true, permissions: true, churchId: true } },
+      // Grupos de usuários: vêm na mesma consulta, sem viagem extra ao banco.
+      gruposUsuarios: {
+        where: { grupo: { isActive: true, deletedAt: null } },
+        select: { grupo: { select: { id: true, name: true, campoId: true, permissions: true } } },
+      },
       campo: { select: { id: true, name: true, code: true } },
       regional: {
         select: {
@@ -164,7 +178,22 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser> {
 
   if (!token) throw NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
-  return resolverToken(token, () => resolveAuthUser(token));
+  try {
+    return await resolverToken(token, () => resolveAuthUser(token));
+  } catch (e) {
+    // A promessa em cache é a MESMA para as requisições paralelas da tela, e o
+    // corpo de uma resposta só pode ser lido uma vez: devolver o mesmo objeto
+    // fazia a 1ª receber o 401 e as outras quebrarem com 500 ("ReadableStream
+    // is locked"). Cada requisição ganha a sua cópia.
+    // Sem ler o corpo da original, que é justamente o recurso disputado.
+    if (e instanceof NextResponse) {
+      throw NextResponse.json(
+        { error: e.status === 401 ? "Sessão inválida ou expirada." : "Falha na autenticação." },
+        { status: e.status },
+      );
+    }
+    throw e;
+  }
 }
 
 async function resolveAuthUser(token: string): Promise<AuthUser> {
@@ -180,6 +209,12 @@ async function resolveAuthUser(token: string): Promise<AuthUser> {
   const effectiveCampoId = profile?.campoId || scopedRegional?.campoId || null;
   const fieldHeadquarters = await loadFieldHeadquarters(effectiveCampoId);
 
+  // Só valem os grupos do campo ativo (isolamento por campo).
+  const grupos = (profile?.gruposUsuarios ?? [])
+    .map((g) => g.grupo)
+    .filter((g) => g.campoId === effectiveCampoId);
+  const emGrupo = grupos.length > 0;
+
   return {
     id: profile?.id || null,
     sub: authUser.id,
@@ -194,7 +229,14 @@ async function resolveAuthUser(token: string): Promise<AuthUser> {
     campoName: scopedCampo?.name || null,
     roleId: profile?.roleId || null,
     roleName: profile?.role?.name || null,
+    emGrupo,
+    grupos: grupos.map((g) => ({ id: g.id, name: g.name })),
     permissions: (() => {
+      if (emGrupo) {
+        return permissoesEfetivasDosGrupos(
+          grupos.map((g) => (g.permissions ?? {}) as Record<string, boolean>),
+        );
+      }
       const rolePerm = (profile?.role?.permissions ?? null) as Record<string, boolean> | null;
       const userPerm = (profile?.permissions ?? null) as Record<string, boolean> | null;
       if (!rolePerm && !userPerm) return null;

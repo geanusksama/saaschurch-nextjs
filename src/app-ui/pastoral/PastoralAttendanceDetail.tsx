@@ -71,6 +71,7 @@ import {
   searchMembersForAttendance,
 } from '../../lib/pastoralKanbanService';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type TabId = 'notas' | 'atividades' | 'pessoas' | 'timeline' | 'arquivos';
 
@@ -608,12 +609,14 @@ export function PastoralAttendanceDetail({
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => setShowActivityForm(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 text-xs font-semibold hover:bg-orange-100 transition-colors ml-auto"
-              >
-                <Plus className="w-4 h-4" />Nova Atividade
-              </button>
+              <Permissao chave="pastoral_visits.pastoral_attendance_detail.nova_atividade" rotulo="Nova Atividade — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                <button
+                  onClick={() => setShowActivityForm(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 text-xs font-semibold hover:bg-orange-100 transition-colors ml-auto"
+                >
+                  <Plus className="w-4 h-4" />Nova Atividade
+                </button>
+              </Permissao>
             </div>
           </div>
 
@@ -678,14 +681,16 @@ export function PastoralAttendanceDetail({
                       />
                       <span>🔒 Restrita</span>
                     </label>
-                    <button
-                      onClick={() => noteText.trim() && addNoteMutation.mutate()}
-                      disabled={!noteText.trim() || addNoteMutation.isPending}
-                      className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
-                    >
-                      {addNoteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      Salvar
-                    </button>
+                    <Permissao chave="pastoral_visits.pastoral_attendance_detail.salvar" rotulo="Salvar — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                      <button
+                        onClick={() => noteText.trim() && addNoteMutation.mutate()}
+                        disabled={!noteText.trim() || addNoteMutation.isPending}
+                        className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                      >
+                        {addNoteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        Salvar
+                      </button>
+                    </Permissao>
                   </div>
                 </div>
 
@@ -714,13 +719,15 @@ export function PastoralAttendanceDetail({
                             autoFocus
                           />
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => updateNoteMutation.mutate({ id: note.id, content: editingNoteText })}
-                              disabled={!editingNoteText.trim() || updateNoteMutation.isPending}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
-                            >
-                              {updateNoteMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Salvar
-                            </button>
+                            <Permissao chave="pastoral_visits.pastoral_attendance_detail.salvar" rotulo="Salvar — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                              <button
+                                onClick={() => updateNoteMutation.mutate({ id: note.id, content: editingNoteText })}
+                                disabled={!editingNoteText.trim() || updateNoteMutation.isPending}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                              >
+                                {updateNoteMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Salvar
+                              </button>
+                            </Permissao>
                             <button onClick={() => setEditingNoteId(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
                           </div>
                         </div>
@@ -734,15 +741,19 @@ export function PastoralAttendanceDetail({
                         </span>
                         {editingNoteId !== note.id && (
                           <div className="flex items-center gap-1">
-                            <button onClick={() => { setEditingNoteId(note.id); setEditingNoteText(note.content); }}
-                              className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Editar">
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => deleteNoteMutation.mutate(note.id)}
-                              disabled={deleteNoteMutation.isPending}
-                              className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <Permissao chave="pastoral_visits.pastoral_attendance_detail.editar" rotulo="Editar — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                              <button onClick={() => { setEditingNoteId(note.id); setEditingNoteText(note.content); }}
+                                className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Editar">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            </Permissao>
+                            <Permissao chave="pastoral_visits.pastoral_attendance_detail.excluir" rotulo="Excluir — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                              <button onClick={() => deleteNoteMutation.mutate(note.id)}
+                                disabled={deleteNoteMutation.isPending}
+                                className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </Permissao>
                           </div>
                         )}
                       </div>
@@ -834,11 +845,13 @@ export function PastoralAttendanceDetail({
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => addActivityMutation.mutate()} disabled={!activityForm.title.trim() || addActivityMutation.isPending}
-                      className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors">
-                      {addActivityMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      Salvar
-                    </button>
+                    <Permissao chave="pastoral_visits.pastoral_attendance_detail.salvar" rotulo="Salvar — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                      <button onClick={() => addActivityMutation.mutate()} disabled={!activityForm.title.trim() || addActivityMutation.isPending}
+                        className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors">
+                        {addActivityMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        Salvar
+                      </button>
+                    </Permissao>
                     <button onClick={() => { setShowActivityForm(false); resetActivityMessage(); }} className="px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
                       Cancelar
                     </button>
@@ -875,15 +888,17 @@ export function PastoralAttendanceDetail({
                         </p>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => void suggestActivityMessage()}
-                        disabled={suggesting || !smartPrompt.trim()}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
-                      >
-                        {suggesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        {smartResult ? 'Gerar outra sugestão' : 'Gerar sugestão'}
-                      </button>
+                      <Permissao chave="pastoral_visits.pastoral_attendance_detail.gerar_outra_sugestao_gerar_sugestao" rotulo="Gerar outra sugestão Gerar sugestão — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                        <button
+                          type="button"
+                          onClick={() => void suggestActivityMessage()}
+                          disabled={suggesting || !smartPrompt.trim()}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                        >
+                          {suggesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                          {smartResult ? 'Gerar outra sugestão' : 'Gerar sugestão'}
+                        </button>
+                      </Permissao>
 
                       {suggestError && <p className="text-xs text-red-600">{suggestError}</p>}
 
@@ -975,20 +990,22 @@ export function PastoralAttendanceDetail({
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => updateActivityMutation.mutate({ id: act.id, patch: {
-                              title: editingActivityForm.title,
-                              description: editingActivityForm.description || undefined,
-                              activity_type: editingActivityForm.type,
-                              priority: editingActivityForm.priority,
-                              scheduled_date: editingActivityForm.scheduledDate ? `${editingActivityForm.scheduledDate}:00` : null,
-                              duration_minutes: Number(editingActivityForm.durationMinutes) || null,
-                            }})}
-                            disabled={!editingActivityForm.title.trim() || updateActivityMutation.isPending}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
-                          >
-                            {updateActivityMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Salvar
-                          </button>
+                          <Permissao chave="pastoral_visits.pastoral_attendance_detail.salvar" rotulo="Salvar — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                            <button
+                              onClick={() => updateActivityMutation.mutate({ id: act.id, patch: {
+                                title: editingActivityForm.title,
+                                description: editingActivityForm.description || undefined,
+                                activity_type: editingActivityForm.type,
+                                priority: editingActivityForm.priority,
+                                scheduled_date: editingActivityForm.scheduledDate ? `${editingActivityForm.scheduledDate}:00` : null,
+                                duration_minutes: Number(editingActivityForm.durationMinutes) || null,
+                              }})}
+                              disabled={!editingActivityForm.title.trim() || updateActivityMutation.isPending}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                            >
+                              {updateActivityMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Salvar
+                            </button>
+                          </Permissao>
                           <button onClick={() => setEditingActivityId(null)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
                         </div>
                       </div>
@@ -1025,24 +1042,28 @@ export function PastoralAttendanceDetail({
                           </div>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0 ml-1">
-                          <button onClick={() => {
-                            setEditingActivityId(act.id);
-                            setEditingActivityForm({
-                              type: act.activity_type,
-                              title: act.title,
-                              description: act.description ?? '',
-                              scheduledDate: act.scheduled_date ? act.scheduled_date.slice(0, 16) : '',
-                              durationMinutes: String(act.duration_minutes ?? 30),
-                              priority: act.priority ?? 'normal',
-                            });
-                          }} className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Editar">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => deleteActivityMutation.mutate(act.id)}
-                            disabled={deleteActivityMutation.isPending}
-                            className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <Permissao chave="pastoral_visits.pastoral_attendance_detail.editar" rotulo="Editar — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                            <button onClick={() => {
+                              setEditingActivityId(act.id);
+                              setEditingActivityForm({
+                                type: act.activity_type,
+                                title: act.title,
+                                description: act.description ?? '',
+                                scheduledDate: act.scheduled_date ? act.scheduled_date.slice(0, 16) : '',
+                                durationMinutes: String(act.duration_minutes ?? 30),
+                                priority: act.priority ?? 'normal',
+                              });
+                            }} className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Editar">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          </Permissao>
+                          <Permissao chave="pastoral_visits.pastoral_attendance_detail.excluir" rotulo="Excluir — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                            <button onClick={() => deleteActivityMutation.mutate(act.id)}
+                              disabled={deleteActivityMutation.isPending}
+                              className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </Permissao>
                         </div>
                       </div>
                     )}
@@ -1051,10 +1072,12 @@ export function PastoralAttendanceDetail({
                 {activities.length === 0 && !showActivityForm && (
                   <div className="text-center py-8">
                     <p className="text-sm text-slate-400 mb-3">Nenhuma atividade cadastrada.</p>
-                    <button onClick={() => setShowActivityForm(true)}
-                      className="flex items-center gap-1.5 mx-auto px-4 py-2 bg-orange-50 text-orange-700 text-sm font-semibold rounded-lg hover:bg-orange-100 transition-colors">
-                      <Plus className="w-4 h-4" />Criar primeira atividade
-                    </button>
+                    <Permissao chave="pastoral_visits.pastoral_attendance_detail.criar_primeira_atividade" rotulo="Criar primeira atividade — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                      <button onClick={() => setShowActivityForm(true)}
+                        className="flex items-center gap-1.5 mx-auto px-4 py-2 bg-orange-50 text-orange-700 text-sm font-semibold rounded-lg hover:bg-orange-100 transition-colors">
+                        <Plus className="w-4 h-4" />Criar primeira atividade
+                      </button>
+                    </Permissao>
                   </div>
                 )}
               </div>
@@ -1147,10 +1170,12 @@ export function PastoralAttendanceDetail({
                                   <MessageCircle className="w-4 h-4" />
                                 </a>
                               )}
-                              <button onClick={() => removeParticipantMutation.mutate(p.id)}
-                                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors" title="Remover">
-                                <X className="w-4 h-4" />
-                              </button>
+                              <Permissao chave="pastoral_visits.pastoral_attendance_detail.remover" rotulo="Remover — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                                <button onClick={() => removeParticipantMutation.mutate(p.id)}
+                                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors" title="Remover">
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </Permissao>
                             </div>
                           </div>
                         );
@@ -1177,13 +1202,15 @@ export function PastoralAttendanceDetail({
                             </span>
                             <span className="truncate max-w-[140px]">{name}</span>
                             <span className="text-[10px] text-slate-500 opacity-70">· {PARTICIPANT_ROLE_LABELS[p.role] ?? p.role}</span>
-                            <button
-                              onClick={() => removeParticipantMutation.mutate(p.id)}
-                              className="ml-0.5 hover:text-red-500 text-slate-400 transition-colors"
-                              title="Remover"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
+                            <Permissao chave="pastoral_visits.pastoral_attendance_detail.remover" rotulo="Remover — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                              <button
+                                onClick={() => removeParticipantMutation.mutate(p.id)}
+                                className="ml-0.5 hover:text-red-500 text-slate-400 transition-colors"
+                                title="Remover"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Permissao>
                           </span>
                         );
                       })}
@@ -1223,20 +1250,22 @@ export function PastoralAttendanceDetail({
                               const title = m.ecclesiastical_title || 'Membro';
                               const churchName = m.churches?.name || 'Igreja';
                               return (
-                                <button key={m.id}
-                                  onClick={() => addParticipantMutation.mutate({ memberId: m.id, role: participantRole })}
-                                  disabled={addParticipantMutation.isPending}
-                                  className="flex flex-col gap-0.5 w-full px-4 py-2 hover:bg-green-50 text-left border-b border-slate-100 last:border-0 transition-colors"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <User className="w-4 h-4 text-slate-400" />
-                                    <span className="font-semibold text-sm text-slate-800">{name}</span>
-                                    <span className="ml-auto text-xs text-green-600 font-medium hover:underline">+ Adicionar</span>
-                                  </div>
-                                  <div className="text-[10px] text-slate-500 pl-6">
-                                    {title} • {churchName}
-                                  </div>
-                                </button>
+                                <Permissao key={m.id} chave="pastoral_visits.pastoral_attendance_detail.adicionar" rotulo="+ Adicionar • — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                                  <button key={m.id}
+                                    onClick={() => addParticipantMutation.mutate({ memberId: m.id, role: participantRole })}
+                                    disabled={addParticipantMutation.isPending}
+                                    className="flex flex-col gap-0.5 w-full px-4 py-2 hover:bg-green-50 text-left border-b border-slate-100 last:border-0 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <User className="w-4 h-4 text-slate-400" />
+                                      <span className="font-semibold text-sm text-slate-800">{name}</span>
+                                      <span className="ml-auto text-xs text-green-600 font-medium hover:underline">+ Adicionar</span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 pl-6">
+                                      {title} • {churchName}
+                                    </div>
+                                  </button>
+                                </Permissao>
                               );
                             })
                         ) : (
@@ -1284,12 +1313,14 @@ export function PastoralAttendanceDetail({
                     <Upload className="w-8 h-8 text-slate-300" />
                     <p className="text-sm font-medium text-slate-600">Clique para selecionar ou arraste um arquivo</p>
                     <p className="text-xs text-slate-400">PDF, imagens, documentos...</p>
-                    <button
-                      type="button"
-                      className="mt-1 flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                    >
-                      <Upload className="w-4 h-4" /> Anexar Arquivo
-                    </button>
+                    <Permissao chave="pastoral_visits.pastoral_attendance_detail.anexar_arquivo" rotulo="Anexar Arquivo — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                      <button
+                        type="button"
+                        className="mt-1 flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                      >
+                        <Upload className="w-4 h-4" /> Anexar Arquivo
+                      </button>
+                    </Permissao>
                   </div>
                 )}
               </div>
@@ -1311,10 +1342,12 @@ export function PastoralAttendanceDetail({
                           className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors" title="Download">
                           <Download className="w-4 h-4" />
                         </a>
-                        <button onClick={() => void handleFileDelete(file.name)}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <Permissao chave="pastoral_visits.pastoral_attendance_detail.excluir" rotulo="Excluir — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                          <button onClick={() => void handleFileDelete(file.name)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </Permissao>
                       </div>
                     );
                   })}

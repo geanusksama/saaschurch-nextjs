@@ -36,6 +36,7 @@ import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { usePermissions } from '../../lib/usePermissions';
 import { exportRows } from './exportUtils';
 import { toast } from 'sonner';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function currentProfileType(): string {
   try {
@@ -514,20 +515,24 @@ export default function PastoralSendHistory() {
           <Bot className="w-4 h-4" />
           IA ({selected.size})
         </button>
-        <button onClick={() => setConfirmRemoveAllAi(true)} disabled={removingAllAi || !aiConversationIds.length || !canManageAi}
-          title={!canManageAi ? 'Sem permissão para gerenciar agentes de IA' : 'Remover o agente de IA de todas as conversas atendidas por IA nesta lista'}
-          className="h-9 px-3 rounded-lg border border-red-200 text-red-600 text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
-          {removingAllAi ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-          Remover IA de todos
-        </button>
+        <Permissao chave="pastoral_visits.pastoral_send_history.remover_ia_de_todos" rotulo="Remover IA de todos — Pastoral Send History" herda="pastoral_visits.view">
+          <button onClick={() => setConfirmRemoveAllAi(true)} disabled={removingAllAi || !aiConversationIds.length || !canManageAi}
+            title={!canManageAi ? 'Sem permissão para gerenciar agentes de IA' : 'Remover o agente de IA de todas as conversas atendidas por IA nesta lista'}
+            className="h-9 px-3 rounded-lg border border-red-200 text-red-600 text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+            {removingAllAi ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+            Remover IA de todos
+          </button>
+        </Permissao>
 
         {/* Exclusão de envios */}
-        <button onClick={() => setConfirmDeleteSelected(true)} disabled={!selected.size || deleting || !canManageAi}
-          title={!canManageAi ? 'Sem permissão para excluir envios' : 'Excluir envios selecionados'}
-          className="h-9 px-3 rounded-lg border border-red-200 text-red-600 text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
-          <Trash2 className="w-4 h-4" />
-          Excluir selecionados
-        </button>
+        <Permissao chave="pastoral_visits.pastoral_send_history.excluir_selecionados" rotulo="Excluir selecionados — Pastoral Send History" herda="pastoral_visits.view">
+          <button onClick={() => setConfirmDeleteSelected(true)} disabled={!selected.size || deleting || !canManageAi}
+            title={!canManageAi ? 'Sem permissão para excluir envios' : 'Excluir envios selecionados'}
+            className="h-9 px-3 rounded-lg border border-red-200 text-red-600 text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+            <Trash2 className="w-4 h-4" />
+            Excluir selecionados
+          </button>
+        </Permissao>
         <button onClick={() => setConfirmClearAll(true)} disabled={!sends.length || deleting || !canManageAi}
           title={!canManageAi ? 'Sem permissão para excluir envios' : 'Excluir todos os envios que batem com o filtro atual'}
           className="h-9 px-3 rounded-lg bg-red-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600">
@@ -587,18 +592,22 @@ export default function PastoralSendHistory() {
           )}
           <div className="ml-auto flex items-center gap-1.5">
             <span className="text-xs text-slate-400 hidden sm:inline">Exportar:</span>
-            <button onClick={() => exportSends('csv')} disabled={!sends.length}
-              title={selected.size ? 'Exportar selecionados (CSV)' : 'Exportar todos os listados (CSV)'}
-              className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
-              <Download className="w-3.5 h-3.5" />
-              CSV
-            </button>
-            <button onClick={() => exportSends('xlsx')} disabled={!sends.length}
-              title={selected.size ? 'Exportar selecionados (Excel)' : 'Exportar todos os listados (Excel)'}
-              className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              Excel
-            </button>
+            <Permissao chave="pastoral_visits.pastoral_send_history.csv" rotulo="CSV — Pastoral Send History" herda="pastoral_visits.view">
+              <button onClick={() => exportSends('csv')} disabled={!sends.length}
+                title={selected.size ? 'Exportar selecionados (CSV)' : 'Exportar todos os listados (CSV)'}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+                <Download className="w-3.5 h-3.5" />
+                CSV
+              </button>
+            </Permissao>
+            <Permissao chave="pastoral_visits.pastoral_send_history.excel" rotulo="Excel — Pastoral Send History" herda="pastoral_visits.view">
+              <button onClick={() => exportSends('xlsx')} disabled={!sends.length}
+                title={selected.size ? 'Exportar selecionados (Excel)' : 'Exportar todos os listados (Excel)'}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                Excel
+              </button>
+            </Permissao>
             <button onClick={load} className="h-8 w-8 rounded-lg hover:bg-slate-100 inline-flex items-center justify-center flex-shrink-0">
               <RefreshCw className="w-4 h-4 text-slate-400" />
             </button>
@@ -639,15 +648,17 @@ export default function PastoralSendHistory() {
                     <span title={`Atendida por ${agentName(s.aiAgentId)}`}
                       className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase pl-1.5 pr-1 py-0.5 rounded bg-violet-50 text-violet-600">
                       <Bot className="w-3 h-3" /> IA
-                      <button
-                        onClick={e => { e.stopPropagation(); s.conversationId && removeAiFromRow(s.conversationId); }}
-                        disabled={removingAiId === s.conversationId || !canManageAi}
-                        title={canManageAi ? 'Remover IA desta conversa' : 'Sem permissão para gerenciar agentes de IA'}
-                        className="rounded-full hover:bg-violet-200 p-0.5 disabled:opacity-40">
-                        {removingAiId === s.conversationId
-                          ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                          : <X className="w-2.5 h-2.5" />}
-                      </button>
+                      <Permissao chave="pastoral_visits.pastoral_send_history.remover_ia_da_conversa" rotulo="Remover IA da conversa — Pastoral Send History" herda="pastoral_visits.view">
+                        <button
+                          onClick={e => { e.stopPropagation(); s.conversationId && removeAiFromRow(s.conversationId); }}
+                          disabled={removingAiId === s.conversationId || !canManageAi}
+                          title={canManageAi ? 'Remover IA desta conversa' : 'Sem permissão para gerenciar agentes de IA'}
+                          className="rounded-full hover:bg-violet-200 p-0.5 disabled:opacity-40">
+                          {removingAiId === s.conversationId
+                            ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                            : <X className="w-2.5 h-2.5" />}
+                        </button>
+                      </Permissao>
                     </span>
                   )}
                 </div>
@@ -728,10 +739,12 @@ export default function PastoralSendHistory() {
                 </button>
               ))}
             </div>
-            <button onClick={() => assignAi(null)} disabled={aiApplying}
-              className="h-9 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 disabled:opacity-50">
-              Remover IA das selecionadas
-            </button>
+            <Permissao chave="pastoral_visits.pastoral_send_history.remover_ia_das_selecionadas" rotulo="Remover IA das selecionadas — Pastoral Send History" herda="pastoral_visits.view">
+              <button onClick={() => assignAi(null)} disabled={aiApplying}
+                className="h-9 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 disabled:opacity-50">
+                Remover IA das selecionadas
+              </button>
+            </Permissao>
           </div>
         </div>
       )}
@@ -752,16 +765,18 @@ export default function PastoralSendHistory() {
                   {openSend.aiEnabled && (
                     <span className="inline-flex items-center gap-1 text-violet-600">
                       · <Bot className="w-3 h-3" /> {agentName(openSend.aiAgentId)}
-                      <button
-                        onClick={() => openSend.conversationId && removeAiFromRow(openSend.conversationId).then(() =>
-                          setOpenSend(prev => prev ? { ...prev, aiEnabled: false, aiAgentId: null } : prev))}
-                        disabled={removingAiId === openSend.conversationId || !canManageAi}
-                        title={canManageAi ? 'Remover IA desta conversa' : 'Sem permissão para gerenciar agentes de IA'}
-                        className="rounded-full hover:bg-violet-100 p-0.5 disabled:opacity-40">
-                        {removingAiId === openSend.conversationId
-                          ? <Loader2 className="w-3 h-3 animate-spin" />
-                          : <X className="w-3 h-3" />}
-                      </button>
+                      <Permissao chave="pastoral_visits.pastoral_send_history.remover_ia_da_conversa" rotulo="Remover IA da conversa — Pastoral Send History" herda="pastoral_visits.view">
+                        <button
+                          onClick={() => openSend.conversationId && removeAiFromRow(openSend.conversationId).then(() =>
+                            setOpenSend(prev => prev ? { ...prev, aiEnabled: false, aiAgentId: null } : prev))}
+                          disabled={removingAiId === openSend.conversationId || !canManageAi}
+                          title={canManageAi ? 'Remover IA desta conversa' : 'Sem permissão para gerenciar agentes de IA'}
+                          className="rounded-full hover:bg-violet-100 p-0.5 disabled:opacity-40">
+                          {removingAiId === openSend.conversationId
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <X className="w-3 h-3" />}
+                        </button>
+                      </Permissao>
                     </span>
                   )}
                 </div>
@@ -797,12 +812,14 @@ export default function PastoralSendHistory() {
                         <Copy className="w-3.5 h-3.5" />
                         Copiar para o campo
                       </button>
-                      <button onClick={() => sendReply(smart.mensagem_sugerida)} disabled={replySending || !canResend}
-                        title={!canResend ? 'Sem permissão para enviar mensagens de WhatsApp' : undefined}
-                        className="flex-1 h-8 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-emerald-500 disabled:opacity-50">
-                        {replySending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                        Enviar sugestão
-                      </button>
+                      <Permissao chave="pastoral_visits.pastoral_send_history.enviar_sugestao" rotulo="Enviar sugestão — Pastoral Send History" herda="pastoral_visits.view">
+                        <button onClick={() => sendReply(smart.mensagem_sugerida)} disabled={replySending || !canResend}
+                          title={!canResend ? 'Sem permissão para enviar mensagens de WhatsApp' : undefined}
+                          className="flex-1 h-8 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-emerald-500 disabled:opacity-50">
+                          {replySending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                          Enviar sugestão
+                        </button>
+                      </Permissao>
                     </div>
                   </div>
                 )}
@@ -844,11 +861,13 @@ export default function PastoralSendHistory() {
                   onKeyDown={e => e.key === 'Enter' && sendReply()}
                   placeholder="Digite uma mensagem..."
                   className="flex-1 h-10 px-3 rounded-lg border border-slate-200 text-sm" />
-                <button onClick={() => sendReply()} disabled={replySending || !replyText.trim() || !instanceId || !canResend}
-                  title={!canResend ? 'Sem permissão para enviar mensagens de WhatsApp' : undefined}
-                  className="h-10 px-4 rounded-lg bg-emerald-600 text-white inline-flex items-center gap-2 text-sm font-semibold hover:bg-emerald-500 disabled:opacity-50">
-                  {replySending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </button>
+                <Permissao chave="pastoral_visits.pastoral_send_history.enviar_reply" rotulo="Enviar (reply) — Pastoral Send History" herda="pastoral_visits.view">
+                  <button onClick={() => sendReply()} disabled={replySending || !replyText.trim() || !instanceId || !canResend}
+                    title={!canResend ? 'Sem permissão para enviar mensagens de WhatsApp' : undefined}
+                    className="h-10 px-4 rounded-lg bg-emerald-600 text-white inline-flex items-center gap-2 text-sm font-semibold hover:bg-emerald-500 disabled:opacity-50">
+                    {replySending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>

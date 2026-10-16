@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { apiBase } from "../../lib/apiBase";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function authFetch(url: string, init: RequestInit = {}) {
   const token = localStorage.getItem("mrm_token");
@@ -274,13 +275,15 @@ function ServicesView({
             <p className="text-sm text-slate-500 dark:text-slate-400">Gerencie os serviços e configure a matriz de decisão</p>
           </div>
         </div>
-        <button
-          onClick={onNewService}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700"
-        >
-          <Plus className="w-4 h-4" />
-          Novo serviço
-        </button>
+        <Permissao chave="services.services_matrix.novo_servico" rotulo="Novo serviço — Services Matrix" herda="services.view">
+          <button
+            onClick={onNewService}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700"
+          >
+            <Plus className="w-4 h-4" />
+            Novo serviço
+          </button>
+        </Permissao>
       </div>
 
       {/* Search */}
@@ -383,13 +386,15 @@ function ServicesView({
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        title="Editar serviço"
-                        onClick={() => onEdit(svc)}
-                        className="rounded-md border border-slate-200 dark:border-slate-700 p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="services.services_matrix.editar_servico" rotulo="Editar serviço — Services Matrix" herda="services.view">
+                        <button
+                          title="Editar serviço"
+                          onClick={() => onEdit(svc)}
+                          className="rounded-md border border-slate-200 dark:border-slate-700 p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                       <button
                         title="Matriz de decisão"
                         onClick={() => onOpenMatrix(svc)}
@@ -397,13 +402,15 @@ function ServicesView({
                       >
                         <List className="w-4 h-4" />
                       </button>
-                      <button
-                        title="Excluir"
-                        onClick={() => onDelete(svc.id)}
-                        className="rounded-md border border-slate-200 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="services.services_matrix.excluir" rotulo="Excluir — Services Matrix" herda="services.view">
+                        <button
+                          title="Excluir"
+                          onClick={() => onDelete(svc.id)}
+                          className="rounded-md border border-slate-200 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     </div>
                   </td>
                 </tr>
@@ -470,12 +477,14 @@ function MatrixView({
             </p>
           </div>
         </div>
-        <button
-          onClick={onNewRule}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700"
-        >
-          Nova Regra
-        </button>
+        <Permissao chave="services.services_matrix.nova_regra" rotulo="Nova Regra — Services Matrix" herda="services.view">
+          <button
+            onClick={onNewRule}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700"
+          >
+            Nova Regra
+          </button>
+        </Permissao>
       </div>
 
       {/* Table */}
@@ -553,13 +562,15 @@ function MatrixView({
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        title="Editar"
-                        onClick={() => onEdit(rule)}
-                        className="rounded-md p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="services.services_matrix.editar" rotulo="Editar — Services Matrix" herda="services.view">
+                        <button
+                          title="Editar"
+                          onClick={() => onEdit(rule)}
+                          className="rounded-md p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     </div>
                   </td>
                 </tr>
@@ -1092,13 +1103,15 @@ function ModalActions({
       >
         Cancelar
       </button>
-      <button
-        onClick={onSave}
-        disabled={saving}
-        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
-      >
-        {saving ? "Salvando..." : "Salvar"}
-      </button>
+      <Permissao chave="services.services_matrix.salvar" rotulo="Salvar — Services Matrix" herda="services.view">
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+        >
+          {saving ? "Salvando..." : "Salvar"}
+        </button>
+      </Permissao>
     </div>
   );
 }

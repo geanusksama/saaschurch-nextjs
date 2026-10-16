@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { Truck, Plus, Loader2, Save, Printer, Search, Eye, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
 import { authFetch } from "../../lib/secretariaHooks";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Church { id: string; name: string }
 interface Trimestre { id: string; nome: string; ano: number }
@@ -182,10 +183,12 @@ export default function EbdEntrega() {
           <div className="p-2 bg-blue-100 rounded-lg"><Truck className="w-6 h-6 text-blue-600" /></div>
           <h1 className="text-2xl font-bold text-slate-900">Separação / Entrega</h1>
         </div>
-        <button onClick={() => setTab("nova")}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">
-          <Plus className="w-4 h-4" /> Nova Entrega
-        </button>
+        <Permissao chave="ebd_entrega.ebd_entrega.nova_entrega" rotulo="Nova Entrega — Ebd Entrega" herda="ebd_entrega.view">
+          <button onClick={() => setTab("nova")}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">
+            <Plus className="w-4 h-4" /> Nova Entrega
+          </button>
+        </Permissao>
       </div>
 
       <div className="flex gap-2 border-b border-slate-200">
@@ -340,16 +343,20 @@ export default function EbdEntrega() {
                         R$ {fmt(Number(item.quantidade) * Number(item.valorUnit))}
                       </td>
                       <td className="py-2 w-8">
-                        <button onClick={() => removeItem(idx)} className="p-1 text-slate-400 hover:text-red-500 rounded">✕</button>
+                        <Permissao chave="ebd_entrega.ebd_entrega.remover_item" rotulo="Remover (item) — Ebd Entrega" herda="ebd_entrega.view">
+                          <button onClick={() => removeItem(idx)} className="p-1 text-slate-400 hover:text-red-500 rounded">✕</button>
+                        </Permissao>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <button onClick={addItem} className="flex items-center gap-1 text-sm text-purple-600 hover:underline">
-              <Plus className="w-4 h-4" /> Adicionar produto
-            </button>
+            <Permissao chave="ebd_entrega.ebd_entrega.adicionar_produto" rotulo="Adicionar produto — Ebd Entrega" herda="ebd_entrega.view">
+              <button onClick={addItem} className="flex items-center gap-1 text-sm text-purple-600 hover:underline">
+                <Plus className="w-4 h-4" /> Adicionar produto
+              </button>
+            </Permissao>
 
             <div className="border-t pt-4 flex items-center justify-between">
               <div className="text-sm text-slate-500">
@@ -360,10 +367,12 @@ export default function EbdEntrega() {
                 <button onClick={() => setTab("lista")} className="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50">
                   Cancelar
                 </button>
-                <button onClick={saveEntrega} disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar e Gerar Documento
-                </button>
+                <Permissao chave="ebd_entrega.ebd_entrega.salvar_e_gerar_documento" rotulo="Salvar e Gerar Documento — Ebd Entrega" herda="ebd_entrega.view">
+                  <button onClick={saveEntrega} disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar e Gerar Documento
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>
@@ -378,10 +387,12 @@ export default function EbdEntrega() {
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-slate-900">Comprovante de Entrega</h2>
                 <div className="flex gap-2">
-                  <button onClick={printDoc}
-                    className="flex items-center gap-1 px-3 py-2 border rounded-lg text-sm text-slate-700 hover:bg-slate-50">
-                    <Printer className="w-4 h-4" /> Imprimir
-                  </button>
+                  <Permissao chave="ebd_entrega.ebd_entrega.imprimir" rotulo="Imprimir — Ebd Entrega" herda="ebd_entrega.view">
+                    <button onClick={printDoc}
+                      className="flex items-center gap-1 px-3 py-2 border rounded-lg text-sm text-slate-700 hover:bg-slate-50">
+                      <Printer className="w-4 h-4" /> Imprimir
+                    </button>
+                  </Permissao>
                   <button onClick={() => setViewEntrega(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded">✕</button>
                 </div>
               </div>

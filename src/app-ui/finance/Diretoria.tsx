@@ -18,6 +18,7 @@ import { apiBase } from '../../lib/apiBase';
 import { usePermissions } from '../../lib/usePermissions';
 import { buildDizimistasReport, type DizimistasReport, type DizimistasEntry, type DizimistasScopeMember } from '../spreadsheet/dizimistasAnalysis';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────
 function brl(v: number) {
@@ -1322,20 +1323,24 @@ export default function Diretoria() {
           
           {tab === 'dizimistas' && tithersList.length > 0 && canExportExecutive('finance_executive') && (
             <>
-              <button
-                onClick={handleExportExcel}
-                className="flex items-center justify-center gap-1.5 h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                Excel
-              </button>
-              <button
-                onClick={handlePrint}
-                className="flex items-center justify-center gap-1.5 h-9 px-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold shadow-xs transition-colors"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                Imprimir
-              </button>
+              <Permissao chave="finance_executive.diretoria.excel" rotulo="Excel — Diretoria" herda="finance_executive.view">
+                <button
+                  onClick={handleExportExcel}
+                  className="flex items-center justify-center gap-1.5 h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Excel
+                </button>
+              </Permissao>
+              <Permissao chave="finance_executive.diretoria.imprimir" rotulo="Imprimir — Diretoria" herda="finance_executive.view">
+                <button
+                  onClick={handlePrint}
+                  className="flex items-center justify-center gap-1.5 h-9 px-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Imprimir
+                </button>
+              </Permissao>
             </>
           )}
           <button

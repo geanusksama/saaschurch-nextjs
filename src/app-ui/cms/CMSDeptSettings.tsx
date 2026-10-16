@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Save, Eye, Globe, Tag, CheckCircle, Loader2, ArrowLeft } from "lucide-react";
 import { DEPT_MAP, DEPARTMENTS, type DeptSlug } from "../../components/public/portal/departments/deptConfig";
 import { useDeptPage, useSaveDeptPage } from "../../hooks/useDeptPage";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export default function CMSDeptSettings() {
   const { id: deptSlug } = useParams<{ id: string }>();
@@ -57,15 +58,17 @@ export default function CMSDeptSettings() {
                 {published ? "O mini-site está visível no portal público." : "Somente admins conseguem ver este mini-site."}
               </p>
             </div>
-            <button onClick={handlePublish} disabled={saveMutation.isPending}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                published
-                  ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400"
-                  : "bg-green-600 text-white hover:bg-green-700"
-              }`}>
-              {saveMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : savedOk ? <CheckCircle size={14} /> : <Globe size={14} />}
-              {published ? "Despublicar" : "Publicar"}
-            </button>
+            <Permissao chave="tela_cms.cmsdept_settings.despublicar_publicar" rotulo="Despublicar Publicar — CMSDept Settings" herda="tela_cms.view">
+              <button onClick={handlePublish} disabled={saveMutation.isPending}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  published
+                    ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400"
+                    : "bg-green-600 text-white hover:bg-green-700"
+                }`}>
+                {saveMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : savedOk ? <CheckCircle size={14} /> : <Globe size={14} />}
+                {published ? "Despublicar" : "Publicar"}
+              </button>
+            </Permissao>
           </div>
         </div>
 

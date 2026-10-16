@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -450,10 +451,12 @@ export default function AppNotificationManager() {
             <button onClick={() => refetch()} className="p-2 rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
               <RefreshCw className="w-4 h-4 text-slate-500" />
             </button>
-            <button onClick={openNew}
-              className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl transition-colors">
-              <Plus className="w-4 h-4" /> Nova notificação
-            </button>
+            <Permissao chave="tela_app.app_notification_manager.nova_notificacao" rotulo="Nova notificação — App Notification Manager" herda="tela_app.view">
+              <button onClick={openNew}
+                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl transition-colors">
+                <Plus className="w-4 h-4" /> Nova notificação
+              </button>
+            </Permissao>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -529,19 +532,25 @@ export default function AppNotificationManager() {
                 </button>
                 {!isSent && (
                   <>
-                    <button onClick={() => openEdit(n)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors" title="Editar">
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setConfirmSend(n)}
-                      className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 transition-colors" title="Enviar agora">
-                      <Send className="w-4 h-4" />
-                    </button>
+                    <Permissao chave="tela_app.app_notification_manager.editar" rotulo="Editar — App Notification Manager" herda="tela_app.view">
+                      <button onClick={() => openEdit(n)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors" title="Editar">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </Permissao>
+                    <Permissao chave="tela_app.app_notification_manager.enviar_agora" rotulo="Enviar agora — App Notification Manager" herda="tela_app.view">
+                      <button onClick={() => setConfirmSend(n)}
+                        className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 transition-colors" title="Enviar agora">
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </Permissao>
                   </>
                 )}
-                <button onClick={() => { if (confirm('Excluir esta notificação?')) deleteMut.mutate(n.id); }}
-                  className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <Permissao chave="tela_app.app_notification_manager.excluir" rotulo="Excluir — App Notification Manager" herda="tela_app.view">
+                  <button onClick={() => { if (confirm('Excluir esta notificação?')) deleteMut.mutate(n.id); }}
+                    className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors" title="Excluir">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </Permissao>
               </div>
             </div>
           );
@@ -773,12 +782,14 @@ export default function AppNotificationManager() {
 
             <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex gap-2 justify-end bg-slate-50 dark:bg-slate-800/80 sticky bottom-0">
               <button onClick={closeForm} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">Cancelar</button>
-              <button onClick={handleSave}
-                disabled={saveMut.isPending || !form.title.trim() || !form.body.trim()}
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
-                {saveMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-                Salvar
-              </button>
+              <Permissao chave="tela_app.app_notification_manager.salvar" rotulo="Salvar — App Notification Manager" herda="tela_app.view">
+                <button onClick={handleSave}
+                  disabled={saveMut.isPending || !form.title.trim() || !form.body.trim()}
+                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+                  {saveMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                  Salvar
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -843,11 +854,13 @@ export default function AppNotificationManager() {
             </p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmSend(null)} className="flex-1 px-4 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
-              <button onClick={() => sendMut.mutate(confirmSend.id)} disabled={sendMut.isPending}
-                className="flex-1 px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                {sendMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Enviar agora
-              </button>
+              <Permissao chave="tela_app.app_notification_manager.enviar_agora" rotulo="Enviar agora — App Notification Manager" herda="tela_app.view">
+                <button onClick={() => sendMut.mutate(confirmSend.id)} disabled={sendMut.isPending}
+                  className="flex-1 px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                  {sendMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Enviar agora
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { ArrowLeft, Mail, Phone, MapPin, Calendar, User, Building, Tag, Clock, MessageSquare, CheckCircle, Edit } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge } from '../../design-system/components/Badge';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const activities = [
   { id: 1, type: 'email', title: 'Email enviado', description: 'Enviou email de boas-vindas', date: '2024-03-15 14:30', user: 'Ana Costa' },
@@ -44,10 +45,12 @@ export function LeadDetail() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button className="flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
-              <Edit className="w-5 h-5" />
-              Editar
-            </button>
+            <Permissao chave="tela_crm.lead_detail.editar" rotulo="Editar — Lead Detail" herda="tela_crm.view">
+              <button className="flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+                <Edit className="w-5 h-5" />
+                Editar
+              </button>
+            </Permissao>
             <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
               <CheckCircle className="w-5 h-5" />
               Converter em Membro
@@ -128,10 +131,12 @@ export function LeadDetail() {
               ))}
             </div>
 
-            <button className="w-full mt-4 flex items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium">
-              <MessageSquare className="w-5 h-5" />
-              Adicionar Atividade
-            </button>
+            <Permissao chave="tela_crm.lead_detail.adicionar_atividade" rotulo="Adicionar Atividade — Lead Detail" herda="tela_crm.view">
+              <button className="w-full mt-4 flex items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium">
+                <MessageSquare className="w-5 h-5" />
+                Adicionar Atividade
+              </button>
+            </Permissao>
           </div>
 
           {/* Notes */}
@@ -152,9 +157,11 @@ export function LeadDetail() {
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
               rows={3}
             ></textarea>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-              Salvar Nota
-            </button>
+            <Permissao chave="tela_crm.lead_detail.salvar_nota" rotulo="Salvar Nota — Lead Detail" herda="tela_crm.view">
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                Salvar Nota
+              </button>
+            </Permissao>
           </div>
         </div>
 
@@ -179,10 +186,12 @@ export function LeadDetail() {
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h2 className="text-lg font-bold text-slate-900 mb-4">Ações Rápidas</h2>
             <div className="space-y-2">
-              <button className="w-full flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
-                <Mail className="w-5 h-5 text-blue-600" />
-                Enviar Email
-              </button>
+              <Permissao chave="tela_crm.lead_detail.enviar_email" rotulo="Enviar Email — Lead Detail" herda="tela_crm.view">
+                <button className="w-full flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+                  <Mail className="w-5 h-5 text-blue-600" />
+                  Enviar Email
+                </button>
+              </Permissao>
               <button className="w-full flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
                 <Phone className="w-5 h-5 text-green-600" />
                 Ligar
@@ -191,10 +200,12 @@ export function LeadDetail() {
                 <Calendar className="w-5 h-5 text-purple-600" />
                 Agendar Reunião
               </button>
-              <button className="w-full flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
-                <CheckCircle className="w-5 h-5 text-orange-600" />
-                Criar Tarefa
-              </button>
+              <Permissao chave="tela_crm.lead_detail.criar_tarefa" rotulo="Criar Tarefa — Lead Detail" herda="tela_crm.view">
+                <button className="w-full flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+                  <CheckCircle className="w-5 h-5 text-orange-600" />
+                  Criar Tarefa
+                </button>
+              </Permissao>
             </div>
           </div>
 
@@ -206,7 +217,9 @@ export function LeadDetail() {
               <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">Célula</span>
               <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">Discipulado</span>
             </div>
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">+ Adicionar Tag</button>
+            <Permissao chave="tela_crm.lead_detail.adicionar_tag" rotulo="+ Adicionar Tag — Lead Detail" herda="tela_crm.view">
+              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">+ Adicionar Tag</button>
+            </Permissao>
           </div>
         </div>
       </div>

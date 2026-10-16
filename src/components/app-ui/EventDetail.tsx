@@ -1,6 +1,7 @@
 import { ArrowLeft, Calendar, MapPin, Users, DollarSign, QrCode, Edit, Share2, Ticket, Clock, User } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge } from '../../design-system/components/Badge';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const ticketTypes = [
   { id: 1, name: 'VIP', price: 150, sold: 85, total: 100, color: 'purple' },
@@ -54,10 +55,12 @@ export function EventDetail() {
                   <Share2 className="w-5 h-5" />
                   Compartilhar
                 </button>
-                <button className="flex items-center gap-2 bg-white text-slate-900 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors font-medium">
-                  <Edit className="w-5 h-5" />
-                  Editar
-                </button>
+                <Permissao chave="tela_eventos.event_detail.editar" rotulo="Editar — Event Detail" herda="tela_eventos.view">
+                  <button className="flex items-center gap-2 bg-white text-slate-900 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors font-medium">
+                    <Edit className="w-5 h-5" />
+                    Editar
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>

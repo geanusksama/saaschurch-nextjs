@@ -11,6 +11,7 @@ import { Loader2, Search, Upload, User, Users, X } from 'lucide-react';
 import { apiBase } from '../../../lib/apiBase';
 import DateRangeFilter from '../../../app-ui/pastoral/DateRangeFilter';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 interface ImportBatch {
   id: string;
@@ -189,15 +190,17 @@ export function AttachMemberModal({ cellGroupId, cellGroupNames, onClose, onAtta
             <Users className="w-4 h-4" />
             Membros
           </button>
-          <button
-            onClick={() => setTab('imports')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
-              tab === 'imports' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <Upload className="w-4 h-4" />
-            Listas importadas
-          </button>
+          <Permissao chave="cells.attach_member_modal.listas_importadas" rotulo="Listas importadas — Attach Member Modal" herda="cells.view">
+            <button
+              onClick={() => setTab('imports')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
+                tab === 'imports' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              Listas importadas
+            </button>
+          </Permissao>
         </div>
 
         {error && <div className="mx-6 mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>}
@@ -265,13 +268,15 @@ export function AttachMemberModal({ cellGroupId, cellGroupNames, onClose, onAtta
                         <p className="text-xs text-slate-500">{m.mobile || m.phone || 'Sem telefone'}</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => attach({ source: 'member', memberId: m.id }, m.id)}
-                      disabled={busy === m.id}
-                      className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                    >
-                      {busy === m.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Anexar'}
-                    </button>
+                    <Permissao chave="cells.attach_member_modal.anexar" rotulo="Anexar — Attach Member Modal" herda="cells.view">
+                      <button
+                        onClick={() => attach({ source: 'member', memberId: m.id }, m.id)}
+                        disabled={busy === m.id}
+                        className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        {busy === m.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Anexar'}
+                      </button>
+                    </Permissao>
                   </div>
                 ))}
                 {!searching && query.length >= 3 && !members.length && (
@@ -301,19 +306,21 @@ export function AttachMemberModal({ cellGroupId, cellGroupNames, onClose, onAtta
                           )}
                         </p>
                       </div>
-                      <button
-                        onClick={() => attach({ source: 'import', importRowId: r.id }, r.id)}
-                        disabled={busy === r.id || inGroup === cellGroupId}
-                        className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                      >
-                        {busy === r.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : inGroup === cellGroupId ? (
-                          'Neste GF'
-                        ) : (
-                          'Anexar'
-                        )}
-                      </button>
+                      <Permissao chave="cells.attach_member_modal.neste_gf_anexar" rotulo="Neste GF Anexar — Attach Member Modal" herda="cells.view">
+                        <button
+                          onClick={() => attach({ source: 'import', importRowId: r.id }, r.id)}
+                          disabled={busy === r.id || inGroup === cellGroupId}
+                          className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          {busy === r.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : inGroup === cellGroupId ? (
+                            'Neste GF'
+                          ) : (
+                            'Anexar'
+                          )}
+                        </button>
+                      </Permissao>
                     </div>
                   );
                 })}

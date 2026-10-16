@@ -1,5 +1,6 @@
 import { Target, Plus, Phone, Mail, Calendar, User, TrendingUp, MessageSquare } from 'lucide-react';
 import { Badge } from '../../design-system/components/Badge';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const prospects = [
   {
@@ -74,10 +75,12 @@ export function ProspectingModule() {
             <p className="text-slate-600 dark:text-slate-400">Gerencie novos visitantes e leads</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-          <Plus className="w-5 h-5" />
-          Novo Lead
-        </button>
+        <Permissao chave="tela_crm.prospecting_module.novo_lead" rotulo="Novo Lead — Prospecting Module" herda="tela_crm.view">
+          <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+            <Plus className="w-5 h-5" />
+            Novo Lead
+          </button>
+        </Permissao>
       </div>
 
       {/* Pipeline Stats */}

@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { apiBase as API } from '../../lib/apiBase';
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const MONTHS_PT = [
   'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
@@ -415,19 +416,25 @@ export function Agenda() {
               </button>
             ))}
           </div>
-          <button onClick={downloadCSVTemplate}
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            <Download className="h-4 w-4" /> Modelo CSV
-          </button>
-          <button onClick={openImport}
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            <Upload className="h-4 w-4" /> Importar CSV
-          </button>
-          {canCreate('events') ? (
-            <button onClick={openCreate}
-              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 active:scale-95 transition-all shadow-md">
-              <Plus className="h-4 w-4" /> Novo Evento
+          <Permissao chave="events.agenda.modelo_csv" rotulo="Modelo CSV — Agenda" herda="events.view">
+            <button onClick={downloadCSVTemplate}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              <Download className="h-4 w-4" /> Modelo CSV
             </button>
+          </Permissao>
+          <Permissao chave="events.agenda.importar_csv" rotulo="Importar CSV — Agenda" herda="events.view">
+            <button onClick={openImport}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              <Upload className="h-4 w-4" /> Importar CSV
+            </button>
+          </Permissao>
+          {canCreate('events') ? (
+            <Permissao chave="events.agenda.novo_evento" rotulo="Novo Evento — Agenda" herda="events.create">
+              <button onClick={openCreate}
+                className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 active:scale-95 transition-all shadow-md">
+                <Plus className="h-4 w-4" /> Novo Evento
+              </button>
+            </Permissao>
           ) : null}
         </div>
       </div>
@@ -584,10 +591,12 @@ export function Agenda() {
                   <span className="ml-2 font-normal text-slate-400">— {selectedEvents.length} evento{selectedEvents.length !== 1 ? 's' : ''}</span>
                 </h3>
                 {canCreate('events') ? (
-                  <button onClick={openCreate}
-                    className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700">
-                    <Plus className="h-3 w-3" /> Novo
-                  </button>
+                  <Permissao chave="events.agenda.novo" rotulo="Novo — Agenda" herda="events.create">
+                    <button onClick={openCreate}
+                      className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700">
+                      <Plus className="h-3 w-3" /> Novo
+                    </button>
+                  </Permissao>
                 ) : null}
               </div>
               {selectedEvents.length === 0 ? (
@@ -657,10 +666,12 @@ export function Agenda() {
               </div>
               {canCreate('events') ? (
                 <div className="border-t border-slate-100 p-3 dark:border-slate-800">
-                  <button onClick={openCreate}
-                    className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 hover:border-purple-400 hover:text-purple-600 transition-colors dark:border-slate-700 dark:text-slate-400">
-                    <Plus className="h-3 w-3" /> Novo evento
-                  </button>
+                  <Permissao chave="events.agenda.novo_evento_2" rotulo="Novo evento — Agenda" herda="events.create">
+                    <button onClick={openCreate}
+                      className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 hover:border-purple-400 hover:text-purple-600 transition-colors dark:border-slate-700 dark:text-slate-400">
+                      <Plus className="h-3 w-3" /> Novo evento
+                    </button>
+                  </Permissao>
                 </div>
               ) : null}
             </div>
@@ -757,7 +768,9 @@ export function Agenda() {
             <div className="py-16 text-center">
               <CalendarIcon className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-slate-600" />
               <p className="text-slate-500 dark:text-slate-400">{search ? `Nenhum resultado para "${search}"` : `Nenhum evento em ${calYear}.`}</p>
-              {canCreate('events') ? <button onClick={openCreate} className="mt-4 text-sm font-medium text-purple-600 hover:underline dark:text-purple-400">Adicionar primeiro evento</button> : null}
+              {canCreate('events') ? <Permissao chave="events.agenda.adicionar_primeiro_evento" rotulo="Adicionar primeiro evento — Agenda" herda="events.create">
+                <button onClick={openCreate} className="mt-4 text-sm font-medium text-purple-600 hover:underline dark:text-purple-400">Adicionar primeiro evento</button>
+              </Permissao> : null}
             </div>
           )}
           {!loading && monthOrder.map(month => (
@@ -888,7 +901,9 @@ export function Agenda() {
                   <div className="py-16 text-center">
                     <CalendarIcon className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-slate-600" />
                     <p className="text-slate-500 dark:text-slate-400">Nenhum evento neste dia</p>
-                    <button onClick={openCreate} className="mt-3 text-sm font-medium text-purple-600 hover:underline">Adicionar evento</button>
+                    <Permissao chave="events.agenda.adicionar_evento" rotulo="Adicionar evento — Agenda" herda="events.view">
+                      <button onClick={openCreate} className="mt-3 text-sm font-medium text-purple-600 hover:underline">Adicionar evento</button>
+                    </Permissao>
                   </div>
                 )}
               </div>
@@ -911,10 +926,12 @@ export function Agenda() {
                   <p className="text-xs text-slate-400">{getWeekday(`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(dayModalDay).padStart(2,'0')}`)}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => { setDayModalDay(null); openCreate(); }}
-                    className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700">
-                    <Plus className="h-3 w-3" /> Novo
-                  </button>
+                  <Permissao chave="events.agenda.novo_2" rotulo="Novo — Agenda" herda="events.view">
+                    <button onClick={() => { setDayModalDay(null); openCreate(); }}
+                      className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700">
+                      <Plus className="h-3 w-3" /> Novo
+                    </button>
+                  </Permissao>
                   <button onClick={() => setDayModalDay(null)} className="rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800">
                     <X className="h-4 w-4 text-slate-400" />
                   </button>
@@ -988,10 +1005,12 @@ export function Agenda() {
                   </button>
                 ) : null}
                 {canEdit('events') ? (
-                  <button onClick={() => openEdit(previewEvent)}
-                    className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-purple-700">
-                    <Pencil className="h-3.5 w-3.5" /> Editar
-                  </button>
+                  <Permissao chave="events.agenda.editar" rotulo="Editar — Agenda" herda="events.edit">
+                    <button onClick={() => openEdit(previewEvent)}
+                      className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-purple-700">
+                      <Pencil className="h-3.5 w-3.5" /> Editar
+                    </button>
+                  </Permissao>
                 ) : null}
               </div>
             ) : null}
@@ -1103,10 +1122,12 @@ export function Agenda() {
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-700">
               <button onClick={() => setShowModal(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
-              <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60 shadow">
-                {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
+              <Permissao chave="events.agenda.salvar" rotulo="Salvar — Agenda" herda="events.view">
+                <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60 shadow">
+                  {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -1120,10 +1141,12 @@ export function Agenda() {
             <p className="mb-5 text-sm text-slate-500">Esta acao nao pode ser desfeita.</p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDelId(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
-              <button onClick={() => handleDelete(delId)} disabled={deleting} className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
-                {deleting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                {deleting ? 'Excluindo...' : 'Excluir'}
-              </button>
+              <Permissao chave="events.agenda.excluir" rotulo="Excluir — Agenda" herda="events.view">
+                <button onClick={() => handleDelete(delId)} disabled={deleting} className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+                  {deleting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {deleting ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -1304,11 +1327,13 @@ export function Agenda() {
                   {importStep === 'map' ? 'Voltar' : 'Cancelar'}
                 </button>
                 {importStep === 'map' && (
-                  <button onClick={handleImport} disabled={importing}
-                    className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">
-                    {importing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    {importing ? 'Importando...' : `Importar ${csvRows.length} registros`}
-                  </button>
+                  <Permissao chave="events.agenda.importar_registros" rotulo="Importar registros — Agenda" herda="events.view">
+                    <button onClick={handleImport} disabled={importing}
+                      className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">
+                      {importing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {importing ? 'Importando...' : `Importar ${csvRows.length} registros`}
+                    </button>
+                  </Permissao>
                 )}
               </div>
             )}

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Key, Save, Trash2, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
 import { authFetch } from "../../lib/secretariaHooks";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface StripeConfig {
   id: string;
@@ -228,13 +229,17 @@ export default function StripeConfigAdmin({ campoId }: Props) {
         )}
 
         <div className="flex gap-3 pt-2">
-          <button type="submit" disabled={saving} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
-            <Save className="w-4 h-4" /> {saving ? "Salvando..." : config ? "Atualizar" : "Salvar"}
-          </button>
-          {config && (
-            <button type="button" onClick={handleDelete} disabled={deleting} className="flex items-center gap-2 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-50">
-              <Trash2 className="w-4 h-4" /> {deleting ? "Removendo..." : "Remover"}
+          <Permissao chave="tela_stripe.stripe_config_admin.atualizar_salvar" rotulo="Atualizar Salvar — Stripe Config Admin" herda="tela_stripe.view">
+            <button type="submit" disabled={saving} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
+              <Save className="w-4 h-4" /> {saving ? "Salvando..." : config ? "Atualizar" : "Salvar"}
             </button>
+          </Permissao>
+          {config && (
+            <Permissao chave="tela_stripe.stripe_config_admin.remover" rotulo="Remover — Stripe Config Admin" herda="tela_stripe.view">
+              <button type="button" onClick={handleDelete} disabled={deleting} className="flex items-center gap-2 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-50">
+                <Trash2 className="w-4 h-4" /> {deleting ? "Removendo..." : "Remover"}
+              </button>
+            </Permissao>
           )}
         </div>
       </form>

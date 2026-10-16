@@ -36,6 +36,7 @@ import { apiBase } from "../../lib/apiBase";
 import { useCampoVisible } from "../../lib/campoVisibility";
 import { PrintModal } from "../../components/app-ui/shared/PrintModal";
 import { printReport } from "../../lib/printReport";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Pipeline = { id: number; name: string; type: string | null };
 type Service = { id: number; sigla: string; description: string };
@@ -835,22 +836,26 @@ export default function SecretariatPipeline() {
               </div>
             )}
 
-            <button
-              onClick={exportExcel}
-              title="Exportar Excel"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Exportar</span>
-            </button>
-            <button
-              onClick={() => setPrintModalOpen(true)}
-              title="Imprimir relatório"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Imprimir</span>
-            </button>
+            <Permissao chave="crm_pipeline.secretariat_pipeline.exportar" rotulo="Exportar — Secretariat Pipeline" herda="crm_pipeline.view">
+              <button
+                onClick={exportExcel}
+                title="Exportar Excel"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Exportar</span>
+              </button>
+            </Permissao>
+            <Permissao chave="crm_pipeline.secretariat_pipeline.imprimir" rotulo="Imprimir — Secretariat Pipeline" herda="crm_pipeline.view">
+              <button
+                onClick={() => setPrintModalOpen(true)}
+                title="Imprimir relatório"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <Printer className="w-4 h-4" />
+                <span className="hidden sm:inline">Imprimir</span>
+              </button>
+            </Permissao>
 
             <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 p-1">
               <button
@@ -1006,10 +1011,12 @@ export default function SecretariatPipeline() {
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60">
                 Cancelar
               </button>
-              <button type="button" onClick={handleDeleteCard} disabled={cardActionLoading}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
-                {cardActionLoading ? 'Excluindo...' : 'Excluir'}
-              </button>
+              <Permissao chave="crm_pipeline.secretariat_pipeline.excluir" rotulo="Excluir — Secretariat Pipeline" herda="crm_pipeline.view">
+                <button type="button" onClick={handleDeleteCard} disabled={cardActionLoading}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+                  {cardActionLoading ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </>
@@ -1274,13 +1281,15 @@ function KanbanView({
           </div>
 
           {/* Exportar CSV */}
-          <button
-            onClick={exportCSV}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
-          >
-            <Download className="w-4 h-4" />
-            Exportar CSV
-          </button>
+          <Permissao chave="crm_pipeline.secretariat_pipeline.exportar_csv" rotulo="Exportar CSV — Secretariat Pipeline" herda="crm_pipeline.view">
+            <button
+              onClick={exportCSV}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              <Download className="w-4 h-4" />
+              Exportar CSV
+            </button>
+          </Permissao>
 
           {/* Ações dropdown */}
           <div className="relative" ref={actRef}>
@@ -1304,9 +1313,11 @@ function KanbanView({
                   <ArrowRightLeft className="w-4 h-4 text-slate-400" /> Mover de etapa ({selectedCount})
                 </button>
                 <div className="my-1 border-t border-slate-100" />
-                <button className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
-                  <Trash2 className="w-4 h-4" /> Excluir registros ({selectedCount})
-                </button>
+                <Permissao chave="crm_pipeline.secretariat_pipeline.excluir_registros" rotulo="Excluir registros ( ) — Secretariat Pipeline" herda="crm_pipeline.view">
+                  <button className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
+                    <Trash2 className="w-4 h-4" /> Excluir registros ({selectedCount})
+                  </button>
+                </Permissao>
               </div>
             )}
           </div>
@@ -1417,12 +1428,14 @@ function KanbanView({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Coluna</p>
-                        <button
-                          onClick={() => { setColMenuOpen({}); setColEditing((p) => ({ ...p, [col.id]: col.name })); }}
-                          className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60"
-                        >
-                          <Pencil className="w-4 h-4 text-slate-400" /> Editar nome
-                        </button>
+                        <Permissao chave="crm_pipeline.secretariat_pipeline.editar_nome" rotulo="Editar nome — Secretariat Pipeline" herda="crm_pipeline.view">
+                          <button
+                            onClick={() => { setColMenuOpen({}); setColEditing((p) => ({ ...p, [col.id]: col.name })); }}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60"
+                          >
+                            <Pencil className="w-4 h-4 text-slate-400" /> Editar nome
+                          </button>
+                        </Permissao>
                         <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
                         <button
                           disabled={columns.findIndex((c) => c.id === col.id) === 0}
@@ -1750,19 +1763,23 @@ function CardItem({
                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60">
                 <Eye className="w-4 h-4 text-slate-400" /> Ver detalhes
               </button>
-              <button onClick={() => { setMenuOpen(false); onAction("edit", card); }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60">
-                <Pencil className="w-4 h-4 text-slate-400" /> Editar
-              </button>
+              <Permissao chave="crm_pipeline.secretariat_pipeline.editar" rotulo="Editar — Secretariat Pipeline" herda="crm_pipeline.view">
+                <button onClick={() => { setMenuOpen(false); onAction("edit", card); }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60">
+                  <Pencil className="w-4 h-4 text-slate-400" /> Editar
+                </button>
+              </Permissao>
               <button onClick={() => { setMenuOpen(false); onAction("archive", card); }}
                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60">
                 <Archive className="w-4 h-4 text-slate-400" /> Arquivar
               </button>
               <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
-              <button onClick={() => { setMenuOpen(false); onAction("delete", card); }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">
-                <Trash2 className="w-4 h-4" /> Excluir
-              </button>
+              <Permissao chave="crm_pipeline.secretariat_pipeline.excluir" rotulo="Excluir — Secretariat Pipeline" herda="crm_pipeline.view">
+                <button onClick={() => { setMenuOpen(false); onAction("delete", card); }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">
+                  <Trash2 className="w-4 h-4" /> Excluir
+                </button>
+              </Permissao>
             </div>
           )}
         </div>
@@ -2055,12 +2072,14 @@ function CardDetailModal({
             <p className="mt-0.5 text-xs text-slate-400 font-mono">{card.protocol}</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={onEdit}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-            >
-              <Pencil className="w-3.5 h-3.5" /> Editar
-            </button>
+            <Permissao chave="crm_pipeline.secretariat_pipeline.editar" rotulo="Editar — Secretariat Pipeline" herda="crm_pipeline.view">
+              <button
+                onClick={onEdit}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Editar
+              </button>
+            </Permissao>
             <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
               <X className="w-5 h-5" />
             </button>
@@ -2226,15 +2245,17 @@ function CardDetailModal({
               <div className="space-y-5">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="mb-3 text-sm font-semibold text-slate-900">Adicionar novo arquivo</p>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={savingFile}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                  >
-                    {savingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    Anexar arquivo
-                  </button>
+                  <Permissao chave="crm_pipeline.secretariat_pipeline.anexar_arquivo" rotulo="Anexar arquivo — Secretariat Pipeline" herda="crm_pipeline.view">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={savingFile}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {savingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      Anexar arquivo
+                    </button>
+                  </Permissao>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -2319,42 +2340,48 @@ function CardDetailModal({
                         className="hidden"
                         onChange={(e) => setChatAttachment(e.target.files?.[0] || null)}
                       />
-                      <button
-                        type="button"
-                        onClick={() => chatFileInputRef.current?.click()}
-                        disabled={savingMessage}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                      >
-                        <Paperclip className="h-4 w-4" />
-                        Anexar arquivo
-                      </button>
+                      <Permissao chave="crm_pipeline.secretariat_pipeline.anexar_arquivo" rotulo="Anexar arquivo — Secretariat Pipeline" herda="crm_pipeline.view">
+                        <button
+                          type="button"
+                          onClick={() => chatFileInputRef.current?.click()}
+                          disabled={savingMessage}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                          Anexar arquivo
+                        </button>
+                      </Permissao>
                       {chatAttachment && (
                         <div className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
                           <Paperclip className="h-3.5 w-3.5" />
                           <span className="max-w-[220px] truncate">{chatAttachment.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setChatAttachment(null);
-                              if (chatFileInputRef.current) chatFileInputRef.current.value = "";
-                            }}
-                            className="text-slate-400 hover:text-slate-700"
-                            title="Remover arquivo"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                          <Permissao chave="crm_pipeline.secretariat_pipeline.remover_arquivo" rotulo="Remover arquivo — Secretariat Pipeline" herda="crm_pipeline.view">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setChatAttachment(null);
+                                if (chatFileInputRef.current) chatFileInputRef.current.value = "";
+                              }}
+                              className="text-slate-400 hover:text-slate-700"
+                              title="Remover arquivo"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </Permissao>
                         </div>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => void handleSendMessage()}
-                      disabled={savingMessage || (!chatText.trim() && !chatAttachment)}
-                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                    >
-                      {savingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
-                      Enviar mensagem
-                    </button>
+                    <Permissao chave="crm_pipeline.secretariat_pipeline.enviar_mensagem" rotulo="Enviar mensagem — Secretariat Pipeline" herda="crm_pipeline.view">
+                      <button
+                        type="button"
+                        onClick={() => void handleSendMessage()}
+                        disabled={savingMessage || (!chatText.trim() && !chatAttachment)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                      >
+                        {savingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
+                        Enviar mensagem
+                      </button>
+                    </Permissao>
                   </div>
                 </div>
               </div>
@@ -2676,13 +2703,15 @@ function EditCardModal({
           >
             Cancelar
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : "Salvar alterações"}
-          </button>
+          <Permissao chave="crm_pipeline.secretariat_pipeline.salvar_alteracoes" rotulo="Salvar alterações — Secretariat Pipeline" herda="crm_pipeline.view">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {saving ? "Salvando..." : "Salvar alterações"}
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>
@@ -2812,13 +2841,15 @@ function NewCardModal({
           <button onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600">
             Cancelar
           </button>
-          <button
-            onClick={submit}
-            disabled={submitting || (!memberId && !candidateName)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {submitting ? "Criando..." : "Criar"}
-          </button>
+          <Permissao chave="crm_pipeline.secretariat_pipeline.criar" rotulo="Criar — Secretariat Pipeline" herda="crm_pipeline.view">
+            <button
+              onClick={submit}
+              disabled={submitting || (!memberId && !candidateName)}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {submitting ? "Criando..." : "Criar"}
+            </button>
+          </Permissao>
         </div>
       </div>
     </Modal>

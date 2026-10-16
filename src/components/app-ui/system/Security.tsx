@@ -1,5 +1,6 @@
 import { Shield, Lock, Key, Smartphone, AlertTriangle, Check, Save } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 export function Security() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -209,9 +210,11 @@ export function Security() {
                 placeholder="Ex: 192.168.1.0/24"
                 className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
-              <button className="px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                Adicionar
-              </button>
+              <Permissao chave="settings_security.security.adicionar" rotulo="Adicionar — Security" herda="settings_security.view">
+                <button className="px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                  Adicionar
+                </button>
+              </Permissao>
             </div>
             <p className="text-xs text-slate-500">Adicione endereços IP ou faixas CIDR permitidas</p>
           </div>
@@ -222,10 +225,12 @@ export function Security() {
           <button className="px-6 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
-          <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
-            <Save className="w-5 h-5" />
-            Salvar Configurações
-          </button>
+          <Permissao chave="settings_security.security.salvar_configuracoes" rotulo="Salvar Configurações — Security" herda="settings_security.view">
+            <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
+              <Save className="w-5 h-5" />
+              Salvar Configurações
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

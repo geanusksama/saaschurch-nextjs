@@ -13,6 +13,7 @@ import { qk } from '../../lib/queryClient';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { logClientAudit } from '../../lib/auditClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type CampoOption = {
   id: string;
@@ -1142,74 +1143,84 @@ export function Members() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button
-            className="flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
-            onClick={() => setPrintModalOpen(true)}
-            disabled={isAnyActionActive}
-          >
-            {(printModalOpen || preparingPrint) ? (
-              <Loader2 className="h-4 w-4 animate-spin text-slate-600 dark:text-slate-400" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            {preparingPrint ? 'Gerando...' : printModalOpen ? 'Carregando...' : 'Imprimir'}
-          </button>
-          <button
-            className="flex items-center gap-2 rounded-lg border border-green-300 dark:border-green-800/40 bg-green-50 dark:bg-green-950/20 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/40 hover:border-green-400 dark:hover:border-green-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
-            onClick={handleExportExcel}
-            disabled={!visibleMembers.length || isAnyActionActive}
-          >
-            {exportingExcel ? (
-              <Loader2 className="h-4 w-4 animate-spin text-green-700 dark:text-green-400" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            {exportingExcel ? 'Exportando...' : 'Exportar Excel'}
-          </button>
+          <Permissao chave="members.members.imprimir" rotulo="Imprimir — Members" herda="members.view">
+            <button
+              className="flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
+              onClick={() => setPrintModalOpen(true)}
+              disabled={isAnyActionActive}
+            >
+              {(printModalOpen || preparingPrint) ? (
+                <Loader2 className="h-4 w-4 animate-spin text-slate-600 dark:text-slate-400" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {preparingPrint ? 'Gerando...' : printModalOpen ? 'Carregando...' : 'Imprimir'}
+            </button>
+          </Permissao>
+          <Permissao chave="members.members.exportar_excel" rotulo="Exportar Excel — Members" herda="members.view">
+            <button
+              className="flex items-center gap-2 rounded-lg border border-green-300 dark:border-green-800/40 bg-green-50 dark:bg-green-950/20 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/40 hover:border-green-400 dark:hover:border-green-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
+              onClick={handleExportExcel}
+              disabled={!visibleMembers.length || isAnyActionActive}
+            >
+              {exportingExcel ? (
+                <Loader2 className="h-4 w-4 animate-spin text-green-700 dark:text-green-400" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {exportingExcel ? 'Exportando...' : 'Exportar Excel'}
+            </button>
+          </Permissao>
 
-          <button
-            type="button"
-            onClick={() => setQuickCreateType('PF')}
-            disabled={isAnyActionActive}
-            className="flex items-center gap-2 rounded-lg border border-sky-300 dark:border-sky-800/40 bg-sky-50 dark:bg-sky-950/20 px-4 py-2 text-sm font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-950/40 hover:border-sky-400 dark:hover:border-sky-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
-          >
-            {quickCreateType === 'PF' ? (
-              <Loader2 className="h-4 w-4 animate-spin text-sky-700 dark:text-sky-400" />
-            ) : (
-              <UserRound className="h-4 w-4" />
-            )}
-            {quickCreateType === 'PF' ? 'Carregando...' : 'Novo PF'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setQuickCreateType('PJ')}
-            disabled={isAnyActionActive}
-            className="flex items-center gap-2 rounded-lg border border-indigo-300 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/20 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/40 hover:border-indigo-400 dark:hover:border-indigo-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
-          >
-            {quickCreateType === 'PJ' ? (
-              <Loader2 className="h-4 w-4 animate-spin text-indigo-700 dark:text-indigo-400" />
-            ) : (
-              <Building2 className="h-4 w-4" />
-            )}
-            {quickCreateType === 'PJ' ? 'Carregando...' : 'Novo PJ'}
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              setIsNavigatingNew(true);
-              navigate('/app-ui/members/new');
-            }}
-            disabled={isAnyActionActive}
-            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
-          >
-            {isNavigatingNew ? (
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            {isNavigatingNew ? 'Carregando...' : 'Novo Membro'}
-          </button>
+          <Permissao chave="members.members.novo_pf" rotulo="Novo PF — Members" herda="members.view">
+            <button
+              type="button"
+              onClick={() => setQuickCreateType('PF')}
+              disabled={isAnyActionActive}
+              className="flex items-center gap-2 rounded-lg border border-sky-300 dark:border-sky-800/40 bg-sky-50 dark:bg-sky-950/20 px-4 py-2 text-sm font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-950/40 hover:border-sky-400 dark:hover:border-sky-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
+            >
+              {quickCreateType === 'PF' ? (
+                <Loader2 className="h-4 w-4 animate-spin text-sky-700 dark:text-sky-400" />
+              ) : (
+                <UserRound className="h-4 w-4" />
+              )}
+              {quickCreateType === 'PF' ? 'Carregando...' : 'Novo PF'}
+            </button>
+          </Permissao>
+          <Permissao chave="members.members.novo_pj" rotulo="Novo PJ — Members" herda="members.view">
+            <button
+              type="button"
+              onClick={() => setQuickCreateType('PJ')}
+              disabled={isAnyActionActive}
+              className="flex items-center gap-2 rounded-lg border border-indigo-300 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/20 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/40 hover:border-indigo-400 dark:hover:border-indigo-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
+            >
+              {quickCreateType === 'PJ' ? (
+                <Loader2 className="h-4 w-4 animate-spin text-indigo-700 dark:text-indigo-400" />
+              ) : (
+                <Building2 className="h-4 w-4" />
+              )}
+              {quickCreateType === 'PJ' ? 'Carregando...' : 'Novo PJ'}
+            </button>
+          </Permissao>
+          <Permissao chave="members.members.novo_membro" rotulo="Novo Membro — Members" herda="members.view">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setIsNavigatingNew(true);
+                navigate('/app-ui/members/new');
+              }}
+              disabled={isAnyActionActive}
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
+            >
+              {isNavigatingNew ? (
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              {isNavigatingNew ? 'Carregando...' : 'Novo Membro'}
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -1565,23 +1576,27 @@ export function Members() {
                     </td>
                     <td className="px-4 py-4 align-top">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openEditor(member.id)}
-                          className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                          title="Editar"
-                        >
-                          <Pencil className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                        </button>
+                        <Permissao chave="members.members.editar" rotulo="Editar — Members" herda="members.view">
+                          <button
+                            type="button"
+                            onClick={() => openEditor(member.id)}
+                            className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                          </button>
+                        </Permissao>
 
-                        <button
-                          type="button"
-                          onClick={() => requestDelete(member)}
-                          className="rounded-lg p-2 hover:bg-red-50 transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </button>
+                        <Permissao chave="members.members.excluir" rotulo="Excluir — Members" herda="members.view">
+                          <button
+                            type="button"
+                            onClick={() => requestDelete(member)}
+                            className="rounded-lg p-2 hover:bg-red-50 transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </button>
+                        </Permissao>
                       </div>
                     </td>
                   </tr>
@@ -1704,14 +1719,16 @@ export function Members() {
               >
                 {deleting ? 'Arquivando...' : 'Arquivar'}
               </button>
-              <button
-                type="button"
-                onClick={() => confirmDelete(true)}
-                disabled={deleting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-              >
-                {deleting ? 'Excluindo...' : 'Excluir tudo'}
-              </button>
+              <Permissao chave="members.members.excluir_tudo" rotulo="Excluir tudo — Members" herda="members.view">
+                <button
+                  type="button"
+                  onClick={() => confirmDelete(true)}
+                  disabled={deleting}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                >
+                  {deleting ? 'Excluindo...' : 'Excluir tudo'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </>

@@ -54,6 +54,7 @@ import {
   unlockCampoVisibility,
   useCampoVisible,
 } from '../../lib/campoVisibility';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type SettingsItem = {
   id: string;
@@ -95,6 +96,7 @@ export const settingsSections: SettingsSection[] = [
     items: [
       { id: 'users',       name: 'Usuários',    description: 'Gerenciar contas de usuário', path: '/app-ui/system/users',       badge: '45', permKey: 'system_users' },
       { id: 'roles',       name: 'Funções',     description: 'Criar e editar funções',      path: '/app-ui/system/roles',       badge: '8',  permKey: 'system_roles' },
+      { id: 'grupos-usuarios', name: 'Grupos de Usuários', description: 'Grupos com regras, telas e igrejas', path: '/app-ui/system/grupos-usuarios', permKey: 'system_grupos_usuarios' },
       { id: 'permissions', name: 'Permissões',  description: 'Matriz de permissões',        path: '/app-ui/system/permissions',              permKey: 'system_permissions' },
     ]
   },
@@ -416,14 +418,18 @@ export function SystemSettings() {
             <Palette className="w-6 h-6 mb-2" />
             <p className="font-semibold text-sm">Design System</p>
           </Link>
-          <button className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md transition-all text-left">
-            <Users className="w-6 h-6 text-purple-600 mb-2" />
-            <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Adicionar Usuário</p>
-          </button>
-          <button className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md transition-all text-left">
-            <Key className="w-6 h-6 text-blue-600 mb-2" />
-            <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Gerar API Key</p>
-          </button>
+          <Permissao chave="tela_moldura.system_settings.adicionar_usuario" rotulo="Adicionar Usuário — System Settings" herda="tela_moldura.view">
+            <button className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md transition-all text-left">
+              <Users className="w-6 h-6 text-purple-600 mb-2" />
+              <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Adicionar Usuário</p>
+            </button>
+          </Permissao>
+          <Permissao chave="tela_moldura.system_settings.gerar_api_key" rotulo="Gerar API Key — System Settings" herda="tela_moldura.view">
+            <button className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md transition-all text-left">
+              <Key className="w-6 h-6 text-blue-600 mb-2" />
+              <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Gerar API Key</p>
+            </button>
+          </Permissao>
         </div>
       </div>}
     </div>

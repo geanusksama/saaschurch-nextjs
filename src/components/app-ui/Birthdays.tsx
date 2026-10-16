@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface BirthdayMember {
   id: string;
@@ -449,30 +450,36 @@ export function Birthdays() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={handlePrint} className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors no-print">
-            <Printer className="w-5 h-5" />
-            Imprimir
-          </button>
-          <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors no-print">
-            <Mail className="w-5 h-5" />
-            Enviar Email em Massa
-          </button>
-          <button
-            onClick={() => {
-              if (selectedMembers.size === 0) {
-                toast.error('Selecione pelo menos um aniversariante para envio em massa.');
-                return;
-              }
-              const selectedTargets = members.filter(m => selectedMembers.has(m.id));
-              setTargetMembers(selectedTargets);
-              setCustomMessage(DEFAULT_BIRTHDAY_MESSAGE);
-              setShowWhatsappModal(true);
-            }}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors no-print"
-          >
-            <MessageSquare className="w-5 h-5" />
-            Enviar WhatsApp
-          </button>
+          <Permissao chave="birthdays.birthdays.imprimir" rotulo="Imprimir — Birthdays" herda="birthdays.view">
+            <button onClick={handlePrint} className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors no-print">
+              <Printer className="w-5 h-5" />
+              Imprimir
+            </button>
+          </Permissao>
+          <Permissao chave="birthdays.birthdays.enviar_email_em_massa" rotulo="Enviar Email em Massa — Birthdays" herda="birthdays.view">
+            <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors no-print">
+              <Mail className="w-5 h-5" />
+              Enviar Email em Massa
+            </button>
+          </Permissao>
+          <Permissao chave="birthdays.birthdays.enviar_whatsapp" rotulo="Enviar WhatsApp — Birthdays" herda="birthdays.view">
+            <button
+              onClick={() => {
+                if (selectedMembers.size === 0) {
+                  toast.error('Selecione pelo menos um aniversariante para envio em massa.');
+                  return;
+                }
+                const selectedTargets = members.filter(m => selectedMembers.has(m.id));
+                setTargetMembers(selectedTargets);
+                setCustomMessage(DEFAULT_BIRTHDAY_MESSAGE);
+                setShowWhatsappModal(true);
+              }}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors no-print"
+            >
+              <MessageSquare className="w-5 h-5" />
+              Enviar WhatsApp
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -783,26 +790,30 @@ export function Birthdays() {
                     <ExternalLink className="w-5 h-5" />
                   </Link>
                   {birthday.email && (
-                    <button
-                      onClick={() => handleEmail(birthday)}
-                      title="Enviar email"
-                      className="p-3 bg-purple-100 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-950/50 transition-colors"
-                    >
-                      <Mail className="w-5 h-5" />
-                    </button>
+                    <Permissao chave="birthdays.birthdays.enviar_email" rotulo="Enviar email — Birthdays" herda="birthdays.view">
+                      <button
+                        onClick={() => handleEmail(birthday)}
+                        title="Enviar email"
+                        className="p-3 bg-purple-100 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-950/50 transition-colors"
+                      >
+                        <Mail className="w-5 h-5" />
+                      </button>
+                    </Permissao>
                   )}
                   {birthday.phone && (
-                    <button
-                      onClick={() => {
-                        setTargetMembers([birthday]);
-                        setCustomMessage(DEFAULT_BIRTHDAY_MESSAGE);
-                        setShowWhatsappModal(true);
-                      }}
-                      title="Enviar WhatsApp de aniversário"
-                      className="p-3 bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-950/50 transition-colors"
-                    >
-                      <MessageSquare className="w-5 h-5" />
-                    </button>
+                    <Permissao chave="birthdays.birthdays.enviar_whatsapp_de_aniversario" rotulo="Enviar WhatsApp de aniversário — Birthdays" herda="birthdays.view">
+                      <button
+                        onClick={() => {
+                          setTargetMembers([birthday]);
+                          setCustomMessage(DEFAULT_BIRTHDAY_MESSAGE);
+                          setShowWhatsappModal(true);
+                        }}
+                        title="Enviar WhatsApp de aniversário"
+                        className="p-3 bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-950/50 transition-colors"
+                      >
+                        <MessageSquare className="w-5 h-5" />
+                      </button>
+                    </Permissao>
                   )}
                   <button
                     title="Dar presente"
@@ -945,20 +956,22 @@ export function Birthdays() {
                   >
                     Cancelar
                   </button>
-                  <button
-                    onClick={startSendingQueue}
-                    disabled={sendingProgress?.active || !isConnected}
-                    className="flex-1 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
-                  >
-                    {sendingProgress?.active ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      targetMembers.length > 1 ? 'Enviar em Massa' : 'Enviar WhatsApp'
-                    )}
-                  </button>
+                  <Permissao chave="birthdays.birthdays.enviar_em_massa_enviar_whatsapp" rotulo="Enviar em Massa Enviar WhatsApp — Birthdays" herda="birthdays.view">
+                    <button
+                      onClick={startSendingQueue}
+                      disabled={sendingProgress?.active || !isConnected}
+                      className="flex-1 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      {sendingProgress?.active ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        targetMembers.length > 1 ? 'Enviar em Massa' : 'Enviar WhatsApp'
+                      )}
+                    </button>
+                  </Permissao>
                 </div>
               </div>
             )}

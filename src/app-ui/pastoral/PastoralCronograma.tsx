@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { Table2, MessagesSquare } from 'lucide-react';
 import JourneyMatrixEditor from './JourneyMatrixEditor';
 import JourneySends from './JourneySends';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type SubTab = 'matrix' | 'sends';
 
@@ -22,14 +23,16 @@ export default function PastoralCronograma() {
   return (
     <div className="flex flex-col gap-3 h-full">
       <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
-        <button
-          onClick={() => setTab('sends')}
-          className={`h-8 px-3 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
-            ${tab === 'sends' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          <MessagesSquare className="w-4 h-4" />
-          Acompanhamento
-        </button>
+        <Permissao chave="pastoral_visits.pastoral_cronograma.acompanhamento" rotulo="Acompanhamento — Pastoral Cronograma" herda="pastoral_visits.view">
+          <button
+            onClick={() => setTab('sends')}
+            className={`h-8 px-3 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
+              ${tab === 'sends' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <MessagesSquare className="w-4 h-4" />
+            Acompanhamento
+          </button>
+        </Permissao>
         <button
           onClick={() => setTab('matrix')}
           className={`h-8 px-3 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors

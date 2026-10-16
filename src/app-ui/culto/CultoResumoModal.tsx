@@ -39,6 +39,7 @@ import {
   type StatusCulto,
 } from './cultoApi';
 import { PASTILHA, PONTO, TEXTO, TOM_DO_STATUS, tomDoSemaforo } from './cultoCores';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 /** Um passo da trilha: o nó que o usuário abriu. */
 export interface PassoResumo {
@@ -411,23 +412,27 @@ export default function CultoResumoModal({
                           {/* Culto: editar (abre o drawer) e excluir, sem sair do resumo. */}
                           {no.tipo === 'CULTO' && no.registroId && (
                             <div className="flex items-center gap-1 pr-3 shrink-0">
-                              <button
-                                onClick={() => onAbrirCulto(no.registroId as string)}
-                                title="Editar culto"
-                                aria-label="Editar culto"
-                                className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.azul}`}
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              {onExcluirCulto && (
+                              <Permissao chave="culto_gestao.culto_resumo_modal.editar_culto" rotulo="Editar culto — Culto Resumo Modal" herda="culto_gestao.view">
                                 <button
-                                  onClick={() => onExcluirCulto(no.registroId as string)}
-                                  title="Excluir culto ou um dos envios"
-                                  aria-label="Excluir culto ou um dos envios"
-                                  className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+                                  onClick={() => onAbrirCulto(no.registroId as string)}
+                                  title="Editar culto"
+                                  aria-label="Editar culto"
+                                  className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.azul}`}
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Pencil className="w-4 h-4" />
                                 </button>
+                              </Permissao>
+                              {onExcluirCulto && (
+                                <Permissao chave="culto_gestao.culto_resumo_modal.excluir_culto_ou_um_dos_envios" rotulo="Excluir culto ou um dos envios — Culto Resumo Modal" herda="culto_gestao.view">
+                                  <button
+                                    onClick={() => onExcluirCulto(no.registroId as string)}
+                                    title="Excluir culto ou um dos envios"
+                                    aria-label="Excluir culto ou um dos envios"
+                                    className={`p-1.5 rounded-lg hover:brightness-95 ${PASTILHA.vermelho}`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </Permissao>
                               )}
                             </div>
                           )}

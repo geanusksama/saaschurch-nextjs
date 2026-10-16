@@ -3,6 +3,7 @@ import { BookOpen, Calendar, User, Heart, FileText, ArrowLeft, Save, Clock, Chec
 import { Link, useSearchParams } from 'react-router';
 import { useCounselings, useCounselingSessions, useCreateCounselingSession } from '../../lib/pastoralHooks';
 import { getCurrentChurchId } from '../../lib/pastoralService';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const sessionGoals = [
   'Melhorar comunicação no relacionamento',
@@ -289,12 +290,14 @@ export default function CounselingSession() {
                   className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                   onKeyDown={(e) => e.key === 'Enter' && addResource()}
                 />
-                <button
-                  onClick={addResource}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
+                <Permissao chave="tela_pastoral.counseling_session.adicionar_resource" rotulo="Adicionar (resource) — Counseling Session" herda="tela_pastoral.view">
+                  <button
+                    onClick={addResource}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </Permissao>
               </div>
               
               {resources.length > 0 && (
@@ -302,12 +305,14 @@ export default function CounselingSession() {
                   {resources.map((resource, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                       <span className="text-slate-900">{resource}</span>
-                      <button
-                        onClick={() => removeResource(index)}
-                        className="text-red-600 hover:bg-red-50 p-1 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="tela_pastoral.counseling_session.remover_resource" rotulo="Remover (resource) — Counseling Session" herda="tela_pastoral.view">
+                        <button
+                          onClick={() => removeResource(index)}
+                          className="text-red-600 hover:bg-red-50 p-1 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     </div>
                   ))}
                 </div>
@@ -361,14 +366,16 @@ export default function CounselingSession() {
                 <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{errorMessage}</div>
               )}
 
-              <button
-                onClick={handleSave}
-                disabled={createSession.isPending}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-60"
-              >
-                <Save className="w-5 h-5" />
-                {createSession.isPending ? 'Salvando...' : 'Salvar Sessão'}
-              </button>
+              <Permissao chave="tela_pastoral.counseling_session.salvar_sessao" rotulo="Salvar Sessão — Counseling Session" herda="tela_pastoral.view">
+                <button
+                  onClick={handleSave}
+                  disabled={createSession.isPending}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-60"
+                >
+                  <Save className="w-5 h-5" />
+                  {createSession.isPending ? 'Salvando...' : 'Salvar Sessão'}
+                </button>
+              </Permissao>
               <Link to="/app-ui/counseling-list" className="w-full flex items-center gap-3 px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors">
                 <ArrowLeft className="w-5 h-5" />
                 Cancelar

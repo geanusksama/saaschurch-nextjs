@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Building2, Save, UserRound, X } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type ChurchOption = {
   id: string;
@@ -304,10 +305,12 @@ export function MemberQuickCreateModal({
           <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50" disabled={saving}>
             Cancelar
           </button>
-          <button type="button" onClick={handleSave} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60" disabled={saving}>
-            <Save className="h-4 w-4" />
-            {saving ? 'Salvando...' : `Salvar ${type}`}
-          </button>
+          <Permissao chave="tela_lancamento_recibo.member_quick_create_modal.salvar" rotulo="Salvar cadastro rápido — Member Quick Create Modal" herda="tela_lancamento_recibo.view">
+            <button type="button" onClick={handleSave} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60" disabled={saving}>
+              <Save className="h-4 w-4" />
+              {saving ? 'Salvando...' : `Salvar ${type}`}
+            </button>
+          </Permissao>
         </div>
       </div>
     </>

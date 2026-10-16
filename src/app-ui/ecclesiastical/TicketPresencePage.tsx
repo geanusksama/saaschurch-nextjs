@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
 import { ConfirmationModal } from "../../design-system/components/Modal";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 interface TicketRecord {
@@ -417,24 +418,26 @@ export default function TicketPresencePage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tickets criados</h1>
           <p className="text-slate-500 text-sm">Gerencie e imprima tíquetes de presença</p>
         </div>
-        <button
-          onClick={() => {
-            setModalDate(getTodayStr());
-            if (isRestricted && currentUser?.churchId) {
-              const userChurch = churches.find(c => c.id === currentUser.churchId);
-              if (userChurch) {
-                setSelectedChurch(userChurch);
+        <Permissao chave="presence_tickets.ticket_presence_page.gerar_ticket" rotulo="Gerar Ticket — Ticket Presence Page" herda="presence_tickets.view">
+          <button
+            onClick={() => {
+              setModalDate(getTodayStr());
+              if (isRestricted && currentUser?.churchId) {
+                const userChurch = churches.find(c => c.id === currentUser.churchId);
+                if (userChurch) {
+                  setSelectedChurch(userChurch);
+                }
+              } else {
+                setSelectedChurch(null);
               }
-            } else {
-              setSelectedChurch(null);
-            }
-            setShowModal(true);
-          }}
-          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-[0.98]"
-        >
-          <Ticket className="w-4 h-4" />
-          Gerar Ticket
-        </button>
+              setShowModal(true);
+            }}
+            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-[0.98]"
+          >
+            <Ticket className="w-4 h-4" />
+            Gerar Ticket
+          </button>
+        </Permissao>
       </div>
 
       <div className="space-y-6">
@@ -541,31 +544,35 @@ export default function TicketPresencePage() {
           </button>
 
           {/* Print Button */}
-          <button
-            onClick={handlePrint}
-            disabled={tickets.length === 0}
-            className="flex items-center justify-center p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50"
-            title="Imprimir tíquetes filtrados"
-          >
-            <Printer className="w-4 h-4" />
-          </button>
+          <Permissao chave="presence_tickets.ticket_presence_page.imprimir_tiquetes_filtrados" rotulo="Imprimir tíquetes filtrados — Ticket Presence Page" herda="presence_tickets.view">
+            <button
+              onClick={handlePrint}
+              disabled={tickets.length === 0}
+              className="flex items-center justify-center p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50"
+              title="Imprimir tíquetes filtrados"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+          </Permissao>
 
           {/* Bulk Delete Button */}
           {selectedTicketIds.length > 0 && (
-            <button
-              onClick={() => {
-                setDeleteModalConfig({
-                  isOpen: true,
-                  title: "Excluir Tíquetes",
-                  message: `Deseja realmente excluir os ${selectedTicketIds.length} tíquetes selecionados?`,
-                  onConfirm: handleBulkDelete,
-                });
-              }}
-              className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm ml-auto md:ml-0"
-            >
-              <Trash2 className="w-4 h-4" />
-              Excluir ({selectedTicketIds.length})
-            </button>
+            <Permissao chave="presence_tickets.ticket_presence_page.excluir" rotulo="Excluir ( ) — Ticket Presence Page" herda="presence_tickets.view">
+              <button
+                onClick={() => {
+                  setDeleteModalConfig({
+                    isOpen: true,
+                    title: "Excluir Tíquetes",
+                    message: `Deseja realmente excluir os ${selectedTicketIds.length} tíquetes selecionados?`,
+                    onConfirm: handleBulkDelete,
+                  });
+                }}
+                className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm ml-auto md:ml-0"
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir ({selectedTicketIds.length})
+              </button>
+            </Permissao>
           )}
         </div>
 
@@ -632,19 +639,21 @@ export default function TicketPresencePage() {
                       <td className="px-6 py-4">{t.churchName || "—"}</td>
                       <td className="px-6 py-4">{t.regionalName || "—"}</td>
                       <td className="px-6 py-4">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTicket(t.id)}
-                          disabled={deletingId === t.id}
-                          className="p-1.5 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 text-slate-500 transition-all"
-                          title="Excluir tíquete"
-                        >
-                          {deletingId === t.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                        </button>
+                        <Permissao chave="presence_tickets.ticket_presence_page.excluir_tiquete" rotulo="Excluir tíquete — Ticket Presence Page" herda="presence_tickets.view">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTicket(t.id)}
+                            disabled={deletingId === t.id}
+                            className="p-1.5 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 text-slate-500 transition-all"
+                            title="Excluir tíquete"
+                          >
+                            {deletingId === t.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </button>
+                        </Permissao>
                       </td>
                       <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
                         {t.ticketCode || "—"}
@@ -871,18 +880,20 @@ export default function TicketPresencePage() {
               </div>
 
               {/* Generation submit action */}
-              <button
-                type="submit"
-                disabled={generating}
-                className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 mt-4"
-              >
-                {generating ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Barcode className="w-5 h-5" />
-                )}
-                Gerar Tikets
-              </button>
+              <Permissao chave="presence_tickets.ticket_presence_page.gerar_tikets" rotulo="Gerar Tikets — Ticket Presence Page" herda="presence_tickets.view">
+                <button
+                  type="submit"
+                  disabled={generating}
+                  className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 mt-4"
+                >
+                  {generating ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Barcode className="w-5 h-5" />
+                  )}
+                  Gerar Tikets
+                </button>
+              </Permissao>
             </form>
           </div>
         </div>

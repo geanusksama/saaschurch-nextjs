@@ -4,6 +4,7 @@ import { BarChart3, Download, Loader2, Search, Printer } from "lucide-react";
 import * as XLSX from "xlsx";
 import { apiBase } from "../../lib/apiBase";
 import { authFetch } from "../../lib/secretariaHooks";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type ReportType = "retiradas" | "financeiro" | "estoque" | "inadimplencia";
 
@@ -206,14 +207,18 @@ export default function EbdRelatorios() {
           </button>
           {data && (
             <>
-              <button onClick={exportExcel}
-                className="flex items-center gap-2 px-4 py-2 border border-green-600 text-green-700 rounded-lg text-sm hover:bg-green-50">
-                <Download className="w-4 h-4" /> Exportar Excel
-              </button>
-              <button onClick={printReport}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm hover:bg-slate-50">
-                <Printer className="w-4 h-4" /> Imprimir
-              </button>
+              <Permissao chave="ebd_relatorios.ebd_relatorios.exportar_excel" rotulo="Exportar Excel — Ebd Relatorios" herda="ebd_relatorios.view">
+                <button onClick={exportExcel}
+                  className="flex items-center gap-2 px-4 py-2 border border-green-600 text-green-700 rounded-lg text-sm hover:bg-green-50">
+                  <Download className="w-4 h-4" /> Exportar Excel
+                </button>
+              </Permissao>
+              <Permissao chave="ebd_relatorios.ebd_relatorios.imprimir" rotulo="Imprimir — Ebd Relatorios" herda="ebd_relatorios.view">
+                <button onClick={printReport}
+                  className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm hover:bg-slate-50">
+                  <Printer className="w-4 h-4" /> Imprimir
+                </button>
+              </Permissao>
             </>
           )}
         </div>

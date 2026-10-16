@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import { Sparkles, Loader2, X, TrendingUp, AlertTriangle, PhoneOff, Printer } from 'lucide-react';
 import { JOURNEY_PROFILE_COLORS, type JourneyProfile } from '../../lib/pastoralJourneyDefault';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') ?? '' : '';
@@ -91,13 +92,15 @@ export function JourneyAnalysisModal({
         <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-200">
           <TrendingUp className="w-5 h-5 text-violet-600" />
           <h2 className="text-lg font-bold text-slate-900 flex-1">Análise do Cronograma</h2>
-          <button
-            onClick={() => window.print()}
-            title="Imprimir a análise"
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
-          >
-            <Printer className="w-4 h-4" />
-          </button>
+          <Permissao chave="pastoral_visits.journey_analysis_modal.imprimir_a_analise" rotulo="Imprimir a análise — Journey Analysis Modal" herda="pastoral_visits.view">
+            <button
+              onClick={() => window.print()}
+              title="Imprimir a análise"
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+          </Permissao>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">
             <X className="w-5 h-5" />
           </button>

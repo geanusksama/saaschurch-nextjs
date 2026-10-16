@@ -5,6 +5,7 @@ import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { supabase } from '../../lib/supabaseClient';
 import { LocationPicker } from './shared/LocationPicker';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type EcclesiasticalTitleOption = {
   id: string;
@@ -562,21 +563,25 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                   </div>
                   <div className="flex flex-col gap-2">
                     <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoPick} />
-                    <button
-                      type="button"
-                      onClick={() => photoInputRef.current?.click()}
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <Camera className="h-4 w-4" /> {(photoPreview || photoUrl) ? 'Trocar foto' : 'Adicionar foto'}
-                    </button>
-                    {(photoPreview || photoUrl) && (
+                    <Permissao chave="tela_moldura.member_edit_drawer.trocar_foto_adicionar_foto" rotulo="Trocar foto Adicionar foto — Member Edit Drawer" herda="tela_moldura.view">
                       <button
                         type="button"
-                        onClick={removePhoto}
-                        className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                        onClick={() => photoInputRef.current?.click()}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                       >
-                        <Trash2 className="h-4 w-4" /> Remover foto
+                        <Camera className="h-4 w-4" /> {(photoPreview || photoUrl) ? 'Trocar foto' : 'Adicionar foto'}
                       </button>
+                    </Permissao>
+                    {(photoPreview || photoUrl) && (
+                      <Permissao chave="tela_moldura.member_edit_drawer.remover_foto" rotulo="Remover foto — Member Edit Drawer" herda="tela_moldura.view">
+                        <button
+                          type="button"
+                          onClick={removePhoto}
+                          className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" /> Remover foto
+                        </button>
+                      </Permissao>
                     )}
                     <p className="text-xs text-slate-400">A foto só é salva ao clicar em “Salvar alterações”.</p>
                   </div>
@@ -922,15 +927,17 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
           >
             Cancelar
           </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={loading || saving || !form.fullName.trim()}
-            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? 'Salvando...' : 'Salvar alterações'}
-          </button>
+          <Permissao chave="tela_moldura.member_edit_drawer.salvar_alteracoes" rotulo="Salvar alterações — Member Edit Drawer" herda="tela_moldura.view">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={loading || saving || !form.fullName.trim()}
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? 'Salvando...' : 'Salvar alterações'}
+            </button>
+          </Permissao>
         </footer>
 
         {cityOptions ? (

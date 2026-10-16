@@ -9,6 +9,7 @@ import { SantanderSummaryCards } from './SantanderSummaryCards'
 import type { SantanderMovimentoDto, TransactionsResponseDto } from '../dtos/santander.dto'
 import type { SantanderAccount } from './SantanderHomeView'
 import { apiBase } from '@/lib/apiBase'
+import { Permissao } from '../../../../lib/permissoes/Permissao';
 
 type Tab = 'conta' | 'pix' | 'cartoes'
 
@@ -245,11 +246,13 @@ export function SantanderExtratoView({
               <span className="text-xs text-slate-400">{data.pagination.total} movimentos</span>
             )}
             {canExport && movimentosFiltrados.length > 0 && (
-              <button onClick={() => exportToCsv(movimentosFiltrados, tab)}
-                className="flex items-center gap-1.5 h-7 px-2.5 rounded border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
-                <Download className="h-3 w-3" />
-                Exportar CSV
-              </button>
+              <Permissao chave="santander_view.santander_extrato_view.exportar_csv" rotulo="Exportar CSV — Santander Extrato View" herda="santander_view.view">
+                <button onClick={() => exportToCsv(movimentosFiltrados, tab)}
+                  className="flex items-center gap-1.5 h-7 px-2.5 rounded border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
+                  <Download className="h-3 w-3" />
+                  Exportar CSV
+                </button>
+              </Permissao>
             )}
           </div>
         </div>

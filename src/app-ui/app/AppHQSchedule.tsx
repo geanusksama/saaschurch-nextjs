@@ -4,6 +4,7 @@ import {
   Users, Star, Globe, Music2, Sparkles, Gift,
   type LucideIcon,
 } from 'lucide-react';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const DAYS = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
 
@@ -126,9 +127,11 @@ export default function AppHQSchedule() {
             <p className="text-slate-500 dark:text-slate-400">Horários dos cultos e eventos semanais</p>
           </div>
         </div>
-        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
-          <Plus className="w-4 h-4" /> Nova Programação
-        </button>
+        <Permissao chave="tela_app.app_hqschedule.nova_programacao" rotulo="Nova Programação — App HQSchedule" herda="tela_app.view">
+          <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+            <Plus className="w-4 h-4" /> Nova Programação
+          </button>
+        </Permissao>
       </div>
 
       {error && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-sm text-red-700 dark:text-red-300">{error}</div>}
@@ -139,7 +142,9 @@ export default function AppHQSchedule() {
         <div className="text-center py-16">
           <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 dark:text-slate-400">Nenhuma programação cadastrada</p>
-          <button onClick={openNew} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Adicionar Programação</button>
+          <Permissao chave="tela_app.app_hqschedule.adicionar_programacao" rotulo="Adicionar Programação — App HQSchedule" herda="tela_app.view">
+            <button onClick={openNew} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Adicionar Programação</button>
+          </Permissao>
         </div>
       ) : (
         <div className="space-y-4">
@@ -232,9 +237,11 @@ export default function AppHQSchedule() {
               </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button onClick={() => setModalOpen(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">Cancelar</button>
-                <button onClick={save} disabled={saving} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
+                <Permissao chave="tela_app.app_hqschedule.salvar" rotulo="Salvar — App HQSchedule" herda="tela_app.view">
+                  <button onClick={save} disabled={saving} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>

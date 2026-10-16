@@ -7,6 +7,7 @@ import { apiBase } from '../../lib/apiBase';
 import { qk } from '../../lib/queryClient';
 import { mascaraCep, mascaraCpf, mascaraRg, mascaraTelefone } from '../../lib/masks';
 import { LocationPicker } from './shared/LocationPicker';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export function MemberEdit() {
   const { id } = useParams();
@@ -141,14 +142,16 @@ export function MemberEdit() {
             <Link to={`/app-ui/members/${id}`} className="border border-slate-300 bg-white px-6 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium">
               Cancelar
             </Link>
-            <button
-              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-60"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              <Save className="w-5 h-5" />
-              {saving ? 'Salvando...' : 'Salvar Alteracoes'}
-            </button>
+            <Permissao chave="members.member_edit.salvar_alteracoes" rotulo="Salvar Alteracoes — Member Edit" herda="members.view">
+              <button
+                className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-60"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                <Save className="w-5 h-5" />
+                {saving ? 'Salvando...' : 'Salvar Alteracoes'}
+              </button>
+            </Permissao>
           </div>
         </div>
       </div>
@@ -717,14 +720,16 @@ export function MemberEditDrawer({
           >
             Cancelar
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || loading}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? 'Salvando...' : 'Salvar Alterações'}
-          </button>
+          <Permissao chave="members.member_edit.salvar_alteracoes_2" rotulo="Salvar Alterações — Member Edit" herda="members.view">
+            <button
+              onClick={handleSave}
+              disabled={saving || loading}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          </Permissao>
         </div>
       </div>
     </>

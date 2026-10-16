@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../../lib/supabaseClient';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -252,13 +253,15 @@ export default function AppMediaManager() {
             <button onClick={() => refetch()} className="p-2 rounded-lg border dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
               <RefreshCw className="w-4 h-4 text-slate-500" />
             </button>
-            <button
-              onClick={openNew}
-              className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Novo conteúdo
-            </button>
+            <Permissao chave="tela_app.app_media_manager.novo_conteudo" rotulo="Novo conteúdo — App Media Manager" herda="tela_app.view">
+              <button
+                onClick={openNew}
+                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Novo conteúdo
+              </button>
+            </Permissao>
           </div>
         </div>
 
@@ -560,14 +563,16 @@ export default function AppMediaManager() {
               <button onClick={closeForm} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
                 Cancelar
               </button>
-              <button
-                onClick={saveForm}
-                disabled={!form.title || saveMutation.isPending}
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-              >
-                {saveMutation.isPending && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                {isNew ? 'Criar conteúdo' : 'Salvar alterações'}
-              </button>
+              <Permissao chave="tela_app.app_media_manager.criar_conteudo_salvar_alteracoes" rotulo="Criar conteúdo Salvar alterações — App Media Manager" herda="tela_app.view">
+                <button
+                  onClick={saveForm}
+                  disabled={!form.title || saveMutation.isPending}
+                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {saveMutation.isPending && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  {isNew ? 'Criar conteúdo' : 'Salvar alterações'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -670,12 +675,16 @@ function MediaRow({
             ? <EyeOff className="w-4 h-4 text-slate-500" />
             : <Eye className="w-4 h-4 text-green-500" />}
         </button>
-        <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-          <Pencil className="w-4 h-4 text-slate-500" />
-        </button>
-        <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-          <Trash2 className="w-4 h-4 text-red-400" />
-        </button>
+        <Permissao chave="tela_app.app_media_manager.editar" rotulo="Editar — App Media Manager" herda="tela_app.view">
+          <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <Pencil className="w-4 h-4 text-slate-500" />
+          </button>
+        </Permissao>
+        <Permissao chave="tela_app.app_media_manager.excluir" rotulo="Excluir — App Media Manager" herda="tela_app.view">
+          <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+            <Trash2 className="w-4 h-4 text-red-400" />
+          </button>
+        </Permissao>
       </div>
     </div>
   );

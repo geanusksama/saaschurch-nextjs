@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -186,12 +187,14 @@ function CommentsPanel({ post, onClose }: { post: FeedPost; onClose: () => void 
                 <p className="text-sm text-slate-700 dark:text-slate-300">{c.content}</p>
                 <p className="text-[11px] text-slate-400 mt-1">{fmtDate(c.created_at)}</p>
               </div>
-              <button
-                onClick={() => { if (confirm('Excluir comentário?')) deleteMut.mutate(c.id); }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-rose-400 hover:text-rose-600"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <Permissao chave="tela_app.feed_manager.excluir_comentario" rotulo="Excluir comentário — Feed Manager" herda="tela_app.view">
+                <button
+                  onClick={() => { if (confirm('Excluir comentário?')) deleteMut.mutate(c.id); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-rose-400 hover:text-rose-600"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </Permissao>
             </div>
           ))}
         </div>
@@ -354,10 +357,12 @@ export default function FeedManager() {
             <button onClick={() => refetch()} className="p-2 rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
               <RefreshCw className="w-4 h-4 text-slate-500" />
             </button>
-            <button onClick={openNew}
-              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
-              <Plus className="w-4 h-4" /> Nova publicação
-            </button>
+            <Permissao chave="tela_app.feed_manager.nova_publicacao" rotulo="Nova publicação — Feed Manager" herda="tela_app.view">
+              <button onClick={openNew}
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
+                <Plus className="w-4 h-4" /> Nova publicação
+              </button>
+            </Permissao>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -415,11 +420,13 @@ export default function FeedManager() {
                   className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:bg-slate-100 dark:hover:bg-slate-600">
                   <Pencil className="w-3.5 h-3.5 text-slate-500" />
                 </button>
-                <button
-                  onClick={() => { if (confirm('Excluir publicação?')) deleteMut.mutate(post.id); }}
-                  className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20">
-                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                </button>
+                <Permissao chave="tela_app.feed_manager.excluir_publicacao" rotulo="Excluir publicação — Feed Manager" herda="tela_app.view">
+                  <button
+                    onClick={() => { if (confirm('Excluir publicação?')) deleteMut.mutate(post.id); }}
+                    className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20">
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  </button>
+                </Permissao>
               </div>
             </div>
           ))}
@@ -617,12 +624,14 @@ export default function FeedManager() {
 
             <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex gap-2 justify-end bg-slate-50 dark:bg-slate-800/80 sticky bottom-0">
               <button onClick={closeForm} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">Cancelar</button>
-              <button onClick={() => saveMut.mutate({ ...form, ...(editing ? { id: editing.id } : {}) })}
-                disabled={saveMut.isPending || !form.content.trim()}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
-                {saveMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {form.is_published ? 'Publicar' : 'Salvar rascunho'}
-              </button>
+              <Permissao chave="tela_app.feed_manager.publicar_salvar_rascunho" rotulo="Publicar Salvar rascunho — Feed Manager" herda="tela_app.view">
+                <button onClick={() => saveMut.mutate({ ...form, ...(editing ? { id: editing.id } : {}) })}
+                  disabled={saveMut.isPending || !form.content.trim()}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+                  {saveMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {form.is_published ? 'Publicar' : 'Salvar rascunho'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

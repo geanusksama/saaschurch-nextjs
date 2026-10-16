@@ -14,6 +14,7 @@ import {
 import { exportRows } from './exportUtils';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { toast } from 'sonner';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Batch {
   id: string;
@@ -231,14 +232,18 @@ export default function PastoralImports() {
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Nome ou telefone..."
               className="h-8 pl-8 pr-3 rounded-lg border border-slate-200 text-sm w-48" />
           </div>
-          <button onClick={() => exportDetail('csv')} disabled={!visibleRows.length}
-            className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
-            <Download className="w-3.5 h-3.5" /> CSV
-          </button>
-          <button onClick={() => exportDetail('xlsx')} disabled={!visibleRows.length}
-            className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
-            <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
-          </button>
+          <Permissao chave="pastoral_visits.pastoral_imports.csv" rotulo="CSV — Pastoral Imports" herda="pastoral_visits.view">
+            <button onClick={() => exportDetail('csv')} disabled={!visibleRows.length}
+              className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+              <Download className="w-3.5 h-3.5" /> CSV
+            </button>
+          </Permissao>
+          <Permissao chave="pastoral_visits.pastoral_imports.excel" rotulo="Excel — Pastoral Imports" herda="pastoral_visits.view">
+            <button onClick={() => exportDetail('xlsx')} disabled={!visibleRows.length}
+              className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30">
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
+            </button>
+          </Permissao>
         </div>
 
         <div className="flex-1 bg-white rounded-xl border border-slate-200 overflow-auto">
@@ -326,16 +331,20 @@ export default function PastoralImports() {
           <span className="text-xs text-violet-600 font-medium">{selected.size} selecionado(s)</span>
         )}
         <div className="ml-auto flex items-center gap-1.5">
-          <button onClick={() => setConfirmDeleteSelected(true)} disabled={!selected.size || deleting}
-            title="Excluir lotes selecionados"
-            className="h-8 px-2.5 rounded-lg border border-red-200 text-red-600 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-red-50 disabled:opacity-30">
-            <Trash2 className="w-3.5 h-3.5" /> Excluir selecionados
-          </button>
-          <button onClick={() => setConfirmClearAll(true)} disabled={!batches.length || deleting}
-            title="Excluir todos os lotes importados"
-            className="h-8 px-2.5 rounded-lg bg-red-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-red-700 disabled:opacity-30">
-            <Trash2 className="w-3.5 h-3.5" /> Limpar tudo
-          </button>
+          <Permissao chave="pastoral_visits.pastoral_imports.excluir_selecionados" rotulo="Excluir selecionados — Pastoral Imports" herda="pastoral_visits.view">
+            <button onClick={() => setConfirmDeleteSelected(true)} disabled={!selected.size || deleting}
+              title="Excluir lotes selecionados"
+              className="h-8 px-2.5 rounded-lg border border-red-200 text-red-600 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-red-50 disabled:opacity-30">
+              <Trash2 className="w-3.5 h-3.5" /> Excluir selecionados
+            </button>
+          </Permissao>
+          <Permissao chave="pastoral_visits.pastoral_imports.excluir_todos_os_lotes_importados" rotulo="Excluir todos os lotes importados — Pastoral Imports" herda="pastoral_visits.view">
+            <button onClick={() => setConfirmClearAll(true)} disabled={!batches.length || deleting}
+              title="Excluir todos os lotes importados"
+              className="h-8 px-2.5 rounded-lg bg-red-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-red-700 disabled:opacity-30">
+              <Trash2 className="w-3.5 h-3.5" /> Limpar tudo
+            </button>
+          </Permissao>
           <button onClick={loadBatches} className="p-1.5 rounded hover:bg-slate-100">
             <RefreshCw className="w-4 h-4 text-slate-400" />
           </button>

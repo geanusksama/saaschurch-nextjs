@@ -7,6 +7,7 @@ import {
   Plus, Bold, Italic, Underline, List, ListOrdered,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -747,12 +748,14 @@ function AgendaModal({ onClose }: { onClose: () => void }) {
                 {saveError && <span className="text-[10px] text-red-500">{saveError}</span>}
                 {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />}
                 {saved && !saving && <span className="text-[10px] text-green-500">✓ Salvo</span>}
-                <button type="button" onClick={() => saveNote()}
-                  disabled={saving}
-                  className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50">
-                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                  Salvar
-                </button>
+                <Permissao chave="tela_moldura.quick_widgets.salvar" rotulo="Salvar — Quick Widgets" herda="tela_moldura.view">
+                  <button type="button" onClick={() => saveNote()}
+                    disabled={saving}
+                    className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50">
+                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Salvar
+                  </button>
+                </Permissao>
               </div>
             </div>
             {noteLoading ? (
@@ -858,10 +861,12 @@ function FloatingNote({ note, index, onDelete, onUpdate, onColorChange }: Floati
             className="rounded p-0.5 text-slate-600 transition hover:bg-black/10">
             {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
           </button>
-          <button type="button" onClick={() => onDelete(note.id)} title="Excluir nota"
-            className="rounded p-0.5 text-slate-500 hover:text-red-600">
-            <X className="h-3.5 w-3.5" />
-          </button>
+          <Permissao chave="tela_moldura.quick_widgets.excluir_nota" rotulo="Excluir nota — Quick Widgets" herda="tela_moldura.view">
+            <button type="button" onClick={() => onDelete(note.id)} title="Excluir nota"
+              className="rounded p-0.5 text-slate-500 hover:text-red-600">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </Permissao>
         </div>
       </div>
       {/* Editor — hidden when collapsed */}
@@ -953,11 +958,13 @@ export function StickyNotesPanel({ onClose }: { onClose: () => void }) {
               style={{ background: c.bg }} title={c.label} />
           ))}
         </div>
-        <button type="button" onClick={addNote}
-          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold text-slate-800 shadow-sm transition hover:opacity-80"
-          style={{ background: newColor }}>
-          <Plus className="h-3 w-3" /> Nova
-        </button>
+        <Permissao chave="tela_moldura.quick_widgets.nova" rotulo="Nova — Quick Widgets" herda="tela_moldura.view">
+          <button type="button" onClick={addNote}
+            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold text-slate-800 shadow-sm transition hover:opacity-80"
+            style={{ background: newColor }}>
+            <Plus className="h-3 w-3" /> Nova
+          </button>
+        </Permissao>
         <button type="button" onClick={onClose}
           className="rounded-lg p-1 text-yellow-700 hover:bg-yellow-200 dark:text-yellow-300">
           <X className="h-4 w-4" />

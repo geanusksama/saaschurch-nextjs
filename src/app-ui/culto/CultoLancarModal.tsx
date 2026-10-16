@@ -27,6 +27,7 @@ import {
 } from './cultoApi';
 import { PASTILHA } from './cultoCores';
 import HorariosCultoModal from './HorariosCultoModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 /**
  * Os campos de cada bloco, em grupos com subtítulo.
@@ -489,14 +490,16 @@ export default function CultoLancarModal({
                 {/* O cadastro é da própria igreja e mora aqui, não em
                     Configurações: quem lança o culto é quem sabe os horários
                     dele, e não precisa de acesso administrativo para isso. */}
-                <button
-                  type="button"
-                  onClick={() => setCadastrandoHorarios(true)}
-                  title="Cadastrar horários de culto desta igreja"
-                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-                >
-                  <Settings2 className="w-4 h-4" />
-                </button>
+                <Permissao chave="culto_lancar.culto_lancar_modal.cadastrar_horarios_de_culto_desta_igreja" rotulo="Cadastrar horários de culto desta igreja — Culto Lancar Modal" herda="culto_lancar.view">
+                  <button
+                    type="button"
+                    onClick={() => setCadastrandoHorarios(true)}
+                    title="Cadastrar horários de culto desta igreja"
+                    className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                  </button>
+                </Permissao>
               </div>
             </label>
             {/* O tesoureiro escolhe só o horário cadastrado; quem cronometra o
@@ -545,14 +548,16 @@ export default function CultoLancarModal({
                   ))}
                 </select>
                 {/* Cadastro dos tipos, no CRUD genérico das listas auxiliares. */}
-                <button
-                  type="button"
-                  onClick={() => navigate('/app-ui/config/tipos-culto')}
-                  title="Cadastrar tipos de culto"
-                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-                >
-                  <Settings2 className="w-4 h-4" />
-                </button>
+                <Permissao chave="culto_lancar.culto_lancar_modal.cadastrar_tipos_de_culto" rotulo="Cadastrar tipos de culto — Culto Lancar Modal" herda="culto_lancar.view">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/app-ui/config/tipos-culto')}
+                    title="Cadastrar tipos de culto"
+                    className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                  </button>
+                </Permissao>
               </div>
             </label>
             {buscando && (
@@ -731,14 +736,16 @@ export default function CultoLancarModal({
             >
               Fechar
             </button>
-            <button
-              onClick={() => void salvar()}
-              disabled={salvando || jaAprovado || !churchId}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
-            >
-              {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Enviar
-            </button>
+            <Permissao chave="culto_lancar.culto_lancar_modal.enviar" rotulo="Enviar — Culto Lancar Modal" herda="culto_lancar.view">
+              <button
+                onClick={() => void salvar()}
+                disabled={salvando || jaAprovado || !churchId}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Enviar
+              </button>
+            </Permissao>
           </div>
         </div>
       </div>

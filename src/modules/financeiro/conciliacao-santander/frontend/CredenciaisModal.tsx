@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { X, Plus, Eye, EyeOff, AlertCircle, RefreshCw } from 'lucide-react'
 import { apiBase } from '@/lib/apiBase'
 import type { SantanderCredentialDto } from '../dtos/santander.dto'
+import { Permissao } from '../../../../lib/permissoes/Permissao';
 
 interface CredenciaisModalProps {
   onClose: () => void
@@ -197,10 +198,12 @@ export function CredenciaisModal({ onClose, onUpdated }: CredenciaisModalProps) 
               </details>
 
               <div className="flex gap-2 pt-1">
-                <button onClick={handleSave} disabled={saving}
-                  className="flex-1 h-8 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors">
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
+                <Permissao chave="santander_view.credenciais_modal.salvar" rotulo="Salvar — Credenciais Modal" herda="santander_view.view">
+                  <button onClick={handleSave} disabled={saving}
+                    className="flex-1 h-8 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors">
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </Permissao>
                 <button onClick={() => { setAdding(false); setError(null) }}
                   className="h-8 px-4 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-100 transition-colors">
                   Cancelar
@@ -212,11 +215,13 @@ export function CredenciaisModal({ onClose, onUpdated }: CredenciaisModalProps) 
 
         <div className="px-5 py-3 border-t border-slate-100 flex justify-between items-center">
           {!adding ? (
-            <button onClick={() => { setAdding(true); setError(null) }}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors">
-              <Plus className="h-3.5 w-3.5" />
-              Nova Credencial
-            </button>
+            <Permissao chave="santander_view.credenciais_modal.nova_credencial" rotulo="Nova Credencial — Credenciais Modal" herda="santander_view.view">
+              <button onClick={() => { setAdding(true); setError(null) }}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors">
+                <Plus className="h-3.5 w-3.5" />
+                Nova Credencial
+              </button>
+            </Permissao>
           ) : <span />}
           <div className="flex gap-2">
             <button onClick={() => void loadCredentials()}

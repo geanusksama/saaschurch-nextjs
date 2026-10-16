@@ -212,6 +212,7 @@ export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions,
             Cancelar
           </button>
           <button
+            data-sem-permissao="confirmação do modal compartilhado: só abre pelo botão Imprimir da tela, que já é marcado"
             onClick={() => {
               const agrupamento = groupOptions?.length ? groupBy : (showGroupBy ? groupByChurch : undefined);
               onPrint(orientation, sortBy, [...selectedCols], agrupamento);

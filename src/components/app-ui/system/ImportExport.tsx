@@ -6,6 +6,7 @@ import {
 import { useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router';
 import { apiBase } from '../../../lib/apiBase';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 // ─── Templates definitions ───────────────────────────────────────────────────
 
@@ -388,20 +389,24 @@ export function Import() {
               </div>
 
               <div className="flex gap-2">
-                <button
-                  onClick={() => downloadCSV(`template_${t.id}.csv`, buildCSV(t.fields))}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-xs font-medium transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Template CSV
-                </button>
-                <button
-                  onClick={() => { setEntity(t); setStep('upload'); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-xs font-medium transition-colors"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  Importar
-                </button>
+                <Permissao chave="tela_import_export.import_export.template_csv" rotulo="Template CSV — Import Export" herda="tela_import_export.view">
+                  <button
+                    onClick={() => downloadCSV(`template_${t.id}.csv`, buildCSV(t.fields))}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-xs font-medium transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Template CSV
+                  </button>
+                </Permissao>
+                <Permissao chave="tela_import_export.import_export.importar" rotulo="Importar — Import Export" herda="tela_import_export.view">
+                  <button
+                    onClick={() => { setEntity(t); setStep('upload'); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-xs font-medium transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Importar
+                  </button>
+                </Permissao>
               </div>
             </div>
           );
@@ -488,13 +493,15 @@ export function Import() {
           <button onClick={reset} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
-          <button
-            onClick={() => downloadCSV(`template_${entity.id}.csv`, buildCSV(entity.fields))}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Baixar Template CSV
-          </button>
+          <Permissao chave="tela_import_export.import_export.baixar_template_csv" rotulo="Baixar Template CSV — Import Export" herda="tela_import_export.view">
+            <button
+              onClick={() => downloadCSV(`template_${entity.id}.csv`, buildCSV(entity.fields))}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Baixar Template CSV
+            </button>
+          </Permissao>
         </div>
       </div>
     );
@@ -685,14 +692,16 @@ export function Import() {
             <ChevronLeft className="w-4 h-4" />
             Voltar
           </button>
-          <button
-            onClick={handleImport}
-            disabled={importing || validRows.length === 0}
-            className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium text-sm"
-          >
-            {importing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {importing ? 'Importando...' : `Importar ${validRows.length} registros`}
-          </button>
+          <Permissao chave="tela_import_export.import_export.importar_registros" rotulo="Importar registros — Import Export" herda="tela_import_export.view">
+            <button
+              onClick={handleImport}
+              disabled={importing || validRows.length === 0}
+              className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium text-sm"
+            >
+              {importing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {importing ? 'Importando...' : `Importar ${validRows.length} registros`}
+            </button>
+          </Permissao>
         </div>
       </div>
     );
@@ -733,9 +742,11 @@ export function Import() {
         )}
 
         <div className="flex gap-3">
-          <button onClick={reset} className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
-            Nova Importação
-          </button>
+          <Permissao chave="tela_import_export.import_export.nova_importacao" rotulo="Nova Importação — Import Export" herda="tela_import_export.view">
+            <button onClick={reset} className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
+              Nova Importação
+            </button>
+          </Permissao>
         </div>
       </div>
     );

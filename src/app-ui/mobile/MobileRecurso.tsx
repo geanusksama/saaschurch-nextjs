@@ -18,6 +18,7 @@ import { usePermissions } from '../../lib/usePermissions';
 import { RECURSOS, type CampoDef, type RecursoDef } from '../../lib/mobile/definicoes';
 import { api, enviarImagem, perfilAtual, type Pagina } from './api';
 import { JogoEditor } from './JogoEditor';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -305,11 +306,13 @@ function PainelExecucao({ ex, podeEditar, executando, onExecutar }: {
       )}
       {ex.manual.map((t) => <p key={t} className="text-sm text-slate-600 dark:text-slate-300">{t}</p>)}
       {ex.executavel && podeEditar && (
-        <button onClick={onExecutar} disabled={executando}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold">
-          {executando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-          Aprovar e executar
-        </button>
+        <Permissao chave="tela_mobile_recursos.mobile_recurso.aprovar_e_executar" rotulo="Aprovar e executar — Mobile Recurso" herda="tela_mobile_recursos.view">
+          <button onClick={onExecutar} disabled={executando}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold">
+            {executando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            Aprovar e executar
+          </button>
+        </Permissao>
       )}
       {ex.executavel && <p className="text-[11px] text-slate-500">Conclui a solicitação e a pessoa recebe o alerta no app. A resposta escrita abaixo vai junto.</p>}
     </div>
@@ -398,16 +401,20 @@ function Editor({ def, inicial, paiId, podeEditar, podeExcluir, onFechar, onSalv
         </div>
         <div className="flex items-center gap-2 px-5 py-3 border-t border-slate-200 dark:border-slate-700">
           {!novo && def.excluir && podeExcluir && (
-            <button onClick={() => onExcluir(inicial!)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">
-              <Trash2 className="w-4 h-4" /> Excluir
-            </button>
+            <Permissao chave="tela_mobile_recursos.mobile_recurso.excluir" rotulo="Excluir — Mobile Recurso" herda="tela_mobile_recursos.view">
+              <button onClick={() => onExcluir(inicial!)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                <Trash2 className="w-4 h-4" /> Excluir
+              </button>
+            </Permissao>
           )}
           <div className="flex-1" />
           <button onClick={onFechar} className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700">Fechar</button>
           {(novo || podeEditar) && def.campos.some((c) => !c.leitura) && (
-            <button onClick={salvar} disabled={salvando} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold">
-              {salvando && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
-            </button>
+            <Permissao chave="tela_mobile_recursos.mobile_recurso.salvar" rotulo="Salvar — Mobile Recurso" herda="tela_mobile_recursos.view">
+              <button onClick={salvar} disabled={salvando} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold">
+                {salvando && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+              </button>
+            </Permissao>
           )}
         </div>
       </div>
@@ -546,10 +553,12 @@ export function MobileRecurso({ recurso, paiId = null, compacto = false }: { rec
           </>
         )}
         {podeCriar && (
-          <button onClick={() => setEditando(null)}
-            className={`flex items-center gap-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold shrink-0 whitespace-nowrap ${compacto ? 'px-2.5 py-1 text-xs' : 'h-9 px-4 text-sm'}`}>
-            <Plus className="w-4 h-4" /> {compacto ? 'Adicionar' : `Novo(a) ${def.item}`}
-          </button>
+          <Permissao chave="tela_mobile_recursos.mobile_recurso.adicionar" rotulo="Adicionar — Mobile Recurso" herda="tela_mobile_recursos.view">
+            <button onClick={() => setEditando(null)}
+              className={`flex items-center gap-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold shrink-0 whitespace-nowrap ${compacto ? 'px-2.5 py-1 text-xs' : 'h-9 px-4 text-sm'}`}>
+              <Plus className="w-4 h-4" /> {compacto ? 'Adicionar' : `Novo(a) ${def.item}`}
+            </button>
+          </Permissao>
         )}
       </div>
 

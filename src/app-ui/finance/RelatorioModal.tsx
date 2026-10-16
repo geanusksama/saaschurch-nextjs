@@ -4,6 +4,7 @@ import type { ReciboRow } from './ReciboModal';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ── Assinaturas (rodapé do relatório) ────────────────────────────────────────
 type SigKey = 'dirigente' | 'tesCongreg' | 'tesSede';
@@ -1067,15 +1068,19 @@ export function RelatorioModal({ rows, churchName, churchId, leaderName: leaderN
                 <Share2 className="w-4 h-4" /> Compartilhar
               </button>
 
-              <button onClick={handleDownload}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
-                <Download className="w-4 h-4" /> Baixar
-              </button>
+              <Permissao chave="cashbook.relatorio_modal.baixar" rotulo="Baixar — Relatorio Modal" herda="cashbook.view">
+                <button onClick={handleDownload}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
+                  <Download className="w-4 h-4" /> Baixar
+                </button>
+              </Permissao>
 
-              <button onClick={handlePrint}
-                className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
-                <Printer className="w-4 h-4" /> Imprimir
-              </button>
+              <Permissao chave="cashbook.relatorio_modal.imprimir" rotulo="Imprimir — Relatorio Modal" herda="cashbook.view">
+                <button onClick={handlePrint}
+                  className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">
+                  <Printer className="w-4 h-4" /> Imprimir
+                </button>
+              </Permissao>
             </div>
 
             {/* Mobile Actions in Top Row */}
@@ -1090,16 +1095,20 @@ export function RelatorioModal({ rows, churchName, churchId, leaderName: leaderN
                 title="Compartilhar">
                 <Share2 className="w-5 h-5" />
               </button>
-              <button onClick={handleDownload}
-                className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-                title="Baixar">
-                <Download className="w-5 h-5" />
-              </button>
-              <button onClick={handlePrint}
-                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
-                title="Imprimir">
-                <Printer className="w-5 h-5" />
-              </button>
+              <Permissao chave="cashbook.relatorio_modal.baixar" rotulo="Baixar — Relatorio Modal" herda="cashbook.view">
+                <button onClick={handleDownload}
+                  className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                  title="Baixar">
+                  <Download className="w-5 h-5" />
+                </button>
+              </Permissao>
+              <Permissao chave="cashbook.relatorio_modal.imprimir" rotulo="Imprimir — Relatorio Modal" herda="cashbook.view">
+                <button onClick={handlePrint}
+                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+                  title="Imprimir">
+                  <Printer className="w-5 h-5" />
+                </button>
+              </Permissao>
               <button onClick={onClose}
                 className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
                 title="Fechar">

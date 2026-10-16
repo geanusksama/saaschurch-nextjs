@@ -32,6 +32,43 @@ A versão em `baseline/manifest.json` **tem que mudar** — é o carimbo que o
 `migrate-self` compara com `public._painelchurch_baseline` em cada igreja.
 Versões iguais ⇒ ele não faz nada.
 
+## REGRA Nº 2 — recurso novo de tela entra na árvore de permissões
+
+**Premissa, decidida pelo dono em 16/10/2026.** Cada tela é uma raiz na árvore
+de componentes que o administrador marca e desmarca (Configurações → Grupos
+de Usuários e Permissões do Usuário). Botão, aba ou relatório que não está na
+árvore não pode ser liberado nem bloqueado por ninguém — então **todo recurso
+novo de tela nasce marcado**:
+
+```tsx
+<Permissao chave="modulo.tela.acao" rotulo="Exportar Excel" herda="modulo.view">
+  <button onClick={exportar}>Exportar Excel</button>
+</Permissao>
+```
+
+```ts
+// e a rota da ação recusa a mesma chave — esconder não é bloquear
+const negado = await exigirPermissao(user, 'modulo.tela.acao');
+if (negado) return negado;
+```
+
+1. **Tela nova**: módulo no catálogo (`src/app-ui/system/permissionCatalog.ts`)
+   e `permKey` no item de menu.
+2. **Botão/aba/relatório novo**: `<Permissao>` (ou `definirPermissao` +
+   `usePode` fora de JSX). `herda` = o que HOJE decide se ele aparece; sem
+   trava nenhuma, o "Ver" da tela. É o que garante que marcar não muda o
+   acesso de ninguém.
+3. **Ação que grava, exclui ou exporta pelo servidor**: `exigirPermissao` na
+   rota com a mesma chave. Rota usada por outras telas não leva a chave de
+   uma só (quebraria as outras).
+4. `npm run permissoes:arvore` e commitar o `arvore.generated.ts`.
+
+**O build trava sem isso.** `npm run build` roda `permissoes:check` antes de
+tudo: árvore desatualizada, ou arquivo com mais botões de ação sem
+`<Permissao>` que a foto em `scripts/permissoes-pendentes.json`, derrubam o
+deploy. A foto só diminui (`npm run permissoes:auditoria -- --atualizar`
+recusa piora). Detalhes: [docs/modules/permissoes-granulares/SPEC.md](docs/modules/permissoes-granulares/SPEC.md).
+
 ## Outras armadilhas conhecidas
 
 O checklist completo, com o porquê de cada item, está em
