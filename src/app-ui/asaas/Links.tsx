@@ -4,6 +4,7 @@
  * evento, contribuição mensal. O QR é gerado do próprio link.
  */
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { Copy, Download, ExternalLink, Link2, MessageCircle, Pencil, Plus, Power } from 'lucide-react';
 import QRCode from 'qrcode';
 import { toast } from 'sonner';
@@ -14,9 +15,11 @@ import { Tabela } from './tabela';
 interface LinkP {
   id: string; nome: string; descricao: string | null; finalidade: string; valor: number | null; forma: string; tipoCobranca: string;
   maxParcelas: number; ciclo: string | null; url: string; ativo: boolean; encerraEm: string | null; recebido: number; pagamentos: number;
+  departmentSiteId: string | null; departamento: string | null; eventoId: string | null; evento: string | null;
 }
+interface Opcoes { sites: { id: string; titulo: string; slug: string; status: string }[]; eventos: { id: string; titulo: string; inicio: string; publicado: boolean; menorPreco: number | null }[] }
 const FINALIDADES: Record<string, string> = { OFERTA: 'Oferta', DIZIMO: 'Dízimo', CAMPANHA: 'Campanha', EVENTO: 'Evento / inscrição', OUTRO: 'Outro' };
-const VAZIO = { nome: '', descricao: '', finalidade: 'OFERTA', valor: '', pix: true, credito: true, boleto: false, maxParcelas: 1, recorrente: false, encerraEm: '' };
+const VAZIO = { nome: '', descricao: '', finalidade: 'OFERTA', valor: '', pix: true, credito: true, boleto: false, maxParcelas: 1, recorrente: false, encerraEm: '', departmentSiteId: '', eventoId: '' };
 
 export default function Links() {
   const { canCreate, canEdit } = usePermissions(perfilAtual());
@@ -25,6 +28,7 @@ export default function Links() {
   const [editando, setEditando] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [qr, setQr] = useState<LinkP | null>(null);
+  const { dados: opcoes } = useDados<Opcoes>('links/opcoes');
 
   function abrir(l?: LinkP) {
     setEditando(l?.id ?? null);
@@ -32,6 +36,7 @@ export default function Links() {
       nome: l.nome, descricao: l.descricao ?? '', finalidade: l.finalidade, valor: l.valor === null ? '' : String(l.valor).replace('.', ','),
       pix: l.forma === 'PIX' || l.forma === 'UNDEFINED', credito: l.forma === 'CREDIT_CARD' || l.forma === 'UNDEFINED', boleto: l.forma === 'BOLETO',
       maxParcelas: l.maxParcelas, recorrente: l.tipoCobranca === 'RECURRENT', encerraEm: l.encerraEm ?? '',
+      departmentSiteId: l.departmentSiteId ?? '', eventoId: l.eventoId ?? '',
     } : { ...VAZIO });
   }
 
@@ -86,6 +91,7 @@ export default function Links() {
           { chave: 'qr', rotulo: 'QR', acao: true, valor: () => '', render: (l) => <button onClick={() => setQr(l)} title="Ver QR"><Qr texto={l.url} tamanho={44} /></button> },
           { chave: 'nome', rotulo: 'Nome', valor: (l) => l.nome, render: (l) => <><p className="font-semibold">{l.nome}</p>{l.descricao && <p className="text-xs text-slate-500 truncate max-w-xs">{l.descricao}</p>}</> },
           { chave: 'finalidade', rotulo: 'Finalidade', valor: (l) => FINALIDADES[l.finalidade] ?? l.finalidade },
+          { chave: 'vinculo', rotulo: 'Departamento / evento', valor: (l) => l.departamento ?? l.evento ?? '', classe: 'text-slate-500' },
           { chave: 'valor', rotulo: 'Valor', alinhar: 'direita', valor: (l) => l.valor ?? -1, texto: (l) => (l.valor === null ? 'Valor livre' : brl(l.valor)) },
           {
             chave: 'formas', rotulo: 'Formas', valor: (l) => `${l.forma === 'UNDEFINED' ? 'Pix, cartão e mais' : l.forma === 'PIX' ? 'Só Pix' : l.forma === 'CREDIT_CARD' ? 'Só cartão' : 'Boleto'}${l.tipoCobranca === 'RECURRENT' ? ' · mensal' : l.maxParcelas > 1 ? ` · até ${l.maxParcelas}x` : ''}`,
@@ -127,6 +133,25 @@ export default function Links() {
                 <input className={inputCls} value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} placeholder="Valor livre" inputMode="decimal" />
               </Campo>
             </div>
+            {form.finalidade === 'CAMPANHA' && (
+              <Campo rotulo="Departamento da campanha *" ajuda="Site de departamento (Missões, Varões, CIBE…). O que entrar pelo link fica marcado com ele.">
+                <select className={inputCls} value={form.departmentSiteId} onChange={(e) => setForm({ ...form, departmentSiteId: e.target.value })}>
+                  <option value="">Escolha…</option>
+                  {opcoes?.sites.map((st) => <option key={st.id} value={st.id}>{st.titulo}{st.status !== 'PUBLICADO' ? ' (rascunho)' : ''}</option>)}
+                </select>
+              </Campo>
+            )}
+            {form.finalidade === 'EVENTO' && (
+              <Campo rotulo="Evento *" ajuda={<>Evento do app/site. Para vender ingresso nominal (com QR), o site e o app já vendem pelo próprio evento; o link serve para divulgar fora. <Link to="/app-ui/pagamentos/eventos" className="text-purple-600 font-semibold">Criar evento</Link></>}>
+                <select className={inputCls} value={form.eventoId} onChange={(e) => {
+                  const ev = opcoes?.eventos.find((x) => x.id === e.target.value);
+                  setForm({ ...form, eventoId: e.target.value, nome: form.nome || ev?.titulo || '', valor: form.valor || (ev?.menorPreco ? String(ev.menorPreco).replace('.', ',') : '') });
+                }}>
+                  <option value="">Escolha…</option>
+                  {opcoes?.eventos.map((ev) => <option key={ev.id} value={ev.id}>{ev.titulo} · {dataBr(ev.inicio)}{ev.publicado ? '' : ' (não publicado)'}</option>)}
+                </select>
+              </Campo>
+            )}
             <Cartao className="p-4 space-y-3">
               <p className="text-sm font-bold">Formas de pagamento</p>
               <Interruptor ligado={form.pix} onChange={(v) => setForm({ ...form, pix: v })} rotulo="Pix" sub="Cai na hora" />

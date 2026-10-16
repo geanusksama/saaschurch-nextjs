@@ -199,11 +199,12 @@ export interface Vinculo {
   churchId?: string | null;
   perfilId?: string | null;
   memberId?: string | null;
-  origem: 'CONTRIBUICAO' | 'PEDIDO' | 'ASSINATURA' | 'AVULSA' | 'LINK';
+  origem: 'CONTRIBUICAO' | 'PEDIDO' | 'ASSINATURA' | 'AVULSA' | 'LINK' | 'PENIEL' | 'DEPTO';
   contribuicaoId?: string | null;
   pedidoId?: string | null;
   assinaturaId?: string | null;
   linkId?: string | null;
+  penielInscricaoId?: string | null;
   pagadorNome?: string | null;
   criadoPor?: string | null;
 }
@@ -238,6 +239,7 @@ export async function registrar(v: Vinculo, pg: PagamentoAsaas, extra: { pixPayl
       pedidoId: v.pedidoId ?? null,
       assinaturaId: v.assinaturaId ?? null,
       linkId: v.linkId ?? null,
+      penielInscricaoId: v.penielInscricaoId ?? null,
       pagadorNome: v.pagadorNome ?? null,
       criadoPor: v.criadoPor ?? null,
       asaasPaymentId: pg.id,
@@ -329,6 +331,39 @@ export async function aplicarNoApp(cobrancaId: string) {
           prisma.appV3Reembolso.updateMany({ where: { pedidoId: ped.id, status: { in: ['SOLICITADO', 'APROVADO'] } }, data: { status: 'PAGO' } }),
           ...(await cancelarIngressosDoPedido(ped.id)),
         ]);
+      }
+    }
+  }
+
+  // Sites de departamento: o registro vem da referência externa (sc:dept-pedido:<id> / sc:dept-inscricao:<id>).
+  const refExterna = String((c.dados as Record<string, unknown> | null)?.externalReference ?? '');
+  const dept = /^sc:dept-(pedido|inscricao):([0-9a-f-]{36})$/.exec(refExterna);
+  if (dept) {
+    const alvo = e === 'PAGO' ? 'PAGO' : e === 'ESTORNADO' ? 'ESTORNADO' : e === 'CANCELADO' || e === 'VENCIDO' ? 'PENDENTE' : null;
+    if (alvo && dept[1] === 'pedido') {
+      await prisma.$executeRaw`update public.department_orders set payment_status = ${alvo}, payment_ref = ${c.id}, updated_at = now() where id = ${dept[2]}::uuid and payment_status <> ${alvo}`;
+    }
+    if (alvo && dept[1] === 'inscricao') {
+      const mudou = await prisma.$executeRaw`update public.department_event_registrations set payment_status = ${alvo}, payment_ref = ${c.id}, updated_at = now() where id = ${dept[2]}::uuid and payment_status <> ${alvo}`;
+      if (mudou && alvo === 'PAGO') {
+        // Pago: reenvia o ingresso (QR) pelo WhatsApp, agora como confirmado.
+        const { enviarIngressoDepartamento } = await import('@/lib/departmentTicket');
+        await enviarIngressoDepartamento(dept[2]).catch((err) => console.error('[asaas dept ingresso]', err));
+      }
+    }
+  }
+
+  if (c.penielInscricaoId) {
+    // Peniel: pago → vaga garantida e ingresso (QR) pelo WhatsApp, uma vez só.
+    const alvo = e === 'PAGO' ? 'pago' : e === 'ESTORNADO' ? 'estornado' : null;
+    if (alvo) {
+      const mudou = await prisma.penielRegistration.updateMany({
+        where: { id: c.penielInscricaoId, paymentStatus: { notIn: [alvo, 'gratuito'] } },
+        data: { paymentStatus: alvo },
+      });
+      if (mudou.count && alvo === 'pago') {
+        const { sendTicketWhatsApp } = await import('@/lib/penielTicket');
+        await sendTicketWhatsApp(c.penielInscricaoId).catch((err) => console.error('[asaas peniel ticket]', err));
       }
     }
   }

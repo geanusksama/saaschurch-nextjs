@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.350Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.675Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 4aedde4892a5816f
+-- Baseline 959b2c25986e2596
 
 -- Tipos customizados
 do $$ begin create type "public"."app_media_audience_scope" as enum ('headquarters', 'church');

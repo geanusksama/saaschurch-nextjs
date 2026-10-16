@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { Root } from "../components/Root";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { Overview } from "../components/Overview";
@@ -14,6 +14,8 @@ import { DesignSystem } from "../components/DesignSystem";
 // Public Website
 import { PublicWebsite } from "../components/public/PublicWebsite";
 import { PublicHome } from "../components/public/PublicHome";
+import PublicEventosPage from "../components/public/vitrine/PublicEventosPage";
+import PublicLojaPage from "../components/public/vitrine/PublicLojaPage";
 import { PublicEvents } from "../components/public/PublicEvents";
 import { LiveStreaming } from "../components/public/LiveStreaming";
 import { About } from "../components/public/About";
@@ -23,7 +25,6 @@ import { History } from "../components/public/History";
 import { Leadership } from "../components/public/Leadership";
 import { Timeline } from "../components/public/Timeline";
 import { MinistriesPublic } from "../components/public/MinistriesPublic";
-import { CIBETickets } from "../components/public/CIBETickets";
 import { KidsPortal } from "../components/public/KidsPortal";
 import { Radio } from "../components/public/Radio";
 import { Locations } from "../components/public/Locations";
@@ -185,7 +186,6 @@ import HelpCenterPage from "../app-ui/help/HelpCenterPage";
 import ServicesMatrix from "../app-ui/ecclesiastical/ServicesMatrix";
 import PipelinesAdmin from "../app-ui/ecclesiastical/PipelinesAdmin";
 import Requerimentos from "../app-ui/ecclesiastical/Requerimentos";
-import TicketPurchase from "../app-ui/events/TicketPurchase";
 // EBD
 import EbdDashboard from "../app-ui/ebd/EbdDashboard";
 import EbdCadastros from "../app-ui/ebd/EbdCadastros";
@@ -331,6 +331,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: PublicHome },
       { path: "peniel", Component: PenielPublicPage },
+      // Site: Eventos e Compras pagos pelo Asaas (src/components/public/vitrine)
+      { path: "eventos", Component: PublicEventosPage },
+      { path: "loja", Component: PublicLojaPage },
     ]
   },
   // Portal standalone pages (opened from CMSDashboard preview or direct link)
@@ -482,7 +485,8 @@ export const router = createBrowserRouter([
       { path: "leadership", Component: Leadership },
       { path: "timeline", Component: Timeline },
       { path: "ministries-public", Component: MinistriesPublic },
-      { path: "cibe-tickets", Component: CIBETickets },
+      // Antiga página com preços fixos no código: os ingressos do CIBE são os eventos reais do departamento.
+      { path: "cibe-tickets", element: <Navigate to="/eventos?dep=cibe" replace /> },
       { path: "kids-portal", Component: KidsPortal },
       { path: "radio", Component: Radio },
       { path: "locations", Component: Locations },
@@ -644,7 +648,8 @@ export const router = createBrowserRouter([
       { path: "membership-requests", Component: QueroSerMembroRequests },
       { path: "consecration-requests", Component: ConsecrationRequests },
       { path: "transfer-requests", Component: TransferRequests },
-      { path: "ticket-purchase", Component: TicketPurchase },
+      // Antiga tela "Comprar Ingresso" (preço fixo, não cobrava): eventos e ingressos reais ficam em Pagamentos.
+      { path: "ticket-purchase", element: <Navigate to="/app-ui/pagamentos/eventos" replace /> },
       { path: "church-dashboard", Component: ChurchDashboard },
       { path: "ministry-dashboard", Component: MinistryDashboard },
       { path: "financial-dashboard", Component: FinancialDashboard },

@@ -100,8 +100,16 @@ export function Tabela<T>({ titulo, linhas, colunas, chave, aoClicar, ordemInici
     const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
     const cab = dados.map((c) => `<th style="text-align:${c.alinhar === 'direita' ? 'right' : 'left'}">${esc(c.rotulo)}</th>`).join('');
     const corpo = filtradas.map((r) => `<tr>${dados.map((c) => `<td style="text-align:${c.alinhar === 'direita' ? 'right' : 'left'}">${esc(textoDe(c, r))}</td>`).join('')}</tr>`).join('');
-    const w = window.open('', '_blank');
-    if (!w) return;
+    // Quadro oculto em vez de janela nova: fechar a impressão não deixa aba "about:blank" aberta.
+    const quadro = document.createElement('iframe');
+    quadro.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(quadro);
+    const w = quadro.contentWindow;
+    if (!w) {
+      quadro.remove();
+      return;
+    }
+    w.document.open();
     w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(titulo)}</title>
       <style>body{font-family:system-ui,sans-serif;color:#0f172a;margin:24px}h1{font-size:18px;margin:0}p{color:#64748b;font-size:12px;margin:4px 0 16px}
       table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f1f5f9;color:#475569;font-weight:600}th,td{padding:6px 8px;border-bottom:1px solid #e2e8f0}
@@ -109,8 +117,13 @@ export function Tabela<T>({ titulo, linhas, colunas, chave, aoClicar, ordemInici
       <p>${esc(subtitulo ?? '')}${subtitulo ? ' · ' : ''}${filtradas.length} registros · impresso em ${new Date().toLocaleString('pt-BR')}</p>
       <table><thead><tr>${cab}</tr></thead><tbody>${corpo}</tbody></table></body></html>`);
     w.document.close();
-    w.focus();
-    w.print();
+    const remover = () => setTimeout(() => quadro.remove(), 500);
+    w.onafterprint = remover;
+    setTimeout(() => {
+      w.focus();
+      w.print();
+      remover(); // navegadores sem onafterprint: print() bloqueia até fechar a janela de impressão
+    }, 50);
   }
 
   const alinhar = (c: Coluna<T>) => (c.alinhar === 'direita' ? 'text-right' : c.alinhar === 'centro' ? 'text-center' : 'text-left');

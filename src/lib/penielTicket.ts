@@ -236,8 +236,14 @@ export async function sendRegistrationAwaitingPayment(
 
   const valueStr = Number(event.value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   let msg = `Olá, *${reg.nome}*!\n\nSua inscrição no *${event.title}* foi *realizada com sucesso* e está *aguardando pagamento* (valor: ${valueStr}).\n\n`;
-  if (event.paymentLink) msg += `💳 *Link de pagamento:* ${event.paymentLink}\n\n`;
-  msg += `Após pagar, envie o comprovante na página de consulta usando seu código: *${reg.checkInCode}*.\n\nAssim que confirmarmos o pagamento, sua vaga estará garantida.\nQue Deus te abençoe! 🙏`;
+  const asaas = await prisma.asaasConfig.findFirst({ where: { campoId: event.campoId, deletedAt: null, ativo: true }, select: { id: true } });
+  if (asaas) {
+    // Pagamento automático (Asaas): Pix ou cartão na consulta da inscrição, sem comprovante.
+    msg += `💳 Pague por *Pix ou cartão* em *Inscrições Peniel → Consultar inscrição*, usando seu código: *${reg.checkInCode}*.\n\nA confirmação é automática e o ingresso com QR Code chega aqui no WhatsApp.\nQue Deus te abençoe! 🙏`;
+  } else {
+    if (event.paymentLink) msg += `💳 *Link de pagamento:* ${event.paymentLink}\n\n`;
+    msg += `Após pagar, envie o comprovante na página de consulta usando seu código: *${reg.checkInCode}*.\n\nAssim que confirmarmos o pagamento, sua vaga estará garantida.\nQue Deus te abençoe! 🙏`;
+  }
 
   const res = await quickSendWhatsApp({
     ownerUserId,

@@ -4,7 +4,7 @@
  * desenhado por MobileRecurso.
  */
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { Smartphone } from 'lucide-react';
 import { RECURSOS, TELAS, type TelaDef } from '../../lib/mobile/definicoes';
 import { MobileRecurso } from './MobileRecurso';
@@ -52,6 +52,13 @@ function Tela({ def }: { def: TelaDef }) {
   return (
     <div className="p-6 text-slate-900 dark:text-slate-100">
       <CabecalhoMobile titulo={def.titulo} sub={def.sub} />
+      {/* Dízimos/ofertas pagos online (Asaas) ficam em Pagamentos; o link já abre filtrado. */}
+      {def.chave === 'tesouraria' && (
+        <Link to="/app-ui/pagamentos/vendas?finalidade=DIZIMO"
+          className="inline-flex items-center gap-1.5 mb-4 text-xs font-semibold text-purple-600 hover:underline">
+          Ver dízimos e ofertas pagos online (Pix/cartão pelo Asaas) →
+        </Link>
+      )}
       <Abas abas={def.recursos.map((r) => [r, RECURSOS[r].titulo])} atual={aba} onTrocar={setAba} />
       {aba && <MobileRecurso key={aba} recurso={aba} />}
     </div>

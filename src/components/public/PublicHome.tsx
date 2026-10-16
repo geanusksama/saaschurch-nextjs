@@ -1,6 +1,7 @@
+import { NavPublica } from './vitrine/comum';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Gamepad2, History, User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby, Clock, Home as HomeIcon } from 'lucide-react';
+import { Download, Gamepad2, History, User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby, Clock, Home as HomeIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MembroLogin } from '../membro/MembroLogin';
 import { MembroProvider } from '../membro/MembroProvider';
@@ -205,6 +206,9 @@ export function PublicHome() {
    * quando a API responde: a home nunca aparece vazia nem pisca.
    */
   const [home, setHome] = useState<HomeConfigPayload>(DEFAULT_HOME_PAYLOAD);
+  /** A configuração da igreja já chegou? Antes disso a grade de apps fica invisível:
+   *  com os cards padrão, um card oculto pela igreja aparecia e sumia (ex.: Culto ao vivo). */
+  const [homeCarregada, setHomeCarregada] = useState(false);
 
   /**
    * Se a pessoa já escolheu claro/escuro alguma vez. Precisa ser lido ANTES do
@@ -232,6 +236,7 @@ export function PublicHome() {
         // clicou no sol/lua — a preferência da pessoa vence sempre.
         if (!tinhaPreferenciaDeTema) setIsDark(payload.config.defaultDark);
       } catch { /* sem configuração, segue com o padrão */ }
+      finally { if (vivo) setHomeCarregada(true); }
     })();
     return () => { vivo = false; };
   }, [tinhaPreferenciaDeTema]);
@@ -244,10 +249,13 @@ export function PublicHome() {
    * visita começa no clássico.
    */
   const [modoAnimado, setModoAnimado] = useState(false);
-  const cardsVisiveis = home.cards.filter(card => card.visible);
+  // Peniel agora fica no menu do topo (NavPublica); o card sai do meio da home.
+  const cardsVisiveis = home.cards.filter(card => card.visible && card.action !== 'peniel');
 
   const [showMembroLogin, setShowMembroLogin] = useState(false);
   const [showPenielModal, setShowPenielModal] = useState(false);
+  /** App aberto na grade da home (expande num cartão com a descrição e a ação). */
+  const [appAberto, setAppAberto] = useState<{ card: HomeCard | 'ciclo'; instalar?: () => void } | null>(null);
   const [showVerseModal, setShowVerseModal] = useState(false);
   // Círculo que se expande a partir do ponto clicado até cobrir a tela,
   // antes de ir para /gf. A navegação só dispara ao fim da animação.
@@ -821,6 +829,111 @@ export function PublicHome() {
     );
   };
 
+  // ── Grade de apps (home clássica) ─────────────────────────────────────────
+  // Cada card vira um ícone quadrado de "app" com o nome embaixo; tocar expande
+  // (mesmo layoutId do motion) num cartão com o que ele significa e a ação.
+
+  /** Rótulo do botão principal do cartão expandido. */
+  const rotuloAcao = (card: HomeCard): string | null => {
+    switch (card.action) {
+      case 'membro': return 'Entrar na área do membro';
+      case 'gf': return 'Encontrar um GF';
+      case 'maps': return 'Ver no mapa';
+      case 'verse': return 'Ler o versículo';
+      case 'pwa': return 'Instalar o app';
+      case 'link': return 'Abrir';
+      default: return null;
+    }
+  };
+
+  const executarApp = (card: HomeCard, e: React.MouseEvent, instalar?: () => void) => {
+    setAppAberto(null);
+    if (card.action === 'pwa') return instalar?.();
+    if (card.action === 'link' || card.action === 'maps') {
+      const href = card.action === 'maps' ? mapsUrlFor(sede) : resolveCardUrl(card, sede);
+      if (href) window.open(href, '_blank', 'noopener');
+      return;
+    }
+    aoClicarCard(card)(e);
+  };
+
+  const tileApp = (key: string, Icone: React.ElementType, cor: string | null, titulo: string, onClick: () => void, extra?: React.ReactNode) => (
+    <button key={key} type="button" onClick={onClick} className="group flex flex-col items-center gap-2 text-center focus:outline-none" data-card-acao>
+      <motion.span
+        layoutId={`app-${key}`}
+        className={`relative w-[68px] h-[68px] md:w-[76px] md:h-[76px] rounded-[22px] flex items-center justify-center transition-transform group-hover:scale-105 group-active:scale-95 ${cor ? '' : isDark ? 'bg-white/[0.06] ring-1 ring-white/10' : 'bg-black/[0.04] ring-1 ring-black/5'}`}
+        style={cor ? { background: `linear-gradient(145deg, ${cor}33, ${cor}14)`, boxShadow: `inset 0 0 0 1px ${cor}55, 0 10px 30px -14px ${cor}` } : undefined}
+      >
+        <Icone className="w-7 h-7 md:w-8 md:h-8" style={{ color: cor || (isDark ? '#e2e8f0' : '#334155') }} />
+        {extra}
+      </motion.span>
+      <span className={`text-[11px] md:text-xs font-semibold leading-tight line-clamp-2 max-w-[84px] ${textPrimary}`}>{titulo}</span>
+    </button>
+  );
+
+  const gradeDeApps = (
+    <div className={`grid grid-cols-3 sm:grid-cols-4 gap-x-4 gap-y-7 md:gap-x-8 md:gap-y-9 place-items-center transition-opacity duration-500 ${homeCarregada ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      {cardsVisiveis.flatMap((card, i) => {
+        const tituloCurto = card.title.split(/\s+e\s+|\n/)[0];
+        const Icone = resolveHomeIcon(card.icon);
+        const vivo = card.liveDot ? <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#00b894] animate-pulse ring-2 ring-black/40" /> : undefined;
+        const tile = card.action === 'pwa'
+          ? <InstallAppCard key={card.key} isDark={isDark} botao={(instalar) => tileApp(card.key, Download, card.iconColor || '#38bdf8', 'Instalar o app', () => setAppAberto({ card, instalar }))} />
+          : tileApp(card.key, Icone, card.iconColor, tituloCurto, () => setAppAberto({ card }), vivo);
+        return i === 0 ? [tile, tileApp('__ciclo', Gamepad2, accent, 'Ciclo da fé', () => setAppAberto({ card: 'ciclo' }))] : [tile];
+      })}
+    </div>
+  );
+
+  const appExpandido = (
+    <AnimatePresence>
+      {appAberto && (() => {
+        const ciclo = appAberto.card === 'ciclo';
+        const card = ciclo ? null : (appAberto.card as HomeCard);
+        const key = ciclo ? '__ciclo' : card!.key;
+        const Icone = ciclo ? Gamepad2 : card!.action === 'pwa' ? Download : resolveHomeIcon(card!.icon);
+        const cor = ciclo ? accent : card!.iconColor || (card!.action === 'pwa' ? '#38bdf8' : accent);
+        const titulo = ciclo ? 'Ciclo da fé' : card!.action === 'pwa' ? 'Instalar o app' : card!.title;
+        const acao = ciclo ? 'Ver a jornada animada' : rotuloAcao(card!);
+        return (
+          <motion.div key="app-aberto" className="fixed inset-0 z-[60] flex items-center justify-center p-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setAppAberto(null)} />
+            <motion.div
+              layoutId={`app-${key}`}
+              transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+              className={`relative w-full max-w-sm rounded-[32px] p-7 overflow-hidden ${isDark ? 'bg-[#141414] ring-1 ring-white/10' : 'bg-white ring-1 ring-black/5'}`}
+              style={{ boxShadow: `0 30px 80px -20px ${cor}66` }}
+            >
+              <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-40" style={{ background: cor }} />
+              <button onClick={() => setAppAberto(null)} aria-label="Fechar" className={`absolute top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center ${isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-slate-700'}`}><X className="w-4 h-4" /></button>
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="relative space-y-4">
+                <span className="w-16 h-16 rounded-[20px] flex items-center justify-center" style={{ background: `linear-gradient(145deg, ${cor}40, ${cor}14)`, boxShadow: `inset 0 0 0 1px ${cor}66` }}>
+                  <Icone className="w-8 h-8" style={{ color: cor }} />
+                </span>
+                <h3 className={`text-2xl font-extrabold tracking-tight ${textPrimary}`}>{titulo}</h3>
+                <div className="text-sm">
+                  {ciclo
+                    ? <p className={`text-xs leading-relaxed ${textSub}`}>Veja a jornada animada, do evangelho à multiplicação.</p>
+                    : card!.action === 'pwa'
+                      ? <p className={`text-xs leading-relaxed ${textSub}`}>Adicione à tela de início e abra direto, sem navegador.</p>
+                      : corpoDoCartao(card!)}
+                </div>
+                {acao && (
+                  <button type="button"
+                    onClick={(e) => (ciclo ? (setAppAberto(null), setModoAnimado(true)) : executarApp(card!, e, appAberto.instalar))}
+                    className="w-full py-3.5 rounded-full font-bold text-sm text-black hover:brightness-110 transition"
+                    style={{ background: cor }}>
+                    {acao}
+                  </button>
+                )}
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        );
+      })()}
+    </AnimatePresence>
+  );
+
   // Opções do atendimento da secretaria, filtradas e renomeadas pela igreja.
   const fabOptions = FAB_OPTIONS
     .filter(opt => !cfg.services.hidden.includes(opt.id))
@@ -979,6 +1092,10 @@ export function PublicHome() {
             </h1>
           </div>}
         </div>
+        {/* Menu do topo: Eventos · Compras · Peniel (abre o mesmo modal) · CIBE */}
+        <div className="hidden md:flex flex-1 justify-center px-4 min-w-0">
+          <NavPublica isDark={isDark} accent={accent} onPeniel={() => setShowPenielModal(true)} />
+        </div>
         <div className="flex items-center gap-3 shrink-0">
           {/* Contabilidade — gatilho invisivel a esquerda do icone de tema:
               7 toques abrem o modal do contador. Mesmo formato do icone de
@@ -998,6 +1115,10 @@ export function PublicHome() {
           </Link>
         </div>
       </header>
+      {/* No celular o menu desce para uma linha própria, abaixo do cabeçalho. */}
+      <div className={`md:hidden flex justify-center px-4 -mt-2 mb-2 z-30 ${modoAnimado ? 'absolute top-[84px] inset-x-0' : 'relative'}`}>
+        <NavPublica isDark={isDark} accent={accent} onPeniel={() => setShowPenielModal(true)} />
+      </div>
 
       {modoAnimado ? (
         <>
@@ -1092,9 +1213,10 @@ export function PublicHome() {
             troca o destino de cada um em Sistema → Home Pública. */}
         {/* Espaço entre os cards definido no estilo: com as classes de gap os
             cards ficavam colados uns nos outros. */}
-        <div className="w-full md:w-1/2 max-w-2xl grid grid-cols-1 lg:grid-cols-2" style={{ rowGap: 40, columnGap: 48 }}>
-          {home.cards.filter(card => card.visible).flatMap((card, i) => i === 0 ? [renderCard(card), joystick] : [renderCard(card)])}
+        <div className="w-full md:w-1/2 max-w-xl flex justify-center">
+          {gradeDeApps}
         </div>
+        {appExpandido}
       </main>
         </>
       )}

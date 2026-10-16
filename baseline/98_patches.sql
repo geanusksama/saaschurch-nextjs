@@ -94,3 +94,17 @@ DROP POLICY IF EXISTS "livre 1krhyj_3" ON storage.objects;
 DROP POLICY IF EXISTS "liuvres2 1cprxsu_0" ON storage.objects;
 DROP POLICY IF EXISTS "liuvres2 1cprxsu_1" ON storage.objects;
 DROP POLICY IF EXISTS "liuvres2 1cprxsu_2" ON storage.objects;
+
+-- 2026-10-16 — pedido e ingresso comprados pelo SITE (Eventos/Compras) não têm
+-- conta no app: appv3_pedidos.perfil_id e appv3_ingressos.perfil_id passaram a
+-- aceitar nulo (o comprador fica em comprador_* do pedido). O baseline gerado
+-- não afrouxa coluna que já existe na igreja, então o DROP NOT NULL vem aqui.
+-- Migration 20261016090000_pagamentos_site_peniel; doc ASAAS-PAGAMENTOS.md.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appv3_pedidos' AND column_name = 'perfil_id' AND is_nullable = 'NO') THEN
+    ALTER TABLE public.appv3_pedidos ALTER COLUMN perfil_id DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appv3_ingressos' AND column_name = 'perfil_id' AND is_nullable = 'NO') THEN
+    ALTER TABLE public.appv3_ingressos ALTER COLUMN perfil_id DROP NOT NULL;
+  END IF;
+END $$;

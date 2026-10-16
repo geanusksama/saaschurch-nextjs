@@ -17,6 +17,7 @@ interface Linha {
   id: string; asaasPaymentId: string; origem: string; forma: string; formaRotulo: string; status: string; estado: string;
   valor: number; valorLiquido: number | null; taxa: number | null; valorEstornado: number; parcelas: number; descricao: string | null;
   pagadorNome: string | null; invoiceUrl: string | null; cartao: string | null; vencimento: string | null; pagoEm: string | null; criadoEm: string;
+  finalidade?: string;
 }
 interface Pagina { total: number; pagina: number; tamanho: number; somaValor: number; somaLiquido: number; linhas: Linha[] }
 interface Detalhe extends Linha {
@@ -36,7 +37,8 @@ const EVENTOS: Record<string, string> = {
 export default function Vendas() {
   const [sp, setSp] = useSearchParams();
   const [periodo, setPeriodo] = useState<Periodo>(periodoPadrao());
-  const [filtro, setFiltro] = useState({ estado: '', forma: '', origem: '' });
+  // Vindo de Dízimos e ofertas: /app-ui/pagamentos/vendas?finalidade=DIZIMO
+  const [filtro, setFiltro] = useState({ estado: '', forma: '', origem: '', finalidade: sp.get('finalidade') ?? '' });
   const qs = useMemo(() => {
     const p = new URLSearchParams({ tudo: '1', de: periodo.de, ate: periodo.ate });
     Object.entries(filtro).forEach(([k, v]) => v && p.set(k, v));
@@ -55,11 +57,17 @@ export default function Vendas() {
         linhas={dados?.linhas ?? []}
         carregando={carregando}
         chave={(l) => l.id}
-        aoClicar={(l) => setSp({ id: l.id })}
+        aoClicar={(l) => setSp({ id: l.id, ...(filtro.finalidade ? { finalidade: filtro.finalidade } : {}) })}
         ordemInicial={{ chave: 'data', desc: true }}
         barra={
           <>
             <FiltroPeriodo valor={periodo} onChange={setPeriodo} />
+            <Campo rotulo="Finalidade">
+              <select className={inputCls} value={filtro.finalidade} onChange={(e) => muda('finalidade', e.target.value)}>
+                <option value="">Todas</option><option value="DIZIMO">Dízimos</option><option value="OFERTA">Ofertas</option>
+                <option value="LOJA">Loja e ingressos</option><option value="OUTRA">Outras</option>
+              </select>
+            </Campo>
             <Campo rotulo="Status">
               <select className={inputCls} value={filtro.estado} onChange={(e) => muda('estado', e.target.value)}>
                 <option value="">Todos</option><option value="PAGO">Pago</option><option value="PENDENTE">Aguardando</option><option value="VENCIDO">Vencido</option>
@@ -89,6 +97,7 @@ export default function Vendas() {
         colunas={[
           { chave: 'data', rotulo: 'Data', valor: (l) => l.criadoEm, texto: (l) => dataBr(l.criadoEm, true), classe: 'whitespace-nowrap text-slate-500' },
           { chave: 'pagador', rotulo: 'Pagador', valor: (l) => l.pagadorNome ?? '', render: (l) => <><p className="font-semibold">{l.pagadorNome || '—'}</p><p className="text-xs text-slate-500 truncate max-w-xs">{l.descricao}</p></> },
+          { chave: 'finalidade', rotulo: 'Finalidade', valor: (l) => l.finalidade ?? '' },
           { chave: 'origem', rotulo: 'Origem', valor: (l) => ORIGENS[l.origem] ?? l.origem },
           { chave: 'forma', rotulo: 'Forma', valor: (l) => `${l.formaRotulo}${l.parcelas > 1 ? ` ${l.parcelas}x` : ''}`, classe: 'whitespace-nowrap' },
           { chave: 'status', rotulo: 'Status', valor: (l) => l.estado, texto: (l) => `${l.estado} (${l.status})`, render: (l) => <Selo estado={l.estado} status={l.status} /> },
@@ -98,7 +107,7 @@ export default function Vendas() {
           { chave: 'liquido', rotulo: 'Líquido', alinhar: 'direita', valor: (l) => l.valorLiquido, texto: (l) => brl(l.valorLiquido), classe: 'text-slate-500 whitespace-nowrap' },
         ]}
       />
-      <DetalheCobranca id={aberto} onFechar={() => setSp({})} onMudou={recarregar} />
+      <DetalheCobranca id={aberto} onFechar={() => setSp(filtro.finalidade ? { finalidade: filtro.finalidade } : {})} onMudou={recarregar} />
     </div>
   );
 }

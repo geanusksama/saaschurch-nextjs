@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.355Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.686Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 4aedde4892a5816f
+-- Baseline 959b2c25986e2596
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -347,6 +347,7 @@ alter table "public"."appv3_pedidos" alter column "parcelas" set default 1;
 alter table "public"."appv3_pedidos" alter column "status" set default 'AGUARDANDO_PAGAMENTO'::character varying;
 alter table "public"."appv3_pedidos" alter column "entrega" set default 'Retirar na secretaria'::character varying;
 alter table "public"."appv3_pedidos" alter column "criado_em" set default now();
+alter table "public"."appv3_pedidos" alter column "origem" set default 'APP'::character varying;
 alter table "public"."appv3_perfis" alter column "id" set default gen_random_uuid();
 alter table "public"."appv3_perfis" alter column "notificacoes" set default true;
 alter table "public"."appv3_perfis" alter column "publico" set default true;

@@ -104,3 +104,51 @@ não vê o financeiro da conta.
 5. Cobrança rápida: R$ 5,00 em Pix para um membro → a tela vira PAGO sozinha.
 
 Em produção cada teste paga taxa do Asaas: use valores baixos e estorne.
+
+## Site, Peniel, campanhas e assistente (2026-10-16)
+
+- **Site público:** menu do topo só em texto (Eventos · Compras · Peniel · CIBE),
+  na home e nas páginas novas. `/eventos` (filtro `?dep=<ministério>`; "CIBE"
+  = `?dep=cibe`) e `/loja`, no desenho da página do Peniel. Mesmas tabelas do
+  app (`appv3_eventos`, `appv3_produtos`); o pedido do site tem `origem = SITE`,
+  comprador (nome, CPF, celular, e-mail) e `perfil_id` nulo. Preço e vagas
+  relidos do banco; Pix na tela ou cartão na página do Asaas; ingresso com QR
+  quando o Asaas confirma. Falha ao cobrar devolve as vagas.
+  Rotas: `/api/public/pagamentos/*` (src/lib/asaas/vitrine.ts).
+- **Home clássica:** os cards viraram grade de ícones de app; tocar expande
+  o cartão com a descrição e a ação. O card do Peniel saiu da grade (está no menu).
+- **Peniel:** com Asaas no campo do evento, a inscrição paga por Pix/cartão
+  (`asaas_cobrancas.peniel_inscricao_id`); pago → `payment_status = pago` e
+  ingresso pelo WhatsApp. Sem comprovante nem data de promessa. Sem Asaas,
+  fluxo antigo.
+- **Evento e produto com departamento** (`ministerio_id` → `ministries`),
+  obrigatório no evento. Criação também em Pagamentos › Eventos e loja.
+- **Links:** Campanha exige site de departamento; Evento exige o evento.
+- **Assistente "Configurar"** em Configurações: dados da instituição + chave da
+  conta própria → valida, confere aprovação e CNPJ, chave Pix, salva, liga as
+  formas, registra o webhook (recusado em localhost) e mostra o checklist.
+- Migrations `20261015210000_asaas_indices` e
+  `20261016090000_pagamentos_site_peniel` (aplicadas no banco de referência em
+  2026-10-16 com autorização). **Baseline ainda não regerado**: regerar antes
+  do merge (e copiar a remoção do NOT NULL de `appv3_pedidos.perfil_id` e
+  `appv3_ingressos.perfil_id` para `baseline/98_patches.sql`).
+
+## Nenhum pagamento manual (2026-10-16)
+
+Pedido do dono: todo recebimento é pelo Asaas.
+- **Sites de departamento** (`/dep/<slug>`): loja e inscrição em evento pagam
+  por Pix/cartão (`POST /api/public/pagamentos/dept/pagar`, identificação
+  id + lookup_token). A cobrança leva `sc:dept-pedido:<id>` /
+  `sc:dept-inscricao:<id>` e a confirmação grava `payment_status = PAGO` e
+  `payment_ref` (sem coluna nova). Aparecem em Contribuições e vendas como
+  "Site de departamento". O link de pagamento colado saiu do site e do
+  cadastro de produto.
+- **Peniel:** sem link "TON/outro", sem comprovante e sem data de promessa.
+  Campo sem Asaas: a ficha é aceita e o pagamento fica para quando o campo ligar
+  o Asaas (aparece "Pagar agora" na consulta).
+- **App:** sem BR Code estático nem "Já paguei"; campo sem Asaas mostra
+  "Pagamento online indisponível" (reserva gratuita continua).
+- `/cibe-tickets` e "Comprar Ingresso" do painel (preços fixos no código, não
+  cobravam) redirecionam para `/eventos?dep=cibe` e Pagamentos › Eventos e loja.
+- Contabilidade (contas a pagar, credores, recibos do caixa) não é recebimento
+  online e continua como estava.

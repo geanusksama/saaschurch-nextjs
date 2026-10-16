@@ -148,12 +148,41 @@ export async function listarCobrancas(e: Escopo, sp: URLSearchParams) {
   const q = (sp.get('q') ?? '').trim();
   if (q) where.OR = [{ pagadorNome: { contains: q, mode: 'insensitive' } }, { descricao: { contains: q, mode: 'insensitive' } }, { asaasPaymentId: q }];
 
+  // Finalidade: DIZIMO | OFERTA (contribuição do app, recorrência ou link com essa finalidade) | LOJA (pedido) | OUTRA.
+  const fin = sp.get('finalidade');
+  if (fin === 'DIZIMO' || fin === 'OFERTA') {
+    const ids = await prisma.$queryRaw<{ id: string }[]>`
+      select c.id from public.asaas_cobrancas c
+        join public.appv3_contribuicoes x on x.id = c.contribuicao_id
+       where c.campo_id = ${e.campoId}::uuid and x.tipo = ${fin}`;
+    where.AND = [{ OR: [{ id: { in: ids.map((i) => i.id) } }, { assinatura: { tipo: fin } }, { link: { finalidade: fin } }] }];
+  } else if (fin === 'LOJA') {
+    where.pedidoId = { not: null };
+  } else if (fin === 'OUTRA') {
+    where.AND = [{ contribuicaoId: null, pedidoId: null, assinaturaId: null }, { OR: [{ linkId: null }, { link: { finalidade: { notIn: ['DIZIMO', 'OFERTA'] } } }] }];
+  }
+
   const [total, linhas, soma] = await Promise.all([
     prisma.asaasCobranca.count({ where }),
-    prisma.asaasCobranca.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (pagina - 1) * tamanho, take: tamanho }),
+    prisma.asaasCobranca.findMany({
+      where, orderBy: { createdAt: 'desc' }, skip: (pagina - 1) * tamanho, take: tamanho,
+      include: { assinatura: { select: { tipo: true } }, link: { select: { finalidade: true, nome: true } } },
+    }),
     prisma.asaasCobranca.aggregate({ where, _sum: { valor: true, valorLiquido: true } }),
   ]);
-  return { total, pagina, tamanho, somaValor: n2(soma._sum.valor), somaLiquido: n2(soma._sum.valorLiquido), linhas: linhas.map(linhaCobranca) };
+  const contribIds = linhas.map((l) => l.contribuicaoId).filter((x): x is string => Boolean(x));
+  const tipos = new Map(
+    (contribIds.length ? await prisma.appV3Contribuicao.findMany({ where: { id: { in: contribIds } }, select: { id: true, tipo: true } }) : []).map((c) => [c.id, c.tipo]),
+  );
+  const ROT: Record<string, string> = { DIZIMO: 'Dízimo', OFERTA: 'Oferta', CAMPANHA: 'Campanha', EVENTO: 'Evento', OUTRO: 'Outro' };
+  return {
+    total, pagina, tamanho, somaValor: n2(soma._sum.valor), somaLiquido: n2(soma._sum.valorLiquido),
+    linhas: linhas.map((l) => {
+      const tipo = (l.contribuicaoId && tipos.get(l.contribuicaoId)) || l.assinatura?.tipo || l.link?.finalidade || null;
+      const finalidade = tipo ? ROT[tipo] ?? tipo : l.pedidoId ? 'Loja/ingresso' : l.origem === 'AVULSA' ? 'Cobrança avulsa' : 'Outro';
+      return { ...linhaCobranca(l), finalidade, linkNome: l.link?.nome ?? null };
+    }),
+  };
 }
 
 async function minhaCobranca(e: Escopo, id: string) {
@@ -331,8 +360,31 @@ export async function assinaturaDoEscopo(e: Escopo, id: string) {
 }
 
 // ── Links de pagamento (ofertas, campanhas, eventos) ──────────────────────
+/** Opções do formulário de link: sites de departamento e eventos do campo. */
+export async function opcoesLink(e: Escopo) {
+  const [sites, eventos] = await Promise.all([
+    prisma.$queryRaw<{ id: string; titulo: string; slug: string; status: string }[]>`
+      select id, titulo, slug, status from public.department_sites
+       where campo_id = ${e.campoId}::uuid and deleted_at is null order by titulo`,
+    prisma.appV3Evento.findMany({
+      where: { campoId: e.campoId, escopo: 'CAMPO' }, orderBy: { inicio: 'desc' }, take: 200,
+      select: { id: true, titulo: true, inicio: true, publicado: true, opcoes: { where: { ativo: true }, select: { preco: true } } },
+    }),
+  ]);
+  return {
+    sites,
+    eventos: eventos.map((ev) => ({ id: ev.id, titulo: ev.titulo, inicio: ev.inicio, publicado: ev.publicado, menorPreco: ev.opcoes.length ? Math.min(...ev.opcoes.map((o) => n2(o.preco))) : null })),
+  };
+}
+
 export async function listarLinks(e: Escopo) {
   const links = await prisma.asaasLink.findMany({ where: { campoId: e.campoId }, orderBy: [{ ativo: 'desc' }, { createdAt: 'desc' }] });
+  const siteIds = [...new Set(links.map((l) => l.departmentSiteId).filter((x): x is string => Boolean(x)))];
+  const eventoIds = [...new Set(links.map((l) => l.eventoId).filter((x): x is string => Boolean(x)))];
+  const [sites, eventos] = await Promise.all([
+    siteIds.length ? prisma.$queryRaw<{ id: string; titulo: string }[]>`select id, titulo from public.department_sites where id = any(${siteIds}::uuid[])` : [],
+    eventoIds.length ? prisma.appV3Evento.findMany({ where: { id: { in: eventoIds } }, select: { id: true, titulo: true } }) : [],
+  ]);
   const somas = await prisma.asaasCobranca.groupBy({
     by: ['linkId'], where: { linkId: { in: links.map((l) => l.id) }, status: { in: ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'] } }, _sum: { valor: true }, _count: true,
   });
@@ -342,6 +394,8 @@ export async function listarLinks(e: Escopo) {
       id: l.id, nome: l.nome, descricao: l.descricao, finalidade: l.finalidade, valor: l.valor === null ? null : n2(l.valor),
       forma: l.forma, tipoCobranca: l.tipoCobranca, maxParcelas: l.maxParcelas, ciclo: l.ciclo, url: l.url, ativo: l.ativo,
       encerraEm: l.encerraEm?.toISOString().slice(0, 10) ?? null, recebido: n2(s?._sum.valor), pagamentos: s?._count ?? 0, criadoEm: l.createdAt,
+      departmentSiteId: l.departmentSiteId, departamento: sites.find((x) => x.id === l.departmentSiteId)?.titulo ?? null,
+      eventoId: l.eventoId, evento: eventos.find((x) => x.id === l.eventoId)?.titulo ?? null,
     };
   });
 }
@@ -374,8 +428,23 @@ export async function salvarLink(e: Escopo, corpo: Record<string, unknown>, id?:
     notificationEnabled: false,
   };
   const finalidade = ['OFERTA', 'DIZIMO', 'CAMPANHA', 'EVENTO', 'OUTRO'].includes(String(corpo.finalidade)) ? String(corpo.finalidade) : 'OFERTA';
+  let departmentSiteId: string | null = null;
+  let eventoId: string | null = null;
+  if (finalidade === 'CAMPANHA') {
+    departmentSiteId = String(corpo.departmentSiteId ?? '') || null;
+    if (!departmentSiteId) throw new Recusado('Escolha o departamento da campanha.');
+    const ok = await prisma.$queryRaw<{ id: string }[]>`select id from public.department_sites where id = ${departmentSiteId}::uuid and campo_id = ${e.campoId}::uuid and deleted_at is null`;
+    if (!ok.length) throw new Recusado('Departamento não encontrado neste campo.');
+  }
+  if (finalidade === 'EVENTO') {
+    eventoId = String(corpo.eventoId ?? '') || null;
+    if (!eventoId) throw new Recusado('Escolha o evento (ou crie um em Eventos e loja).');
+    const ok = await prisma.appV3Evento.findFirst({ where: { id: eventoId, campoId: e.campoId }, select: { id: true } });
+    if (!ok) throw new Recusado('Evento não encontrado neste campo.');
+  }
   const local = {
     nome, descricao: dados.description ?? null, finalidade, valor, forma, tipoCobranca, maxParcelas, ciclo: recorrente ? 'MONTHLY' : null,
+    departmentSiteId, eventoId,
     encerraEm: encerraEm ? new Date(`${encerraEm}T12:00:00Z`) : null,
   };
   if (id) {
@@ -544,9 +613,14 @@ export async function testarConexao(e: Escopo) {
   };
 }
 
+function enderecoLocal(url: string) {
+  return /\/\/(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(url);
+}
+
 export async function registrarWebhook(e: Escopo, req: Request, email: string) {
   const { api, config } = await configDoCampo(e.campoId, false);
   const url = `${urlPublica(req)}/api/asaas/webhook`;
+  if (enderecoLocal(url)) throw new Recusado('O painel está aberto em um endereço local: o Asaas não consegue avisar aqui. Abra pelo endereço real da igreja para registrar o webhook.');
   // Outra config da mesma conta e do mesmo deploy já registrou: reaproveita o token.
   const irma = await prisma.asaasConfig.findFirst({ where: { id: { not: config.id }, apiKeyFinal: config.apiKeyFinal, webhookId: { not: null }, webhookTokenEnc: { not: null }, deletedAt: null } });
   const existentes = (await api.webhooks.listar()).data;
@@ -567,6 +641,80 @@ export async function registrarWebhook(e: Escopo, req: Request, email: string) {
     data: { webhookId: r.id ?? mesmo?.id, webhookTokenEnc: cifrar(token) },
   });
   return { ok: true, url, id: r.id ?? mesmo?.id };
+}
+
+export interface Passo { passo: string; ok: boolean; aviso?: boolean; detalhe: string }
+
+/**
+ * Assistente "Configurar": a igreja informa os dados da instituição e a chave
+ * da PRÓPRIA conta Asaas (criada e aprovada) e o sistema faz o resto —
+ * valida, confere titular e CNPJ, salva criptografado, liga as formas de
+ * pagamento e registra o webhook. Devolve o checklist de cada passo.
+ */
+export async function configurarConta(e: Escopo, req: Request, corpo: Record<string, unknown>) {
+  const passos: Passo[] = [];
+  const nome = String(corpo.nome ?? '').trim();
+  const documento = soDigitos(corpo.documento);
+  const email = String(corpo.email ?? '').trim();
+  const chave = String(corpo.apiKey ?? '').trim();
+  if (nome.length < 3) throw new Recusado('Informe o nome da instituição (como está no Asaas).');
+  if (![11, 14].includes(documento.length)) throw new Recusado('Informe o CNPJ (ou CPF) do titular da conta Asaas.');
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Recusado('Informe um e-mail para os avisos do Asaas.');
+  const ambiente = ambienteDaChave(chave);
+  if (!ambiente) throw new Recusado('Chave inválida: ela começa com $aact_prod_ (produção) ou $aact_hmlg_ (sandbox).');
+
+  // 1. Conta
+  const { clienteAsaas } = await import('./api');
+  const api = clienteAsaas(chave, ambiente);
+  let conta;
+  try {
+    conta = await api.conta();
+  } catch (err) {
+    throw new Recusado(`O Asaas não aceitou a chave: ${(err as Error).message}`);
+  }
+  passos.push({ passo: 'Chave de API', ok: true, detalhe: `Aceita pelo Asaas (${ambiente === 'production' ? 'produção' : 'sandbox'}).` });
+
+  const status = String(conta.status ?? '');
+  if (status && status !== 'APPROVED') {
+    passos.push({ passo: 'Conta aprovada', ok: false, detalhe: `A conta está "${status}" no Asaas. Termine o cadastro e aguarde a aprovação antes de configurar.` });
+    return { ok: false, passos };
+  }
+  passos.push({ passo: 'Conta aprovada', ok: true, detalhe: `${conta.name ?? ''} · aprovada.` });
+
+  // 2. Titular confere com o informado
+  const docConta = soDigitos(conta.cpfCnpj);
+  if (docConta && docConta !== documento) {
+    passos.push({ passo: 'Titular', ok: false, detalhe: `Esta chave é da conta ${conta.name ?? ''} (${conta.cpfCnpj}), não do documento informado. Gere a chave na conta da própria igreja.` });
+    return { ok: false, passos };
+  }
+  const nomeConfere = (conta.name ?? '').toLowerCase().includes(nome.toLowerCase().split(' ')[0]);
+  passos.push({ passo: 'Titular', ok: true, aviso: !nomeConfere, detalhe: nomeConfere ? `CNPJ/CPF confere: ${conta.cpfCnpj}.` : `CNPJ/CPF confere, mas o nome no Asaas é "${conta.name}".` });
+
+  // 3. Chave Pix (sem ela, o Pix não funciona)
+  const chavesPix = await api.pixChaves().catch(() => null);
+  const temPix = Boolean(chavesPix?.data.length);
+  passos.push({ passo: 'Chave Pix', ok: temPix, aviso: !temPix, detalhe: temPix ? chavesPix!.data.map((k) => `${k.type} ${k.key}`).join(', ') : 'Nenhuma chave Pix na conta: cadastre uma no app do Asaas. Até lá, só cartão.' });
+
+  // 4. Salva (criptografado) e liga as formas de pagamento
+  await salvarConfig(e, { apiKey: chave, ativo: true, pixAtivo: temPix, cartaoAtivo: true, recorrenciaAtiva: true });
+  passos.push({ passo: 'Configuração salva', ok: true, detalhe: `Chave criptografada; ${temPix ? 'Pix, ' : ''}cartão e recorrência ligados.` });
+
+  // 5. Webhook (confirmação automática)
+  try {
+    const w = await registrarWebhook(e, req, email);
+    passos.push({ passo: 'Webhook', ok: true, detalhe: `Registrado em ${w.url}. Avisos de falha vão para ${email}.` });
+  } catch (err) {
+    passos.push({ passo: 'Webhook', ok: false, aviso: true, detalhe: (err as Error).message });
+  }
+
+  // 6. Teste final
+  try {
+    const t = await testarConexao(e);
+    passos.push({ passo: 'Teste de conexão', ok: true, detalhe: `Saldo ${t.saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Pronto para receber.` });
+  } catch (err) {
+    passos.push({ passo: 'Teste de conexão', ok: false, detalhe: (err as Error).message });
+  }
+  return { ok: passos.every((x) => x.ok || x.aviso), passos };
 }
 
 /** Master: em quais campos esta mesma conta Asaas recebe. */
