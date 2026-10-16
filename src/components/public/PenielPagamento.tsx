@@ -119,9 +119,9 @@ export function PenielPagamento({ inscricaoId, codigo, valor, onPago }: { inscri
           {erro && <p className="text-xs text-rose-600 font-semibold">{erro}</p>}
           <button type="button" onClick={pagar} disabled={ocupado}
             className="w-full py-3 rounded-xl text-white font-bold bg-[#22c55e] hover:bg-emerald-600 flex items-center justify-center gap-2 disabled:opacity-60">
-            {ocupado && <Loader2 size={16} className="animate-spin" />}{metodo === 'PIX' ? 'Gerar Pix' : 'Pagar no cartão'}
+            {ocupado && <Loader2 size={16} className="animate-spin" />}{metodo === 'PIX' ? 'Gerar Pix' : 'Avançar para o cartão'}
           </button>
-          <p className="text-[11px] text-slate-400 text-center">Confirmação automática: sem comprovante. O CPF é exigido pelo banco.</p>
+          <p className="text-[11px] text-slate-400 text-center">{metodo === 'CARTAO' ? 'Os dados do cartão são digitados na página segura do Asaas, que abre em seguida.' : 'Confirmação automática: sem comprovante. O CPF é exigido pelo banco.'}</p>
         </div>
       )}
     </div>

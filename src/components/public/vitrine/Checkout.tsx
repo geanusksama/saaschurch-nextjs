@@ -169,8 +169,11 @@ export function Checkout({ itens, isDark, accent, pagamento, onFechar, onPago }:
             {erro && <p className="rounded-2xl px-4 py-3 text-sm bg-rose-500/15 text-rose-400">{erro}</p>}
             <button onClick={pagar} disabled={ocupado} className="w-full rounded-full py-3.5 font-semibold text-black flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: accent }}>
               {ocupado && <Loader2 className="w-4 h-4 animate-spin" />}
-              {gratis ? 'Confirmar reserva' : metodo === 'PIX' ? `Gerar Pix de ${brl(total)}` : `Pagar ${brl(total)} no cartão`}
+              {gratis ? 'Confirmar reserva' : metodo === 'PIX' ? `Gerar Pix de ${brl(total)}` : 'Avançar para o cartão'}
             </button>
+            {!gratis && metodo === 'CARTAO' && (
+              <p className="text-[11px] text-center opacity-60">Você digita os dados do cartão na página segura do Asaas, que abre em seguida. O número do cartão não passa pelo site.</p>
+            )}
           </div>
         )}
       </div>

@@ -97,8 +97,9 @@ export function DeptPagamento({ tipo, id, token, valor, onPago }: { tipo: "pedid
           </div>
           {erro && <p className="text-xs" style={{ color: "#f87171" }}>{erro}</p>}
           <button type="button" onClick={pagar} disabled={ocupado} className="flex w-full items-center justify-center gap-2 px-5 py-3 text-sm font-bold disabled:opacity-60" style={botao}>
-            {ocupado && <Loader2 size={16} className="animate-spin" />}Pagar {moeda(valor)}
+            {ocupado && <Loader2 size={16} className="animate-spin" />}{metodo === "PIX" ? `Gerar Pix de ${moeda(valor)}` : "Avançar para o cartão"}
           </button>
+          {metodo === "CARTAO" && <p className="text-center text-[11px]" style={{ color: T.muted }}>Os dados do cartão são digitados na página segura do Asaas, que abre em seguida.</p>}
         </>
       )}
     </div>
