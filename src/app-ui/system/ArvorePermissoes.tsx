@@ -95,6 +95,25 @@ for (const { no } of RAIZES) {
 // Ações genéricas ocultas (nada no código usa) acompanham a raiz da tela.
 for (const { no, ocultas } of RAIZES) for (const k of ocultas) PAIS.set(k, no.chave);
 
+/** Padrão do perfil para a chave: o que vale sem nenhuma sobrescrita. */
+export function padraoDoPerfil(chave: string, profileType: string): boolean {
+  return podeChave(chave, { profileType, modules: DEFAULT_PERMISSION_MODULES, userOverrides: {} });
+}
+
+/**
+ * Quantas chaves o usuário tem diferentes do padrão. Sem categoria, cada chave
+ * gravada é uma sobrescrita. Com categoria, o mapa gravado tem TODAS as chaves
+ * (lista fechada, ver base()), então conta só o que muda o efeito.
+ */
+export function contarSobrescritas(valores: Mapa, profileType: string, roleId?: string | null): number {
+  if (!roleId) return Object.keys(valores).length;
+  if (Object.keys(valores).length === 0) return 0;
+  const ctx = { profileType, modules: DEFAULT_PERMISSION_MODULES, userOverrides: valores, userRoleId: roleId };
+  return RAIZES.flatMap(({ no, ocultas }) => [...chavesDaSubarvore(no), ...ocultas]).filter(
+    (k) => podeChave(k, ctx) !== padraoDoPerfil(k, profileType),
+  ).length;
+}
+
 /**
  * Valor efetivo de uma chave num grupo: explícito, senão herdado do pai na
  * árvore; pai desmarcado desmarca o filho (D7). A tela e a gravação usam esta
@@ -158,6 +177,21 @@ export function ArvorePermissoes(props: Props) {
 
   const roleIdUsuario = modo === 'usuario' ? ((props as { roleId?: string | null }).roleId ?? null) : null;
   const roleNameUsuario = modo === 'usuario' ? ((props as { roleName?: string | null }).roleName ?? null) : null;
+  const perfilUsuario = modo === 'usuario' ? (props as { profileType: string }).profileType : 'church';
+
+  /**
+   * Com categoria, o mapa gravado tem todas as chaves (base()), então "está
+   * gravada" não diz nada. A etiqueta mostra o EFEITO comparado ao padrão do
+   * perfil e o clique alterna padrão ⇄ o contrário dele.
+   */
+  const porEfeito = modo === 'usuario' && Boolean(roleIdUsuario);
+  const padrao = useMemo(() => {
+    const cache = new Map<string, boolean>();
+    return (k: string) => {
+      if (!cache.has(k)) cache.set(k, padraoDoPerfil(k, perfilUsuario));
+      return cache.get(k)!;
+    };
+  }, [perfilUsuario]);
 
   /**
    * Ponto de partida de uma alteração no modo usuário. Quem tem categoria e
@@ -184,9 +218,19 @@ export function ArvorePermissoes(props: Props) {
 
   /** Usuário: padrão → permitido → bloqueado → padrão. Na raiz, vale a tela inteira. */
   function cicloUsuario(no: No, raizOcultas: string[]) {
+    const alvo = no.tipo === 'tela' ? [...chavesDaSubarvore(no), ...raizOcultas] : [no.chave];
+    if (porEfeito) {
+      // No padrão → o contrário dele (na raiz, a tela inteira); fora → volta ao padrão.
+      const noPadrao = efetivo(no.chave) === padrao(no.chave);
+      const inverso = !padrao(no.chave);
+      const n = base();
+      for (const k of alvo) n[k] = noPadrao ? inverso : padrao(k);
+      if (noPadrao && inverso) for (const k of ancestrais(no.chave)) if (!efetivo(k)) n[k] = true;
+      onChange(n);
+      return;
+    }
     const atual = valores[no.chave];
     const prox: boolean | undefined = atual === undefined ? true : atual === true ? false : undefined;
-    const alvo = no.tipo === 'tela' ? [...chavesDaSubarvore(no), ...raizOcultas] : [no.chave];
     const n = base();
     for (const k of alvo) {
       if (prox === undefined) delete n[k];
@@ -200,8 +244,11 @@ export function ArvorePermissoes(props: Props) {
     const n = base();
     for (const { no, ocultas } of raizes)
       for (const k of [...chavesDaSubarvore(no), ...ocultas]) {
-        if (v === undefined) delete n[k];
-        else n[k] = v;
+        // Com categoria a chave não pode sair do mapa (sairia da lista fechada): grava o padrão.
+        if (v === undefined) {
+          if (porEfeito) n[k] = padrao(k);
+          else delete n[k];
+        } else n[k] = v;
       }
     onChange(n);
   }
@@ -225,7 +272,8 @@ export function ArvorePermissoes(props: Props) {
     const misto = val && sub.some((k) => !efetivo(k));
     const pai = PAIS.get(no.chave);
     const paiNegado = Boolean(pai) && !efetivo(pai!);
-    const explicito = valores[no.chave];
+    // Com categoria: igual ao padrão do perfil = "padrão"; diferente = permitido/bloqueado.
+    const explicito = porEfeito ? (val === padrao(no.chave) ? undefined : val) : valores[no.chave];
 
     return (
       <>
@@ -265,7 +313,11 @@ export function ArvorePermissoes(props: Props) {
             <button
               type="button"
               onClick={() => cicloUsuario(no, ocultas)}
-              title="Clique: padrão → permitido → bloqueado → padrão"
+              title={
+                porEfeito
+                  ? 'Clique: inverte o padrão do perfil; clique de novo volta ao padrão'
+                  : 'Clique: padrão → permitido → bloqueado → padrão'
+              }
               className={`shrink-0 w-[5.5rem] rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${
                 explicito === true
                   ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
@@ -311,9 +363,9 @@ export function ArvorePermissoes(props: Props) {
     <div className="h-full flex flex-col min-h-0">
       {roleIdUsuario && (
         <p className="shrink-0 px-4 py-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
-          Usuário com a categoria <strong>{roleNameUsuario ?? 'definida'}</strong>: com sobrescritas, vale
-          lista fechada — o que não estiver permitido fica bloqueado. Na primeira alteração a tela grava o
-          estado atual de todas as telas, para nada sumir; depois só muda o que você clicar.
+          Usuário com a categoria <strong>{roleNameUsuario ?? 'definida'}</strong>. &quot;Padrão&quot; é o que o
+          perfil já dá. Um clique inverte (permitido ou bloqueado); outro clique volta ao padrão. Só muda o
+          que você clicar — as outras telas ficam como estão.
         </p>
       )}
       <div className="shrink-0 flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-700">
@@ -338,8 +390,11 @@ export function ArvorePermissoes(props: Props) {
             className="w-full border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none"
           />
         </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          {liberadas} de {todas.length} liberado(s)
+        <span
+          className="text-xs text-slate-500 dark:text-slate-400"
+          title="Cada tela, aba e botão da árvore conta como um item. Liberado = o que esta pessoa consegue usar hoje."
+        >
+          {liberadas} de {todas.length} telas e botões liberados
         </span>
       </div>
 
