@@ -33,7 +33,7 @@ function getManagedCampoId(user: import("@/lib/auth").AuthUser) {
 }
 
 function buildManagedUsersWhere(user: import("@/lib/auth").AuthUser, query: Record<string, string> = {}) {
-  const { search, profileType, churchId, campoId, regionalId, isActive } = query;
+  const { search, profileType, churchId, campoId, regionalId, isActive, roleName } = query;
   const where: Record<string, unknown> = { deletedAt: null };
   const managedCampoId = getManagedCampoId(user);
   const effectiveCampoId = managedCampoId || campoId || null;
@@ -50,6 +50,10 @@ function buildManagedUsersWhere(user: import("@/lib/auth").AuthUser, query: Reco
   if (churchId) where.churchId = churchId;
   if (regionalId) where.regionalId = regionalId;
   if (isActive !== undefined) where.isActive = isActive === "true";
+  // Filtro de função no BANCO, antes da paginação. No navegador ele só via
+  // os 25 da página aberta: "secretario" em Campinas mostrava 1 de 62.
+  if (roleName === "__none__") where.roleId = null;
+  else if (roleName) where.role = { is: { name: roleName } };
 
   if (effectiveCampoId) {
     const fieldClauses: unknown[] = [

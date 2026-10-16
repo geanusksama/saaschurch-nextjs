@@ -31,6 +31,7 @@ export default function UsersList() {
   const [filterPerfil, setFilterPerfil] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterFuncao, setFilterFuncao] = useState('');
+  const [rolesDoCampo, setRolesDoCampo] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
   const [total, setTotal] = useState(0);
@@ -69,7 +70,7 @@ export default function UsersList() {
 
   const currentGroup = isMasterOrAdmin ? null : getRoleGroup(currentRoleName);
 
-  const load = async (opts: { search?: string; page?: number; profileType?: string; isActive?: string } = {}) => {
+  const load = async (opts: { search?: string; page?: number; profileType?: string; isActive?: string; roleName?: string } = {}) => {
     setLoading(true);
     setError('');
     try {
@@ -78,6 +79,8 @@ export default function UsersList() {
       if (opts.search) params.set('search', opts.search);
       if (opts.profileType) params.set('profileType', opts.profileType);
       if (opts.isActive !== undefined && opts.isActive !== '') params.set('isActive', opts.isActive);
+      // Função filtrada no servidor: no navegador só via a página aberta.
+      if (opts.roleName) params.set('roleName', opts.roleName);
       params.set('page', String(opts.page ?? 1));
       params.set('pageSize', String(pageSize));
 
@@ -100,6 +103,14 @@ export default function UsersList() {
 
   useEffect(() => { load({ page: 1 }); }, []);
 
+  useEffect(() => {
+    const q = activeFieldId ? `?fieldId=${encodeURIComponent(activeFieldId)}` : '';
+    fetch(`${apiBase}/roles${q}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setRolesDoCampo(Array.isArray(d) ? d.map((r: { name?: string }) => r.name).filter((n): n is string => Boolean(n)) : []))
+      .catch(() => setRolesDoCampo([]));
+  }, [activeFieldId, token]);
+
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
@@ -109,17 +120,19 @@ export default function UsersList() {
         search: searchTerm || undefined,
         profileType: filterPerfil || undefined,
         isActive: filterStatus === 'active' ? 'true' : filterStatus === 'inactive' ? 'false' : undefined,
+        roleName: filterFuncao || undefined,
         page: 1,
       });
     }, 400);
     return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
-  }, [searchTerm, filterPerfil, filterStatus]);
+  }, [searchTerm, filterPerfil, filterStatus, filterFuncao]);
 
   useEffect(() => {
     load({
       search: searchTerm || undefined,
       profileType: filterPerfil || undefined,
       isActive: filterStatus === 'active' ? 'true' : filterStatus === 'inactive' ? 'false' : undefined,
+      roleName: filterFuncao || undefined,
       page,
     });
   }, [page]);
@@ -211,20 +224,20 @@ export default function UsersList() {
     }
   };
 
+  // Todas as funções do campo (não só as da página aberta), mais as que
+  // aparecerem na lista caso /roles não responda.
   const allRoles: string[] = Array.from(
-    new Set(users.map((u: any) => u.role?.name).filter(Boolean))
-  ) as string[];
+    new Set([...rolesDoCampo, ...users.map((u: any) => u.role?.name).filter(Boolean)])
+  ).sort((a, b) => String(a).localeCompare(String(b))) as string[];
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  // search/profileType/isActive are server-side; funcao and security checks remain client-side
+  // search/profileType/isActive/função são filtrados no servidor (antes da
+  // paginação); só as checagens de visibilidade continuam aqui.
   const filtered = users.filter((u: any) => {
-    const matchFuncao =
-      !filterFuncao ||
-      (filterFuncao === '__none__' ? !u.role : u.role?.name === filterFuncao);
     const matchMasterVisibility = isMasterOrAdmin || u.profileType !== 'master';
     const matchGroup = !currentGroup || getRoleGroup(u.role?.name || '') === currentGroup;
-    return matchFuncao && matchMasterVisibility && matchGroup;
+    return matchMasterVisibility && matchGroup;
   });
 
   return (
