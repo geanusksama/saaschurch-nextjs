@@ -71,11 +71,13 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { userId, papel, churchId, titulo } = body as {
+    const { userId, papel, churchId, titulo, memberId } = body as {
       userId?: string;
       papel?: string;
       churchId?: string | null;
       titulo?: string | null;
+      /** Titular da função de onde a posição saiu (rota /funcoes). */
+      memberId?: string | null;
     };
 
     if (!userId || !papel) {
@@ -106,6 +108,22 @@ export async function POST(req: NextRequest) {
       select: { id: true, campoId: true, churchId: true, fullName: true },
     });
     if (!alvo) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
+
+    // Posição anexada a partir do titular da função: grava o vínculo
+    // membro → usuário, para a tela reconhecê-lo da próxima vez sem depender
+    // do e-mail. Só preenche vínculo vazio, e só de membro do campo — nunca
+    // troca o usuário de quem já tem um.
+    if (memberId) {
+      await prisma.member.updateMany({
+        where: {
+          id: memberId,
+          userId: null,
+          deletedAt: null,
+          church: { regional: { campoId: user.campoId } },
+        },
+        data: { userId },
+      });
+    }
 
     // Reativa em vez de duplicar quando a posição já existiu e foi removida.
     const existente = await prisma.cultoPosicao.findFirst({

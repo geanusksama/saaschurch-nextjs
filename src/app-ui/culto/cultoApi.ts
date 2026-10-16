@@ -295,6 +295,33 @@ export interface Posicao {
   createdAt: string;
 }
 
+/**
+ * Quem tem, no cadastro de funções da igreja, a função que corresponde ao
+ * papel. `usuario` null = o membro ainda não tem acesso ao sistema.
+ */
+export interface PosicaoDaFuncao {
+  papel: Papel;
+  funcao: string | null;
+  desde: string;
+  membro: {
+    id: string;
+    fullName: string;
+    rol: number | null;
+    email: string | null;
+    phone: string | null;
+    mobile: string | null;
+    churchId: string;
+    church: { name: string } | null;
+  };
+  usuario: {
+    id: string;
+    fullName: string;
+    email: string;
+    /** VINCULO = members.user_id; EMAIL = mesmo e-mail do membro. */
+    origem: 'VINCULO' | 'EMAIL';
+  } | null;
+}
+
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem('mrm_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -489,7 +516,13 @@ export const cultoApi = {
     papel: Papel;
     churchId?: string | null;
     titulo?: string | null;
+    /** Titular da função: o servidor liga members.user_id se estiver vazio. */
+    memberId?: string | null;
   }) => req<Posicao>('/culto/posicoes', { method: 'POST', body: JSON.stringify(dados) }),
+
+  /** Titulares das funções da igreja que valem como posição do culto. */
+  listarPosicoesDaFuncao: (churchId: string) =>
+    req<PosicaoDaFuncao[]>(`/culto/posicoes/funcoes${qs({ church_id: churchId })}`),
 
   removerPosicao: (id: string) => req<{ ok: true }>(`/culto/posicoes/${id}`, { method: 'DELETE' }),
 

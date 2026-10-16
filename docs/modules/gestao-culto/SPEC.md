@@ -157,6 +157,41 @@ colunas nomeadas em `culto_lancamentos`, anuláveis, preenchidas conforme o
 Nada de RLS só neste módulo (ver 0.4). O escopo é resolvido em
 `src/lib/cultoScope.ts` e aplicado em toda rota via `withAuth`.
 
+### D7 — A tela de Posições mostra setado quem tem a função na igreja
+
+**16/10/2026.** A tela abria com "Ninguém anexado" mesmo quando a igreja já
+tinha dirigente e secretário em `church_function_history`. Agora o card de cada
+papel mostra, com a etiqueta "pela função", o titular da função vigente (ativa,
+sem `end_date`, sem exclusão):
+
+| Função (catálogo, nome normalizado) | Papel |
+|---|---|
+| DIRIGENTE DE CONGREGACAO | `APROVADOR_LOCAL` e, se a igreja hospeda, `APROVADOR_HOSPEDEIRA` |
+| TESOUREIRO(a) | `FINANCEIRO` |
+| SECRETARIO(a), SEGUNDO SECRETARIO(a) | `PRESENCA` |
+
+Nome exato, não aproximação: TESOUREIRA CIBE, SECRETARIA CIBE, ESPOSA DE
+DIRIGENTE e CANDIDATO A DIRIGENTE não viram posição. Mapa em
+`papeisDaFuncao` (`src/lib/cultoScope.ts`); rota
+`GET /api/culto/posicoes/funcoes?church_id=`.
+
+**Mostrar não é gravar.** D1 continua valendo: posição é de USUÁRIO, e a função
+é de MEMBRO. Medido na adcampinas em 16/10/2026: 89 funções vigentes que valem
+como posição (82 dirigentes, 6 secretários, 1 segundo secretário, 0
+tesoureiros) e **nenhum** desses membros com `members.user_id`; só 1 casa por
+e-mail. Gravar sozinho deixaria a posição sem ninguém que consiga entrar. Por
+isso, no card:
+
+- titular com usuário (por `members.user_id`, ou `users.email` igual ao do
+  membro) → **Confirmar** grava a posição com um clique;
+- titular sem usuário → **Criar acesso** abre o cadastro já com o membro;
+- **Anexar** continua para buscar ou cadastrar outra pessoa.
+
+O usuário nunca é achado por nome. Quando a posição nasce de um membro, o
+`POST /api/culto/posicoes` recebe `memberId` e grava `members.user_id` — só se
+estiver vazio, e só de membro do campo ativo. Coberto por
+`scripts/e2e-posicoes-funcao.mjs`.
+
 ---
 
 ## 2. Modelo de dados
@@ -477,7 +512,8 @@ Tudo sob `src/app/api/culto/`, tudo com `withAuth`.
 | Método | Rota | O que faz |
 |---|---|---|
 | `GET` | `/api/culto/posicoes?church_id=` | lista posições (quem está anexado onde) |
-| `POST` | `/api/culto/posicoes` | anexa usuário a papel/igreja |
+| `POST` | `/api/culto/posicoes` | anexa usuário a papel/igreja (`memberId` opcional liga o membro, D7) |
+| `GET` | `/api/culto/posicoes/funcoes?church_id=` | titulares das funções da igreja já traduzidos em papel (D7) |
 | `PATCH` | `/api/culto/posicoes/[id]` | ativa/desativa, troca título |
 | `DELETE` | `/api/culto/posicoes/[id]` | soft delete |
 | `GET` | `/api/culto/meus-papeis` | papéis do usuário logado, para o front decidir o que renderizar |
