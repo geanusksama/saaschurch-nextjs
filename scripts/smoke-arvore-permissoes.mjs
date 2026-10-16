@@ -85,6 +85,76 @@ ok('controle: chave comum ausente na whitelist é negada', rp('app_orders', { pr
   ok('controle: sem gravar o estado antes, o Livro Caixa sumiria (o bug relatado)', podeChave('cashbook.view', ctx(semSemente)) === false);
 }
 
+// Cliques de verdade na árvore (modo usuário com categoria): renderiza a árvore
+// dentro de um componente, acha o botão pela linha (chave da raiz) ou pela
+// seção e chama o onClick dele — é o mesmo handler da tela.
+{
+  const { podeChave } = await import(pathToFileURL(path.join(OUT, 'src/lib/permissoes/resolver.mjs')).href);
+  const { contarSobrescritas } = await import(pathToFileURL(path.join(OUT, 'src/app-ui/system/ArvorePermissoes.mjs')).href);
+  const { PERMISSION_GROUPS } = await import(pathToFileURL(path.join(OUT, 'src/app-ui/system/permissionCatalog.mjs')).href);
+  const textoDe = (c) => (c == null || typeof c === 'boolean' ? '' : Array.isArray(c) ? c.map(textoDe).join('') : typeof c === 'object' ? textoDe(c.props?.children) : String(c));
+  function botoes(props) {
+    const achados = [];
+    function W() {
+      const andar = (el, linha, secao) => {
+        if (Array.isArray(el)) return el.forEach((e) => andar(e, linha, secao));
+        if (!el || typeof el !== 'object') return;
+        const s = PERMISSION_GROUPS.includes(el.key) ? el.key : secao;
+        if (typeof el.type === 'function') return andar(el.type(el.props), el.props.no?.chave ?? linha, s);
+        if (el.type === 'button') achados.push({ linha, secao: s, texto: textoDe(el.props.children).trim(), onClick: el.props.onClick });
+        andar(el.props?.children, linha, s);
+      };
+      andar(ArvorePermissoes(props), null, null);
+      return null;
+    }
+    renderToString(React.createElement(W));
+    return achados;
+  }
+  const CAT = { modo: 'usuario', profileType: 'church', roleId: 'categoria', roleName: 'tesoureiro' };
+  function clicar(valores, achar) {
+    let novo = null;
+    const b = botoes({ ...CAT, valores, onChange: (n) => { novo = n; } }).find(achar);
+    if (!b) throw new Error('botão não encontrado');
+    b.onClick();
+    return novo;
+  }
+  const etiqueta = (valores, chave) => botoes({ ...CAT, valores, onChange() {} }).find((b) => b.linha === chave && /^(padrão|permitido|bloqueado)/.test(b.texto))?.texto;
+  const ctx = (ov) => ({ profileType: 'church', modules: DEFAULT_PERMISSION_MODULES, userOverrides: ov, userRoleId: 'categoria' });
+  const raiz = (chave) => (b) => b.linha === chave && /^(padrão|permitido|bloqueado)/.test(b.texto);
+
+  // Tesoureiro sem nada gravado: libera "Lançar dados de culto".
+  const v1 = clicar({}, raiz('culto_lancar.view'));
+  ok('categoria: 1 clique em Lançar dados de culto libera a tela', podeChave('culto_lancar.view', ctx(v1)) === true);
+  ok('…e o Livro Caixa continua liberado (nada some)', podeChave('cashbook.view', ctx(v1)) === true);
+  ok('…só a tela clicada fica diferente do padrão', contarSobrescritas(v1, 'church', 'categoria') === 8, String(contarSobrescritas(v1, 'church', 'categoria')));
+  const rotulos = botoes({ ...CAT, valores: v1, onChange() {} }).filter((b) => b.linha && /^(padrão|permitido|bloqueado)/.test(b.texto));
+  const mudaram = rotulos.filter((b) => !b.texto.startsWith('padrão'));
+  ok('o bug relatado: as outras telas continuam "padrão" (não viram todas "permitido")', mudaram.length === 1 && mudaram[0].linha === 'culto_lancar.view', JSON.stringify(mudaram.map((b) => `${b.linha}=${b.texto}`).slice(0, 5)));
+  ok('etiquetas: culto "permitido", Livro Caixa "padrão: sim", Gestão de Culto "padrão: não"',
+    etiqueta(v1, 'culto_lancar.view') === 'permitido' && etiqueta(v1, 'cashbook.view') === 'padrão: sim' && etiqueta(v1, 'culto_gestao.view') === 'padrão: não',
+    `${etiqueta(v1, 'culto_lancar.view')} / ${etiqueta(v1, 'cashbook.view')} / ${etiqueta(v1, 'culto_gestao.view')}`);
+
+  // Segundo clique volta ao padrão; padrão continua escolhível.
+  const v2 = clicar(v1, raiz('culto_lancar.view'));
+  ok('2º clique volta ao padrão (tela fechada, 0 diferenças)', podeChave('culto_lancar.view', ctx(v2)) === false && contarSobrescritas(v2, 'church', 'categoria') === 0 && etiqueta(v2, 'culto_lancar.view') === 'padrão: não');
+  ok('…e ainda vê o Livro Caixa', podeChave('cashbook.view', ctx(v2)) === true);
+
+  // Bloquear uma tela que o padrão libera.
+  const v3 = clicar(v1, raiz('cashbook.view'));
+  ok('clique em tela "padrão: sim" bloqueia a tela', podeChave('cashbook.view', ctx(v3)) === false && etiqueta(v3, 'cashbook.view') === 'bloqueado');
+  ok('…sem mexer no culto já liberado', podeChave('culto_lancar.view', ctx(v3)) === true);
+
+  // "voltar ao padrão" da seção Gestão de Culto não apaga o resto (lista fechada).
+  const v4 = clicar(v3, (b) => b.secao === 'Gestão de Culto' && b.texto === 'voltar ao padrão');
+  ok('"voltar ao padrão" da seção: culto volta a "não", Livro Caixa segue bloqueado, resto intacto',
+    podeChave('culto_lancar.view', ctx(v4)) === false && podeChave('cashbook.view', ctx(v4)) === false && podeChave('dashboard.view', ctx(v4)) === true);
+
+  // Sem categoria continua o ciclo antigo (padrão → permitido → bloqueado → padrão).
+  let semCat = null;
+  botoes({ modo: 'usuario', profileType: 'church', valores: {}, onChange: (n) => { semCat = n; } }).find(raiz('culto_lancar.view')).onClick();
+  ok('sem categoria: ciclo antigo, grava só a tela clicada', semCat['culto_lancar.view'] === true && Object.keys(semCat).every((k) => k.startsWith('culto_lancar.')));
+}
+
 // Árvore em modo grupo: tela de Relatórios marcada, Exportar Excel de membros desmarcado.
 const h1 = renderToString(React.createElement(ArvorePermissoes, {
   modo: 'grupo',
@@ -103,7 +173,7 @@ const dash = RAIZES.find((r) => r.no.chave === 'dashboard.view');
 ok('Dashboard sem "Excluir" genérico (nada no código usa)', !dash.no.filhos.some((f) => f.chave === 'dashboard.delete'), JSON.stringify(dash.no.filhos.map((f) => f.chave)));
 const ev = RAIZES.find((r) => r.no.chave === 'events.view');
 ok('Agenda mostra Criar/Editar/Excluir (o código usa)', ['events.create', 'events.edit', 'events.delete'].every((k) => ev.no.filhos.some((f) => f.chave === k)));
-ok('contador de liberados aparece', /\d+ de \d+ liberado/.test(t1), t1.slice(0, 200));
+ok('contador de liberados aparece', /\d+ de \d+ telas e botões liberados/.test(t1), t1.slice(0, 200));
 
 // Árvore em modo usuário.
 const h2 = renderToString(React.createElement(ArvorePermissoes, { modo: 'usuario', profileType: 'church', valores: { 'members.view': false }, onChange() {} }));

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Shield, ArrowLeft, Info, Save, RefreshCw, Copy, Clipboard } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import { Users } from 'lucide-react';
-import { ArvorePermissoes } from './ArvorePermissoes';
+import { ArvorePermissoes, contarSobrescritas } from './ArvorePermissoes';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { Permissao } from '../../lib/permissoes/Permissao';
@@ -228,10 +228,13 @@ export default function UserPermissions() {
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <span>
           Cada tela é uma raiz com os componentes reais dela (botões, abas, relatórios). O que você
-          marcar aqui <strong>sobrescreve</strong> o padrão do perfil só para este usuário. Clique
-          para alternar: padrão → permitido → bloqueado → padrão; na raiz, vale para a tela
-          inteira. Use <strong>Redefinir</strong> para limpar todas as sobrescritas. {Object.keys(perms).length}{' '}
-          sobrescrita(s) ativa(s).
+          marcar aqui <strong>sobrescreve</strong> o padrão do perfil só para este usuário.{' '}
+          {user?.roleId
+            ? 'Clique para inverter o padrão; clique de novo para voltar a ele'
+            : 'Clique para alternar: padrão → permitido → bloqueado → padrão'}
+          ; na raiz, vale para a tela inteira. Use <strong>Redefinir</strong> para limpar todas as
+          sobrescritas. {contarSobrescritas(perms, user?.profileType ?? 'church', user?.roleId)} item(ns) diferente(s)
+          do padrão.
         </span>
       </div>
 
