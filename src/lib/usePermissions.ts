@@ -71,8 +71,23 @@ function readUserRoleId(): string | null {
   } catch { return null; }
 }
 
-// Retorna PermissionModule[] se ok, 'forbidden' se 403, null em outros erros
-async function fetchMatrixFromServer(): Promise<PermissionModule[] | 'forbidden' | null> {
+// Retorna PermissionModule[] se ok, 'forbidden' se 403, null em outros erros.
+//
+// Uma busca compartilhada: cada <Permissao> monta este hook, e sem isto uma
+// tela com 50 botões marcados fazia 50 GET /permissions/matrix ao abrir.
+let _matrixPromise: Promise<PermissionModule[] | 'forbidden' | null> | null = null;
+let _matrixQuando = 0;
+const MATRIX_TTL_MS = 30_000;
+
+function fetchMatrixFromServer(forcar = false): Promise<PermissionModule[] | 'forbidden' | null> {
+  const agora = Date.now();
+  if (!forcar && _matrixPromise && agora - _matrixQuando < MATRIX_TTL_MS) return _matrixPromise;
+  _matrixQuando = agora;
+  _matrixPromise = buscarMatrix();
+  return _matrixPromise;
+}
+
+async function buscarMatrix(): Promise<PermissionModule[] | 'forbidden' | null> {
   try {
     const storedUser = JSON.parse(localStorage.getItem('mrm_user') || '{}');
     const token: string | null = storedUser?.token ?? localStorage.getItem('mrm_token') ?? null;
@@ -179,7 +194,7 @@ export function usePermissions(profileType?: string) {
   }, []);
 
   const refreshPermissions = useCallback(async () => {
-    const result = await fetchMatrixFromServer();
+    const result = await fetchMatrixFromServer(true);
     if (result === 'forbidden') {
       _moduleCache = null;
       try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
