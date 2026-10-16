@@ -271,8 +271,8 @@ function EditorProduto({
                      placeholder="Vestuário" />
             </div>
             <div>
-              <label className={rotulo}>Link de pagamento <span className="font-normal text-slate-400">— vazio usa o da página</span></label>
-              <input className={input} value={paymentLink} onChange={(e) => setPaymentLink(e.target.value)} />
+              <label className={rotulo}>Pagamento</label>
+              <p className="text-xs text-slate-500 pt-2">Pix ou cartão pelo Asaas, direto na loja do site (confirmação automática).</p>
             </div>
           </section>
 

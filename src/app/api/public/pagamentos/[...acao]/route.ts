@@ -6,12 +6,13 @@
  * GET  status/:cobrancaId      → situação do pagamento (consulta o Asaas se pendente) + ingressos quando pago
  * GET  peniel/:eventId         → { asaas: boolean } — o modal do Peniel decide entre pagar agora e o fluxo antigo
  * POST peniel/pagar            → { inscricaoId, codigo, cpf, metodo, email? }
+ * POST dept/pagar              → { tipo: pedido|inscricao, id, token, metodo } (sites de departamento)
  *
  * Campo: domínio/?campo= (publicTenant). Preço e vagas sempre do banco.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { respostaDeErro } from '@/lib/asaas/appAuth';
-import { campoDoSite, checkoutSite, pagarPeniel, penielTemAsaas, statusSite, vitrine } from '@/lib/asaas/vitrine';
+import { campoDoSite, checkoutSite, pagarDept, pagarPeniel, penielTemAsaas, statusSite, vitrine } from '@/lib/asaas/vitrine';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ acao: string[] }> };
@@ -39,5 +40,6 @@ export async function POST(req: NextRequest, { params }: P) {
   const corpo = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   if (a === 'checkout') return rodar(() => checkoutSite(req, corpo));
   if (a === 'peniel' && b === 'pagar') return rodar(() => pagarPeniel(corpo));
+  if (a === 'dept' && b === 'pagar') return rodar(() => pagarDept(corpo));
   return json({ error: 'Rota desconhecida.' }, 404);
 }

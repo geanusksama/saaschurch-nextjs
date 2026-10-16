@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Calendar, MapPin, X, CheckCircle2, Ticket, Users, History } from "lucide-react";
 import { tokens as T, Secao, TituloSecao } from "./DeptSiteRenderer";
+import { DeptPagamento } from "./DeptPagamento";
 import type { DeptEvento } from "./DeptSiteRenderer";
 
 type Props = Record<string, unknown>;
@@ -250,8 +251,8 @@ function ModalInscricao({ evento, slug, onFechar }: {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<{
-    codigo: string; qrUrl: string | null; pagamentoPendente: boolean;
-    paymentLink?: string | null; valorTotal: number; mensagem?: string | null;
+    id: string; token: string; codigo: string; qrUrl: string | null; pagamentoPendente: boolean;
+    valorTotal: number; mensagem?: string | null;
   } | null>(null);
 
   const camposExtras: CampoExtra[] = Array.isArray(evento.form?.campos_extras)
@@ -326,14 +327,10 @@ function ModalInscricao({ evento, slug, onFechar }: {
               <p className="font-mono text-2xl font-bold tracking-[0.2em]">{sucesso.codigo}</p>
             </div>
 
-            {sucesso.pagamentoPendente && sucesso.paymentLink && (
-              <a
-                href={sucesso.paymentLink} target="_blank" rel="noreferrer"
-                className="w-full px-5 py-3 text-sm font-semibold"
-                style={{ background: T.primary, color: "#fff", borderRadius: T.radius }}
-              >
-                Pagar {moeda(sucesso.valorTotal)}
-              </a>
+            {/* Pagamento pelo Asaas (Pix/cartão); confirmado, a vaga fica garantida e o ingresso vai pelo WhatsApp. */}
+            {sucesso.pagamentoPendente && (
+              <DeptPagamento tipo="inscricao" id={sucesso.id} token={sucesso.token} valor={sucesso.valorTotal}
+                onPago={() => setSucesso((s) => (s ? { ...s, pagamentoPendente: false } : s))} />
             )}
 
             <p className="text-xs" style={{ color: T.muted }}>

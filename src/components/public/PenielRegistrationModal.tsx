@@ -1172,99 +1172,28 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
                               <Check size={16} /> {submitting ? "Enviando..." : "Confirmar inscrição e pagar"}
                             </button>
                           </div>
-                        ) : (<>
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <CreditCard size={16} className="text-[#d4af37]" />
-                            <h4 className="text-[11px] font-extrabold tracking-widest text-slate-600 uppercase">Pagamento da Ficha</h4>
-                          </div>
-                          <p className="text-sm text-slate-700">
-                            Valor do Encontro: <span className="font-extrabold text-slate-900">{selectedEvent.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
-                          </p>
-                          
-                          {selectedEvent.paymentLink ? (
-                            <a
-                              href={selectedEvent.paymentLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 bg-[#22c55e] text-white hover:bg-emerald-600 shadow-sm transition-all"
-                            >
-                              <CreditCard size={16} /> Ir para o pagamento
-                            </a>
-                          ) : (
-                            <p className="text-xs text-slate-500 font-light">O link de pagamento será disponibilizado pela equipe. Por favor, defina uma previsão abaixo.</p>
-                          )}
-                          <p className="text-[11px] text-slate-400">Não feche este modal — após pagar no link acima, faça o upload do seu comprovante aqui.</p>
-                        </div>
-
-                        {/* Previsão de pagamento */}
-                        <div className="space-y-1">
-                          <label className="text-slate-500 font-semibold block">Data prevista para o pagamento</label>
-                          <input
-                            type="date"
-                            value={paymentPromiseDate}
-                            onChange={e => setPaymentPromiseDate(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-[#d4af37] text-xs"
-                          />
-                        </div>
-
-                        {/* Upload de Comprovante */}
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3">
-                          <label className="text-xs font-semibold text-slate-700 block">Comprovante de pagamento</label>
-                          <input
-                            ref={proofInputRef}
-                            type="file"
-                            accept="image/*,application/pdf"
-                            className="hidden"
-                            onChange={e => {
-                              const file = e.target.files?.[0];
-                              if (file) handleProofUpload(file);
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => proofInputRef.current?.click()}
-                            disabled={proofUploading}
-                            className="w-full py-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                          >
-                            {proofUploading ? (
-                              <><Loader2 size={14} className="animate-spin text-slate-500" /> Enviando...</>
-                            ) : (
-                              <><Paperclip size={14} /> {proofUrl ? "Trocar comprovante" : "Anexar comprovante"}</>
-                            )}
-                          </button>
-                          {proofUrl && (
-                            <div className="flex items-center gap-2 text-xs text-emerald-600 font-semibold">
-                              <CheckCircle2 size={14} /> {proofFileName || "Comprovante anexado"}
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <CreditCard size={16} className="text-[#d4af37]" />
+                                <h4 className="text-[11px] font-extrabold tracking-widest text-slate-600 uppercase">Pagamento da Ficha</h4>
+                              </div>
+                              <p className="text-sm text-slate-700">
+                                Valor do Encontro: <span className="font-extrabold text-slate-900">{selectedEvent.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                              </p>
+                              <p className="text-xs text-slate-500">O pagamento online (Pix ou cartão) ainda não foi liberado para este encontro. Envie a ficha: assim que for liberado, pague em <b>Consultar inscrição</b> com o seu código.</p>
                             </div>
-                          )}
-                        </div>
-
-                        {/* Submit Actions */}
-                        <div className="space-y-2.5 pt-2">
-                          <button
-                            type="button"
-                            disabled={!proofUrl || submitting}
-                            onClick={() => submitRegistration(false)}
-                            className="w-full py-3 rounded-xl text-white font-bold bg-[#22c55e] hover:bg-emerald-600 shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                          >
-                            <Check size={16} /> {submitting ? "Enviando..." : "Enviar com comprovante"}
-                          </button>
-                          
-                          <button
-                            type="button"
-                            disabled={submitting}
-                            onClick={() => submitRegistration(false)}
-                            className="w-full py-3 rounded-xl text-slate-700 border border-slate-300 bg-white hover:bg-slate-50 font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
-                          >
-                            Enviar sem comprovante (pagar depois)
-                          </button>
-
-                          <p className="text-[11px] text-center text-slate-400 font-light">
-                            Caso opte por enviar sem comprovante, sua vaga ficará como <b>pagamento pendente</b> até que a equipe verifique.
-                          </p>
-                        </div>
-                        </>)}
+                            <button
+                              type="button"
+                              disabled={submitting}
+                              onClick={() => submitRegistration(false)}
+                              className="w-full py-3 rounded-xl text-white font-bold bg-[#22c55e] hover:bg-emerald-600 shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                            >
+                              <Check size={16} /> {submitting ? "Enviando..." : "Enviar inscrição"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1462,35 +1391,9 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
                     onPago={() => setLookupData({ ...lookupData, paymentStatus: "pago" })} />
                 )}
 
-                {/* Link de pagamento se pendente (campo sem Asaas) */}
-                {!lookupAsaas && lookupData.paymentStatus !== "pago" && lookupData.paymentStatus !== "gratuito" && lookupData.event?.paymentLink && (
-                  <a
-                    href={lookupData.event.paymentLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 bg-[#22c55e] text-white hover:bg-emerald-600 transition-colors"
-                  >
-                    <CreditCard size={14} /> Ir para o pagamento
-                  </a>
-                )}
-
-                {/* Anexar comprovante (só sem Asaas) */}
-                {!lookupAsaas && lookupData.paymentStatus !== "gratuito" && (
-                  <div className="space-y-2">
-                    <input ref={lookupProofRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleLookupProofUpload(f); }} />
-                    {lookupData.hasProof ? (
-                      <div className="flex items-center gap-2 text-xs text-emerald-600 font-semibold"><CheckCircle2 size={14} /> Comprovante recebido</div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => lookupProofRef.current?.click()}
-                        disabled={lookupProofUploading}
-                        className="w-full py-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
-                      >
-                        {lookupProofUploading ? <><Loader2 size={14} className="animate-spin" /> Enviando...</> : <><Paperclip size={14} /> Anexar comprovante</>}
-                      </button>
-                    )}
-                  </div>
+                {/* Sem Asaas no campo: só o aviso (todo pagamento é pelo Asaas, sem link manual nem comprovante). */}
+                {!lookupAsaas && !["pago", "gratuito"].includes(lookupData.paymentStatus) && (
+                  <p className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-500">O pagamento online (Pix ou cartão) ainda não foi liberado para este encontro. Volte aqui com o seu código quando for liberado.</p>
                 )}
 
                 {/* Baixar PDF + Reenviar QR */}

@@ -195,8 +195,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
           qrUrl,
           valorTotal,
           pagamentoPendente: !gratuito,
-          paymentLink: form.payment_link || site.payment_link,
-          instrucoes: form.instrucoes_pagamento,
           mensagem: form.mensagem_confirmacao,
         },
       },

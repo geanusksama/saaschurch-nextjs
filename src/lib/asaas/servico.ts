@@ -199,7 +199,7 @@ export interface Vinculo {
   churchId?: string | null;
   perfilId?: string | null;
   memberId?: string | null;
-  origem: 'CONTRIBUICAO' | 'PEDIDO' | 'ASSINATURA' | 'AVULSA' | 'LINK' | 'PENIEL';
+  origem: 'CONTRIBUICAO' | 'PEDIDO' | 'ASSINATURA' | 'AVULSA' | 'LINK' | 'PENIEL' | 'DEPTO';
   contribuicaoId?: string | null;
   pedidoId?: string | null;
   assinaturaId?: string | null;
@@ -331,6 +331,24 @@ export async function aplicarNoApp(cobrancaId: string) {
           prisma.appV3Reembolso.updateMany({ where: { pedidoId: ped.id, status: { in: ['SOLICITADO', 'APROVADO'] } }, data: { status: 'PAGO' } }),
           ...(await cancelarIngressosDoPedido(ped.id)),
         ]);
+      }
+    }
+  }
+
+  // Sites de departamento: o registro vem da referência externa (sc:dept-pedido:<id> / sc:dept-inscricao:<id>).
+  const refExterna = String((c.dados as Record<string, unknown> | null)?.externalReference ?? '');
+  const dept = /^sc:dept-(pedido|inscricao):([0-9a-f-]{36})$/.exec(refExterna);
+  if (dept) {
+    const alvo = e === 'PAGO' ? 'PAGO' : e === 'ESTORNADO' ? 'ESTORNADO' : e === 'CANCELADO' || e === 'VENCIDO' ? 'PENDENTE' : null;
+    if (alvo && dept[1] === 'pedido') {
+      await prisma.$executeRaw`update public.department_orders set payment_status = ${alvo}, payment_ref = ${c.id}, updated_at = now() where id = ${dept[2]}::uuid and payment_status <> ${alvo}`;
+    }
+    if (alvo && dept[1] === 'inscricao') {
+      const mudou = await prisma.$executeRaw`update public.department_event_registrations set payment_status = ${alvo}, payment_ref = ${c.id}, updated_at = now() where id = ${dept[2]}::uuid and payment_status <> ${alvo}`;
+      if (mudou && alvo === 'PAGO') {
+        // Pago: reenvia o ingresso (QR) pelo WhatsApp, agora como confirmado.
+        const { enviarIngressoDepartamento } = await import('@/lib/departmentTicket');
+        await enviarIngressoDepartamento(dept[2]).catch((err) => console.error('[asaas dept ingresso]', err));
       }
     }
   }

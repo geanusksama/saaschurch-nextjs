@@ -2278,17 +2278,7 @@ export default function PenielDashboard() {
                 </div>
               </label>
 
-              <div className="space-y-1">
-                <label className={labelCls}>Link de Pagamento (TON / outro)</label>
-                <input
-                  type="url"
-                  placeholder="https://... (link de cobrança do evento)"
-                  value={eventForm.paymentLink}
-                  onChange={e => setEventForm({ ...eventForm, paymentLink: e.target.value })}
-                  className={inputCls}
-                />
-                <p className="text-[11px] text-slate-400">Exibido ao inscrito após preencher a ficha, para efetuar o pagamento.</p>
-              </div>
+              <p className="text-[11px] text-slate-500 rounded-lg bg-slate-50 dark:bg-slate-800/50 px-3 py-2">Pagamento da inscrição: Pix ou cartão pelo Asaas, com confirmação automática e ingresso no WhatsApp (Sistema › Configurações › Pagamentos Asaas).</p>
 
               <div className="space-y-1">
                 <label className={labelCls}>Descrição Curta (Opcional)</label>

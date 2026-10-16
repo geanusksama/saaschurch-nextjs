@@ -132,3 +132,23 @@ Em produção cada teste paga taxa do Asaas: use valores baixos e estorne.
   2026-10-16 com autorização). **Baseline ainda não regerado**: regerar antes
   do merge (e copiar a remoção do NOT NULL de `appv3_pedidos.perfil_id` e
   `appv3_ingressos.perfil_id` para `baseline/98_patches.sql`).
+
+## Nenhum pagamento manual (2026-10-16)
+
+Pedido do dono: todo recebimento é pelo Asaas.
+- **Sites de departamento** (`/dep/<slug>`): loja e inscrição em evento pagam
+  por Pix/cartão (`POST /api/public/pagamentos/dept/pagar`, identificação
+  id + lookup_token). A cobrança leva `sc:dept-pedido:<id>` /
+  `sc:dept-inscricao:<id>` e a confirmação grava `payment_status = PAGO` e
+  `payment_ref` (sem coluna nova). Aparecem em Contribuições e vendas como
+  "Site de departamento". O link de pagamento colado saiu do site e do
+  cadastro de produto.
+- **Peniel:** sem link "TON/outro", sem comprovante e sem data de promessa.
+  Campo sem Asaas: a ficha é aceita e o pagamento fica para quando o campo ligar
+  o Asaas (aparece "Pagar agora" na consulta).
+- **App:** sem BR Code estático nem "Já paguei"; campo sem Asaas mostra
+  "Pagamento online indisponível" (reserva gratuita continua).
+- `/cibe-tickets` e "Comprar Ingresso" do painel (preços fixos no código, não
+  cobravam) redirecionam para `/eventos?dep=cibe` e Pagamentos › Eventos e loja.
+- Contabilidade (contas a pagar, credores, recibos do caixa) não é recebimento
+  online e continua como estava.

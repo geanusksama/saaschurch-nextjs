@@ -7,6 +7,7 @@ import {
   Trash2, CheckCircle2, Truck, Heart,
 } from "lucide-react";
 import { tokens as T, Secao, TituloSecao } from "./DeptSiteRenderer";
+import { DeptPagamento } from "./DeptPagamento";
 import type { DeptProduto } from "./DeptSiteRenderer";
 import type { DepartmentSite } from "@/lib/departmentSiteSchema";
 
@@ -455,7 +456,7 @@ function GavetaCarrinho({
   const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [pedido, setPedido] = useState<{ numero: string; total: number; codigoRetirada: string; paymentLink?: string | null } | null>(null);
+  const [pedido, setPedido] = useState<{ id: string; token: string; numero: string; total: number; codigoRetirada: string } | null>(null);
 
   const total = carrinho.reduce((s, i) => s + i.unit * i.qty, 0);
 
@@ -519,21 +520,14 @@ function GavetaCarrinho({
             <CheckCircle2 size={48} style={{ color: T.accent }} />
             <p className="text-lg font-semibold">Pedido {pedido.numero}</p>
             <p className="text-sm" style={{ color: T.muted }}>
-              Total {moeda(pedido.total)}. Assim que confirmarmos o pagamento, seu produto fica separado para retirada.
+              Total {moeda(pedido.total)}. Pague abaixo por Pix ou cartão: a confirmação é automática e o produto fica separado para retirada.
             </p>
             <div className="w-full px-4 py-3" style={{ background: T.bg, borderRadius: 6 }}>
               <p className="text-xs uppercase tracking-widest" style={{ color: T.muted }}>Código de retirada</p>
               <p className="font-mono text-2xl font-bold tracking-[0.2em]">{pedido.codigoRetirada}</p>
             </div>
-            {(pedido.paymentLink ?? site.payment_link) && (
-              <a
-                href={pedido.paymentLink ?? site.payment_link ?? "#"} target="_blank" rel="noreferrer"
-                className="w-full px-5 py-3 text-sm font-bold"
-                style={{ background: T.primary, color: "#fff", borderRadius: 6 }}
-              >
-                Pagar {moeda(pedido.total)}
-              </a>
-            )}
+            {/* Pagamento pelo Asaas (Pix/cartão); nada de link colado. */}
+            {pedido.total > 0 && <DeptPagamento tipo="pedido" id={pedido.id} token={pedido.token} valor={pedido.total} />}
           </div>
         ) : carrinho.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center" style={{ color: T.muted }}>

@@ -226,7 +226,7 @@ export async function checkoutSite(req: NextRequest, corpo: Record<string, unkno
 /** Status para a tela "aguardando pagamento" do site (id da cobrança é o segredo). */
 export async function statusSite(cobrancaId: string) {
   let c = await prisma.asaasCobranca.findUnique({ where: { id: cobrancaId } });
-  if (!c || !(c.pedidoId || c.penielInscricaoId)) throw new Recusado('Pagamento não encontrado.');
+  if (!c || !(c.pedidoId || c.penielInscricaoId || c.origem === 'DEPTO')) throw new Recusado('Pagamento não encontrado.');
   if (estadoDe(c.status) === 'PENDENTE' && Date.now() - c.updatedAt.getTime() > 4_000) {
     const config = await prisma.asaasConfig.findUniqueOrThrow({ where: { id: c.configId } });
     c = await atualizarDoAsaas(apiDaConfig(config), c.asaasPaymentId).catch(() => c!);
@@ -290,4 +290,62 @@ export async function penielTemAsaas(eventId: string) {
   const ev = await prisma.penielEvent.findUnique({ where: { id: eventId }, select: { campoId: true } });
   if (!ev) return false;
   return Boolean(await prisma.asaasConfig.findFirst({ where: { campoId: ev.campoId, deletedAt: null, ativo: true }, select: { id: true } }));
+}
+
+// ── Sites de departamento (/dep/<slug>) ────────────────────────────────────
+
+/**
+ * Pagamento de pedido da loja ou inscrição em evento de um site de
+ * departamento (department_orders / department_event_registrations). A
+ * cobrança leva `externalReference = sc:dept-pedido:<id>` (ou dept-inscricao),
+ * que é como o webhook acha o registro — sem coluna nova nessas tabelas.
+ * Identificação pública: id + lookup_token (os dois que o site recebe ao criar).
+ */
+export async function pagarDept(corpo: Record<string, unknown>) {
+  const tipo = corpo.tipo === 'inscricao' ? 'inscricao' : 'pedido';
+  const id = String(corpo.id ?? '');
+  const token = String(corpo.token ?? '');
+  const metodo = corpo.metodo === 'CARTAO' ? 'CARTAO' : 'PIX';
+  const linhas = tipo === 'pedido'
+    ? await prisma.$queryRaw<{ id: string; campo_id: string; nome: string; cpf: string; telefone: string; email: string | null; valor: Prisma.Decimal; ref: string; payment_status: string }[]>`
+        select id, campo_id, nome, cpf, telefone, email, total as valor, numero_pedido as ref, payment_status
+          from public.department_orders where id = ${id}::uuid and lookup_token = ${token}`
+    : await prisma.$queryRaw<{ id: string; campo_id: string; nome: string; cpf: string; telefone: string; email: string | null; valor: Prisma.Decimal; ref: string; payment_status: string }[]>`
+        select id, campo_id, nome, cpf, telefone, email, valor_total as valor, check_in_code as ref, payment_status
+          from public.department_event_registrations where id = ${id}::uuid and lookup_token = ${token}`;
+  const r = linhas[0];
+  if (!r) throw new Recusado(tipo === 'pedido' ? 'Pedido não encontrado.' : 'Inscrição não encontrada.');
+  if (['PAGO', 'ISENTO'].includes(r.payment_status)) throw new Recusado('Já está pago.');
+  const valor = n2(r.valor);
+  if (valor <= 0) throw new Recusado('Nada a pagar.');
+  const { config, api } = await configDoCampo(r.campo_id).catch(() => {
+    throw new SemAsaas('Pagamento online indisponível no momento. Procure o departamento.');
+  });
+  const ref = `sc:dept-${tipo}:${r.id}`;
+
+  // Cobrança ainda aberta deste registro: devolve a mesma.
+  const aberta = await prisma.asaasCobranca.findFirst({
+    where: { campoId: r.campo_id, origem: 'DEPTO', status: 'PENDING', dados: { path: ['externalReference'], equals: ref } },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (aberta && ((metodo === 'PIX' && aberta.forma === 'PIX') || (metodo === 'CARTAO' && aberta.forma === 'UNDEFINED'))) {
+    const qr = aberta.forma === 'PIX' ? await api.cobrancas.pix(aberta.asaasPaymentId).catch(() => null) : null;
+    return { cobrancaId: aberta.id, status: 'PENDENTE', valor: n2(aberta.valor), invoiceUrl: aberta.invoiceUrl, ...(qr ? { pix: { payload: qr.payload, imagem: qr.encodedImage, expira: qr.expirationDate ?? null } } : {}) };
+  }
+
+  const pessoa: Pessoa = { perfilId: null, memberId: null, campoId: r.campo_id, churchId: null, nome: r.nome, cpf: soDigitos(r.cpf), email: r.email ?? '', celular: soDigitos(r.telefone), cep: '', numero: '' };
+  const customer = await garantirCliente(api, config, pessoa);
+  const descricao = tipo === 'pedido' ? `Pedido ${r.ref} · loja do departamento` : `Inscrição ${r.ref} · evento do departamento`;
+  const v = { config, campoId: r.campo_id, origem: 'DEPTO' as const, pagadorNome: r.nome };
+  let resultado: { cobrancaId: string; status: string; valor: number; invoiceUrl?: string | null; pix?: unknown };
+  if (metodo === 'PIX') {
+    resultado = await cobrarPix(api, v, customer, valor, descricao, ref);
+  } else {
+    const pg = await api.cobrancas.criar({ customer, billingType: 'UNDEFINED', value: valor, dueDate: hojeBR(), description: descricao, externalReference: ref });
+    const cob = await registrar(v, pg);
+    resultado = { cobrancaId: cob.id, status: estadoDe(cob.status), valor: n2(cob.valor), invoiceUrl: pg.invoiceUrl ?? null };
+  }
+  if (tipo === 'pedido') await prisma.$executeRaw`update public.department_orders set payment_ref = ${resultado.cobrancaId} where id = ${r.id}::uuid`;
+  else await prisma.$executeRaw`update public.department_event_registrations set payment_ref = ${resultado.cobrancaId} where id = ${r.id}::uuid`;
+  return resultado;
 }
