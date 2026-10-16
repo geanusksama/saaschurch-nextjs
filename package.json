@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && node scripts/migrate-self.mjs && next build",
+    "build": "npm run permissoes:check && prisma generate && node scripts/migrate-self.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "migrate:self": "node scripts/migrate-self.mjs",
     "permissoes:arvore": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gerar-arvore-permissoes.mjs",
-    "permissoes:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gerar-arvore-permissoes.mjs --check"
+    "permissoes:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gerar-arvore-permissoes.mjs --check && node scripts/auditar-permissoes.mjs --check",
+    "permissoes:auditoria": "node scripts/auditar-permissoes.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

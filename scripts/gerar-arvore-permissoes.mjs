@@ -75,6 +75,26 @@ function recorte(txt, i, fecha) {
 const erros = [];
 const achadas = new Map();
 
+/**
+ * Onde o código usa as travas genéricas de cada tela (canCreate('members'),
+ * 'members.edit'...). A tela de grupos só mostra "Criar/Editar/Excluir" de uma
+ * tela quando alguma linha de código usa essa trava — ação que nada usa não
+ * controla nada e só confundiria (o "Excluir" do Dashboard).
+ *
+ * Chamada dinâmica (canCreate(PERM_KEY), canEdit(def.permKey)) não dá para
+ * ler: nesse arquivo, a ação vale para toda tela citada nele. Mostra a mais,
+ * nunca esconde uma que funciona.
+ */
+const MAPA_ACAO = { Create: 'create', Edit: 'edit', Delete: 'delete' };
+const usos = new Map(); // "members.create" -> Set(arquivos)
+function anotarUso(modulo, acao, arquivo) {
+  const chave = `${modulo}.${acao}`;
+  if (!chavesDeModulo.has(chave)) return;
+  if (!usos.has(chave)) usos.set(chave, new Set());
+  usos.get(chave).add(arquivo);
+}
+const modulosDoCatalogo = new Set(DEFAULT_PERMISSION_MODULES.map((m) => m.key));
+
 function linhaDe(txt, i) {
   return txt.slice(0, i).split('\n').length;
 }
@@ -120,13 +140,42 @@ for (const arq of arquivos(SRC)) {
   }
 
   for (const m of txt.matchAll(/\bdefinirPermissao\(/g)) {
-    const corpo = recorte(txt, m.index + 'definirPermissao'.length, ')');
+    // Começa depois do '(' de abertura: o recorte procura o ')' no mesmo nível.
+    const corpo = recorte(txt, m.index + 'definirPermissao('.length, ')');
     const onde = `${rel}:${linhaDe(txt, m.index)}`;
     const attr = {};
     for (const a of (corpo ?? '').matchAll(/\b(chave|rotulo|herda)\s*:\s*(?:'([^']*)'|"([^"]*)")/g)) {
       attr[a[1]] = a[2] ?? a[3];
     }
     registrar(attr, onde);
+  }
+
+  // Travas genéricas com texto literal.
+  for (const m of txt.matchAll(/\bcan(Create|Edit|Delete)\(\s*['"]([a-z0-9_]+)['"]/g)) {
+    anotarUso(m[2], MAPA_ACAO[m[1]], rel);
+  }
+  for (const m of txt.matchAll(/['"`]([a-z0-9_]+)\.(create|edit|delete)['"`]/g)) {
+    anotarUso(m[1], m[2], rel);
+  }
+  // Travas genéricas dinâmicas: vale para toda tela citada no arquivo.
+  const dinamicas = new Set(
+    [...txt.matchAll(/\bcan(Create|Edit|Delete)\(\s*(?!['"\s)])/g)].map((m) => MAPA_ACAO[m[1]]),
+  );
+  if (dinamicas.size) {
+    // As chaves podem estar no próprio arquivo ou num importado direto
+    // (MobileRecurso lê as de src/lib/mobile/definicoes.ts).
+    const textos = [txt];
+    for (const imp of txt.matchAll(/from\s+['"](\.{1,2}\/[^'"]+)['"]/g)) {
+      const base = path.resolve(path.dirname(arq), imp[1]);
+      const alvo = ['.ts', '.tsx', '/index.ts', '/index.tsx', ''].map((e) => base + e).find((p) => fs.existsSync(p) && fs.statSync(p).isFile());
+      if (alvo) textos.push(semComentarios(fs.readFileSync(alvo, 'utf8')));
+    }
+    const citados = new Set(
+      textos
+        .flatMap((t) => [...t.matchAll(/['"]([a-z0-9_]+)['"]/g)].map((m) => m[1]))
+        .filter((k) => modulosDoCatalogo.has(k)),
+    );
+    for (const k of citados) for (const a of dinamicas) anotarUso(k, a, rel);
   }
 }
 
@@ -156,6 +205,9 @@ if (erros.length) {
 }
 
 const lista = [...achadas.values()].sort((a, b) => a.chave.localeCompare(b.chave));
+const acoesEmUso = Object.fromEntries(
+  [...usos.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, [...v].sort()]),
+);
 const conteudo = `/**
  * GERADO por scripts/gerar-arvore-permissoes.mjs — não edite à mão.
  * Rode \`npm run permissoes:arvore\` depois de marcar ou desmarcar um componente.
@@ -163,6 +215,9 @@ const conteudo = `/**
 import type { DefPermissao } from './definir';
 
 export const COMPONENTES_PERMISSAO: DefPermissao[] = ${JSON.stringify(lista, null, 2)};
+
+/** Ações genéricas de tela que o código usa de fato, com os arquivos. */
+export const ACOES_GENERICAS_EM_USO: Record<string, string[]> = ${JSON.stringify(acoesEmUso, null, 2)};
 `;
 
 const atual = fs.existsSync(SAIDA) ? fs.readFileSync(SAIDA, 'utf8') : '';
@@ -174,5 +229,5 @@ if (CHECK) {
   console.log(`Árvore em dia: ${lista.length} componente(s).`);
 } else {
   if (atual !== conteudo) fs.writeFileSync(SAIDA, conteudo);
-  console.log(`Árvore gerada: ${lista.length} componente(s) → ${path.relative(RAIZ, SAIDA)}`);
+  console.log(`Árvore gerada: ${lista.length} componente(s), ${Object.keys(acoesEmUso).length} ação(ões) genérica(s) em uso → ${path.relative(RAIZ, SAIDA)}`);
 }

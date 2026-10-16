@@ -1,20 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Shield, ArrowLeft, Check, X, Info, Save, RefreshCw, Copy, Clipboard } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Shield, ArrowLeft, Info, Save, RefreshCw, Copy, Clipboard } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import { Users } from 'lucide-react';
+import { ArvorePermissoes } from './ArvorePermissoes';
 import { toast } from 'sonner';
-import {
-  DEFAULT_PERMISSION_MODULES,
-  PERMISSION_GROUPS,
-  ROLE_PERMISSION_ACTIONS,
-  type Action,
-} from './permissionCatalog';
-
 import { apiBase } from '../../lib/apiBase';
-
-const MODULES = DEFAULT_PERMISSION_MODULES;
-
-const ACTIONS = ROLE_PERMISSION_ACTIONS;
 
 const PROFILE_LABELS: Record<string, string> = {
   master: 'Master',
@@ -44,7 +34,6 @@ export default function UserPermissions() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
-  const [filterGroup, setFilterGroup] = useState('');
   const [clipboard, setClipboard] = useState<PermMap | null>(() => {
     try {
       const raw = localStorage.getItem('mrm_perms_clipboard');
@@ -88,19 +77,6 @@ export default function UserPermissions() {
       .then((d) => setGrupos(Array.isArray(d) ? d.filter((g) => g.isActive) : []))
       .catch(() => setGrupos([]));
   }, [id, token]);
-
-  const toggle = (moduleKey: string, action: Action) => {
-    const k = `${moduleKey}.${action}`;
-    setPerms((prev) => {
-      const current = prev[k];
-      if (current === undefined) return { ...prev, [k]: true };   // undefined → true
-      if (current === true) return { ...prev, [k]: false };        // true → false
-      const next = { ...prev };
-      delete next[k];                                              // false → undefined (reset)
-      return next;
-    });
-    setSaved(false);
-  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -159,80 +135,6 @@ export default function UserPermissions() {
     toast.success(`Permissões coladas!`, {
       description: count > 0 ? `${count} sobrescrita(s) aplicada(s)` : 'Sobrescritas limpas (padrões do perfil)',
     });
-  };
-
-  const groups = PERMISSION_GROUPS;
-  const filteredModules = filterGroup ? MODULES.filter((m) => m.group === filterGroup) : MODULES;
-
-  // Returns 'all-allowed' | 'all-blocked' | 'all-default' | 'mixed'
-  const getColumnState = (action: Action): 'all-allowed' | 'all-blocked' | 'all-default' | 'mixed' => {
-    const values = filteredModules.map((m) => perms[`${m.key}.${action}`]);
-    if (values.every((v) => v === true)) return 'all-allowed';
-    if (values.every((v) => v === false)) return 'all-blocked';
-    if (values.every((v) => v === undefined)) return 'all-default';
-    return 'mixed';
-  };
-
-  // Cycles: mixed/default → all-allowed → all-blocked → all-default
-  const toggleColumn = (action: Action) => {
-    const state = getColumnState(action);
-    setPerms((prev) => {
-      const next = { ...prev };
-      if (state === 'all-allowed') {
-        // → all blocked
-        filteredModules.forEach((m) => { next[`${m.key}.${action}`] = false; });
-      } else if (state === 'all-blocked') {
-        // → all default (remove overrides)
-        filteredModules.forEach((m) => { delete next[`${m.key}.${action}`]; });
-      } else {
-        // mixed or all-default → all allowed
-        filteredModules.forEach((m) => { next[`${m.key}.${action}`] = true; });
-      }
-      return next;
-    });
-    setSaved(false);
-  };
-
-  const grouped = groups
-    .filter((g) => !filterGroup || g === filterGroup)
-    .map((g) => ({ group: g, items: filteredModules.filter((m) => m.group === g) }))
-    .filter((g) => g.items.length > 0);
-
-  // Cell rendering: true=allowed (green), false=blocked (red), undefined=default (gray)
-  const renderCell = (moduleKey: string, action: Action) => {
-    const k = `${moduleKey}.${action}`;
-    const val = perms[k];
-    if (val === true) {
-      return (
-        <button
-          onClick={() => toggle(moduleKey, action)}
-          className="w-8 h-8 rounded-lg bg-green-100 hover:bg-green-200 flex items-center justify-center transition-colors mx-auto"
-          title="Permitido (clique para bloquear)"
-        >
-          <Check className="w-4 h-4 text-green-600" />
-        </button>
-      );
-    }
-    if (val === false) {
-      return (
-        <button
-          onClick={() => toggle(moduleKey, action)}
-          className="w-8 h-8 rounded-lg bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors mx-auto"
-          title="Bloqueado (clique para redefinir ao padrão)"
-        >
-          <X className="w-4 h-4 text-red-600" />
-        </button>
-      );
-    }
-    return (
-      <button
-        onClick={() => toggle(moduleKey, action)}
-        className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center justify-center transition-colors mx-auto"
-        title="Padrão do perfil (clique para permitir)"
-      >
-        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-500" />
-      </button>
-    );
   };
 
   return (
@@ -320,97 +222,28 @@ export default function UserPermissions() {
       <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3 text-sm text-blue-700 dark:text-blue-300">
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <span>
-          Permissões marcadas aqui <strong>sobrescrevem</strong> os padrões do perfil para este usuário.
-          Células cinzas usam o padrão do perfil. Verde = permitido, Vermelho = bloqueado.
-          Clique para alternar. Use "Redefinir" para limpar todas as sobrescritas.
+          Cada tela é uma raiz com os componentes reais dela (botões, abas, relatórios). O que você
+          marcar aqui <strong>sobrescreve</strong> o padrão do perfil só para este usuário. Clique
+          para alternar: padrão → permitido → bloqueado → padrão; na raiz, vale para a tela
+          inteira. Use <strong>Redefinir</strong> para limpar todas as sobrescritas. {Object.keys(perms).length}{' '}
+          sobrescrita(s) ativa(s).
         </span>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-slate-500">Carregando...</div>
       ) : (
-        <>
-          {/* Filter */}
-          <div className="flex items-center gap-3 mb-4">
-            <select
-              value={filterGroup}
-              onChange={(e) => setFilterGroup(e.target.value)}
-              className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="">Todos os módulos</option>
-              {groups.map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
-            <span className="text-xs text-slate-400 dark:text-slate-500">
-              {Object.keys(perms).length} sobrescrita(s) ativa(s)
-            </span>
-          </div>
-
-          {/* Matrix Table */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 w-56">Módulo</th>
-                  {ACTIONS.map((a) => {
-                    const colState = getColumnState(a.key);
-                    return (
-                      <th key={a.key} className="px-2 py-3 text-center font-semibold text-slate-600 dark:text-slate-400 min-w-[72px] text-xs">
-                        <button
-                          onClick={() => toggleColumn(a.key)}
-                          title={`Clique para alternar toda a coluna (estado: ${colState === 'all-allowed' ? 'todos permitidos' : colState === 'all-blocked' ? 'todos bloqueados' : colState === 'all-default' ? 'todos padrão' : 'misto'})`}
-                          className={`inline-flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors cursor-pointer select-none
-                            ${
-                              colState === 'all-allowed'
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                : colState === 'all-blocked'
-                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                : 'hover:bg-slate-100 dark:hover:bg-slate-700'
-                            }`}
-                        >
-                          <span>{a.label}</span>
-                          <span className="text-[9px] font-normal opacity-60">
-                            {colState === 'all-allowed' ? '✓ todos' : colState === 'all-blocked' ? '✕ todos' : colState === 'all-default' ? '● padrão' : '— misto'}
-                          </span>
-                        </button>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {grouped.map(({ group, items }) => (
-                  <React.Fragment key={`group-${group}`}>
-                    <tr className="bg-slate-50 dark:bg-slate-900/50">
-                      <td
-                        colSpan={1 + ACTIONS.length}
-                        className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                      >
-                        {group}
-                      </td>
-                    </tr>
-                    {items.map((mod, idx) => (
-                      <tr
-                        key={mod.key}
-                        className={`border-b border-slate-100 dark:border-slate-700/50 ${
-                          idx % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-slate-900/20'
-                        }`}
-                      >
-                        <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                          {mod.name}
-                        </td>
-                        {ACTIONS.map((a) => (
-                          <td key={a.key} className="px-2 py-2.5 text-center">
-                            {renderCell(mod.key, a.key)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+        <div className="h-[70vh] bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <ArvorePermissoes
+            modo="usuario"
+            profileType={user?.profileType ?? 'church'}
+            valores={perms}
+            onChange={(novo) => {
+              setPerms(novo);
+              setSaved(false);
+            }}
+          />
+        </div>
       )}
     </div>
   );

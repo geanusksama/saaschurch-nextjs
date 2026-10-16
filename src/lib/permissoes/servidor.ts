@@ -27,12 +27,23 @@ async function matrizSalva(): Promise<PermissionModule[]> {
   }
 }
 
+/**
+ * A MESMA fonte de módulos que o navegador usa para o perfil: o usePermissions
+ * só consegue ler a matriz salva como master/admin (/permissions/matrix dá 403
+ * para os outros), então campo e igreja decidem pelo catálogo do código. Se o
+ * servidor lesse a matriz salva para eles, poderia bloquear um botão que a tela
+ * mostra — e o bloqueio tem de ser exatamente o que a tela mostra.
+ */
+async function modulosDoPerfil(user: AuthUser): Promise<PermissionModule[]> {
+  if (user.emGrupo) return mergeModules(null); // em grupo a matriz não conta
+  return ['master', 'admin'].includes(user.profileType) ? matrizSalva() : mergeModules(null);
+}
+
 export async function pode(user: AuthUser, chave: string): Promise<boolean> {
   if (user.profileType === 'master') return true;
   return podeChave(chave, {
     profileType: user.profileType,
-    // Em grupo a matriz não conta: poupa a consulta.
-    modules: user.emGrupo ? mergeModules(null) : await matrizSalva(),
+    modules: await modulosDoPerfil(user),
     userOverrides: (user.permissions ?? {}) as Record<string, boolean>,
     userRoleId: user.roleId,
     emGrupo: user.emGrupo,

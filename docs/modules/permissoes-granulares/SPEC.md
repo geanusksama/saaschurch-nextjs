@@ -134,7 +134,40 @@ configurado), ela também herda do pai **naquele grupo**.
 
 ### D7 — Pai bloqueado bloqueia os filhos
 
-Tela sem `view` esconde todos os botões dela, mesmo os marcados.
+Tela sem `view` esconde todos os botões dela, mesmo os marcados. Em grupo,
+vale também para as ações genéricas da tela (Criar/Editar/Excluir ficam abaixo
+da raiz na árvore): tela bloqueada bloqueia as três.
+
+### D8 — A árvore é por tela, com os componentes reais (pedido do dono)
+
+As colunas Ver/Criar/Editar/Excluir iguais para toda tela não serviam: o
+"Excluir" do Dashboard não controla nada. A árvore (`ArvorePermissoes.tsx`,
+usada no Grupo e nas Permissões do usuário) mostra:
+
+```
+Tela (raiz)                         → abre a tela / mostra no menu
+├─ botões, abas e relatórios reais  → marcados com <Permissao>
+└─ Criar / Editar / Excluir         → SÓ se algum arquivo usa essa trava
+     └─ botões que herdam dela         genérica (canCreate('x'), 'x.edit'...)
+```
+
+Marcar a raiz marca a tela inteira; marcar um botão liga o caminho até a raiz;
+desmarcar desliga tudo abaixo. No usuário, o ciclo continua padrão →
+permitido → bloqueado, e na raiz vale para a tela inteira.
+
+Quais ações genéricas "existem" sai do código (`ACOES_GENERICAS_EM_USO` no
+arquivo gerado). Chamada dinâmica (`canCreate(PERM_KEY)`) não dá para ler:
+nesse arquivo e nos importados diretos, a ação vale para toda tela citada —
+mostra a mais, nunca esconde uma que funciona (assim o Mobile, que lê as
+chaves de `src/lib/mobile/definicoes.ts`, aparece inteiro). A ação oculta
+acompanha a raiz.
+
+### D9 — Premissa: recurso novo de tela nasce na árvore
+
+Regra nº 2 do AGENTS.md. `npm run build` roda `permissoes:check` antes de
+tudo e falha se a árvore gerada estiver desatualizada ou se algum arquivo
+tiver mais botões de ação sem `<Permissao>` que a foto
+`scripts/permissoes-pendentes.json`. A foto só diminui.
 
 ---
 
@@ -185,6 +218,14 @@ Cada fase é um PR separado, com E2E de escrita.
 Nenhuma fase muda o acesso de quem não está em grupo (D5).
 
 ---
+
+## 4.1 Andamento da marcação (fase 2)
+
+Medido com `npm run permissoes:auditoria`.
+
+| Data | Componentes na árvore | Botões de ação ainda sem marcação |
+|---|---|---|
+| 16/10/2026 | 33 (Relatórios de Secretaria) | 939 em 251 arquivos |
 
 ## 5. Não faz (ainda)
 

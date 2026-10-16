@@ -217,7 +217,61 @@ async function main() {
   r = await api('/grupos-usuarios', tg);
   ok('excluído some da lista', Array.isArray(r.json) && !r.json.some((g) => g.id === g1));
 
-  console.log('\n11. Sessão inválida em paralelo');
+  console.log('\n11. Granular: herança e pai negado (componentes de Relatórios)');
+  // Fora de grupo: rota do relatório de requerimentos segue como hoje.
+  let tAlvo = await token(alvo.email);
+  r = await api('/kan/cards/report', tAlvo);
+  ok('fora de grupo: relatório de requerimentos 200 (como antes)', r.status === 200, `status ${r.status}`);
+
+  r = await api('/grupos-usuarios', tg, {
+    metodo: 'POST',
+    corpo: {
+      name: 'Relatórios sem exportar E2E',
+      // Só a tela e um "não" explícito: o resto tem de vir por herança.
+      permissions: { 'reports.view': true, 'reports.membros.exportar_excel': false },
+    },
+  });
+  const g3 = r.json?.id;
+  ok('grupo com regra granular criado', r.status === 201, `status ${r.status} ${JSON.stringify(r.json)}`);
+  await api(`/grupos-usuarios/${g3}/usuarios`, tg, { metodo: 'POST', corpo: { userIds: [alvo.id] } });
+  tAlvo = await token(alvo.email);
+  r = await api('/permissoes/efetivas', tAlvo);
+  let e = r.json?.permissoes ?? {};
+  ok('card de membros herda "Ver" da tela', e['reports.membros.abrir'] === true, String(e['reports.membros.abrir']));
+  ok('Imprimir herda do card', e['reports.membros.imprimir'] === true, String(e['reports.membros.imprimir']));
+  ok('Exportar Excel desmarcado → negado', e['reports.membros.exportar_excel'] === false, String(e['reports.membros.exportar_excel']));
+  ok('requerimentos herda e libera a rota', e['reports.requerimentos.abrir'] === true);
+  r = await api('/kan/cards/report', tAlvo);
+  ok('em grupo com o card liberado: rota 200', r.status === 200, `status ${r.status}`);
+
+  // Pai negado nega o filho, mesmo com o filho marcado (D7).
+  await api(`/grupos-usuarios/${g3}`, tg, {
+    metodo: 'PATCH',
+    corpo: { permissions: { 'reports.view': false, 'reports.requerimentos.abrir': true, 'reports.requerimentos.imprimir': true } },
+  });
+  tAlvo = await token(alvo.email);
+  r = await api('/permissoes/efetivas', tAlvo);
+  e = r.json?.permissoes ?? {};
+  ok('tela negada → card marcado fica negado', e['reports.requerimentos.abrir'] === false, String(e['reports.requerimentos.abrir']));
+  ok('…e o neto também', e['reports.requerimentos.imprimir'] === false, String(e['reports.requerimentos.imprimir']));
+  r = await api('/kan/cards/report', tAlvo);
+  ok('em grupo sem o card: rota do relatório → 403 (bloqueio no servidor)', r.status === 403 && r.json?.chave === 'reports.requerimentos.abrir', `status ${r.status} ${JSON.stringify(r.json)}`);
+
+  // Criar/Editar/Excluir ficam abaixo da tela na árvore: tela negada nega a ação.
+  await api(`/grupos-usuarios/${g3}`, tg, {
+    metodo: 'PATCH',
+    corpo: { permissions: { 'events.view': false, 'events.create': true, 'members.view': true, 'members.create': true } },
+  });
+  r = await api('/permissoes/efetivas', await token(alvo.email));
+  e = r.json?.permissoes ?? {};
+  ok('tela negada → "Criar" marcado fica negado', e['events.create'] === false, String(e['events.create']));
+  ok('tela liberada → "Criar" marcado vale', e['members.create'] === true, String(e['members.create']));
+
+  await api(`/grupos-usuarios/${g3}`, tg, { metodo: 'DELETE' });
+  r = await api('/kan/cards/report', await token(alvo.email));
+  ok('grupo excluído: rota volta a 200', r.status === 200, `status ${r.status}`);
+
+  console.log('\n12. Sessão inválida em paralelo');
   const lixo = 'token-invalido-' + SUFIXO;
   const varias = await Promise.all(['/campos', '/permissoes/efetivas', '/grupos-usuarios', '/churches?slim=1', '/auth/me'].map((c) => api(c, lixo)));
   ok('todas 401, nenhuma 500', varias.every((x) => x.status === 401), JSON.stringify(varias.map((x) => x.status)));

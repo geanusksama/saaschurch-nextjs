@@ -74,6 +74,12 @@ export function permissoesEfetivasDosGrupos(
   for (const chave of chaves) {
     if (separarChaveDeModulo(chave)) mapa[chave] = grupos.some((g) => valorNoGrupo(g, chave));
   }
+  // Na árvore, Criar/Editar/Excluir ficam abaixo da tela: tela bloqueada
+  // bloqueia as ações dela também (D7), igual ao que a tela de grupos mostra.
+  for (const chave of chaves) {
+    const m = separarChaveDeModulo(chave);
+    if (m && m.action !== 'view') mapa[chave] = mapa[chave] && mapa[`${m.key}.view`] === true;
+  }
   const resolver = (chave: string, pilha = 0): boolean => {
     if (chave in mapa) return mapa[chave];
     const pai = herdaDe(chave);

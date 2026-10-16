@@ -341,6 +341,21 @@ Teste: `node scripts/e2e-isolamento-campo.mjs`.
 
 ---
 
+## 11. Recurso de tela novo entra na árvore de permissões (premissa)
+
+Todo botão, aba ou relatório novo nasce com `<Permissao chave rotulo herda>`,
+e a ação no servidor com `exigirPermissao` na mesma chave. Sem isso o
+administrador não consegue liberar nem bloquear o recurso por grupo ou por
+usuário. Regra completa: AGENTS.md, regra nº 2.
+
+- `herda` = o que hoje decide se o botão aparece (`canCreate('x')` →
+  `x.create`); sem trava, `x.view`. Marcar não pode mudar o acesso de ninguém.
+- `npm run permissoes:arvore` depois de marcar; o `permissoes:check` do build
+  falha com a árvore desatualizada ou com botão de ação novo sem marcação.
+- E2E: `node scripts/e2e-grupos-usuarios.mjs` (servidor rodando).
+
+---
+
 ## Resumo — checklist
 
 - [ ] Migration aditiva e idempotente em `prisma/migrations/`
@@ -356,3 +371,4 @@ Teste: `node scripts/e2e-isolamento-campo.mjs`.
 - [ ] Nenhum `findMany` sem `take` em rota de listagem que cresce
 - [ ] Paginação com ordem total (campo + `id`) e total vindo de `count`
 - [ ] Rota nova filtra pelo campo ativo também para o master (seção 10)
+- [ ] Botão/aba/relatório novo com `<Permissao>` e ação com `exigirPermissao`; `npm run permissoes:check` passa (seção 11)

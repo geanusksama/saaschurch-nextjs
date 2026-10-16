@@ -15,8 +15,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Building2,
-  Check,
-  ChevronDown,
   ChevronRight,
   Loader2,
   Plus,
@@ -30,15 +28,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
-import {
-  DEFAULT_PERMISSION_MODULES,
-  PERMISSION_GROUPS,
-  type PermissionModule,
-} from './permissionCatalog';
+import { DEFAULT_PERMISSION_MODULES } from './permissionCatalog';
 import { COMPONENTES_PERMISSAO } from '../../lib/permissoes/arvore.generated';
-import { ACOES_MODULO, ROTULO_ACAO, type DefPermissao } from '../../lib/permissoes/definir';
-
-type Mapa = Record<string, boolean>;
+import { ACOES_MODULO } from '../../lib/permissoes/definir';
+import { ArvorePermissoes, efetivoNoGrupo, type Mapa } from './ArvorePermissoes';
 
 interface GrupoResumo {
   id: string;
@@ -91,18 +84,6 @@ async function api<T>(caminho: string, init?: RequestInit): Promise<T> {
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d?.error || `Erro ${r.status}`);
   return d as T;
-}
-
-/** Filhos diretos de cada chave na árvore (pai = `herda`). */
-const FILHOS: Map<string, DefPermissao[]> = (() => {
-  const m = new Map<string, DefPermissao[]>();
-  for (const d of COMPONENTES_PERMISSAO) m.set(d.herda, [...(m.get(d.herda) ?? []), d]);
-  return m;
-})();
-
-/** Chave + todos os descendentes (para marcar/desmarcar em cascata). */
-function comDescendentes(chave: string): string[] {
-  return [chave, ...(FILHOS.get(chave) ?? []).flatMap((f) => comDescendentes(f.chave))];
 }
 
 const TODAS_AS_CHAVES = [
@@ -431,56 +412,21 @@ function CabecalhoGrupo({
   );
 }
 
-// ─── Aba Regras: árvore de check/uncheck ────────────────────────────────────
+// ─── Aba Regras: árvore de componentes por tela ─────────────────────────────
 
 function AbaRegras({ grupo, onSalvo }: { grupo: GrupoDetalhe; onSalvo: () => Promise<void> }) {
   const [regras, setRegras] = useState<Mapa>(() => ({ ...(grupo.permissions ?? {}) }));
-  const [filtroGrupo, setFiltroGrupo] = useState('');
-  const [busca, setBusca] = useState('');
-  const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [salvando, setSalvando] = useState(false);
-
   const original = useMemo(() => JSON.stringify(grupo.permissions ?? {}), [grupo.permissions]);
   const sujo = JSON.stringify(regras) !== original;
-
-  /** Valor marcado: explícito, senão herdado do pai no próprio grupo. */
-  const marcado = useCallback(
-    (chave: string): boolean => {
-      let atual: string | undefined = chave;
-      for (let i = 0; atual && i < 50; i++) {
-        if (atual in regras) return regras[atual] === true;
-        atual = COMPONENTES_PERMISSAO.find((d) => d.chave === atual)?.herda;
-      }
-      return false;
-    },
-    [regras],
-  );
-
-  function alternar(chave: string, valor: boolean) {
-    setRegras((r) => {
-      const n = { ...r };
-      // Desmarcar o pai desmarca os filhos (D7); marcar só mexe na própria chave.
-      for (const k of valor ? [chave] : comDescendentes(chave)) n[k] = valor;
-      return n;
-    });
-  }
-
-  function marcarModulos(mods: PermissionModule[], valor: boolean) {
-    setRegras((r) => {
-      const n = { ...r };
-      for (const m of mods)
-        for (const a of ACOES_MODULO) for (const k of comDescendentes(`${m.key}.${a}`)) n[k] = valor;
-      return n;
-    });
-  }
 
   async function salvar() {
     setSalvando(true);
     try {
-      // Grava o mapa completo das chaves conhecidas: o que a tela mostra é
-      // exatamente o que vale. Chave nova (botão marcado depois) herda do pai.
+      // Grava o que está marcado para TODAS as chaves conhecidas: o que a tela
+      // mostra é exatamente o que vale. Botão marcado depois herda do pai.
       const completo: Mapa = {};
-      for (const k of TODAS_AS_CHAVES) completo[k] = marcado(k);
+      for (const k of TODAS_AS_CHAVES) completo[k] = efetivoNoGrupo(regras, k);
       await api(`/grupos-usuarios/${grupo.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ permissions: completo }),
@@ -494,211 +440,29 @@ function AbaRegras({ grupo, onSalvo }: { grupo: GrupoDetalhe; onSalvo: () => Pro
     }
   }
 
-  const t = busca.trim().toLowerCase();
-  const casa = (m: PermissionModule) =>
-    !t ||
-    m.name.toLowerCase().includes(t) ||
-    ACOES_MODULO.some((a) =>
-      comDescendentes(`${m.key}.${a}`).some((k) =>
-        COMPONENTES_PERMISSAO.find((d) => d.chave === k)?.rotulo.toLowerCase().includes(t),
-      ),
-    );
-
-  const secoes = PERMISSION_GROUPS.filter((g) => !filtroGrupo || g === filtroGrupo)
-    .map((g) => ({ g, mods: DEFAULT_PERMISSION_MODULES.filter((m) => m.group === g && casa(m)) }))
-    .filter((s) => s.mods.length);
-
-  const totalLiberadas = TODAS_AS_CHAVES.filter((k) => marcado(k)).length;
-
   return (
     <div className="h-full flex flex-col min-h-0">
-      <div className="shrink-0 flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-        <select
-          value={filtroGrupo}
-          onChange={(e) => setFiltroGrupo(e.target.value)}
-          className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
-        >
-          <option value="">Todos os módulos</option>
-          {PERMISSION_GROUPS.map((g) => (
-            <option key={g} value={g}>
-              {g}
-            </option>
-          ))}
-        </select>
-        <div className="relative flex-1 min-w-[12rem]">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar tela ou botão…"
-            className="w-full border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none"
-          />
-        </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          {totalLiberadas} de {TODAS_AS_CHAVES.length} liberada(s)
-        </span>
+      <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Marque a tela inteira (raiz) ou só os botões que o grupo pode usar. Botão desmarcado some
+          da tela e a ação é recusada no servidor.
+        </p>
         <button
           onClick={() => void salvar()}
           disabled={!sujo || salvando}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
         >
           {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Salvar regras
         </button>
       </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {secoes.map(({ g, mods }) => (
-          <div key={g}>
-            <div className="sticky top-0 z-10 flex items-center justify-between bg-slate-50 dark:bg-slate-900 px-4 py-1.5 border-y border-slate-200 dark:border-slate-700">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {g}
-              </span>
-              <span className="flex gap-3 text-[11px] font-semibold">
-                <button onClick={() => marcarModulos(mods, true)} className="text-slate-600 hover:underline dark:text-slate-300">
-                  marcar tudo
-                </button>
-                <button onClick={() => marcarModulos(mods, false)} className="text-slate-600 hover:underline dark:text-slate-300">
-                  desmarcar tudo
-                </button>
-              </span>
-            </div>
-            {mods.map((m) => {
-              const filhosDoModulo = ACOES_MODULO.flatMap((a) => FILHOS.get(`${m.key}.${a}`) ?? []);
-              const aberto = abertos.has(m.key) || Boolean(t);
-              return (
-                <div key={m.key} className="border-b border-slate-100 dark:border-slate-700/60">
-                  <div className="flex items-center gap-2 px-4 py-2">
-                    <button
-                      onClick={() =>
-                        setAbertos((s) => {
-                          const n = new Set(s);
-                          if (n.has(m.key)) n.delete(m.key);
-                          else n.add(m.key);
-                          return n;
-                        })
-                      }
-                      disabled={!filhosDoModulo.length}
-                      className="w-5 text-slate-400 disabled:opacity-0"
-                      title={filhosDoModulo.length ? 'Ver botões desta tela' : undefined}
-                    >
-                      {aberto ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </button>
-                    <span className="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-100 truncate">
-                      {m.name}
-                      {filhosDoModulo.length > 0 && (
-                        <span className="ml-2 text-[11px] text-slate-400">
-                          {filhosDoModulo.length} componente(s)
-                        </span>
-                      )}
-                    </span>
-                    {ACOES_MODULO.map((a) => (
-                      <Caixa
-                        key={a}
-                        rotulo={ROTULO_ACAO[a]}
-                        marcado={marcado(`${m.key}.${a}`)}
-                        onChange={(v) => alternar(`${m.key}.${a}`, v)}
-                      />
-                    ))}
-                  </div>
-                  {aberto &&
-                    ACOES_MODULO.map((a) =>
-                      (FILHOS.get(`${m.key}.${a}`) ?? []).map((f) => (
-                        <NoComponente
-                          key={f.chave}
-                          def={f}
-                          nivel={1}
-                          paiLiberado={marcado(`${m.key}.${a}`)}
-                          marcado={marcado}
-                          alternar={alternar}
-                        />
-                      )),
-                    )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-        {secoes.length === 0 && (
-          <p className="py-10 text-center text-sm text-slate-400">Nada encontrado.</p>
-        )}
+      <div className="flex-1 min-h-0">
+        <ArvorePermissoes modo="grupo" valores={regras} onChange={setRegras} />
       </div>
     </div>
   );
 }
 
-function NoComponente({
-  def,
-  nivel,
-  paiLiberado,
-  marcado,
-  alternar,
-}: {
-  def: DefPermissao;
-  nivel: number;
-  paiLiberado: boolean;
-  marcado: (k: string) => boolean;
-  alternar: (k: string, v: boolean) => void;
-}) {
-  const valor = paiLiberado && marcado(def.chave);
-  const filhos = FILHOS.get(def.chave) ?? [];
-  return (
-    <>
-      <label
-        style={{ paddingLeft: `${1.25 + nivel * 1.5}rem` }}
-        className={`flex items-center gap-2 pr-4 py-1.5 text-sm ${
-          paiLiberado ? 'text-slate-700 dark:text-slate-200 cursor-pointer' : 'text-slate-400 cursor-not-allowed'
-        }`}
-        title={paiLiberado ? def.chave : 'Bloqueado porque o item acima está desmarcado'}
-      >
-        <input
-          type="checkbox"
-          checked={valor}
-          disabled={!paiLiberado}
-          onChange={(e) => alternar(def.chave, e.target.checked)}
-          className="h-4 w-4 rounded border-slate-300"
-        />
-        <span className="truncate">{def.rotulo}</span>
-        <span className="text-[10px] text-slate-400 truncate">{def.chave}</span>
-      </label>
-      {filhos.map((f) => (
-        <NoComponente
-          key={f.chave}
-          def={f}
-          nivel={nivel + 1}
-          paiLiberado={valor}
-          marcado={marcado}
-          alternar={alternar}
-        />
-      ))}
-    </>
-  );
-}
-
-function Caixa({
-  rotulo,
-  marcado,
-  onChange,
-}: {
-  rotulo: string;
-  marcado: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <button
-      onClick={() => onChange(!marcado)}
-      title={`${rotulo}: ${marcado ? 'liberado' : 'bloqueado'}`}
-      className={`w-[4.5rem] shrink-0 inline-flex items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[11px] font-semibold ${
-        marcado
-          ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-          : 'border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-800'
-      }`}
-    >
-      {marcado ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-      {rotulo}
-    </button>
-  );
-}
 
 // ─── Aba Usuários ───────────────────────────────────────────────────────────
 
