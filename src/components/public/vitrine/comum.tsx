@@ -21,6 +21,21 @@ export interface Produto {
 }
 export interface Vitrine { campo: string | null; pagamento: { pix: boolean; cartao: boolean } | null; ministerios: Ministerio[]; eventos: Evento[]; produtos: Produto[] }
 
+/**
+ * "do / da / dos / de" + nome do departamento: "da CIBE", "da EBD", "dos Varões",
+ * "do Louvor". Nomes conhecidos pela lista; os demais por terminação.
+ */
+const ARTIGO: Record<string, string> = {
+  cibe: 'da', ebd: 'da', 'família': 'da', familia: 'da', 'frente jovem': 'da', juventude: 'da', 'rede jovem': 'da',
+  'varões': 'dos', varoes: 'dos', adolescentes: 'dos', casais: 'dos', jovens: 'dos', 'missões': 'de', missoes: 'de',
+  louvor: 'do', kids: 'do', infantil: 'do', coral: 'do',
+};
+export function deDep(nome: string): string {
+  const k = nome.trim().toLowerCase();
+  const art = ARTIGO[k] ?? (/a$/.test(k) ? 'da' : /(ões|ãos)$/.test(k) ? 'das' : /s$/.test(k) ? 'dos' : 'do');
+  return `${art} ${nome}`;
+}
+
 export const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 

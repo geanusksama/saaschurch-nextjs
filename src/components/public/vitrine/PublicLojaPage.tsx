@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { ArrowDown, Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
-import { brl, cx, PaginaPublica, useCarrinho, useVitrine, Vazio, type ItemCarrinho, type Produto } from './comum';
+import { brl, cx, deDep, PaginaPublica, useCarrinho, useVitrine, Vazio, type ItemCarrinho, type Produto } from './comum';
 import { Checkout } from './Checkout';
 
 export default function PublicLojaPage() {
@@ -31,8 +31,8 @@ export default function PublicLojaPage() {
   return (
     <PaginaPublica
       hero={() => ({
-        selo: ministerio ? `Loja do ${ministerio.nome}` : 'Loja da igreja',
-        titulo: ministerio ? <>Compras do <span className="opacity-60">{ministerio.nome}</span></> : <>Vista a sua fé, <span className="opacity-60">apoie a obra</span></>,
+        selo: ministerio ? `Loja ${deDep(ministerio.nome)}` : 'Loja da igreja',
+        titulo: ministerio ? <>Compras {deDep(ministerio.nome).split(' ')[0]} <span className="opacity-60">{ministerio.nome}</span></> : <>Vista a sua fé, <span className="opacity-60">apoie a obra</span></>,
         texto: 'Camisetas, livros e itens da igreja. Escolha, coloque no carrinho e pague com Pix ou cartão. A retirada é na secretaria.',
         acoes: [
           { rotulo: 'Ver produtos', icone: ArrowDown, onClick: lista, principal: true },

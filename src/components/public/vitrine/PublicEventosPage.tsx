@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ArrowDown, CalendarDays, Clock, MapPin, Minus, Plus, ShoppingBag, Ticket, Users, X } from 'lucide-react';
-import { brl, cx, dataEvento, PaginaPublica, useVitrine, Vazio, type Evento, type ItemCarrinho } from './comum';
+import { brl, cx, dataEvento, deDep, PaginaPublica, useVitrine, Vazio, type Evento, type ItemCarrinho } from './comum';
 import { Checkout } from './Checkout';
 
 export default function PublicEventosPage() {
@@ -27,13 +27,13 @@ export default function PublicEventosPage() {
     <PaginaPublica
       hero={() => ({
         selo: dep ? `Departamento ${nomeDep}` : 'Agenda da igreja',
-        titulo: dep ? <>Eventos do <span className="opacity-60">{nomeDep}</span></> : <>Encontros que <span className="opacity-60">marcam</span> a sua caminhada</>,
+        titulo: dep ? <>Eventos {deDep(nomeDep).split(' ')[0]} <span className="opacity-60">{nomeDep}</span></> : <>Encontros que <span className="opacity-60">marcam</span> a sua caminhada</>,
         texto: dep
-          ? `Inscrições e ingressos do ${nomeDep}. Escolha o evento, garanta sua vaga e pague com Pix ou cartão — a confirmação é na hora.`
+          ? `Inscrições e ingressos ${deDep(nomeDep)}. Escolha o evento, garanta sua vaga e pague com Pix ou cartão — a confirmação é na hora.`
           : 'Congressos, retiros, conferências e celebrações. Escolha o evento, garanta sua vaga e pague com Pix ou cartão — o ingresso com QR Code sai na hora.',
         acoes: [
           { rotulo: 'Ver próximos eventos', icone: ArrowDown, onClick: lista, principal: true },
-          { rotulo: dep && produtosDep ? `Compras do ${nomeDep}` : 'Ir para Compras', icone: ShoppingBag, onClick: () => ir(dep && produtosDep ? `/loja?dep=${dep}` : '/loja') },
+          { rotulo: dep && produtosDep ? `Compras ${deDep(nomeDep)}` : 'Ir para Compras', icone: ShoppingBag, onClick: () => ir(dep && produtosDep ? `/loja?dep=${dep}` : '/loja') },
         ],
         cartoes: eventos.slice(0, 3).map((e) => ({ imagem: e.imagemUrl, rotulo: dataEvento(e.inicio, e.fim), titulo: e.titulo })),
       })}
@@ -47,14 +47,14 @@ export default function PublicEventosPage() {
               {!dep && departamentos.map((m) => (
                 <button key={m.id} onClick={() => setSp({ dep: m.nome.toLowerCase() })} className={cx('rounded-full px-4 py-2 text-sm font-semibold', isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10')}>{m.nome}</button>
               ))}
-              {dep && produtosDep > 0 && <Link to={`/loja?dep=${dep}`} className="rounded-full px-4 py-2 text-sm font-semibold text-black inline-flex items-center gap-2" style={{ background: accent }}><ShoppingBag className="w-4 h-4" />Compras do {ministerio?.nome ?? dep.toUpperCase()}</Link>}
-              {ministerio?.site && <a href={`/dep/${ministerio.site}`} className={cx('rounded-full px-4 py-2 text-sm font-semibold', isDark ? 'bg-white/10' : 'bg-black/5')}>Página do {ministerio.nome}</a>}
+              {dep && produtosDep > 0 && <Link to={`/loja?dep=${dep}`} className="rounded-full px-4 py-2 text-sm font-semibold text-black inline-flex items-center gap-2" style={{ background: accent }}><ShoppingBag className="w-4 h-4" />Compras {deDep(nomeDep)}</Link>}
+              {ministerio?.site && <a href={`/dep/${ministerio.site}`} className={cx('rounded-full px-4 py-2 text-sm font-semibold', isDark ? 'bg-white/10' : 'bg-black/5')}>Página {deDep(ministerio.nome)}</a>}
             </div>
           </div>
 
           {erro && <Vazio isDark={isDark} titulo="Não foi possível carregar os eventos" sub={erro} />}
           {!dados && !erro && <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((i) => <div key={i} className={cx('h-80 rounded-3xl animate-pulse', isDark ? 'bg-white/5' : 'bg-black/5')} />)}</div>}
-          {dados && !eventos.length && <Vazio isDark={isDark} titulo={dep ? `Nenhum evento do ${ministerio?.nome ?? dep.toUpperCase()} no momento` : 'Nenhum evento aberto no momento'} sub="Volte em breve: novos eventos aparecem aqui assim que forem publicados." />}
+          {dados && !eventos.length && <Vazio isDark={isDark} titulo={dep ? `Nenhum evento ${deDep(nomeDep)} no momento` : 'Nenhum evento aberto no momento'} sub="Volte em breve: novos eventos aparecem aqui assim que forem publicados." />}
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {eventos.map((e) => {
