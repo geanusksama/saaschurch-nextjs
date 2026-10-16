@@ -51,6 +51,39 @@ export const ROTULO_PAPEL: Record<Papel, string> = {
   PRESIDENTE: 'Pastor Presidente',
 };
 
+/** "SECRETARIO(a)" → "secretario": sem acento, sem "(a)", minúsculo. */
+function normalizarFuncao(txt: string): string {
+  return txt
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\([^)]*\)/g, ' ')
+    .toLowerCase()
+    .replace(/[^a-z ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Função da igreja (church_function_catalog) → papel do culto. Nome exato,
+ * depois de normalizado: "TESOUREIRA CIBE" e "SECRETARIA CIBE" são do
+ * departamento e "ESPOSA DE DIRIGENTE"/"CANDIDATO A DIRIGENTE..." não dirigem —
+ * nenhum deles pode virar posição por aproximação.
+ *
+ * O dirigente da hospedeira é o mesmo dirigente de congregação, só que da
+ * igreja que hospeda; quem decide se vale é a rota, que sabe se a igreja é
+ * hospedeira.
+ */
+const PAPEIS_DA_FUNCAO: Record<string, Papel[]> = {
+  'dirigente de congregacao': ['APROVADOR_LOCAL', 'APROVADOR_HOSPEDEIRA'],
+  tesoureiro: ['FINANCEIRO'],
+  secretario: ['PRESENCA'],
+  'segundo secretario': ['PRESENCA'],
+};
+
+export function papeisDaFuncao(nomeFuncao: string | null | undefined): Papel[] {
+  return PAPEIS_DA_FUNCAO[normalizarFuncao(nomeFuncao ?? '')] ?? [];
+}
+
 export const ROTULO_STATUS: Record<Status, string> = {
   ABERTO: 'Aguardando envio',
   // O status diz de QUEM se espera a decisão. "Aguardando aprovação" não

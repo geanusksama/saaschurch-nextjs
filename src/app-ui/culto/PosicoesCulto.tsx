@@ -24,7 +24,13 @@ import {
 } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
 import MembroBusca, { telefoneDoMembro, type MembroOpcao } from '../system/MembroBusca';
-import { cultoApi, ROTULO_PAPEL, type Papel, type Posicao } from './cultoApi';
+import {
+  cultoApi,
+  ROTULO_PAPEL,
+  type Papel,
+  type Posicao,
+  type PosicaoDaFuncao,
+} from './cultoApi';
 import { Permissao } from '../../lib/permissoes/Permissao';
 
 // O dirigente vem primeiro: é a pergunta que se faz ao clicar numa igreja.
@@ -91,9 +97,16 @@ export default function PosicoesCulto() {
   // Cache por igreja: cada igreja é consultada UMA vez. Reclicar numa que já
   // foi aberta não volta ao banco — só a troca real de igreja e as mutações
   // (anexar/remover/ativar) disparam consulta, e sempre de uma igreja só.
-  const [cache, setCache] = useState<Record<string, Posicao[]>>({});
+  // Junto vêm os titulares das funções da igreja (dirigente, secretário...),
+  // que aparecem setados no card mesmo antes de virarem posição.
+  const [cache, setCache] = useState<
+    Record<string, { posicoes: Posicao[]; funcoes: PosicaoDaFuncao[] }>
+  >({});
   const [erro, setErro] = useState<string | null>(null);
   const [anexandoPapel, setAnexandoPapel] = useState<Papel | null>(null);
+  // Titular sem acesso: o modal abre direto em "criar usuário" com ele.
+  const [membroInicial, setMembroInicial] = useState<MembroOpcao | null>(null);
+  const [confirmando, setConfirmando] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${apiBase}/churches?slim=1`, { headers: authHeaders() })
@@ -124,12 +137,15 @@ export default function PosicoesCulto() {
   useEffect(() => {
     if (!churchId || cache[churchId]) return;
     let vivo = true;
-    cultoApi
-      .listarPosicoes(churchId)
-      .then((p) => {
+    Promise.all([
+      cultoApi.listarPosicoes(churchId),
+      // Sem as funções o quadro continua — só sem os titulares setados.
+      cultoApi.listarPosicoesDaFuncao(churchId).catch(() => [] as PosicaoDaFuncao[]),
+    ])
+      .then(([posicoes, funcoes]) => {
         if (!vivo) return;
         setErro(null);
-        setCache((c) => ({ ...c, [churchId]: p }));
+        setCache((c) => ({ ...c, [churchId]: { posicoes, funcoes } }));
       })
       .catch((e) => vivo && setErro((e as Error).message));
     return () => {
@@ -137,7 +153,8 @@ export default function PosicoesCulto() {
     };
   }, [churchId, cache]);
 
-  const posicoes = cache[churchId] ?? [];
+  const posicoes = cache[churchId]?.posicoes ?? [];
+  const funcoes = cache[churchId]?.funcoes ?? [];
   const carregando = Boolean(churchId) && !cache[churchId] && !erro;
 
   const hospedeiras = useMemo(() => igrejas.filter((c) => c.isHost), [igrejas]);
@@ -210,6 +227,26 @@ export default function PosicoesCulto() {
       recarregar();
     } catch (e) {
       setErro((e as Error).message);
+    }
+  }
+
+  /** Titular da função que já tem usuário: um clique vira posição. */
+  async function confirmarDaFuncao(f: PosicaoDaFuncao) {
+    if (!f.usuario) return;
+    const chave = `${f.papel}:${f.membro.id}`;
+    setConfirmando(chave);
+    try {
+      await cultoApi.anexarPosicao({
+        userId: f.usuario.id,
+        papel: f.papel,
+        churchId,
+        memberId: f.membro.id,
+      });
+      recarregar();
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setConfirmando(null);
     }
   }
 
@@ -375,6 +412,12 @@ export default function PosicoesCulto() {
               igrejaAtual &&
               papeisVisiveis.map((papel) => {
                 const doPapel = posicoes.filter((p) => p.papel === papel);
+                // Titular que já virou posição aparece só uma vez, como posição.
+                const daFuncao = funcoes.filter(
+                  (f) =>
+                    f.papel === papel &&
+                    !(f.usuario && doPapel.some((p) => p.user.id === f.usuario!.id)),
+                );
                 const destaque = papel === 'APROVADOR_LOCAL';
                 return (
                   <div
@@ -396,7 +439,10 @@ export default function PosicoesCulto() {
                       </div>
                       <Permissao chave="culto_posicoes.posicoes_culto.anexar" rotulo="Anexar — Posicoes Culto" herda="culto_posicoes.view">
                         <button
-                          onClick={() => setAnexandoPapel(papel)}
+                          onClick={() => {
+                            setMembroInicial(null);
+                            setAnexandoPapel(papel);
+                          }}
                           className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold"
                         >
                           <UserPlus className="w-3.5 h-3.5" />
@@ -406,9 +452,72 @@ export default function PosicoesCulto() {
                     </div>
 
                     <div className="divide-y divide-slate-100 dark:divide-slate-700 border-t border-slate-100 dark:border-slate-700">
-                      {doPapel.length === 0 && (
+                      {doPapel.length === 0 && daFuncao.length === 0 && (
                         <p className="px-4 py-3 text-sm text-slate-400">Ninguém anexado.</p>
                       )}
+                      {daFuncao.map((f) => {
+                        const chave = `${f.papel}:${f.membro.id}`;
+                        return (
+                          <div
+                            key={chave}
+                            className="flex items-center justify-between gap-3 px-4 py-2.5"
+                          >
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
+                                {f.membro.fullName}
+                                <span className="ml-2 rounded bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300">
+                                  pela função
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                {f.funcao}
+                                {f.membro.rol ? ` · ROL #${f.membro.rol}` : ''}
+                              </div>
+                              <div className="text-xs truncate">
+                                {f.usuario ? (
+                                  <span className="text-slate-500 dark:text-slate-400">
+                                    Acesso: {f.usuario.email}
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 dark:text-amber-400">
+                                    Sem acesso ao sistema — crie o acesso para ele lançar/aprovar.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {f.usuario ? (
+                              <Permissao chave="culto_posicoes.posicoes_culto.confirmar_pela_funcao" rotulo="Confirmar titular da função — Posicoes Culto" herda="culto_posicoes.view">
+                                <button
+                                  onClick={() => void confirmarDaFuncao(f)}
+                                  disabled={confirmando !== null}
+                                  title="Gravar como posição do culto"
+                                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
+                                >
+                                  {confirmando === chave ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <UserCheck className="w-3.5 h-3.5" />
+                                  )}
+                                  Confirmar
+                                </button>
+                              </Permissao>
+                            ) : (
+                              <Permissao chave="culto_posicoes.posicoes_culto.criar_acesso" rotulo="Criar acesso — Posicoes Culto" herda="culto_posicoes.view">
+                                <button
+                                  onClick={() => {
+                                    setMembroInicial(f.membro);
+                                    setAnexandoPapel(papel);
+                                  }}
+                                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                >
+                                  <UserPlus className="w-3.5 h-3.5" />
+                                  Criar acesso
+                                </button>
+                              </Permissao>
+                            )}
+                          </div>
+                        );
+                      })}
                       {doPapel.map((p) => (
                         <div
                           key={p.id}
@@ -459,9 +568,14 @@ export default function PosicoesCulto() {
         <ModalAnexarUsuario
           papel={anexandoPapel}
           churchId={churchId}
-          onFechar={() => setAnexandoPapel(null)}
+          membroInicial={membroInicial}
+          onFechar={() => {
+            setAnexandoPapel(null);
+            setMembroInicial(null);
+          }}
           onAnexado={() => {
             setAnexandoPapel(null);
+            setMembroInicial(null);
             recarregar();
           }}
         />
@@ -539,11 +653,14 @@ function ItemLista({
 function ModalAnexarUsuario({
   papel,
   churchId,
+  membroInicial,
   onFechar,
   onAnexado,
 }: {
   papel: Papel;
   churchId: string;
+  /** Titular da função sem acesso: abre já em "criar usuário" com ele. */
+  membroInicial?: MembroOpcao | null;
   onFechar: () => void;
   onAnexado: () => void;
 }) {
@@ -557,9 +674,9 @@ function ModalAnexarUsuario({
   const [soDaIgreja, setSoDaIgreja] = useState(true);
   // Atalho: quem vai lançar ou aprovar ainda não tem usuário, mas é membro.
   // Cria o usuário a partir do cadastro dele e já anexa, sem sair daqui.
-  const [criando, setCriando] = useState(false);
-  const [membro, setMembro] = useState<MembroOpcao | null>(null);
-  const [email, setEmail] = useState('');
+  const [criando, setCriando] = useState(Boolean(membroInicial));
+  const [membro, setMembro] = useState<MembroOpcao | null>(membroInicial ?? null);
+  const [email, setEmail] = useState(membroInicial?.email?.trim() || '');
   const [senha, setSenha] = useState('');
   const [salvandoNovo, setSalvandoNovo] = useState(false);
   // Posições de culto que cada usuário já ocupa, no campo todo: sem isso a
@@ -658,7 +775,8 @@ function ModalAnexarUsuario({
       }
       if (!perfil.ok || !novo?.id) throw new Error(novo?.error || `Erro ${perfil.status} ao criar o usuário.`);
 
-      await cultoApi.anexarPosicao({ userId: novo.id, papel, churchId });
+      // O usuário nasceu deste membro: o servidor grava o vínculo.
+      await cultoApi.anexarPosicao({ userId: novo.id, papel, churchId, memberId: membro.id });
       onAnexado();
     } catch (e) {
       setErro((e as Error).message);

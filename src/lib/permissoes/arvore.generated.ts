@@ -858,6 +858,18 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/culto/PosicoesCulto.tsx"
   },
   {
+    "chave": "culto_posicoes.posicoes_culto.confirmar_pela_funcao",
+    "rotulo": "Confirmar titular da função — Posicoes Culto",
+    "herda": "culto_posicoes.view",
+    "arquivo": "src/app-ui/culto/PosicoesCulto.tsx"
+  },
+  {
+    "chave": "culto_posicoes.posicoes_culto.criar_acesso",
+    "rotulo": "Criar acesso — Posicoes Culto",
+    "herda": "culto_posicoes.view",
+    "arquivo": "src/app-ui/culto/PosicoesCulto.tsx"
+  },
+  {
     "chave": "culto_posicoes.posicoes_culto.criar_usuario_e_anexar_como",
     "rotulo": "Criar usuário e anexar como — Posicoes Culto",
     "herda": "culto_posicoes.view",
