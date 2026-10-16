@@ -1041,12 +1041,14 @@ export function ChatFAB() {
                         maxLength={100}
                         className="flex-1 bg-white dark:bg-slate-900 text-xs px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-purple-500"
                       />
-                      <button
-                        onClick={handleSavePhrase}
-                        className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-semibold text-white transition"
-                      >
-                        Ok
-                      </button>
+                      <Permissao chave="tela_moldura.chat_fab.salvar_frase_rapida" rotulo="Salvar frase rápida — Chat FAB" herda="tela_moldura.view">
+                        <button
+                          onClick={handleSavePhrase}
+                          className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-semibold text-white transition"
+                        >
+                          Ok
+                        </button>
+                      </Permissao>
                       <button
                         onClick={() => setIsEditingStatusPhrase(false)}
                         className="px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-355 dark:hover:bg-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-300"
@@ -1698,19 +1700,21 @@ export function ChatFAB() {
 
                   {/* Attachment popover trigger */}
                   <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setAttachmentMenuOpen(!attachmentMenuOpen)}
-                      disabled={fileLoading || loading}
-                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition disabled:opacity-50"
-                      title="Anexar"
-                    >
-                      {fileLoading ? (
-                        <Loader className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Paperclip className="w-5 h-5" />
-                      )}
-                    </button>
+                    <Permissao chave="tela_moldura.chat_fab.anexar" rotulo="Anexar — Chat FAB" herda="tela_moldura.view">
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentMenuOpen(!attachmentMenuOpen)}
+                        disabled={fileLoading || loading}
+                        className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition disabled:opacity-50"
+                        title="Anexar"
+                      >
+                        {fileLoading ? (
+                          <Loader className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Paperclip className="w-5 h-5" />
+                        )}
+                      </button>
+                    </Permissao>
 
                     {/* Attachment options dropdown */}
                     <AnimatePresence>

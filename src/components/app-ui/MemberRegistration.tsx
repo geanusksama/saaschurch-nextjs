@@ -1998,17 +1998,15 @@ export function MemberRegistration() {
                     <ArrowRight className="ml-auto h-4 w-4" />
                   </button>
                 </Permissao>
-                <Permissao chave="members.member_registration.ver_ficha_do_membro" rotulo="Ver Ficha do Membro — Member Registration" herda="members.view">
-                  <button
-                    type="button"
-                    onClick={() => { setSavedMember(null); navigate(`/app-ui/members/${savedMember.id}`); }}
-                    className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-                  >
-                    <UserCircle className="h-4 w-4 shrink-0" />
-                    Ver Ficha do Membro
-                    <ArrowRight className="ml-auto h-4 w-4" />
-                  </button>
-                </Permissao>
+                <button
+                  type="button"
+                  onClick={() => { setSavedMember(null); navigate(`/app-ui/members/${savedMember.id}`); }}
+                  className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  <UserCircle className="h-4 w-4 shrink-0" />
+                  Ver Ficha do Membro
+                  <ArrowRight className="ml-auto h-4 w-4" />
+                </button>
                 <Permissao chave="members.member_registration.novo_cadastro" rotulo="Novo Cadastro — Member Registration" herda="members.view">
                   <button
                     type="button"

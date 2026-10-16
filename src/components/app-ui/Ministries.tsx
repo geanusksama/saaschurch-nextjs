@@ -828,9 +828,11 @@ export function Ministries() {
                       </Permissao>
                     ) : null}
                     {canDelete('ministries') ? (
-                      <button type="button" onClick={() => handleDelete(ministry.id)} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="ministries.ministries.confirmar_exclusao" rotulo="Confirmar exclusão — Ministries" herda="ministries.ministries.excluir">
+                        <button type="button" onClick={() => handleDelete(ministry.id)} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     ) : null}
                   </div>
                 ) : null}

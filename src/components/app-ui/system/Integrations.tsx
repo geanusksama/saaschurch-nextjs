@@ -1,6 +1,7 @@
 import { Plug, Settings, Plus, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 interface Integration {
   id: string;
@@ -278,12 +279,14 @@ export function Integrations() {
                     <Settings className="w-4 h-4 text-slate-600" />
                   </button>
                   {!integration.settingsPath && (
-                    <button
-                      onClick={() => setIntegrations(prev => prev.map(i => i.id === integration.id ? { ...i, isConnected: false } : i))}
-                      className="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm"
-                    >
-                      Desconectar
-                    </button>
+                    <Permissao chave="integrations.integrations.desconectar" rotulo="Desconectar — Integrations" herda="integrations.view">
+                      <button
+                        onClick={() => setIntegrations(prev => prev.map(i => i.id === integration.id ? { ...i, isConnected: false } : i))}
+                        className="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm"
+                      >
+                        Desconectar
+                      </button>
+                    </Permissao>
                   )}
                 </div>
               ) : (

@@ -60,20 +60,18 @@ export function EmailSettings() {
               <p className="text-xs text-slate-600 dark:text-slate-400">Use seu próprio servidor</p>
             </button>
 
-            <Permissao chave="settings_email_config.email_settings.sendgrid_api_do_sendgrid" rotulo="SendGrid API do SendGrid — Email Settings" herda="settings_email_config.view">
-              <button
-                onClick={() => setConfig(prev => ({ ...prev, provider: 'sendgrid' }))}
-                className={`p-4 border-2 rounded-lg transition-all ${
-                  config.provider === 'sendgrid'
-                    ? 'border-purple-600 bg-purple-50'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <Mail className={`w-6 h-6 mb-2 ${config.provider === 'sendgrid' ? 'text-purple-600' : 'text-slate-600'}`} />
-                <p className="font-semibold text-slate-900 mb-1">SendGrid</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400">API do SendGrid</p>
-              </button>
-            </Permissao>
+            <button
+              onClick={() => setConfig(prev => ({ ...prev, provider: 'sendgrid' }))}
+              className={`p-4 border-2 rounded-lg transition-all ${
+                config.provider === 'sendgrid'
+                  ? 'border-purple-600 bg-purple-50'
+                  : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <Mail className={`w-6 h-6 mb-2 ${config.provider === 'sendgrid' ? 'text-purple-600' : 'text-slate-600'}`} />
+              <p className="font-semibold text-slate-900 mb-1">SendGrid</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">API do SendGrid</p>
+            </button>
 
             <button
               onClick={() => setConfig(prev => ({ ...prev, provider: 'mailgun' }))}

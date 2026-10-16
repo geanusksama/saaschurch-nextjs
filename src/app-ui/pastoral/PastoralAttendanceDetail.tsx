@@ -1313,12 +1313,14 @@ export function PastoralAttendanceDetail({
                     <Upload className="w-8 h-8 text-slate-300" />
                     <p className="text-sm font-medium text-slate-600">Clique para selecionar ou arraste um arquivo</p>
                     <p className="text-xs text-slate-400">PDF, imagens, documentos...</p>
-                    <button
-                      type="button"
-                      className="mt-1 flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                    >
-                      <Upload className="w-4 h-4" /> Anexar Arquivo
-                    </button>
+                    <Permissao chave="pastoral_visits.pastoral_attendance_detail.anexar_arquivo" rotulo="Anexar Arquivo — Pastoral Attendance Detail" herda="pastoral_visits.view">
+                      <button
+                        type="button"
+                        className="mt-1 flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                      >
+                        <Upload className="w-4 h-4" /> Anexar Arquivo
+                      </button>
+                    </Permissao>
                   </div>
                 )}
               </div>

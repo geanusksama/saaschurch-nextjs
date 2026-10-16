@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Printer, Package } from 'lucide-react';
 import { LABEL_PRESETS, printAssetLabels, type LabelAsset } from './printAssetLabels';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Props {
   assets: LabelAsset[];
@@ -96,13 +97,15 @@ export function AssetLabelPrintModal({ assets, onClose }: Props) {
 
         <div className="flex justify-end gap-3 p-5 border-t border-slate-200 dark:border-slate-700">
           <button onClick={onClose} className="px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800">Cancelar</button>
-          <button
-            onClick={handlePrint}
-            disabled={printing || assets.length === 0}
-            className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold disabled:opacity-50"
-          >
-            <Printer className="w-4 h-4" /> {printing ? 'Preparando...' : `Imprimir ${assets.length} etiqueta(s)`}
-          </button>
+          <Permissao chave="assets.asset_label_print_modal.imprimir_etiquetas" rotulo="Imprimir etiquetas — Asset Label Print Modal" herda="assets.view">
+            <button
+              onClick={handlePrint}
+              disabled={printing || assets.length === 0}
+              className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold disabled:opacity-50"
+            >
+              <Printer className="w-4 h-4" /> {printing ? 'Preparando...' : `Imprimir ${assets.length} etiqueta(s)`}
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

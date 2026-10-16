@@ -454,10 +454,12 @@ export default function AppDailyBread() {
                   <button onClick={() => openEdit(entry)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button onClick={() => { if (confirm('Excluir esta entrada?')) deleteMutation.mutate(entry.id); }}
-                    className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <Permissao chave="tela_app.app_daily_bread.excluir_entrada" rotulo="Excluir entrada — App Daily Bread" herda="tela_app.view">
+                    <button onClick={() => { if (confirm('Excluir esta entrada?')) deleteMutation.mutate(entry.id); }}
+                      className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </Permissao>
                 </div>
               </div>
             );

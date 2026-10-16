@@ -638,10 +638,12 @@ function EditDrawer({
             className="flex-1 py-2.5 border border-slate-300 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">
             Cancelar
           </button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 flex items-center justify-center gap-2">
-            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><Save className="w-4 h-4" /> Salvar</>}
-          </button>
+          <Permissao chave="cashbook.cashbook.salvar_edicao" rotulo="Salvar edição do lançamento — Cashbook" herda="cashbook.cashbook.editar_lancamento">
+            <button onClick={handleSave} disabled={saving}
+              className="flex-1 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><Save className="w-4 h-4" /> Salvar</>}
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

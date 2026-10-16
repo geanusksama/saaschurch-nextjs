@@ -40,7 +40,11 @@ for (const arq of arquivos) {
       const sobra = botoes.length === 1 ? dentro.replace(botoes[0].bloco, '').trim() : null;
       // Exceção: um único componente (<ReportsTabButton ... />) embrulhado à mão.
       const componenteUnico = botoes.length === 0 && /^<[A-Z]\w*\b[\s\S]*\/>$/.test(dentro.trim()) && !dentro.includes('<button');
-      if (!componenteUnico && (botoes.length !== 1 || sobra)) {
+      // Um componente que ENVOLVE exatamente um botão (menu cujo gatilho é o
+      // botão: <DropdownMenu><DropdownMenuTrigger asChild><button/>...).
+      const tagEnvolve = (dentro.trim().match(/^<([A-Z]\w*)\b/) ?? [])[1];
+      const envolveUmBotao = Boolean(tagEnvolve) && botoes.length === 1 && dentro.trim().endsWith(`</${tagEnvolve}>`);
+      if (!componenteUnico && !envolveUmBotao && (botoes.length !== 1 || sobra)) {
         const linha = txt.slice(0, i).split('\n').length;
         problemas.push(`${rel}:${linha}: ${botoes.length} botão(ões) dentro${sobra ? ' + conteúdo extra' : ''}`);
       }

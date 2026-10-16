@@ -200,13 +200,15 @@ export function CellDetail() {
             Editar
           </Link>
           {canEdit('cell_group_members') && (
-          <button
-            onClick={() => setShowAttach(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
-            <Users className="w-4 h-4" />
-            Anexar pessoas
-          </button>
+          <Permissao chave="cells.cell_detail.anexar_pessoas" rotulo="Anexar pessoas — Cell Detail" herda="cell_group_members.edit">
+            <button
+              onClick={() => setShowAttach(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              <Users className="w-4 h-4" />
+              Anexar pessoas
+            </button>
+          </Permissao>
           )}
         </div>
       </div>

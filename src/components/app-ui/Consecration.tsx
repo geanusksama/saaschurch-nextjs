@@ -1893,9 +1893,11 @@ function NextConsecrationCard({
             </div>
           </div>
           {canManageSchedules ? (
-            <button onClick={onCreate} className="rounded-2xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-700">
-              Agendar
-            </button>
+            <Permissao chave="consecration.consecration.agendar" rotulo="Agendar — Consecration" herda="consecration.view">
+              <button onClick={onCreate} className="rounded-2xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-700">
+                Agendar
+              </button>
+            </Permissao>
           ) : null}
         </div>
       ) : (

@@ -1,5 +1,6 @@
 import { Search, Phone, MoreVertical, Send, Paperclip, Smile, Check, CheckCheck, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const conversations = [
   { 
@@ -196,12 +197,14 @@ export function WhatsApp() {
                 placeholder="Digite uma mensagem..."
                 className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
-              <button
-                onClick={handleSend}
-                className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Send className="w-5 h-5" />
-              </button>
+              <Permissao chave="tela_comunicacao.whats_app.enviar_mensagem" rotulo="Enviar mensagem — Whats App" herda="tela_comunicacao.view">
+                <button
+                  onClick={handleSend}
+                  className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

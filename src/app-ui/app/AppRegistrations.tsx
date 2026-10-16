@@ -543,13 +543,15 @@ export default function AppRegistrations() {
                   </Permissao>
                   {selected.status === 'PENDENTE' && (
                     <>
-                      <button
-                        onClick={() => updateMutation.mutate({ id: selected.id, status: 'REJEITADO', observacoes: nota })}
-                        disabled={updateMutation.isPending}
-                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-                      >
-                        Rejeitar
-                      </button>
+                      <Permissao chave="tela_app.app_registrations.rejeitar" rotulo="Rejeitar — App Registrations" herda="tela_app.view">
+                        <button
+                          onClick={() => updateMutation.mutate({ id: selected.id, status: 'REJEITADO', observacoes: nota })}
+                          disabled={updateMutation.isPending}
+                          className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Rejeitar
+                        </button>
+                      </Permissao>
                       {linkedMember ? (
                         <button
                           onClick={() => updateMutation.mutate({ id: selected.id, status: 'VINCULADO', observacoes: nota, member_id: linkedMember.id })}

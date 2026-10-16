@@ -394,13 +394,15 @@ export default function PosicoesCulto() {
                           {AJUDA_PAPEL[papel]}
                         </p>
                       </div>
-                      <button
-                        onClick={() => setAnexandoPapel(papel)}
-                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        Anexar
-                      </button>
+                      <Permissao chave="culto_posicoes.posicoes_culto.anexar" rotulo="Anexar — Posicoes Culto" herda="culto_posicoes.view">
+                        <button
+                          onClick={() => setAnexandoPapel(papel)}
+                          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          Anexar
+                        </button>
+                      </Permissao>
                     </div>
 
                     <div className="divide-y divide-slate-100 dark:divide-slate-700 border-t border-slate-100 dark:border-slate-700">

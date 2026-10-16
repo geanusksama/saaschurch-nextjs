@@ -6,11 +6,23 @@
  */
 
 export const PALAVRAS =
-  /\b(Salvar|Atualizar modelo|Excluir|Remover|Apagar|Exportar|Imprimir|Excel|PDF|CSV|Baixar|Download|Importar|Novo|Nova|Adicionar|Cadastrar|Criar|Editar|Duplicar|Aprovar|Reprovar|Recusar|Enviar|Gerar|Lançar|Estornar|Conciliar|Transferir|Publicar)\b/i;
+  /\b(Salvar|Atualizar modelo|Excluir|Remover|Apagar|Exportar|Imprimir|Excel|PDF|CSV|Baixar|Download|Importar|Novo|Nova|Adicionar|Cadastrar|Criar|Editar|Duplicar|Aprovar|Reprovar|Recusar|Enviar|Gerar|Lançar|Estornar|Conciliar|Transferir|Publicar|Rejeitar|Regenerar|Desconectar|Anexar|Incluir)\b/i;
 
 /** Verbo de ação no nome da função chamada pelo onClick. */
-export const HANDLER =
-  /onClick=\{[^}]*?\b(?:handle)?(save|salvar|delete|excluir|remove|remover|export|exportar|print|imprimir|download|baixar|import|importar|create|criar|novo|add|adicionar|edit|editar|duplicate|duplicar|approve|aprovar|reject|reprovar|send|enviar|gerar|generate|lancar|estornar)/i;
+// O verbo tem de ser a FUNÇÃO chamada (handleSave(, salvar}, onSave(...),
+// deleteMutation.mutate) — não pedaço de variável: "importStep === 'map'" não
+// é importar, "next.add(id)" num Set não é adicionar, "editor.x()" não é editar.
+// Primeira letra do verbo nas duas caixas; o resto do nome, só em CamelCase.
+// (Sem modificador de caixa por trecho: roda no build, Node desconhecido.)
+const VERBOS = ['save', 'salvar', 'delete', 'excluir', 'remove', 'remover', 'export', 'exportar', 'print', 'imprimir',
+  'download', 'baixar', 'import', 'importar', 'create', 'criar', 'novo', 'add', 'adicionar', 'edit', 'editar',
+  'duplicate', 'duplicar', 'approve', 'aprovar', 'reject', 'reprovar', 'send', 'enviar', 'gerar', 'generate',
+  'lancar', 'estornar'];
+export const HANDLER = new RegExp(
+  'onClick=\\{[^}]*?(?<=[\\s({;=>!&|?:])(?:handle|on)?(' +
+    VERBOS.map((v) => `[${v[0]}${v[0].toUpperCase()}]${v.slice(1)}`).join('|') +
+    ')(?:[A-Z]\\w*)?\\s*[(}.]',
+);
 
 export function semComentarios(txt) {
   return txt
@@ -79,6 +91,9 @@ export function tituloDe(abertura) {
 /** É botão de ação? Texto visível, title/aria-label ou verbo do handler. */
 export function ehBotaoDeAcao(bloco) {
   const { abertura, corpo } = separarBotao(bloco);
+  // Revisado à mão e documentado no próprio botão: não leva <Permissao>.
+  // Ex.: data-sem-permissao="confirmação do modal; quem abre já passou pelo Imprimir da tela"
+  if (/\bdata-sem-permissao=["'][^"']{10,}["']/.test(abertura)) return false;
   return PALAVRAS.test(textoVisivel(corpo)) || PALAVRAS.test(tituloDe(abertura)) || HANDLER.test(abertura);
 }
 

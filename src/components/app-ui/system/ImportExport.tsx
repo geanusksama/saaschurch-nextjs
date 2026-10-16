@@ -692,14 +692,16 @@ export function Import() {
             <ChevronLeft className="w-4 h-4" />
             Voltar
           </button>
-          <button
-            onClick={handleImport}
-            disabled={importing || validRows.length === 0}
-            className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium text-sm"
-          >
-            {importing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {importing ? 'Importando...' : `Importar ${validRows.length} registros`}
-          </button>
+          <Permissao chave="tela_import_export.import_export.importar_registros" rotulo="Importar registros — Import Export" herda="tela_import_export.view">
+            <button
+              onClick={handleImport}
+              disabled={importing || validRows.length === 0}
+              className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium text-sm"
+            >
+              {importing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {importing ? 'Importando...' : `Importar ${validRows.length} registros`}
+            </button>
+          </Permissao>
         </div>
       </div>
     );

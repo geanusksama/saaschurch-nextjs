@@ -268,13 +268,15 @@ export function AttachMemberModal({ cellGroupId, cellGroupNames, onClose, onAtta
                         <p className="text-xs text-slate-500">{m.mobile || m.phone || 'Sem telefone'}</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => attach({ source: 'member', memberId: m.id }, m.id)}
-                      disabled={busy === m.id}
-                      className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                    >
-                      {busy === m.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Anexar'}
-                    </button>
+                    <Permissao chave="cells.attach_member_modal.anexar" rotulo="Anexar — Attach Member Modal" herda="cells.view">
+                      <button
+                        onClick={() => attach({ source: 'member', memberId: m.id }, m.id)}
+                        disabled={busy === m.id}
+                        className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        {busy === m.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Anexar'}
+                      </button>
+                    </Permissao>
                   </div>
                 ))}
                 {!searching && query.length >= 3 && !members.length && (

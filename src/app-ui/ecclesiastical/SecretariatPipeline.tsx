@@ -2245,15 +2245,17 @@ function CardDetailModal({
               <div className="space-y-5">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="mb-3 text-sm font-semibold text-slate-900">Adicionar novo arquivo</p>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={savingFile}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                  >
-                    {savingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    Anexar arquivo
-                  </button>
+                  <Permissao chave="crm_pipeline.secretariat_pipeline.anexar_arquivo" rotulo="Anexar arquivo — Secretariat Pipeline" herda="crm_pipeline.view">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={savingFile}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {savingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      Anexar arquivo
+                    </button>
+                  </Permissao>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -2338,15 +2340,17 @@ function CardDetailModal({
                         className="hidden"
                         onChange={(e) => setChatAttachment(e.target.files?.[0] || null)}
                       />
-                      <button
-                        type="button"
-                        onClick={() => chatFileInputRef.current?.click()}
-                        disabled={savingMessage}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                      >
-                        <Paperclip className="h-4 w-4" />
-                        Anexar arquivo
-                      </button>
+                      <Permissao chave="crm_pipeline.secretariat_pipeline.anexar_arquivo" rotulo="Anexar arquivo — Secretariat Pipeline" herda="crm_pipeline.view">
+                        <button
+                          type="button"
+                          onClick={() => chatFileInputRef.current?.click()}
+                          disabled={savingMessage}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                          Anexar arquivo
+                        </button>
+                      </Permissao>
                       {chatAttachment && (
                         <div className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
                           <Paperclip className="h-3.5 w-3.5" />

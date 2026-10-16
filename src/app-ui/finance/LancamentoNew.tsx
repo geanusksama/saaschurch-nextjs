@@ -838,7 +838,9 @@ function HistoricoPanel({
                             <div className="w-24 flex items-center gap-1">
                               <input autoFocus type="text" inputMode="numeric" value={editValor} onChange={handleEditValorChange}
                                 className="w-full px-1.5 py-1 border-2 border-violet-400 rounded text-xs font-bold text-right focus:outline-none" />
-                              <button onClick={() => handleEditValorSave(l)} className="p-0.5 bg-violet-500 text-white rounded"><Check className="w-3 h-3" /></button>
+                              <Permissao chave="tela_lancamento_recibo.lancamento_new.confirmar_valor" rotulo="Confirmar valor editado — Lancamento New" herda="tela_lancamento_recibo.view">
+                                <button onClick={() => handleEditValorSave(l)} className="p-0.5 bg-violet-500 text-white rounded"><Check className="w-3 h-3" /></button>
+                              </Permissao>
                               <button onClick={() => setEditingId(null)} className="p-0.5 border rounded"><X className="w-3 h-3 text-slate-400" /></button>
                             </div>
                           ) : (

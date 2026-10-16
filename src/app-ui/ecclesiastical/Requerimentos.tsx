@@ -1302,15 +1302,17 @@ function RequerimentoDetalheModal({
                         className="hidden"
                         onChange={(e) => setChatAttachment(e.target.files?.[0] || null)}
                       />
-                      <button
-                        type="button"
-                        onClick={() => chatFileInputRef.current?.click()}
-                        disabled={savingMessage}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                      >
-                        <Paperclip className="h-4 w-4" />
-                        Anexar arquivo
-                      </button>
+                      <Permissao chave="requirements.requerimentos.anexar_arquivo" rotulo="Anexar arquivo — Requerimentos" herda="requirements.view">
+                        <button
+                          type="button"
+                          onClick={() => chatFileInputRef.current?.click()}
+                          disabled={savingMessage}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                          Anexar arquivo
+                        </button>
+                      </Permissao>
                       {chatAttachment && (
                         <div className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
                           <Paperclip className="h-3.5 w-3.5" />
@@ -1905,18 +1907,20 @@ function NovoRequerimentoModal({
           >
             Cancelar
           </button>
-          <button
-            type="button"
-            onClick={handleSubmit as any}
-            disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {saving ? (
-              <><Loader2 size={14} className="animate-spin" /> Criando...</>
-            ) : (
-              "Incluir requerimento"
-            )}
-          </button>
+          <Permissao chave="requirements.requerimentos.incluir_requerimento" rotulo="Incluir requerimento — Requerimentos" herda="requirements.view">
+            <button
+              type="button"
+              onClick={handleSubmit as any}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {saving ? (
+                <><Loader2 size={14} className="animate-spin" /> Criando...</>
+              ) : (
+                "Incluir requerimento"
+              )}
+            </button>
+          </Permissao>
         </div>
       </div>
 

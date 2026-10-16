@@ -592,13 +592,15 @@ export default function AiAssistants() {
           >
             {gravando ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
-          <button
-            onClick={handleSendMessage}
-            disabled={chatLoading || !inputMessage.trim()}
-            className="px-4 h-[46px] flex-shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white transition-colors flex items-center justify-center"
-          >
-            <Send className="w-4 h-4" />
-          </button>
+          <Permissao chave="tela_assistentes_ia.ai_assistants.enviar_mensagem" rotulo="Enviar mensagem ao assistente — Ai Assistants" herda="tela_assistentes_ia.view">
+            <button
+              onClick={handleSendMessage}
+              disabled={chatLoading || !inputMessage.trim()}
+              className="px-4 h-[46px] flex-shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white transition-colors flex items-center justify-center"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </Permissao>
         </div>
         </div>
 

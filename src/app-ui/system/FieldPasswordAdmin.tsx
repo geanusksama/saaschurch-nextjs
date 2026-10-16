@@ -299,16 +299,18 @@ export default function FieldPasswordAdmin() {
               >
                 Cancelar
               </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving || !password || password !== confirmPassword}
-                className="flex-1 rounded-lg bg-purple-600 hover:bg-purple-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {saving ? 'Salvando...' : (
-                  <><Lock className="h-4 w-4" /> Salvar Senha</>
-                )}
-              </button>
+              <Permissao chave="campo_passwords.field_password_admin.salvar_senha" rotulo="Salvar senha do campo — Field Password Admin" herda="campo_passwords.view">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || !password || password !== confirmPassword}
+                  className="flex-1 rounded-lg bg-purple-600 hover:bg-purple-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {saving ? 'Salvando...' : (
+                    <><Lock className="h-4 w-4" /> Salvar Senha</>
+                  )}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

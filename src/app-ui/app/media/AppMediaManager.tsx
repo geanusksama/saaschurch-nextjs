@@ -675,12 +675,16 @@ function MediaRow({
             ? <EyeOff className="w-4 h-4 text-slate-500" />
             : <Eye className="w-4 h-4 text-green-500" />}
         </button>
-        <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-          <Pencil className="w-4 h-4 text-slate-500" />
-        </button>
-        <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-          <Trash2 className="w-4 h-4 text-red-400" />
-        </button>
+        <Permissao chave="tela_app.app_media_manager.editar" rotulo="Editar — App Media Manager" herda="tela_app.view">
+          <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <Pencil className="w-4 h-4 text-slate-500" />
+          </button>
+        </Permissao>
+        <Permissao chave="tela_app.app_media_manager.excluir" rotulo="Excluir — App Media Manager" herda="tela_app.view">
+          <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+            <Trash2 className="w-4 h-4 text-red-400" />
+          </button>
+        </Permissao>
       </div>
     </div>
   );

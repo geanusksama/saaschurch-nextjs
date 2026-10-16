@@ -491,14 +491,12 @@ export function ChurchInfo() {
                 <label className={labelClass}>Logradouro</label>
                 <div className="flex items-center gap-2">
                   {(() => { const ic = getFieldIconCfg(hq.fieldIcons?.street || 'MapPin'); const IcIcon = ic.Icon; return (
-                    <Permissao chave="settings_church_info.church_info.escolher_icone" rotulo="Escolher ícone — Church Info" herda="settings_church_info.view">
-                      <button type="button" onClick={() => { setIconPickerField('street'); setIconPickerSet('address'); }}
-                        title="Escolher ícone"
-                        className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${ic.bg} overflow-hidden shadow-md transition-transform hover:scale-110`}>
-                        <span className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-black/10 pointer-events-none" />
-                        <IcIcon className="h-5 w-5 text-white relative z-10 drop-shadow" />
-                      </button>
-                    </Permissao>
+                    <button type="button" onClick={() => { setIconPickerField('street'); setIconPickerSet('address'); }}
+                      title="Escolher ícone"
+                      className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${ic.bg} overflow-hidden shadow-md transition-transform hover:scale-110`}>
+                      <span className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-black/10 pointer-events-none" />
+                      <IcIcon className="h-5 w-5 text-white relative z-10 drop-shadow" />
+                    </button>
                   ); })()}
                   <input className={inputClass} value={hq.street || ''} onChange={(e) => setHq((p) => ({ ...p, street: e.target.value }))} />
                 </div>
@@ -508,14 +506,12 @@ export function ChurchInfo() {
                 <label className={labelClass}>Numero</label>
                 <div className="flex items-center gap-2">
                   {(() => { const ic = getFieldIconCfg(hq.fieldIcons?.number || 'Hash'); const IcIcon = ic.Icon; return (
-                    <Permissao chave="settings_church_info.church_info.escolher_icone" rotulo="Escolher ícone — Church Info" herda="settings_church_info.view">
-                      <button type="button" onClick={() => { setIconPickerField('number'); setIconPickerSet('address'); }}
-                        title="Escolher ícone"
-                        className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${ic.bg} overflow-hidden shadow-md transition-transform hover:scale-110`}>
-                        <span className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-black/10 pointer-events-none" />
-                        <IcIcon className="h-5 w-5 text-white relative z-10 drop-shadow" />
-                      </button>
-                    </Permissao>
+                    <button type="button" onClick={() => { setIconPickerField('number'); setIconPickerSet('address'); }}
+                      title="Escolher ícone"
+                      className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${ic.bg} overflow-hidden shadow-md transition-transform hover:scale-110`}>
+                      <span className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-black/10 pointer-events-none" />
+                      <IcIcon className="h-5 w-5 text-white relative z-10 drop-shadow" />
+                    </button>
                   ); })()}
                   <input className={inputClass} value={hq.number || ''} onChange={(e) => setHq((p) => ({ ...p, number: e.target.value }))} />
                 </div>
@@ -525,14 +521,12 @@ export function ChurchInfo() {
                 <label className={labelClass}>Bairro</label>
                 <div className="flex items-center gap-2">
                   {(() => { const ic = getFieldIconCfg(hq.fieldIcons?.neighborhood || 'Building'); const IcIcon = ic.Icon; return (
-                    <Permissao chave="settings_church_info.church_info.escolher_icone" rotulo="Escolher ícone — Church Info" herda="settings_church_info.view">
-                      <button type="button" onClick={() => { setIconPickerField('neighborhood'); setIconPickerSet('address'); }}
-                        title="Escolher ícone"
-                        className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${ic.bg} overflow-hidden shadow-md transition-transform hover:scale-110`}>
-                        <span className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-black/10 pointer-events-none" />
-                        <IcIcon className="h-5 w-5 text-white relative z-10 drop-shadow" />
-                      </button>
-                    </Permissao>
+                    <button type="button" onClick={() => { setIconPickerField('neighborhood'); setIconPickerSet('address'); }}
+                      title="Escolher ícone"
+                      className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${ic.bg} overflow-hidden shadow-md transition-transform hover:scale-110`}>
+                      <span className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-black/10 pointer-events-none" />
+                      <IcIcon className="h-5 w-5 text-white relative z-10 drop-shadow" />
+                    </button>
                   ); })()}
                   <input className={inputClass} value={hq.neighborhood || ''} onChange={(e) => setHq((p) => ({ ...p, neighborhood: e.target.value }))} />
                 </div>
@@ -546,14 +540,12 @@ export function ChurchInfo() {
                 <label className={labelClass}>CEP</label>
                 <div className="flex items-center gap-2">
                   {(() => { const ic = getFieldIconCfg(hq.fieldIcons?.zipcode || 'Mailbox'); const IcIcon = ic.Icon; return (
-                    <Permissao chave="settings_church_info.church_info.escolher_icone" rotulo="Escolher ícone — Church Info" herda="settings_church_info.view">
-                      <button type="button" onClick={() => { setIconPickerField('zipcode'); setIconPickerSet('address'); }}
-                        title="Escolher ícone"
-                        className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${ic.bg} overflow-hidden shadow-md transition-transform hover:scale-110`}>
-                        <span className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-black/10 pointer-events-none" />
-                        <IcIcon className="h-5 w-5 text-white relative z-10 drop-shadow" />
-                      </button>
-                    </Permissao>
+                    <button type="button" onClick={() => { setIconPickerField('zipcode'); setIconPickerSet('address'); }}
+                      title="Escolher ícone"
+                      className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${ic.bg} overflow-hidden shadow-md transition-transform hover:scale-110`}>
+                      <span className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-black/10 pointer-events-none" />
+                      <IcIcon className="h-5 w-5 text-white relative z-10 drop-shadow" />
+                    </button>
                   ); })()}
                   <input className={inputClass} value={hq.zipcode || ''} onChange={(e) => setHq((p) => ({ ...p, zipcode: e.target.value }))} />
                 </div>
@@ -917,12 +909,10 @@ export function ChurchInfo() {
               className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${iconPickerSet === 'contact' ? 'bg-white text-slate-900 shadow dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>
               Contato
             </button>
-            <Permissao chave="settings_church_info.church_info.endereco" rotulo="Endereco — Church Info" herda="settings_church_info.view">
-              <button type="button" onClick={() => setIconPickerSet('address')}
-                className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${iconPickerSet === 'address' ? 'bg-white text-slate-900 shadow dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>
-                Endereco
-              </button>
-            </Permissao>
+            <button type="button" onClick={() => setIconPickerSet('address')}
+              className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${iconPickerSet === 'address' ? 'bg-white text-slate-900 shadow dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>
+              Endereco
+            </button>
             <button type="button" onClick={() => setIconPickerSet('social')}
               className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${iconPickerSet === 'social' ? 'bg-white text-slate-900 shadow dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>
               Social

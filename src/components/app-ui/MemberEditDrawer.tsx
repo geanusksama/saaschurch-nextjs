@@ -781,16 +781,14 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                     <label className={labelClass}>Cidade</label>
                     <div className="flex gap-2">
                       <input type="text" value={form.addressCity} onChange={(e) => update('addressCity', e.target.value)} className={inputClass} />
-                      <Permissao chave="tela_moldura.member_edit_drawer.buscar_uf" rotulo="Buscar UF — Member Edit Drawer" herda="tela_moldura.view">
-                        <button
-                          type="button"
-                          onClick={() => handleLookupCity('addressCity')}
-                          disabled={lookingUpCityField === 'addressCity'}
-                          className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
-                        >
-                          {lookingUpCityField === 'addressCity' ? 'Buscando...' : 'Buscar UF'}
-                        </button>
-                      </Permissao>
+                      <button
+                        type="button"
+                        onClick={() => handleLookupCity('addressCity')}
+                        disabled={lookingUpCityField === 'addressCity'}
+                        className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+                      >
+                        {lookingUpCityField === 'addressCity' ? 'Buscando...' : 'Buscar UF'}
+                      </button>
                     </div>
                   </div>
                   <div className="md:col-span-2">

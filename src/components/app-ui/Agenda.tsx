@@ -1322,18 +1322,18 @@ export function Agenda() {
 
             {importStep !== 'import' && (
               <div className="flex justify-between border-t border-slate-200 px-6 py-4 dark:border-slate-700">
-                <Permissao chave="events.agenda.voltar_cancelar" rotulo="Voltar Cancelar — Agenda" herda="events.view">
-                  <button onClick={() => importStep === 'map' ? setImportStep('upload') : setShowImport(false)}
-                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">
-                    {importStep === 'map' ? 'Voltar' : 'Cancelar'}
-                  </button>
-                </Permissao>
+                <button onClick={() => importStep === 'map' ? setImportStep('upload') : setShowImport(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">
+                  {importStep === 'map' ? 'Voltar' : 'Cancelar'}
+                </button>
                 {importStep === 'map' && (
-                  <button onClick={handleImport} disabled={importing}
-                    className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">
-                    {importing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    {importing ? 'Importando...' : `Importar ${csvRows.length} registros`}
-                  </button>
+                  <Permissao chave="events.agenda.importar_registros" rotulo="Importar registros — Agenda" herda="events.view">
+                    <button onClick={handleImport} disabled={importing}
+                      className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">
+                      {importing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {importing ? 'Importando...' : `Importar ${csvRows.length} registros`}
+                    </button>
+                  </Permissao>
                 )}
               </div>
             )}

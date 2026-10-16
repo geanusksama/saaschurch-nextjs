@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Loader2, Search, UserPlus, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Opcao {
   value: string;
@@ -447,14 +448,16 @@ export function AttachAudienceModal({
           <button onClick={onClose} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700">
             Cancelar
           </button>
-          <button
-            onClick={anexar}
-            disabled={anexando || !selecionados.size}
-            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2 text-xs font-bold text-white disabled:opacity-50"
-          >
-            {anexando ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-            Anexar {selecionados.size || ''} pessoa(s)
-          </button>
+          <Permissao chave="secretaria_campanhas.attach_audience_modal.anexar_pessoa_s" rotulo="Anexar pessoa(s) — Attach Audience Modal" herda="secretaria_campanhas.view">
+            <button
+              onClick={anexar}
+              disabled={anexando || !selecionados.size}
+              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2 text-xs font-bold text-white disabled:opacity-50"
+            >
+              {anexando ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              Anexar {selecionados.size || ''} pessoa(s)
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

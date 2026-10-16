@@ -2245,31 +2245,33 @@ export function Churches() {
             >
               Limpar
             </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  disabled={!hasSearched || !sortedChurches.length || Boolean(exporting)}
-                  title={!hasSearched ? 'Busque antes de exportar.' : 'Exportar as igrejas dos filtros atuais'}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300"
-                >
-                  <Download className="h-4 w-4" />
-                  {exporting ? 'Exportando...' : 'Exportar'}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuLabel>Exportar {sortedChurches.length} registros</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => exportChurches('xlsx')}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
-                  Excel (.xlsx)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportChurches('csv')}>
-                  <Download className="mr-2 h-4 w-4 text-slate-500" />
-                  CSV (.csv)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Permissao chave="churches.churches.menu_exportar" rotulo="Exportar (menu) — Churches" herda="churches.view">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={!hasSearched || !sortedChurches.length || Boolean(exporting)}
+                    title={!hasSearched ? 'Busque antes de exportar.' : 'Exportar as igrejas dos filtros atuais'}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300"
+                  >
+                    <Download className="h-4 w-4" />
+                    {exporting ? 'Exportando...' : 'Exportar'}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuLabel>Exportar {sortedChurches.length} registros</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => exportChurches('xlsx')}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
+                    Excel (.xlsx)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportChurches('csv')}>
+                    <Download className="mr-2 h-4 w-4 text-slate-500" />
+                    CSV (.csv)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Permissao>
           </div>
         </div>
       </div>

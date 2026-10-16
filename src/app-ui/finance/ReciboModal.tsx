@@ -1149,19 +1149,21 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
               </button>
 
               {/* Anexar */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800 disabled:opacity-50"
-                title="Anexar"
-              >
-                {uploading ? (
-                  <div className="w-5 h-5 mb-1.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Camera className="w-5 h-5 mb-1.5" />
-                )}
-                <span className="text-[10px] font-medium leading-none">Anexar</span>
-              </button>
+              <Permissao chave="tela_lancamento_recibo.recibo_modal.anexar" rotulo="Anexar — Recibo Modal" herda="tela_lancamento_recibo.view">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800 disabled:opacity-50"
+                  title="Anexar"
+                >
+                  {uploading ? (
+                    <div className="w-5 h-5 mb-1.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera className="w-5 h-5 mb-1.5" />
+                  )}
+                  <span className="text-[10px] font-medium leading-none">Anexar</span>
+                </button>
+              </Permissao>
 
               {/* Ver Comprovante */}
               <button

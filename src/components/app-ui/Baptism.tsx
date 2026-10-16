@@ -1906,9 +1906,11 @@ function NextScheduleCard({
             </div>
           </div>
           {canManageSchedules ? (
-            <button onClick={onCreate} className="rounded-2xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700">
-              Agendar
-            </button>
+            <Permissao chave="baptism.baptism.agendar" rotulo="Agendar — Baptism" herda="baptism.view">
+              <button onClick={onCreate} className="rounded-2xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700">
+                Agendar
+              </button>
+            </Permissao>
           ) : null}
         </div>
       ) : (

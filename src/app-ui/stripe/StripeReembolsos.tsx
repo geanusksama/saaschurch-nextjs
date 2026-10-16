@@ -149,14 +149,16 @@ export default function StripeReembolsos({ campoId }: Props) {
                           <CheckCircle className="w-4 h-4" />
                         </button>
                       </Permissao>
-                      <button
-                        onClick={() => { setRejectModal({ id: r.id }); setRejectMotivo(""); }}
-                        disabled={actionLoading === r.id}
-                        title="Rejeitar"
-                        className="p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-40"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="tela_stripe.stripe_reembolsos.rejeitar" rotulo="Rejeitar — Stripe Reembolsos" herda="tela_stripe.view">
+                        <button
+                          onClick={() => { setRejectModal({ id: r.id }); setRejectMotivo(""); }}
+                          disabled={actionLoading === r.id}
+                          title="Rejeitar"
+                          className="p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-40"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     </div>
                   )}
                 </td>

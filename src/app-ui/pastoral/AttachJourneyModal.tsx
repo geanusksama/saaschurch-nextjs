@@ -18,6 +18,7 @@ import {
   type JourneyProfile,
 } from '../../lib/pastoralJourneyDefault';
 import { getCurrentChurchId, type PastoralAttendance } from '../../lib/pastoralKanbanService';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') ?? '' : '';
@@ -260,14 +261,16 @@ export function AttachJourneyModal({
           <button onClick={onClose} className="px-5 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">
             Cancelar
           </button>
-          <button
-            onClick={submit}
-            disabled={saving || !journeyId || !withPhone.length}
-            className="flex items-center gap-1.5 px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Anexar cronograma
-          </button>
+          <Permissao chave="pastoral_visits.attach_journey_modal.anexar_cronograma" rotulo="Anexar cronograma — Attach Journey Modal" herda="pastoral_visits.view">
+            <button
+              onClick={submit}
+              disabled={saving || !journeyId || !withPhone.length}
+              className="flex items-center gap-1.5 px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Anexar cronograma
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

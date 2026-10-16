@@ -648,15 +648,17 @@ export default function PastoralSendHistory() {
                     <span title={`Atendida por ${agentName(s.aiAgentId)}`}
                       className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase pl-1.5 pr-1 py-0.5 rounded bg-violet-50 text-violet-600">
                       <Bot className="w-3 h-3" /> IA
-                      <button
-                        onClick={e => { e.stopPropagation(); s.conversationId && removeAiFromRow(s.conversationId); }}
-                        disabled={removingAiId === s.conversationId || !canManageAi}
-                        title={canManageAi ? 'Remover IA desta conversa' : 'Sem permissão para gerenciar agentes de IA'}
-                        className="rounded-full hover:bg-violet-200 p-0.5 disabled:opacity-40">
-                        {removingAiId === s.conversationId
-                          ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                          : <X className="w-2.5 h-2.5" />}
-                      </button>
+                      <Permissao chave="pastoral_visits.pastoral_send_history.remover_ia_da_conversa" rotulo="Remover IA da conversa — Pastoral Send History" herda="pastoral_visits.view">
+                        <button
+                          onClick={e => { e.stopPropagation(); s.conversationId && removeAiFromRow(s.conversationId); }}
+                          disabled={removingAiId === s.conversationId || !canManageAi}
+                          title={canManageAi ? 'Remover IA desta conversa' : 'Sem permissão para gerenciar agentes de IA'}
+                          className="rounded-full hover:bg-violet-200 p-0.5 disabled:opacity-40">
+                          {removingAiId === s.conversationId
+                            ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                            : <X className="w-2.5 h-2.5" />}
+                        </button>
+                      </Permissao>
                     </span>
                   )}
                 </div>
@@ -763,16 +765,18 @@ export default function PastoralSendHistory() {
                   {openSend.aiEnabled && (
                     <span className="inline-flex items-center gap-1 text-violet-600">
                       · <Bot className="w-3 h-3" /> {agentName(openSend.aiAgentId)}
-                      <button
-                        onClick={() => openSend.conversationId && removeAiFromRow(openSend.conversationId).then(() =>
-                          setOpenSend(prev => prev ? { ...prev, aiEnabled: false, aiAgentId: null } : prev))}
-                        disabled={removingAiId === openSend.conversationId || !canManageAi}
-                        title={canManageAi ? 'Remover IA desta conversa' : 'Sem permissão para gerenciar agentes de IA'}
-                        className="rounded-full hover:bg-violet-100 p-0.5 disabled:opacity-40">
-                        {removingAiId === openSend.conversationId
-                          ? <Loader2 className="w-3 h-3 animate-spin" />
-                          : <X className="w-3 h-3" />}
-                      </button>
+                      <Permissao chave="pastoral_visits.pastoral_send_history.remover_ia_da_conversa" rotulo="Remover IA da conversa — Pastoral Send History" herda="pastoral_visits.view">
+                        <button
+                          onClick={() => openSend.conversationId && removeAiFromRow(openSend.conversationId).then(() =>
+                            setOpenSend(prev => prev ? { ...prev, aiEnabled: false, aiAgentId: null } : prev))}
+                          disabled={removingAiId === openSend.conversationId || !canManageAi}
+                          title={canManageAi ? 'Remover IA desta conversa' : 'Sem permissão para gerenciar agentes de IA'}
+                          className="rounded-full hover:bg-violet-100 p-0.5 disabled:opacity-40">
+                          {removingAiId === openSend.conversationId
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <X className="w-3 h-3" />}
+                        </button>
+                      </Permissao>
                     </span>
                   )}
                 </div>

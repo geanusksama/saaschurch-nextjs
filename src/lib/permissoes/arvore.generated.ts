@@ -54,6 +54,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/assets/AssetImportModal.tsx"
   },
   {
+    "chave": "assets.asset_label_print_modal.imprimir_etiquetas",
+    "rotulo": "Imprimir etiquetas — Asset Label Print Modal",
+    "herda": "assets.view",
+    "arquivo": "src/app-ui/assets/AssetLabelPrintModal.tsx"
+  },
+  {
     "chave": "assets.assets_list.editar",
     "rotulo": "Editar — Assets List",
     "herda": "assets.edit",
@@ -192,6 +198,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/forms/BaptismRequestNew.tsx"
   },
   {
+    "chave": "baptism.baptism.agendar",
+    "rotulo": "Agendar — Baptism",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/Baptism.tsx"
+  },
+  {
     "chave": "baptism.baptism.editar",
     "rotulo": "Editar — Baptism",
     "herda": "baptism.view",
@@ -282,6 +294,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/system/FieldPasswordAdmin.tsx"
   },
   {
+    "chave": "campo_passwords.field_password_admin.salvar_senha",
+    "rotulo": "Salvar senha do campo — Field Password Admin",
+    "herda": "campo_passwords.view",
+    "arquivo": "src/app-ui/system/FieldPasswordAdmin.tsx"
+  },
+  {
     "chave": "cashbook.analytics_modal.imprimir_relatorio",
     "rotulo": "Imprimir Relatório — Analytics Modal",
     "herda": "cashbook.view",
@@ -306,6 +324,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/finance/Cashbook.tsx"
   },
   {
+    "chave": "cashbook.cashbook.salvar_edicao",
+    "rotulo": "Salvar edição do lançamento — Cashbook",
+    "herda": "cashbook.cashbook.editar_lancamento",
+    "arquivo": "src/app-ui/finance/Cashbook.tsx"
+  },
+  {
     "chave": "cashbook.relatorio_modal.baixar",
     "rotulo": "Baixar — Relatorio Modal",
     "herda": "cashbook.view",
@@ -318,6 +342,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/finance/RelatorioModal.tsx"
   },
   {
+    "chave": "cells.attach_member_modal.anexar",
+    "rotulo": "Anexar — Attach Member Modal",
+    "herda": "cells.view",
+    "arquivo": "src/components/app-ui/cells/AttachMemberModal.tsx"
+  },
+  {
     "chave": "cells.attach_member_modal.listas_importadas",
     "rotulo": "Listas importadas — Attach Member Modal",
     "herda": "cells.view",
@@ -328,6 +358,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Neste GF Anexar — Attach Member Modal",
     "herda": "cells.view",
     "arquivo": "src/components/app-ui/cells/AttachMemberModal.tsx"
+  },
+  {
+    "chave": "cells.cell_detail.anexar_pessoas",
+    "rotulo": "Anexar pessoas — Cell Detail",
+    "herda": "cell_group_members.edit",
+    "arquivo": "src/components/app-ui/CellDetail.tsx"
   },
   {
     "chave": "cells.cell_detail.remover_do_gf",
@@ -374,6 +410,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "churches.churches.imprimir",
     "rotulo": "Imprimir — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.menu_exportar",
+    "rotulo": "Exportar (menu) — Churches",
     "herda": "churches.view",
     "arquivo": "src/components/app-ui/Churches.tsx"
   },
@@ -436,6 +478,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Salvar Consagração — Consecration New",
     "herda": "consecration.view",
     "arquivo": "src/components/app-ui/forms/ConsecrationNew.tsx"
+  },
+  {
+    "chave": "consecration.consecration.agendar",
+    "rotulo": "Agendar — Consecration",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/Consecration.tsx"
   },
   {
     "chave": "consecration.consecration.editar",
@@ -648,6 +696,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/ContactsModule.tsx"
   },
   {
+    "chave": "crm_pipeline.secretariat_pipeline.anexar_arquivo",
+    "rotulo": "Anexar arquivo — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
     "chave": "crm_pipeline.secretariat_pipeline.criar",
     "rotulo": "Criar — Secretariat Pipeline",
     "herda": "crm_pipeline.view",
@@ -796,6 +850,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Excluir horário — Horarios Culto Modal",
     "herda": "culto_lancar.view",
     "arquivo": "src/app-ui/culto/HorariosCultoModal.tsx"
+  },
+  {
+    "chave": "culto_posicoes.posicoes_culto.anexar",
+    "rotulo": "Anexar — Posicoes Culto",
+    "herda": "culto_posicoes.view",
+    "arquivo": "src/app-ui/culto/PosicoesCulto.tsx"
   },
   {
     "chave": "culto_posicoes.posicoes_culto.criar_usuario_e_anexar_como",
@@ -1062,6 +1122,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/Agenda.tsx"
   },
   {
+    "chave": "events.agenda.importar_registros",
+    "rotulo": "Importar registros — Agenda",
+    "herda": "events.view",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
     "chave": "events.agenda.modelo_csv",
     "rotulo": "Modelo CSV — Agenda",
     "herda": "events.view",
@@ -1094,12 +1160,6 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "events.agenda.salvar",
     "rotulo": "Salvar — Agenda",
-    "herda": "events.view",
-    "arquivo": "src/components/app-ui/Agenda.tsx"
-  },
-  {
-    "chave": "events.agenda.voltar_cancelar",
-    "rotulo": "Voltar Cancelar — Agenda",
     "herda": "events.view",
     "arquivo": "src/components/app-ui/Agenda.tsx"
   },
@@ -1146,12 +1206,6 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/Inbox.tsx"
   },
   {
-    "chave": "inbox.inbox.limpar",
-    "rotulo": "Limpar — Inbox",
-    "herda": "inbox.view",
-    "arquivo": "src/components/app-ui/Inbox.tsx"
-  },
-  {
     "chave": "inbox.inbox.nova_mensagem",
     "rotulo": "Nova mensagem — Inbox",
     "herda": "inbox.view",
@@ -1162,6 +1216,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Remover (attachment) — Inbox",
     "herda": "inbox.view",
     "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "integrations.integrations.desconectar",
+    "rotulo": "Desconectar — Integrations",
+    "herda": "integrations.view",
+    "arquivo": "src/components/app-ui/system/Integrations.tsx"
   },
   {
     "chave": "internal_chat.chat_fab.excluir",
@@ -1314,12 +1374,6 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/MemberRegistration.tsx"
   },
   {
-    "chave": "members.member_registration.ver_ficha_do_membro",
-    "rotulo": "Ver Ficha do Membro — Member Registration",
-    "herda": "members.view",
-    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
-  },
-  {
     "chave": "members.members.editar",
     "rotulo": "Editar — Members",
     "herda": "members.view",
@@ -1398,6 +1452,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/Ministries.tsx"
   },
   {
+    "chave": "ministries.ministries.confirmar_exclusao",
+    "rotulo": "Confirmar exclusão — Ministries",
+    "herda": "ministries.ministries.excluir",
+    "arquivo": "src/components/app-ui/Ministries.tsx"
+  },
+  {
     "chave": "ministries.ministries.editar",
     "rotulo": "Editar — Ministries",
     "herda": "ministries.edit",
@@ -1462,6 +1522,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Imprimir relatório — Pastoral Reports",
     "herda": "pastoral_reports.view",
     "arquivo": "src/app-ui/pastoral/PastoralReports.tsx"
+  },
+  {
+    "chave": "pastoral_visits.attach_journey_modal.anexar_cronograma",
+    "rotulo": "Anexar cronograma — Attach Journey Modal",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/AttachJourneyModal.tsx"
   },
   {
     "chave": "pastoral_visits.conversation_modal.enviar",
@@ -1554,6 +1620,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
   },
   {
+    "chave": "pastoral_visits.pastoral_attendance_detail.anexar_arquivo",
+    "rotulo": "Anexar Arquivo — Pastoral Attendance Detail",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
+  },
+  {
     "chave": "pastoral_visits.pastoral_attendance_detail.criar_primeira_atividade",
     "rotulo": "Criar primeira atividade — Pastoral Attendance Detail",
     "herda": "pastoral_visits.view",
@@ -1628,6 +1700,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "pastoral_visits.pastoral_distribuicao.desconectar",
     "rotulo": "Desconectar — Pastoral Distribuicao",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralDistribuicao.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_distribuicao.desconectar_marcados",
+    "rotulo": "Desconectar marcados — Pastoral Distribuicao",
     "herda": "pastoral_visits.view",
     "arquivo": "src/app-ui/pastoral/PastoralDistribuicao.tsx"
   },
@@ -1766,6 +1844,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "pastoral_visits.pastoral_send_history.excluir_selecionados",
     "rotulo": "Excluir selecionados — Pastoral Send History",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralSendHistory.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_send_history.remover_ia_da_conversa",
+    "rotulo": "Remover IA da conversa — Pastoral Send History",
     "herda": "pastoral_visits.view",
     "arquivo": "src/app-ui/pastoral/PastoralSendHistory.tsx"
   },
@@ -2214,6 +2298,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/Reports.tsx"
   },
   {
+    "chave": "requirements.requerimentos.anexar_arquivo",
+    "rotulo": "Anexar arquivo — Requerimentos",
+    "herda": "requirements.view",
+    "arquivo": "src/app-ui/ecclesiastical/Requerimentos.tsx"
+  },
+  {
     "chave": "requirements.requerimentos.enviar_mensagem",
     "rotulo": "Enviar mensagem — Requerimentos",
     "herda": "requirements.view",
@@ -2228,6 +2318,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "requirements.requerimentos.imprimir",
     "rotulo": "Imprimir — Requerimentos",
+    "herda": "requirements.view",
+    "arquivo": "src/app-ui/ecclesiastical/Requerimentos.tsx"
+  },
+  {
+    "chave": "requirements.requerimentos.incluir_requerimento",
+    "rotulo": "Incluir requerimento — Requerimentos",
     "herda": "requirements.view",
     "arquivo": "src/app-ui/ecclesiastical/Requerimentos.tsx"
   },
@@ -2292,6 +2388,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/modules/financeiro/conciliacao-santander/frontend/SantanderTable.tsx"
   },
   {
+    "chave": "secretaria_campanhas.attach_audience_modal.anexar_pessoa_s",
+    "rotulo": "Anexar pessoa(s) — Attach Audience Modal",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/AttachAudienceModal.tsx"
+  },
+  {
     "chave": "secretaria_campanhas.campaign_builder_modal.pergunta_livre",
     "rotulo": "Pergunta livre — Campaign Builder Modal",
     "herda": "secretaria_campanhas.view",
@@ -2326,6 +2428,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Adicionar campo campos — Member Field Picker Modal",
     "herda": "secretaria_campanhas.view",
     "arquivo": "src/app-ui/secretaria/MemberFieldPickerModal.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.secretaria_campaigns.anexar_pessoas",
+    "rotulo": "Anexar pessoas — Secretaria Campaigns",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/SecretariaCampaigns.tsx"
   },
   {
     "chave": "secretaria_campanhas.secretaria_campaigns.editar",
@@ -2454,18 +2562,6 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
   },
   {
-    "chave": "settings_church_info.church_info.endereco",
-    "rotulo": "Endereco — Church Info",
-    "herda": "settings_church_info.view",
-    "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
-  },
-  {
-    "chave": "settings_church_info.church_info.escolher_icone",
-    "rotulo": "Escolher ícone — Church Info",
-    "herda": "settings_church_info.view",
-    "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
-  },
-  {
     "chave": "settings_church_info.church_info.excluir_access",
     "rotulo": "Excluir (access) — Church Info",
     "herda": "settings_church_info.view",
@@ -2492,12 +2588,6 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "settings_email_config.email_settings.salvar_configuracoes",
     "rotulo": "Salvar Configurações — Email Settings",
-    "herda": "settings_email_config.view",
-    "arquivo": "src/components/app-ui/system/EmailSettings.tsx"
-  },
-  {
-    "chave": "settings_email_config.email_settings.sendgrid_api_do_sendgrid",
-    "rotulo": "SendGrid API do SendGrid — Email Settings",
     "herda": "settings_email_config.view",
     "arquivo": "src/components/app-ui/system/EmailSettings.tsx"
   },
@@ -2748,6 +2838,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/app/AppDailyBread.tsx"
   },
   {
+    "chave": "tela_app.app_daily_bread.excluir_entrada",
+    "rotulo": "Excluir entrada — App Daily Bread",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppDailyBread.tsx"
+  },
+  {
     "chave": "tela_app.app_daily_bread.exportar_excel",
     "rotulo": "Exportar Excel — App Daily Bread",
     "herda": "tela_app.view",
@@ -2898,6 +2994,18 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/app/media/AppMediaManager.tsx"
   },
   {
+    "chave": "tela_app.app_media_manager.editar",
+    "rotulo": "Editar — App Media Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/media/AppMediaManager.tsx"
+  },
+  {
+    "chave": "tela_app.app_media_manager.excluir",
+    "rotulo": "Excluir — App Media Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/media/AppMediaManager.tsx"
+  },
+  {
     "chave": "tela_app.app_media_manager.novo_conteudo",
     "rotulo": "Novo conteúdo — App Media Manager",
     "herda": "tela_app.view",
@@ -2970,10 +3078,28 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/app/AppRegistrations.tsx"
   },
   {
+    "chave": "tela_app.app_registrations.rejeitar",
+    "rotulo": "Rejeitar — App Registrations",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppRegistrations.tsx"
+  },
+  {
     "chave": "tela_app.app_registrations.rejeitar_todos",
     "rotulo": "... Rejeitar todos — App Registrations",
     "herda": "tela_app.view",
     "arquivo": "src/app-ui/app/AppRegistrations.tsx"
+  },
+  {
+    "chave": "tela_app.feed_manager.excluir_comentario",
+    "rotulo": "Excluir comentário — Feed Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/FeedManager.tsx"
+  },
+  {
+    "chave": "tela_app.feed_manager.excluir_publicacao",
+    "rotulo": "Excluir publicação — Feed Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/FeedManager.tsx"
   },
   {
     "chave": "tela_app.feed_manager.nova_publicacao",
@@ -3074,6 +3200,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "tela_assistentes_ia.ai_assistants.editar_assistente",
     "rotulo": "Editar assistente — Ai Assistants",
+    "herda": "tela_assistentes_ia.view",
+    "arquivo": "src/app-ui/finance/AiAssistants.tsx"
+  },
+  {
+    "chave": "tela_assistentes_ia.ai_assistants.enviar_mensagem",
+    "rotulo": "Enviar mensagem ao assistente — Ai Assistants",
     "herda": "tela_assistentes_ia.view",
     "arquivo": "src/app-ui/finance/AiAssistants.tsx"
   },
@@ -3264,6 +3396,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui-screens/communication/WhatsAppInstances.tsx"
   },
   {
+    "chave": "tela_comunicacao.whats_app_instances.desconectar",
+    "rotulo": "Desconectar — Whats App Instances",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInstances.tsx"
+  },
+  {
     "chave": "tela_comunicacao.whats_app_instances.nova_instancia",
     "rotulo": "Nova Instância — Whats App Instances",
     "herda": "tela_comunicacao.view",
@@ -3276,6 +3414,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui-screens/communication/WhatsAppInstances.tsx"
   },
   {
+    "chave": "tela_comunicacao.whats_app.enviar_mensagem",
+    "rotulo": "Enviar mensagem — Whats App",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui/WhatsApp.tsx"
+  },
+  {
     "chave": "tela_credenciais.modelos_credencial.cadastrar",
     "rotulo": "Cadastrar — Modelos Credencial",
     "herda": "tela_credenciais.view",
@@ -3286,6 +3430,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Excluir — Modelos Credencial",
     "herda": "tela_credenciais.view",
     "arquivo": "src/app-ui/ecclesiastical/ModelosCredencial.tsx"
+  },
+  {
+    "chave": "tela_credenciais.solicitacoes_credencial.alterar_situacao",
+    "rotulo": "Alterar situação da solicitação — Solicitacoes Credencial",
+    "herda": "tela_credenciais.view",
+    "arquivo": "src/app-ui/ecclesiastical/SolicitacoesCredencial.tsx"
   },
   {
     "chave": "tela_credenciais.solicitacoes_credencial.aprovar",
@@ -3462,6 +3612,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/system/ImportExport.tsx"
   },
   {
+    "chave": "tela_import_export.import_export.importar_registros",
+    "rotulo": "Importar registros — Import Export",
+    "herda": "tela_import_export.view",
+    "arquivo": "src/components/app-ui/system/ImportExport.tsx"
+  },
+  {
     "chave": "tela_import_export.import_export.nova_importacao",
     "rotulo": "Nova Importação — Import Export",
     "herda": "tela_import_export.view",
@@ -3482,6 +3638,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "tela_lancamento_recibo.lancamento_new.cadastrar_nova_pj",
     "rotulo": "Cadastrar nova PJ — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.confirmar_valor",
+    "rotulo": "Confirmar valor editado — Lancamento New",
     "herda": "tela_lancamento_recibo.view",
     "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
   },
@@ -3526,6 +3688,18 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Salvar (obs inline) — Lancamento New",
     "herda": "tela_lancamento_recibo.view",
     "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.member_quick_create_modal.salvar",
+    "rotulo": "Salvar cadastro rápido — Member Quick Create Modal",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/components/app-ui/MemberQuickCreateModal.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.recibo_modal.anexar",
+    "rotulo": "Anexar — Recibo Modal",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/ReciboModal.tsx"
   },
   {
     "chave": "tela_lancamento_recibo.recibo_modal.baixar_arquivo",
@@ -3648,6 +3822,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/AppUI.tsx"
   },
   {
+    "chave": "tela_moldura.chat_fab.anexar",
+    "rotulo": "Anexar — Chat FAB",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/ChatFAB.tsx"
+  },
+  {
     "chave": "tela_moldura.chat_fab.enviar",
     "rotulo": "Enviar — Chat FAB",
     "herda": "tela_moldura.view",
@@ -3660,16 +3840,16 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/ChatFAB.tsx"
   },
   {
+    "chave": "tela_moldura.chat_fab.salvar_frase_rapida",
+    "rotulo": "Salvar frase rápida — Chat FAB",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/ChatFAB.tsx"
+  },
+  {
     "chave": "tela_moldura.global_search_modal.editar_membro",
     "rotulo": "Editar membro — Global Search Modal",
     "herda": "tela_moldura.view",
     "arquivo": "src/components/app-ui/GlobalSearchModal.tsx"
-  },
-  {
-    "chave": "tela_moldura.member_edit_drawer.buscar_uf",
-    "rotulo": "Buscar UF — Member Edit Drawer",
-    "herda": "tela_moldura.view",
-    "arquivo": "src/components/app-ui/MemberEditDrawer.tsx"
   },
   {
     "chave": "tela_moldura.member_edit_drawer.remover_foto",
@@ -3822,6 +4002,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/stripe/StripeReembolsos.tsx"
   },
   {
+    "chave": "tela_stripe.stripe_reembolsos.rejeitar",
+    "rotulo": "Rejeitar — Stripe Reembolsos",
+    "herda": "tela_stripe.view",
+    "arquivo": "src/app-ui/stripe/StripeReembolsos.tsx"
+  },
+  {
     "chave": "transfer.transfer_new.salvar_transferencia",
     "rotulo": "Salvar Transferência — Transfer New",
     "herda": "transfer.view",
@@ -3866,6 +4052,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "whatsapp_inbox.whats_app_inbox.enviar",
     "rotulo": "Enviar — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.enviar_mensagem",
+    "rotulo": "Enviar mensagem — Whats App Inbox",
     "herda": "whatsapp_inbox.view",
     "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
   },
@@ -3924,12 +4116,6 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/word/WordEditor.tsx"
   },
   {
-    "chave": "word_docs.word_editor.inserir_link",
-    "rotulo": "Inserir Link — Word Editor",
-    "herda": "word_docs.view",
-    "arquivo": "src/app-ui/word/WordEditor.tsx"
-  },
-  {
     "chave": "word_docs.word_editor.novo_documento",
     "rotulo": "Novo Documento — Word Editor",
     "herda": "word_docs.view",
@@ -3944,12 +4130,6 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "word_docs.word_editor.salvar",
     "rotulo": "Salvar — Word Editor",
-    "herda": "word_docs.view",
-    "arquivo": "src/app-ui/word/WordEditor.tsx"
-  },
-  {
-    "chave": "word_docs.word_editor.todos",
-    "rotulo": "Todos — Word Editor",
     "herda": "word_docs.view",
     "arquivo": "src/app-ui/word/WordEditor.tsx"
   }

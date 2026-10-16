@@ -375,14 +375,16 @@ export default function PastoralDistribuicao() {
                 </span>
               )}
               {verConectados ? (
-                <button
-                  onClick={() => emLote('desconectar')}
-                  disabled={!marcados.size || !!lote}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-sm font-bold"
-                >
-                  <Unlink className="w-4 h-4" />
-                  Desconectar marcados
-                </button>
+                <Permissao chave="pastoral_visits.pastoral_distribuicao.desconectar_marcados" rotulo="Desconectar marcados — Pastoral Distribuicao" herda="pastoral_visits.view">
+                  <button
+                    onClick={() => emLote('desconectar')}
+                    disabled={!marcados.size || !!lote}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-sm font-bold"
+                  >
+                    <Unlink className="w-4 h-4" />
+                    Desconectar marcados
+                  </button>
+                </Permissao>
               ) : (
                 <button
                   onClick={() => emLote('conectar')}

@@ -985,9 +985,11 @@ export default function WhatsAppInbox() {
                     style={{ minHeight: '42px', maxHeight: '120px' }} />
 
                   {text.trim() ? (
-                    <button onClick={handleSend} disabled={sending || isClosed} className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
-                      {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                    </button>
+                    <Permissao chave="whatsapp_inbox.whats_app_inbox.enviar_mensagem" rotulo="Enviar mensagem — Whats App Inbox" herda="whatsapp_inbox.view">
+                      <button onClick={handleSend} disabled={sending || isClosed} className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
+                        {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                      </button>
+                    </Permissao>
                   ) : (
                     <button onClick={startRec} disabled={isClosed} className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 flex-shrink-0">
                       <Mic className="w-5 h-5" />

@@ -2500,16 +2500,14 @@ export default function WordEditor() {
                 className="px-4 py-1.5 text-sm border border-slate-200 rounded hover:bg-slate-50 text-slate-600">
                 Cancelar
               </button>
-              <Permissao chave="word_docs.word_editor.inserir_link" rotulo="Inserir Link — Word Editor" herda="word_docs.view">
-                <button onClick={() => {
-                  if (linkDialog.savedRange) { const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(linkDialog.savedRange); }
-                  if (linkDialog.url) applyCmd('createLink', linkDialog.url);
-                  setLinkDialog(null);
-                }}
-                  className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium flex items-center gap-1.5">
-                  <Ico.Link /> Inserir Link
-                </button>
-              </Permissao>
+              <button onClick={() => {
+                if (linkDialog.savedRange) { const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(linkDialog.savedRange); }
+                if (linkDialog.url) applyCmd('createLink', linkDialog.url);
+                setLinkDialog(null);
+              }}
+                className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium flex items-center gap-1.5">
+                <Ico.Link /> Inserir Link
+              </button>
             </div>
           </div>
         </div>
@@ -2610,9 +2608,7 @@ export default function WordEditor() {
               <div className="flex items-center justify-between">
                 <p className="text-xs text-slate-500">Selecione quais seções deseja incluir no formulário:</p>
                 <div className="flex gap-2 text-[10px]">
-                  <Permissao chave="word_docs.word_editor.todos" rotulo="Todos — Word Editor" herda="word_docs.view">
-                    <button onClick={() => setFichaCategories(['photo', 'personal', 'contact', 'address', 'church', 'family', 'emergency'])} className="text-blue-600 hover:underline">Todos</button>
-                  </Permissao>
+                  <button onClick={() => setFichaCategories(['photo', 'personal', 'contact', 'address', 'church', 'family', 'emergency'])} className="text-blue-600 hover:underline">Todos</button>
                   <span className="text-slate-300">|</span>
                   <button onClick={() => setFichaCategories([])} className="text-red-500 hover:underline">Nenhum</button>
                 </div>

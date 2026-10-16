@@ -187,12 +187,14 @@ function CommentsPanel({ post, onClose }: { post: FeedPost; onClose: () => void 
                 <p className="text-sm text-slate-700 dark:text-slate-300">{c.content}</p>
                 <p className="text-[11px] text-slate-400 mt-1">{fmtDate(c.created_at)}</p>
               </div>
-              <button
-                onClick={() => { if (confirm('Excluir comentário?')) deleteMut.mutate(c.id); }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-rose-400 hover:text-rose-600"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <Permissao chave="tela_app.feed_manager.excluir_comentario" rotulo="Excluir comentário — Feed Manager" herda="tela_app.view">
+                <button
+                  onClick={() => { if (confirm('Excluir comentário?')) deleteMut.mutate(c.id); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-rose-400 hover:text-rose-600"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </Permissao>
             </div>
           ))}
         </div>
@@ -418,11 +420,13 @@ export default function FeedManager() {
                   className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:bg-slate-100 dark:hover:bg-slate-600">
                   <Pencil className="w-3.5 h-3.5 text-slate-500" />
                 </button>
-                <button
-                  onClick={() => { if (confirm('Excluir publicação?')) deleteMut.mutate(post.id); }}
-                  className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20">
-                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                </button>
+                <Permissao chave="tela_app.feed_manager.excluir_publicacao" rotulo="Excluir publicação — Feed Manager" herda="tela_app.view">
+                  <button
+                    onClick={() => { if (confirm('Excluir publicação?')) deleteMut.mutate(post.id); }}
+                    className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20">
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  </button>
+                </Permissao>
               </div>
             </div>
           ))}

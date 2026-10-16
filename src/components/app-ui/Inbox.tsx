@@ -972,9 +972,7 @@ export function Inbox() {
                       <button type="button" onClick={() => applyEditorCommand('insertUnorderedList')} className="rounded px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">Lista</button>
                       <button type="button" onClick={() => applyEditorCommand('insertOrderedList')} className="rounded px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">Numerada</button>
                       <button type="button" onClick={insertEditorLink} className="rounded px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">Link</button>
-                      <Permissao chave="inbox.inbox.limpar" rotulo="Limpar — Inbox" herda="inbox.view">
-                        <button type="button" onClick={() => applyEditorCommand('removeFormat')} className="rounded px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">Limpar</button>
-                      </Permissao>
+                      <button type="button" onClick={() => applyEditorCommand('removeFormat')} className="rounded px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800">Limpar</button>
                     </div>
                     <div className="relative min-h-[300px]">
                       {!stripHtml(body).trim() && (

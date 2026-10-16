@@ -748,13 +748,15 @@ export default function WhatsAppInstances() {
                         </button>
                       )}
                       {inst.status === 'connected' && (
-                        <button
-                          onClick={() => disconnectInstance(inst.id)}
-                          title="Desconectar"
-                          className="p-1.5 rounded-lg text-yellow-500 hover:bg-yellow-50"
-                        >
-                          <WifiOff className="w-4 h-4" />
-                        </button>
+                        <Permissao chave="tela_comunicacao.whats_app_instances.desconectar" rotulo="Desconectar — Whats App Instances" herda="tela_comunicacao.view">
+                          <button
+                            onClick={() => disconnectInstance(inst.id)}
+                            title="Desconectar"
+                            className="p-1.5 rounded-lg text-yellow-500 hover:bg-yellow-50"
+                          >
+                            <WifiOff className="w-4 h-4" />
+                          </button>
+                        </Permissao>
                       )}
                       <RowMenu
                         instance={inst}

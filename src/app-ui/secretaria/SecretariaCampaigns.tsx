@@ -454,12 +454,14 @@ export default function SecretariaCampaigns() {
               >
                 <ClipboardCopy className="h-4 w-4" /> Copiar link
               </button>
-              <button
-                onClick={() => setAttachOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
-              >
-                <UserPlus className="h-4 w-4" /> Anexar pessoas
-              </button>
+              <Permissao chave="secretaria_campanhas.secretaria_campaigns.anexar_pessoas" rotulo="Anexar pessoas — Secretaria Campaigns" herda="secretaria_campanhas.view">
+                <button
+                  onClick={() => setAttachOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+                >
+                  <UserPlus className="h-4 w-4" /> Anexar pessoas
+                </button>
+              </Permissao>
               <Permissao chave="secretaria_campanhas.secretaria_campaigns.enviar" rotulo="Enviar — Secretaria Campaigns" herda="secretaria_campanhas.view">
                 <button
                   onClick={enviar}
