@@ -682,9 +682,9 @@ function AbaIgrejas({ grupo, onSalvo }: { grupo: GrupoDetalhe; onSalvo: () => Pr
         </button>
       </div>
       <p className="shrink-0 px-4 pt-3 text-xs text-slate-500 dark:text-slate-400">
-        Nenhuma marcada: cada usuário continua vendo a igreja da própria lotação, como hoje. Com
-        igrejas marcadas, os usuários do grupo acessam exatamente estas (somadas às de outros grupos
-        dele).
+        <strong>Ainda não aplicado:</strong> a lista é gravada, mas por enquanto cada usuário continua
+        vendo a igreja da própria lotação. A restrição por estas igrejas entra na próxima etapa
+        (fase 3), nas rotas que filtram por igreja.
       </p>
       <div className="flex-1 min-h-0 overflow-y-auto p-4 pt-2">
         {carregando ? (
