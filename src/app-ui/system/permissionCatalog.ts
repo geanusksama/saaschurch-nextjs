@@ -286,6 +286,20 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
       { master: true, admin: false, campo: false, church: false },
     ),
   },
+  // Grupos de usuários (modelo Active Directory): regras granulares e igrejas
+  // por grupo. Nasce só para o master, como Funções e a Matriz.
+  // Ver docs/modules/permissoes-granulares/SPEC.md.
+  {
+    group: 'Sistema',
+    name: 'Grupos de Usuários',
+    key: 'system_grupos_usuarios',
+    permissions: mkPerms(
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+      { master: true, admin: false, campo: false, church: false },
+    ),
+  },
   {
     group: 'Sistema',
     name: 'Permissões (Matriz)',

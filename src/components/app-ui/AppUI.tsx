@@ -254,6 +254,7 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/ebd/relatorios") return "Relatórios EBD";
   if (p === "/app-ui/system/users") return "Lista de Usuários";
   if (p === "/app-ui/system/permissions") return "Funções e Permissões";
+  if (p === "/app-ui/system/grupos-usuarios") return "Grupos de Usuários";
   if (p === "/app-ui/system-settings") return "Configurações do Sistema";
   if (p === "/app-ui/system/campo-senhas") return "Senha dos Campos";
   if (p === "/app-ui/system/audit-log") return "Log de Auditoria";

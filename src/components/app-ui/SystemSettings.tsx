@@ -95,6 +95,7 @@ export const settingsSections: SettingsSection[] = [
     items: [
       { id: 'users',       name: 'Usuários',    description: 'Gerenciar contas de usuário', path: '/app-ui/system/users',       badge: '45', permKey: 'system_users' },
       { id: 'roles',       name: 'Funções',     description: 'Criar e editar funções',      path: '/app-ui/system/roles',       badge: '8',  permKey: 'system_roles' },
+      { id: 'grupos-usuarios', name: 'Grupos de Usuários', description: 'Grupos com regras, telas e igrejas', path: '/app-ui/system/grupos-usuarios', permKey: 'system_grupos_usuarios' },
       { id: 'permissions', name: 'Permissões',  description: 'Matriz de permissões',        path: '/app-ui/system/permissions',              permKey: 'system_permissions' },
     ]
   },

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Shield, ArrowLeft, Check, X, Info, Save, RefreshCw, Copy, Clipboard } from 'lucide-react';
 import { Link, useParams } from 'react-router';
+import { Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DEFAULT_PERMISSION_MODULES,
@@ -73,6 +74,20 @@ export default function UserPermissions() {
   };
 
   useEffect(() => { if (id) load(); }, [id]);
+
+  // Grupos de usuários: estando em algum, as regras desta tela ficam sem efeito.
+  // Falha silenciosa: quem não pode ver grupos (403) só não vê o aviso.
+  const [grupos, setGrupos] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+  useEffect(() => {
+    if (!id) return;
+    fetch(`${apiBase}/grupos-usuarios?userId=${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      cache: 'no-store',
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setGrupos(Array.isArray(d) ? d.filter((g) => g.isActive) : []))
+      .catch(() => setGrupos([]));
+  }, [id, token]);
 
   const toggle = (moduleKey: string, action: Action) => {
     const k = `${moduleKey}.${action}`;
@@ -286,6 +301,18 @@ export default function UserPermissions() {
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
           {error}
+        </div>
+      )}
+
+      {grupos.length > 0 && (
+        <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-start gap-3 text-sm text-amber-800 dark:text-amber-300">
+          <Users className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            Este usuário está no(s) grupo(s) <strong>{grupos.map((g) => g.name).join(', ')}</strong>.
+            Enquanto estiver em grupo, vale só a regra do grupo: as permissões abaixo ficam
+            guardadas <strong>sem efeito</strong> e voltam a valer se ele sair de todos os grupos.
+            Para mudar o acesso dele, edite o grupo em Configurações → Grupos de Usuários.
+          </span>
         </div>
       )}
 
