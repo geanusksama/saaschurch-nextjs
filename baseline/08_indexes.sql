@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.692Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.097Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 959b2c25986e2596
+-- Baseline b4a9d25bc39e5e6c
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -206,6 +206,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS field_legacy_id_key ON public.field USING btre
 CREATE UNIQUE INDEX IF NOT EXISTS forma_pagamento_legacy_id_idx ON public.forma_pagamento USING btree (legacy_id) WHERE (legacy_id IS NOT NULL);
 CREATE INDEX IF NOT EXISTS funcoes_igreja_church_id_function_id_idx ON public.church_function_history USING btree (church_id, legacy_function_id);
 CREATE INDEX IF NOT EXISTS funcoes_igreja_member_id_idx ON public.church_function_history USING btree (member_id);
+CREATE INDEX IF NOT EXISTS grupos_usuarios_campo_id_idx ON public.grupos_usuarios USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS grupos_usuarios_igrejas_church_id_idx ON public.grupos_usuarios_igrejas USING btree (church_id);
+CREATE INDEX IF NOT EXISTS grupos_usuarios_users_user_id_idx ON public.grupos_usuarios_users USING btree (user_id);
 CREATE INDEX IF NOT EXISTS headquarters_field_id_idx ON public.headquarters USING btree (field_id);
 CREATE UNIQUE INDEX IF NOT EXISTS headquarters_legacy_id_key ON public.headquarters USING btree (legacy_id);
 CREATE INDEX IF NOT EXISTS historico_dirigente_igreja_church_id_entry_date_idx ON public.church_leader_history USING btree (church_id, entry_date);

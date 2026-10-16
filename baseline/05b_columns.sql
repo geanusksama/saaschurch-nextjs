@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.681Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.091Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 959b2c25986e2596
+-- Baseline b4a9d25bc39e5e6c
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -2495,6 +2495,23 @@ alter table "public"."forma_pagamento" add column if not exists "legacy_id" inte
 alter table "public"."forma_pagamento" add column if not exists "nome" character varying(100);
 alter table "public"."forma_pagamento" add column if not exists "mostrar" boolean default true not null;
 alter table "public"."forma_pagamento" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."grupos_usuarios" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."grupos_usuarios" add column if not exists "campo_id" uuid;
+alter table "public"."grupos_usuarios" add column if not exists "name" character varying(120);
+alter table "public"."grupos_usuarios" add column if not exists "description" text;
+alter table "public"."grupos_usuarios" add column if not exists "permissions" jsonb default '{}'::jsonb not null;
+alter table "public"."grupos_usuarios" add column if not exists "is_active" boolean default true not null;
+alter table "public"."grupos_usuarios" add column if not exists "created_at" timestamp with time zone default now() not null;
+alter table "public"."grupos_usuarios" add column if not exists "updated_at" timestamp with time zone default now() not null;
+alter table "public"."grupos_usuarios" add column if not exists "deleted_at" timestamp with time zone;
+alter table "public"."grupos_usuarios" add column if not exists "created_by" uuid;
+alter table "public"."grupos_usuarios_igrejas" add column if not exists "grupo_id" uuid;
+alter table "public"."grupos_usuarios_igrejas" add column if not exists "church_id" uuid;
+alter table "public"."grupos_usuarios_igrejas" add column if not exists "created_at" timestamp with time zone default now() not null;
+alter table "public"."grupos_usuarios_users" add column if not exists "grupo_id" uuid;
+alter table "public"."grupos_usuarios_users" add column if not exists "user_id" uuid;
+alter table "public"."grupos_usuarios_users" add column if not exists "created_at" timestamp with time zone default now() not null;
+alter table "public"."grupos_usuarios_users" add column if not exists "created_by" uuid;
 alter table "public"."headquarters" add column if not exists "created_at" timestamp with time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."headquarters" add column if not exists "instagram" character varying(255);
 alter table "public"."headquarters" add column if not exists "site" character varying(255);

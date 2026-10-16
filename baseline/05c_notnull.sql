@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.685Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.094Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 959b2c25986e2596
+-- Baseline b4a9d25bc39e5e6c
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -621,6 +621,12 @@ alter table "public"."financial_categories" alter column "name" set not null;
 alter table "public"."financial_categories" alter column "type" set not null;
 alter table "public"."financial_categories" alter column "updated_at" set not null;
 alter table "public"."forma_pagamento" alter column "nome" set not null;
+alter table "public"."grupos_usuarios" alter column "campo_id" set not null;
+alter table "public"."grupos_usuarios" alter column "name" set not null;
+alter table "public"."grupos_usuarios_igrejas" alter column "grupo_id" set not null;
+alter table "public"."grupos_usuarios_igrejas" alter column "church_id" set not null;
+alter table "public"."grupos_usuarios_users" alter column "grupo_id" set not null;
+alter table "public"."grupos_usuarios_users" alter column "user_id" set not null;
 alter table "public"."help_ai_cache" alter column "cache_key" set not null;
 alter table "public"."help_ai_cache" alter column "question" set not null;
 alter table "public"."help_ai_cache" alter column "question_norm" set not null;

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.686Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.095Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 959b2c25986e2596
+-- Baseline b4a9d25bc39e5e6c
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -934,6 +934,13 @@ alter table "public"."financial_categories" alter column "created_at" set defaul
 alter table "public"."forma_pagamento" alter column "id" set default gen_random_uuid();
 alter table "public"."forma_pagamento" alter column "mostrar" set default true;
 alter table "public"."forma_pagamento" alter column "created_at" set default CURRENT_TIMESTAMP;
+alter table "public"."grupos_usuarios" alter column "id" set default gen_random_uuid();
+alter table "public"."grupos_usuarios" alter column "permissions" set default '{}'::jsonb;
+alter table "public"."grupos_usuarios" alter column "is_active" set default true;
+alter table "public"."grupos_usuarios" alter column "created_at" set default now();
+alter table "public"."grupos_usuarios" alter column "updated_at" set default now();
+alter table "public"."grupos_usuarios_igrejas" alter column "created_at" set default now();
+alter table "public"."grupos_usuarios_users" alter column "created_at" set default now();
 alter table "public"."headquarters" alter column "created_at" set default CURRENT_TIMESTAMP;
 alter table "public"."headquarters" alter column "id" set default gen_random_uuid();
 alter table "public"."headquarters" alter column "field_icons" set default '{}'::jsonb;

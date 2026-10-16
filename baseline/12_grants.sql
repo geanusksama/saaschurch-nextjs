@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.698Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.100Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 959b2c25986e2596
+-- Baseline b4a9d25bc39e5e6c
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -578,6 +578,15 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."forma_pagamento" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."forma_pagamento" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."forma_pagamento" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."grupos_usuarios" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."grupos_usuarios" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."grupos_usuarios" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."grupos_usuarios_igrejas" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."grupos_usuarios_igrejas" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."grupos_usuarios_igrejas" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."grupos_usuarios_users" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."grupos_usuarios_users" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."grupos_usuarios_users" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."headquarters" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."headquarters" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."headquarters" to "service_role";

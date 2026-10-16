@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.678Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.089Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 959b2c25986e2596
+-- Baseline b4a9d25bc39e5e6c
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -3087,6 +3087,32 @@ create table if not exists "public"."forma_pagamento" (
   "nome" character varying(100) not null,
   "mostrar" boolean default true not null,
   "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+);
+
+create table if not exists "public"."grupos_usuarios" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "name" character varying(120) not null,
+  "description" text,
+  "permissions" jsonb default '{}'::jsonb not null,
+  "is_active" boolean default true not null,
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null,
+  "deleted_at" timestamp with time zone,
+  "created_by" uuid
+);
+
+create table if not exists "public"."grupos_usuarios_igrejas" (
+  "grupo_id" uuid not null,
+  "church_id" uuid not null,
+  "created_at" timestamp with time zone default now() not null
+);
+
+create table if not exists "public"."grupos_usuarios_users" (
+  "grupo_id" uuid not null,
+  "user_id" uuid not null,
+  "created_at" timestamp with time zone default now() not null,
+  "created_by" uuid
 );
 
 create table if not exists "public"."headquarters" (
