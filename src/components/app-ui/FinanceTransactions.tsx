@@ -1,6 +1,7 @@
 import { Search, Filter, Download, Eye, Edit, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '../../design-system/components/Badge';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const transactions = [
   {
@@ -123,10 +124,12 @@ export function FinanceTransactions() {
             <p className="text-slate-600 dark:text-slate-400">Visualize todas as transações financeiras</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-          <Download className="w-5 h-5" />
-          Exportar
-        </button>
+        <Permissao chave="tela_financas.finance_transactions.exportar" rotulo="Exportar — Finance Transactions" herda="tela_financas.view">
+          <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+            <Download className="w-5 h-5" />
+            Exportar
+          </button>
+        </Permissao>
       </div>
 
       {/* Summary */}

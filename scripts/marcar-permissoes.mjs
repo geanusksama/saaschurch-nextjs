@@ -26,6 +26,7 @@ import {
   HANDLER,
   PALAVRAS,
   ehBotaoDeAcao,
+  encontrarBotoes,
   jaMarcado,
   semComentarios,
   separarBotao,
@@ -103,6 +104,48 @@ function travaNaFrente(txt, i, consts) {
   return null;
 }
 
+/**
+ * Raiz "tela_*" (catálogo: liberada e opt-out — fora de grupo nada muda) para
+ * arquivo SEM dono único: pela rota livre que o alcança, ou pelos dois menus
+ * que o compartilham. Sem área clara (ex.: modal de impressão usado por nove
+ * módulos) → null, e o botão fica pendente para revisão manual.
+ */
+const AREA_DA_ROTA = [
+  [/^\/app-ui\/config\/ai-agents$/, 'tela_assistentes_ia'],
+  [/^\/app-ui\/config\/:lookupKey$/, 'tela_cadastros_auxiliares'],
+  [/^\/app-ui\/app(\/|$)/, 'tela_app'],
+  [/^\/app-ui\/cms(\/|$)/, 'tela_cms'],
+  [/^\/app-ui\/(crm|lead-new|prospecting)(\/|$)/, 'tela_crm'],
+  [/^\/app-ui\/(mobile|pagamentos)\//, 'tela_mobile_recursos'],
+  [/^\/app-ui\/(credential-models|credential-requests|credentials-new)(\/|$)/, 'tela_credenciais'],
+  [/^\/app-ui\/ministries\//, 'tela_ministerios'],
+  [/^\/app-ui\/(pastoral|visit-report|counseling-session|prayer-new)(\/|$)/, 'tela_pastoral'],
+  [/^\/app-ui\/(communication|whatsapp|email)(\/|$)/, 'tela_comunicacao'],
+  [/^\/app-ui\/system$/, 'tela_sistema_antiga'],
+  [/^\/app-ui\/cells(\/|$)/, 'tela_gf'],
+  [/^\/app-ui\/stripe\//, 'tela_stripe'],
+  [/^\/app-ui\/assets\//, 'tela_patrimonio'],
+  [/^\/app-ui\/finance(\/|$)/, 'tela_financas'],
+  [/^\/app-ui\/events\//, 'tela_eventos'],
+];
+const AREA_DOS_DONOS = {
+  'cashbook,finance_entries': 'tela_lancamento_recibo',
+  'cashbook,finance_entries,members': 'tela_lancamento_recibo',
+  'culto_gestao,culto_lancar': 'tela_culto_registro',
+  'settings_export,settings_import': 'tela_import_export',
+  'system_grupos_usuarios,system_users': 'tela_permissoes',
+  'culto_posicoes,system_users': 'tela_permissoes',
+};
+function areaVirtual(rel, info) {
+  if (info.rotasSemTrava.some((r) => r.includes('moldura'))) return 'tela_moldura';
+  if (rel.includes('/shared/')) return null; // componente de uso geral: sem área clara
+  if (info.rotasSemTrava.length) {
+    const areas = new Set(info.rotasSemTrava.map((r) => (AREA_DA_ROTA.find(([re]) => re.test(r)) ?? [])[1] ?? null));
+    return areas.size === 1 ? [...areas][0] : null;
+  }
+  return AREA_DOS_DONOS[info.donos.join(',')] ?? null;
+}
+
 const relatorio = [];
 const pendentes = [];
 let totalMarcados = 0;
@@ -116,6 +159,8 @@ for (const [rel, info] of Object.entries(DONOS)) {
   // botão que já tem trava explícita na frente — herdar a própria trava dá
   // exatamente o resultado de hoje, em qualquer tela.
   const donoUnico = info.donos.length === 1 && !info.rotasSemTrava.length && MODULOS.has(info.donos[0]);
+  const virtual = donoUnico ? null : areaVirtual(rel, info);
+  if (virtual && !MODULOS.has(virtual)) throw new Error(`${virtual} não está no catálogo`);
   const dono = donoUnico ? info.donos[0] : null;
   const original = fs.readFileSync(rel, 'utf8');
   const limpo = semComentarios(original);
@@ -123,7 +168,7 @@ for (const [rel, info] of Object.entries(DONOS)) {
   const arqSlug = slug(path.basename(rel).replace(/\.tsx$/, '').replace(/([a-z])([A-Z])/g, '$1_$2'));
 
   const alvos = [];
-  for (const m of limpo.matchAll(/<button\b[\s\S]*?<\/button>/g)) {
+  for (const m of encontrarBotoes(limpo).map((b) => Object.assign([b.bloco], { index: b.index }))) {
     const bloco = m[0];
     if (!ehBotaoDeAcao(bloco) || jaMarcado(limpo, m.index)) continue;
     const antes = limpo.slice(Math.max(0, m.index - 200), m.index);
@@ -131,9 +176,12 @@ for (const [rel, info] of Object.entries(DONOS)) {
     const rot = rotuloDe(bloco);
     if (!rot) { pendentes.push(`${rel}: botão sem rótulo legível`); continue; }
     const trava = travaNaFrente(limpo, m.index, consts);
-    if (trava === 'DINAMICA') { pendentes.push(`${rel}: trava dinâmica não resolvida (${rot})`); continue; }
-    if (!dono && !trava) { pendentes.push(`${rel}: sem dono único e sem trava na frente (${rot})`); continue; }
-    const herda = trava ?? `${dono}.view`;
+    // Trava literal na frente: herda ela. Dinâmica ou nenhuma: o dono único,
+    // ou a raiz tela_* da área (liberada e opt-out — fora de grupo nada muda).
+    const literal = trava && trava !== 'DINAMICA' ? trava : null;
+    const raiz = dono ?? virtual;
+    if (!literal && !raiz) { pendentes.push(`${rel}: sem dono único, sem área e sem trava (${rot})`); continue; }
+    const herda = literal ?? `${raiz}.view`;
     if (herda.split('.').length === 2 && !MODULOS.has(herda.split('.')[0])) {
       pendentes.push(`${rel}: trava com módulo fora do catálogo (${herda})`);
       continue;
@@ -149,7 +197,7 @@ for (const [rel, info] of Object.entries(DONOS)) {
     a.rotulo = `${a.rot.replace(/["{}<>]/g, '')} — ${humano(rel)}`.slice(0, 90);
     const assinatura = `${a.rotulo}|${a.herda}`;
     // Sem dono único, a chave nasce no módulo da própria trava.
-    const base = `${dono ?? a.herda.split('.')[0]}.${arqSlug}.${slug(a.rot)}`;
+    const base = `${dono ?? virtual ?? a.herda.split('.')[0]}.${arqSlug}.${slug(a.rot)}`;
     let k = base;
     let n = 2;
     while (usadas.has(k) && usadas.get(k) !== assinatura) k = `${base}_${n++}`;
@@ -161,7 +209,7 @@ for (const [rel, info] of Object.entries(DONOS)) {
   let s = original;
   for (const a of [...alvos].sort((x, y) => y.ini - x.ini)) {
     const bloco = s.slice(a.ini, a.fim);
-    if (!bloco.startsWith('<button') || !bloco.endsWith('</button>')) throw new Error(`${rel}: posição desalinhada`);
+    if (!bloco.startsWith('<button') || !(bloco.endsWith('</button>') || bloco.endsWith('/>'))) throw new Error(`${rel}: posição desalinhada`);
     const linhaIni = s.lastIndexOf('\n', a.ini) + 1;
     const indent = s.slice(linhaIni, a.ini).match(/^\s*/)[0];
     const { abertura } = separarBotao(bloco);

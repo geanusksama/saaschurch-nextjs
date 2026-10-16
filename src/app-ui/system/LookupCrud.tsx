@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { getLookup, type LookupConfig, type LookupField } from '../../lib/lookupRegistry';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Row = Record<string, unknown> & { id: string };
 
@@ -310,14 +311,16 @@ export default function LookupCrud() {
             </label>
           )}
         </div>
-        <button
-          onClick={openCreate}
-          disabled={precisaEscolherIgreja && !churchId}
-          title={precisaEscolherIgreja && !churchId ? 'Escolha a igreja primeiro.' : undefined}
-          className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" /> Novo item
-        </button>
+        <Permissao chave="tela_cadastros_auxiliares.lookup_crud.novo_item" rotulo="Novo item — Lookup Crud" herda="tela_cadastros_auxiliares.view">
+          <button
+            onClick={openCreate}
+            disabled={precisaEscolherIgreja && !churchId}
+            title={precisaEscolherIgreja && !churchId ? 'Escolha a igreja primeiro.' : undefined}
+            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" /> Novo item
+          </button>
+        </Permissao>
       </div>
 
       {cfg.warning && (
@@ -370,20 +373,24 @@ export default function LookupCrud() {
                     ))}
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openEdit(row)}
-                          title="Editar"
-                          className="rounded p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(row)}
-                          title="Excluir"
-                          className="rounded p-1.5 text-slate-500 hover:bg-red-100 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <Permissao chave="tela_cadastros_auxiliares.lookup_crud.editar" rotulo="Editar — Lookup Crud" herda="tela_cadastros_auxiliares.view">
+                          <button
+                            onClick={() => openEdit(row)}
+                            title="Editar"
+                            className="rounded p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        </Permissao>
+                        <Permissao chave="tela_cadastros_auxiliares.lookup_crud.excluir" rotulo="Excluir — Lookup Crud" herda="tela_cadastros_auxiliares.view">
+                          <button
+                            onClick={() => setDeleteTarget(row)}
+                            title="Excluir"
+                            className="rounded p-1.5 text-slate-500 hover:bg-red-100 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </Permissao>
                       </div>
                     </td>
                   </tr>
@@ -469,13 +476,15 @@ export default function LookupCrud() {
                 >
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
+                <Permissao chave="tela_cadastros_auxiliares.lookup_crud.salvar" rotulo="Salvar — Lookup Crud" herda="tela_cadastros_auxiliares.view">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </Permissao>
               </div>
             </form>
           </div>

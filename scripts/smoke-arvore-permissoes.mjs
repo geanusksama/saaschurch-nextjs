@@ -52,9 +52,20 @@ const { ArvorePermissoes, RAIZES } = await import(pathToFileURL(path.join(OUT, '
 const GruposUsuarios = (await import(pathToFileURL(path.join(OUT, 'src/app-ui/system/GruposUsuarios.mjs')).href)).default;
 const UserPermissions = (await import(pathToFileURL(path.join(OUT, 'src/app-ui/system/UserPermissions.mjs')).href)).default;
 
+const { resolvePermission } = await import(pathToFileURL(path.join(OUT, 'src/lib/resolvePermission.mjs')).href);
+const { DEFAULT_PERMISSION_MODULES } = await import(pathToFileURL(path.join(OUT, 'src/app-ui/system/permissionCatalog.mjs')).href);
+
 const texto = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 let falhas = 0;
 const ok = (n, c, d = '') => { if (c) console.log('  ok  ', n); else { falhas++; console.log('  FALHA', n, d); } };
+
+// Raízes das telas sem trava (tela_*): liberadas e fora da whitelist —
+// quem não está em grupo continua vendo os botões delas (SPEC D10).
+const rp = (key, ctx) => resolvePermission({ key, action: 'view', modules: DEFAULT_PERMISSION_MODULES, ...ctx });
+ok('tela_*: categoria com sobrescritas (whitelist) continua vendo', rp('tela_app', { profileType: 'church', userRoleId: 'r1', userOverrides: { 'members.view': true } }) === true);
+ok('tela_*: igreja e campo sem nada continuam vendo', rp('tela_app', { profileType: 'church', userOverrides: {} }) && rp('tela_cms', { profileType: 'campo', userOverrides: {} }));
+ok('tela_*: bloqueio explícito na tela do usuário ainda vale', rp('tela_app', { profileType: 'church', userRoleId: 'r1', userOverrides: { 'tela_app.view': false } }) === false);
+ok('controle: chave comum ausente na whitelist é negada', rp('app_orders', { profileType: 'church', userRoleId: 'r1', userOverrides: { 'members.view': true } }) === false);
 
 // Árvore em modo grupo: tela de Relatórios marcada, Exportar Excel de membros desmarcado.
 const h1 = renderToString(React.createElement(ArvorePermissoes, {

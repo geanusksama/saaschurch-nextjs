@@ -23,6 +23,7 @@ export function semComentarios(txt) {
  * nível zero de chaves e fora de aspas — o "=>" de um onClick NÃO fecha a tag.
  */
 export function separarBotao(bloco) {
+  if (/\/>\s*$/.test(bloco) && !/<\/button>\s*$/.test(bloco)) return { abertura: bloco, corpo: '' };
   let prof = 0;
   let aspas = null;
   for (let i = 7; i < bloco.length; i++) {
@@ -62,6 +63,7 @@ export function textoVisivel(corpo) {
   return (
     t
       .replace(/'/g, ' ')
+      .replace(/&#?\w+;/g, ' ') // entidade HTML (&#128438;) não é texto do rótulo
       .replace(/[{}`$]/g, ' ')
       // Estado de espera não é rótulo: "Salvando..." / "Excluindo…".
       .replace(/\b[\wÀ-ú]+(?:ando|endo|indo)\s*(?:\.{3}|…)/gi, ' ')
@@ -78,6 +80,52 @@ export function tituloDe(abertura) {
 export function ehBotaoDeAcao(bloco) {
   const { abertura, corpo } = separarBotao(bloco);
   return PALAVRAS.test(textoVisivel(corpo)) || PALAVRAS.test(tituloDe(abertura)) || HANDLER.test(abertura);
+}
+
+/** Fim da tag de abertura que começa em `ini` (">" fora de chaves/aspas). */
+function fimDaAbertura(txt, ini) {
+  let prof = 0;
+  let aspas = null;
+  for (let i = ini + 1; i < txt.length; i++) {
+    const c = txt[i];
+    if (aspas) {
+      if (c === aspas && txt[i - 1] !== '\\') aspas = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') aspas = c;
+    else if (c === '{') prof++;
+    else if (c === '}') prof--;
+    else if (c === '>' && prof === 0) return i;
+  }
+  return -1;
+}
+
+/**
+ * Todos os <button> do texto, cada um com o bloco EXATO: `<button ... />`
+ * (fecha em si) termina na própria tag — um regex até o próximo
+ * `</button>` engolia o botão seguinte junto e quebrava o JSX.
+ */
+export function encontrarBotoes(txt) {
+  const out = [];
+  let i = txt.indexOf('<button');
+  while (i >= 0) {
+    if (/[\s>/]/.test(txt[i + 7] ?? '')) {
+      const fimAb = fimDaAbertura(txt, i);
+      if (fimAb < 0) break;
+      let fim;
+      if (txt[fimAb - 1] === '/') fim = fimAb + 1;
+      else {
+        const fecha = txt.indexOf('</button>', fimAb);
+        if (fecha < 0) break;
+        fim = fecha + '</button>'.length;
+      }
+      out.push({ index: i, bloco: txt.slice(i, fim), autoFecha: txt[fimAb - 1] === '/' });
+      i = txt.indexOf('<button', i + 7);
+    } else {
+      i = txt.indexOf('<button', i + 7);
+    }
+  }
+  return out;
 }
 
 /** Já está dentro de um <Permissao> aberto antes dele? */

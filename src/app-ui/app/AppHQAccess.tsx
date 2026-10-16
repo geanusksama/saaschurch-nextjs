@@ -3,6 +3,7 @@ import {
   MapPin, Plus, Pencil, Trash2, X, Bus, ParkingCircle, Train, Bike, Car, Navigation, Home, Info,
   type LucideIcon,
 } from 'lucide-react';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type IconCfg = { value: string; label: string; Icon: LucideIcon; bg: string };
 
@@ -117,9 +118,11 @@ export default function AppHQAccess() {
             <p className="text-slate-500 dark:text-slate-400">Instruções de acesso e transporte para a sede</p>
           </div>
         </div>
-        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition text-sm font-medium">
-          <Plus className="w-4 h-4" /> Nova Instrução
-        </button>
+        <Permissao chave="tela_app.app_hqaccess.nova_instrucao" rotulo="Nova Instrução — App HQAccess" herda="tela_app.view">
+          <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition text-sm font-medium">
+            <Plus className="w-4 h-4" /> Nova Instrução
+          </button>
+        </Permissao>
       </div>
 
       {error && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-sm text-red-700 dark:text-red-300">{error}</div>}
@@ -130,7 +133,9 @@ export default function AppHQAccess() {
         <div className="text-center py-16">
           <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 dark:text-slate-400">Nenhuma instrução de acesso cadastrada</p>
-          <button onClick={openNew} className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700">Adicionar Instrução</button>
+          <Permissao chave="tela_app.app_hqaccess.adicionar_instrucao" rotulo="Adicionar Instrução — App HQAccess" herda="tela_app.view">
+            <button onClick={openNew} className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700">Adicionar Instrução</button>
+          </Permissao>
         </div>
       ) : (
         <div className="space-y-3">
@@ -207,9 +212,11 @@ export default function AppHQAccess() {
               </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button onClick={() => setModalOpen(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">Cancelar</button>
-                <button onClick={save} disabled={saving} className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50">
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
+                <Permissao chave="tela_app.app_hqaccess.salvar" rotulo="Salvar — App HQAccess" herda="tela_app.view">
+                  <button onClick={save} disabled={saving} className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50">
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>

@@ -7,6 +7,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const EVENT_ICONS: Record<string, LucideIcon> = {
   mic: Mic2, music: Music2, book: BookOpen, users: Users,
@@ -160,13 +161,15 @@ export default function AppEventView() {
               {nextStatus.label}
             </button>
           )}
-          <button
-            onClick={() => navigate(`/app-ui/app/events/${id}/edit`)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
-          >
-            <Pencil className="w-4 h-4" />
-            Editar
-          </button>
+          <Permissao chave="tela_app.app_event_view.editar" rotulo="Editar — App Event View" herda="tela_app.view">
+            <button
+              onClick={() => navigate(`/app-ui/app/events/${id}/edit`)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
+            >
+              <Pencil className="w-4 h-4" />
+              Editar
+            </button>
+          </Permissao>
         </div>
       </div>
 

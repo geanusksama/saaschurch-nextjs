@@ -2742,6 +2742,1086 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/system/UsersList.tsx"
   },
   {
+    "chave": "tela_app.app_daily_bread.clique_p_exportar",
+    "rotulo": "clique p/ exportar — App Daily Bread",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppDailyBread.tsx"
+  },
+  {
+    "chave": "tela_app.app_daily_bread.exportar_excel",
+    "rotulo": "Exportar Excel — App Daily Bread",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppDailyBread.tsx"
+  },
+  {
+    "chave": "tela_app.app_daily_bread.imprimir",
+    "rotulo": "Imprimir — App Daily Bread",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppDailyBread.tsx"
+  },
+  {
+    "chave": "tela_app.app_daily_bread.nova_entrada",
+    "rotulo": "Nova Entrada — App Daily Bread",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppDailyBread.tsx"
+  },
+  {
+    "chave": "tela_app.app_daily_bread.salvar",
+    "rotulo": "Salvar — App Daily Bread",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppDailyBread.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_checkin.novo_check_in",
+    "rotulo": "Novo Check-in — App Event Checkin",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventCheckin.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_edit.adicionar",
+    "rotulo": "Adicionar — App Event Edit",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventEdit.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_edit.remover_participant",
+    "rotulo": "Remover (participant) — App Event Edit",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventEdit.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_edit.salvar_alteracoes",
+    "rotulo": "Salvar Alterações — App Event Edit",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventEdit.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_new.adicionar",
+    "rotulo": "Adicionar — App Event New",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventNew.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_new.adicionar_sala",
+    "rotulo": "Adicionar sala — App Event New",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventNew.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_new.criar_evento",
+    "rotulo": "Criar Evento — App Event New",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventNew.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_new.remover_participant",
+    "rotulo": "Remover (participant) — App Event New",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventNew.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_new.remover_sector",
+    "rotulo": "Remover (sector) — App Event New",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventNew.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_refunds.aprovar",
+    "rotulo": "Aprovar — App Event Refunds",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventRefunds.tsx"
+  },
+  {
+    "chave": "tela_app.app_event_view.editar",
+    "rotulo": "Editar — App Event View",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEventView.tsx"
+  },
+  {
+    "chave": "tela_app.app_events.criar_primeiro_evento",
+    "rotulo": "Criar primeiro evento — App Events",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEvents.tsx"
+  },
+  {
+    "chave": "tela_app.app_events.editar",
+    "rotulo": "Editar — App Events",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEvents.tsx"
+  },
+  {
+    "chave": "tela_app.app_events.novo_evento",
+    "rotulo": "Novo Evento — App Events",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppEvents.tsx"
+  },
+  {
+    "chave": "tela_app.app_hqaccess.adicionar_instrucao",
+    "rotulo": "Adicionar Instrução — App HQAccess",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppHQAccess.tsx"
+  },
+  {
+    "chave": "tela_app.app_hqaccess.nova_instrucao",
+    "rotulo": "Nova Instrução — App HQAccess",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppHQAccess.tsx"
+  },
+  {
+    "chave": "tela_app.app_hqaccess.salvar",
+    "rotulo": "Salvar — App HQAccess",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppHQAccess.tsx"
+  },
+  {
+    "chave": "tela_app.app_hqschedule.adicionar_programacao",
+    "rotulo": "Adicionar Programação — App HQSchedule",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppHQSchedule.tsx"
+  },
+  {
+    "chave": "tela_app.app_hqschedule.nova_programacao",
+    "rotulo": "Nova Programação — App HQSchedule",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppHQSchedule.tsx"
+  },
+  {
+    "chave": "tela_app.app_hqschedule.salvar",
+    "rotulo": "Salvar — App HQSchedule",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppHQSchedule.tsx"
+  },
+  {
+    "chave": "tela_app.app_media_manager.criar_conteudo_salvar_alteracoes",
+    "rotulo": "Criar conteúdo Salvar alterações — App Media Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/media/AppMediaManager.tsx"
+  },
+  {
+    "chave": "tela_app.app_media_manager.novo_conteudo",
+    "rotulo": "Novo conteúdo — App Media Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/media/AppMediaManager.tsx"
+  },
+  {
+    "chave": "tela_app.app_notification_manager.editar",
+    "rotulo": "Editar — App Notification Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppNotificationManager.tsx"
+  },
+  {
+    "chave": "tela_app.app_notification_manager.enviar_agora",
+    "rotulo": "Enviar agora — App Notification Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppNotificationManager.tsx"
+  },
+  {
+    "chave": "tela_app.app_notification_manager.excluir",
+    "rotulo": "Excluir — App Notification Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppNotificationManager.tsx"
+  },
+  {
+    "chave": "tela_app.app_notification_manager.nova_notificacao",
+    "rotulo": "Nova notificação — App Notification Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppNotificationManager.tsx"
+  },
+  {
+    "chave": "tela_app.app_notification_manager.salvar",
+    "rotulo": "Salvar — App Notification Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppNotificationManager.tsx"
+  },
+  {
+    "chave": "tela_app.app_registrations.aprovar",
+    "rotulo": "Aprovar — App Registrations",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppRegistrations.tsx"
+  },
+  {
+    "chave": "tela_app.app_registrations.aprovar_todos",
+    "rotulo": "... Aprovar todos — App Registrations",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppRegistrations.tsx"
+  },
+  {
+    "chave": "tela_app.app_registrations.confirmar_exclusao",
+    "rotulo": "Confirmar Exclusão — App Registrations",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppRegistrations.tsx"
+  },
+  {
+    "chave": "tela_app.app_registrations.excluir",
+    "rotulo": "... Excluir — App Registrations",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppRegistrations.tsx"
+  },
+  {
+    "chave": "tela_app.app_registrations.excluir_cadastro_e_usuario",
+    "rotulo": "Excluir cadastro e usuário — App Registrations",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppRegistrations.tsx"
+  },
+  {
+    "chave": "tela_app.app_registrations.excluir_todos",
+    "rotulo": "Excluir todos — App Registrations",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppRegistrations.tsx"
+  },
+  {
+    "chave": "tela_app.app_registrations.rejeitar_todos",
+    "rotulo": "... Rejeitar todos — App Registrations",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/AppRegistrations.tsx"
+  },
+  {
+    "chave": "tela_app.feed_manager.nova_publicacao",
+    "rotulo": "Nova publicação — Feed Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/FeedManager.tsx"
+  },
+  {
+    "chave": "tela_app.feed_manager.publicar_salvar_rascunho",
+    "rotulo": "Publicar Salvar rascunho — Feed Manager",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/app/FeedManager.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.aprovar_reembolso",
+    "rotulo": "✅ Aprovar Reembolso — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.enviar",
+    "rotulo": "Enviar — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.excluir_definitivamente",
+    "rotulo": "Excluir definitivamente — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.excluir_pedido_permanentemente",
+    "rotulo": "Excluir pedido permanentemente — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.gerar_qr_codes",
+    "rotulo": "Gerar QR Codes — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.gerar_qr_codes_para_todos_os_assentos",
+    "rotulo": "Gerar QR Codes para todos os assentos — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.imprimir",
+    "rotulo": "🖨 Imprimir — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.imprimir_2",
+    "rotulo": "Imprimir — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.regenerar",
+    "rotulo": "Regenerar — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.regenerar_qr_codes",
+    "rotulo": "Regenerar QR Codes — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedido_detail_panel.transferir_ingresso_para_outro_membro",
+    "rotulo": "Transferir ingresso para outro membro — Pedido Detail Panel",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidoDetailPanel.tsx"
+  },
+  {
+    "chave": "tela_app.pedidos_kanban.gerar_qr_code",
+    "rotulo": "Gerar QR Code — Pedidos Kanban",
+    "herda": "tela_app.view",
+    "arquivo": "src/app-ui/events/PedidosKanban.tsx"
+  },
+  {
+    "chave": "tela_assistentes_ia.ai_assistants.atualizar_assistente_criar_assistente",
+    "rotulo": "Atualizar Assistente Criar Assistente — Ai Assistants",
+    "herda": "tela_assistentes_ia.view",
+    "arquivo": "src/app-ui/finance/AiAssistants.tsx"
+  },
+  {
+    "chave": "tela_assistentes_ia.ai_assistants.criar_assistente",
+    "rotulo": "Criar Assistente — Ai Assistants",
+    "herda": "tela_assistentes_ia.view",
+    "arquivo": "src/app-ui/finance/AiAssistants.tsx"
+  },
+  {
+    "chave": "tela_assistentes_ia.ai_assistants.editar_assistente",
+    "rotulo": "Editar assistente — Ai Assistants",
+    "herda": "tela_assistentes_ia.view",
+    "arquivo": "src/app-ui/finance/AiAssistants.tsx"
+  },
+  {
+    "chave": "tela_assistentes_ia.ai_assistants.excluir_assistente",
+    "rotulo": "Excluir assistente — Ai Assistants",
+    "herda": "tela_assistentes_ia.view",
+    "arquivo": "src/app-ui/finance/AiAssistants.tsx"
+  },
+  {
+    "chave": "tela_assistentes_ia.ai_assistants.excluir_conversa",
+    "rotulo": "Excluir conversa — Ai Assistants",
+    "herda": "tela_assistentes_ia.view",
+    "arquivo": "src/app-ui/finance/AiAssistants.tsx"
+  },
+  {
+    "chave": "tela_assistentes_ia.ai_assistants.excluir_esta_conversa",
+    "rotulo": "Excluir esta conversa — Ai Assistants",
+    "herda": "tela_assistentes_ia.view",
+    "arquivo": "src/app-ui/finance/AiAssistants.tsx"
+  },
+  {
+    "chave": "tela_assistentes_ia.ai_assistants.nova_conversa",
+    "rotulo": "Nova conversa — Ai Assistants",
+    "herda": "tela_assistentes_ia.view",
+    "arquivo": "src/app-ui/finance/AiAssistants.tsx"
+  },
+  {
+    "chave": "tela_cadastros_auxiliares.lookup_crud.editar",
+    "rotulo": "Editar — Lookup Crud",
+    "herda": "tela_cadastros_auxiliares.view",
+    "arquivo": "src/app-ui/system/LookupCrud.tsx"
+  },
+  {
+    "chave": "tela_cadastros_auxiliares.lookup_crud.excluir",
+    "rotulo": "Excluir — Lookup Crud",
+    "herda": "tela_cadastros_auxiliares.view",
+    "arquivo": "src/app-ui/system/LookupCrud.tsx"
+  },
+  {
+    "chave": "tela_cadastros_auxiliares.lookup_crud.novo_item",
+    "rotulo": "Novo item — Lookup Crud",
+    "herda": "tela_cadastros_auxiliares.view",
+    "arquivo": "src/app-ui/system/LookupCrud.tsx"
+  },
+  {
+    "chave": "tela_cadastros_auxiliares.lookup_crud.salvar",
+    "rotulo": "Salvar — Lookup Crud",
+    "herda": "tela_cadastros_auxiliares.view",
+    "arquivo": "src/app-ui/system/LookupCrud.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdashboard.criar_e_abrir_o_editor",
+    "rotulo": "Criar e abrir o editor — CMSDashboard",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDashboard.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdashboard.editar",
+    "rotulo": "Editar — CMSDashboard",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDashboard.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdashboard.nova_pagina",
+    "rotulo": "Nova página — CMSDashboard",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDashboard.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_builder.adicionar",
+    "rotulo": "Adicionar — CMSDept Builder",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptBuilder.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_builder.remover_bloco",
+    "rotulo": "Remover bloco — CMSDept Builder",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptBuilder.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_builder.remover_item",
+    "rotulo": "Remover item — CMSDept Builder",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptBuilder.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_builder.republicar_publicar",
+    "rotulo": "Republicar Publicar — CMSDept Builder",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptBuilder.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_builder.salvar",
+    "rotulo": "Salvar — CMSDept Builder",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptBuilder.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_preview.republicar_publicar",
+    "rotulo": "Republicar Publicar — CMSDept Preview",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptPreview.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_produtos.adicionar",
+    "rotulo": "Adicionar — CMSDept Produtos",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptProdutos.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_produtos.editar",
+    "rotulo": "Editar — CMSDept Produtos",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptProdutos.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_produtos.novo_produto",
+    "rotulo": "Novo produto — CMSDept Produtos",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptProdutos.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_produtos.remover_linha",
+    "rotulo": "Remover linha — CMSDept Produtos",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptProdutos.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_produtos.remover_variacao",
+    "rotulo": "Remover variação — CMSDept Produtos",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptProdutos.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_produtos.salvar_produto",
+    "rotulo": "Salvar produto — CMSDept Produtos",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptProdutos.tsx"
+  },
+  {
+    "chave": "tela_cms.cmsdept_settings.despublicar_publicar",
+    "rotulo": "Despublicar Publicar — CMSDept Settings",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSDeptSettings.tsx"
+  },
+  {
+    "chave": "tela_cms.cmspage_builder.adicionar_block",
+    "rotulo": "Adicionar (block) — CMSPage Builder",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSPageBuilder.tsx"
+  },
+  {
+    "chave": "tela_cms.cmspage_builder.adicionar_bloco",
+    "rotulo": "Adicionar bloco — CMSPage Builder",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSPageBuilder.tsx"
+  },
+  {
+    "chave": "tela_cms.cmspage_builder.remover_bloco",
+    "rotulo": "Remover bloco — CMSPage Builder",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSPageBuilder.tsx"
+  },
+  {
+    "chave": "tela_cms.cmspage_builder.salvo_salvar",
+    "rotulo": "Salvo! Salvar — CMSPage Builder",
+    "herda": "tela_cms.view",
+    "arquivo": "src/app-ui/cms/CMSPageBuilder.tsx"
+  },
+  {
+    "chave": "tela_comunicacao.communication.nova_campanha",
+    "rotulo": "Nova Campanha — Communication",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui/Communication.tsx"
+  },
+  {
+    "chave": "tela_comunicacao.email_campaigns.novo_template",
+    "rotulo": "Novo Template — Email Campaigns",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui/EmailCampaigns.tsx"
+  },
+  {
+    "chave": "tela_comunicacao.whats_app_instances.criar_instancia",
+    "rotulo": "Criar Instância — Whats App Instances",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInstances.tsx"
+  },
+  {
+    "chave": "tela_comunicacao.whats_app_instances.nova_instancia",
+    "rotulo": "Nova Instância — Whats App Instances",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInstances.tsx"
+  },
+  {
+    "chave": "tela_comunicacao.whats_app_instances.salvar_alteracoes",
+    "rotulo": "Salvar alterações — Whats App Instances",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInstances.tsx"
+  },
+  {
+    "chave": "tela_credenciais.modelos_credencial.cadastrar",
+    "rotulo": "Cadastrar — Modelos Credencial",
+    "herda": "tela_credenciais.view",
+    "arquivo": "src/app-ui/ecclesiastical/ModelosCredencial.tsx"
+  },
+  {
+    "chave": "tela_credenciais.modelos_credencial.excluir",
+    "rotulo": "Excluir — Modelos Credencial",
+    "herda": "tela_credenciais.view",
+    "arquivo": "src/app-ui/ecclesiastical/ModelosCredencial.tsx"
+  },
+  {
+    "chave": "tela_credenciais.solicitacoes_credencial.aprovar",
+    "rotulo": "Aprovar — Solicitacoes Credencial",
+    "herda": "tela_credenciais.view",
+    "arquivo": "src/app-ui/ecclesiastical/SolicitacoesCredencial.tsx"
+  },
+  {
+    "chave": "tela_crm.crmdetail.enviar_mensagem",
+    "rotulo": "Enviar Mensagem — CRMDetail",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/CRMDetail.tsx"
+  },
+  {
+    "chave": "tela_crm.crmpipeline.adicionar_lead",
+    "rotulo": "Adicionar Lead — CRMPipeline",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/CRMPipeline.tsx"
+  },
+  {
+    "chave": "tela_crm.crmpipeline.imprimir",
+    "rotulo": "Imprimir — CRMPipeline",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/CRMPipeline.tsx"
+  },
+  {
+    "chave": "tela_crm.lead_detail.adicionar_atividade",
+    "rotulo": "Adicionar Atividade — Lead Detail",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/LeadDetail.tsx"
+  },
+  {
+    "chave": "tela_crm.lead_detail.adicionar_tag",
+    "rotulo": "+ Adicionar Tag — Lead Detail",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/LeadDetail.tsx"
+  },
+  {
+    "chave": "tela_crm.lead_detail.criar_tarefa",
+    "rotulo": "Criar Tarefa — Lead Detail",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/LeadDetail.tsx"
+  },
+  {
+    "chave": "tela_crm.lead_detail.editar",
+    "rotulo": "Editar — Lead Detail",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/LeadDetail.tsx"
+  },
+  {
+    "chave": "tela_crm.lead_detail.enviar_email",
+    "rotulo": "Enviar Email — Lead Detail",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/LeadDetail.tsx"
+  },
+  {
+    "chave": "tela_crm.lead_detail.salvar_nota",
+    "rotulo": "Salvar Nota — Lead Detail",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/LeadDetail.tsx"
+  },
+  {
+    "chave": "tela_crm.lead_new.salvar_lead",
+    "rotulo": "Salvar Lead — Lead New",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/forms/LeadNew.tsx"
+  },
+  {
+    "chave": "tela_crm.prospecting_module.novo_lead",
+    "rotulo": "Novo Lead — Prospecting Module",
+    "herda": "tela_crm.view",
+    "arquivo": "src/components/app-ui/ProspectingModule.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.aprovar_e_concluir",
+    "rotulo": "Aprovar e concluir — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.aprovar_pelo_dirigente_aprovar",
+    "rotulo": "Aprovar pelo dirigente Aprovar — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.atualizar_enviar",
+    "rotulo": "Atualizar Enviar — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.editar_a_observacao_presidente",
+    "rotulo": "Editar a observação (presidente) — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.excluir",
+    "rotulo": "Excluir — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.excluir_culto",
+    "rotulo": "Excluir culto — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.excluir_envio",
+    "rotulo": "Excluir envio — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.salvar",
+    "rotulo": "Salvar — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_culto_registro.culto_registro_drawer.salvar_parecer",
+    "rotulo": "Salvar parecer — Culto Registro Drawer",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoRegistroDrawer.tsx"
+  },
+  {
+    "chave": "tela_eventos.event_detail.editar",
+    "rotulo": "Editar — Event Detail",
+    "herda": "tela_eventos.view",
+    "arquivo": "src/components/app-ui/EventDetail.tsx"
+  },
+  {
+    "chave": "tela_financas.finance_transactions.exportar",
+    "rotulo": "Exportar — Finance Transactions",
+    "herda": "tela_financas.view",
+    "arquivo": "src/components/app-ui/FinanceTransactions.tsx"
+  },
+  {
+    "chave": "tela_financas.finance.exportar",
+    "rotulo": "Exportar — Finance",
+    "herda": "tela_financas.view",
+    "arquivo": "src/components/app-ui/Finance.tsx"
+  },
+  {
+    "chave": "tela_gf.cell_form.remover_lider",
+    "rotulo": "Remover líder — Cell Form",
+    "herda": "tela_gf.view",
+    "arquivo": "src/components/app-ui/cells/CellForm.tsx"
+  },
+  {
+    "chave": "tela_gf.cells_list.nova_celula",
+    "rotulo": "Nova Célula — Cells List",
+    "herda": "tela_gf.view",
+    "arquivo": "src/app-ui/cells/CellsList.tsx"
+  },
+  {
+    "chave": "tela_gf.cells_list.salvar_celula",
+    "rotulo": "Salvar Célula — Cells List",
+    "herda": "tela_gf.view",
+    "arquivo": "src/app-ui/cells/CellsList.tsx"
+  },
+  {
+    "chave": "tela_import_export.import_export.baixar_template_csv",
+    "rotulo": "Baixar Template CSV — Import Export",
+    "herda": "tela_import_export.view",
+    "arquivo": "src/components/app-ui/system/ImportExport.tsx"
+  },
+  {
+    "chave": "tela_import_export.import_export.importar",
+    "rotulo": "Importar — Import Export",
+    "herda": "tela_import_export.view",
+    "arquivo": "src/components/app-ui/system/ImportExport.tsx"
+  },
+  {
+    "chave": "tela_import_export.import_export.nova_importacao",
+    "rotulo": "Nova Importação — Import Export",
+    "herda": "tela_import_export.view",
+    "arquivo": "src/components/app-ui/system/ImportExport.tsx"
+  },
+  {
+    "chave": "tela_import_export.import_export.template_csv",
+    "rotulo": "Template CSV — Import Export",
+    "herda": "tela_import_export.view",
+    "arquivo": "src/components/app-ui/system/ImportExport.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.aprovar_preencher",
+    "rotulo": "Aprovar & Preencher — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.cadastrar_nova_pj",
+    "rotulo": "Cadastrar nova PJ — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.desvincular_e_lancar_como_despesa_avulsa",
+    "rotulo": "Desvincular e lançar como despesa avulsa — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.editar_valor",
+    "rotulo": "Editar valor — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.excluir",
+    "rotulo": "Excluir — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.lancar_receita_lancar_despesa",
+    "rotulo": "Lançar Receita Lançar Despesa — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.remover_observacao",
+    "rotulo": "Remover observação — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.salvar",
+    "rotulo": "Salvar — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.lancamento_new.salvar_obs_inline",
+    "rotulo": "Salvar (obs inline) — Lancamento New",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/LancamentoNew.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.recibo_modal.baixar_arquivo",
+    "rotulo": "Baixar arquivo — Recibo Modal",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/ReciboModal.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.recibo_modal.baixar_pdf",
+    "rotulo": "Baixar PDF — Recibo Modal",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/ReciboModal.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.recibo_modal.enviar_recibo",
+    "rotulo": "Enviar Recibo — Recibo Modal",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/ReciboModal.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.recibo_modal.enviar_whatsapp",
+    "rotulo": "Enviar WhatsApp — Recibo Modal",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/ReciboModal.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.recibo_modal.imprimir",
+    "rotulo": "Imprimir — Recibo Modal",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/ReciboModal.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.recibo_modal.imprimir_salvar_pdf",
+    "rotulo": "Imprimir / Salvar PDF — Recibo Modal",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/ReciboModal.tsx"
+  },
+  {
+    "chave": "tela_lancamento_recibo.recibo_modal.remover",
+    "rotulo": "Remover — Recibo Modal",
+    "herda": "tela_lancamento_recibo.view",
+    "arquivo": "src/app-ui/finance/ReciboModal.tsx"
+  },
+  {
+    "chave": "tela_ministerios.ministry_detail.adicionar_membro",
+    "rotulo": "Adicionar Membro — Ministry Detail",
+    "herda": "tela_ministerios.view",
+    "arquivo": "src/app-ui/ministries/MinistryDetail.tsx"
+  },
+  {
+    "chave": "tela_ministerios.ministry_detail.editar_ministerio",
+    "rotulo": "Editar Ministério — Ministry Detail",
+    "herda": "tela_ministerios.view",
+    "arquivo": "src/app-ui/ministries/MinistryDetail.tsx"
+  },
+  {
+    "chave": "tela_ministerios.ministry_detail.enviar_mensagem",
+    "rotulo": "Enviar Mensagem — Ministry Detail",
+    "herda": "tela_ministerios.view",
+    "arquivo": "src/app-ui/ministries/MinistryDetail.tsx"
+  },
+  {
+    "chave": "tela_ministerios.ministry_detail.gerar_relatorio",
+    "rotulo": "Gerar Relatório — Ministry Detail",
+    "herda": "tela_ministerios.view",
+    "arquivo": "src/app-ui/ministries/MinistryDetail.tsx"
+  },
+  {
+    "chave": "tela_mobile_recursos.jogo_editor.adicionar_palavra",
+    "rotulo": "Adicionar palavra — Jogo Editor",
+    "herda": "tela_mobile_recursos.view",
+    "arquivo": "src/app-ui/mobile/JogoEditor.tsx"
+  },
+  {
+    "chave": "tela_mobile_recursos.jogo_editor.remover",
+    "rotulo": "Remover — Jogo Editor",
+    "herda": "tela_mobile_recursos.view",
+    "arquivo": "src/app-ui/mobile/JogoEditor.tsx"
+  },
+  {
+    "chave": "tela_mobile_recursos.mobile_recurso.adicionar",
+    "rotulo": "Adicionar — Mobile Recurso",
+    "herda": "tela_mobile_recursos.view",
+    "arquivo": "src/app-ui/mobile/MobileRecurso.tsx"
+  },
+  {
+    "chave": "tela_mobile_recursos.mobile_recurso.aprovar_e_executar",
+    "rotulo": "Aprovar e executar — Mobile Recurso",
+    "herda": "tela_mobile_recursos.view",
+    "arquivo": "src/app-ui/mobile/MobileRecurso.tsx"
+  },
+  {
+    "chave": "tela_mobile_recursos.mobile_recurso.excluir",
+    "rotulo": "Excluir — Mobile Recurso",
+    "herda": "tela_mobile_recursos.view",
+    "arquivo": "src/app-ui/mobile/MobileRecurso.tsx"
+  },
+  {
+    "chave": "tela_mobile_recursos.mobile_recurso.salvar",
+    "rotulo": "Salvar — Mobile Recurso",
+    "herda": "tela_mobile_recursos.view",
+    "arquivo": "src/app-ui/mobile/MobileRecurso.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.meu_perfil_ver_e_editar_dados",
+    "rotulo": "Meu Perfil Ver e editar dados — App UI",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/AppUI.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.remover_dos_favoritos",
+    "rotulo": "Remover dos favoritos — App UI",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/AppUI.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.salvo_salvar",
+    "rotulo": "Salvo! Salvar — App UI",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/AppUI.tsx"
+  },
+  {
+    "chave": "tela_moldura.chat_fab.enviar",
+    "rotulo": "Enviar — Chat FAB",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/ChatFAB.tsx"
+  },
+  {
+    "chave": "tela_moldura.chat_fab.enviar_localizacao",
+    "rotulo": "Enviar Localização — Chat FAB",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/ChatFAB.tsx"
+  },
+  {
+    "chave": "tela_moldura.global_search_modal.editar_membro",
+    "rotulo": "Editar membro — Global Search Modal",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/GlobalSearchModal.tsx"
+  },
+  {
+    "chave": "tela_moldura.member_edit_drawer.buscar_uf",
+    "rotulo": "Buscar UF — Member Edit Drawer",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/MemberEditDrawer.tsx"
+  },
+  {
+    "chave": "tela_moldura.member_edit_drawer.remover_foto",
+    "rotulo": "Remover foto — Member Edit Drawer",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/MemberEditDrawer.tsx"
+  },
+  {
+    "chave": "tela_moldura.member_edit_drawer.salvar_alteracoes",
+    "rotulo": "Salvar alterações — Member Edit Drawer",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/MemberEditDrawer.tsx"
+  },
+  {
+    "chave": "tela_moldura.member_edit_drawer.trocar_foto_adicionar_foto",
+    "rotulo": "Trocar foto Adicionar foto — Member Edit Drawer",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/MemberEditDrawer.tsx"
+  },
+  {
+    "chave": "tela_moldura.quick_widgets.excluir_nota",
+    "rotulo": "Excluir nota — Quick Widgets",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/QuickWidgets.tsx"
+  },
+  {
+    "chave": "tela_moldura.quick_widgets.nova",
+    "rotulo": "Nova — Quick Widgets",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/QuickWidgets.tsx"
+  },
+  {
+    "chave": "tela_moldura.quick_widgets.salvar",
+    "rotulo": "Salvar — Quick Widgets",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/QuickWidgets.tsx"
+  },
+  {
+    "chave": "tela_moldura.system_settings.adicionar_usuario",
+    "rotulo": "Adicionar Usuário — System Settings",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/SystemSettings.tsx"
+  },
+  {
+    "chave": "tela_moldura.system_settings.gerar_api_key",
+    "rotulo": "Gerar API Key — System Settings",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/SystemSettings.tsx"
+  },
+  {
+    "chave": "tela_pastoral.counseling_session.adicionar_resource",
+    "rotulo": "Adicionar (resource) — Counseling Session",
+    "herda": "tela_pastoral.view",
+    "arquivo": "src/app-ui/pastoral/CounselingSession.tsx"
+  },
+  {
+    "chave": "tela_pastoral.counseling_session.remover_resource",
+    "rotulo": "Remover (resource) — Counseling Session",
+    "herda": "tela_pastoral.view",
+    "arquivo": "src/app-ui/pastoral/CounselingSession.tsx"
+  },
+  {
+    "chave": "tela_pastoral.counseling_session.salvar_sessao",
+    "rotulo": "Salvar Sessão — Counseling Session",
+    "herda": "tela_pastoral.view",
+    "arquivo": "src/app-ui/pastoral/CounselingSession.tsx"
+  },
+  {
+    "chave": "tela_pastoral.pastoral.nova",
+    "rotulo": "Nova — Pastoral",
+    "herda": "tela_pastoral.view",
+    "arquivo": "src/components/app-ui/Pastoral.tsx"
+  },
+  {
+    "chave": "tela_pastoral.prayer_new.enviar_pedido",
+    "rotulo": "Enviar Pedido — Prayer New",
+    "herda": "tela_pastoral.view",
+    "arquivo": "src/app-ui/pastoral/PrayerNew.tsx"
+  },
+  {
+    "chave": "tela_pastoral.visit_detail.agendar_nova_visita",
+    "rotulo": "Agendar Nova Visita — Visit Detail",
+    "herda": "tela_pastoral.view",
+    "arquivo": "src/app-ui/pastoral/VisitDetail.tsx"
+  },
+  {
+    "chave": "tela_pastoral.visit_detail.editar_visita",
+    "rotulo": "Editar Visita — Visit Detail",
+    "herda": "tela_pastoral.view",
+    "arquivo": "src/app-ui/pastoral/VisitDetail.tsx"
+  },
+  {
+    "chave": "tela_pastoral.visit_detail.gerar_relatorio",
+    "rotulo": "Gerar Relatório — Visit Detail",
+    "herda": "tela_pastoral.view",
+    "arquivo": "src/app-ui/pastoral/VisitDetail.tsx"
+  },
+  {
+    "chave": "tela_pastoral.visit_report.salvar_relatorio",
+    "rotulo": "Salvar Relatorio — Visit Report",
+    "herda": "tela_pastoral.view",
+    "arquivo": "src/app-ui/pastoral/VisitReport.tsx"
+  },
+  {
+    "chave": "tela_patrimonio.asset_detail.imprimir_etiqueta",
+    "rotulo": "Imprimir etiqueta — Asset Detail",
+    "herda": "tela_patrimonio.view",
+    "arquivo": "src/app-ui/assets/AssetDetail.tsx"
+  },
+  {
+    "chave": "tela_patrimonio.asset_form.salvar",
+    "rotulo": "Salvar — Asset Form",
+    "herda": "tela_patrimonio.view",
+    "arquivo": "src/app-ui/assets/AssetForm.tsx"
+  },
+  {
+    "chave": "tela_permissoes.membro_busca.editar_membro",
+    "rotulo": "Editar membro — Membro Busca",
+    "herda": "tela_permissoes.view",
+    "arquivo": "src/app-ui/system/MembroBusca.tsx"
+  },
+  {
+    "chave": "tela_sistema_antiga.system.editar",
+    "rotulo": "Editar — System",
+    "herda": "tela_sistema_antiga.view",
+    "arquivo": "src/components/app-ui/System.tsx"
+  },
+  {
+    "chave": "tela_sistema_antiga.system.novo_usuario",
+    "rotulo": "Novo Usuário — System",
+    "herda": "tela_sistema_antiga.view",
+    "arquivo": "src/components/app-ui/System.tsx"
+  },
+  {
+    "chave": "tela_stripe.stripe_config_admin.atualizar_salvar",
+    "rotulo": "Atualizar Salvar — Stripe Config Admin",
+    "herda": "tela_stripe.view",
+    "arquivo": "src/app-ui/stripe/StripeConfigAdmin.tsx"
+  },
+  {
+    "chave": "tela_stripe.stripe_config_admin.remover",
+    "rotulo": "Remover — Stripe Config Admin",
+    "herda": "tela_stripe.view",
+    "arquivo": "src/app-ui/stripe/StripeConfigAdmin.tsx"
+  },
+  {
+    "chave": "tela_stripe.stripe_reembolsos.aprovar",
+    "rotulo": "Aprovar — Stripe Reembolsos",
+    "herda": "tela_stripe.view",
+    "arquivo": "src/app-ui/stripe/StripeReembolsos.tsx"
+  },
+  {
     "chave": "transfer.transfer_new.salvar_transferencia",
     "rotulo": "Salvar Transferência — Transfer New",
     "herda": "transfer.view",

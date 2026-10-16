@@ -2,6 +2,7 @@ import { ArrowLeft, Calendar, MapPin, User, FileText, CheckCircle2, AlertCircle 
 import { Link, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getPastoralVisitById, listVisitParticipants, listVisitPrayerPoints } from '../../lib/pastoralService';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export default function VisitDetail() {
   const [searchParams] = useSearchParams();
@@ -63,9 +64,11 @@ export default function VisitDetail() {
             </div>
           </div>
           
-          <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
-            Editar Visita
-          </button>
+          <Permissao chave="tela_pastoral.visit_detail.editar_visita" rotulo="Editar Visita — Visit Detail" herda="tela_pastoral.view">
+            <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+              Editar Visita
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -194,12 +197,16 @@ export default function VisitDetail() {
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h3 className="font-bold text-slate-900 mb-4">Ações Rápidas</h3>
             <div className="space-y-2">
-              <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
-                Agendar Nova Visita
-              </button>
-              <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
-                Gerar Relatório
-              </button>
+              <Permissao chave="tela_pastoral.visit_detail.agendar_nova_visita" rotulo="Agendar Nova Visita — Visit Detail" herda="tela_pastoral.view">
+                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
+                  Agendar Nova Visita
+                </button>
+              </Permissao>
+              <Permissao chave="tela_pastoral.visit_detail.gerar_relatorio" rotulo="Gerar Relatório — Visit Detail" herda="tela_pastoral.view">
+                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
+                  Gerar Relatório
+                </button>
+              </Permissao>
               <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
                 Compartilhar
               </button>

@@ -21,7 +21,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { ehBotaoDeAcao, jaMarcado, semComentarios } from './lib/botoes.mjs';
+import { ehBotaoDeAcao, encontrarBotoes, jaMarcado, semComentarios } from './lib/botoes.mjs';
 import { analisarDonos, ehDoPainel } from './lib/donos.mjs';
 
 const RAIZ = process.cwd();
@@ -43,9 +43,9 @@ function arquivos(dir) {
 /** Botões de ação fora de <Permissao> no arquivo. */
 function pendentesDe(txt) {
   let n = 0;
-  for (const m of txt.matchAll(/<button\b[\s\S]*?<\/button>/g)) {
-    if (!ehBotaoDeAcao(m[0])) continue;
-    if (jaMarcado(txt, m.index)) continue;
+  for (const b of encontrarBotoes(txt)) {
+    if (!ehBotaoDeAcao(b.bloco)) continue;
+    if (jaMarcado(txt, b.index)) continue;
     n++;
   }
   return n;

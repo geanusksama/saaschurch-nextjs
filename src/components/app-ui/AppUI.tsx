@@ -125,6 +125,7 @@ import { useFavoritePaths, toggleFavoritePath } from '../../lib/favorites';
 import { Breadcrumbs } from './Breadcrumbs';
 import { buildBreadcrumbTrail } from '../../lib/breadcrumbTrail';
 import { settingsSections } from './SystemSettings';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 
 interface ContextSwitcherItem {
@@ -1899,18 +1900,20 @@ export function AppUI() {
                               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
                                 <Icon className="h-5 w-5 text-purple-600 dark:text-purple-300" />
                               </div>
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  toggleFavorite(item.path);
-                                }}
-                                className="rounded-lg p-1.5 text-sky-400 transition-colors hover:bg-sky-50 dark:hover:bg-sky-500/10"
-                                title="Remover dos favoritos"
-                              >
-                                <Star className="h-4 w-4 fill-current" />
-                              </button>
+                              <Permissao chave="tela_moldura.app_ui.remover_dos_favoritos" rotulo="Remover dos favoritos — App UI" herda="tela_moldura.view">
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    toggleFavorite(item.path);
+                                  }}
+                                  className="rounded-lg p-1.5 text-sky-400 transition-colors hover:bg-sky-50 dark:hover:bg-sky-500/10"
+                                  title="Remover dos favoritos"
+                                >
+                                  <Star className="h-4 w-4 fill-current" />
+                                </button>
+                              </Permissao>
                             </div>
                             <p className="font-semibold text-slate-900 group-hover:text-purple-700 dark:text-white dark:group-hover:text-purple-300">{item.name}</p>
                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.section}</p>
@@ -2256,20 +2259,22 @@ export function AppUI() {
 
                     {/* Menu items */}
                     <div className="p-2 dark:bg-slate-800">
-                      <button
-                        type="button"
-                        onClick={() => { setProfileOpen(false); setMyProfileOpen(true); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
-                      >
-                        <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center">
-                          <User className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                        </div>
-                        <div className="flex-1 text-left">
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">Meu Perfil</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Ver e editar dados</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
+                      <Permissao chave="tela_moldura.app_ui.meu_perfil_ver_e_editar_dados" rotulo="Meu Perfil Ver e editar dados — App UI" herda="tela_moldura.view">
+                        <button
+                          type="button"
+                          onClick={() => { setProfileOpen(false); setMyProfileOpen(true); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                        >
+                          <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center">
+                            <User className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">Meu Perfil</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Ver e editar dados</p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      </Permissao>
 
                       {podeVerUsuarios && (
                         <Link
@@ -2480,19 +2485,21 @@ export function AppUI() {
                   </div>
 
                   {/* Meu Perfil */}
-                  <button
-                    type="button"
-                    onClick={() => { setMobileDrawerOpen(false); setMyProfileOpen(true); }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/40">
-                      <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Meu Perfil</p>
-                      <p className="text-xs text-slate-400">Ver e editar dados</p>
-                    </div>
-                  </button>
+                  <Permissao chave="tela_moldura.app_ui.meu_perfil_ver_e_editar_dados" rotulo="Meu Perfil Ver e editar dados — App UI" herda="tela_moldura.view">
+                    <button
+                      type="button"
+                      onClick={() => { setMobileDrawerOpen(false); setMyProfileOpen(true); }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/40">
+                        <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Meu Perfil</p>
+                        <p className="text-xs text-slate-400">Ver e editar dados</p>
+                      </div>
+                    </button>
+                  </Permissao>
 
                   {/* Usuários e Permissões */}
                   {podeVerUsuarios && (
@@ -2957,15 +2964,17 @@ function ThemeEditorModal({
               >
                 Cancelar
               </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition hover:opacity-90"
-                style={{ backgroundColor: data.primaryColor }}
-              >
-                {saved ? <Check className="w-3.5 h-3.5" /> : null}
-                {saved ? 'Salvo!' : 'Salvar'}
-              </button>
+              <Permissao chave="tela_moldura.app_ui.salvo_salvar" rotulo="Salvo! Salvar — App UI" herda="tela_moldura.view">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition hover:opacity-90"
+                  style={{ backgroundColor: data.primaryColor }}
+                >
+                  {saved ? <Check className="w-3.5 h-3.5" /> : null}
+                  {saved ? 'Salvo!' : 'Salvar'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

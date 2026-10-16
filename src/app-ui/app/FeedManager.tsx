@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -354,10 +355,12 @@ export default function FeedManager() {
             <button onClick={() => refetch()} className="p-2 rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
               <RefreshCw className="w-4 h-4 text-slate-500" />
             </button>
-            <button onClick={openNew}
-              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
-              <Plus className="w-4 h-4" /> Nova publicação
-            </button>
+            <Permissao chave="tela_app.feed_manager.nova_publicacao" rotulo="Nova publicação — Feed Manager" herda="tela_app.view">
+              <button onClick={openNew}
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
+                <Plus className="w-4 h-4" /> Nova publicação
+              </button>
+            </Permissao>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -617,12 +620,14 @@ export default function FeedManager() {
 
             <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex gap-2 justify-end bg-slate-50 dark:bg-slate-800/80 sticky bottom-0">
               <button onClick={closeForm} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">Cancelar</button>
-              <button onClick={() => saveMut.mutate({ ...form, ...(editing ? { id: editing.id } : {}) })}
-                disabled={saveMut.isPending || !form.content.trim()}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
-                {saveMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {form.is_published ? 'Publicar' : 'Salvar rascunho'}
-              </button>
+              <Permissao chave="tela_app.feed_manager.publicar_salvar_rascunho" rotulo="Publicar Salvar rascunho — Feed Manager" herda="tela_app.view">
+                <button onClick={() => saveMut.mutate({ ...form, ...(editing ? { id: editing.id } : {}) })}
+                  disabled={saveMut.isPending || !form.content.trim()}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+                  {saveMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {form.is_published ? 'Publicar' : 'Salvar rascunho'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

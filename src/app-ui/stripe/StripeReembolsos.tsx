@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { authFetch } from "../../lib/secretariaHooks";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Refund {
   id: string;
@@ -138,14 +139,16 @@ export default function StripeReembolsos({ campoId }: Props) {
                 <td className="px-4 py-3">
                   {r.status === "solicitado" && (
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => doApprove(r.id)}
-                        disabled={actionLoading === r.id}
-                        title="Aprovar"
-                        className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-40"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="tela_stripe.stripe_reembolsos.aprovar" rotulo="Aprovar — Stripe Reembolsos" herda="tela_stripe.view">
+                        <button
+                          onClick={() => doApprove(r.id)}
+                          disabled={actionLoading === r.id}
+                          title="Aprovar"
+                          className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-40"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                       <button
                         onClick={() => { setRejectModal({ id: r.id }); setRejectMotivo(""); }}
                         disabled={actionLoading === r.id}

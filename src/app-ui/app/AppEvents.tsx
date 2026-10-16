@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Ticket, Plus, Search, Pencil, Eye, Calendar, MoreHorizontal, Star } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function getStoredUser() {
   try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
@@ -64,13 +65,15 @@ export default function AppEvents() {
             <p className="text-slate-500 dark:text-slate-400">Gerencie os eventos do app móvel</p>
           </div>
         </div>
-        <button
-          onClick={() => navigate('/app-ui/app/events/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Evento
-        </button>
+        <Permissao chave="tela_app.app_events.novo_evento" rotulo="Novo Evento — App Events" herda="tela_app.view">
+          <button
+            onClick={() => navigate('/app-ui/app/events/new')}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Evento
+          </button>
+        </Permissao>
       </div>
 
       <div className="relative">
@@ -90,12 +93,14 @@ export default function AppEvents() {
         <div className="text-center py-16">
           <Ticket className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 dark:text-slate-400">Nenhum evento encontrado</p>
-          <button
-            onClick={() => navigate('/app-ui/app/events/new')}
-            className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700"
-          >
-            Criar primeiro evento
-          </button>
+          <Permissao chave="tela_app.app_events.criar_primeiro_evento" rotulo="Criar primeiro evento — App Events" herda="tela_app.view">
+            <button
+              onClick={() => navigate('/app-ui/app/events/new')}
+              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700"
+            >
+              Criar primeiro evento
+            </button>
+          </Permissao>
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
@@ -155,13 +160,15 @@ export default function AppEvents() {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => navigate(`/app-ui/app/events/${ev.id}/edit`)}
-                          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
-                          title="Editar"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                        <Permissao chave="tela_app.app_events.editar" rotulo="Editar — App Events" herda="tela_app.view">
+                          <button
+                            onClick={() => navigate(`/app-ui/app/events/${ev.id}/edit`)}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+                            title="Editar"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        </Permissao>
                         <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">
                           <MoreHorizontal className="w-4 h-4" />
                         </button>

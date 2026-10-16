@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Phone, Mail, Calendar, User, MapPin, MessageSquare, Clock, TrendingUp } from 'lucide-react';
 import { crmLeads } from '../../data/mockData';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export function CRMDetail() {
   const { id } = useParams();
@@ -152,10 +153,12 @@ export function CRMDetail() {
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h3 className="font-bold text-slate-900 mb-4">Ações Rápidas</h3>
             <div className="space-y-2">
-              <button className="w-full flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                <MessageSquare className="w-4 h-4" />
-                Enviar Mensagem
-              </button>
+              <Permissao chave="tela_crm.crmdetail.enviar_mensagem" rotulo="Enviar Mensagem — CRMDetail" herda="tela_crm.view">
+                <button className="w-full flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                  <MessageSquare className="w-4 h-4" />
+                  Enviar Mensagem
+                </button>
+              </Permissao>
               <button className="w-full flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
                 <Phone className="w-4 h-4" />
                 Ligar

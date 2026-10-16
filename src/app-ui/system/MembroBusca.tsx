@@ -11,6 +11,7 @@ import { Clock, Loader2, Pencil, Search, X } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
 import { MemberEditDrawer } from '../../components/app-ui/MemberEditDrawer';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type TituloOpcao = { id: string; name: string; abbreviation?: string | null; level: number };
 
@@ -390,14 +391,16 @@ export function MembroBuscaModal({
                     </button>
                     {/* Edita no drawer de membro, sem sair da tela (ex.: cadastrar
                         o e-mail que falta). */}
-                    <button
-                      type="button"
-                      onClick={() => editar(m.id)}
-                      title="Editar membro"
-                      className="px-3 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
+                    <Permissao chave="tela_permissoes.membro_busca.editar_membro" rotulo="Editar membro — Membro Busca" herda="tela_permissoes.view">
+                      <button
+                        type="button"
+                        onClick={() => editar(m.id)}
+                        title="Editar membro"
+                        className="px-3 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </Permissao>
                   </div>
                 ))}
               </div>

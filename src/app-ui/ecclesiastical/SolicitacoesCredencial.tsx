@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CredentialRequest {
@@ -291,13 +292,15 @@ export default function SolicitacoesCredencial() {
                           </a>
                         )}
                         {r.situacao === "Pendente" && (
-                          <button
-                            onClick={() => setApproveTarget(r)}
-                            className="p-1.5 rounded hover:bg-blue-100 text-slate-500 hover:text-blue-700"
-                            title="Aprovar"
-                          >
-                            <ThumbsUp size={15} />
-                          </button>
+                          <Permissao chave="tela_credenciais.solicitacoes_credencial.aprovar" rotulo="Aprovar — Solicitacoes Credencial" herda="tela_credenciais.view">
+                            <button
+                              onClick={() => setApproveTarget(r)}
+                              className="p-1.5 rounded hover:bg-blue-100 text-slate-500 hover:text-blue-700"
+                              title="Aprovar"
+                            >
+                              <ThumbsUp size={15} />
+                            </button>
+                          </Permissao>
                         )}
                       </div>
                     </td>
@@ -416,12 +419,14 @@ export default function SolicitacoesCredencial() {
                 </a>
               )}
               {viewTarget.situacao === "Pendente" && (
-                <button
-                  onClick={() => { setViewTarget(null); setApproveTarget(viewTarget); }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2"
-                >
-                  <ThumbsUp size={14} /> Aprovar
-                </button>
+                <Permissao chave="tela_credenciais.solicitacoes_credencial.aprovar" rotulo="Aprovar — Solicitacoes Credencial" herda="tela_credenciais.view">
+                  <button
+                    onClick={() => { setViewTarget(null); setApproveTarget(viewTarget); }}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    <ThumbsUp size={14} /> Aprovar
+                  </button>
+                </Permissao>
               )}
               <button onClick={() => setViewTarget(null)} className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-700 hover:bg-slate-50">Fechar</button>
             </div>

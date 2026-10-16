@@ -11,6 +11,7 @@ import {
   useDepartmentProducts, useSalvarProduto, useArquivarProduto,
   enviarImagemProduto, type ProdutoLoja,
 } from "../../hooks/useDepartmentProducts";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 /**
  * Cadastro de produtos da loja de um departamento.
@@ -51,12 +52,14 @@ export default function CMSDeptProdutos() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setEditando("novo")}
-          className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
-        >
-          <Plus size={15} /> Novo produto
-        </button>
+        <Permissao chave="tela_cms.cmsdept_produtos.novo_produto" rotulo="Novo produto — CMSDept Produtos" herda="tela_cms.view">
+          <button
+            onClick={() => setEditando("novo")}
+            className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+          >
+            <Plus size={15} /> Novo produto
+          </button>
+        </Permissao>
       </div>
 
       {isLoading ? (
@@ -92,12 +95,14 @@ export default function CMSDeptProdutos() {
                   </span>
                 )}
                 <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => setEditando(p)}
-                    className="flex-1 rounded-lg bg-slate-900 px-3 py-1.5 text-sm text-white"
-                  >
-                    Editar
-                  </button>
+                  <Permissao chave="tela_cms.cmsdept_produtos.editar" rotulo="Editar — CMSDept Produtos" herda="tela_cms.view">
+                    <button
+                      onClick={() => setEditando(p)}
+                      className="flex-1 rounded-lg bg-slate-900 px-3 py-1.5 text-sm text-white"
+                    >
+                      Editar
+                    </button>
+                  </Permissao>
                   <button
                     onClick={() => {
                       if (confirm(`Arquivar "${p.nome}"? Ele sai da loja, mas os pedidos antigos continuam intactos.`)) {
@@ -382,14 +387,16 @@ function EditorProduto({
               <label className={rotulo}>
                 Variações <span className="font-normal text-slate-400">— cor e tamanho, cada uma com seu estoque</span>
               </label>
-              <button
-                onClick={() => setVariacoes([...variacoes, {
-                  cor: "", corHex: "#000000", tamanho: "", sku: "", preco: "", estoque: "0", ativo: true,
-                }])}
-                className="flex items-center gap-1 text-xs text-violet-600 hover:underline"
-              >
-                <Plus size={12} /> Adicionar
-              </button>
+              <Permissao chave="tela_cms.cmsdept_produtos.adicionar" rotulo="Adicionar — CMSDept Produtos" herda="tela_cms.view">
+                <button
+                  onClick={() => setVariacoes([...variacoes, {
+                    cor: "", corHex: "#000000", tamanho: "", sku: "", preco: "", estoque: "0", ativo: true,
+                  }])}
+                  className="flex items-center gap-1 text-xs text-violet-600 hover:underline"
+                >
+                  <Plus size={12} /> Adicionar
+                </button>
+              </Permissao>
             </div>
 
             {variacoes.length === 0 ? (
@@ -415,11 +422,13 @@ function EditorProduto({
                     <input className="col-span-2 rounded border border-slate-200 px-2 py-1.5 text-sm"
                            type="number" placeholder="Estoque" value={v.estoque}
                            onChange={(e) => setVariacoes(variacoes.map((x, idx) => idx === i ? { ...x, estoque: e.target.value } : x))} />
-                    <button onClick={() => setVariacoes(variacoes.filter((_, idx) => idx !== i))}
-                            className="col-span-2 justify-self-end text-slate-300 hover:text-red-500"
-                            aria-label="Remover variação">
-                      <Trash2 size={14} />
-                    </button>
+                    <Permissao chave="tela_cms.cmsdept_produtos.remover_variacao" rotulo="Remover variação — CMSDept Produtos" herda="tela_cms.view">
+                      <button onClick={() => setVariacoes(variacoes.filter((_, idx) => idx !== i))}
+                              className="col-span-2 justify-self-end text-slate-300 hover:text-red-500"
+                              aria-label="Remover variação">
+                        <Trash2 size={14} />
+                      </button>
+                    </Permissao>
                   </div>
                 ))}
               </div>
@@ -430,10 +439,12 @@ function EditorProduto({
           <section>
             <div className="mb-2 flex items-center justify-between">
               <label className={rotulo}>Ficha técnica <span className="font-normal text-slate-400">— ex: Tecido / Algodão 30.1</span></label>
-              <button onClick={() => setFicha([...ficha, { label: "", value: "" }])}
-                      className="flex items-center gap-1 text-xs text-violet-600 hover:underline">
-                <Plus size={12} /> Adicionar
-              </button>
+              <Permissao chave="tela_cms.cmsdept_produtos.adicionar" rotulo="Adicionar — CMSDept Produtos" herda="tela_cms.view">
+                <button onClick={() => setFicha([...ficha, { label: "", value: "" }])}
+                        className="flex items-center gap-1 text-xs text-violet-600 hover:underline">
+                  <Plus size={12} /> Adicionar
+                </button>
+              </Permissao>
             </div>
             <div className="flex flex-col gap-2">
               {ficha.map((f, i) => (
@@ -442,10 +453,12 @@ function EditorProduto({
                          onChange={(e) => setFicha(ficha.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
                   <input className={input} placeholder="Valor" value={f.value}
                          onChange={(e) => setFicha(ficha.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))} />
-                  <button onClick={() => setFicha(ficha.filter((_, idx) => idx !== i))}
-                          className="shrink-0 text-slate-300 hover:text-red-500" aria-label="Remover linha">
-                    <Trash2 size={14} />
-                  </button>
+                  <Permissao chave="tela_cms.cmsdept_produtos.remover_linha" rotulo="Remover linha — CMSDept Produtos" herda="tela_cms.view">
+                    <button onClick={() => setFicha(ficha.filter((_, idx) => idx !== i))}
+                            className="shrink-0 text-slate-300 hover:text-red-500" aria-label="Remover linha">
+                      <Trash2 size={14} />
+                    </button>
+                  </Permissao>
                 </div>
               ))}
             </div>
@@ -458,13 +471,15 @@ function EditorProduto({
           <button onClick={onFechar} className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600">
             Cancelar
           </button>
-          <button
-            onClick={confirmar} disabled={salvar.isPending || enviando}
-            className="flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
-            {salvar.isPending ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            Salvar produto
-          </button>
+          <Permissao chave="tela_cms.cmsdept_produtos.salvar_produto" rotulo="Salvar produto — CMSDept Produtos" herda="tela_cms.view">
+            <button
+              onClick={confirmar} disabled={salvar.isPending || enviando}
+              className="flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {salvar.isPending ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+              Salvar produto
+            </button>
+          </Permissao>
         </footer>
       </div>
     </div>

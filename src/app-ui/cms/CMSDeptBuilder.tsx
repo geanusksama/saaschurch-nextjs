@@ -17,6 +17,7 @@ import {
 } from "../../hooks/useDepartmentSite";
 import { BlocoRenderer, ancoraDoBloco } from "../../components/public/dept/DeptSiteRenderer";
 import CMSDeptPreview, { comoBlocosPublicos } from "./CMSDeptPreview";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 /**
  * Construtor visual das páginas de departamento.
@@ -205,26 +206,30 @@ export default function CMSDeptBuilder() {
           >
             <Copy size={15} /> Copiar link
           </button>
-          <button
-            onClick={aoSalvar} disabled={salvar.isPending || !sujo}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 disabled:opacity-40"
-          >
-            {salvar.isPending ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            Salvar
-          </button>
+          <Permissao chave="tela_cms.cmsdept_builder.salvar" rotulo="Salvar — CMSDept Builder" herda="tela_cms.view">
+            <button
+              onClick={aoSalvar} disabled={salvar.isPending || !sujo}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 disabled:opacity-40"
+            >
+              {salvar.isPending ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+              Salvar
+            </button>
+          </Permissao>
           <button
             onClick={() => setPreview(true)}
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <Eye size={15} /> Pré-visualizar
           </button>
-          <button
-            onClick={aoPublicar} disabled={publicar.isPending}
-            className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
-          >
-            {publicar.isPending ? <Loader2 size={15} className="animate-spin" /> : <Rocket size={15} />}
-            {publicado ? "Republicar" : "Publicar"}
-          </button>
+          <Permissao chave="tela_cms.cmsdept_builder.republicar_publicar" rotulo="Republicar Publicar — CMSDept Builder" herda="tela_cms.view">
+            <button
+              onClick={aoPublicar} disabled={publicar.isPending}
+              className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+            >
+              {publicar.isPending ? <Loader2 size={15} className="animate-spin" /> : <Rocket size={15} />}
+              {publicado ? "Republicar" : "Publicar"}
+            </button>
+          </Permissao>
         </div>
       </header>
 
@@ -289,14 +294,16 @@ export default function CMSDeptBuilder() {
               <p className="mb-1.5 text-[11px] font-medium text-slate-400">{grupo}</p>
               <div className="flex flex-col gap-1">
                 {itens.map((b) => (
-                  <button
-                    key={b.tipo} onClick={() => adicionar(b.tipo)}
-                    title={b.descricao}
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
-                  >
-                    <Plus size={14} className="shrink-0 text-slate-400" />
-                    {b.label}
-                  </button>
+                  <Permissao key={b.tipo} chave="tela_cms.cmsdept_builder.adicionar" rotulo="Adicionar — CMSDept Builder" herda="tela_cms.view">
+                    <button
+                      key={b.tipo} onClick={() => adicionar(b.tipo)}
+                      title={b.descricao}
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                    >
+                      <Plus size={14} className="shrink-0 text-slate-400" />
+                      {b.label}
+                    </button>
+                  </Permissao>
                 ))}
               </div>
             </div>
@@ -439,16 +446,18 @@ export default function CMSDeptBuilder() {
                     >
                       {bloco.visivel ? <Eye size={16} /> : <EyeOff size={16} />}
                     </button>
-                    <button
-                      onClick={() => {
-                        alterar((b) => b.filter((_, idx) => idx !== i));
-                        setSelecionado(null);
-                      }}
-                      className="text-slate-300 hover:text-red-500"
-                      aria-label="Remover bloco"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <Permissao chave="tela_cms.cmsdept_builder.remover_bloco" rotulo="Remover bloco — CMSDept Builder" herda="tela_cms.view">
+                      <button
+                        onClick={() => {
+                          alterar((b) => b.filter((_, idx) => idx !== i));
+                          setSelecionado(null);
+                        }}
+                        className="text-slate-300 hover:text-red-500"
+                        aria-label="Remover bloco"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </Permissao>
                   </Reorder.Item>
                 );
               })}
@@ -678,12 +687,14 @@ function ListaEditor({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <label className="text-xs font-medium text-slate-600">{campo.label}</label>
-        <button
-          onClick={() => onChange([...itens, {}])}
-          className="flex items-center gap-1 text-xs text-purple-600 hover:underline"
-        >
-          <Plus size={12} /> Adicionar
-        </button>
+        <Permissao chave="tela_cms.cmsdept_builder.adicionar" rotulo="Adicionar — CMSDept Builder" herda="tela_cms.view">
+          <button
+            onClick={() => onChange([...itens, {}])}
+            className="flex items-center gap-1 text-xs text-purple-600 hover:underline"
+          >
+            <Plus size={12} /> Adicionar
+          </button>
+        </Permissao>
       </div>
       {campo.hint && <p className="mb-2 text-[11px] text-slate-400">{campo.hint}</p>}
 
@@ -692,12 +703,14 @@ function ListaEditor({
           <div key={i} className="rounded-lg border border-slate-200 p-2.5">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[11px] font-medium text-slate-400">#{i + 1}</span>
-              <button
-                onClick={() => onChange(itens.filter((_, idx) => idx !== i))}
-                className="text-slate-300 hover:text-red-500" aria-label="Remover item"
-              >
-                <Trash2 size={13} />
-              </button>
+              <Permissao chave="tela_cms.cmsdept_builder.remover_item" rotulo="Remover item — CMSDept Builder" herda="tela_cms.view">
+                <button
+                  onClick={() => onChange(itens.filter((_, idx) => idx !== i))}
+                  className="text-slate-300 hover:text-red-500" aria-label="Remover item"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </Permissao>
             </div>
             <div className="flex flex-col gap-2">
               {(campo.itemFields ?? []).map((sub) => (

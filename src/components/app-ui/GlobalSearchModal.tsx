@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Props = {
   open: boolean;
@@ -326,14 +327,16 @@ export function GlobalSearchModal({
                     <Eye className="h-3.5 w-3.5" />
                     Ir para o perfil
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleNavigate(selected, 'edit')}
-                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-slate-700"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Editar membro
-                  </button>
+                  <Permissao chave="tela_moldura.global_search_modal.editar_membro" rotulo="Editar membro — Global Search Modal" herda="tela_moldura.view">
+                    <button
+                      type="button"
+                      onClick={() => handleNavigate(selected, 'edit')}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-slate-700"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Editar membro
+                    </button>
+                  </Permissao>
                   <button type="button" onClick={() => setSelected(null)} className="shrink-0 rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500">
                     <X className="h-4 w-4" />
                   </button>

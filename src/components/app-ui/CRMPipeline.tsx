@@ -3,6 +3,7 @@ import { Plus, Search, Filter, MoreVertical, User, Phone, Mail, Calendar, Tag, T
 import { Link } from 'react-router';
 import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const stages = [
   { 
@@ -74,13 +75,15 @@ export function CRMPipeline() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setPrintModalOpen(true)}
-            className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm transition-colors"
-          >
-            <Printer className="w-4 h-4" />
-            Imprimir
-          </button>
+          <Permissao chave="tela_crm.crmpipeline.imprimir" rotulo="Imprimir — CRMPipeline" herda="tela_crm.view">
+            <button
+              onClick={() => setPrintModalOpen(true)}
+              className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              <Printer className="w-4 h-4" />
+              Imprimir
+            </button>
+          </Permissao>
           <Link 
             to="/app-ui/crm/leads/new"
             className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
@@ -181,10 +184,12 @@ export function CRMPipeline() {
                 ))}
 
                 {/* Add Card Button */}
-                <button className="w-full py-3 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-purple-300 hover:text-purple-600 transition-colors flex items-center justify-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  <span className="text-sm font-medium">Adicionar Lead</span>
-                </button>
+                <Permissao chave="tela_crm.crmpipeline.adicionar_lead" rotulo="Adicionar Lead — CRMPipeline" herda="tela_crm.view">
+                  <button className="w-full py-3 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-purple-300 hover:text-purple-600 transition-colors flex items-center justify-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    <span className="text-sm font-medium">Adicionar Lead</span>
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>

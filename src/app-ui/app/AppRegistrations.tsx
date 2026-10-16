@@ -3,6 +3,7 @@ import { UserPlus, Search, CheckCircle2, XCircle, Clock, Eye, Users, Link2, Tras
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
 import { useCampoVisible } from '../../lib/campoVisibility';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function getToken(): string {
   try { return localStorage.getItem('mrm_token') ?? ''; } catch { return ''; }
@@ -272,40 +273,48 @@ export default function AppRegistrations() {
             {selectedIds.size} selecionado(s)
           </span>
           <div className="flex gap-2 ml-auto flex-wrap">
-            <button
-              onClick={() => bulkAction('approve')}
-              disabled={bulkLoading}
-              className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
-            >
-              {bulkLoading ? '...' : 'Aprovar todos'}
-            </button>
-            <button
-              onClick={() => bulkAction('reject')}
-              disabled={bulkLoading}
-              className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-            >
-              {bulkLoading ? '...' : 'Rejeitar todos'}
-            </button>
+            <Permissao chave="tela_app.app_registrations.aprovar_todos" rotulo="... Aprovar todos — App Registrations" herda="tela_app.view">
+              <button
+                onClick={() => bulkAction('approve')}
+                disabled={bulkLoading}
+                className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+              >
+                {bulkLoading ? '...' : 'Aprovar todos'}
+              </button>
+            </Permissao>
+            <Permissao chave="tela_app.app_registrations.rejeitar_todos" rotulo="... Rejeitar todos — App Registrations" herda="tela_app.view">
+              <button
+                onClick={() => bulkAction('reject')}
+                disabled={bulkLoading}
+                className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {bulkLoading ? '...' : 'Rejeitar todos'}
+              </button>
+            </Permissao>
             {bulkConfirmDelete ? (
               <>
                 <span className="text-xs text-red-600 font-medium self-center">Confirmar exclusão?</span>
                 <button onClick={() => setBulkConfirmDelete(false)} className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">Cancelar</button>
-                <button
-                  onClick={() => bulkAction('delete')}
-                  disabled={bulkLoading}
-                  className="px-3 py-1.5 bg-red-700 text-white rounded-lg text-sm font-medium hover:bg-red-800 disabled:opacity-50"
-                >
-                  {bulkLoading ? '...' : 'Excluir'}
-                </button>
+                <Permissao chave="tela_app.app_registrations.excluir" rotulo="... Excluir — App Registrations" herda="tela_app.view">
+                  <button
+                    onClick={() => bulkAction('delete')}
+                    disabled={bulkLoading}
+                    className="px-3 py-1.5 bg-red-700 text-white rounded-lg text-sm font-medium hover:bg-red-800 disabled:opacity-50"
+                  >
+                    {bulkLoading ? '...' : 'Excluir'}
+                  </button>
+                </Permissao>
               </>
             ) : (
-              <button
-                onClick={() => setBulkConfirmDelete(true)}
-                disabled={bulkLoading}
-                className="px-3 py-1.5 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50"
-              >
-                Excluir todos
-              </button>
+              <Permissao chave="tela_app.app_registrations.excluir_todos" rotulo="Excluir todos — App Registrations" herda="tela_app.view">
+                <button
+                  onClick={() => setBulkConfirmDelete(true)}
+                  disabled={bulkLoading}
+                  className="px-3 py-1.5 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50"
+                >
+                  Excluir todos
+                </button>
+              </Permissao>
             )}
             <button
               onClick={() => setSelectedIds(new Set())}
@@ -505,13 +514,15 @@ export default function AppRegistrations() {
                   >
                     Cancelar
                   </button>
-                  <button
-                    onClick={() => deleteMutation.mutate(selected.id)}
-                    disabled={deleteMutation.isPending}
-                    className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-                  >
-                    {deleteMutation.isPending ? 'Excluindo...' : 'Confirmar Exclusão'}
-                  </button>
+                  <Permissao chave="tela_app.app_registrations.confirmar_exclusao" rotulo="Confirmar Exclusão — App Registrations" herda="tela_app.view">
+                    <button
+                      onClick={() => deleteMutation.mutate(selected.id)}
+                      disabled={deleteMutation.isPending}
+                      className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {deleteMutation.isPending ? 'Excluindo...' : 'Confirmar Exclusão'}
+                    </button>
+                  </Permissao>
                 </>
               ) : (
                 <>
@@ -521,13 +532,15 @@ export default function AppRegistrations() {
                   >
                     Fechar
                   </button>
-                  <button
-                    onClick={() => setConfirmDelete(true)}
-                    className="p-2 border border-red-300 dark:border-red-800 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    title="Excluir cadastro e usuário"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <Permissao chave="tela_app.app_registrations.excluir_cadastro_e_usuario" rotulo="Excluir cadastro e usuário — App Registrations" herda="tela_app.view">
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="p-2 border border-red-300 dark:border-red-800 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      title="Excluir cadastro e usuário"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </Permissao>
                   {selected.status === 'PENDENTE' && (
                     <>
                       <button
@@ -546,13 +559,15 @@ export default function AppRegistrations() {
                           Vincular Membro
                         </button>
                       ) : (
-                        <button
-                          onClick={() => updateMutation.mutate({ id: selected.id, status: 'APROVADO', observacoes: nota })}
-                          disabled={updateMutation.isPending}
-                          className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
-                        >
-                          Aprovar
-                        </button>
+                        <Permissao chave="tela_app.app_registrations.aprovar" rotulo="Aprovar — App Registrations" herda="tela_app.view">
+                          <button
+                            onClick={() => updateMutation.mutate({ id: selected.id, status: 'APROVADO', observacoes: nota })}
+                            disabled={updateMutation.isPending}
+                            className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                          >
+                            Aprovar
+                          </button>
+                        </Permissao>
                       )}
                     </>
                   )}

@@ -5,6 +5,7 @@ import { apiBase } from '../../lib/apiBase';
 import { toast } from 'sonner';
 import { jsPDF } from 'jspdf';
 import { convertToJpeg, loadHeic2Any } from '../../lib/imageConverter';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export type ReciboRow = {
   id: string;
@@ -335,7 +336,9 @@ export async function printRecibo(row: ReciboRow, incluirComprovante: boolean, f
 </head>
 <body>
   <div class="action-bar">
-    <button class="btn-print" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
+    <Permissao chave="tela_lancamento_recibo.recibo_modal.imprimir_salvar_pdf" rotulo="Imprimir / Salvar PDF — Recibo Modal" herda="tela_lancamento_recibo.view">
+      <button class="btn-print" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
+    </Permissao>
     <button class="btn-close" onclick="window.close()">&#10005; Fechar</button>
   </div>
   <p class="org">ADCampinas</p>
@@ -470,7 +473,9 @@ function ComprovanteViewer({ src, docNum, onClose }: { src: string; docNum: stri
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 flex-shrink-0">
             <span className="text-white text-sm font-medium">Comprovante PDF — Doc {docNum}</span>
             <div className="flex items-center gap-1">
-              <button onClick={handleDownload} disabled={downloading} className="p-1.5 rounded hover:bg-white/10 text-white disabled:opacity-50" title="Baixar arquivo"><Download className="w-4 h-4" /></button>
+              <Permissao chave="tela_lancamento_recibo.recibo_modal.baixar_arquivo" rotulo="Baixar arquivo — Recibo Modal" herda="tela_lancamento_recibo.view">
+                <button onClick={handleDownload} disabled={downloading} className="p-1.5 rounded hover:bg-white/10 text-white disabled:opacity-50" title="Baixar arquivo"><Download className="w-4 h-4" /></button>
+              </Permissao>
               <button onClick={onClose} className="p-1.5 rounded hover:bg-white/10 text-white ml-1" title="Fechar"><X className="w-4 h-4" /></button>
             </div>
           </div>
@@ -538,7 +543,9 @@ function ComprovanteViewer({ src, docNum, onClose }: { src: string; docNum: stri
             <button onClick={() => setScale(s => Math.min(10, +(s + 0.2).toFixed(2)))} className="p-1.5 rounded hover:bg-white/10 text-white" title="Ampliar"><ZoomIn className="w-4 h-4" /></button>
             <button onClick={resetView} className="p-1.5 rounded hover:bg-white/10 text-white" title="Resetar view"><RotateCw className="w-4 h-4" /></button>
             <button onClick={() => setRotation(r => (r + 90) % 360)} className="p-1.5 rounded hover:bg-white/10 text-white text-sm font-bold px-2" title="Girar">↻</button>
-            <button onClick={handleDownload} disabled={downloading} className="p-1.5 rounded hover:bg-white/10 text-white disabled:opacity-50" title="Baixar arquivo"><Download className="w-4 h-4" /></button>
+            <Permissao chave="tela_lancamento_recibo.recibo_modal.baixar_arquivo" rotulo="Baixar arquivo — Recibo Modal" herda="tela_lancamento_recibo.view">
+              <button onClick={handleDownload} disabled={downloading} className="p-1.5 rounded hover:bg-white/10 text-white disabled:opacity-50" title="Baixar arquivo"><Download className="w-4 h-4" /></button>
+            </Permissao>
             <button onClick={onClose} className="p-1.5 rounded hover:bg-white/10 text-white ml-1" title="Fechar"><X className="w-4 h-4" /></button>
           </div>
         </div>
@@ -1108,24 +1115,28 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
             <p className="text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Opções de Recibo</p>
             <div className="grid grid-cols-3 gap-2">
               {/* Imprimir */}
-              <button
-                onClick={() => printRecibo(row, incluirComprovante, displayFoto || currentFoto)}
-                className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
-                title="Imprimir"
-              >
-                <Printer className="w-5 h-5 mb-1.5" />
-                <span className="text-[10px] font-medium leading-none">Imprimir</span>
-              </button>
+              <Permissao chave="tela_lancamento_recibo.recibo_modal.imprimir" rotulo="Imprimir — Recibo Modal" herda="tela_lancamento_recibo.view">
+                <button
+                  onClick={() => printRecibo(row, incluirComprovante, displayFoto || currentFoto)}
+                  className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                  title="Imprimir"
+                >
+                  <Printer className="w-5 h-5 mb-1.5" />
+                  <span className="text-[10px] font-medium leading-none">Imprimir</span>
+                </button>
+              </Permissao>
 
               {/* Baixar PDF */}
-              <button
-                onClick={handleDownloadPdf}
-                className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
-                title="Baixar PDF"
-              >
-                <Download className="w-5 h-5 mb-1.5" />
-                <span className="text-[10px] font-medium leading-none">Baixar PDF</span>
-              </button>
+              <Permissao chave="tela_lancamento_recibo.recibo_modal.baixar_pdf" rotulo="Baixar PDF — Recibo Modal" herda="tela_lancamento_recibo.view">
+                <button
+                  onClick={handleDownloadPdf}
+                  className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                  title="Baixar PDF"
+                >
+                  <Download className="w-5 h-5 mb-1.5" />
+                  <span className="text-[10px] font-medium leading-none">Baixar PDF</span>
+                </button>
+              </Permissao>
 
               {/* Compartilhar PDF */}
               <button
@@ -1168,14 +1179,16 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
               </button>
 
               {/* WhatsApp */}
-              <button
-                onClick={() => setShowWhatsappModal(true)}
-                className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
-                title="Enviar WhatsApp"
-              >
-                <MessageSquare className="w-5 h-5 mb-1.5" />
-                <span className="text-[10px] font-medium leading-none">WhatsApp</span>
-              </button>
+              <Permissao chave="tela_lancamento_recibo.recibo_modal.enviar_whatsapp" rotulo="Enviar WhatsApp — Recibo Modal" herda="tela_lancamento_recibo.view">
+                <button
+                  onClick={() => setShowWhatsappModal(true)}
+                  className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                  title="Enviar WhatsApp"
+                >
+                  <MessageSquare className="w-5 h-5 mb-1.5" />
+                  <span className="text-[10px] font-medium leading-none">WhatsApp</span>
+                </button>
+              </Permissao>
             </div>
           </div>
 
@@ -1214,14 +1227,16 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
               >
                 Cancelar
               </button>
-              <button
-                onClick={handleFotoDelete}
-                disabled={deleting}
-                className="flex-1 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
-              >
-                {deleting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
-                {deleting ? 'Removendo...' : 'Remover'}
-              </button>
+              <Permissao chave="tela_lancamento_recibo.recibo_modal.remover" rotulo="Remover — Recibo Modal" herda="tela_lancamento_recibo.view">
+                <button
+                  onClick={handleFotoDelete}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {deleting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                  {deleting ? 'Removendo...' : 'Remover'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -1322,20 +1337,22 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
                   >
                     Cancelar
                   </button>
-                  <button
-                    onClick={handleSendWhatsapp}
-                    disabled={sendingWhatsapp || !isConnected}
-                    className="flex-1 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
-                  >
-                    {sendingWhatsapp ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      'Enviar Recibo'
-                    )}
-                  </button>
+                  <Permissao chave="tela_lancamento_recibo.recibo_modal.enviar_recibo" rotulo="Enviar Recibo — Recibo Modal" herda="tela_lancamento_recibo.view">
+                    <button
+                      onClick={handleSendWhatsapp}
+                      disabled={sendingWhatsapp || !isConnected}
+                      className="flex-1 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      {sendingWhatsapp ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        'Enviar Recibo'
+                      )}
+                    </button>
+                  </Permissao>
                 </div>
               </div>
             )}

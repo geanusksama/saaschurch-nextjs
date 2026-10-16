@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RefreshCcw, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function getStoredUser() {
   try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
@@ -162,13 +163,15 @@ export default function AppEventRefunds() {
               >
                 Negar
               </button>
-              <button
-                onClick={() => updateMutation.mutate({ id: selected.id, status: 'APROVADO', notas_admin: nota })}
-                disabled={updateMutation.isPending}
-                className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
-              >
-                Aprovar
-              </button>
+              <Permissao chave="tela_app.app_event_refunds.aprovar" rotulo="Aprovar — App Event Refunds" herda="tela_app.view">
+                <button
+                  onClick={() => updateMutation.mutate({ id: selected.id, status: 'APROVADO', notas_admin: nota })}
+                  disabled={updateMutation.isPending}
+                  className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                >
+                  Aprovar
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

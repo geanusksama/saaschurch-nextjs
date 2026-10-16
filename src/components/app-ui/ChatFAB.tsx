@@ -1617,12 +1617,14 @@ export function ChatFAB() {
                     >
                       Descartar
                     </button>
-                    <button
-                      onClick={stopRecording}
-                      className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 rounded-xl font-bold text-white shadow-md transition"
-                    >
-                      Enviar
-                    </button>
+                    <Permissao chave="tela_moldura.chat_fab.enviar" rotulo="Enviar — Chat FAB" herda="tela_moldura.view">
+                      <button
+                        onClick={stopRecording}
+                        className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 rounded-xl font-bold text-white shadow-md transition"
+                      >
+                        Enviar
+                      </button>
+                    </Permissao>
                   </div>
                 </motion.div>
               )}
@@ -1952,14 +1954,16 @@ export function ChatFAB() {
                       >
                         Cancelar
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleSendLocation}
-                        className="flex-1 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow transition flex items-center justify-center gap-1.5"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        Enviar Localização
-                      </button>
+                      <Permissao chave="tela_moldura.chat_fab.enviar_localizacao" rotulo="Enviar Localização — Chat FAB" herda="tela_moldura.view">
+                        <button
+                          type="button"
+                          onClick={handleSendLocation}
+                          className="flex-1 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow transition flex items-center justify-center gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Enviar Localização
+                        </button>
+                      </Permissao>
                     </div>
                   </>
                 ) : null}

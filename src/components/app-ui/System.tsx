@@ -1,6 +1,7 @@
 import { Users, Shield, Settings, Zap, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const users = [
   { id: '1', name: 'Pastor Silva', email: 'pastor@igreja.com', role: 'Administrador', status: 'ativo', lastLogin: '2024-03-14' },
@@ -45,10 +46,12 @@ export function System() {
             <p className="text-slate-600 dark:text-slate-400">Gerencie usuários, funções e permissões</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium">
-          <Plus className="w-5 h-5" />
-          Novo Usuário
-        </button>
+        <Permissao chave="tela_sistema_antiga.system.novo_usuario" rotulo="Novo Usuário — System" herda="tela_sistema_antiga.view">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium">
+            <Plus className="w-5 h-5" />
+            Novo Usuário
+          </button>
+        </Permissao>
       </div>
 
       {/* Stats */}
@@ -179,9 +182,11 @@ export function System() {
                       {new Date(user.lastLogin).toLocaleDateString('pt-BR')}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg">
-                        Editar
-                      </button>
+                      <Permissao chave="tela_sistema_antiga.system.editar" rotulo="Editar — System" herda="tela_sistema_antiga.view">
+                        <button className="px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg">
+                          Editar
+                        </button>
+                      </Permissao>
                     </td>
                   </tr>
                 ))}
@@ -217,9 +222,11 @@ export function System() {
                 <button className="flex-1 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 font-medium">
                   Ver Detalhes
                 </button>
-                <button className="px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50">
-                  Editar
-                </button>
+                <Permissao chave="tela_sistema_antiga.system.editar" rotulo="Editar — System" herda="tela_sistema_antiga.view">
+                  <button className="px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50">
+                    Editar
+                  </button>
+                </Permissao>
               </div>
             </div>
           ))}
@@ -288,9 +295,11 @@ export function System() {
                     <div className="w-11 h-6 bg-purple-600 rounded-full peer peer-focus:ring-4 peer-focus:ring-purple-300"></div>
                     <div className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5"></div>
                   </label>
-                  <button className="px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg">
-                    Editar
-                  </button>
+                  <Permissao chave="tela_sistema_antiga.system.editar" rotulo="Editar — System" herda="tela_sistema_antiga.view">
+                    <button className="px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg">
+                      Editar
+                    </button>
+                  </Permissao>
                 </div>
               </div>
             </div>

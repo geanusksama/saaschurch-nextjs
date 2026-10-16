@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { QrCode, CheckCircle2, XCircle, Search } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type CheckinResult = {
   success: boolean;
@@ -139,9 +140,11 @@ export default function AppEventCheckin() {
               )}
             </div>
           </div>
-          <button onClick={reset} className="mt-4 w-full py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">
-            Novo Check-in
-          </button>
+          <Permissao chave="tela_app.app_event_checkin.novo_check_in" rotulo="Novo Check-in — App Event Checkin" herda="tela_app.view">
+            <button onClick={reset} className="mt-4 w-full py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">
+              Novo Check-in
+            </button>
+          </Permissao>
         </div>
       )}
     </div>

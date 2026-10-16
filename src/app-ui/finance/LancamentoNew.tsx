@@ -10,6 +10,7 @@ import type { ReciboRow } from './ReciboModal';
 import { MemberQuickCreateModal } from '../../components/app-ui/MemberQuickCreateModal';
 import { convertToJpeg } from '../../lib/imageConverter';
 import { PagarContaPagarModal } from './PagarContaPagarModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // Ícone de Igreja (cruz)
 function ChurchIcon({ className }: { className?: string }) {
@@ -41,10 +42,12 @@ function DeleteConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; on
             className="flex-1 py-2.5 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
-          <button onClick={onConfirm}
-            className="flex-1 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors">
-            Excluir
-          </button>
+          <Permissao chave="tela_lancamento_recibo.lancamento_new.excluir" rotulo="Excluir — Lancamento New" herda="tela_lancamento_recibo.view">
+            <button onClick={onConfirm}
+              className="flex-1 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors">
+              Excluir
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>
@@ -842,8 +845,10 @@ function HistoricoPanel({
                             <div className="w-24 flex items-center justify-end gap-1">
                               <span className="text-xs font-bold text-emerald-600">R$ {Number(l.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                               {!jaRepetido && (
-                                <button onClick={() => { setEditingId(l.id); setEditValor(Number(l.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })); }}
-                                  className="p-0.5 hover:bg-slate-100 rounded text-slate-400 hover:text-violet-600" title="Editar valor"><Pencil className="w-3 h-3" /></button>
+                                <Permissao chave="tela_lancamento_recibo.lancamento_new.editar_valor" rotulo="Editar valor — Lancamento New" herda="tela_lancamento_recibo.view">
+                                  <button onClick={() => { setEditingId(l.id); setEditValor(Number(l.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })); }}
+                                    className="p-0.5 hover:bg-slate-100 rounded text-slate-400 hover:text-violet-600" title="Editar valor"><Pencil className="w-3 h-3" /></button>
+                                </Permissao>
                               )}
                             </div>
                           )}
@@ -878,7 +883,9 @@ function HistoricoPanel({
                                   placeholder="Adicionar observação..."
                                   className="flex-1 px-2 py-0.5 border border-violet-300 rounded text-[11px] focus:outline-none focus:ring-1 focus:ring-violet-400"
                                 />
-                                <button onClick={() => saveObsInline(l.id)} className="p-0.5 bg-violet-500 text-white rounded"><Check className="w-3 h-3" /></button>
+                                <Permissao chave="tela_lancamento_recibo.lancamento_new.salvar_obs_inline" rotulo="Salvar (obs inline) — Lancamento New" herda="tela_lancamento_recibo.view">
+                                  <button onClick={() => saveObsInline(l.id)} className="p-0.5 bg-violet-500 text-white rounded"><Check className="w-3 h-3" /></button>
+                                </Permissao>
                                 <button onClick={() => setEditingObsId(null)} className="p-0.5 border rounded"><X className="w-3 h-3 text-slate-400" /></button>
                               </div>
                             ) : (
@@ -898,13 +905,15 @@ function HistoricoPanel({
                                   <Pencil className="w-3 h-3" />
                                 </button>
                                 {l.obs && (
-                                  <button
-                                    onClick={() => setDizimos(prev => prev.map(d => d.id === l.id ? { ...d, obs: null } : d))}
-                                    className="p-0.5 hover:bg-red-50 rounded text-slate-300 hover:text-red-500 transition-colors flex-shrink-0"
-                                    title="Remover observação"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
+                                  <Permissao chave="tela_lancamento_recibo.lancamento_new.remover_observacao" rotulo="Remover observação — Lancamento New" herda="tela_lancamento_recibo.view">
+                                    <button
+                                      onClick={() => setDizimos(prev => prev.map(d => d.id === l.id ? { ...d, obs: null } : d))}
+                                      className="p-0.5 hover:bg-red-50 rounded text-slate-300 hover:text-red-500 transition-colors flex-shrink-0"
+                                      title="Remover observação"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </Permissao>
                                 )}
                               </div>
                             )}
@@ -963,10 +972,12 @@ function HistoricoPanel({
                 className="flex-1 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
                 Cancelar
               </button>
-              <button onClick={saveObsModal}
-                className="flex-1 py-2 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700">
-                Salvar
-              </button>
+              <Permissao chave="tela_lancamento_recibo.lancamento_new.salvar" rotulo="Salvar — Lancamento New" herda="tela_lancamento_recibo.view">
+                <button onClick={saveObsModal}
+                  className="flex-1 py-2 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700">
+                  Salvar
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -2224,10 +2235,12 @@ export default function LancamentoNew() {
                     className={`w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 </div>
-                <button type="button" onClick={() => setShowPJModal(true)}
-                  className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" title="Cadastrar nova PJ">
-                  <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                </button>
+                <Permissao chave="tela_lancamento_recibo.lancamento_new.cadastrar_nova_pj" rotulo="Cadastrar nova PJ — Lancamento New" herda="tela_lancamento_recibo.view">
+                  <button type="button" onClick={() => setShowPJModal(true)}
+                    className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" title="Cadastrar nova PJ">
+                    <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                  </button>
+                </Permissao>
                 <button type="button" onClick={() => setShowPJSearchModal(true)}
                   className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" title="Buscar PJ existente">
                   <Search className="w-4 h-4 text-slate-600 dark:text-slate-300" />
@@ -2250,14 +2263,16 @@ export default function LancamentoNew() {
                   Valor menor registra pagamento parcial, na ordem de vencimento.
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setVinculoCP([])}
-                title="Desvincular e lançar como despesa avulsa"
-                className="flex items-center gap-1 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:underline shrink-0"
-              >
-                <Link2Off className="w-3.5 h-3.5" /> Desvincular
-              </button>
+              <Permissao chave="tela_lancamento_recibo.lancamento_new.desvincular_e_lancar_como_despesa_avulsa" rotulo="Desvincular e lançar como despesa avulsa — Lancamento New" herda="tela_lancamento_recibo.view">
+                <button
+                  type="button"
+                  onClick={() => setVinculoCP([])}
+                  title="Desvincular e lançar como despesa avulsa"
+                  className="flex items-center gap-1 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:underline shrink-0"
+                >
+                  <Link2Off className="w-3.5 h-3.5" /> Desvincular
+                </button>
+              </Permissao>
             </div>
           )}
 
@@ -2441,14 +2456,16 @@ export default function LancamentoNew() {
 
             {/* Mobile: Salvar em cima (linha toda), Limpar+Imagem embaixo | Desktop: 3 colunas */}
             <div className="flex flex-col gap-2 sm:hidden">
-              <button
-                type="submit"
-                disabled={saving}
-                className={`w-full flex items-center justify-center gap-2 px-3 py-3 ${accentBg} ${accentHover} text-white rounded-[4px] text-sm font-bold transition-colors disabled:opacity-60 shadow-sm`}
-              >
-                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                <span>{saving ? 'Lançando...' : isReceita ? 'Lançar Receita' : vinculoCP.length ? `Lançar e baixar ${vinculoCP.length} parcela(s)` : 'Lançar Despesa'}</span>
-              </button>
+              <Permissao chave="tela_lancamento_recibo.lancamento_new.lancar_receita_lancar_despesa" rotulo="Lançar Receita Lançar Despesa — Lancamento New" herda="tela_lancamento_recibo.view">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className={`w-full flex items-center justify-center gap-2 px-3 py-3 ${accentBg} ${accentHover} text-white rounded-[4px] text-sm font-bold transition-colors disabled:opacity-60 shadow-sm`}
+                >
+                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  <span>{saving ? 'Lançando...' : isReceita ? 'Lançar Receita' : vinculoCP.length ? `Lançar e baixar ${vinculoCP.length} parcela(s)` : 'Lançar Despesa'}</span>
+                </button>
+              </Permissao>
 
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -2488,14 +2505,16 @@ export default function LancamentoNew() {
                 <Camera className="w-4 h-4 flex-shrink-0" />
                 <span>Imagem</span>
               </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 ${accentBg} ${accentHover} text-white rounded-[4px] text-sm font-bold transition-colors disabled:opacity-60 shadow-sm`}
-              >
-                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                <span>{saving ? 'Lançando...' : isReceita ? 'Lançar Receita' : vinculoCP.length ? `Lançar e baixar ${vinculoCP.length} parcela(s)` : 'Lançar Despesa'}</span>
-              </button>
+              <Permissao chave="tela_lancamento_recibo.lancamento_new.lancar_receita_lancar_despesa" rotulo="Lançar Receita Lançar Despesa — Lancamento New" herda="tela_lancamento_recibo.view">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 ${accentBg} ${accentHover} text-white rounded-[4px] text-sm font-bold transition-colors disabled:opacity-60 shadow-sm`}
+                >
+                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  <span>{saving ? 'Lançando...' : isReceita ? 'Lançar Receita' : vinculoCP.length ? `Lançar e baixar ${vinculoCP.length} parcela(s)` : 'Lançar Despesa'}</span>
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -2807,13 +2826,15 @@ export default function LancamentoNew() {
               >
                 Descartar
               </button>
-              <button
-                type="button"
-                onClick={handleApproveAi}
-                className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
-              >
-                Aprovar & Preencher
-              </button>
+              <Permissao chave="tela_lancamento_recibo.lancamento_new.aprovar_preencher" rotulo="Aprovar & Preencher — Lancamento New" herda="tela_lancamento_recibo.view">
+                <button
+                  type="button"
+                  onClick={handleApproveAi}
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
+                >
+                  Aprovar & Preencher
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

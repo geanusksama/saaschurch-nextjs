@@ -9,7 +9,7 @@
     "lint": "eslint",
     "migrate:self": "node scripts/migrate-self.mjs",
     "permissoes:arvore": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gerar-arvore-permissoes.mjs",
-    "permissoes:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gerar-arvore-permissoes.mjs --check && node scripts/auditar-permissoes.mjs --check",
+    "permissoes:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gerar-arvore-permissoes.mjs --check && node scripts/auditar-permissoes.mjs --check && node scripts/verificar-marcacoes.mjs",
     "permissoes:auditoria": "node scripts/auditar-permissoes.mjs"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ import { DollarSign, TrendingUp, TrendingDown, Calendar, Download, Plus, Loader2
 import { Link } from 'react-router';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function firstDayOfMonth(year?: number, month?: number) {
   const d = new Date();
@@ -147,14 +148,16 @@ export function Finance() {
               <option key={`${o.year}-${o.month}`} value={`${o.year}-${o.month}`}>{o.label}</option>
             ))}
           </select>
-          <button
-            onClick={handleExport}
-            disabled={!rows.length}
-            className="flex items-center gap-2 border border-slate-200 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors text-sm disabled:opacity-40"
-          >
-            <Download className="w-4 h-4" />
-            Exportar
-          </button>
+          <Permissao chave="tela_financas.finance.exportar" rotulo="Exportar — Finance" herda="tela_financas.view">
+            <button
+              onClick={handleExport}
+              disabled={!rows.length}
+              className="flex items-center gap-2 border border-slate-200 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors text-sm disabled:opacity-40"
+            >
+              <Download className="w-4 h-4" />
+              Exportar
+            </button>
+          </Permissao>
           <Link
             to="/app-ui/finance/new"
             className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"

@@ -1,5 +1,6 @@
 import { ArrowLeft, Users, User, Calendar, Target, TrendingUp, Mail, Phone } from 'lucide-react';
 import { Link } from 'react-router';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const ministry = {
   id: 1,
@@ -42,9 +43,11 @@ export default function MinistryDetail() {
             </div>
           </div>
           
-          <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
-            Editar Ministério
-          </button>
+          <Permissao chave="tela_ministerios.ministry_detail.editar_ministerio" rotulo="Editar Ministério — Ministry Detail" herda="tela_ministerios.view">
+            <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+              Editar Ministério
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -103,9 +106,11 @@ export default function MinistryDetail() {
                   <h2 className="text-xl font-bold text-slate-900">Membros do Ministério</h2>
                   <p className="text-sm text-slate-600 dark:text-slate-400">{members.length} membros ativos</p>
                 </div>
-                <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm">
-                  Adicionar Membro
-                </button>
+                <Permissao chave="tela_ministerios.ministry_detail.adicionar_membro" rotulo="Adicionar Membro — Ministry Detail" herda="tela_ministerios.view">
+                  <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm">
+                    Adicionar Membro
+                  </button>
+                </Permissao>
               </div>
             </div>
 
@@ -213,12 +218,16 @@ export default function MinistryDetail() {
               <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
                 Agendar Reunião
               </button>
-              <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
-                Enviar Mensagem
-              </button>
-              <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
-                Gerar Relatório
-              </button>
+              <Permissao chave="tela_ministerios.ministry_detail.enviar_mensagem" rotulo="Enviar Mensagem — Ministry Detail" herda="tela_ministerios.view">
+                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
+                  Enviar Mensagem
+                </button>
+              </Permissao>
+              <Permissao chave="tela_ministerios.ministry_detail.gerar_relatorio" rotulo="Gerar Relatório — Ministry Detail" herda="tela_ministerios.view">
+                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200">
+                  Gerar Relatório
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

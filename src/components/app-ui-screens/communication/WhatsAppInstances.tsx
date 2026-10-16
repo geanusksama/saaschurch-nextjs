@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner'
 import { useWhatsAppInstances } from '@/hooks/useWhatsAppInstances'
 import type { WhatsAppInstance } from '@/types/whatsapp'
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 // ── tipos ────────────────────────────────────────────────────────────────────
 
@@ -375,14 +376,16 @@ function EditInstanceModal({
           <button onClick={onClose} className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50">
             Cancelar
           </button>
-          <button
-            onClick={handleSave}
-            disabled={loading || !form.name || !form.instance_id || !form.token || !form.client_token || saving}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {saving ? 'Salvando...' : 'Salvar alterações'}
-          </button>
+          <Permissao chave="tela_comunicacao.whats_app_instances.salvar_alteracoes" rotulo="Salvar alterações — Whats App Instances" herda="tela_comunicacao.view">
+            <button
+              onClick={handleSave}
+              disabled={loading || !form.name || !form.instance_id || !form.token || !form.client_token || saving}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {saving ? 'Salvando...' : 'Salvar alterações'}
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>
@@ -584,12 +587,14 @@ export default function WhatsAppInstances() {
             <p className="text-slate-500 text-sm">Gerencie números Z-API e controle de acesso por usuário</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowForm(v => !v)}
-          className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium text-sm"
-        >
-          <Plus className="w-4 h-4" /> Nova Instância
-        </button>
+        <Permissao chave="tela_comunicacao.whats_app_instances.nova_instancia" rotulo="Nova Instância — Whats App Instances" herda="tela_comunicacao.view">
+          <button
+            onClick={() => setShowForm(v => !v)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium text-sm"
+          >
+            <Plus className="w-4 h-4" /> Nova Instância
+          </button>
+        </Permissao>
       </div>
 
       {/* Stats */}
@@ -640,14 +645,16 @@ export default function WhatsAppInstances() {
             <button onClick={() => setShowForm(false)} className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50">
               Cancelar
             </button>
-            <button
-              onClick={handleCreate}
-              disabled={!form.name || !form.instance_id || !form.token || !form.client_token || creating}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 disabled:opacity-50 flex items-center gap-2"
-            >
-              {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-              {creating ? 'Criando...' : 'Criar Instância'}
-            </button>
+            <Permissao chave="tela_comunicacao.whats_app_instances.criar_instancia" rotulo="Criar Instância — Whats App Instances" herda="tela_comunicacao.view">
+              <button
+                onClick={handleCreate}
+                disabled={!form.name || !form.instance_id || !form.token || !form.client_token || creating}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 disabled:opacity-50 flex items-center gap-2"
+              >
+                {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+                {creating ? 'Criando...' : 'Criar Instância'}
+              </button>
+            </Permissao>
           </div>
         </div>
       )}

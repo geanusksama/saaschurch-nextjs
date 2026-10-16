@@ -6,6 +6,7 @@ import { X, Monitor, Smartphone, ExternalLink, Rocket, Loader2 } from "lucide-re
 import DeptSiteRenderer from "../../components/public/dept/DeptSiteRenderer";
 import { getPreset, tokensToCssVars, type DepartmentSite, type SiteBlock } from "../../lib/departmentSiteSchema";
 import type { BlocoEditavel } from "../../hooks/useDepartmentSite";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 /**
  * Converte os blocos do builder no formato que o renderizador público espera.
@@ -88,13 +89,15 @@ export default function CMSDeptPreview({
               <ExternalLink size={14} /> Página no ar
             </a>
           )}
-          <button
-            onClick={onPublicar} disabled={publicando || visiveis.length === 0}
-            className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-          >
-            {publicando ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
-            {site.status === "PUBLICADO" ? "Republicar" : "Publicar"}
-          </button>
+          <Permissao chave="tela_cms.cmsdept_preview.republicar_publicar" rotulo="Republicar Publicar — CMSDept Preview" herda="tela_cms.view">
+            <button
+              onClick={onPublicar} disabled={publicando || visiveis.length === 0}
+              className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+            >
+              {publicando ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
+              {site.status === "PUBLICADO" ? "Republicar" : "Publicar"}
+            </button>
+          </Permissao>
         </div>
       </header>
 

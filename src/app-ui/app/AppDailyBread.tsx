@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function getStoredUser() {
   try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
@@ -356,9 +357,11 @@ export default function AppDailyBread() {
             <p className="text-slate-500 dark:text-slate-400">Devocionais publicados no app</p>
           </div>
         </div>
-        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition text-sm font-medium">
-          <Plus className="w-4 h-4" /> Nova Entrada
-        </button>
+        <Permissao chave="tela_app.app_daily_bread.nova_entrada" rotulo="Nova Entrada — App Daily Bread" herda="tela_app.view">
+          <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition text-sm font-medium">
+            <Plus className="w-4 h-4" /> Nova Entrada
+          </button>
+        </Permissao>
       </div>
 
       {/* Busca */}
@@ -483,18 +486,20 @@ export default function AppDailyBread() {
                 { type: 'share' as StatType, Icon: Share2,  label: 'Compartilharam',count: statsEntry.share_count ?? 0, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20' },
                 { type: 'likes' as StatType, Icon: Heart,   label: 'Curtiram',      count: statsEntry.likes?.[0]?.count ?? 0, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-900/20' },
               ] as const).map(({ type, Icon, label, count, color, bg }) => (
-                <button key={type}
-                  onClick={() => {
-                    setExportTarget({ entryId: statsEntry.id, entryTitle: statsEntry.title, type, count });
-                    setStatsEntry(null);
-                  }}
-                  className={`flex flex-col items-center gap-1 p-4 rounded-xl ${bg} hover:opacity-80 transition cursor-pointer`}
-                >
-                  <Icon className={`w-5 h-5 ${color}`} />
-                  <span className="text-2xl font-bold text-slate-800 dark:text-white">{count}</span>
-                  <span className="text-[10px] text-slate-500 text-center leading-tight">{label}</span>
-                  <span className="text-[9px] text-slate-400 mt-0.5">clique p/ exportar</span>
-                </button>
+                <Permissao key={type} chave="tela_app.app_daily_bread.clique_p_exportar" rotulo="clique p/ exportar — App Daily Bread" herda="tela_app.view">
+                  <button key={type}
+                    onClick={() => {
+                      setExportTarget({ entryId: statsEntry.id, entryTitle: statsEntry.title, type, count });
+                      setStatsEntry(null);
+                    }}
+                    className={`flex flex-col items-center gap-1 p-4 rounded-xl ${bg} hover:opacity-80 transition cursor-pointer`}
+                  >
+                    <Icon className={`w-5 h-5 ${color}`} />
+                    <span className="text-2xl font-bold text-slate-800 dark:text-white">{count}</span>
+                    <span className="text-[10px] text-slate-500 text-center leading-tight">{label}</span>
+                    <span className="text-[9px] text-slate-400 mt-0.5">clique p/ exportar</span>
+                  </button>
+                </Permissao>
               ))}
             </div>
           </div>
@@ -522,32 +527,36 @@ export default function AppDailyBread() {
               <p className="text-center text-sm text-slate-400 py-3 animate-pulse">Buscando dados...</p>
             ) : (
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={async () => {
-                    setExportLoading(true);
-                    const users = await fetchStatUsers(exportTarget.entryId, exportTarget.type);
-                    setExportLoading(false);
-                    printUsers(users, exportTarget);
-                    setExportTarget(null);
-                  }}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 transition"
-                >
-                  <Printer className="w-6 h-6 text-slate-600 dark:text-slate-300" />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Imprimir</span>
-                </button>
-                <button
-                  onClick={async () => {
-                    setExportLoading(true);
-                    const users = await fetchStatUsers(exportTarget.entryId, exportTarget.type);
-                    setExportLoading(false);
-                    downloadCSV(users, exportTarget);
-                    setExportTarget(null);
-                  }}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 transition"
-                >
-                  <FileSpreadsheet className="w-6 h-6 text-slate-600 dark:text-slate-300" />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Exportar Excel</span>
-                </button>
+                <Permissao chave="tela_app.app_daily_bread.imprimir" rotulo="Imprimir — App Daily Bread" herda="tela_app.view">
+                  <button
+                    onClick={async () => {
+                      setExportLoading(true);
+                      const users = await fetchStatUsers(exportTarget.entryId, exportTarget.type);
+                      setExportLoading(false);
+                      printUsers(users, exportTarget);
+                      setExportTarget(null);
+                    }}
+                    className="flex flex-col items-center gap-2 p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 transition"
+                  >
+                    <Printer className="w-6 h-6 text-slate-600 dark:text-slate-300" />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Imprimir</span>
+                  </button>
+                </Permissao>
+                <Permissao chave="tela_app.app_daily_bread.exportar_excel" rotulo="Exportar Excel — App Daily Bread" herda="tela_app.view">
+                  <button
+                    onClick={async () => {
+                      setExportLoading(true);
+                      const users = await fetchStatUsers(exportTarget.entryId, exportTarget.type);
+                      setExportLoading(false);
+                      downloadCSV(users, exportTarget);
+                      setExportTarget(null);
+                    }}
+                    className="flex flex-col items-center gap-2 p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 transition"
+                  >
+                    <FileSpreadsheet className="w-6 h-6 text-slate-600 dark:text-slate-300" />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Exportar Excel</span>
+                  </button>
+                </Permissao>
               </div>
             )}
 
@@ -739,9 +748,11 @@ export default function AppDailyBread() {
                 <button type="button" onClick={closeModal} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
                   Cancelar
                 </button>
-                <button type="submit" disabled={saveMutation.isPending} className="px-5 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 disabled:opacity-50">
-                  {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
-                </button>
+                <Permissao chave="tela_app.app_daily_bread.salvar" rotulo="Salvar — App Daily Bread" herda="tela_app.view">
+                  <button type="submit" disabled={saveMutation.isPending} className="px-5 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 disabled:opacity-50">
+                    {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </Permissao>
               </div>
             </form>
           </div>

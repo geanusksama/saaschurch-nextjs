@@ -295,9 +295,11 @@ export default function ModelosCredencial() {
             <p className="text-sm text-slate-700">Deseja excluir o modelo <span className="font-medium">{deleteTarget.nome}</span>?</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteTarget(null)} className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-700 hover:bg-slate-50">Cancelar</button>
-              <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-60">
-                {deleting ? <Loader2 size={14} className="animate-spin mx-auto" /> : "Excluir"}
-              </button>
+              <Permissao chave="tela_credenciais.modelos_credencial.excluir" rotulo="Excluir — Modelos Credencial" herda="tela_credenciais.view">
+                <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-60">
+                  {deleting ? <Loader2 size={14} className="animate-spin mx-auto" /> : "Excluir"}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -617,10 +619,12 @@ function CredentialModelModal({
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button onClick={onClose} className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-700 hover:bg-slate-50">Cancelar</button>
-            <button onClick={handleSubmit} disabled={saving} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2">
-              {saving ? <Loader2 size={14} className="animate-spin" /> : null}
-              {saving ? "Salvando..." : "Cadastrar"}
-            </button>
+            <Permissao chave="tela_credenciais.modelos_credencial.cadastrar" rotulo="Cadastrar — Modelos Credencial" herda="tela_credenciais.view">
+              <button onClick={handleSubmit} disabled={saving} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2">
+                {saving ? <Loader2 size={14} className="animate-spin" /> : null}
+                {saving ? "Salvando..." : "Cadastrar"}
+              </button>
+            </Permissao>
           </div>
         </div>
       </div>

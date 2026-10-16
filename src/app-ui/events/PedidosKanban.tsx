@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PedidoDetailPanel } from "./PedidoDetailPanel";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -284,10 +285,12 @@ function OrderCard({
               <Eye className="w-3.5 h-3.5" /> Ver detalhes
             </button>
             {isPaid && (
-              <button onClick={() => { onGenerateQR(order); setMenuOpen(false); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
-                <QrCode className="w-3.5 h-3.5" /> Gerar QR Code
-              </button>
+              <Permissao chave="tela_app.pedidos_kanban.gerar_qr_code" rotulo="Gerar QR Code — Pedidos Kanban" herda="tela_app.view">
+                <button onClick={() => { onGenerateQR(order); setMenuOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                  <QrCode className="w-3.5 h-3.5" /> Gerar QR Code
+                </button>
+              </Permissao>
             )}
             {isWaiting && (
               <button onClick={() => { onResend(order); setMenuOpen(false); }}

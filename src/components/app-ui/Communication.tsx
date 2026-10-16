@@ -1,5 +1,6 @@
 import { MessageSquare, Mail, Send, Users, BarChart3 } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const channels = [
   { id: 'whatsapp', name: 'WhatsApp', icon: MessageSquare, color: 'bg-green-500', sent: 1250, delivered: 1180, read: 920 },
@@ -30,10 +31,12 @@ export function Communication() {
             <p className="text-slate-600 dark:text-slate-400">Gerencie todas as comunicações da igreja</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium">
-          <Send className="w-5 h-5" />
-          Nova Campanha
-        </button>
+        <Permissao chave="tela_comunicacao.communication.nova_campanha" rotulo="Nova Campanha — Communication" herda="tela_comunicacao.view">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium">
+            <Send className="w-5 h-5" />
+            Nova Campanha
+          </button>
+        </Permissao>
       </div>
 
       {/* Channel Stats */}
