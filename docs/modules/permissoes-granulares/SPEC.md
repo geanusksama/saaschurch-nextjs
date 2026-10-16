@@ -169,6 +169,45 @@ tudo e falha se a árvore gerada estiver desatualizada ou se algum arquivo
 tiver mais botões de ação sem `<Permissao>` que a foto
 `scripts/permissoes-pendentes.json`. A foto só diminui.
 
+### D10 — Telas sem trava viram raízes "tela_*" (liberadas)
+
+**Fato medido:** 227 rotas do painel não são guardadas por item nenhum do
+menu — abrem para qualquer usuário logado que digite a URL (área do App:
+pedidos, inscrições, feed; CMS; CRM; detalhes avulsos) — e algumas telas são
+de dois menus ao mesmo tempo (Lançamento/Recibo: Livro Caixa e Lançamentos).
+
+Para os botões delas entrarem na árvore sem mudar o acesso de ninguém, cada
+área ganhou uma raiz `tela_*` no catálogo, **liberada para todos os perfis e
+em `OPT_OUT_PERMISSION_KEYS`** (o mecanismo já documentado para "recurso que
+era visível para todos antes de ganhar controle"). Fora de grupo, nada muda;
+em grupo, a área é marcada/desmarcada como qualquer outra.
+
+Os módulos `app_*` do catálogo **não** foram reaproveitados: hoje só filtram
+artigos da Ajuda, e 61 usuários da adcampinas têm `app_*.view` bloqueado
+explicitamente — os botões sumiriam para eles no deploy.
+
+**Segunda etapa, separada (não feita):** travar essas rotas pelo módulo
+natural fecha a brecha da URL, mas pode tirar acesso de quem usa hoje; só com
+a lista de afetados em mãos.
+
+### D11 — Como a marcação foi feita (e é conferida)
+
+Ferramentas em `scripts/` (rodam em qualquer Node; nenhuma importa `.ts` no
+build):
+
+| Script | O que faz |
+|---|---|
+| `lib/donos.mjs` | Quem guarda cada arquivo: trava do menu (igual ao `isCurrentPathAllowed`), entrada real (card de Configurações ou links só em telas de um dono), barril seguido por símbolo, moldura, público e código morto |
+| `lib/botoes.mjs` | Definição única de "botão de ação" (texto visível, title, verbo da função chamada) e leitura exata do `<button>` (inclusive `<button ... />`) |
+| `marcar-permissoes.mjs` | Marca: dono único → herda a trava na frente do botão ou o Ver do dono; sem dono → a trava explícita ou a raiz `tela_*` da área |
+| `marcar-manual.mjs` / `desmarcar-permissao.mjs` | Casos revisados à mão |
+| `auditar-permissoes.mjs` | Conta botões de ação sem marcação no que renderiza no painel; build falha se aumentar |
+| `verificar-marcacoes.mjs` | Cada `<Permissao>` embrulha exatamente um botão (ou o componente que o envolve) |
+| `comparar-lint.mjs` | Lint por (arquivo, regra) contra o HEAD |
+
+Botão revisado que não leva marcação recebe `data-sem-permissao="motivo"`
+(mínimo 10 caracteres) — fica registrado no código.
+
 ---
 
 ## 2. Modelo de dados (fase 1)
@@ -226,6 +265,7 @@ Medido com `npm run permissoes:auditoria`.
 | Data | Componentes na árvore | Botões de ação ainda sem marcação |
 |---|---|---|
 | 16/10/2026 | 33 (Relatórios de Secretaria) | 939 em 251 arquivos |
+| 16/10/2026 | 688 componentes, 774 `<Permissao>` | **0** (contando só o que renderiza no painel; código morto em `app-ui-screens/*` e páginas públicas fora) |
 
 ## 5. Não faz (ainda)
 
