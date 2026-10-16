@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.355Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.685Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 4aedde4892a5816f
+-- Baseline 959b2c25986e2596
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -202,7 +202,6 @@ alter table "public"."appv3_familiares" alter column "nucleo" set not null;
 alter table "public"."appv3_igreja_mundial" alter column "nome" set not null;
 alter table "public"."appv3_igreja_perfil" alter column "church_id" set not null;
 alter table "public"."appv3_ingressos" alter column "pedido_id" set not null;
-alter table "public"."appv3_ingressos" alter column "perfil_id" set not null;
 alter table "public"."appv3_ingressos" alter column "codigo" set not null;
 alter table "public"."appv3_jogos_conteudo" alter column "jogo" set not null;
 alter table "public"."appv3_jogos_conteudo" alter column "dados" set not null;
@@ -234,7 +233,6 @@ alter table "public"."appv3_pedido_itens" alter column "nome" set not null;
 alter table "public"."appv3_pedido_itens" alter column "quantidade" set not null;
 alter table "public"."appv3_pedido_itens" alter column "preco_unit" set not null;
 alter table "public"."appv3_pedido_itens" alter column "total" set not null;
-alter table "public"."appv3_pedidos" alter column "perfil_id" set not null;
 alter table "public"."appv3_pedidos" alter column "campo_id" set not null;
 alter table "public"."appv3_pedidos" alter column "metodo" set not null;
 alter table "public"."appv3_perfis" alter column "auth_user_id" set not null;

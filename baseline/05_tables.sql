@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.351Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.678Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 4aedde4892a5816f
+-- Baseline 959b2c25986e2596
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -790,7 +790,8 @@ create table if not exists "public"."appv3_eventos" (
   "publicado" boolean default false not null,
   "destaque" boolean default false not null,
   "criado_em" timestamp with time zone default now() not null,
-  "atualizado_em" timestamp with time zone default now() not null
+  "atualizado_em" timestamp with time zone default now() not null,
+  "ministerio_id" uuid
 );
 
 create table if not exists "public"."appv3_familiares" (
@@ -835,7 +836,7 @@ create table if not exists "public"."appv3_ingressos" (
   "id" uuid default gen_random_uuid() not null,
   "pedido_id" uuid not null,
   "item_id" uuid,
-  "perfil_id" uuid not null,
+  "perfil_id" uuid,
   "evento_id" uuid,
   "opcao_id" uuid,
   "codigo" character varying(20) not null,
@@ -1013,7 +1014,7 @@ create table if not exists "public"."appv3_pedido_itens" (
 create table if not exists "public"."appv3_pedidos" (
   "id" uuid default gen_random_uuid() not null,
   "numero" bigint default nextval('appv3_pedidos_numero_seq'::regclass) not null,
-  "perfil_id" uuid not null,
+  "perfil_id" uuid,
   "campo_id" uuid not null,
   "church_id" uuid,
   "subtotal" numeric(12,2) default 0 not null,
@@ -1025,7 +1026,12 @@ create table if not exists "public"."appv3_pedidos" (
   "pix_txid" character varying(25),
   "gateway_ref" text,
   "criado_em" timestamp with time zone default now() not null,
-  "pago_em" timestamp with time zone
+  "pago_em" timestamp with time zone,
+  "origem" character varying(10) default 'APP'::character varying not null,
+  "comprador_nome" character varying(255),
+  "comprador_cpf" character varying(14),
+  "comprador_celular" character varying(20),
+  "comprador_email" character varying(255)
 );
 
 create table if not exists "public"."appv3_perfis" (
@@ -1092,7 +1098,8 @@ create table if not exists "public"."appv3_produtos" (
   "estoque" integer,
   "ativo" boolean default true not null,
   "ordem" integer default 0 not null,
-  "criado_em" timestamp with time zone default now() not null
+  "criado_em" timestamp with time zone default now() not null,
+  "ministerio_id" uuid
 );
 
 create table if not exists "public"."appv3_reembolsos" (
@@ -1215,7 +1222,8 @@ create table if not exists "public"."asaas_cobrancas" (
   "criado_por" uuid,
   "dados" jsonb,
   "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
-  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "peniel_inscricao_id" uuid
 );
 
 create table if not exists "public"."asaas_configs" (
@@ -1258,7 +1266,9 @@ create table if not exists "public"."asaas_links" (
   "encerra_em" date,
   "criado_por" uuid,
   "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
-  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+  "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "department_site_id" uuid,
+  "evento_id" uuid
 );
 
 create table if not exists "public"."asaas_webhook_eventos" (

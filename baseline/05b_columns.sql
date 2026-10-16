@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.353Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.681Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 4aedde4892a5816f
+-- Baseline 959b2c25986e2596
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -634,6 +634,7 @@ alter table "public"."appv3_eventos" add column if not exists "publicado" boolea
 alter table "public"."appv3_eventos" add column if not exists "destaque" boolean default false not null;
 alter table "public"."appv3_eventos" add column if not exists "criado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_eventos" add column if not exists "atualizado_em" timestamp with time zone default now() not null;
+alter table "public"."appv3_eventos" add column if not exists "ministerio_id" uuid;
 alter table "public"."appv3_familiares" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."appv3_familiares" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_familiares" add column if not exists "nome" character varying(255);
@@ -815,6 +816,11 @@ alter table "public"."appv3_pedidos" add column if not exists "pix_txid" charact
 alter table "public"."appv3_pedidos" add column if not exists "gateway_ref" text;
 alter table "public"."appv3_pedidos" add column if not exists "criado_em" timestamp with time zone default now() not null;
 alter table "public"."appv3_pedidos" add column if not exists "pago_em" timestamp with time zone;
+alter table "public"."appv3_pedidos" add column if not exists "origem" character varying(10) default 'APP'::character varying not null;
+alter table "public"."appv3_pedidos" add column if not exists "comprador_nome" character varying(255);
+alter table "public"."appv3_pedidos" add column if not exists "comprador_cpf" character varying(14);
+alter table "public"."appv3_pedidos" add column if not exists "comprador_celular" character varying(20);
+alter table "public"."appv3_pedidos" add column if not exists "comprador_email" character varying(255);
 alter table "public"."appv3_perfis" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."appv3_perfis" add column if not exists "auth_user_id" uuid;
 alter table "public"."appv3_perfis" add column if not exists "campo_id" uuid;
@@ -867,6 +873,7 @@ alter table "public"."appv3_produtos" add column if not exists "estoque" integer
 alter table "public"."appv3_produtos" add column if not exists "ativo" boolean default true not null;
 alter table "public"."appv3_produtos" add column if not exists "ordem" integer default 0 not null;
 alter table "public"."appv3_produtos" add column if not exists "criado_em" timestamp with time zone default now() not null;
+alter table "public"."appv3_produtos" add column if not exists "ministerio_id" uuid;
 alter table "public"."appv3_reembolsos" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."appv3_reembolsos" add column if not exists "perfil_id" uuid;
 alter table "public"."appv3_reembolsos" add column if not exists "pedido_id" uuid;
@@ -966,6 +973,7 @@ alter table "public"."asaas_cobrancas" add column if not exists "criado_por" uui
 alter table "public"."asaas_cobrancas" add column if not exists "dados" jsonb;
 alter table "public"."asaas_cobrancas" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."asaas_cobrancas" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."asaas_cobrancas" add column if not exists "peniel_inscricao_id" uuid;
 alter table "public"."asaas_configs" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."asaas_configs" add column if not exists "campo_id" uuid;
 alter table "public"."asaas_configs" add column if not exists "api_key_enc" text;
@@ -1003,6 +1011,8 @@ alter table "public"."asaas_links" add column if not exists "encerra_em" date;
 alter table "public"."asaas_links" add column if not exists "criado_por" uuid;
 alter table "public"."asaas_links" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."asaas_links" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."asaas_links" add column if not exists "department_site_id" uuid;
+alter table "public"."asaas_links" add column if not exists "evento_id" uuid;
 alter table "public"."asaas_webhook_eventos" add column if not exists "id" character varying(80);
 alter table "public"."asaas_webhook_eventos" add column if not exists "config_id" uuid;
 alter table "public"."asaas_webhook_eventos" add column if not exists "evento" character varying(60);

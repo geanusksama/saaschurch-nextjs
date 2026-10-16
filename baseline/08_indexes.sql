@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-15T19:39:54.358Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-16T01:09:34.692Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 4aedde4892a5816f
+-- Baseline 959b2c25986e2596
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -17,6 +17,7 @@ CREATE INDEX IF NOT EXISTS appv3_ebd_matriculas_perfil_idx ON public.appv3_ebd_m
 CREATE INDEX IF NOT EXISTS appv3_ebd_turmas_campo_idx ON public.appv3_ebd_turmas USING btree (campo_id);
 CREATE INDEX IF NOT EXISTS appv3_evento_opcoes_evento_idx ON public.appv3_evento_opcoes USING btree (evento_id);
 CREATE INDEX IF NOT EXISTS appv3_eventos_campo_idx ON public.appv3_eventos USING btree (campo_id, inicio);
+CREATE INDEX IF NOT EXISTS appv3_eventos_ministerio_idx ON public.appv3_eventos USING btree (ministerio_id);
 CREATE INDEX IF NOT EXISTS appv3_eventos_mundial_idx ON public.appv3_eventos USING btree (mundial_id, inicio);
 CREATE INDEX IF NOT EXISTS appv3_familiares_perfil_idx ON public.appv3_familiares USING btree (perfil_id);
 CREATE INDEX IF NOT EXISTS appv3_ingressos_evento_idx ON public.appv3_ingressos USING btree (evento_id);
@@ -42,6 +43,7 @@ CREATE INDEX IF NOT EXISTS appv3_pedido_itens_pedido_idx ON public.appv3_pedido_
 CREATE INDEX IF NOT EXISTS appv3_pedido_itens_produto_idx ON public.appv3_pedido_itens USING btree (produto_id);
 CREATE INDEX IF NOT EXISTS appv3_pedidos_campo_data_idx ON public.appv3_pedidos USING btree (campo_id, criado_em DESC);
 CREATE INDEX IF NOT EXISTS appv3_pedidos_campo_idx ON public.appv3_pedidos USING btree (campo_id, status);
+CREATE INDEX IF NOT EXISTS appv3_pedidos_origem_idx ON public.appv3_pedidos USING btree (campo_id, origem, criado_em);
 CREATE INDEX IF NOT EXISTS appv3_pedidos_perfil_idx ON public.appv3_pedidos USING btree (perfil_id, criado_em);
 CREATE INDEX IF NOT EXISTS appv3_perfis_campo_data_idx ON public.appv3_perfis USING btree (campo_id, criado_em DESC);
 CREATE INDEX IF NOT EXISTS appv3_perfis_campo_idx ON public.appv3_perfis USING btree (campo_id);
@@ -51,6 +53,7 @@ CREATE INDEX IF NOT EXISTS appv3_pix_config_mundial_idx ON public.appv3_pix_conf
 CREATE INDEX IF NOT EXISTS appv3_produto_cores_produto_idx ON public.appv3_produto_cores USING btree (produto_id);
 CREATE INDEX IF NOT EXISTS appv3_produto_imagens_produto_idx ON public.appv3_produto_imagens USING btree (produto_id);
 CREATE INDEX IF NOT EXISTS appv3_produtos_campo_idx ON public.appv3_produtos USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS appv3_produtos_ministerio_idx ON public.appv3_produtos USING btree (ministerio_id);
 CREATE INDEX IF NOT EXISTS appv3_reembolsos_ingresso_idx ON public.appv3_reembolsos USING btree (ingresso_id);
 CREATE INDEX IF NOT EXISTS appv3_reembolsos_pedido_idx ON public.appv3_reembolsos USING btree (pedido_id);
 CREATE INDEX IF NOT EXISTS appv3_reembolsos_perfil_idx ON public.appv3_reembolsos USING btree (perfil_id, criado_em DESC);
@@ -61,24 +64,33 @@ CREATE INDEX IF NOT EXISTS appv3_solicitacoes_campo_idx ON public.appv3_solicita
 CREATE INDEX IF NOT EXISTS appv3_solicitacoes_perfil_idx ON public.appv3_solicitacoes USING btree (perfil_id, criado_em);
 CREATE INDEX IF NOT EXISTS appv3_tentativas_vinculo_user_idx ON public.appv3_tentativas_vinculo USING btree (auth_user_id, criado_em);
 CREATE UNIQUE INDEX IF NOT EXISTS asaas_assinaturas_asaas_subscription_id_key ON public.asaas_assinaturas USING btree (asaas_subscription_id);
+CREATE INDEX IF NOT EXISTS asaas_assinaturas_campo_created_idx ON public.asaas_assinaturas USING btree (campo_id, created_at);
 CREATE INDEX IF NOT EXISTS asaas_assinaturas_campo_id_status_idx ON public.asaas_assinaturas USING btree (campo_id, status);
 CREATE INDEX IF NOT EXISTS asaas_assinaturas_perfil_id_idx ON public.asaas_assinaturas USING btree (perfil_id);
 CREATE UNIQUE INDEX IF NOT EXISTS asaas_clientes_config_id_asaas_customer_id_key ON public.asaas_clientes USING btree (config_id, asaas_customer_id);
+CREATE INDEX IF NOT EXISTS asaas_clientes_config_perfil_idx ON public.asaas_clientes USING btree (config_id, perfil_id);
 CREATE INDEX IF NOT EXISTS asaas_clientes_cpf_cnpj_idx ON public.asaas_clientes USING btree (config_id, cpf_cnpj);
 CREATE INDEX IF NOT EXISTS asaas_clientes_member_id_idx ON public.asaas_clientes USING btree (member_id);
 CREATE INDEX IF NOT EXISTS asaas_clientes_perfil_id_idx ON public.asaas_clientes USING btree (perfil_id);
 CREATE UNIQUE INDEX IF NOT EXISTS asaas_cobrancas_asaas_payment_id_key ON public.asaas_cobrancas USING btree (asaas_payment_id);
 CREATE INDEX IF NOT EXISTS asaas_cobrancas_assinatura_id_idx ON public.asaas_cobrancas USING btree (assinatura_id);
 CREATE INDEX IF NOT EXISTS asaas_cobrancas_campo_id_created_at_idx ON public.asaas_cobrancas USING btree (campo_id, created_at);
+CREATE INDEX IF NOT EXISTS asaas_cobrancas_campo_pago_idx ON public.asaas_cobrancas USING btree (campo_id, pago_em);
+CREATE INDEX IF NOT EXISTS asaas_cobrancas_church_created_idx ON public.asaas_cobrancas USING btree (church_id, created_at);
 CREATE INDEX IF NOT EXISTS asaas_cobrancas_contribuicao_id_idx ON public.asaas_cobrancas USING btree (contribuicao_id);
 CREATE INDEX IF NOT EXISTS asaas_cobrancas_installment_idx ON public.asaas_cobrancas USING btree (asaas_installment_id);
+CREATE INDEX IF NOT EXISTS asaas_cobrancas_link_id_idx ON public.asaas_cobrancas USING btree (link_id);
 CREATE INDEX IF NOT EXISTS asaas_cobrancas_pedido_id_idx ON public.asaas_cobrancas USING btree (pedido_id);
+CREATE INDEX IF NOT EXISTS asaas_cobrancas_peniel_idx ON public.asaas_cobrancas USING btree (peniel_inscricao_id);
 CREATE INDEX IF NOT EXISTS asaas_cobrancas_perfil_id_idx ON public.asaas_cobrancas USING btree (perfil_id);
 CREATE INDEX IF NOT EXISTS asaas_cobrancas_status_idx ON public.asaas_cobrancas USING btree (campo_id, status);
 CREATE UNIQUE INDEX IF NOT EXISTS asaas_configs_campo_id_key ON public.asaas_configs USING btree (campo_id);
 CREATE UNIQUE INDEX IF NOT EXISTS asaas_links_asaas_link_id_key ON public.asaas_links USING btree (asaas_link_id);
 CREATE INDEX IF NOT EXISTS asaas_links_campo_id_idx ON public.asaas_links USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS asaas_links_department_site_idx ON public.asaas_links USING btree (department_site_id);
+CREATE INDEX IF NOT EXISTS asaas_links_evento_idx ON public.asaas_links USING btree (evento_id);
 CREATE INDEX IF NOT EXISTS asaas_webhook_eventos_config_recebido_idx ON public.asaas_webhook_eventos USING btree (config_id, recebido_em);
+CREATE INDEX IF NOT EXISTS asaas_webhook_eventos_payment_idx ON public.asaas_webhook_eventos USING btree ((((payload -> 'payment'::text) ->> 'id'::text)));
 CREATE INDEX IF NOT EXISTS asset_inventories_church_id_idx ON public.asset_inventories USING btree (church_id);
 CREATE UNIQUE INDEX IF NOT EXISTS asset_inventory_items_inventory_id_asset_id_key ON public.asset_inventory_items USING btree (inventory_id, asset_id);
 CREATE INDEX IF NOT EXISTS assets_church_id_idx ON public.assets USING btree (church_id);
