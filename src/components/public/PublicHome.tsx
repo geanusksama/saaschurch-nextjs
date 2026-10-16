@@ -206,6 +206,9 @@ export function PublicHome() {
    * quando a API responde: a home nunca aparece vazia nem pisca.
    */
   const [home, setHome] = useState<HomeConfigPayload>(DEFAULT_HOME_PAYLOAD);
+  /** A configuração da igreja já chegou? Antes disso a grade de apps fica invisível:
+   *  com os cards padrão, um card oculto pela igreja aparecia e sumia (ex.: Culto ao vivo). */
+  const [homeCarregada, setHomeCarregada] = useState(false);
 
   /**
    * Se a pessoa já escolheu claro/escuro alguma vez. Precisa ser lido ANTES do
@@ -233,6 +236,7 @@ export function PublicHome() {
         // clicou no sol/lua — a preferência da pessoa vence sempre.
         if (!tinhaPreferenciaDeTema) setIsDark(payload.config.defaultDark);
       } catch { /* sem configuração, segue com o padrão */ }
+      finally { if (vivo) setHomeCarregada(true); }
     })();
     return () => { vivo = false; };
   }, [tinhaPreferenciaDeTema]);
@@ -868,7 +872,7 @@ export function PublicHome() {
   );
 
   const gradeDeApps = (
-    <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-4 gap-y-7 md:gap-x-8 md:gap-y-9 place-items-center">
+    <div className={`grid grid-cols-3 sm:grid-cols-4 gap-x-4 gap-y-7 md:gap-x-8 md:gap-y-9 place-items-center transition-opacity duration-500 ${homeCarregada ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
       {cardsVisiveis.flatMap((card, i) => {
         const tituloCurto = card.title.split(/\s+e\s+|\n/)[0];
         const Icone = resolveHomeIcon(card.icon);
