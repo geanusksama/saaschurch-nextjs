@@ -16,6 +16,7 @@ import {
   type LeaderReportData,
   type LeaderReportKind,
 } from '../../../lib/leaderReport';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 /** Imagem oferecida na seleção — foto do templo ou de um dos dirigentes. */
 type PickableImage = {
@@ -210,15 +211,17 @@ export function LeaderReportModal({
               Imagens ({selectedImages.length})
             </button>
 
-            <button
-              type="button"
-              onClick={handlePrint}
-              disabled={loading || printing || !data}
-              className="ml-auto flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              {printing ? 'Preparando...' : 'Imprimir'}
-            </button>
+            <Permissao chave="churches.leader_report_modal.imprimir" rotulo="Imprimir — Leader Report Modal" herda="churches.view">
+              <button
+                type="button"
+                onClick={handlePrint}
+                disabled={loading || printing || !data}
+                className="ml-auto flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                {printing ? 'Preparando...' : 'Imprimir'}
+              </button>
+            </Permissao>
           </div>
         </div>
 

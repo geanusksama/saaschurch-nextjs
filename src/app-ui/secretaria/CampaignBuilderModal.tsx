@@ -25,6 +25,7 @@ import {
   type SecretariaCampaignField,
 } from '@/lib/secretariaCampaignFields';
 import { MemberFieldPickerModal } from './MemberFieldPickerModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Instance {
   id: string;
@@ -316,12 +317,14 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
                     >
                       <ListChecks className="h-3.5 w-3.5" /> Campos do cadastro
                     </button>
-                    <button
-                      onClick={addField}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Pergunta livre
-                    </button>
+                    <Permissao chave="secretaria_campanhas.campaign_builder_modal.pergunta_livre" rotulo="Pergunta livre — Campaign Builder Modal" herda="secretaria_campanhas.view">
+                      <button
+                        onClick={addField}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Pergunta livre
+                      </button>
+                    </Permissao>
                   </div>
                 )}
               </div>
@@ -357,9 +360,11 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
                             <button onClick={() => moveField(f.id, 1)} className="p-1 text-slate-400 hover:text-slate-600">
                               <ChevronDown className="h-4 w-4" />
                             </button>
-                            <button onClick={() => removeField(f.id)} className="p-1 text-slate-400 hover:text-red-500">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <Permissao chave="secretaria_campanhas.campaign_builder_modal.remover_field" rotulo="Remover (field) — Campaign Builder Modal" herda="secretaria_campanhas.view">
+                              <button onClick={() => removeField(f.id)} className="p-1 text-slate-400 hover:text-red-500">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </Permissao>
                           </>
                         ) : null}
                       </div>
@@ -573,14 +578,16 @@ function BuilderConteudo({ initial, onClose, onSaved }: BuilderProps) {
             <button onClick={onClose} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700">
               Cancelar
             </button>
-            <button
-              onClick={salvar}
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2 text-xs font-bold text-white disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Salvar campanha
-            </button>
+            <Permissao chave="secretaria_campanhas.campaign_builder_modal.salvar_campanha" rotulo="Salvar campanha — Campaign Builder Modal" herda="secretaria_campanhas.view">
+              <button
+                onClick={salvar}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Salvar campanha
+              </button>
+            </Permissao>
           </div>
         </div>
       </div>

@@ -28,6 +28,7 @@ function Dove(props: React.SVGProps<SVGSVGElement>) {
 }
 import { authFetch } from "../../lib/secretariaHooks";
 import { apiBase } from "../../lib/apiBase";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // Formatting function for currency
 function fmt(v: number) {
@@ -1069,12 +1070,14 @@ export default function PenielDashboard() {
           >
             Ver Página Pública
           </a>
-          <button
-            onClick={openNewEvent}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm transition-colors font-semibold shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Novo Evento
-          </button>
+          <Permissao chave="peniel.peniel_dashboard.novo_evento" rotulo="Novo Evento — Peniel Dashboard" herda="peniel.view">
+            <button
+              onClick={openNewEvent}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm transition-colors font-semibold shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Novo Evento
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -1252,12 +1255,14 @@ export default function PenielDashboard() {
               <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center text-slate-400 dark:text-slate-500 shadow-sm flex flex-col items-center justify-center h-[300px]">
                 <Calendar className="w-10 h-10 mb-3 text-slate-300 dark:text-slate-600" />
                 <p className="text-sm font-medium">Nenhum evento futuro ou ativo agendado.</p>
-                <button
-                  onClick={openNewEvent}
-                  className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors"
-                >
-                  Criar Primeiro Encontro
-                </button>
+                <Permissao chave="peniel.peniel_dashboard.criar_primeiro_encontro" rotulo="Criar Primeiro Encontro — Peniel Dashboard" herda="peniel.view">
+                  <button
+                    onClick={openNewEvent}
+                    className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors"
+                  >
+                    Criar Primeiro Encontro
+                  </button>
+                </Permissao>
               </div>
             )}
 
@@ -1507,20 +1512,24 @@ export default function PenielDashboard() {
 
               <div className="flex items-center gap-2">
                 {selectedRegIds.length > 0 && (
-                  <button
-                    onClick={approveAllSelected}
-                    disabled={approvingAll}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {approvingAll ? "Confirmando..." : `Confirmar pagamento (${selectedRegIds.length})`}
-                  </button>
+                  <Permissao chave="peniel.peniel_dashboard.aprovar_all_selected" rotulo="Aprovar (all selected) — Peniel Dashboard" herda="peniel.view">
+                    <button
+                      onClick={approveAllSelected}
+                      disabled={approvingAll}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" /> {approvingAll ? "Confirmando..." : `Confirmar pagamento (${selectedRegIds.length})`}
+                    </button>
+                  </Permissao>
                 )}
-                <button
-                  onClick={exportToCSV}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-800 rounded-lg text-xs font-semibold transition-colors shadow-sm"
-                >
-                  <Download className="w-3.5 h-3.5" /> Exportar CSV
-                </button>
+                <Permissao chave="peniel.peniel_dashboard.exportar_csv" rotulo="Exportar CSV — Peniel Dashboard" herda="peniel.view">
+                  <button
+                    onClick={exportToCSV}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-800 rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Exportar CSV
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>
@@ -1626,14 +1635,16 @@ export default function PenielDashboard() {
                           <div className="flex justify-center items-center gap-1.5 flex-wrap">
                             {isPaymentOverdue(reg) && (
                               <>
-                                <button
-                                  onClick={() => remindPayment(reg.id)}
-                                  disabled={remindingId === reg.id}
-                                  className="px-2 py-1 bg-amber-100 dark:bg-amber-950/40 hover:bg-amber-200 text-amber-700 dark:text-amber-400 rounded text-[10px] font-bold uppercase transition-colors disabled:opacity-50 inline-flex items-center gap-1"
-                                  title="Enviar lembrete de pagamento por WhatsApp"
-                                >
-                                  <Phone className="w-3 h-3" /> {remindingId === reg.id ? "..." : "Lembrete"}
-                                </button>
+                                <Permissao chave="peniel.peniel_dashboard.enviar_lembrete_de_pagamento_por_whatsap" rotulo="Enviar lembrete de pagamento por WhatsApp — Peniel Dashboard" herda="peniel.view">
+                                  <button
+                                    onClick={() => remindPayment(reg.id)}
+                                    disabled={remindingId === reg.id}
+                                    className="px-2 py-1 bg-amber-100 dark:bg-amber-950/40 hover:bg-amber-200 text-amber-700 dark:text-amber-400 rounded text-[10px] font-bold uppercase transition-colors disabled:opacity-50 inline-flex items-center gap-1"
+                                    title="Enviar lembrete de pagamento por WhatsApp"
+                                  >
+                                    <Phone className="w-3 h-3" /> {remindingId === reg.id ? "..." : "Lembrete"}
+                                  </button>
+                                </Permissao>
                                 <button
                                   onClick={() => liberarVaga(reg)}
                                   className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-bold uppercase transition-colors inline-flex items-center gap-1"
@@ -1698,13 +1709,15 @@ export default function PenielDashboard() {
                               </button>
                             )}
 
-                            <button
-                              onClick={() => deleteRegistration(reg.id)}
-                              className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
-                              title="Excluir Permanentemente"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <Permissao chave="peniel.peniel_dashboard.excluir_permanentemente" rotulo="Excluir Permanentemente — Peniel Dashboard" herda="peniel.view">
+                              <button
+                                onClick={() => deleteRegistration(reg.id)}
+                                className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                                title="Excluir Permanentemente"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </Permissao>
                           </div>
                         </td>
                       </tr>
@@ -1722,12 +1735,14 @@ export default function PenielDashboard() {
         <div className="space-y-4">
           <div className="flex justify-between items-center pb-2">
             <h3 className="text-base font-bold">Histórico e Agenda de Eventos</h3>
-            <button
-              onClick={openNewEvent}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" /> Novo Evento
-            </button>
+            <Permissao chave="peniel.peniel_dashboard.novo_evento" rotulo="Novo Evento — Peniel Dashboard" herda="peniel.view">
+              <button
+                onClick={openNewEvent}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Novo Evento
+              </button>
+            </Permissao>
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
@@ -1805,20 +1820,24 @@ export default function PenielDashboard() {
                         </td>
                         <td className="px-5 py-3">
                           <div className="flex justify-center items-center gap-1">
-                            <button
-                              onClick={() => openEditEvent(evt)}
-                              className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-50 dark:hover:bg-slate-700 rounded transition-colors"
-                              title="Editar"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => deleteEvent(evt.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-50 dark:hover:bg-slate-700 rounded transition-colors"
-                              title="Excluir"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <Permissao chave="peniel.peniel_dashboard.editar" rotulo="Editar — Peniel Dashboard" herda="peniel.view">
+                              <button
+                                onClick={() => openEditEvent(evt)}
+                                className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-50 dark:hover:bg-slate-700 rounded transition-colors"
+                                title="Editar"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            </Permissao>
+                            <Permissao chave="peniel.peniel_dashboard.excluir" rotulo="Excluir — Peniel Dashboard" herda="peniel.view">
+                              <button
+                                onClick={() => deleteEvent(evt.id)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-50 dark:hover:bg-slate-700 rounded transition-colors"
+                                title="Excluir"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </Permissao>
                           </div>
                         </td>
                       </tr>
@@ -1847,14 +1866,16 @@ export default function PenielDashboard() {
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-6">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
               <h3 className="font-bold text-base">Identidade Visual & Textos da Página</h3>
-              <button
-                type="submit"
-                disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-              >
-                {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                Salvar Alterações CMS
-              </button>
+              <Permissao chave="peniel.peniel_dashboard.salvar_alteracoes_cms" rotulo="Salvar Alterações CMS — Peniel Dashboard" herda="peniel.view">
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                >
+                  {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Salvar Alterações CMS
+                </button>
+              </Permissao>
             </div>
 
             {/* Configurações básicas */}
@@ -1998,13 +2019,15 @@ export default function PenielDashboard() {
             <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">Carrossel de Apresentação (Cards de Destaque)</h4>
-                <button
-                  type="button"
-                  onClick={openNewCard}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Adicionar Card
-                </button>
+                <Permissao chave="peniel.peniel_dashboard.adicionar_card" rotulo="Adicionar Card — Peniel Dashboard" herda="peniel.view">
+                  <button
+                    type="button"
+                    onClick={openNewCard}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Adicionar Card
+                  </button>
+                </Permissao>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {(cmsConfig.heroCards || []).map((card, i) => (
@@ -2013,22 +2036,26 @@ export default function PenielDashboard() {
                       <div className="flex justify-between items-start">
                         <span className="text-[10px] font-bold text-slate-400 uppercase">Card {i + 1}</span>
                         <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEditCard(i)}
-                            className="p-1 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                            title="Editar Card"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteCard(i)}
-                            className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
-                            title="Excluir Card"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <Permissao chave="peniel.peniel_dashboard.editar_card" rotulo="Editar Card — Peniel Dashboard" herda="peniel.view">
+                            <button
+                              type="button"
+                              onClick={() => openEditCard(i)}
+                              className="p-1 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                              title="Editar Card"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          </Permissao>
+                          <Permissao chave="peniel.peniel_dashboard.excluir_card" rotulo="Excluir Card — Peniel Dashboard" herda="peniel.view">
+                            <button
+                              type="button"
+                              onClick={() => deleteCard(i)}
+                              className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                              title="Excluir Card"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </Permissao>
                         </div>
                       </div>
                       <h5 className="font-bold text-sm text-slate-900 dark:text-white mt-1">{card.title}</h5>
@@ -2053,13 +2080,15 @@ export default function PenielDashboard() {
             <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">Carrossel de Testemunhos</h4>
-                <button
-                  type="button"
-                  onClick={openNewTestimonial}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Adicionar Testemunho
-                </button>
+                <Permissao chave="peniel.peniel_dashboard.adicionar_testemunho" rotulo="Adicionar Testemunho — Peniel Dashboard" herda="peniel.view">
+                  <button
+                    type="button"
+                    onClick={openNewTestimonial}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Adicionar Testemunho
+                  </button>
+                </Permissao>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(cmsConfig.testimonyVideos || []).map((test, i) => (
@@ -2068,22 +2097,26 @@ export default function PenielDashboard() {
                       <div className="flex justify-between items-start">
                         <span className="text-[10px] font-bold text-slate-400 uppercase">Testemunho {i + 1}</span>
                         <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEditTestimonial(i)}
-                            className="p-1 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                            title="Editar Testemunho"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteTestimonial(i)}
-                            className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
-                            title="Excluir Testemunho"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <Permissao chave="peniel.peniel_dashboard.editar_testemunho" rotulo="Editar Testemunho — Peniel Dashboard" herda="peniel.view">
+                            <button
+                              type="button"
+                              onClick={() => openEditTestimonial(i)}
+                              className="p-1 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                              title="Editar Testemunho"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          </Permissao>
+                          <Permissao chave="peniel.peniel_dashboard.excluir_testemunho" rotulo="Excluir Testemunho — Peniel Dashboard" herda="peniel.view">
+                            <button
+                              type="button"
+                              onClick={() => deleteTestimonial(i)}
+                              className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                              title="Excluir Testemunho"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </Permissao>
                         </div>
                       </div>
                       <h5 className="font-bold text-sm text-slate-900 dark:text-white mt-1">{test.name}</h5>
@@ -2336,14 +2369,16 @@ export default function PenielDashboard() {
               </div>
 
               <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
-                >
-                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Salvar Encontro
-                </button>
+                <Permissao chave="peniel.peniel_dashboard.salvar_encontro" rotulo="Salvar Encontro — Peniel Dashboard" herda="peniel.view">
+                  <button
+                    type="submit"
+                    disabled={actionLoading}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Salvar Encontro
+                  </button>
+                </Permissao>
                 <button
                   type="button"
                   onClick={() => setShowEventModal(false)}
@@ -2606,18 +2641,22 @@ export default function PenielDashboard() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={printFicha}
-                  className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5"
-                >
-                  <FileText className="w-3.5 h-3.5" /> Imprimir
-                </button>
-                <button
-                  onClick={() => (editingReg ? setEditingReg(false) : openEditReg())}
-                  className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1.5"
-                >
-                  <Pencil className="w-3.5 h-3.5" /> {editingReg ? "Cancelar edição" : "Editar"}
-                </button>
+                <Permissao chave="peniel.peniel_dashboard.imprimir" rotulo="Imprimir — Peniel Dashboard" herda="peniel.view">
+                  <button
+                    onClick={printFicha}
+                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Imprimir
+                  </button>
+                </Permissao>
+                <Permissao chave="peniel.peniel_dashboard.cancelar_edicao_editar" rotulo="Cancelar edição Editar — Peniel Dashboard" herda="peniel.view">
+                  <button
+                    onClick={() => (editingReg ? setEditingReg(false) : openEditReg())}
+                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1.5"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> {editingReg ? "Cancelar edição" : "Editar"}
+                  </button>
+                </Permissao>
                 <button
                   onClick={() => { setSelectedRegistration(null); setEditingReg(false); }}
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
@@ -2643,12 +2682,14 @@ export default function PenielDashboard() {
                 </div>
                 <div className="flex gap-2">
                   {selectedRegistration.status === "fila_espera" && (
-                    <button
-                      onClick={() => changeRegistrationStatus(selectedRegistration.id, "inscrito")}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg uppercase text-[10px]"
-                    >
-                      Aprovar Vaga
-                    </button>
+                    <Permissao chave="peniel.peniel_dashboard.aprovar_vaga" rotulo="Aprovar Vaga — Peniel Dashboard" herda="peniel.view">
+                      <button
+                        onClick={() => changeRegistrationStatus(selectedRegistration.id, "inscrito")}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg uppercase text-[10px]"
+                      >
+                        Aprovar Vaga
+                      </button>
+                    </Permissao>
                   )}
                   {selectedRegistration.status === "inscrito" && (
                     <button
@@ -2706,9 +2747,11 @@ export default function PenielDashboard() {
                     </div>
                   </div>
                   <div className="flex gap-2 pt-1">
-                    <button onClick={saveEditReg} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs inline-flex items-center justify-center gap-1.5">
-                      <Save className="w-3.5 h-3.5" /> Salvar alterações
-                    </button>
+                    <Permissao chave="peniel.peniel_dashboard.salvar_alteracoes" rotulo="Salvar alterações — Peniel Dashboard" herda="peniel.view">
+                      <button onClick={saveEditReg} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs inline-flex items-center justify-center gap-1.5">
+                        <Save className="w-3.5 h-3.5" /> Salvar alterações
+                      </button>
+                    </Permissao>
                     <button onClick={() => setEditingReg(false)} className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-semibold">Cancelar</button>
                   </div>
                 </div>
@@ -2989,12 +3032,14 @@ export default function PenielDashboard() {
 
             {/* Drawer Footer */}
             <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 flex gap-3">
-              <button
-                onClick={() => deleteRegistration(selectedRegistration.id)}
-                className="flex items-center gap-1.5 px-4 py-2 border border-rose-200 text-rose-700 dark:border-rose-900/60 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg text-xs font-semibold transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Excluir Inscrição
-              </button>
+              <Permissao chave="peniel.peniel_dashboard.excluir_inscricao" rotulo="Excluir Inscrição — Peniel Dashboard" herda="peniel.view">
+                <button
+                  onClick={() => deleteRegistration(selectedRegistration.id)}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-rose-200 text-rose-700 dark:border-rose-900/60 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg text-xs font-semibold transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir Inscrição
+                </button>
+              </Permissao>
               <button
                 onClick={() => setSelectedRegistration(null)}
                 className="ml-auto px-4 py-2 bg-slate-900 text-white dark:bg-slate-700 hover:bg-slate-800 rounded-lg text-xs font-bold transition-colors"

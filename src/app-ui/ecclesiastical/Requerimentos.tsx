@@ -28,6 +28,7 @@ import { PrintModal } from "../../components/app-ui/shared/PrintModal";
 import { printReport } from "../../lib/printReport";
 import { ConfirmarTituloReadmissao } from "../../components/ecclesiastical/ConfirmarTituloReadmissao";
 import { ehServicoDeReadmissao } from "../../lib/readmissaoTitulo";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function authFetch(url: string, init: RequestInit = {}) {
@@ -516,24 +517,30 @@ export default function Requerimentos() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
-            <Download size={15} />
-            Exportar
-          </button>
-          <button
-            onClick={() => setPrintModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            <Printer size={15} />
-            Imprimir
-          </button>
-          <button
-            onClick={() => setShowNew(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
-          >
-            <Plus size={15} />
-            Novo Requerimento
-          </button>
+          <Permissao chave="requirements.requerimentos.exportar" rotulo="Exportar — Requerimentos" herda="requirements.view">
+            <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+              <Download size={15} />
+              Exportar
+            </button>
+          </Permissao>
+          <Permissao chave="requirements.requerimentos.imprimir" rotulo="Imprimir — Requerimentos" herda="requirements.view">
+            <button
+              onClick={() => setPrintModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Printer size={15} />
+              Imprimir
+            </button>
+          </Permissao>
+          <Permissao chave="requirements.requerimentos.novo_requerimento" rotulo="Novo Requerimento — Requerimentos" herda="requirements.view">
+            <button
+              onClick={() => setShowNew(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+            >
+              <Plus size={15} />
+              Novo Requerimento
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -1308,30 +1315,34 @@ function RequerimentoDetalheModal({
                         <div className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
                           <Paperclip className="h-3.5 w-3.5" />
                           <span className="max-w-[220px] truncate">{chatAttachment.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setChatAttachment(null);
-                              if (chatFileInputRef.current) chatFileInputRef.current.value = "";
-                            }}
-                            className="text-slate-400 hover:text-slate-700"
-                            title="Remover arquivo"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                          <Permissao chave="requirements.requerimentos.remover_arquivo" rotulo="Remover arquivo — Requerimentos" herda="requirements.view">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setChatAttachment(null);
+                                if (chatFileInputRef.current) chatFileInputRef.current.value = "";
+                              }}
+                              className="text-slate-400 hover:text-slate-700"
+                              title="Remover arquivo"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </Permissao>
                         </div>
                       )}
                       <p className="text-xs text-slate-400">O arquivo sobe para o bucket e a conversa guarda só a URL.</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => void handleSendMessage()}
-                      disabled={savingMessage || (!chatText.trim() && !chatAttachment)}
-                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                    >
-                      {savingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
-                      Enviar mensagem
-                    </button>
+                    <Permissao chave="requirements.requerimentos.enviar_mensagem" rotulo="Enviar mensagem — Requerimentos" herda="requirements.view">
+                      <button
+                        type="button"
+                        onClick={() => void handleSendMessage()}
+                        disabled={savingMessage || (!chatText.trim() && !chatAttachment)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                      >
+                        {savingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
+                        Enviar mensagem
+                      </button>
+                    </Permissao>
                   </div>
                 </div>
               </div>
@@ -1858,14 +1869,16 @@ function NovoRequerimentoModal({
                           <p className="text-xs font-medium text-slate-700 truncate">{a.name}</p>
                           <p className="text-[11px] text-slate-400 truncate">{a.type}</p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeAttachment(i)}
-                          className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 flex-shrink-0"
-                          title="Remover"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        <Permissao chave="requirements.requerimentos.remover" rotulo="Remover — Requerimentos" herda="requirements.view">
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(i)}
+                            className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 flex-shrink-0"
+                            title="Remover"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </Permissao>
                       </li>
                     ))}
                   </ul>

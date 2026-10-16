@@ -25,6 +25,7 @@ import {
 import { apiBase } from '../../lib/apiBase';
 import MembroBusca, { telefoneDoMembro, type MembroOpcao } from '../system/MembroBusca';
 import { cultoApi, ROTULO_PAPEL, type Papel, type Posicao } from './cultoApi';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // O dirigente vem primeiro: é a pergunta que se faz ao clicar numa igreja.
 const PAPEIS_DA_IGREJA: Papel[] = [
@@ -432,13 +433,15 @@ export default function PosicoesCulto() {
                             >
                               <Power className="w-3.5 h-3.5" />
                             </button>
-                            <button
-                              onClick={() => void remover(p.id)}
-                              title="Remover"
-                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <Permissao chave="culto_posicoes.posicoes_culto.remover" rotulo="Remover — Posicoes Culto" herda="culto_posicoes.view">
+                              <button
+                                onClick={() => void remover(p.id)}
+                                title="Remover"
+                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </Permissao>
                           </div>
                         </div>
                       ))}
@@ -778,17 +781,19 @@ function ModalAnexarUsuario({
           </div>
 
           {!criando ? (
-            <button
-              type="button"
-              onClick={() => {
-                setErro(null);
-                setCriando(true);
-              }}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              Não está na lista? Criar a partir de um membro
-            </button>
+            <Permissao chave="culto_posicoes.posicoes_culto.nao_esta_na_lista_criar_a_partir_de_um_m" rotulo="Não está na lista? Criar a partir de um membro — Posicoes Culto" herda="culto_posicoes.view">
+              <button
+                type="button"
+                onClick={() => {
+                  setErro(null);
+                  setCriando(true);
+                }}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" />
+                Não está na lista? Criar a partir de um membro
+              </button>
+            </Permissao>
           ) : (
             <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
               <div className="flex items-center justify-between">
@@ -863,15 +868,17 @@ function ModalAnexarUsuario({
                       className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     />
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => void criarEAnexar()}
-                    disabled={salvandoNovo}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
-                  >
-                    {salvandoNovo ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                    Criar usuário e anexar como {ROTULO_PAPEL[papel]}
-                  </button>
+                  <Permissao chave="culto_posicoes.posicoes_culto.criar_usuario_e_anexar_como" rotulo="Criar usuário e anexar como — Posicoes Culto" herda="culto_posicoes.view">
+                    <button
+                      type="button"
+                      onClick={() => void criarEAnexar()}
+                      disabled={salvandoNovo}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
+                    >
+                      {salvandoNovo ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                      Criar usuário e anexar como {ROTULO_PAPEL[papel]}
+                    </button>
+                  </Permissao>
                 </>
               )}
             </div>

@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { apiBase } from '../../lib/apiBase';
 import { printAssetLabels } from './printAssetLabels';
 import { locationLabel } from '../../lib/assetLocationOptions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const STATUS_LABELS: Record<string, string> = { active: 'Ativo', baixado: 'Baixado', manutencao: 'Manutenção' };
 
@@ -57,9 +58,11 @@ export function AssetDetailModal({ assetId, onClose, onEdit }: Props) {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {asset && onEdit && (
-              <button onClick={() => onEdit(assetId)} className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-                <Edit className="w-4 h-4" /> Editar
-              </button>
+              <Permissao chave="assets.asset_detail_modal.editar" rotulo="Editar — Asset Detail Modal" herda="assets.view">
+                <button onClick={() => onEdit(assetId)} className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                  <Edit className="w-4 h-4" /> Editar
+                </button>
+              </Permissao>
             )}
             <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><X className="w-5 h-5" /></button>
           </div>
@@ -93,12 +96,14 @@ export function AssetDetailModal({ assetId, onClose, onEdit }: Props) {
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center h-fit">
                 <p className="text-xs font-semibold uppercase text-slate-500 mb-3 flex items-center justify-center gap-1"><QrCode className="w-3.5 h-3.5" /> QR de identificação</p>
                 {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="mx-auto w-40 h-40" />}
-                <button
-                  onClick={() => printAssetLabels({ preset: 'zebra-50x25', assets: [asset] })}
-                  className="mt-4 w-full px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900"
-                >
-                  Imprimir etiqueta
-                </button>
+                <Permissao chave="assets.asset_detail_modal.imprimir_etiqueta" rotulo="Imprimir etiqueta — Asset Detail Modal" herda="assets.view">
+                  <button
+                    onClick={() => printAssetLabels({ preset: 'zebra-50x25', assets: [asset] })}
+                    className="mt-4 w-full px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900"
+                  >
+                    Imprimir etiqueta
+                  </button>
+                </Permissao>
               </div>
             </div>
           )}

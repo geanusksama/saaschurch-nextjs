@@ -21,6 +21,7 @@ function perfilAtual(): string {
 }
 
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Church = { id: string; name: string; code?: string | null; regional?: { id: string; name: string } | null };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -195,27 +196,33 @@ export default function AssetsList() {
           >
             <ClipboardList className="w-4 h-4" /> Iniciar Inventário
           </button>
-          <button
-            onClick={() => setShowPrint(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium transition-colors"
-          >
-            <Printer className="w-4 h-4" /> Imprimir Etiquetas {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
-          </button>
-          {canCreate('assets') && (
+          <Permissao chave="assets.assets_list.imprimir_etiquetas" rotulo="Imprimir Etiquetas — Assets List" herda="assets.view">
             <button
-              onClick={() => setShowImport(true)}
+              onClick={() => setShowPrint(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium transition-colors"
             >
-              <Upload className="w-4 h-4" /> Importar CSV
+              <Printer className="w-4 h-4" /> Imprimir Etiquetas {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
             </button>
+          </Permissao>
+          {canCreate('assets') && (
+            <Permissao chave="assets.assets_list.importar_csv" rotulo="Importar CSV — Assets List" herda="assets.create">
+              <button
+                onClick={() => setShowImport(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium transition-colors"
+              >
+                <Upload className="w-4 h-4" /> Importar CSV
+              </button>
+            </Permissao>
           )}
           {canCreate('assets') && (
-            <button
-              onClick={() => setFormDrawer({ open: true, assetId: null })}
-              className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Novo Bem
-            </button>
+            <Permissao chave="assets.assets_list.novo_bem" rotulo="Novo Bem — Assets List" herda="assets.create">
+              <button
+                onClick={() => setFormDrawer({ open: true, assetId: null })}
+                className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Novo Bem
+              </button>
+            </Permissao>
           )}
         </div>
       </div>
@@ -338,14 +345,18 @@ export default function AssetsList() {
                         <Eye className="w-4 h-4 text-slate-500" />
                       </button>
                       {canEdit('assets') && (
-                        <button onClick={() => setFormDrawer({ open: true, assetId: asset.id })} className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors" title="Editar">
-                          <Edit className="w-4 h-4 text-blue-600" />
-                        </button>
+                        <Permissao chave="assets.assets_list.editar" rotulo="Editar — Assets List" herda="assets.edit">
+                          <button onClick={() => setFormDrawer({ open: true, assetId: asset.id })} className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors" title="Editar">
+                            <Edit className="w-4 h-4 text-blue-600" />
+                          </button>
+                        </Permissao>
                       )}
                       {canDelete('assets') && (
-                        <button onClick={() => setDeleteTarget(asset)} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors" title="Excluir">
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </button>
+                        <Permissao chave="assets.assets_list.excluir" rotulo="Excluir — Assets List" herda="assets.delete">
+                          <button onClick={() => setDeleteTarget(asset)} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors" title="Excluir">
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </button>
+                        </Permissao>
                       )}
                     </div>
                   </td>

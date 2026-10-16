@@ -16,6 +16,7 @@ import { apiBase } from '../../lib/apiBase';
 import { ConfirmarTituloReadmissao } from '../ecclesiastical/ConfirmarTituloReadmissao';
 import { ehServicoDeReadmissao } from '../../lib/readmissaoTitulo';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function authFetch(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem("mrm_token");
@@ -526,25 +527,29 @@ export function MemberProfile() {
                     <Star className="w-4 h-4" />
                     Favoritar
                   </button>
-                  <button
-                    onClick={() => setShowEditDrawer(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Editar
-                  </button>
-                  {canManageHistory && (
+                  <Permissao chave="members.member_profile.editar" rotulo="Editar — Member Profile" herda="members.view">
                     <button
-                      onClick={() => setShowOccModal(true)}
-                      // `bg-green-600` é só a rede de segurança: o tema o repinta com a
-                      // cor da igreja, e `.btn-acao-verde` (em globals.css) vence os dois
-                      // e deixa verde. Sem ela o botão continua visível, só não verde —
-                      // em vez de virar texto branco sobre fundo transparente.
-                      className="btn-acao-verde inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium transition-colors"
+                      onClick={() => setShowEditDrawer(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm transition-colors"
                     >
-                      <Plus className="w-4 h-4" />
-                      Nova Ocorrência
+                      <Edit className="w-4 h-4" />
+                      Editar
                     </button>
+                  </Permissao>
+                  {canManageHistory && (
+                    <Permissao chave="members.member_profile.nova_ocorrencia" rotulo="Nova Ocorrência — Member Profile" herda="members.view">
+                      <button
+                        onClick={() => setShowOccModal(true)}
+                        // `bg-green-600` é só a rede de segurança: o tema o repinta com a
+                        // cor da igreja, e `.btn-acao-verde` (em globals.css) vence os dois
+                        // e deixa verde. Sem ela o botão continua visível, só não verde —
+                        // em vez de virar texto branco sobre fundo transparente.
+                        className="btn-acao-verde inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Nova Ocorrência
+                      </button>
+                    </Permissao>
                   )}
                 </div>
               </div>
@@ -895,11 +900,13 @@ export function MemberProfile() {
             <p className="text-sm text-slate-600 mb-5">Tem certeza que deseja excluir este registro do histórico? Esta ação não pode ser desfeita.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDeleteHistId(null)} className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
-              <button onClick={() => {
-                authFetch(`${apiBase}/members/${id}/event-history/${deleteHistId}`, { method: "DELETE" })
-                  .then(() => { reloadHistory(); setDeleteHistId(null); })
-                  .catch(() => setDeleteHistId(null));
-              }} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors">Excluir</button>
+              <Permissao chave="members.member_profile.excluir" rotulo="Excluir — Member Profile" herda="members.view">
+                <button onClick={() => {
+                  authFetch(`${apiBase}/members/${id}/event-history/${deleteHistId}`, { method: "DELETE" })
+                    .then(() => { reloadHistory(); setDeleteHistId(null); })
+                    .catch(() => setDeleteHistId(null));
+                }} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors">Excluir</button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -920,15 +927,17 @@ export function MemberProfile() {
             />
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => { setEditHistRow(null); setEditHistNotes(""); }} disabled={savingHist} className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
-              <button disabled={savingHist} onClick={() => {
-                setSavingHist(true);
-                authFetch(`${apiBase}/members/${id}/event-history/${editHistRow.id}`, {
-                  method: "PATCH",
-                  body: JSON.stringify({ notes: editHistNotes }),
-                }).then(() => { reloadHistory(); setEditHistRow(null); setEditHistNotes(""); })
-                  .catch(() => {})
-                  .finally(() => setSavingHist(false));
-              }} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700 transition-colors disabled:opacity-60">{savingHist ? "Salvando..." : "Salvar"}</button>
+              <Permissao chave="members.member_profile.salvar" rotulo="Salvar — Member Profile" herda="members.view">
+                <button disabled={savingHist} onClick={() => {
+                  setSavingHist(true);
+                  authFetch(`${apiBase}/members/${id}/event-history/${editHistRow.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ notes: editHistNotes }),
+                  }).then(() => { reloadHistory(); setEditHistRow(null); setEditHistNotes(""); })
+                    .catch(() => {})
+                    .finally(() => setSavingHist(false));
+                }} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700 transition-colors disabled:opacity-60">{savingHist ? "Salvando..." : "Salvar"}</button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -1196,13 +1205,15 @@ function FamiliaTab({ memberId, canManage }: { memberId: string; canManage: bool
         <p className="text-xs text-slate-400">
           Filhos, cônjuge e demais familiares. O familiar não precisa ter cadastro de membro.
         </p>
-        <button
-          onClick={openCreate}
-          disabled={!canManage}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40"
-        >
-          <Plus className="w-4 h-4" /> Adicionar familiar
-        </button>
+        <Permissao chave="members.member_profile.adicionar_familiar" rotulo="Adicionar familiar — Member Profile" herda="members.view">
+          <button
+            onClick={openCreate}
+            disabled={!canManage}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40"
+          >
+            <Plus className="w-4 h-4" /> Adicionar familiar
+          </button>
+        </Permissao>
       </div>
 
       {loading ? (
@@ -1305,13 +1316,15 @@ function FamiliaTab({ memberId, canManage }: { memberId: string; canManage: bool
                 {form.relatedMemberId ? (
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm text-slate-700">{linkedLabel || 'Membro vinculado'}</span>
-                    <button
-                      type="button"
-                      onClick={() => { setForm((p) => ({ ...p, relatedMemberId: '' })); setLinkedLabel(''); }}
-                      className="text-xs font-medium text-red-600 hover:underline"
-                    >
-                      Remover vínculo
-                    </button>
+                    <Permissao chave="members.member_profile.remover_vinculo" rotulo="Remover vínculo — Member Profile" herda="members.view">
+                      <button
+                        type="button"
+                        onClick={() => { setForm((p) => ({ ...p, relatedMemberId: '' })); setLinkedLabel(''); }}
+                        className="text-xs font-medium text-red-600 hover:underline"
+                      >
+                        Remover vínculo
+                      </button>
+                    </Permissao>
                   </div>
                 ) : (
                   <>
@@ -1396,9 +1409,11 @@ function FamiliaTab({ memberId, canManage }: { memberId: string; canManage: bool
                 <button type="button" onClick={() => setModalOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                   Cancelar
                 </button>
-                <button type="submit" disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
+                <Permissao chave="members.member_profile.salvar" rotulo="Salvar — Member Profile" herda="members.view">
+                  <button type="submit" disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </Permissao>
               </div>
             </form>
           </div>
@@ -1515,13 +1530,15 @@ function OutrasIgrejasTab({
         <p className="text-xs text-slate-400">
           Igrejas onde o membro passou antes de entrar nesta: título de lá, batismo, consagração, pastor e funções.
         </p>
-        <button
-          onClick={openCreate}
-          disabled={!canManage}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40"
-        >
-          <Plus className="w-4 h-4" /> Adicionar histórico em outra igreja
-        </button>
+        <Permissao chave="members.member_profile.adicionar_historico_em_outra_igreja" rotulo="Adicionar histórico em outra igreja — Member Profile" herda="members.view">
+          <button
+            onClick={openCreate}
+            disabled={!canManage}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40"
+          >
+            <Plus className="w-4 h-4" /> Adicionar histórico em outra igreja
+          </button>
+        </Permissao>
       </div>
 
       {loading ? (
@@ -1616,9 +1633,11 @@ function OutrasIgrejasTab({
                 <button type="button" onClick={() => setModalOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                   Cancelar
                 </button>
-                <button type="submit" disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
-                  {saving ? "Salvando..." : "Salvar"}
-                </button>
+                <Permissao chave="members.member_profile.salvar" rotulo="Salvar — Member Profile" herda="members.view">
+                  <button type="submit" disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
+                    {saving ? "Salvando..." : "Salvar"}
+                  </button>
+                </Permissao>
               </div>
             </form>
           </div>
@@ -1832,13 +1851,15 @@ function FuncoesTab({
         <p className="text-xs text-slate-400">
           Funções exercidas pelo membro. Também aparecem na aba Funções da igreja.
         </p>
-        <button
-          onClick={openCreate}
-          disabled={!canManage}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <Plus className="w-4 h-4" /> Nova função
-        </button>
+        <Permissao chave="members.member_profile.nova_funcao" rotulo="Nova função — Member Profile" herda="members.view">
+          <button
+            onClick={openCreate}
+            disabled={!canManage}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Plus className="w-4 h-4" /> Nova função
+          </button>
+        </Permissao>
       </div>
 
       {loading ? (
@@ -1991,13 +2012,15 @@ function FuncoesTab({
                 >
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-                >
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
+                <Permissao chave="members.member_profile.salvar" rotulo="Salvar — Member Profile" herda="members.view">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+                  >
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </Permissao>
               </div>
             </form>
           </div>
@@ -2452,13 +2475,15 @@ function OccurrenceModal({
 
         <div className="flex gap-3 mt-5">
           <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {saving ? "Executando..." : "Executar Ocorrência Rápida"}
-          </button>
+          <Permissao chave="members.member_profile.executar_ocorrencia_rapida" rotulo="Executar Ocorrência Rápida — Member Profile" herda="members.view">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {saving ? "Executando..." : "Executar Ocorrência Rápida"}
+            </button>
+          </Permissao>
         </div>
       </div>
 

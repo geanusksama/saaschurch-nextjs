@@ -43,6 +43,7 @@ import {
 import { getCurrentChurchId } from '../../lib/pastoralKanbanService';
 import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') ?? '' : '';
@@ -361,14 +362,16 @@ export default function JourneyMatrixEditor() {
           preenchidas para os três grupos — Novo Convertido, Reconciliado e Vindo de Outra Igreja —
           e pode ser editado etapa por etapa depois.
         </p>
-        <button
-          onClick={createJourney}
-          disabled={creating}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
-        >
-          {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Criar cronograma padrão
-        </button>
+        <Permissao chave="pastoral_visits.journey_matrix_editor.criar_cronograma_padrao" rotulo="Criar cronograma padrão — Journey Matrix Editor" herda="pastoral_visits.view">
+          <button
+            onClick={createJourney}
+            disabled={creating}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
+          >
+            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Criar cronograma padrão
+          </button>
+        </Permissao>
       </div>
     );
   }
@@ -422,14 +425,16 @@ export default function JourneyMatrixEditor() {
         >
           <RefreshCw className="w-4 h-4 text-slate-400" />
         </button>
-        <button
-          onClick={createJourney}
-          disabled={creating}
-          className="h-9 px-3 rounded-lg bg-slate-800 text-white text-sm font-medium inline-flex items-center gap-2 hover:bg-slate-700 disabled:opacity-50"
-        >
-          <Plus className="w-4 h-4" />
-          Novo cronograma
-        </button>
+        <Permissao chave="pastoral_visits.journey_matrix_editor.novo_cronograma" rotulo="Novo cronograma — Journey Matrix Editor" herda="pastoral_visits.view">
+          <button
+            onClick={createJourney}
+            disabled={creating}
+            className="h-9 px-3 rounded-lg bg-slate-800 text-white text-sm font-medium inline-flex items-center gap-2 hover:bg-slate-700 disabled:opacity-50"
+          >
+            <Plus className="w-4 h-4" />
+            Novo cronograma
+          </button>
+        </Permissao>
       </div>
 
       {/* instâncias orquestradas + ritmo — tudo numa faixa só, para não
@@ -572,27 +577,29 @@ export default function JourneyMatrixEditor() {
               />
             </div>
 
-            <button
-              onClick={() =>
-                patchJourney({
-                  instanceIds,
-                  intervalSeconds: journey.interval_seconds,
-                  windowStart: journey.window_start,
-                  windowEnd: journey.window_end,
-                  dailyLimitPerInstance: journey.daily_limit_per_instance,
-                  maxPerPersonPerDay: journey.max_per_person_per_day,
-                  autoEnroll: journey.auto_enroll,
-                  autoEnrollColumnKey: journey.auto_enroll_column_key,
-                  stopOnDone: journey.stop_on_done,
-                  aiPolish: journey.ai_polish,
-                  aiAgentId: journey.ai_agent_id,
-                })
-              }
-              className="h-9 px-4 rounded-lg bg-violet-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-violet-700 ml-auto"
-            >
-              <Save className="w-4 h-4" />
-              Salvar
-            </button>
+            <Permissao chave="pastoral_visits.journey_matrix_editor.salvar" rotulo="Salvar — Journey Matrix Editor" herda="pastoral_visits.view">
+              <button
+                onClick={() =>
+                  patchJourney({
+                    instanceIds,
+                    intervalSeconds: journey.interval_seconds,
+                    windowStart: journey.window_start,
+                    windowEnd: journey.window_end,
+                    dailyLimitPerInstance: journey.daily_limit_per_instance,
+                    maxPerPersonPerDay: journey.max_per_person_per_day,
+                    autoEnroll: journey.auto_enroll,
+                    autoEnrollColumnKey: journey.auto_enroll_column_key,
+                    stopOnDone: journey.stop_on_done,
+                    aiPolish: journey.ai_polish,
+                    aiAgentId: journey.ai_agent_id,
+                  })
+                }
+                className="h-9 px-4 rounded-lg bg-violet-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-violet-700 ml-auto"
+              >
+                <Save className="w-4 h-4" />
+                Salvar
+              </button>
+            </Permissao>
           </div>
 
           {/* automação: varredura da coluna, encerramento e IA */}
@@ -691,13 +698,15 @@ export default function JourneyMatrixEditor() {
           <span className="font-semibold text-slate-700">
             {steps.length} etapa{steps.length === 1 ? '' : 's'} · 3 grupos por etapa
           </span>
-          <button
-            onClick={addStep}
-            className="ml-auto h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-slate-50"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Nova etapa
-          </button>
+          <Permissao chave="pastoral_visits.journey_matrix_editor.nova_etapa" rotulo="Nova etapa — Journey Matrix Editor" herda="pastoral_visits.view">
+            <button
+              onClick={addStep}
+              className="ml-auto h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-slate-50"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Nova etapa
+            </button>
+          </Permissao>
         </div>
 
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
@@ -829,25 +838,29 @@ export default function JourneyMatrixEditor() {
                           />
                           Ativa
                         </label>
-                        <button
-                          onClick={() => setConfirmDeleteStep(step)}
-                          title="Excluir etapa"
-                          className="h-9 w-9 rounded-lg border border-red-200 text-red-600 inline-flex items-center justify-center hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => saveStep(step)}
-                          disabled={savingStep === step.id}
-                          className="h-9 px-4 rounded-lg bg-violet-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-violet-700 disabled:opacity-50"
-                        >
-                          {savingStep === step.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Save className="w-3.5 h-3.5" />
-                          )}
-                          Salvar
-                        </button>
+                        <Permissao chave="pastoral_visits.journey_matrix_editor.excluir_etapa" rotulo="Excluir etapa — Journey Matrix Editor" herda="pastoral_visits.view">
+                          <button
+                            onClick={() => setConfirmDeleteStep(step)}
+                            title="Excluir etapa"
+                            className="h-9 w-9 rounded-lg border border-red-200 text-red-600 inline-flex items-center justify-center hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </Permissao>
+                        <Permissao chave="pastoral_visits.journey_matrix_editor.salvar" rotulo="Salvar — Journey Matrix Editor" herda="pastoral_visits.view">
+                          <button
+                            onClick={() => saveStep(step)}
+                            disabled={savingStep === step.id}
+                            className="h-9 px-4 rounded-lg bg-violet-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-violet-700 disabled:opacity-50"
+                          >
+                            {savingStep === step.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Save className="w-3.5 h-3.5" />
+                            )}
+                            Salvar
+                          </button>
+                        </Permissao>
                       </div>
 
                       <p className="text-[11px] text-slate-400 -mt-1">

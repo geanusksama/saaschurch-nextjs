@@ -17,6 +17,7 @@ import { MUNDIAL_CAMPOS, RECURSOS, RECURSOS_CONFIG } from '../../lib/mobile/defi
 import { api, enviarImagem, perfilAtual } from './api';
 import { MobileRecurso } from './MobileRecurso';
 import { Abas, CabecalhoMobile } from './MobileTela';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -95,10 +96,12 @@ export default function MobileConfig() {
                   {estado.sedes.map((s) => <option key={s.id} value={s.id}>{s.nome}{s.cidade ? ` — ${s.cidade}` : ''}</option>)}
                 </select>
                 {podeEditar && (
-                  <button onClick={() => salvar('sede')} disabled={salvando === 'sede'}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold">
-                    {salvando === 'sede' && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
-                  </button>
+                  <Permissao chave="mobile_config.mobile_config.salvar" rotulo="Salvar — Mobile Config" herda="mobile_config.edit">
+                    <button onClick={() => salvar('sede')} disabled={salvando === 'sede'}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold">
+                      {salvando === 'sede' && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+                    </button>
+                  </Permissao>
                 )}
               </div>
             )}
@@ -161,10 +164,12 @@ export default function MobileConfig() {
                 </div>
               ))}
               {mundialEditavel && (
-                <button onClick={() => salvar('mundial')} disabled={salvando === 'mundial'}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold">
-                  {salvando === 'mundial' && <Loader2 className="w-4 h-4 animate-spin" />} Salvar Igreja Mundial
-                </button>
+                <Permissao chave="mobile_config.mobile_config.salvar_igreja_mundial" rotulo="Salvar Igreja Mundial — Mobile Config" herda="mobile_config.view">
+                  <button onClick={() => salvar('mundial')} disabled={salvando === 'mundial'}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold">
+                    {salvando === 'mundial' && <Loader2 className="w-4 h-4 animate-spin" />} Salvar Igreja Mundial
+                  </button>
+                </Permissao>
               )}
             </section>
           ) : !estado.mundial && aba.startsWith('mundial-') ? (

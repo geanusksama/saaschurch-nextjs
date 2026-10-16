@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
@@ -304,13 +305,15 @@ export function CredorFormModal({
             {membroSelecionado ? (
               <div className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2">
                 <span className="text-sm">{membroSelecionado.fullName}</span>
-                <button
-                  type="button"
-                  onClick={() => { setMembroSelecionado(null); setForm({ ...form, memberId: '' }); }}
-                  className="text-xs font-semibold text-red-600"
-                >
-                  Remover
-                </button>
+                <Permissao chave="contas_pagar.credor_form_modal.remover" rotulo="Remover — Credor Form Modal" herda="contas_pagar.view">
+                  <button
+                    type="button"
+                    onClick={() => { setMembroSelecionado(null); setForm({ ...form, memberId: '' }); }}
+                    className="text-xs font-semibold text-red-600"
+                  >
+                    Remover
+                  </button>
+                </Permissao>
               </div>
             ) : (
               <>
@@ -375,9 +378,11 @@ export function CredorFormModal({
             <button onClick={onFechar} className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">
               Cancelar
             </button>
-            <button onClick={salvar} disabled={salvando} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50">
-              {salvando ? 'Salvando...' : 'Cadastrar credor'}
-            </button>
+            <Permissao chave="contas_pagar.credor_form_modal.cadastrar_credor" rotulo="Cadastrar credor — Credor Form Modal" herda="contas_pagar.view">
+              <button onClick={salvar} disabled={salvando} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50">
+                {salvando ? 'Salvando...' : 'Cadastrar credor'}
+              </button>
+            </Permissao>
           </div>
         </div>
       </div>

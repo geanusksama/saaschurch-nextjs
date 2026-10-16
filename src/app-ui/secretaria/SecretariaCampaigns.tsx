@@ -30,6 +30,7 @@ import { AttachAudienceModal } from './AttachAudienceModal';
 import { CampaignBuilderModal, EMPTY_DRAFT, type CampaignDraft } from './CampaignBuilderModal';
 import { CampaignResponseDrawer } from './CampaignResponseDrawer';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Campaign {
   id: string;
@@ -420,12 +421,14 @@ export default function SecretariaCampaigns() {
                   const inst = instancias.find(i => i.id === atual.instance_id);
                   if (!atual.instance_id) {
                     return (
-                      <button
-                        onClick={() => editar(atual)}
-                        className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300"
-                      >
-                        <TriangleAlert className="h-3 w-3" /> Sem instância de WhatsApp — escolher
-                      </button>
+                      <Permissao chave="secretaria_campanhas.secretaria_campaigns.sem_instancia_de_whatsapp_escolher" rotulo="Sem instância de WhatsApp — escolher — Secretaria Campaigns" herda="secretaria_campanhas.view">
+                        <button
+                          onClick={() => editar(atual)}
+                          className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300"
+                        >
+                          <TriangleAlert className="h-3 w-3" /> Sem instância de WhatsApp — escolher
+                        </button>
+                      </Permissao>
                     );
                   }
                   return (
@@ -457,35 +460,41 @@ export default function SecretariaCampaigns() {
               >
                 <UserPlus className="h-4 w-4" /> Anexar pessoas
               </button>
-              <button
-                onClick={enviar}
-                disabled={enviando || !pendentesEnvio}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {enviando
-                  ? `Enviando ${progresso?.feito ?? 0}/${progresso?.total ?? 0}`
-                  : `Enviar (${pendentesEnvio})`}
-              </button>
-              <button
-                onClick={enviarApp}
-                disabled={enviandoApp || !pendentesApp || atual.status !== 'active'}
-                title={
-                  atual.status !== 'active'
-                    ? 'Só campanha ativa pode ser enviada'
-                    : 'Alerta no sino do App Igreja de quem tem conta no app, com o link desta pessoa'
-                }
-                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 dark:bg-slate-600"
-              >
-                {enviandoApp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
-                {`Enviar pelo app (${pendentesApp})`}
-              </button>
-              <button
-                onClick={() => editar(atual)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-              >
-                <Pencil className="h-4 w-4" /> Editar
-              </button>
+              <Permissao chave="secretaria_campanhas.secretaria_campaigns.enviar" rotulo="Enviar — Secretaria Campaigns" herda="secretaria_campanhas.view">
+                <button
+                  onClick={enviar}
+                  disabled={enviando || !pendentesEnvio}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {enviando
+                    ? `Enviando ${progresso?.feito ?? 0}/${progresso?.total ?? 0}`
+                    : `Enviar (${pendentesEnvio})`}
+                </button>
+              </Permissao>
+              <Permissao chave="secretaria_campanhas.secretaria_campaigns.enviar_app" rotulo="Enviar (app) — Secretaria Campaigns" herda="secretaria_campanhas.view">
+                <button
+                  onClick={enviarApp}
+                  disabled={enviandoApp || !pendentesApp || atual.status !== 'active'}
+                  title={
+                    atual.status !== 'active'
+                      ? 'Só campanha ativa pode ser enviada'
+                      : 'Alerta no sino do App Igreja de quem tem conta no app, com o link desta pessoa'
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 dark:bg-slate-600"
+                >
+                  {enviandoApp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
+                  {`Enviar pelo app (${pendentesApp})`}
+                </button>
+              </Permissao>
+              <Permissao chave="secretaria_campanhas.secretaria_campaigns.editar" rotulo="Editar — Secretaria Campaigns" herda="secretaria_campanhas.view">
+                <button
+                  onClick={() => editar(atual)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  <Pencil className="h-4 w-4" /> Editar
+                </button>
+              </Permissao>
               {/* Encerrar é reversível: o link volta a aceitar resposta ao reabrir.
                   As respostas já recebidas continuam lá e podem ser aprovadas
                   normalmente — encerrar fecha a entrada, não a conferência. */}
@@ -670,15 +679,17 @@ export default function SecretariaCampaigns() {
             Formulários e comunicados enviados aos membros — a aprovação atualiza o cadastro.
           </p>
         </div>
-        <button
-          onClick={() => {
-            setBuilderDraft({ ...EMPTY_DRAFT });
-            setBuilderOpen(true);
-          }}
-          className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-bold text-white"
-        >
-          <Plus className="h-4 w-4" /> Nova campanha
-        </button>
+        <Permissao chave="secretaria_campanhas.secretaria_campaigns.nova_campanha" rotulo="Nova campanha — Secretaria Campaigns" herda="secretaria_campanhas.view">
+          <button
+            onClick={() => {
+              setBuilderDraft({ ...EMPTY_DRAFT });
+              setBuilderOpen(true);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-bold text-white"
+          >
+            <Plus className="h-4 w-4" /> Nova campanha
+          </button>
+        </Permissao>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">

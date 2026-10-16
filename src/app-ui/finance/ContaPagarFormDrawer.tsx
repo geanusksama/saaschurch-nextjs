@@ -18,6 +18,7 @@ import {
 } from '../../lib/contasPagarRules';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { CredorFormModal } from './CredorFormModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
@@ -320,14 +321,16 @@ export function ContaPagarFormDrawer({
                     <option value="">Selecione...</option>
                     {credoresDisponiveis.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setCredorModalAberto(true)}
-                    title="Cadastrar novo credor"
-                    className="flex-shrink-0 rounded-lg border border-slate-200 dark:border-slate-600 p-2 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >
-                    <UserPlus className="h-4 w-4 text-rose-600" />
-                  </button>
+                  <Permissao chave="contas_pagar.conta_pagar_form_drawer.cadastrar_novo_credor" rotulo="Cadastrar novo credor — Conta Pagar Form Drawer" herda="contas_pagar.view">
+                    <button
+                      type="button"
+                      onClick={() => setCredorModalAberto(true)}
+                      title="Cadastrar novo credor"
+                      className="flex-shrink-0 rounded-lg border border-slate-200 dark:border-slate-600 p-2 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <UserPlus className="h-4 w-4 text-rose-600" />
+                    </button>
+                  </Permissao>
                 </div>
               </div>
               <div>
@@ -505,9 +508,11 @@ export function ContaPagarFormDrawer({
               <button onClick={onFechar} className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                 Cancelar
               </button>
-              <button onClick={salvar} disabled={salvando} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50">
-                {salvando ? 'Salvando...' : contaId ? 'Salvar alterações' : 'Lançar conta'}
-              </button>
+              <Permissao chave="contas_pagar.conta_pagar_form_drawer.salvar_alteracoes_lancar_conta" rotulo="Salvar alterações Lançar conta — Conta Pagar Form Drawer" herda="contas_pagar.view">
+                <button onClick={salvar} disabled={salvando} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50">
+                  {salvando ? 'Salvando...' : contaId ? 'Salvar alterações' : 'Lançar conta'}
+                </button>
+              </Permissao>
             </div>
           </div>
         )}

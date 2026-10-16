@@ -5,6 +5,7 @@ import { Users } from 'lucide-react';
 import { ArvorePermissoes } from './ArvorePermissoes';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const PROFILE_LABELS: Record<string, string> = {
   master: 'Master',
@@ -182,21 +183,25 @@ export default function UserPermissions() {
             <Clipboard className="w-3.5 h-3.5" />
             Colar
           </button>
-          <button
-            onClick={resetAll}
-            className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            title="Remover todas as sobrescritas (usar padrões do perfil)"
-          >
-            Redefinir
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
-          >
-            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Salvando...' : 'Salvar'}
-          </button>
+          <Permissao chave="system_users.user_permissions.remover_todas_as_sobrescritas_usar_padro" rotulo="Remover todas as sobrescritas (usar padrões do perfil) — User Permissions" herda="system_users.view">
+            <button
+              onClick={resetAll}
+              className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              title="Remover todas as sobrescritas (usar padrões do perfil)"
+            >
+              Redefinir
+            </button>
+          </Permissao>
+          <Permissao chave="system_users.user_permissions.salvar" rotulo="Salvar — User Permissions" herda="system_users.view">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </Permissao>
         </div>
       </div>
 

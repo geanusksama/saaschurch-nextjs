@@ -23,6 +23,7 @@ import {
 } from '../../lib/pastoralKanbanService';
 import { supabase } from '../../lib/supabaseClient';
 import { AttachJourneyModal } from './AttachJourneyModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const PERSON_PROFILE_KEYS = Object.keys(PERSON_PROFILE_LABELS) as PersonProfile[];
 
@@ -299,14 +300,16 @@ export function PastoralAttendanceNew({
           <button onClick={onClose} className="px-5 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
             Cancelar
           </button>
-          <button
-            onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending || (!selectedMember && !form.visitorName.trim())}
-            className="flex items-center gap-1.5 px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
-          >
-            {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Criar Atendimento
-          </button>
+          <Permissao chave="pastoral_visits.pastoral_attendance_new.criar_atendimento" rotulo="Criar Atendimento — Pastoral Attendance New" herda="pastoral_visits.view">
+            <button
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending || (!selectedMember && !form.visitorName.trim())}
+              className="flex items-center gap-1.5 px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
+            >
+              {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Criar Atendimento
+            </button>
+          </Permissao>
         </div>
       </div>
 

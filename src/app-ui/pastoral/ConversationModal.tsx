@@ -39,6 +39,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') ?? '' : '';
@@ -693,13 +694,15 @@ export default function ConversationModal({
                         >
                           Usar no campo de envio
                         </button>
-                        <button
-                          onClick={sugerir}
-                          disabled={suggesting}
-                          className="h-8 px-3 rounded-lg border border-violet-200 text-violet-700 text-xs font-semibold hover:bg-violet-100 disabled:opacity-50"
-                        >
-                          Gerar outra
-                        </button>
+                        <Permissao chave="pastoral_visits.conversation_modal.gerar_outra" rotulo="Gerar outra — Conversation Modal" herda="pastoral_visits.view">
+                          <button
+                            onClick={sugerir}
+                            disabled={suggesting}
+                            className="h-8 px-3 rounded-lg border border-violet-200 text-violet-700 text-xs font-semibold hover:bg-violet-100 disabled:opacity-50"
+                          >
+                            Gerar outra
+                          </button>
+                        </Permissao>
                       </div>
                     </div>
                   )}
@@ -721,14 +724,16 @@ export default function ConversationModal({
                 className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-200"
                 autoFocus
               />
-              <button
-                onClick={enviar}
-                disabled={sending || !text.trim()}
-                className="h-10 px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-emerald-500 disabled:opacity-50"
-              >
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Enviar
-              </button>
+              <Permissao chave="pastoral_visits.conversation_modal.enviar" rotulo="Enviar — Conversation Modal" herda="pastoral_visits.view">
+                <button
+                  onClick={enviar}
+                  disabled={sending || !text.trim()}
+                  className="h-10 px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-emerald-500 disabled:opacity-50"
+                >
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Enviar
+                </button>
+              </Permissao>
               </div>
             </div>
           )}

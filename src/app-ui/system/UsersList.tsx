@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { AlertDialog, ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type PermMap = Record<string, boolean>;
 
@@ -407,14 +408,16 @@ export default function UsersList() {
                       >
                         <Edit className="w-4 h-4 text-blue-600" />
                       </Link>
-                      <button
-                        onClick={() => handleDelete(user.id)}
-                        disabled={deletingId === user.id}
-                        className="p-1.5 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
+                      <Permissao chave="system_users.users_list.excluir" rotulo="Excluir — Users List" herda="system_users.view">
+                        <button
+                          onClick={() => handleDelete(user.id)}
+                          disabled={deletingId === user.id}
+                          className="p-1.5 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      </Permissao>
                     </div>
                   </td>
                 </tr>
@@ -553,13 +556,15 @@ export default function UsersList() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={handleResetPassword}
-                disabled={savingPassword || newPassword.length < 6}
-                className="px-4 py-2 text-sm font-medium text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {savingPassword ? 'Salvando...' : 'Salvar Nova Senha'}
-              </button>
+              <Permissao chave="system_users.users_list.salvar_nova_senha" rotulo="Salvar Nova Senha — Users List" herda="system_users.view">
+                <button
+                  onClick={handleResetPassword}
+                  disabled={savingPassword || newPassword.length < 6}
+                  className="px-4 py-2 text-sm font-medium text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {savingPassword ? 'Salvando...' : 'Salvar Nova Senha'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

@@ -70,6 +70,7 @@ import { LeaderReportModal } from './churches/LeaderReportModal';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { buildAddressLabel, buildRouteEmbedUrl, buildRouteLink, formatKm, hasCoords, haversineKm } from '../../lib/geo';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const getImageUrl = (photoUrl?: string) => {
   if (!photoUrl) return '';
@@ -2071,22 +2072,26 @@ export function Churches() {
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <button
-              type="button"
-              onClick={() => setPrintModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            >
-              <Printer className="h-4 w-4" />
-              Imprimir
-            </button>
-            <button
-              type="button"
-              onClick={openNewChurch}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
-            >
-              <Plus className="h-5 w-5" />
-              Nova Igreja
-            </button>
+            <Permissao chave="churches.churches.imprimir" rotulo="Imprimir — Churches" herda="churches.view">
+              <button
+                type="button"
+                onClick={() => setPrintModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+              >
+                <Printer className="h-4 w-4" />
+                Imprimir
+              </button>
+            </Permissao>
+            <Permissao chave="churches.churches.nova_igreja" rotulo="Nova Igreja — Churches" herda="churches.view">
+              <button
+                type="button"
+                onClick={openNewChurch}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
+              >
+                <Plus className="h-5 w-5" />
+                Nova Igreja
+              </button>
+            </Permissao>
           </div>
         </div>
 
@@ -2423,22 +2428,26 @@ export function Churches() {
                         // linha junto e abriria o cadastro por cima do diálogo.
                         <TableCell className="px-3 py-3 text-right" onClick={(event) => event.stopPropagation()}>
                           <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openChurchDetail(church.id)}
-                              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                              Editar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteChurch(church)}
-                              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Excluir
-                            </button>
+                            <Permissao chave="churches.churches.editar" rotulo="Editar — Churches" herda="churches.view">
+                              <button
+                                type="button"
+                                onClick={() => openChurchDetail(church.id)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Editar
+                              </button>
+                            </Permissao>
+                            <Permissao chave="churches.churches.excluir" rotulo="Excluir — Churches" herda="churches.view">
+                              <button
+                                type="button"
+                                onClick={() => deleteChurch(church)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Excluir
+                              </button>
+                            </Permissao>
                           </div>
                         </TableCell>
                       ) : null}
@@ -2506,14 +2515,16 @@ export function Churches() {
       title={form.id ? 'Dados Principais' : 'Nova Igreja'}
       description={form.id ? 'Informacoes cadastrais da igreja' : 'Cadastro inicial simplificado para abrir a igreja dentro do campo atual.'}
       actions={
-        <button
-          type="button"
-          onClick={saveChurch}
-          disabled={savingChurch}
-          className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {savingChurch ? 'Salvando...' : form.id ? 'Salvar dados' : 'Criar igreja'}
-        </button>
+        <Permissao chave="churches.churches.salvar_dados_criar_igreja" rotulo="Salvar dados Criar igreja — Churches" herda="churches.view">
+          <button
+            type="button"
+            onClick={saveChurch}
+            disabled={savingChurch}
+            className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+          >
+            {savingChurch ? 'Salvando...' : form.id ? 'Salvar dados' : 'Criar igreja'}
+          </button>
+        </Permissao>
       }
     >
       <div className="grid gap-4 xl:grid-cols-4">
@@ -2803,7 +2814,9 @@ export function Churches() {
             <SectionCard
               title="Contatos"
               description="Gerencie os contatos da igreja com ordenação, busca e navegação por páginas."
-              actions={<button type="button" onClick={() => openContactModal()} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"><Plus className="h-4 w-4" />Novo Contato</button>}
+              actions={<Permissao chave="churches.churches.novo_contato" rotulo="Novo Contato — Churches" herda="churches.view">
+                <button type="button" onClick={() => openContactModal()} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"><Plus className="h-4 w-4" />Novo Contato</button>
+              </Permissao>}
             >
               <div className="mb-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_160px]">
                 <label className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
@@ -2857,8 +2870,12 @@ export function Churches() {
                       <TableCell>{contact.notes || '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <button type="button" onClick={() => openContactModal(contact)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900">Editar</button>
-                          <button type="button" onClick={() => removeContact(contact)} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100">Excluir</button>
+                          <Permissao chave="churches.churches.editar" rotulo="Editar — Churches" herda="churches.view">
+                            <button type="button" onClick={() => openContactModal(contact)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900">Editar</button>
+                          </Permissao>
+                          <Permissao chave="churches.churches.excluir" rotulo="Excluir — Churches" herda="churches.view">
+                            <button type="button" onClick={() => removeContact(contact)} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100">Excluir</button>
+                          </Permissao>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -2894,9 +2911,11 @@ export function Churches() {
               actions={
                 form.isHost ? (
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => printHostedReport()} className={tabStyleButtonClass}>
-                      <Printer className="h-4 w-4" />Imprimir
-                    </button>
+                    <Permissao chave="churches.churches.imprimir" rotulo="Imprimir — Churches" herda="churches.view">
+                      <button type="button" onClick={() => printHostedReport()} className={tabStyleButtonClass}>
+                        <Printer className="h-4 w-4" />Imprimir
+                      </button>
+                    </Permissao>
                     <button type="button" onClick={openHostedPicker} className={`${tabStyleButtonClass} border-slate-900 bg-slate-900 text-white hover:bg-slate-800 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900`}>
                       <Link2 className="h-4 w-4" />Selecionar igrejas filhas
                     </button>
@@ -3018,7 +3037,9 @@ export function Churches() {
                 <TableHeader>
                   <TableRow className="border-slate-200">
                     <TableHead><button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'previousLeader', direction: current.key === 'previousLeader' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Anterior <ArrowUpDown className="h-3.5 w-3.5" /></button></TableHead>
-                    <TableHead><button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'newLeader', direction: current.key === 'newLeader' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Novo Dirigente <ArrowUpDown className="h-3.5 w-3.5" /></button></TableHead>
+                    <TableHead><Permissao chave="churches.churches.novo_dirigente" rotulo="Novo Dirigente — Churches" herda="churches.view">
+                      <button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'newLeader', direction: current.key === 'newLeader' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Novo Dirigente <ArrowUpDown className="h-3.5 w-3.5" /></button>
+                    </Permissao></TableHead>
                     <TableHead><button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'functionName', direction: current.key === 'functionName' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Funcao <ArrowUpDown className="h-3.5 w-3.5" /></button></TableHead>
                     <TableHead><button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'entryDate', direction: current.key === 'entryDate' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Entrada <ArrowUpDown className="h-3.5 w-3.5" /></button></TableHead>
                     <TableHead><button type="button" onClick={() => setLeaderSortConfig((current) => ({ key: 'exitDate', direction: current.key === 'exitDate' && current.direction === 'asc' ? 'desc' : 'asc' }))} className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Saída <ArrowUpDown className="h-3.5 w-3.5" /></button></TableHead>
@@ -3051,14 +3072,16 @@ export function Churches() {
                           >
                             <Printer className="h-3.5 w-3.5" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => openLeaderChangeModal(item)}
-                            className="rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"
-                            title="Editar"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
+                          <Permissao chave="churches.churches.editar" rotulo="Editar — Churches" herda="churches.view">
+                            <button
+                              type="button"
+                              onClick={() => openLeaderChangeModal(item)}
+                              className="rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"
+                              title="Editar"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          </Permissao>
                           <button
                             type="button"
                             onClick={() => setLeaderHistoryDetails(item)}
@@ -3067,14 +3090,16 @@ export function Churches() {
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => removeLeaderHistoryItem(item)}
-                            className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-700 hover:bg-red-100"
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          <Permissao chave="churches.churches.excluir" rotulo="Excluir — Churches" herda="churches.view">
+                            <button
+                              type="button"
+                              onClick={() => removeLeaderHistoryItem(item)}
+                              className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-700 hover:bg-red-100"
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </Permissao>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -3112,7 +3137,9 @@ export function Churches() {
             <SectionCard
               title="Historico de Funcoes"
               description="Membros com funções atribuídas nesta igreja, com filtro por ativos, departamento e período."
-              actions={<button type="button" onClick={() => openFunctionModal()} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"><Plus className="h-4 w-4" />Nova Funcao</button>}
+              actions={<Permissao chave="churches.churches.nova_funcao" rotulo="Nova Funcao — Churches" herda="churches.view">
+                <button type="button" onClick={() => openFunctionModal()} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"><Plus className="h-4 w-4" />Nova Funcao</button>
+              </Permissao>}
             >
               <div className="mb-5 grid gap-4 xl:grid-cols-5">
                 <label className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60 xl:col-span-2">
@@ -3165,8 +3192,12 @@ export function Churches() {
                       <TableCell>{item.notes || '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <button type="button" onClick={() => openFunctionModal(item)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900">Editar</button>
-                          <button type="button" onClick={() => removeFunctionAssignment(item)} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100">Excluir</button>
+                          <Permissao chave="churches.churches.editar" rotulo="Editar — Churches" herda="churches.view">
+                            <button type="button" onClick={() => openFunctionModal(item)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900">Editar</button>
+                          </Permissao>
+                          <Permissao chave="churches.churches.excluir" rotulo="Excluir — Churches" herda="churches.view">
+                            <button type="button" onClick={() => removeFunctionAssignment(item)} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100">Excluir</button>
+                          </Permissao>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -3713,7 +3744,9 @@ export function Churches() {
           </div>
           <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
             <button type="button" onClick={() => setLeaderModalOpen(false)} className={secondaryButtonClass}>Cancelar</button>
-            <button type="button" onClick={() => saveLeaderChange()} disabled={savingLeaderChange} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">{savingLeaderChange ? 'Salvando...' : leaderChangeForm.id ? 'Salvar alterações' : 'Trocar dirigente'}</button>
+            <Permissao chave="churches.churches.salvar_alteracoes_trocar_dirigente" rotulo="Salvar alterações Trocar dirigente — Churches" herda="churches.view">
+              <button type="button" onClick={() => saveLeaderChange()} disabled={savingLeaderChange} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">{savingLeaderChange ? 'Salvando...' : leaderChangeForm.id ? 'Salvar alterações' : 'Trocar dirigente'}</button>
+            </Permissao>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -3826,14 +3859,16 @@ export function Churches() {
           </div>
           <DialogFooter className="flex-col gap-2 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end dark:border-slate-800">
             <button type="button" onClick={() => setLeaderExitWarningOpen(false)} className={secondaryButtonClass}>Cancelar</button>
-            <button
-              type="button"
-              onClick={() => saveLeaderChange({ acceptVacancy: true })}
-              disabled={savingLeaderChange}
-              className={secondaryButtonClass}
-            >
-              {savingLeaderChange ? 'Salvando...' : 'Encerrar mesmo assim'}
-            </button>
+            <Permissao chave="churches.churches.encerrar_mesmo_assim" rotulo="Encerrar mesmo assim — Churches" herda="churches.view">
+              <button
+                type="button"
+                onClick={() => saveLeaderChange({ acceptVacancy: true })}
+                disabled={savingLeaderChange}
+                className={secondaryButtonClass}
+              >
+                {savingLeaderChange ? 'Salvando...' : 'Encerrar mesmo assim'}
+              </button>
+            </Permissao>
             <button
               type="button"
               onClick={switchToLeaderChangeFlow}
@@ -3991,9 +4026,11 @@ export function Churches() {
           </div>
           <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
             <button type="button" onClick={() => setHostedPicker((current) => ({ ...current, open: false }))} className={secondaryButtonClass}>Cancelar</button>
-            <button type="button" onClick={() => saveHostedChurches()} disabled={hostedPicker.saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
-              {hostedPicker.saving ? 'Salvando...' : 'Salvar vinculos'}
-            </button>
+            <Permissao chave="churches.churches.salvar_vinculos" rotulo="Salvar vinculos — Churches" herda="churches.view">
+              <button type="button" onClick={() => saveHostedChurches()} disabled={hostedPicker.saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                {hostedPicker.saving ? 'Salvando...' : 'Salvar vinculos'}
+              </button>
+            </Permissao>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -4232,7 +4269,9 @@ export function Churches() {
           </div>
           <DialogFooter className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
             <button type="button" onClick={() => setRentModalOpen(false)} className={secondaryButtonClass}>Cancelar</button>
-            <button type="button" onClick={saveRentRecord} disabled={savingRent} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">{savingRent ? 'Salvando...' : 'Salvar lançamento'}</button>
+            <Permissao chave="churches.churches.salvar_lancamento" rotulo="Salvar lançamento — Churches" herda="churches.view">
+              <button type="button" onClick={saveRentRecord} disabled={savingRent} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">{savingRent ? 'Salvando...' : 'Salvar lançamento'}</button>
+            </Permissao>
           </DialogFooter>
         </DialogContent>
       </Dialog>

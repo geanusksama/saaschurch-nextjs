@@ -42,6 +42,7 @@ import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
 import DateRangeFilter, { currentMonthRange } from './DateRangeFilter';
 import { exportRows } from './exportUtils';
 import { JourneyAnalysisModal } from './JourneyAnalysisModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') ?? '' : '';
@@ -503,22 +504,26 @@ export default function JourneySends() {
             clique na linha para abrir a conversa
           </span>
           <div className="ml-auto flex items-center gap-1.5">
-            <button
-              onClick={() => exportSends('csv')}
-              disabled={!rows.length}
-              className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30"
-            >
-              <Download className="w-3.5 h-3.5" />
-              CSV
-            </button>
-            <button
-              onClick={() => exportSends('xlsx')}
-              disabled={!rows.length}
-              className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              Excel
-            </button>
+            <Permissao chave="pastoral_visits.journey_sends.csv" rotulo="CSV — Journey Sends" herda="pastoral_visits.view">
+              <button
+                onClick={() => exportSends('csv')}
+                disabled={!rows.length}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30"
+              >
+                <Download className="w-3.5 h-3.5" />
+                CSV
+              </button>
+            </Permissao>
+            <Permissao chave="pastoral_visits.journey_sends.excel" rotulo="Excel — Journey Sends" herda="pastoral_visits.view">
+              <button
+                onClick={() => exportSends('xlsx')}
+                disabled={!rows.length}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-30"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                Excel
+              </button>
+            </Permissao>
             <button
               onClick={() => setShowAnalysis(true)}
               disabled={!rows.length}
@@ -704,19 +709,23 @@ export default function JourneySends() {
                     <div className="text-xs font-semibold text-slate-400">Mensagem sugerida para retomar</div>
                     <div className="text-slate-700">{smart.mensagem_sugerida}</div>
                     <div className="flex gap-1.5">
-                      <button
-                        onClick={() => { setReplyText(smart.mensagem_sugerida); replyInputRef.current?.focus(); }}
-                        className="h-8 px-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-slate-50"
-                      >
-                        <Copy className="w-3.5 h-3.5" /> Editar antes de enviar
-                      </button>
-                      <button
-                        onClick={() => { setReplyText(smart.mensagem_sugerida); setTimeout(sendReply, 0); }}
-                        disabled={replySending}
-                        className="flex-1 h-8 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-emerald-500 disabled:opacity-50"
-                      >
-                        <Send className="w-3.5 h-3.5" /> Enviar sugestão
-                      </button>
+                      <Permissao chave="pastoral_visits.journey_sends.editar_antes_de_enviar" rotulo="Editar antes de enviar — Journey Sends" herda="pastoral_visits.view">
+                        <button
+                          onClick={() => { setReplyText(smart.mensagem_sugerida); replyInputRef.current?.focus(); }}
+                          className="h-8 px-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-slate-50"
+                        >
+                          <Copy className="w-3.5 h-3.5" /> Editar antes de enviar
+                        </button>
+                      </Permissao>
+                      <Permissao chave="pastoral_visits.journey_sends.enviar_sugestao" rotulo="Enviar sugestão — Journey Sends" herda="pastoral_visits.view">
+                        <button
+                          onClick={() => { setReplyText(smart.mensagem_sugerida); setTimeout(sendReply, 0); }}
+                          disabled={replySending}
+                          className="flex-1 h-8 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-emerald-500 disabled:opacity-50"
+                        >
+                          <Send className="w-3.5 h-3.5" /> Enviar sugestão
+                        </button>
+                      </Permissao>
                     </div>
                   </div>
                 )}
@@ -780,17 +789,19 @@ export default function JourneySends() {
                   placeholder="Digite uma mensagem..."
                   className="flex-1 h-10 px-3 rounded-lg border border-slate-200 text-sm"
                 />
-                <button
-                  onClick={sendReply}
-                  disabled={replySending || !replyText.trim() || !instanceId}
-                  className="h-10 px-4 rounded-lg bg-emerald-600 text-white inline-flex items-center gap-2 text-sm font-semibold hover:bg-emerald-500 disabled:opacity-50"
-                >
-                  {replySending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                </button>
+                <Permissao chave="pastoral_visits.journey_sends.enviar_reply" rotulo="Enviar (reply) — Journey Sends" herda="pastoral_visits.view">
+                  <button
+                    onClick={sendReply}
+                    disabled={replySending || !replyText.trim() || !instanceId}
+                    className="h-10 px-4 rounded-lg bg-emerald-600 text-white inline-flex items-center gap-2 text-sm font-semibold hover:bg-emerald-500 disabled:opacity-50"
+                  >
+                    {replySending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>

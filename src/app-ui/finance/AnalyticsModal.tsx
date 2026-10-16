@@ -8,6 +8,7 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── types ───────────────────────────────────────────────────────────────────
 interface Row {
@@ -748,13 +749,15 @@ export function AnalyticsModal({
           </div>
           
           <div className="flex items-center gap-2 no-print">
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              Imprimir Relatório
-            </button>
+            <Permissao chave="cashbook.analytics_modal.imprimir_relatorio" rotulo="Imprimir Relatório — Analytics Modal" herda="cashbook.view">
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                Imprimir Relatório
+              </button>
+            </Permissao>
             <button 
               onClick={onClose} 
               className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"

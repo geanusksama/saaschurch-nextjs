@@ -37,6 +37,7 @@ import {
 import { ConfirmDialog } from './shared/ConfirmDialog';
 
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Icon / colour palettes ─────────────────────────────────────────────────
 
@@ -584,13 +585,15 @@ export function Notifications() {
             ) : null}
 
             {canCreate ? (
-              <button
-                onClick={openCreateModal}
-                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
-              >
-                <Plus className="h-4 w-4" />
-                Nova notificação
-              </button>
+              <Permissao chave="notifications.notifications.nova_notificacao" rotulo="Nova notificação — Notifications" herda="notifications.view">
+                <button
+                  onClick={openCreateModal}
+                  className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nova notificação
+                </button>
+              </Permissao>
             ) : null}
           </div>
         </div>
@@ -755,13 +758,15 @@ export function Notifications() {
 
                       {/* Editar lote (admin) */}
                       {notification.canManage ? (
-                        <button
-                          onClick={() => openEditModal(notification)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                          Editar
-                        </button>
+                        <Permissao chave="notifications.notifications.editar" rotulo="Editar — Notifications" herda="notifications.view">
+                          <button
+                            onClick={() => openEditModal(notification)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                            Editar
+                          </button>
+                        </Permissao>
                       ) : null}
 
                       {/* Ver ciências (admin) */}
@@ -777,13 +782,15 @@ export function Notifications() {
 
                       {/* Excluir (admin only — deletes entire batch) */}
                       {notification.canManage ? (
-                        <button
-                          onClick={() => setDeleteTarget(notification)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 px-3 py-2 text-xs font-semibold text-red-700 dark:text-red-400 transition-colors hover:bg-red-100 dark:hover:bg-red-900/40"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Excluir
-                        </button>
+                        <Permissao chave="notifications.notifications.excluir" rotulo="Excluir — Notifications" herda="notifications.view">
+                          <button
+                            onClick={() => setDeleteTarget(notification)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 px-3 py-2 text-xs font-semibold text-red-700 dark:text-red-400 transition-colors hover:bg-red-100 dark:hover:bg-red-900/40"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Excluir
+                          </button>
+                        </Permissao>
                       ) : null}
                     </div>
                   </div>
@@ -988,10 +995,12 @@ export function Notifications() {
               className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
               Cancelar
             </button>
-            <button type="button" onClick={saveNotification} disabled={saving}
-              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">
-              {saving ? 'Salvando...' : form.id ? 'Salvar alterações' : 'Criar notificação'}
-            </button>
+            <Permissao chave="notifications.notifications.salvar_alteracoes_criar_notificacao" rotulo="Salvar alterações Criar notificação — Notifications" herda="notifications.view">
+              <button type="button" onClick={saveNotification} disabled={saving}
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">
+                {saving ? 'Salvando...' : form.id ? 'Salvar alterações' : 'Criar notificação'}
+              </button>
+            </Permissao>
           </DialogFooter>
         </DialogContent>
       </Dialog>

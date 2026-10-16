@@ -3,6 +3,7 @@ import { Users, Plus, Link as LinkIcon, X, Heart, Baby, User } from 'lucide-reac
 import { Link, useParams } from 'react-router';
 
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export function FamilyRelationships() {
   const { id } = useParams();
@@ -46,10 +47,12 @@ export function FamilyRelationships() {
             <p className="text-slate-600 dark:text-slate-400">Gerencie vínculos familiares entre membros</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-          <Plus className="w-5 h-5" />
-          Adicionar Membro
-        </button>
+        <Permissao chave="members.family_relationships.adicionar_membro" rotulo="Adicionar Membro — Family Relationships" herda="members.view">
+          <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <Plus className="w-5 h-5" />
+            Adicionar Membro
+          </button>
+        </Permissao>
       </div>
 
       {/* Family Tree Visualization */}

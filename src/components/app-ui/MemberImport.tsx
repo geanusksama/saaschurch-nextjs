@@ -1,5 +1,6 @@
 ﻿import { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Users, AlertTriangle, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const API_BASE = '/api';
 
@@ -408,13 +409,15 @@ export function MemberImport() {
               <button onClick={reset} className="text-slate-500 hover:text-slate-800 text-sm font-medium">
                 ← Voltar e trocar arquivo
               </button>
-              <button
-                onClick={handleImport}
-                className="flex items-center gap-2 bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-              >
-                <Users className="w-5 h-5" />
-                Confirmar e Importar {report.willImport.toLocaleString('pt-BR')} membros
-              </button>
+              <Permissao chave="members.member_import.confirmar_e_importar_pt_br_membros" rotulo="Confirmar e Importar pt-BR membros — Member Import" herda="members.view">
+                <button
+                  onClick={handleImport}
+                  className="flex items-center gap-2 bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
+                >
+                  <Users className="w-5 h-5" />
+                  Confirmar e Importar {report.willImport.toLocaleString('pt-BR')} membros
+                </button>
+              </Permissao>
             </div>
           </div>
         )}
@@ -494,12 +497,14 @@ export function MemberImport() {
             )}
 
             <div className="flex justify-end">
-              <button
-                onClick={reset}
-                className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold"
-              >
-                Nova Importação
-              </button>
+              <Permissao chave="members.member_import.nova_importacao" rotulo="Nova Importação — Member Import" herda="members.view">
+                <button
+                  onClick={reset}
+                  className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold"
+                >
+                  Nova Importação
+                </button>
+              </Permissao>
             </div>
           </div>
         )}

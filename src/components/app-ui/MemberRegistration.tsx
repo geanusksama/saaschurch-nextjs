@@ -13,6 +13,7 @@ import {
   previousChurchPayload,
   type PreviousChurchForm,
 } from './shared/PreviousChurchFields';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const BRAZIL_STATES = [
   { value: 'AC', label: 'Acre' },
@@ -1673,13 +1674,15 @@ export function MemberRegistration() {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={openPrevChurchCreate}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
-            >
-              <Plus className="w-4 h-4" /> Adicionar histórico em outra igreja
-            </button>
+            <Permissao chave="members.member_registration.adicionar_historico_em_outra_igreja" rotulo="Adicionar histórico em outra igreja — Member Registration" herda="members.view">
+              <button
+                type="button"
+                onClick={openPrevChurchCreate}
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+              >
+                <Plus className="w-4 h-4" /> Adicionar histórico em outra igreja
+              </button>
+            </Permissao>
           </div>
 
           {previousChurches.length === 0 ? (
@@ -1715,13 +1718,15 @@ export function MemberRegistration() {
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => removePrevChurch(entry.id)}
-                        className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Permissao chave="members.member_registration.remover_prev_church" rotulo="Remover (prev church) — Member Registration" herda="members.view">
+                        <button
+                          type="button"
+                          onClick={() => removePrevChurch(entry.id)}
+                          className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Permissao>
                     </div>
                   </div>
                 </div>
@@ -1732,14 +1737,16 @@ export function MemberRegistration() {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-4">
-          <button
-            type="submit"
-            className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-60"
-            disabled={saving || loadingChurches || !formData.churchId}
-          >
-            <Save className="w-5 h-5" />
-            {saving ? 'Salvando...' : 'Salvar Membro'}
-          </button>
+          <Permissao chave="members.member_registration.salvar_membro" rotulo="Salvar Membro — Member Registration" herda="members.view">
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-60"
+              disabled={saving || loadingChurches || !formData.churchId}
+            >
+              <Save className="w-5 h-5" />
+              {saving ? 'Salvando...' : 'Salvar Membro'}
+            </button>
+          </Permissao>
           <Link
             to="/app-ui/members"
             className="px-6 py-3 border border-slate-200 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
@@ -1788,13 +1795,15 @@ export function MemberRegistration() {
                 >
                   Cancelar
                 </button>
-                <button
-                  type="button"
-                  onClick={savePrevChurch}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-                >
-                  Salvar histórico
-                </button>
+                <Permissao chave="members.member_registration.salvar_historico" rotulo="Salvar histórico — Member Registration" herda="members.view">
+                  <button
+                    type="button"
+                    onClick={savePrevChurch}
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+                  >
+                    Salvar histórico
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>
@@ -1863,13 +1872,15 @@ export function MemberRegistration() {
                 </button>
               )}
               {duplicateMember.sameCampo && (isMasterOrAdmin || (storedUser.profileType === 'igreja' && storedUser.churchId === duplicateMember.member.churchId)) && (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/app-ui/members/${duplicateMember.member.id}/edit`)}
-                  className="flex-1 rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-700 transition-colors"
-                >
-                  Editar Membro
-                </button>
+                <Permissao chave="members.member_registration.editar_membro" rotulo="Editar Membro — Member Registration" herda="members.view">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/app-ui/members/${duplicateMember.member.id}/edit`)}
+                    className="flex-1 rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-700 transition-colors"
+                  >
+                    Editar Membro
+                  </button>
+                </Permissao>
               )}
             </div>
             {(duplicateMember.type === 'cpf' || duplicateMember.type === 'rol') && (
@@ -1965,41 +1976,49 @@ export function MemberRegistration() {
 
               {/* Action buttons */}
               <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => { setSavedMember(null); navigate(`/app-ui/secretariat/pipeline?memberId=${savedMember.id}&service=BATISMO`); }}
-                  className="flex items-center gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100"
-                >
-                  <Droplets className="h-4 w-4 shrink-0" />
-                  Incluir no Batismo
-                  <ArrowRight className="ml-auto h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setSavedMember(null); navigate(`/app-ui/secretariat/pipeline?memberId=${savedMember.id}&service=CONSAGRACAO`); }}
-                  className="flex items-center gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-semibold text-purple-700 transition-colors hover:bg-purple-100"
-                >
-                  <Star className="h-4 w-4 shrink-0" />
-                  Incluir na Consagração
-                  <ArrowRight className="ml-auto h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setSavedMember(null); navigate(`/app-ui/members/${savedMember.id}`); }}
-                  className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  <UserCircle className="h-4 w-4 shrink-0" />
-                  Ver Ficha do Membro
-                  <ArrowRight className="ml-auto h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSavedMember(null)}
-                  className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-                >
-                  <Users className="h-4 w-4 shrink-0" />
-                  Novo Cadastro
-                </button>
+                <Permissao chave="members.member_registration.incluir_no_batismo" rotulo="Incluir no Batismo — Member Registration" herda="members.view">
+                  <button
+                    type="button"
+                    onClick={() => { setSavedMember(null); navigate(`/app-ui/secretariat/pipeline?memberId=${savedMember.id}&service=BATISMO`); }}
+                    className="flex items-center gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100"
+                  >
+                    <Droplets className="h-4 w-4 shrink-0" />
+                    Incluir no Batismo
+                    <ArrowRight className="ml-auto h-4 w-4" />
+                  </button>
+                </Permissao>
+                <Permissao chave="members.member_registration.incluir_na_consagracao" rotulo="Incluir na Consagração — Member Registration" herda="members.view">
+                  <button
+                    type="button"
+                    onClick={() => { setSavedMember(null); navigate(`/app-ui/secretariat/pipeline?memberId=${savedMember.id}&service=CONSAGRACAO`); }}
+                    className="flex items-center gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-semibold text-purple-700 transition-colors hover:bg-purple-100"
+                  >
+                    <Star className="h-4 w-4 shrink-0" />
+                    Incluir na Consagração
+                    <ArrowRight className="ml-auto h-4 w-4" />
+                  </button>
+                </Permissao>
+                <Permissao chave="members.member_registration.ver_ficha_do_membro" rotulo="Ver Ficha do Membro — Member Registration" herda="members.view">
+                  <button
+                    type="button"
+                    onClick={() => { setSavedMember(null); navigate(`/app-ui/members/${savedMember.id}`); }}
+                    className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <UserCircle className="h-4 w-4 shrink-0" />
+                    Ver Ficha do Membro
+                    <ArrowRight className="ml-auto h-4 w-4" />
+                  </button>
+                </Permissao>
+                <Permissao chave="members.member_registration.novo_cadastro" rotulo="Novo Cadastro — Member Registration" herda="members.view">
+                  <button
+                    type="button"
+                    onClick={() => setSavedMember(null)}
+                    className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    <Users className="h-4 w-4 shrink-0" />
+                    Novo Cadastro
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>

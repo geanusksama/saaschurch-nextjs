@@ -21,17 +21,13 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { ehBotaoDeAcao, jaMarcado, semComentarios } from './lib/botoes.mjs';
 
 const RAIZ = process.cwd();
 const SRC = path.join(RAIZ, 'src');
 const FOTO = path.join(RAIZ, 'scripts', 'permissoes-pendentes.json');
 const CHECK = process.argv.includes('--check');
 const ATUALIZAR = process.argv.includes('--atualizar');
-
-const PALAVRAS =
-  /\b(Salvar|Atualizar modelo|Excluir|Remover|Apagar|Exportar|Imprimir|Excel|PDF|CSV|Baixar|Download|Importar|Novo|Nova|Adicionar|Cadastrar|Criar|Editar|Duplicar|Aprovar|Reprovar|Recusar|Enviar|Gerar|Lançar|Estornar|Conciliar|Transferir|Publicar)\b/i;
-const HANDLER =
-  /onClick=\{[^}]*\b(handle)?(save|salvar|delete|excluir|remove|remover|export|exportar|print|imprimir|download|baixar|import|importar|create|criar|novo|add|adicionar|edit|editar|duplicate|duplicar|approve|aprovar|reject|reprovar|send|enviar|gerar|generate|lancar|estornar)/i;
 
 function arquivos(dir) {
   const saida = [];
@@ -43,27 +39,12 @@ function arquivos(dir) {
   return saida;
 }
 
-function semComentarios(txt) {
-  return txt
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-    .replace(/^\s*\/\/.*$/gm, (m) => m.replace(/[^\n]/g, ' '));
-}
-
 /** Botões de ação fora de <Permissao> no arquivo. */
 function pendentesDe(txt) {
   let n = 0;
   for (const m of txt.matchAll(/<button\b[\s\S]*?<\/button>/g)) {
-    const bloco = m[0];
-    const visivel = bloco
-      .replace(/className=(?:"[^"]*"|\{`[^`]*`\})/g, '')
-      .replace(/<[^>]+>/g, ' ');
-    const titulo = (bloco.match(/\b(title|aria-label)=["']([^"']*)["']/) ?? [])[2] ?? '';
-    if (!PALAVRAS.test(visivel) && !PALAVRAS.test(titulo) && !HANDLER.test(bloco)) continue;
-    // Dentro de <Permissao>? Olha o trecho imediatamente antes do botão.
-    const antes = txt.slice(Math.max(0, m.index - 400), m.index);
-    const aberto = antes.lastIndexOf('<Permissao');
-    const fechado = antes.lastIndexOf('</Permissao>');
-    if (aberto >= 0 && aberto > fechado) continue;
+    if (!ehBotaoDeAcao(m[0])) continue;
+    if (jaMarcado(txt, m.index)) continue;
     n++;
   }
   return n;

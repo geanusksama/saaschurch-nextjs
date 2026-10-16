@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { CamposNavegaveis, type CampoNavegavelForm } from './CamposNavegaveis';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type CampoOption = {
   id: string;
@@ -322,15 +323,17 @@ export default function UserEdit() {
           >
             Cancelar
           </Link>
-          <button
-            form="user-edit-form"
-            type="submit"
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium transition-colors disabled:opacity-60"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? 'Salvando...' : 'Salvar Alterações'}
-          </button>
+          <Permissao chave="system_users.user_edit.salvar_alteracoes" rotulo="Salvar Alterações — User Edit" herda="system_users.view">
+            <button
+              form="user-edit-form"
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium transition-colors disabled:opacity-60"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          </Permissao>
         </div>
       </div>
 

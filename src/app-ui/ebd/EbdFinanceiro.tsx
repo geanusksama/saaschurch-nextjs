@@ -8,6 +8,7 @@ import { apiBase } from "../../lib/apiBase";
 import { authFetch } from "../../lib/secretariaHooks";
 import { usePermissions } from "../../lib/usePermissions";
 import { ConfirmDialog, AlertDialog } from "../../components/app-ui/shared/ConfirmDialog";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface FinRow {
   id: string; saldo: number;
@@ -360,10 +361,12 @@ export default function EbdFinanceiro() {
               <option value="cancelada">Canceladas</option>
             </select>
             {cc("ebd_negociacoes") && (
-              <button onClick={() => { setNegModal("new"); setNegForm({ churchId: "", titulo: "", descricao: "", valorTotal: 0, numParcelas: 1, dataInicio: new Date().toISOString().slice(0, 10), dataVencimento: "", observacao: "" }); setParcelas([]); }}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors ml-auto">
-                <Plus className="w-4 h-4" /> Nova Negociação
-              </button>
+              <Permissao chave="ebd_financeiro.ebd_financeiro.nova_negociacao" rotulo="Nova Negociação — Ebd Financeiro" herda="ebd_financeiro.view">
+                <button onClick={() => { setNegModal("new"); setNegForm({ churchId: "", titulo: "", descricao: "", valorTotal: 0, numParcelas: 1, dataInicio: new Date().toISOString().slice(0, 10), dataVencimento: "", observacao: "" }); setParcelas([]); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors ml-auto">
+                  <Plus className="w-4 h-4" /> Nova Negociação
+                </button>
+              </Permissao>
             )}
           </>
         )}
@@ -613,10 +616,12 @@ export default function EbdFinanceiro() {
                     onChange={(e) => setAjusteModal((p) => p ? { ...p, descricao: e.target.value } : p)} />
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <button onClick={saveAjuste} disabled={loading || !ajusteModal.valor}
-                    className="flex items-center gap-2 flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 justify-center disabled:opacity-50">
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
-                  </button>
+                  <Permissao chave="ebd_financeiro.ebd_financeiro.salvar" rotulo="Salvar — Ebd Financeiro" herda="ebd_financeiro.view">
+                    <button onClick={saveAjuste} disabled={loading || !ajusteModal.valor}
+                      className="flex items-center gap-2 flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 justify-center disabled:opacity-50">
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
+                    </button>
+                  </Permissao>
                   <button onClick={() => { setAjusteModal(null); setChurchDebt(null); }} className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
                     Cancelar
                   </button>
@@ -684,10 +689,12 @@ export default function EbdFinanceiro() {
                       </div>
 
                       <div className="flex gap-2 pt-1">
-                        <button onClick={saveParcelaNeg} disabled={savingParcela || !selectedParcela}
-                          className="flex items-center gap-2 flex-1 px-4 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 justify-center disabled:opacity-50">
-                          {savingParcela ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Confirmar Pagamento da Parcela
-                        </button>
+                        <Permissao chave="ebd_financeiro.ebd_financeiro.confirmar_pagamento_da_parcela" rotulo="Confirmar Pagamento da Parcela — Ebd Financeiro" herda="ebd_financeiro.view">
+                          <button onClick={saveParcelaNeg} disabled={savingParcela || !selectedParcela}
+                            className="flex items-center gap-2 flex-1 px-4 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800 justify-center disabled:opacity-50">
+                            {savingParcela ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Confirmar Pagamento da Parcela
+                          </button>
+                        </Permissao>
                         <button onClick={() => { setAjusteModal(null); setChurchDebt(null); setSelectedParcela(null); }} className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
                           Cancelar
                         </button>
@@ -777,10 +784,12 @@ export default function EbdFinanceiro() {
             )}
 
             <div className="flex gap-2 pt-1">
-              <button onClick={saveNegociacao} disabled={savingNeg || !negForm.churchId || !negForm.titulo}
-                className="flex items-center gap-2 flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 justify-center disabled:opacity-50">
-                {savingNeg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar Negociação
-              </button>
+              <Permissao chave="ebd_financeiro.ebd_financeiro.salvar_negociacao" rotulo="Salvar Negociação — Ebd Financeiro" herda="ebd_financeiro.view">
+                <button onClick={saveNegociacao} disabled={savingNeg || !negForm.churchId || !negForm.titulo}
+                  className="flex items-center gap-2 flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 justify-center disabled:opacity-50">
+                  {savingNeg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar Negociação
+                </button>
+              </Permissao>
               <button onClick={() => setNegModal(null)} className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
                 Cancelar
               </button>

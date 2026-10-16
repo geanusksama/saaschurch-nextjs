@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Calendar, MapPin, Users, User, Phone, Mail, CheckCircle, Clock } from 'lucide-react';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // Mock data for baptism events
 const baptismEvents = [
@@ -264,18 +265,24 @@ export function BaptismEventDetail() {
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h3 className="font-bold text-slate-900 mb-4">Ações Rápidas</h3>
             <div className="space-y-2">
-              <button className="w-full flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                <Users className="w-4 h-4" />
-                Adicionar Candidato
-              </button>
-              <button className="w-full flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-                <Mail className="w-4 h-4" />
-                Enviar Convites
-              </button>
-              <button className="w-full flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-                <Calendar className="w-4 h-4" />
-                Editar Evento
-              </button>
+              <Permissao chave="baptism.baptism_event_detail.adicionar_candidato" rotulo="Adicionar Candidato — Baptism Event Detail" herda="baptism.view">
+                <button className="w-full flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                  <Users className="w-4 h-4" />
+                  Adicionar Candidato
+                </button>
+              </Permissao>
+              <Permissao chave="baptism.baptism_event_detail.enviar_convites" rotulo="Enviar Convites — Baptism Event Detail" herda="baptism.view">
+                <button className="w-full flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                  <Mail className="w-4 h-4" />
+                  Enviar Convites
+                </button>
+              </Permissao>
+              <Permissao chave="baptism.baptism_event_detail.editar_evento" rotulo="Editar Evento — Baptism Event Detail" herda="baptism.view">
+                <button className="w-full flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                  <Calendar className="w-4 h-4" />
+                  Editar Evento
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

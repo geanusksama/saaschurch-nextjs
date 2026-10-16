@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { apiBase } from '../../lib/apiBase';
 import { hasFixedChurchScope } from './churchScope';
 import { ASSET_LOCATION_OPTIONS } from '../../lib/assetLocationOptions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Church = { id: string; name: string; code?: string | null };
 
@@ -286,10 +287,12 @@ export function AssetFormDrawer({ assetId, onClose, onSaved }: Props) {
 
         <footer className="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-6 py-4 flex-shrink-0">
           <button type="button" onClick={onClose} className="px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
-          <button type="submit" form="asset-form" disabled={saving || loading} className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Salvando...' : 'Salvar'}
-          </button>
+          <Permissao chave="assets.asset_form_drawer.salvar" rotulo="Salvar — Asset Form Drawer" herda="assets.view">
+            <button type="submit" form="asset-form" disabled={saving || loading} className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold disabled:opacity-50">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </Permissao>
         </footer>
       </aside>
     </>

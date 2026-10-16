@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { SantanderMovimentoDto } from '../dtos/santander.dto'
+import { Permissao } from '../../../../lib/permissoes/Permissao';
 
 interface SantanderTableProps {
   movimentos: SantanderMovimentoDto[]
@@ -130,22 +131,26 @@ export function SantanderTable({
                       🔍
                     </button>
                     {canLancar && !isLancado && !isIgnorado && (
-                      <button
-                        onClick={() => onInserirLivroCaixa(mv)}
-                        className="text-blue-600 hover:text-blue-800 text-xs px-1.5 py-1 rounded hover:bg-blue-50"
-                        title="Inserir no Livro Caixa"
-                      >
-                        + Lançar
-                      </button>
+                      <Permissao chave="santander_view.santander_table.lancar" rotulo="+ Lançar — Santander Table" herda="santander_view.view">
+                        <button
+                          onClick={() => onInserirLivroCaixa(mv)}
+                          className="text-blue-600 hover:text-blue-800 text-xs px-1.5 py-1 rounded hover:bg-blue-50"
+                          title="Inserir no Livro Caixa"
+                        >
+                          + Lançar
+                        </button>
+                      </Permissao>
                     )}
                     {canConciliar && !isLancado && !isIgnorado && (
-                      <button
-                        onClick={() => onConciliarManual(mv)}
-                        className="text-teal-600 hover:text-teal-800 text-xs px-1.5 py-1 rounded hover:bg-teal-50"
-                        title="Conciliar manualmente"
-                      >
-                        ⟺
-                      </button>
+                      <Permissao chave="santander_view.santander_table.conciliar_manualmente" rotulo="Conciliar manualmente — Santander Table" herda="santander_view.view">
+                        <button
+                          onClick={() => onConciliarManual(mv)}
+                          className="text-teal-600 hover:text-teal-800 text-xs px-1.5 py-1 rounded hover:bg-teal-50"
+                          title="Conciliar manualmente"
+                        >
+                          ⟺
+                        </button>
+                      </Permissao>
                     )}
                     {canConciliar && isLancado && onDesfazerConciliacao && (
                       <button

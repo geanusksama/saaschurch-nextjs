@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { ClipboardList, Plus, RefreshCw, PlayCircle, FileCheck } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
 import { AssetInventoryStartModal } from './AssetInventoryStartModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type InventoryRow = any;
@@ -52,12 +53,14 @@ export default function AssetInventoryList() {
             <p className="text-slate-600 dark:text-slate-400">Confira em andamento ou veja o histórico já finalizado</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowStart(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Iniciar novo inventário
-        </button>
+        <Permissao chave="asset_inventory.asset_inventory_list.iniciar_novo_inventario" rotulo="Iniciar novo inventário — Asset Inventory List" herda="asset_inventory.view">
+          <button
+            onClick={() => setShowStart(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Iniciar novo inventário
+          </button>
+        </Permissao>
       </div>
 
       {error && (

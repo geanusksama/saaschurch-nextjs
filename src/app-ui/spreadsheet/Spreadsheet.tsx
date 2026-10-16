@@ -20,6 +20,7 @@ import {
   type DizimistasSheetMeta,
   type DizimistasScopeMember,
 } from './dizimistasAnalysis';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Align = 'left' | 'center' | 'right';
@@ -2662,15 +2663,17 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
                         </svg>
                         Abrir
                       </button>
-                      <button
-                        onClick={() => setArquivoConfirm({ type: 'delete', file: f })}
-                        title="Excluir arquivo"
-                        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                        </svg>
-                      </button>
+                      <Permissao chave="spreadsheets.spreadsheet.excluir_arquivo" rotulo="Excluir arquivo — Spreadsheet" herda="spreadsheets.view">
+                        <button
+                          onClick={() => setArquivoConfirm({ type: 'delete', file: f })}
+                          title="Excluir arquivo"
+                          className="flex items-center gap-1 px-2 py-1 rounded text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                          </svg>
+                        </button>
+                      </Permissao>
                     </div>
                   </div>
                 ));
@@ -2725,10 +2728,12 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
                           className="flex-1 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                           Cancelar
                         </button>
-                        <button onClick={() => { void deleteArquivoFile(arquivoConfirm.file.name); setArquivoConfirm(null); }}
-                          className="flex-1 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors">
-                          Excluir
-                        </button>
+                        <Permissao chave="spreadsheets.spreadsheet.excluir" rotulo="Excluir — Spreadsheet" herda="spreadsheets.view">
+                          <button onClick={() => { void deleteArquivoFile(arquivoConfirm.file.name); setArquivoConfirm(null); }}
+                            className="flex-1 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors">
+                            Excluir
+                          </button>
+                        </Permissao>
                       </div>
                     </>
                   )}
@@ -3162,11 +3167,13 @@ th{background:#f0f0f0;font-size:10px;font-weight:600;text-align:center;min-width
       {/* ── Sheet tabs + Status bar ── */}
       <div className="flex items-center h-8 bg-slate-100 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shrink-0 overflow-hidden">
         <div className="flex items-end gap-0 overflow-x-auto shrink-0 max-w-[60%]">
-          <button
-            onClick={() => { const n = mkSheet(`Planilha${sheets.length + 1}`); setSheets(p => [...p, n]); setActiveIdx(sheets.length); }}
-            className="ml-1 w-6 h-6 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded font-bold text-base self-center"
-            title="Nova Planilha">+
-          </button>
+          <Permissao chave="spreadsheets.spreadsheet.nova_planilha" rotulo="Nova Planilha — Spreadsheet" herda="spreadsheets.view">
+            <button
+              onClick={() => { const n = mkSheet(`Planilha${sheets.length + 1}`); setSheets(p => [...p, n]); setActiveIdx(sheets.length); }}
+              className="ml-1 w-6 h-6 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded font-bold text-base self-center"
+              title="Nova Planilha">+
+            </button>
+          </Permissao>
           {sheets.map((sh, idx) => (
             <div
               key={sh.id}
@@ -3455,10 +3462,12 @@ function SaveToCloudModal({ defaultName, onSave, onClose }: {
             </div>
             <div className="flex gap-2">
               <button onClick={onClose} className="flex-1 border border-slate-200 dark:border-slate-600 rounded-lg py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
-              <button onClick={handleSave} disabled={saving || !name.trim()}
-                className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                {saving ? <><span className="animate-spin">⏳</span> Salvando...</> : '☁️ Salvar'}
-              </button>
+              <Permissao chave="spreadsheets.spreadsheet.salvar" rotulo="☁️ Salvar — Spreadsheet" herda="spreadsheets.view">
+                <button onClick={handleSave} disabled={saving || !name.trim()}
+                  className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                  {saving ? <><span className="animate-spin">⏳</span> Salvando...</> : '☁️ Salvar'}
+                </button>
+              </Permissao>
             </div>
           </>
         )}
@@ -3679,10 +3688,12 @@ function ConnectDBModal({ onImport, onClose }: {
               {loading ? <><span className="animate-spin inline-block">⏳</span> Buscando...</> : '🔍 Buscar Dados'}
             </button>
           ) : (
-            <button onClick={handleImport}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-              ✅ Importar para Planilha
-            </button>
+            <Permissao chave="spreadsheets.spreadsheet.importar_para_planilha" rotulo="✅ Importar para Planilha — Spreadsheet" herda="spreadsheets.view">
+              <button onClick={handleImport}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                ✅ Importar para Planilha
+              </button>
+            </Permissao>
           )}
         </div>
       </div>

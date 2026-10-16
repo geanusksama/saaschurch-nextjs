@@ -14,6 +14,7 @@ import {
   STATUS_PARCELA_CORES, STATUS_PARCELA_LABELS, STATUS_APROVACAO_LABELS,
   formatarBRL, paraCentavos, paraReais, NAO_INFORMADO,
 } from '../../lib/contasPagarRules';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
@@ -222,12 +223,14 @@ export function ParcelaDetailModal({
                           )}
                         </div>
                         {!p.estornadoEm && (
-                          <button
-                            onClick={() => estornar(p.id)}
-                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                          >
-                            <Undo2 className="h-3.5 w-3.5" /> Estornar
-                          </button>
+                          <Permissao chave="contas_pagar.parcela_detail_modal.estornar" rotulo="Estornar — Parcela Detail Modal" herda="contas_pagar.view">
+                            <button
+                              onClick={() => estornar(p.id)}
+                              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                            >
+                              <Undo2 className="h-3.5 w-3.5" /> Estornar
+                            </button>
+                          </Permissao>
                         )}
                       </div>
                     ))}

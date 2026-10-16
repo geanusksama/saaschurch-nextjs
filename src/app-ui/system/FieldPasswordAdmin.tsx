@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Lock, Shield, Eye, EyeOff, Check, X, Trash2, KeyRound, Building2 } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
 import { toast } from 'sonner';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Campo = {
   id: string;
@@ -196,15 +197,17 @@ export default function FieldPasswordAdmin() {
                     {campo.hasPassword ? 'Alterar senha' : 'Definir senha'}
                   </button>
                   {campo.hasPassword && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(campo)}
-                      disabled={saving}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 transition-colors disabled:opacity-60"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Remover
-                    </button>
+                    <Permissao chave="campo_passwords.field_password_admin.remover" rotulo="Remover — Field Password Admin" herda="campo_passwords.view">
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(campo)}
+                        disabled={saving}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 transition-colors disabled:opacity-60"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Remover
+                      </button>
+                    </Permissao>
                   )}
                 </div>
               </div>

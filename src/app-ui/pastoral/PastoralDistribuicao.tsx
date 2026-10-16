@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Gf {
   id: string;
@@ -459,27 +460,29 @@ export default function PastoralDistribuicao() {
                   {/* CONECTAR */}
                   <div className="flex flex-col items-center gap-1.5">
                     {verConectados ? (
-                      <button
-                        onClick={async () => {
-                          setConectando(par.importRowId);
-                          try {
-                            await desconectar(par);
-                            setPares((prev) => prev.filter((x) => x.importRowId !== par.importRowId));
-                            toast.success(`${par.nome} saiu do GF e voltou para a fila.`);
-                          } catch (err) {
-                            toast.error(err instanceof Error ? err.message : 'Erro ao desconectar.');
-                          } finally {
-                            setConectando('');
-                          }
-                        }}
-                        disabled={conectando === par.importRowId || !par.gf}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-sm font-bold shadow-sm"
-                      >
-                        {conectando === par.importRowId
-                          ? <Loader2 className="w-4 h-4 animate-spin" />
-                          : <Unlink className="w-4 h-4" />}
-                        Desconectar
-                      </button>
+                      <Permissao chave="pastoral_visits.pastoral_distribuicao.desconectar" rotulo="Desconectar — Pastoral Distribuicao" herda="pastoral_visits.view">
+                        <button
+                          onClick={async () => {
+                            setConectando(par.importRowId);
+                            try {
+                              await desconectar(par);
+                              setPares((prev) => prev.filter((x) => x.importRowId !== par.importRowId));
+                              toast.success(`${par.nome} saiu do GF e voltou para a fila.`);
+                            } catch (err) {
+                              toast.error(err instanceof Error ? err.message : 'Erro ao desconectar.');
+                            } finally {
+                              setConectando('');
+                            }
+                          }}
+                          disabled={conectando === par.importRowId || !par.gf}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-sm font-bold shadow-sm"
+                        >
+                          {conectando === par.importRowId
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Unlink className="w-4 h-4" />}
+                          Desconectar
+                        </button>
+                      </Permissao>
                     ) : (
                       <button
                         onClick={() => conectar(par)}

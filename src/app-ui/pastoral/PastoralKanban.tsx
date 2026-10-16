@@ -66,6 +66,7 @@ import { toast } from 'sonner';
 import { PastoralAttendanceDetail } from './PastoralAttendanceDetail';
 import { PastoralAttendanceNew } from './PastoralAttendanceNew';
 import { AttachJourneyModal } from './AttachJourneyModal';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Menu ⋯ (card e coluna) ──────────────────────────────────────────────────
 
@@ -463,13 +464,15 @@ function KanbanColumn({
 
         {/* Add card button */}
         {(column.column_key === 'todo' || column.column_key === 'doing') && (
-          <button
-            onClick={() => onNewCard(column)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded border-2 border-dashed border-slate-200 text-slate-400 hover:border-green-300 hover:text-green-600 hover:bg-white transition-all text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Novo atendimento
-          </button>
+          <Permissao chave="pastoral_visits.pastoral_kanban.novo_atendimento" rotulo="Novo atendimento — Pastoral Kanban" herda="pastoral_visits.view">
+            <button
+              onClick={() => onNewCard(column)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded border-2 border-dashed border-slate-200 text-slate-400 hover:border-green-300 hover:text-green-600 hover:bg-white transition-all text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Novo atendimento
+            </button>
+          </Permissao>
         )}
       </div>
     </div>
@@ -1173,18 +1176,20 @@ export default function PastoralKanban() {
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-            <button
-              onClick={handlePrintPipeline}
-              disabled={isPrinting}
-              className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
-              title="Imprimir Relatório do Pipeline"
-            >
-              {isPrinting ? (
-                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
-              ) : (
-                <Printer className="w-4 h-4" />
-              )}
-            </button>
+            <Permissao chave="pastoral_visits.pastoral_kanban.imprimir_relatorio_do_pipeline" rotulo="Imprimir Relatório do Pipeline — Pastoral Kanban" herda="pastoral_visits.view">
+              <button
+                onClick={handlePrintPipeline}
+                disabled={isPrinting}
+                className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+                title="Imprimir Relatório do Pipeline"
+              >
+                {isPrinting ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                ) : (
+                  <Printer className="w-4 h-4" />
+                )}
+              </button>
+            </Permissao>
             {/* View mode toggle */}
             <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
               <button
@@ -1201,13 +1206,15 @@ export default function PastoralKanban() {
               </button>
             </div>
             {columns.length > 0 && (
-              <button
-                onClick={() => setNewCardColumn(columns.find((c) => c.column_key === 'todo') ?? columns[0])}
-                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Novo Atendimento
-              </button>
+              <Permissao chave="pastoral_visits.pastoral_kanban.novo_atendimento_2" rotulo="Novo Atendimento — Pastoral Kanban" herda="pastoral_visits.view">
+                <button
+                  onClick={() => setNewCardColumn(columns.find((c) => c.column_key === 'todo') ?? columns[0])}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Novo Atendimento
+                </button>
+              </Permissao>
             )}
           </div>
         </div>
@@ -1443,12 +1450,14 @@ export default function PastoralKanban() {
                   <span className="text-sm font-medium text-red-700">
                     {selectedIds.size} selecionado{selectedIds.size === 1 ? '' : 's'}
                   </span>
-                  <button
-                    onClick={() => setDeleteTarget(Array.from(selectedIds))}
-                    className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" /> Excluir selecionados
-                  </button>
+                  <Permissao chave="pastoral_visits.pastoral_kanban.excluir_selecionados" rotulo="Excluir selecionados — Pastoral Kanban" herda="pastoral_visits.view">
+                    <button
+                      onClick={() => setDeleteTarget(Array.from(selectedIds))}
+                      className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" /> Excluir selecionados
+                    </button>
+                  </Permissao>
                   <button
                     onClick={() => setSelectedIds(new Set())}
                     className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
@@ -1537,13 +1546,15 @@ export default function PastoralKanban() {
                               </span>
                             </td>
                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                onClick={() => setDeleteTarget([card.id])}
-                                title="Excluir atendimento"
-                                className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <Permissao chave="pastoral_visits.pastoral_kanban.excluir_atendimento" rotulo="Excluir atendimento — Pastoral Kanban" herda="pastoral_visits.view">
+                                <button
+                                  onClick={() => setDeleteTarget([card.id])}
+                                  title="Excluir atendimento"
+                                  className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </Permissao>
                             </td>
                           </tr>
                         );

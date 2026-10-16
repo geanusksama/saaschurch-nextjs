@@ -16,6 +16,7 @@ import DateRangeFilter, { currentMonthRange } from './DateRangeFilter';
 import { exportRows } from './exportUtils';
 import { getCurrentChurchId, ATTENDANCE_TYPE_LABELS, type AttendanceType } from '../../lib/pastoralKanbanService';
 import { JOURNEY_PROFILE_LABELS, JOURNEY_PROFILE_COLORS, type JourneyProfile } from '../../lib/pastoralJourneyDefault';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') ?? '' : '';
@@ -186,18 +187,24 @@ export default function PastoralDashboard() {
         <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo}
           onChange={(from, to) => setDateRange({ from, to })} />
         <div className="ml-auto flex items-center gap-1.5">
-          <button onClick={() => exportar('csv')}
-            className="h-9 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5">
-            <Download className="w-3.5 h-3.5" /> CSV
-          </button>
-          <button onClick={() => exportar('xlsx')}
-            className="h-9 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5">
-            <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
-          </button>
-          <button onClick={() => window.print()}
-            className="h-9 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5">
-            <Printer className="w-3.5 h-3.5" /> Imprimir
-          </button>
+          <Permissao chave="pastoral_visits.pastoral_dashboard.csv" rotulo="CSV — Pastoral Dashboard" herda="pastoral_visits.view">
+            <button onClick={() => exportar('csv')}
+              className="h-9 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5" /> CSV
+            </button>
+          </Permissao>
+          <Permissao chave="pastoral_visits.pastoral_dashboard.excel" rotulo="Excel — Pastoral Dashboard" herda="pastoral_visits.view">
+            <button onClick={() => exportar('xlsx')}
+              className="h-9 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5">
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
+            </button>
+          </Permissao>
+          <Permissao chave="pastoral_visits.pastoral_dashboard.imprimir" rotulo="Imprimir — Pastoral Dashboard" herda="pastoral_visits.view">
+            <button onClick={() => window.print()}
+              className="h-9 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium inline-flex items-center gap-1.5">
+              <Printer className="w-3.5 h-3.5" /> Imprimir
+            </button>
+          </Permissao>
           <button onClick={load}
             className="h-9 w-9 rounded-lg border border-slate-200 hover:bg-slate-50 inline-flex items-center justify-center">
             <RefreshCw className="w-4 h-4 text-slate-400" />

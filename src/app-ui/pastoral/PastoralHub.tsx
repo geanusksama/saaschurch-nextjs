@@ -24,6 +24,7 @@ import PastoralDistribuicao from './PastoralDistribuicao';
 import PastoralCronograma from './PastoralCronograma';
 import PastoralDashboard from './PastoralDashboard';
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type HubTab = 'pipeline' | 'mass-send' | 'sends' | 'imports' | 'distribuicao' | 'cronograma' | 'dashboard';
 
@@ -58,30 +59,36 @@ export default function PastoralHub() {
         </button>
         {canMassSend && (
           <>
-            <button
-              onClick={() => setTab('mass-send')}
-              className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
-                ${tab === 'mass-send' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <Send className="w-4 h-4" />
-              Envio em Massa
-            </button>
-            <button
-              onClick={() => setTab('sends')}
-              className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
-                ${tab === 'sends' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <MessagesSquare className="w-4 h-4" />
-              Envios
-            </button>
-            <button
-              onClick={() => setTab('imports')}
-              className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
-                ${tab === 'imports' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              Importações
-            </button>
+            <Permissao chave="pastoral_visits.pastoral_hub.envio_em_massa" rotulo="Envio em Massa — Pastoral Hub" herda="whatsapp_campaigns.view">
+              <button
+                onClick={() => setTab('mass-send')}
+                className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
+                  ${tab === 'mass-send' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <Send className="w-4 h-4" />
+                Envio em Massa
+              </button>
+            </Permissao>
+            <Permissao chave="pastoral_visits.pastoral_hub.envios" rotulo="Envios — Pastoral Hub" herda="pastoral_visits.view">
+              <button
+                onClick={() => setTab('sends')}
+                className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
+                  ${tab === 'sends' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <MessagesSquare className="w-4 h-4" />
+                Envios
+              </button>
+            </Permissao>
+            <Permissao chave="pastoral_visits.pastoral_hub.importacoes" rotulo="Importações — Pastoral Hub" herda="pastoral_visits.view">
+              <button
+                onClick={() => setTab('imports')}
+                className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors
+                  ${tab === 'imports' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Importações
+              </button>
+            </Permissao>
             <button
               onClick={() => setTab('distribuicao')}
               className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 transition-colors

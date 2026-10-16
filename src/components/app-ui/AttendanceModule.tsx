@@ -11,6 +11,7 @@ import { Badge } from '../../design-system/components/Badge';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import * as XLSX from 'xlsx';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // Interfaces
 interface FacePresenceRecord {
@@ -1420,36 +1421,42 @@ export function AttendanceModule() {
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={exportToCSV}
-                  disabled={generalTotal === 0 || exportingAll}
-                  className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
-                  title="Exportar todos os registros do filtro (CSV)"
-                >
-                  <Download className="w-4 h-4" />
-                  CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={exportToExcel}
-                  disabled={generalTotal === 0 || exportingAll}
-                  className="flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white text-sm px-4 py-2 rounded-lg border border-green-800 transition-colors disabled:opacity-40 h-[38px]"
-                  title="Exportar todos os registros do filtro (Excel)"
-                >
-                  <Download className="w-4 h-4" />
-                  Excel
-                </button>
-                <button
-                  type="button"
-                  onClick={printAllGeneral}
-                  disabled={generalTotal === 0 || exportingAll}
-                  className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
-                  title="Imprimir todos os registros do filtro"
-                >
-                  <Printer className="w-4 h-4" />
-                  Imprimir
-                </button>
+                <Permissao chave="attendance.attendance_module.csv" rotulo="CSV — Attendance Module" herda="attendance.view">
+                  <button
+                    type="button"
+                    onClick={exportToCSV}
+                    disabled={generalTotal === 0 || exportingAll}
+                    className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
+                    title="Exportar todos os registros do filtro (CSV)"
+                  >
+                    <Download className="w-4 h-4" />
+                    CSV
+                  </button>
+                </Permissao>
+                <Permissao chave="attendance.attendance_module.excel" rotulo="Excel — Attendance Module" herda="attendance.view">
+                  <button
+                    type="button"
+                    onClick={exportToExcel}
+                    disabled={generalTotal === 0 || exportingAll}
+                    className="flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white text-sm px-4 py-2 rounded-lg border border-green-800 transition-colors disabled:opacity-40 h-[38px]"
+                    title="Exportar todos os registros do filtro (Excel)"
+                  >
+                    <Download className="w-4 h-4" />
+                    Excel
+                  </button>
+                </Permissao>
+                <Permissao chave="attendance.attendance_module.imprimir" rotulo="Imprimir — Attendance Module" herda="attendance.view">
+                  <button
+                    type="button"
+                    onClick={printAllGeneral}
+                    disabled={generalTotal === 0 || exportingAll}
+                    className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
+                    title="Imprimir todos os registros do filtro"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Imprimir
+                  </button>
+                </Permissao>
               </div>
             </div>
           </form>
@@ -1573,13 +1580,15 @@ export function AttendanceModule() {
                           </td>
                           )}
                           <td className="px-6 py-4 text-center no-print">
-                            <button
-                              onClick={() => handleDeletePresence(record.id)}
-                              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
-                              title="Excluir registro"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <Permissao chave="attendance.attendance_module.excluir_registro" rotulo="Excluir registro — Attendance Module" herda="attendance.view">
+                              <button
+                                onClick={() => handleDeletePresence(record.id)}
+                                className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
+                                title="Excluir registro"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </Permissao>
                           </td>
                         </tr>
                       );
@@ -1703,13 +1712,15 @@ export function AttendanceModule() {
                   <div className="text-sm text-blue-800 dark:text-blue-300">
                     Relatório gerado com sucesso. Use o botão ao lado para imprimir ou salvar como PDF.
                   </div>
-                  <button
-                    onClick={() => window.print()}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-2 rounded-lg shadow-sm transition-colors"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Imprimir Relatório
-                  </button>
+                  <Permissao chave="attendance.attendance_module.imprimir_relatorio" rotulo="Imprimir Relatório — Attendance Module" herda="attendance.view">
+                    <button
+                      onClick={() => window.print()}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-2 rounded-lg shadow-sm transition-colors"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Imprimir Relatório
+                    </button>
+                  </Permissao>
                 </div>
 
                 {/* Printable Document Sheet Card */}
@@ -1813,13 +1824,15 @@ export function AttendanceModule() {
                           Atenção: Este membro faltou a mais de um culto no período selecionado!
                         </span>
                       </div>
-                      <button
-                        onClick={() => sendWhatsAppMessage(selectedMember.phone, selectedMember.fullName)}
-                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-colors shadow-sm"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        Enviar Mensagem (Saudades)
-                      </button>
+                      <Permissao chave="attendance.attendance_module.enviar_mensagem_saudades" rotulo="Enviar Mensagem (Saudades) — Attendance Module" herda="attendance.view">
+                        <button
+                          onClick={() => sendWhatsAppMessage(selectedMember.phone, selectedMember.fullName)}
+                          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-colors shadow-sm"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          Enviar Mensagem (Saudades)
+                        </button>
+                      </Permissao>
                     </div>
                   )}
 
@@ -1897,13 +1910,15 @@ export function AttendanceModule() {
                                 <td className="px-4 py-2.5 font-mono text-xs">{r.camera || '—'}</td>
                                 <td className="px-4 py-2.5 font-medium">{r.igrejaRegional || '—'}</td>
                                 <td className="px-4 py-2.5 text-center no-print">
-                                  <button
-                                    onClick={() => handleDeletePresenceFromHistory(r.id)}
-                                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
-                                    title="Excluir registro"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                  <Permissao chave="attendance.attendance_module.excluir_registro" rotulo="Excluir registro — Attendance Module" herda="attendance.view">
+                                    <button
+                                      onClick={() => handleDeletePresenceFromHistory(r.id)}
+                                      className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
+                                      title="Excluir registro"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </Permissao>
                                 </td>
                               </tr>
                             ))
@@ -2065,13 +2080,15 @@ export function AttendanceModule() {
                               {member.lastSeen}
                             </td>
                             <td className="px-6 py-3 text-center">
-                              <button
-                                onClick={() => sendWhatsAppMessage(member.phone, member.fullName)}
-                                className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors border border-green-200 dark:border-green-800"
-                              >
-                                <MessageSquare className="w-3 h-3" />
-                                Enviar WhatsApp
-                              </button>
+                              <Permissao chave="attendance.attendance_module.enviar_whatsapp" rotulo="Enviar WhatsApp — Attendance Module" herda="attendance.view">
+                                <button
+                                  onClick={() => sendWhatsAppMessage(member.phone, member.fullName)}
+                                  className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors border border-green-200 dark:border-green-800"
+                                >
+                                  <MessageSquare className="w-3 h-3" />
+                                  Enviar WhatsApp
+                                </button>
+                              </Permissao>
                             </td>
                           </tr>
                         ))
@@ -2326,36 +2343,42 @@ export function AttendanceModule() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={generateReport}
-                  disabled={generatingReport}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-5 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap h-[38px]"
-                >
-                  {generatingReport ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                  Gerar
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  disabled={reportMembers.length === 0}
-                  className="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm px-5 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap h-[38px] disabled:opacity-40"
-                >
-                  <Printer className="w-4 h-4" />
-                  Imprimir
-                </button>
-                <button
-                  type="button"
-                  onClick={exportReportToExcel}
-                  disabled={reportMembers.length === 0}
-                  className="bg-green-700 hover:bg-green-800 text-white font-semibold text-sm px-5 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap h-[38px] disabled:opacity-40"
-                  title="Exportar Excel"
-                >
-                  <Download className="w-4 h-4" />
-                  Excel
-                </button>
+                <Permissao chave="attendance.attendance_module.gerar" rotulo="Gerar — Attendance Module" herda="attendance.view">
+                  <button
+                    onClick={generateReport}
+                    disabled={generatingReport}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-5 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap h-[38px]"
+                  >
+                    {generatingReport ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    Gerar
+                  </button>
+                </Permissao>
+                <Permissao chave="attendance.attendance_module.imprimir" rotulo="Imprimir — Attendance Module" herda="attendance.view">
+                  <button
+                    onClick={() => window.print()}
+                    disabled={reportMembers.length === 0}
+                    className="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm px-5 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap h-[38px] disabled:opacity-40"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Imprimir
+                  </button>
+                </Permissao>
+                <Permissao chave="attendance.attendance_module.excel" rotulo="Excel — Attendance Module" herda="attendance.view">
+                  <button
+                    type="button"
+                    onClick={exportReportToExcel}
+                    disabled={reportMembers.length === 0}
+                    className="bg-green-700 hover:bg-green-800 text-white font-semibold text-sm px-5 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 whitespace-nowrap h-[38px] disabled:opacity-40"
+                    title="Exportar Excel"
+                  >
+                    <Download className="w-4 h-4" />
+                    Excel
+                  </button>
+                </Permissao>
               </div>
 
             </div>
@@ -2518,12 +2541,14 @@ export function AttendanceModule() {
               </p>
             </div>
             
-            <button
-              onClick={handleNewDevice}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow-sm transition-colors flex items-center gap-2"
-            >
-              Adicionar Dispositivo
-            </button>
+            <Permissao chave="attendance.attendance_module.adicionar_dispositivo" rotulo="Adicionar Dispositivo — Attendance Module" herda="attendance.view">
+              <button
+                onClick={handleNewDevice}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+              >
+                Adicionar Dispositivo
+              </button>
+            </Permissao>
           </div>
 
           {/* Token do Agente da igreja — para a máquina que detecta e
@@ -2551,13 +2576,15 @@ export function AttendanceModule() {
               >
                 Copiar
               </button>
-              <button
-                onClick={generateChurchAgentToken}
-                disabled={agentTokenLoading}
-                className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-900 text-white disabled:opacity-50 transition-colors whitespace-nowrap"
-              >
-                {agentTokenLoading ? 'Gerando...' : (agentToken ? 'Renovar' : 'Gerar token')}
-              </button>
+              <Permissao chave="attendance.attendance_module.renovar_gerar_token" rotulo="Renovar Gerar token — Attendance Module" herda="attendance.view">
+                <button
+                  onClick={generateChurchAgentToken}
+                  disabled={agentTokenLoading}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-900 text-white disabled:opacity-50 transition-colors whitespace-nowrap"
+                >
+                  {agentTokenLoading ? 'Gerando...' : (agentToken ? 'Renovar' : 'Gerar token')}
+                </button>
+              </Permissao>
             </div>
             <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-2">
               Baseado na igreja selecionada no filtro acima. Renovar invalida o token anterior.
@@ -2610,19 +2637,23 @@ export function AttendanceModule() {
                           {new Date(dev.createdAt).toLocaleDateString('pt-BR')}
                         </td>
                         <td className="px-6 py-4 text-center flex items-center justify-center gap-3">
-                          <button
-                            onClick={() => handleEditDevice(dev)}
-                            className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-semibold"
-                          >
-                            Editar
-                          </button>
+                          <Permissao chave="attendance.attendance_module.editar" rotulo="Editar — Attendance Module" herda="attendance.view">
+                            <button
+                              onClick={() => handleEditDevice(dev)}
+                              className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-semibold"
+                            >
+                              Editar
+                            </button>
+                          </Permissao>
                           <span className="text-slate-300 dark:text-slate-750">|</span>
-                          <button
-                            onClick={() => handleDeleteDevice(dev.id)}
-                            className="text-red-500 hover:text-red-650 hover:underline text-xs font-semibold"
-                          >
-                            Excluir
-                          </button>
+                          <Permissao chave="attendance.attendance_module.excluir" rotulo="Excluir — Attendance Module" herda="attendance.view">
+                            <button
+                              onClick={() => handleDeleteDevice(dev.id)}
+                              className="text-red-500 hover:text-red-650 hover:underline text-xs font-semibold"
+                            >
+                              Excluir
+                            </button>
+                          </Permissao>
                         </td>
                       </tr>
                     ))
@@ -2825,13 +2856,15 @@ export function AttendanceModule() {
                             onChange={(e) => setDeviceAgentToken(e.target.value)}
                             className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
                           />
-                          <button
-                            type="button"
-                            onClick={() => setDeviceAgentToken(generateAgentToken())}
-                            className="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
-                          >
-                            Gerar
-                          </button>
+                          <Permissao chave="attendance.attendance_module.gerar" rotulo="Gerar — Attendance Module" herda="attendance.view">
+                            <button
+                              type="button"
+                              onClick={() => setDeviceAgentToken(generateAgentToken())}
+                              className="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
+                            >
+                              Gerar
+                            </button>
+                          </Permissao>
                           <button
                             type="button"
                             onClick={() => navigator.clipboard?.writeText(deviceAgentToken)}
@@ -2858,12 +2891,14 @@ export function AttendanceModule() {
                     >
                       Cancelar
                     </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
-                    >
-                      Salvar
-                    </button>
+                    <Permissao chave="attendance.attendance_module.salvar" rotulo="Salvar — Attendance Module" herda="attendance.view">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
+                      >
+                        Salvar
+                      </button>
+                    </Permissao>
                   </div>
                 </form>
 

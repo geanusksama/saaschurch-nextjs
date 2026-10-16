@@ -6,6 +6,1866 @@ import type { DefPermissao } from './definir';
 
 export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
+    "chave": "asset_inventory.asset_inventory_list.iniciar_novo_inventario",
+    "rotulo": "Iniciar novo inventário — Asset Inventory List",
+    "herda": "asset_inventory.view",
+    "arquivo": "src/app-ui/assets/AssetInventoryList.tsx"
+  },
+  {
+    "chave": "asset_inventory.asset_inventory_report.imprimir",
+    "rotulo": "Imprimir — Asset Inventory Report",
+    "herda": "asset_inventory.view",
+    "arquivo": "src/app-ui/assets/AssetInventoryReport.tsx"
+  },
+  {
+    "chave": "asset_inventory.asset_inventory_scan.confirmar",
+    "rotulo": "Confirmar — Asset Inventory Scan",
+    "herda": "asset_inventory.view",
+    "arquivo": "src/app-ui/assets/AssetInventoryScan.tsx"
+  },
+  {
+    "chave": "assets.asset_detail_modal.editar",
+    "rotulo": "Editar — Asset Detail Modal",
+    "herda": "assets.view",
+    "arquivo": "src/app-ui/assets/AssetDetailModal.tsx"
+  },
+  {
+    "chave": "assets.asset_detail_modal.imprimir_etiqueta",
+    "rotulo": "Imprimir etiqueta — Asset Detail Modal",
+    "herda": "assets.view",
+    "arquivo": "src/app-ui/assets/AssetDetailModal.tsx"
+  },
+  {
+    "chave": "assets.asset_form_drawer.salvar",
+    "rotulo": "Salvar — Asset Form Drawer",
+    "herda": "assets.view",
+    "arquivo": "src/app-ui/assets/AssetFormDrawer.tsx"
+  },
+  {
+    "chave": "assets.asset_import_modal.baixar_modelo_de_planilha",
+    "rotulo": "Baixar modelo de planilha — Asset Import Modal",
+    "herda": "assets.view",
+    "arquivo": "src/app-ui/assets/AssetImportModal.tsx"
+  },
+  {
+    "chave": "assets.asset_import_modal.confirmar_e_importar",
+    "rotulo": "Confirmar e importar — Asset Import Modal",
+    "herda": "assets.view",
+    "arquivo": "src/app-ui/assets/AssetImportModal.tsx"
+  },
+  {
+    "chave": "assets.assets_list.editar",
+    "rotulo": "Editar — Assets List",
+    "herda": "assets.edit",
+    "arquivo": "src/app-ui/assets/AssetsList.tsx"
+  },
+  {
+    "chave": "assets.assets_list.excluir",
+    "rotulo": "Excluir — Assets List",
+    "herda": "assets.delete",
+    "arquivo": "src/app-ui/assets/AssetsList.tsx"
+  },
+  {
+    "chave": "assets.assets_list.importar_csv",
+    "rotulo": "Importar CSV — Assets List",
+    "herda": "assets.create",
+    "arquivo": "src/app-ui/assets/AssetsList.tsx"
+  },
+  {
+    "chave": "assets.assets_list.imprimir_etiquetas",
+    "rotulo": "Imprimir Etiquetas — Assets List",
+    "herda": "assets.view",
+    "arquivo": "src/app-ui/assets/AssetsList.tsx"
+  },
+  {
+    "chave": "assets.assets_list.novo_bem",
+    "rotulo": "Novo Bem — Assets List",
+    "herda": "assets.create",
+    "arquivo": "src/app-ui/assets/AssetsList.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.adicionar_dispositivo",
+    "rotulo": "Adicionar Dispositivo — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.csv",
+    "rotulo": "CSV — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.editar",
+    "rotulo": "Editar — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.enviar_mensagem_saudades",
+    "rotulo": "Enviar Mensagem (Saudades) — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.enviar_whatsapp",
+    "rotulo": "Enviar WhatsApp — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.excel",
+    "rotulo": "Excel — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.excluir",
+    "rotulo": "Excluir — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.excluir_registro",
+    "rotulo": "Excluir registro — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.gerar",
+    "rotulo": "Gerar — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.imprimir",
+    "rotulo": "Imprimir — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.imprimir_relatorio",
+    "rotulo": "Imprimir Relatório — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.renovar_gerar_token",
+    "rotulo": "Renovar Gerar token — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "attendance.attendance_module.salvar",
+    "rotulo": "Salvar — Attendance Module",
+    "herda": "attendance.view",
+    "arquivo": "src/components/app-ui/AttendanceModule.tsx"
+  },
+  {
+    "chave": "baptism.baptism_event_detail.adicionar_candidato",
+    "rotulo": "Adicionar Candidato — Baptism Event Detail",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/BaptismEventDetail.tsx"
+  },
+  {
+    "chave": "baptism.baptism_event_detail.editar_evento",
+    "rotulo": "Editar Evento — Baptism Event Detail",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/BaptismEventDetail.tsx"
+  },
+  {
+    "chave": "baptism.baptism_event_detail.enviar_convites",
+    "rotulo": "Enviar Convites — Baptism Event Detail",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/BaptismEventDetail.tsx"
+  },
+  {
+    "chave": "baptism.baptism.editar",
+    "rotulo": "Editar — Baptism",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/Baptism.tsx"
+  },
+  {
+    "chave": "baptism.baptism.excluir",
+    "rotulo": "Excluir — Baptism",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/Baptism.tsx"
+  },
+  {
+    "chave": "baptism.baptism.excluir_selecionados",
+    "rotulo": "Excluir selecionados — Baptism",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/Baptism.tsx"
+  },
+  {
+    "chave": "baptism.baptism.exportar",
+    "rotulo": "Exportar — Baptism",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/Baptism.tsx"
+  },
+  {
+    "chave": "baptism.baptism.imprimir",
+    "rotulo": "Imprimir — Baptism",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/Baptism.tsx"
+  },
+  {
+    "chave": "baptism.baptism.novo_batismo",
+    "rotulo": "Novo Batismo — Baptism",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/Baptism.tsx"
+  },
+  {
+    "chave": "baptism.baptism.salvar_alteracoes_iniciar_processo",
+    "rotulo": "Salvar Alteracoes Iniciar Processo — Baptism",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/Baptism.tsx"
+  },
+  {
+    "chave": "baptism.baptism.salvar_alteracoes_salvar_data",
+    "rotulo": "Salvar Alteracoes Salvar Data — Baptism",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/Baptism.tsx"
+  },
+  {
+    "chave": "birthdays.birthdays.enviar_em_massa_enviar_whatsapp",
+    "rotulo": "Enviar em Massa Enviar WhatsApp — Birthdays",
+    "herda": "birthdays.view",
+    "arquivo": "src/components/app-ui/Birthdays.tsx"
+  },
+  {
+    "chave": "birthdays.birthdays.enviar_email",
+    "rotulo": "Enviar email — Birthdays",
+    "herda": "birthdays.view",
+    "arquivo": "src/components/app-ui/Birthdays.tsx"
+  },
+  {
+    "chave": "birthdays.birthdays.enviar_email_em_massa",
+    "rotulo": "Enviar Email em Massa — Birthdays",
+    "herda": "birthdays.view",
+    "arquivo": "src/components/app-ui/Birthdays.tsx"
+  },
+  {
+    "chave": "birthdays.birthdays.enviar_whatsapp",
+    "rotulo": "Enviar WhatsApp — Birthdays",
+    "herda": "birthdays.view",
+    "arquivo": "src/components/app-ui/Birthdays.tsx"
+  },
+  {
+    "chave": "birthdays.birthdays.enviar_whatsapp_de_aniversario",
+    "rotulo": "Enviar WhatsApp de aniversário — Birthdays",
+    "herda": "birthdays.view",
+    "arquivo": "src/components/app-ui/Birthdays.tsx"
+  },
+  {
+    "chave": "birthdays.birthdays.imprimir",
+    "rotulo": "Imprimir — Birthdays",
+    "herda": "birthdays.view",
+    "arquivo": "src/components/app-ui/Birthdays.tsx"
+  },
+  {
+    "chave": "campo_passwords.field_password_admin.remover",
+    "rotulo": "Remover — Field Password Admin",
+    "herda": "campo_passwords.view",
+    "arquivo": "src/app-ui/system/FieldPasswordAdmin.tsx"
+  },
+  {
+    "chave": "cashbook.analytics_modal.imprimir_relatorio",
+    "rotulo": "Imprimir Relatório — Analytics Modal",
+    "herda": "cashbook.view",
+    "arquivo": "src/app-ui/finance/AnalyticsModal.tsx"
+  },
+  {
+    "chave": "cashbook.cashbook.editar_lancamento",
+    "rotulo": "Editar lançamento — Cashbook",
+    "herda": "cashbook.view",
+    "arquivo": "src/app-ui/finance/Cashbook.tsx"
+  },
+  {
+    "chave": "cashbook.cashbook.excluir",
+    "rotulo": "Excluir — Cashbook",
+    "herda": "cashbook.view",
+    "arquivo": "src/app-ui/finance/Cashbook.tsx"
+  },
+  {
+    "chave": "cashbook.cashbook.imprimir_recibo",
+    "rotulo": "Imprimir recibo — Cashbook",
+    "herda": "cashbook.view",
+    "arquivo": "src/app-ui/finance/Cashbook.tsx"
+  },
+  {
+    "chave": "cashbook.relatorio_modal.baixar",
+    "rotulo": "Baixar — Relatorio Modal",
+    "herda": "cashbook.view",
+    "arquivo": "src/app-ui/finance/RelatorioModal.tsx"
+  },
+  {
+    "chave": "cashbook.relatorio_modal.imprimir",
+    "rotulo": "Imprimir — Relatorio Modal",
+    "herda": "cashbook.view",
+    "arquivo": "src/app-ui/finance/RelatorioModal.tsx"
+  },
+  {
+    "chave": "cells.cell_groups.editar_gf",
+    "rotulo": "Editar GF — Cell Groups",
+    "herda": "cells.edit",
+    "arquivo": "src/components/app-ui/CellGroups.tsx"
+  },
+  {
+    "chave": "cells.cell_groups.excluir_gf",
+    "rotulo": "Excluir GF — Cell Groups",
+    "herda": "cells.delete",
+    "arquivo": "src/components/app-ui/CellGroups.tsx"
+  },
+  {
+    "chave": "cells.cell_groups.novo_gf",
+    "rotulo": "Novo GF — Cell Groups",
+    "herda": "cells.create",
+    "arquivo": "src/components/app-ui/CellGroups.tsx"
+  },
+  {
+    "chave": "churches.churches.editar",
+    "rotulo": "Editar — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.encerrar_mesmo_assim",
+    "rotulo": "Encerrar mesmo assim — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.excluir",
+    "rotulo": "Excluir — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.imprimir",
+    "rotulo": "Imprimir — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.nova_funcao",
+    "rotulo": "Nova Funcao — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.nova_igreja",
+    "rotulo": "Nova Igreja — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.novo_contato",
+    "rotulo": "Novo Contato — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.novo_dirigente",
+    "rotulo": "Novo Dirigente — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.salvar_alteracoes_trocar_dirigente",
+    "rotulo": "Salvar alterações Trocar dirigente — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.salvar_dados_criar_igreja",
+    "rotulo": "Salvar dados Criar igreja — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.salvar_lancamento",
+    "rotulo": "Salvar lançamento — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.churches.salvar_vinculos",
+    "rotulo": "Salvar vinculos — Churches",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/Churches.tsx"
+  },
+  {
+    "chave": "churches.leader_report_modal.imprimir",
+    "rotulo": "Imprimir — Leader Report Modal",
+    "herda": "churches.view",
+    "arquivo": "src/components/app-ui/churches/LeaderReportModal.tsx"
+  },
+  {
+    "chave": "consecration.consecration.editar",
+    "rotulo": "Editar — Consecration",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/Consecration.tsx"
+  },
+  {
+    "chave": "consecration.consecration.excluir",
+    "rotulo": "Excluir — Consecration",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/Consecration.tsx"
+  },
+  {
+    "chave": "consecration.consecration.excluir_selecionados",
+    "rotulo": "Excluir selecionados — Consecration",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/Consecration.tsx"
+  },
+  {
+    "chave": "consecration.consecration.exportar",
+    "rotulo": "Exportar — Consecration",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/Consecration.tsx"
+  },
+  {
+    "chave": "consecration.consecration.imprimir",
+    "rotulo": "Imprimir — Consecration",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/Consecration.tsx"
+  },
+  {
+    "chave": "consecration.consecration.nova_consagracao",
+    "rotulo": "Nova Consagração — Consecration",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/Consecration.tsx"
+  },
+  {
+    "chave": "consecration.consecration.salvar_alteracoes_iniciar_processo",
+    "rotulo": "Salvar Alteracoes Iniciar Processo — Consecration",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/Consecration.tsx"
+  },
+  {
+    "chave": "consecration.consecration.salvar_alteracoes_salvar_data",
+    "rotulo": "Salvar Alteracoes Salvar Data — Consecration",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/Consecration.tsx"
+  },
+  {
+    "chave": "contas_pagar.conta_pagar_form_drawer.cadastrar_novo_credor",
+    "rotulo": "Cadastrar novo credor — Conta Pagar Form Drawer",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/ContaPagarFormDrawer.tsx"
+  },
+  {
+    "chave": "contas_pagar.conta_pagar_form_drawer.salvar_alteracoes_lancar_conta",
+    "rotulo": "Salvar alterações Lançar conta — Conta Pagar Form Drawer",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/ContaPagarFormDrawer.tsx"
+  },
+  {
+    "chave": "contas_pagar.contas_pagar.aprovar",
+    "rotulo": "Aprovar — Contas Pagar",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/ContasPagar.tsx"
+  },
+  {
+    "chave": "contas_pagar.contas_pagar.editar",
+    "rotulo": "Editar — Contas Pagar",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/ContasPagar.tsx"
+  },
+  {
+    "chave": "contas_pagar.contas_pagar.exportar",
+    "rotulo": "Exportar — Contas Pagar",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/ContasPagar.tsx"
+  },
+  {
+    "chave": "contas_pagar.contas_pagar.imprimir",
+    "rotulo": "Imprimir — Contas Pagar",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/ContasPagar.tsx"
+  },
+  {
+    "chave": "contas_pagar.contas_pagar.nova_conta",
+    "rotulo": "Nova Conta — Contas Pagar",
+    "herda": "contas_pagar.create",
+    "arquivo": "src/app-ui/finance/ContasPagar.tsx"
+  },
+  {
+    "chave": "contas_pagar.contas_pagar.remover_todos",
+    "rotulo": "Remover todos — Contas Pagar",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/ContasPagar.tsx"
+  },
+  {
+    "chave": "contas_pagar.credor_form_modal.cadastrar_credor",
+    "rotulo": "Cadastrar credor — Credor Form Modal",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/CredorFormModal.tsx"
+  },
+  {
+    "chave": "contas_pagar.credor_form_modal.remover",
+    "rotulo": "Remover — Credor Form Modal",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/CredorFormModal.tsx"
+  },
+  {
+    "chave": "contas_pagar.parcela_detail_modal.estornar",
+    "rotulo": "Estornar — Parcela Detail Modal",
+    "herda": "contas_pagar.view",
+    "arquivo": "src/app-ui/finance/ParcelaDetailModal.tsx"
+  },
+  {
+    "chave": "credentials.credentials.excel",
+    "rotulo": "Excel — Credentials",
+    "herda": "credentials.view",
+    "arquivo": "src/components/app-ui/Credentials.tsx"
+  },
+  {
+    "chave": "credentials.credentials.excluir",
+    "rotulo": "Excluir — Credentials",
+    "herda": "credentials.view",
+    "arquivo": "src/components/app-ui/Credentials.tsx"
+  },
+  {
+    "chave": "credentials.credentials.imprimir",
+    "rotulo": "Imprimir — Credentials",
+    "herda": "credentials.view",
+    "arquivo": "src/components/app-ui/Credentials.tsx"
+  },
+  {
+    "chave": "credentials.credentials.nova_credencial",
+    "rotulo": "Nova Credencial — Credentials",
+    "herda": "credentials.view",
+    "arquivo": "src/components/app-ui/Credentials.tsx"
+  },
+  {
+    "chave": "crm_leads.contacts_module.exportar",
+    "rotulo": "Exportar — Contacts Module",
+    "herda": "crm_leads.view",
+    "arquivo": "src/components/app-ui/ContactsModule.tsx"
+  },
+  {
+    "chave": "crm_leads.contacts_module.novo_contato",
+    "rotulo": "Novo Contato — Contacts Module",
+    "herda": "crm_leads.view",
+    "arquivo": "src/components/app-ui/ContactsModule.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.criar",
+    "rotulo": "Criar — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.editar",
+    "rotulo": "Editar — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.editar_nome",
+    "rotulo": "Editar nome — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.enviar_mensagem",
+    "rotulo": "Enviar mensagem — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.excluir",
+    "rotulo": "Excluir — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.excluir_registros",
+    "rotulo": "Excluir registros ( ) — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.exportar",
+    "rotulo": "Exportar — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.exportar_csv",
+    "rotulo": "Exportar CSV — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.imprimir",
+    "rotulo": "Imprimir — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.remover_arquivo",
+    "rotulo": "Remover arquivo — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "crm_pipeline.secretariat_pipeline.salvar_alteracoes",
+    "rotulo": "Salvar alterações — Secretariat Pipeline",
+    "herda": "crm_pipeline.view",
+    "arquivo": "src/app-ui/ecclesiastical/SecretariatPipeline.tsx"
+  },
+  {
+    "chave": "culto_gestao.culto_imprimir_modal.imprimir",
+    "rotulo": "Imprimir — Culto Imprimir Modal",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/CultoImprimirModal.tsx"
+  },
+  {
+    "chave": "culto_gestao.culto_meus_lancamentos.ver_editar_lancar",
+    "rotulo": "· · ver editar lançar — Culto Meus Lancamentos",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/CultoMeusLancamentos.tsx"
+  },
+  {
+    "chave": "culto_gestao.culto_resumo_modal.editar_culto",
+    "rotulo": "Editar culto — Culto Resumo Modal",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/CultoResumoModal.tsx"
+  },
+  {
+    "chave": "culto_gestao.culto_resumo_modal.excluir_culto_ou_um_dos_envios",
+    "rotulo": "Excluir culto ou um dos envios — Culto Resumo Modal",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/CultoResumoModal.tsx"
+  },
+  {
+    "chave": "culto_gestao.gestao_culto.abrir_o_culto_para_ver_editar_aprovar_ou",
+    "rotulo": "Abrir o culto para ver, editar, aprovar ou excluir — Gestao Culto",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/GestaoCulto.tsx"
+  },
+  {
+    "chave": "culto_gestao.gestao_culto.editar_culto",
+    "rotulo": "Editar culto — Gestao Culto",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/GestaoCulto.tsx"
+  },
+  {
+    "chave": "culto_gestao.gestao_culto.excluir_culto",
+    "rotulo": "Excluir culto — Gestao Culto",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/GestaoCulto.tsx"
+  },
+  {
+    "chave": "culto_gestao.gestao_culto.excluir_o_culto_inteiro",
+    "rotulo": "Excluir o culto inteiro — Gestao Culto",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/GestaoCulto.tsx"
+  },
+  {
+    "chave": "culto_gestao.gestao_culto.excluir_so_o",
+    "rotulo": "Excluir só o — Gestao Culto",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/GestaoCulto.tsx"
+  },
+  {
+    "chave": "culto_gestao.gestao_culto.imprimir",
+    "rotulo": "Imprimir — Gestao Culto",
+    "herda": "culto_gestao.view",
+    "arquivo": "src/app-ui/culto/GestaoCulto.tsx"
+  },
+  {
+    "chave": "culto_lancar.culto_lancar_modal.cadastrar_horarios_de_culto_desta_igreja",
+    "rotulo": "Cadastrar horários de culto desta igreja — Culto Lancar Modal",
+    "herda": "culto_lancar.view",
+    "arquivo": "src/app-ui/culto/CultoLancarModal.tsx"
+  },
+  {
+    "chave": "culto_lancar.culto_lancar_modal.cadastrar_tipos_de_culto",
+    "rotulo": "Cadastrar tipos de culto — Culto Lancar Modal",
+    "herda": "culto_lancar.view",
+    "arquivo": "src/app-ui/culto/CultoLancarModal.tsx"
+  },
+  {
+    "chave": "culto_lancar.culto_lancar_modal.enviar",
+    "rotulo": "Enviar — Culto Lancar Modal",
+    "herda": "culto_lancar.view",
+    "arquivo": "src/app-ui/culto/CultoLancarModal.tsx"
+  },
+  {
+    "chave": "culto_lancar.horarios_culto_modal.excluir_horario",
+    "rotulo": "Excluir horário — Horarios Culto Modal",
+    "herda": "culto_lancar.view",
+    "arquivo": "src/app-ui/culto/HorariosCultoModal.tsx"
+  },
+  {
+    "chave": "culto_posicoes.posicoes_culto.criar_usuario_e_anexar_como",
+    "rotulo": "Criar usuário e anexar como — Posicoes Culto",
+    "herda": "culto_posicoes.view",
+    "arquivo": "src/app-ui/culto/PosicoesCulto.tsx"
+  },
+  {
+    "chave": "culto_posicoes.posicoes_culto.nao_esta_na_lista_criar_a_partir_de_um_m",
+    "rotulo": "Não está na lista? Criar a partir de um membro — Posicoes Culto",
+    "herda": "culto_posicoes.view",
+    "arquivo": "src/app-ui/culto/PosicoesCulto.tsx"
+  },
+  {
+    "chave": "culto_posicoes.posicoes_culto.remover",
+    "rotulo": "Remover — Posicoes Culto",
+    "herda": "culto_posicoes.view",
+    "arquivo": "src/app-ui/culto/PosicoesCulto.tsx"
+  },
+  {
+    "chave": "daily_bread.daily_bread.adicionar_primeira_reflexao",
+    "rotulo": "Adicionar primeira reflexao — Daily Bread",
+    "herda": "daily_bread.view",
+    "arquivo": "src/components/app-ui/DailyBread.tsx"
+  },
+  {
+    "chave": "daily_bread.daily_bread.editar",
+    "rotulo": "Editar — Daily Bread",
+    "herda": "daily_bread.view",
+    "arquivo": "src/components/app-ui/DailyBread.tsx"
+  },
+  {
+    "chave": "daily_bread.daily_bread.excluir",
+    "rotulo": "Excluir — Daily Bread",
+    "herda": "daily_bread.view",
+    "arquivo": "src/components/app-ui/DailyBread.tsx"
+  },
+  {
+    "chave": "daily_bread.daily_bread.nova_reflexao",
+    "rotulo": "Nova reflexao — Daily Bread",
+    "herda": "daily_bread.view",
+    "arquivo": "src/components/app-ui/DailyBread.tsx"
+  },
+  {
+    "chave": "daily_bread.daily_bread.salvar",
+    "rotulo": "Salvar — Daily Bread",
+    "herda": "daily_bread.view",
+    "arquivo": "src/components/app-ui/DailyBread.tsx"
+  },
+  {
+    "chave": "discipleship.discipleship_tracking.registrar_encontro",
+    "rotulo": "Registrar Encontro — Discipleship Tracking",
+    "herda": "discipleship.view",
+    "arquivo": "src/app-ui/pastoral/DiscipleshipTracking.tsx"
+  },
+  {
+    "chave": "dizimo_blocos.dizimo_blocos.cadastrar_bloco",
+    "rotulo": "Cadastrar bloco — Dizimo Blocos",
+    "herda": "dizimo_blocos.create",
+    "arquivo": "src/app-ui/finance/DizimoBlocos.tsx"
+  },
+  {
+    "chave": "dizimo_blocos.dizimo_blocos.excluir_bloco",
+    "rotulo": "Excluir bloco — Dizimo Blocos",
+    "herda": "dizimo_blocos.view",
+    "arquivo": "src/app-ui/finance/DizimoBlocos.tsx"
+  },
+  {
+    "chave": "dizimo_blocos.dizimo_blocos.gerar_bloco",
+    "rotulo": "Gerar bloco — Dizimo Blocos",
+    "herda": "dizimo_blocos.view",
+    "arquivo": "src/app-ui/finance/DizimoBlocos.tsx"
+  },
+  {
+    "chave": "ebd_cadastros.ebd_cadastros.excluir_categoria",
+    "rotulo": "Excluir (categoria) — Ebd Cadastros",
+    "herda": "ebd_cadastros.view",
+    "arquivo": "src/app-ui/ebd/EbdCadastros.tsx"
+  },
+  {
+    "chave": "ebd_cadastros.ebd_cadastros.excluir_produto",
+    "rotulo": "Excluir (produto) — Ebd Cadastros",
+    "herda": "ebd_cadastros.view",
+    "arquivo": "src/app-ui/ebd/EbdCadastros.tsx"
+  },
+  {
+    "chave": "ebd_cadastros.ebd_cadastros.excluir_trimestre",
+    "rotulo": "Excluir (trimestre) — Ebd Cadastros",
+    "herda": "ebd_cadastros.view",
+    "arquivo": "src/app-ui/ebd/EbdCadastros.tsx"
+  },
+  {
+    "chave": "ebd_cadastros.ebd_cadastros.nova_categoria",
+    "rotulo": "Nova Categoria — Ebd Cadastros",
+    "herda": "ebd_cadastros.view",
+    "arquivo": "src/app-ui/ebd/EbdCadastros.tsx"
+  },
+  {
+    "chave": "ebd_cadastros.ebd_cadastros.novo_produto",
+    "rotulo": "Novo Produto — Ebd Cadastros",
+    "herda": "ebd_cadastros.view",
+    "arquivo": "src/app-ui/ebd/EbdCadastros.tsx"
+  },
+  {
+    "chave": "ebd_cadastros.ebd_cadastros.novo_trimestre",
+    "rotulo": "Novo Trimestre — Ebd Cadastros",
+    "herda": "ebd_cadastros.view",
+    "arquivo": "src/app-ui/ebd/EbdCadastros.tsx"
+  },
+  {
+    "chave": "ebd_cadastros.ebd_cadastros.salvar",
+    "rotulo": "Salvar — Ebd Cadastros",
+    "herda": "ebd_cadastros.view",
+    "arquivo": "src/app-ui/ebd/EbdCadastros.tsx"
+  },
+  {
+    "chave": "ebd_entrega.ebd_entrega.adicionar_produto",
+    "rotulo": "Adicionar produto — Ebd Entrega",
+    "herda": "ebd_entrega.view",
+    "arquivo": "src/app-ui/ebd/EbdEntrega.tsx"
+  },
+  {
+    "chave": "ebd_entrega.ebd_entrega.imprimir",
+    "rotulo": "Imprimir — Ebd Entrega",
+    "herda": "ebd_entrega.view",
+    "arquivo": "src/app-ui/ebd/EbdEntrega.tsx"
+  },
+  {
+    "chave": "ebd_entrega.ebd_entrega.nova_entrega",
+    "rotulo": "Nova Entrega — Ebd Entrega",
+    "herda": "ebd_entrega.view",
+    "arquivo": "src/app-ui/ebd/EbdEntrega.tsx"
+  },
+  {
+    "chave": "ebd_entrega.ebd_entrega.remover_item",
+    "rotulo": "Remover (item) — Ebd Entrega",
+    "herda": "ebd_entrega.view",
+    "arquivo": "src/app-ui/ebd/EbdEntrega.tsx"
+  },
+  {
+    "chave": "ebd_entrega.ebd_entrega.salvar_e_gerar_documento",
+    "rotulo": "Salvar e Gerar Documento — Ebd Entrega",
+    "herda": "ebd_entrega.view",
+    "arquivo": "src/app-ui/ebd/EbdEntrega.tsx"
+  },
+  {
+    "chave": "ebd_estoque.ebd_estoque.adicionar_item",
+    "rotulo": "Adicionar item — Ebd Estoque",
+    "herda": "ebd_estoque.view",
+    "arquivo": "src/app-ui/ebd/EbdEstoque.tsx"
+  },
+  {
+    "chave": "ebd_estoque.ebd_estoque.excluir_entrada",
+    "rotulo": "Excluir (entrada) — Ebd Estoque",
+    "herda": "ebd_estoque.view",
+    "arquivo": "src/app-ui/ebd/EbdEstoque.tsx"
+  },
+  {
+    "chave": "ebd_estoque.ebd_estoque.remover_item",
+    "rotulo": "Remover (item) — Ebd Estoque",
+    "herda": "ebd_estoque.view",
+    "arquivo": "src/app-ui/ebd/EbdEstoque.tsx"
+  },
+  {
+    "chave": "ebd_estoque.ebd_estoque.salvar",
+    "rotulo": "Salvar — Ebd Estoque",
+    "herda": "ebd_estoque.view",
+    "arquivo": "src/app-ui/ebd/EbdEstoque.tsx"
+  },
+  {
+    "chave": "ebd_estoque.ebd_estoque.salvar_entrada",
+    "rotulo": "Salvar Entrada — Ebd Estoque",
+    "herda": "ebd_estoque.view",
+    "arquivo": "src/app-ui/ebd/EbdEstoque.tsx"
+  },
+  {
+    "chave": "ebd_financeiro.ebd_financeiro.confirmar_pagamento_da_parcela",
+    "rotulo": "Confirmar Pagamento da Parcela — Ebd Financeiro",
+    "herda": "ebd_financeiro.view",
+    "arquivo": "src/app-ui/ebd/EbdFinanceiro.tsx"
+  },
+  {
+    "chave": "ebd_financeiro.ebd_financeiro.nova_negociacao",
+    "rotulo": "Nova Negociação — Ebd Financeiro",
+    "herda": "ebd_financeiro.view",
+    "arquivo": "src/app-ui/ebd/EbdFinanceiro.tsx"
+  },
+  {
+    "chave": "ebd_financeiro.ebd_financeiro.salvar",
+    "rotulo": "Salvar — Ebd Financeiro",
+    "herda": "ebd_financeiro.view",
+    "arquivo": "src/app-ui/ebd/EbdFinanceiro.tsx"
+  },
+  {
+    "chave": "ebd_financeiro.ebd_financeiro.salvar_negociacao",
+    "rotulo": "Salvar Negociação — Ebd Financeiro",
+    "herda": "ebd_financeiro.view",
+    "arquivo": "src/app-ui/ebd/EbdFinanceiro.tsx"
+  },
+  {
+    "chave": "ebd_relatorios.ebd_relatorios.exportar_excel",
+    "rotulo": "Exportar Excel — Ebd Relatorios",
+    "herda": "ebd_relatorios.view",
+    "arquivo": "src/app-ui/ebd/EbdRelatorios.tsx"
+  },
+  {
+    "chave": "ebd_relatorios.ebd_relatorios.imprimir",
+    "rotulo": "Imprimir — Ebd Relatorios",
+    "herda": "ebd_relatorios.view",
+    "arquivo": "src/app-ui/ebd/EbdRelatorios.tsx"
+  },
+  {
+    "chave": "events.agenda.adicionar_evento",
+    "rotulo": "Adicionar evento — Agenda",
+    "herda": "events.view",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.adicionar_primeiro_evento",
+    "rotulo": "Adicionar primeiro evento — Agenda",
+    "herda": "events.create",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.editar",
+    "rotulo": "Editar — Agenda",
+    "herda": "events.edit",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.excluir",
+    "rotulo": "Excluir — Agenda",
+    "herda": "events.view",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.importar_csv",
+    "rotulo": "Importar CSV — Agenda",
+    "herda": "events.view",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.modelo_csv",
+    "rotulo": "Modelo CSV — Agenda",
+    "herda": "events.view",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.novo",
+    "rotulo": "Novo — Agenda",
+    "herda": "events.create",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.novo_2",
+    "rotulo": "Novo — Agenda",
+    "herda": "events.view",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.novo_evento",
+    "rotulo": "Novo Evento — Agenda",
+    "herda": "events.create",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.novo_evento_2",
+    "rotulo": "Novo evento — Agenda",
+    "herda": "events.create",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.salvar",
+    "rotulo": "Salvar — Agenda",
+    "herda": "events.view",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "events.agenda.voltar_cancelar",
+    "rotulo": "Voltar Cancelar — Agenda",
+    "herda": "events.view",
+    "arquivo": "src/components/app-ui/Agenda.tsx"
+  },
+  {
+    "chave": "finance_executive.diretoria.excel",
+    "rotulo": "Excel — Diretoria",
+    "herda": "finance_executive.view",
+    "arquivo": "src/app-ui/finance/Diretoria.tsx"
+  },
+  {
+    "chave": "finance_executive.diretoria.imprimir",
+    "rotulo": "Imprimir — Diretoria",
+    "herda": "finance_executive.view",
+    "arquivo": "src/app-ui/finance/Diretoria.tsx"
+  },
+  {
+    "chave": "inbox.inbox.enviar",
+    "rotulo": "Enviar — Inbox",
+    "herda": "inbox.view",
+    "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "inbox.inbox.enviar_para_outro_campo",
+    "rotulo": "Enviar para outro Campo — Inbox",
+    "herda": "inbox.view",
+    "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "inbox.inbox.excluir",
+    "rotulo": "Excluir — Inbox",
+    "herda": "inbox.view",
+    "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "inbox.inbox.excluir_2",
+    "rotulo": "Excluir ( ) — Inbox",
+    "herda": "inbox.view",
+    "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "inbox.inbox.gerar_meu_e_mail_campo",
+    "rotulo": "Gerar meu e-mail @ campo — Inbox",
+    "herda": "inbox.view",
+    "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "inbox.inbox.limpar",
+    "rotulo": "Limpar — Inbox",
+    "herda": "inbox.view",
+    "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "inbox.inbox.nova_mensagem",
+    "rotulo": "Nova mensagem — Inbox",
+    "herda": "inbox.view",
+    "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "inbox.inbox.remover_attachment",
+    "rotulo": "Remover (attachment) — Inbox",
+    "herda": "inbox.view",
+    "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "members.family_relationships.adicionar_membro",
+    "rotulo": "Adicionar Membro — Family Relationships",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/FamilyRelationships.tsx"
+  },
+  {
+    "chave": "members.member_edit.salvar_alteracoes",
+    "rotulo": "Salvar Alteracoes — Member Edit",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberEdit.tsx"
+  },
+  {
+    "chave": "members.member_edit.salvar_alteracoes_2",
+    "rotulo": "Salvar Alterações — Member Edit",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberEdit.tsx"
+  },
+  {
+    "chave": "members.member_import.confirmar_e_importar_pt_br_membros",
+    "rotulo": "Confirmar e Importar pt-BR membros — Member Import",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberImport.tsx"
+  },
+  {
+    "chave": "members.member_import.nova_importacao",
+    "rotulo": "Nova Importação — Member Import",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberImport.tsx"
+  },
+  {
+    "chave": "members.member_notes.adicionar_primeira_nota",
+    "rotulo": "Adicionar Primeira Nota — Member Notes",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberNotes.tsx"
+  },
+  {
+    "chave": "members.member_notes.nova_nota",
+    "rotulo": "Nova Nota — Member Notes",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberNotes.tsx"
+  },
+  {
+    "chave": "members.member_profile.adicionar_familiar",
+    "rotulo": "Adicionar familiar — Member Profile",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberProfile.tsx"
+  },
+  {
+    "chave": "members.member_profile.adicionar_historico_em_outra_igreja",
+    "rotulo": "Adicionar histórico em outra igreja — Member Profile",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberProfile.tsx"
+  },
+  {
+    "chave": "members.member_profile.editar",
+    "rotulo": "Editar — Member Profile",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberProfile.tsx"
+  },
+  {
+    "chave": "members.member_profile.excluir",
+    "rotulo": "Excluir — Member Profile",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberProfile.tsx"
+  },
+  {
+    "chave": "members.member_profile.executar_ocorrencia_rapida",
+    "rotulo": "Executar Ocorrência Rápida — Member Profile",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberProfile.tsx"
+  },
+  {
+    "chave": "members.member_profile.nova_funcao",
+    "rotulo": "Nova função — Member Profile",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberProfile.tsx"
+  },
+  {
+    "chave": "members.member_profile.nova_ocorrencia",
+    "rotulo": "Nova Ocorrência — Member Profile",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberProfile.tsx"
+  },
+  {
+    "chave": "members.member_profile.remover_vinculo",
+    "rotulo": "Remover vínculo — Member Profile",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberProfile.tsx"
+  },
+  {
+    "chave": "members.member_profile.salvar",
+    "rotulo": "Salvar — Member Profile",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberProfile.tsx"
+  },
+  {
+    "chave": "members.member_registration.adicionar_historico_em_outra_igreja",
+    "rotulo": "Adicionar histórico em outra igreja — Member Registration",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
+  },
+  {
+    "chave": "members.member_registration.editar_membro",
+    "rotulo": "Editar Membro — Member Registration",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
+  },
+  {
+    "chave": "members.member_registration.incluir_na_consagracao",
+    "rotulo": "Incluir na Consagração — Member Registration",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
+  },
+  {
+    "chave": "members.member_registration.incluir_no_batismo",
+    "rotulo": "Incluir no Batismo — Member Registration",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
+  },
+  {
+    "chave": "members.member_registration.novo_cadastro",
+    "rotulo": "Novo Cadastro — Member Registration",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
+  },
+  {
+    "chave": "members.member_registration.remover_prev_church",
+    "rotulo": "Remover (prev church) — Member Registration",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
+  },
+  {
+    "chave": "members.member_registration.salvar_historico",
+    "rotulo": "Salvar histórico — Member Registration",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
+  },
+  {
+    "chave": "members.member_registration.salvar_membro",
+    "rotulo": "Salvar Membro — Member Registration",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
+  },
+  {
+    "chave": "members.member_registration.ver_ficha_do_membro",
+    "rotulo": "Ver Ficha do Membro — Member Registration",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/MemberRegistration.tsx"
+  },
+  {
+    "chave": "members.members.editar",
+    "rotulo": "Editar — Members",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/Members.tsx"
+  },
+  {
+    "chave": "members.members.excluir",
+    "rotulo": "Excluir — Members",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/Members.tsx"
+  },
+  {
+    "chave": "members.members.excluir_tudo",
+    "rotulo": "Excluir tudo — Members",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/Members.tsx"
+  },
+  {
+    "chave": "members.members.exportar_excel",
+    "rotulo": "Exportar Excel — Members",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/Members.tsx"
+  },
+  {
+    "chave": "members.members.imprimir",
+    "rotulo": "Imprimir — Members",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/Members.tsx"
+  },
+  {
+    "chave": "members.members.novo_membro",
+    "rotulo": "Novo Membro — Members",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/Members.tsx"
+  },
+  {
+    "chave": "members.members.novo_pf",
+    "rotulo": "Novo PF — Members",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/Members.tsx"
+  },
+  {
+    "chave": "members.members.novo_pj",
+    "rotulo": "Novo PJ — Members",
+    "herda": "members.view",
+    "arquivo": "src/components/app-ui/Members.tsx"
+  },
+  {
+    "chave": "membership_requests.membership_review_modal.aprovar_cadastro",
+    "rotulo": "Aprovar cadastro — Membership Review Modal",
+    "herda": "membership_requests.view",
+    "arquivo": "src/app-ui/ecclesiastical/MembershipReviewModal.tsx"
+  },
+  {
+    "chave": "membership_requests.membership_review_modal.aprovar_e_encerrar_acolhimento",
+    "rotulo": "Aprovar e encerrar acolhimento — Membership Review Modal",
+    "herda": "membership_requests.view",
+    "arquivo": "src/app-ui/ecclesiastical/MembershipReviewModal.tsx"
+  },
+  {
+    "chave": "membership_requests.membership_review_modal.enviar_por_whatsapp",
+    "rotulo": "Enviar por WhatsApp — Membership Review Modal",
+    "herda": "membership_requests.view",
+    "arquivo": "src/app-ui/ecclesiastical/MembershipReviewModal.tsx"
+  },
+  {
+    "chave": "membership_requests.membership_review_modal.reprovar",
+    "rotulo": "Reprovar — Membership Review Modal",
+    "herda": "membership_requests.view",
+    "arquivo": "src/app-ui/ecclesiastical/MembershipReviewModal.tsx"
+  },
+  {
+    "chave": "ministries.ministries.atualizar_ministerio_criar_ministerio",
+    "rotulo": "Atualizar Ministério Criar Ministério — Ministries",
+    "herda": "ministries.view",
+    "arquivo": "src/components/app-ui/Ministries.tsx"
+  },
+  {
+    "chave": "ministries.ministries.editar",
+    "rotulo": "Editar — Ministries",
+    "herda": "ministries.edit",
+    "arquivo": "src/components/app-ui/Ministries.tsx"
+  },
+  {
+    "chave": "ministries.ministries.excluir",
+    "rotulo": "Excluir — Ministries",
+    "herda": "ministries.delete",
+    "arquivo": "src/components/app-ui/Ministries.tsx"
+  },
+  {
+    "chave": "ministries.ministries.novo_ministerio",
+    "rotulo": "Novo Ministério — Ministries",
+    "herda": "ministries.create",
+    "arquivo": "src/components/app-ui/Ministries.tsx"
+  },
+  {
+    "chave": "mobile_config.mobile_config.salvar",
+    "rotulo": "Salvar — Mobile Config",
+    "herda": "mobile_config.edit",
+    "arquivo": "src/app-ui/mobile/MobileConfig.tsx"
+  },
+  {
+    "chave": "mobile_config.mobile_config.salvar_igreja_mundial",
+    "rotulo": "Salvar Igreja Mundial — Mobile Config",
+    "herda": "mobile_config.view",
+    "arquivo": "src/app-ui/mobile/MobileConfig.tsx"
+  },
+  {
+    "chave": "notifications.notifications.editar",
+    "rotulo": "Editar — Notifications",
+    "herda": "notifications.view",
+    "arquivo": "src/components/app-ui/Notifications.tsx"
+  },
+  {
+    "chave": "notifications.notifications.excluir",
+    "rotulo": "Excluir — Notifications",
+    "herda": "notifications.view",
+    "arquivo": "src/components/app-ui/Notifications.tsx"
+  },
+  {
+    "chave": "notifications.notifications.nova_notificacao",
+    "rotulo": "Nova notificação — Notifications",
+    "herda": "notifications.view",
+    "arquivo": "src/components/app-ui/Notifications.tsx"
+  },
+  {
+    "chave": "notifications.notifications.salvar_alteracoes_criar_notificacao",
+    "rotulo": "Salvar alterações Criar notificação — Notifications",
+    "herda": "notifications.view",
+    "arquivo": "src/components/app-ui/Notifications.tsx"
+  },
+  {
+    "chave": "pastoral_reports.pastoral_reports.imprimir",
+    "rotulo": "Imprimir — Pastoral Reports",
+    "herda": "pastoral_reports.view",
+    "arquivo": "src/app-ui/pastoral/PastoralReports.tsx"
+  },
+  {
+    "chave": "pastoral_reports.pastoral_reports.imprimir_relatorio",
+    "rotulo": "Imprimir relatório — Pastoral Reports",
+    "herda": "pastoral_reports.view",
+    "arquivo": "src/app-ui/pastoral/PastoralReports.tsx"
+  },
+  {
+    "chave": "pastoral_visits.conversation_modal.enviar",
+    "rotulo": "Enviar — Conversation Modal",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/ConversationModal.tsx"
+  },
+  {
+    "chave": "pastoral_visits.conversation_modal.gerar_outra",
+    "rotulo": "Gerar outra — Conversation Modal",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/ConversationModal.tsx"
+  },
+  {
+    "chave": "pastoral_visits.import_csv_modal.baixar_modelo",
+    "rotulo": "Baixar modelo — Import Csv Modal",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/ImportCsvModal.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_analysis_modal.imprimir_a_analise",
+    "rotulo": "Imprimir a análise — Journey Analysis Modal",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneyAnalysisModal.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_matrix_editor.criar_cronograma_padrao",
+    "rotulo": "Criar cronograma padrão — Journey Matrix Editor",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneyMatrixEditor.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_matrix_editor.excluir_etapa",
+    "rotulo": "Excluir etapa — Journey Matrix Editor",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneyMatrixEditor.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_matrix_editor.nova_etapa",
+    "rotulo": "Nova etapa — Journey Matrix Editor",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneyMatrixEditor.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_matrix_editor.novo_cronograma",
+    "rotulo": "Novo cronograma — Journey Matrix Editor",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneyMatrixEditor.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_matrix_editor.salvar",
+    "rotulo": "Salvar — Journey Matrix Editor",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneyMatrixEditor.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_sends.csv",
+    "rotulo": "CSV — Journey Sends",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneySends.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_sends.editar_antes_de_enviar",
+    "rotulo": "Editar antes de enviar — Journey Sends",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneySends.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_sends.enviar_reply",
+    "rotulo": "Enviar (reply) — Journey Sends",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneySends.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_sends.enviar_sugestao",
+    "rotulo": "Enviar sugestão — Journey Sends",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneySends.tsx"
+  },
+  {
+    "chave": "pastoral_visits.journey_sends.excel",
+    "rotulo": "Excel — Journey Sends",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/JourneySends.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_attendance_detail.adicionar",
+    "rotulo": "+ Adicionar • — Pastoral Attendance Detail",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_attendance_detail.criar_primeira_atividade",
+    "rotulo": "Criar primeira atividade — Pastoral Attendance Detail",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_attendance_detail.editar",
+    "rotulo": "Editar — Pastoral Attendance Detail",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_attendance_detail.excluir",
+    "rotulo": "Excluir — Pastoral Attendance Detail",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_attendance_detail.gerar_outra_sugestao_gerar_sugestao",
+    "rotulo": "Gerar outra sugestão Gerar sugestão — Pastoral Attendance Detail",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_attendance_detail.nova_atividade",
+    "rotulo": "Nova Atividade — Pastoral Attendance Detail",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_attendance_detail.remover",
+    "rotulo": "Remover — Pastoral Attendance Detail",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_attendance_detail.salvar",
+    "rotulo": "Salvar — Pastoral Attendance Detail",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceDetail.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_attendance_new.criar_atendimento",
+    "rotulo": "Criar Atendimento — Pastoral Attendance New",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralAttendanceNew.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_cronograma.acompanhamento",
+    "rotulo": "Acompanhamento — Pastoral Cronograma",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralCronograma.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_dashboard.csv",
+    "rotulo": "CSV — Pastoral Dashboard",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralDashboard.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_dashboard.excel",
+    "rotulo": "Excel — Pastoral Dashboard",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralDashboard.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_dashboard.imprimir",
+    "rotulo": "Imprimir — Pastoral Dashboard",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralDashboard.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_distribuicao.desconectar",
+    "rotulo": "Desconectar — Pastoral Distribuicao",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralDistribuicao.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_hub.envio_em_massa",
+    "rotulo": "Envio em Massa — Pastoral Hub",
+    "herda": "whatsapp_campaigns.view",
+    "arquivo": "src/app-ui/pastoral/PastoralHub.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_hub.envios",
+    "rotulo": "Envios — Pastoral Hub",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralHub.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_hub.importacoes",
+    "rotulo": "Importações — Pastoral Hub",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralHub.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_imports.csv",
+    "rotulo": "CSV — Pastoral Imports",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralImports.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_imports.excel",
+    "rotulo": "Excel — Pastoral Imports",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralImports.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_imports.excluir_selecionados",
+    "rotulo": "Excluir selecionados — Pastoral Imports",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralImports.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_imports.excluir_todos_os_lotes_importados",
+    "rotulo": "Excluir todos os lotes importados — Pastoral Imports",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralImports.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_kanban.excluir_atendimento",
+    "rotulo": "Excluir atendimento — Pastoral Kanban",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralKanban.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_kanban.excluir_selecionados",
+    "rotulo": "Excluir selecionados — Pastoral Kanban",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralKanban.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_kanban.imprimir_relatorio_do_pipeline",
+    "rotulo": "Imprimir Relatório do Pipeline — Pastoral Kanban",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralKanban.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_kanban.novo_atendimento",
+    "rotulo": "Novo atendimento — Pastoral Kanban",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralKanban.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_kanban.novo_atendimento_2",
+    "rotulo": "Novo Atendimento — Pastoral Kanban",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralKanban.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_mass_send.baixar_o_arquivo_modelo_com_as_colunas_a",
+    "rotulo": "Baixar o arquivo-modelo com as colunas aceitas — Pastoral Mass Send",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralMassSend.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_mass_send.csv",
+    "rotulo": "CSV — Pastoral Mass Send",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralMassSend.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_mass_send.enviar_mensagem_individual_pela_instanci",
+    "rotulo": "Enviar mensagem individual pela instância selecionada — Pastoral Mass Send",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralMassSend.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_mass_send.excel",
+    "rotulo": "Excel — Pastoral Mass Send",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralMassSend.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_mass_send.importar_csv",
+    "rotulo": "Importar CSV — Pastoral Mass Send",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralMassSend.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_mass_send.parecer_pdf",
+    "rotulo": "Parecer PDF — Pastoral Mass Send",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralMassSend.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_send_history.csv",
+    "rotulo": "CSV — Pastoral Send History",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralSendHistory.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_send_history.enviar_reply",
+    "rotulo": "Enviar (reply) — Pastoral Send History",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralSendHistory.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_send_history.enviar_sugestao",
+    "rotulo": "Enviar sugestão — Pastoral Send History",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralSendHistory.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_send_history.excel",
+    "rotulo": "Excel — Pastoral Send History",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralSendHistory.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_send_history.excluir_selecionados",
+    "rotulo": "Excluir selecionados — Pastoral Send History",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralSendHistory.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_send_history.remover_ia_das_selecionadas",
+    "rotulo": "Remover IA das selecionadas — Pastoral Send History",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralSendHistory.tsx"
+  },
+  {
+    "chave": "pastoral_visits.pastoral_send_history.remover_ia_de_todos",
+    "rotulo": "Remover IA de todos — Pastoral Send History",
+    "herda": "pastoral_visits.view",
+    "arquivo": "src/app-ui/pastoral/PastoralSendHistory.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.adicionar_card",
+    "rotulo": "Adicionar Card — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.adicionar_testemunho",
+    "rotulo": "Adicionar Testemunho — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.aprovar_all_selected",
+    "rotulo": "Aprovar (all selected) — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.aprovar_vaga",
+    "rotulo": "Aprovar Vaga — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.cancelar_edicao_editar",
+    "rotulo": "Cancelar edição Editar — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.criar_primeiro_encontro",
+    "rotulo": "Criar Primeiro Encontro — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.editar",
+    "rotulo": "Editar — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.editar_card",
+    "rotulo": "Editar Card — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.editar_testemunho",
+    "rotulo": "Editar Testemunho — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.enviar_lembrete_de_pagamento_por_whatsap",
+    "rotulo": "Enviar lembrete de pagamento por WhatsApp — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.excluir",
+    "rotulo": "Excluir — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.excluir_card",
+    "rotulo": "Excluir Card — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.excluir_inscricao",
+    "rotulo": "Excluir Inscrição — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.excluir_permanentemente",
+    "rotulo": "Excluir Permanentemente — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.excluir_testemunho",
+    "rotulo": "Excluir Testemunho — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.exportar_csv",
+    "rotulo": "Exportar CSV — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.imprimir",
+    "rotulo": "Imprimir — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.novo_evento",
+    "rotulo": "Novo Evento — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.salvar_alteracoes",
+    "rotulo": "Salvar alterações — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.salvar_alteracoes_cms",
+    "rotulo": "Salvar Alterações CMS — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "peniel.peniel_dashboard.salvar_encontro",
+    "rotulo": "Salvar Encontro — Peniel Dashboard",
+    "herda": "peniel.view",
+    "arquivo": "src/app-ui/peniel/PenielDashboard.tsx"
+  },
+  {
+    "chave": "pipeline_config.pipelines_admin.criar_coluna_salvar_alteracoes",
+    "rotulo": "Criar Coluna Salvar Alterações — Pipelines Admin",
+    "herda": "pipeline_config.view",
+    "arquivo": "src/app-ui/ecclesiastical/PipelinesAdmin.tsx"
+  },
+  {
+    "chave": "pipeline_config.pipelines_admin.editar",
+    "rotulo": "Editar — Pipelines Admin",
+    "herda": "pipeline_config.view",
+    "arquivo": "src/app-ui/ecclesiastical/PipelinesAdmin.tsx"
+  },
+  {
+    "chave": "pipeline_config.pipelines_admin.excluir",
+    "rotulo": "Excluir — Pipelines Admin",
+    "herda": "pipeline_config.view",
+    "arquivo": "src/app-ui/ecclesiastical/PipelinesAdmin.tsx"
+  },
+  {
+    "chave": "pipeline_config.pipelines_admin.excluir_stage",
+    "rotulo": "Excluir (stage) — Pipelines Admin",
+    "herda": "pipeline_config.view",
+    "arquivo": "src/app-ui/ecclesiastical/PipelinesAdmin.tsx"
+  },
+  {
+    "chave": "pipeline_config.pipelines_admin.nova_coluna",
+    "rotulo": "Nova Coluna — Pipelines Admin",
+    "herda": "pipeline_config.view",
+    "arquivo": "src/app-ui/ecclesiastical/PipelinesAdmin.tsx"
+  },
+  {
+    "chave": "pipeline_config.pipelines_admin.novo_pipeline",
+    "rotulo": "Novo pipeline — Pipelines Admin",
+    "herda": "pipeline_config.view",
+    "arquivo": "src/app-ui/ecclesiastical/PipelinesAdmin.tsx"
+  },
+  {
+    "chave": "pipeline_config.pipelines_admin.novo_servico",
+    "rotulo": "Novo Serviço — Pipelines Admin",
+    "herda": "pipeline_config.view",
+    "arquivo": "src/app-ui/ecclesiastical/PipelinesAdmin.tsx"
+  },
+  {
+    "chave": "pipeline_config.pipelines_admin.salvar",
+    "rotulo": "Salvar — Pipelines Admin",
+    "herda": "pipeline_config.view",
+    "arquivo": "src/app-ui/ecclesiastical/PipelinesAdmin.tsx"
+  },
+  {
+    "chave": "pipeline_config.pipelines_admin.salvar_alteracoes",
+    "rotulo": "Salvar Alterações — Pipelines Admin",
+    "herda": "pipeline_config.view",
+    "arquivo": "src/app-ui/ecclesiastical/PipelinesAdmin.tsx"
+  },
+  {
+    "chave": "presence_tickets.ticket_presence_page.excluir",
+    "rotulo": "Excluir ( ) — Ticket Presence Page",
+    "herda": "presence_tickets.view",
+    "arquivo": "src/app-ui/ecclesiastical/TicketPresencePage.tsx"
+  },
+  {
+    "chave": "presence_tickets.ticket_presence_page.excluir_tiquete",
+    "rotulo": "Excluir tíquete — Ticket Presence Page",
+    "herda": "presence_tickets.view",
+    "arquivo": "src/app-ui/ecclesiastical/TicketPresencePage.tsx"
+  },
+  {
+    "chave": "presence_tickets.ticket_presence_page.gerar_ticket",
+    "rotulo": "Gerar Ticket — Ticket Presence Page",
+    "herda": "presence_tickets.view",
+    "arquivo": "src/app-ui/ecclesiastical/TicketPresencePage.tsx"
+  },
+  {
+    "chave": "presence_tickets.ticket_presence_page.gerar_tikets",
+    "rotulo": "Gerar Tikets — Ticket Presence Page",
+    "herda": "presence_tickets.view",
+    "arquivo": "src/app-ui/ecclesiastical/TicketPresencePage.tsx"
+  },
+  {
+    "chave": "presence_tickets.ticket_presence_page.imprimir_tiquetes_filtrados",
+    "rotulo": "Imprimir tíquetes filtrados — Ticket Presence Page",
+    "herda": "presence_tickets.view",
+    "arquivo": "src/app-ui/ecclesiastical/TicketPresencePage.tsx"
+  },
+  {
     "chave": "reports.batismo.abrir",
     "rotulo": "Relatório de batismo",
     "herda": "reports.view",
@@ -150,6 +2010,30 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/Reports.tsx"
   },
   {
+    "chave": "reports.reports.excluir_dashboard",
+    "rotulo": "Excluir dashboard — Reports",
+    "herda": "reports.view",
+    "arquivo": "src/components/app-ui/Reports.tsx"
+  },
+  {
+    "chave": "reports.reports.novo_dashboard",
+    "rotulo": "Novo dashboard — Reports",
+    "herda": "reports.view",
+    "arquivo": "src/components/app-ui/Reports.tsx"
+  },
+  {
+    "chave": "reports.reports.remover",
+    "rotulo": "Remover — Reports",
+    "herda": "reports.view",
+    "arquivo": "src/components/app-ui/Reports.tsx"
+  },
+  {
+    "chave": "reports.reports.salvar_grafico",
+    "rotulo": "Salvar gráfico — Reports",
+    "herda": "reports.view",
+    "arquivo": "src/components/app-ui/Reports.tsx"
+  },
+  {
     "chave": "reports.requerimentos.abrir",
     "rotulo": "Relatório de requerimentos",
     "herda": "reports.view",
@@ -202,6 +2086,390 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Relatório de usuários",
     "herda": "reports.view",
     "arquivo": "src/components/app-ui/Reports.tsx"
+  },
+  {
+    "chave": "requirements.requerimentos.enviar_mensagem",
+    "rotulo": "Enviar mensagem — Requerimentos",
+    "herda": "requirements.view",
+    "arquivo": "src/app-ui/ecclesiastical/Requerimentos.tsx"
+  },
+  {
+    "chave": "requirements.requerimentos.exportar",
+    "rotulo": "Exportar — Requerimentos",
+    "herda": "requirements.view",
+    "arquivo": "src/app-ui/ecclesiastical/Requerimentos.tsx"
+  },
+  {
+    "chave": "requirements.requerimentos.imprimir",
+    "rotulo": "Imprimir — Requerimentos",
+    "herda": "requirements.view",
+    "arquivo": "src/app-ui/ecclesiastical/Requerimentos.tsx"
+  },
+  {
+    "chave": "requirements.requerimentos.novo_requerimento",
+    "rotulo": "Novo Requerimento — Requerimentos",
+    "herda": "requirements.view",
+    "arquivo": "src/app-ui/ecclesiastical/Requerimentos.tsx"
+  },
+  {
+    "chave": "requirements.requerimentos.remover",
+    "rotulo": "Remover — Requerimentos",
+    "herda": "requirements.view",
+    "arquivo": "src/app-ui/ecclesiastical/Requerimentos.tsx"
+  },
+  {
+    "chave": "requirements.requerimentos.remover_arquivo",
+    "rotulo": "Remover arquivo — Requerimentos",
+    "herda": "requirements.view",
+    "arquivo": "src/app-ui/ecclesiastical/Requerimentos.tsx"
+  },
+  {
+    "chave": "santander_view.credenciais_modal.nova_credencial",
+    "rotulo": "Nova Credencial — Credenciais Modal",
+    "herda": "santander_view.view",
+    "arquivo": "src/modules/financeiro/conciliacao-santander/frontend/CredenciaisModal.tsx"
+  },
+  {
+    "chave": "santander_view.credenciais_modal.salvar",
+    "rotulo": "Salvar — Credenciais Modal",
+    "herda": "santander_view.view",
+    "arquivo": "src/modules/financeiro/conciliacao-santander/frontend/CredenciaisModal.tsx"
+  },
+  {
+    "chave": "santander_view.importar_febraban_modal.importar_movimentos",
+    "rotulo": "Importar Movimentos — Importar Febraban Modal",
+    "herda": "santander_view.view",
+    "arquivo": "src/modules/financeiro/conciliacao-santander/frontend/ImportarFebrabanModal.tsx"
+  },
+  {
+    "chave": "santander_view.santander_extrato_view.exportar_csv",
+    "rotulo": "Exportar CSV — Santander Extrato View",
+    "herda": "santander_view.view",
+    "arquivo": "src/modules/financeiro/conciliacao-santander/frontend/SantanderExtratoView.tsx"
+  },
+  {
+    "chave": "santander_view.santander_home_view.importar_febraban",
+    "rotulo": "Importar FEBRABAN — Santander Home View",
+    "herda": "santander_view.view",
+    "arquivo": "src/modules/financeiro/conciliacao-santander/frontend/SantanderHomeView.tsx"
+  },
+  {
+    "chave": "santander_view.santander_table.conciliar_manualmente",
+    "rotulo": "Conciliar manualmente — Santander Table",
+    "herda": "santander_view.view",
+    "arquivo": "src/modules/financeiro/conciliacao-santander/frontend/SantanderTable.tsx"
+  },
+  {
+    "chave": "santander_view.santander_table.lancar",
+    "rotulo": "+ Lançar — Santander Table",
+    "herda": "santander_view.view",
+    "arquivo": "src/modules/financeiro/conciliacao-santander/frontend/SantanderTable.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.campaign_builder_modal.pergunta_livre",
+    "rotulo": "Pergunta livre — Campaign Builder Modal",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/CampaignBuilderModal.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.campaign_builder_modal.remover_field",
+    "rotulo": "Remover (field) — Campaign Builder Modal",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/CampaignBuilderModal.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.campaign_builder_modal.salvar_campanha",
+    "rotulo": "Salvar campanha — Campaign Builder Modal",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/CampaignBuilderModal.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.campaign_response_drawer.aprovar_e_atualizar_cadastro",
+    "rotulo": "Aprovar e atualizar cadastro — Campaign Response Drawer",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/CampaignResponseDrawer.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.campaign_response_drawer.reprovar_e_pedir_correcao",
+    "rotulo": "Reprovar e pedir correção — Campaign Response Drawer",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/CampaignResponseDrawer.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.member_field_picker_modal.adicionar_campo_campos",
+    "rotulo": "Adicionar campo campos — Member Field Picker Modal",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/MemberFieldPickerModal.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.secretaria_campaigns.editar",
+    "rotulo": "Editar — Secretaria Campaigns",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/SecretariaCampaigns.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.secretaria_campaigns.enviar",
+    "rotulo": "Enviar — Secretaria Campaigns",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/SecretariaCampaigns.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.secretaria_campaigns.enviar_app",
+    "rotulo": "Enviar (app) — Secretaria Campaigns",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/SecretariaCampaigns.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.secretaria_campaigns.nova_campanha",
+    "rotulo": "Nova campanha — Secretaria Campaigns",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/SecretariaCampaigns.tsx"
+  },
+  {
+    "chave": "secretaria_campanhas.secretaria_campaigns.sem_instancia_de_whatsapp_escolher",
+    "rotulo": "Sem instância de WhatsApp — escolher — Secretaria Campaigns",
+    "herda": "secretaria_campanhas.view",
+    "arquivo": "src/app-ui/secretaria/SecretariaCampaigns.tsx"
+  },
+  {
+    "chave": "services.services_matrix.editar",
+    "rotulo": "Editar — Services Matrix",
+    "herda": "services.view",
+    "arquivo": "src/app-ui/ecclesiastical/ServicesMatrix.tsx"
+  },
+  {
+    "chave": "services.services_matrix.editar_servico",
+    "rotulo": "Editar serviço — Services Matrix",
+    "herda": "services.view",
+    "arquivo": "src/app-ui/ecclesiastical/ServicesMatrix.tsx"
+  },
+  {
+    "chave": "services.services_matrix.excluir",
+    "rotulo": "Excluir — Services Matrix",
+    "herda": "services.view",
+    "arquivo": "src/app-ui/ecclesiastical/ServicesMatrix.tsx"
+  },
+  {
+    "chave": "services.services_matrix.nova_regra",
+    "rotulo": "Nova Regra — Services Matrix",
+    "herda": "services.view",
+    "arquivo": "src/app-ui/ecclesiastical/ServicesMatrix.tsx"
+  },
+  {
+    "chave": "services.services_matrix.novo_servico",
+    "rotulo": "Novo serviço — Services Matrix",
+    "herda": "services.view",
+    "arquivo": "src/app-ui/ecclesiastical/ServicesMatrix.tsx"
+  },
+  {
+    "chave": "services.services_matrix.salvar",
+    "rotulo": "Salvar — Services Matrix",
+    "herda": "services.view",
+    "arquivo": "src/app-ui/ecclesiastical/ServicesMatrix.tsx"
+  },
+  {
+    "chave": "spreadsheets.spreadsheet.excluir",
+    "rotulo": "Excluir — Spreadsheet",
+    "herda": "spreadsheets.view",
+    "arquivo": "src/app-ui/spreadsheet/Spreadsheet.tsx"
+  },
+  {
+    "chave": "spreadsheets.spreadsheet.excluir_arquivo",
+    "rotulo": "Excluir arquivo — Spreadsheet",
+    "herda": "spreadsheets.view",
+    "arquivo": "src/app-ui/spreadsheet/Spreadsheet.tsx"
+  },
+  {
+    "chave": "spreadsheets.spreadsheet.importar_para_planilha",
+    "rotulo": "✅ Importar para Planilha — Spreadsheet",
+    "herda": "spreadsheets.view",
+    "arquivo": "src/app-ui/spreadsheet/Spreadsheet.tsx"
+  },
+  {
+    "chave": "spreadsheets.spreadsheet.nova_planilha",
+    "rotulo": "Nova Planilha — Spreadsheet",
+    "herda": "spreadsheets.view",
+    "arquivo": "src/app-ui/spreadsheet/Spreadsheet.tsx"
+  },
+  {
+    "chave": "spreadsheets.spreadsheet.salvar",
+    "rotulo": "☁️ Salvar — Spreadsheet",
+    "herda": "spreadsheets.view",
+    "arquivo": "src/app-ui/spreadsheet/Spreadsheet.tsx"
+  },
+  {
+    "chave": "system_roles.permissions_matrix.editar_permissoes",
+    "rotulo": "Editar Permissões — Permissions Matrix",
+    "herda": "system_roles.view",
+    "arquivo": "src/app-ui/system/PermissionsMatrix.tsx"
+  },
+  {
+    "chave": "system_roles.permissions_matrix.salvar_alteracoes",
+    "rotulo": "Salvar Alterações — Permissions Matrix",
+    "herda": "system_roles.view",
+    "arquivo": "src/app-ui/system/PermissionsMatrix.tsx"
+  },
+  {
+    "chave": "system_users.user_edit.salvar_alteracoes",
+    "rotulo": "Salvar Alterações — User Edit",
+    "herda": "system_users.view",
+    "arquivo": "src/app-ui/system/UserEdit.tsx"
+  },
+  {
+    "chave": "system_users.user_new.criar_usuario",
+    "rotulo": "Criar Usuário — User New",
+    "herda": "system_users.view",
+    "arquivo": "src/app-ui/system/UserNew.tsx"
+  },
+  {
+    "chave": "system_users.user_permissions.remover_todas_as_sobrescritas_usar_padro",
+    "rotulo": "Remover todas as sobrescritas (usar padrões do perfil) — User Permissions",
+    "herda": "system_users.view",
+    "arquivo": "src/app-ui/system/UserPermissions.tsx"
+  },
+  {
+    "chave": "system_users.user_permissions.salvar",
+    "rotulo": "Salvar — User Permissions",
+    "herda": "system_users.view",
+    "arquivo": "src/app-ui/system/UserPermissions.tsx"
+  },
+  {
+    "chave": "system_users.users_list.excluir",
+    "rotulo": "Excluir — Users List",
+    "herda": "system_users.view",
+    "arquivo": "src/app-ui/system/UsersList.tsx"
+  },
+  {
+    "chave": "system_users.users_list.salvar_nova_senha",
+    "rotulo": "Salvar Nova Senha — Users List",
+    "herda": "system_users.view",
+    "arquivo": "src/app-ui/system/UsersList.tsx"
+  },
+  {
+    "chave": "transfer.transfer.editar",
+    "rotulo": "Editar — Transfer",
+    "herda": "transfer.view",
+    "arquivo": "src/components/app-ui/Transfer.tsx"
+  },
+  {
+    "chave": "transfer.transfer.excluir",
+    "rotulo": "Excluir — Transfer",
+    "herda": "transfer.view",
+    "arquivo": "src/components/app-ui/Transfer.tsx"
+  },
+  {
+    "chave": "transfer.transfer.imprimir",
+    "rotulo": "Imprimir — Transfer",
+    "herda": "transfer.view",
+    "arquivo": "src/components/app-ui/Transfer.tsx"
+  },
+  {
+    "chave": "transfer.transfer.nova_transferencia",
+    "rotulo": "Nova Transferencia — Transfer",
+    "herda": "transfer.view",
+    "arquivo": "src/components/app-ui/Transfer.tsx"
+  },
+  {
+    "chave": "transfer.transfer.salvar_alteracoes_criar_transferencia",
+    "rotulo": "Salvar Alteracoes Criar Transferencia — Transfer",
+    "herda": "transfer.view",
+    "arquivo": "src/components/app-ui/Transfer.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.baixar",
+    "rotulo": "Baixar — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.enviar",
+    "rotulo": "Enviar — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.excluir",
+    "rotulo": "Excluir — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.excluir_conversa",
+    "rotulo": "Excluir conversa — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.nova_conversa",
+    "rotulo": "+ Nova conversa — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.nova_conversa_2",
+    "rotulo": "Nova Conversa — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.excluir",
+    "rotulo": "Excluir — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.exportar_doc",
+    "rotulo": "Exportar .doc — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.imprimir",
+    "rotulo": "Imprimir — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.imprimir_doc_s",
+    "rotulo": "Imprimir doc s — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.imprimir_documento",
+    "rotulo": "Imprimir documento — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.inserir_link",
+    "rotulo": "Inserir Link — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.novo_documento",
+    "rotulo": "Novo Documento — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.novo_documento_em_branco",
+    "rotulo": "Novo Documento em Branco — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.salvar",
+    "rotulo": "Salvar — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
+  },
+  {
+    "chave": "word_docs.word_editor.todos",
+    "rotulo": "Todos — Word Editor",
+    "herda": "word_docs.view",
+    "arquivo": "src/app-ui/word/WordEditor.tsx"
   }
 ];
 

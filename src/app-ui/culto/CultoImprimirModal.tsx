@@ -12,6 +12,7 @@ import {
   imprimirRelatorioCulto,
   type Orientacao,
 } from './cultoRelatorio';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Props {
   registros: Registro[];
@@ -302,13 +303,15 @@ export default function CultoImprimirModal({ registros: todos, titulo, periodo, 
           >
             Fechar
           </button>
-          <button
-            onClick={imprimir}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold"
-          >
-            <Printer className="w-4 h-4" />
-            Imprimir
-          </button>
+          <Permissao chave="culto_gestao.culto_imprimir_modal.imprimir" rotulo="Imprimir — Culto Imprimir Modal" herda="culto_gestao.view">
+            <button
+              onClick={imprimir}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold"
+            >
+              <Printer className="w-4 h-4" />
+              Imprimir
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

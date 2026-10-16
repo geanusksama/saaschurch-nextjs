@@ -8594,16 +8594,18 @@ export function Reports() {
                                   >
                                     Descer
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      removeMemberGroupField(option.value);
-                                    }}
-                                    className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-                                  >
-                                    Remover
-                                  </button>
+                                  <Permissao chave="reports.reports.remover" rotulo="Remover — Reports" herda="reports.view">
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        removeMemberGroupField(option.value);
+                                      }}
+                                      className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                                    >
+                                      Remover
+                                    </button>
+                                  </Permissao>
                                 </div>
                               ) : null}
                             </div>
@@ -9699,7 +9701,9 @@ export function Reports() {
                                 <div className="mt-3 flex gap-2">
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveBaptismGroupField(option.value, 'up'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === 0}>Subir</button>
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveBaptismGroupField(option.value, 'down'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === baptismReportBuilder.groupBy.length - 1}>Descer</button>
-                                  <button type="button" onClick={(event) => { event.stopPropagation(); removeBaptismGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  <Permissao chave="reports.reports.remover" rotulo="Remover — Reports" herda="reports.view">
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); removeBaptismGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  </Permissao>
                                 </div>
                               ) : null}
                             </div>
@@ -10187,7 +10191,9 @@ export function Reports() {
                                 <div className="mt-3 flex gap-2">
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveConsecrationGroupField(option.value, 'up'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === 0}>Subir</button>
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveConsecrationGroupField(option.value, 'down'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === consecrationReportBuilder.groupBy.length - 1}>Descer</button>
-                                  <button type="button" onClick={(event) => { event.stopPropagation(); removeConsecrationGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  <Permissao chave="reports.reports.remover" rotulo="Remover — Reports" herda="reports.view">
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); removeConsecrationGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  </Permissao>
                                 </div>
                               ) : null}
                             </div>
@@ -10602,7 +10608,9 @@ export function Reports() {
                                 <div className="mt-3 flex gap-2">
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveTransferGroupField(option.value, 'up'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === 0}>Subir</button>
                                   <button type="button" onClick={(event) => { event.stopPropagation(); moveTransferGroupField(option.value, 'down'); }} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40" disabled={currentIndex === transferReportBuilder.groupBy.length - 1}>Descer</button>
-                                  <button type="button" onClick={(event) => { event.stopPropagation(); removeTransferGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  <Permissao chave="reports.reports.remover" rotulo="Remover — Reports" herda="reports.view">
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); removeTransferGroupField(option.value); }} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remover</button>
+                                  </Permissao>
                                 </div>
                               ) : null}
                             </div>
@@ -12458,27 +12466,31 @@ export function Reports() {
                     {dashboard.name}
                   </button>
                   {canManageDashboards && dashboardsState.dashboards.length > 1 ? (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteDashboard(dashboard.id)}
-                      className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
-                      title="Excluir dashboard"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <Permissao chave="reports.reports.excluir_dashboard" rotulo="Excluir dashboard — Reports" herda="reports.view">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDashboard(dashboard.id)}
+                        className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                        title="Excluir dashboard"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </Permissao>
                   ) : null}
                 </div>
               ))}
 
               {canManageDashboards ? (
-                <button
-                  type="button"
-                  onClick={handleAddDashboard}
-                  className="inline-flex items-center gap-2 rounded-full border border-dashed border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-600 dark:hover:text-emerald-300"
-                >
-                  <Plus className="h-4 w-4" />
-                  Novo dashboard
-                </button>
+                <Permissao chave="reports.reports.novo_dashboard" rotulo="Novo dashboard — Reports" herda="reports.view">
+                  <button
+                    type="button"
+                    onClick={handleAddDashboard}
+                    className="inline-flex items-center gap-2 rounded-full border border-dashed border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-600 dark:hover:text-emerald-300"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Novo dashboard
+                  </button>
+                </Permissao>
               ) : null}
             </div>
           </div>
@@ -12884,14 +12896,16 @@ export function Reports() {
               >
                 Cancelar
               </button>
-              <button
-                type="button"
-                onClick={handleSaveChart}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-              >
-                <Save className="h-4 w-4" />
-                Salvar gráfico
-              </button>
+              <Permissao chave="reports.reports.salvar_grafico" rotulo="Salvar gráfico — Reports" herda="reports.view">
+                <button
+                  type="button"
+                  onClick={handleSaveChart}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  <Save className="h-4 w-4" />
+                  Salvar gráfico
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

@@ -12,6 +12,7 @@ import { PrintModal } from './shared/PrintModal';
 import { printReport } from '../../lib/printReport';
 import { printQrList } from '../../lib/printQrList';
 import { buildScanQrValue } from '../../lib/scanQr';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 type CampoOption = {
   id: string;
@@ -1006,30 +1007,36 @@ export function Baptism() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => toast.info('Exportacao sera ligada no mesmo padrao dos demais servicos.')}
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
-          >
-            <Download className="h-4 w-4" />
-            Exportar
-          </button>
-          <button
-            type="button"
-            onClick={() => setPrintModalOpen(true)}
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
-          >
-            <Printer className="h-4 w-4" />
-            Imprimir
-          </button>
-          <button
-            type="button"
-            onClick={() => openRequestModal(currentSchedule)}
-            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700"
-          >
-            <Plus className="h-4 w-4" />
-            Novo Batismo
-          </button>
+          <Permissao chave="baptism.baptism.exportar" rotulo="Exportar — Baptism" herda="baptism.view">
+            <button
+              type="button"
+              onClick={() => toast.info('Exportacao sera ligada no mesmo padrao dos demais servicos.')}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
+            >
+              <Download className="h-4 w-4" />
+              Exportar
+            </button>
+          </Permissao>
+          <Permissao chave="baptism.baptism.imprimir" rotulo="Imprimir — Baptism" herda="baptism.view">
+            <button
+              type="button"
+              onClick={() => setPrintModalOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
+            >
+              <Printer className="h-4 w-4" />
+              Imprimir
+            </button>
+          </Permissao>
+          <Permissao chave="baptism.baptism.novo_batismo" rotulo="Novo Batismo — Baptism" herda="baptism.view">
+            <button
+              type="button"
+              onClick={() => openRequestModal(currentSchedule)}
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Batismo
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -1223,15 +1230,17 @@ export function Baptism() {
                 Limpar selecao
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setBulkConfirmOpen(true)}
-              disabled={bulkDeleting}
-              className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Trash2 className="h-4 w-4" />
-              {bulkDeleting ? 'Excluindo...' : 'Excluir selecionados'}
-            </button>
+            <Permissao chave="baptism.baptism.excluir_selecionados" rotulo="Excluir selecionados — Baptism" herda="baptism.view">
+              <button
+                type="button"
+                onClick={() => setBulkConfirmOpen(true)}
+                disabled={bulkDeleting}
+                className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" />
+                {bulkDeleting ? 'Excluindo...' : 'Excluir selecionados'}
+              </button>
+            </Permissao>
           </div>
         ) : null}
         <div className="overflow-x-auto">
@@ -1353,22 +1362,26 @@ export function Baptism() {
                     </td>
                     <td className="px-4 py-4 align-top">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openRequestModal(item.nextBaptism || currentSchedule, item)}
-                          className="rounded-lg p-2 transition-colors hover:bg-slate-100"
-                          title="Editar"
-                        >
-                          <Pencil className="h-4 w-4 text-slate-600" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget({ kind: 'request', id: item.id, label: item.member?.fullName || item.protocol })}
-                          className="rounded-lg p-2 transition-colors hover:bg-rose-50"
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4 text-rose-600" />
-                        </button>
+                        <Permissao chave="baptism.baptism.editar" rotulo="Editar — Baptism" herda="baptism.view">
+                          <button
+                            type="button"
+                            onClick={() => openRequestModal(item.nextBaptism || currentSchedule, item)}
+                            className="rounded-lg p-2 transition-colors hover:bg-slate-100"
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4 text-slate-600" />
+                          </button>
+                        </Permissao>
+                        <Permissao chave="baptism.baptism.excluir" rotulo="Excluir — Baptism" herda="baptism.view">
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget({ kind: 'request', id: item.id, label: item.member?.fullName || item.protocol })}
+                            className="rounded-lg p-2 transition-colors hover:bg-rose-50"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4 text-rose-600" />
+                          </button>
+                        </Permissao>
                       </div>
                     </td>
                   </tr>
@@ -1517,14 +1530,16 @@ export function Baptism() {
             >
               Cancelar
             </button>
-            <button
-              type="button"
-              onClick={submitRequest}
-              disabled={requestSubmitting}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-            >
-              {requestSubmitting ? 'Salvando...' : editingRequest ? 'Salvar Alteracoes' : 'Iniciar Processo'}
-            </button>
+            <Permissao chave="baptism.baptism.salvar_alteracoes_iniciar_processo" rotulo="Salvar Alteracoes Iniciar Processo — Baptism" herda="baptism.view">
+              <button
+                type="button"
+                onClick={submitRequest}
+                disabled={requestSubmitting}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {requestSubmitting ? 'Salvando...' : editingRequest ? 'Salvar Alteracoes' : 'Iniciar Processo'}
+              </button>
+            </Permissao>
           </div>
         </ModalShell>
       ) : null}
@@ -1582,14 +1597,16 @@ export function Baptism() {
             >
               Cancelar
             </button>
-            <button
-              type="button"
-              onClick={submitSchedule}
-              disabled={scheduleSubmitting}
-              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
-            >
-              {scheduleSubmitting ? 'Salvando...' : editingSchedule ? 'Salvar Alteracoes' : 'Salvar Data'}
-            </button>
+            <Permissao chave="baptism.baptism.salvar_alteracoes_salvar_data" rotulo="Salvar Alteracoes Salvar Data — Baptism" herda="baptism.view">
+              <button
+                type="button"
+                onClick={submitSchedule}
+                disabled={scheduleSubmitting}
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
+              >
+                {scheduleSubmitting ? 'Salvando...' : editingSchedule ? 'Salvar Alteracoes' : 'Salvar Data'}
+              </button>
+            </Permissao>
           </div>
         </ModalShell>
       ) : null}
@@ -1911,12 +1928,16 @@ function NextScheduleCard({
           </div>
           {canManageSchedules ? (
             <div className="flex items-center gap-1 rounded-2xl border border-emerald-200 bg-white p-1 dark:border-emerald-800/70 dark:bg-emerald-900/40">
-              <button onClick={onEdit} className="rounded-xl p-2 transition hover:bg-emerald-100 dark:hover:bg-emerald-800/60" title="Editar">
-                <Pencil className="h-4 w-4 text-emerald-700 dark:text-emerald-200" />
-              </button>
-              <button onClick={onDelete} className="rounded-xl p-2 transition hover:bg-rose-50" title="Excluir">
-                <Trash2 className="h-4 w-4 text-rose-600" />
-              </button>
+              <Permissao chave="baptism.baptism.editar" rotulo="Editar — Baptism" herda="baptism.view">
+                <button onClick={onEdit} className="rounded-xl p-2 transition hover:bg-emerald-100 dark:hover:bg-emerald-800/60" title="Editar">
+                  <Pencil className="h-4 w-4 text-emerald-700 dark:text-emerald-200" />
+                </button>
+              </Permissao>
+              <Permissao chave="baptism.baptism.excluir" rotulo="Excluir — Baptism" herda="baptism.view">
+                <button onClick={onDelete} className="rounded-xl p-2 transition hover:bg-rose-50" title="Excluir">
+                  <Trash2 className="h-4 w-4 text-rose-600" />
+                </button>
+              </Permissao>
             </div>
           ) : null}
         </div>

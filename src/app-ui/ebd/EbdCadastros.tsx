@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { Plus, Pencil, Trash2, BookOpen, Loader2, Save } from "lucide-react";
 import { authFetch } from "../../lib/secretariaHooks";
 import { apiBase } from "../../lib/apiBase";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface Trimestre { id: string; nome: string; ano: number; dataInicio: string; dataFim: string; ativo: boolean }
 interface Categoria { id: string; nome: string; descricao?: string; ordem: number }
@@ -227,10 +228,12 @@ export default function EbdCadastros() {
       {tab === "trimestres" && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <button onClick={() => { setShowTriForm(true); setEditingTrimestre(null); setTrimestreForm({ nome: "", ano: new Date().getFullYear(), dataInicio: "", dataFim: "", ativo: true }); }}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors">
-              <Plus className="w-4 h-4" /> Novo Trimestre
-            </button>
+            <Permissao chave="ebd_cadastros.ebd_cadastros.novo_trimestre" rotulo="Novo Trimestre — Ebd Cadastros" herda="ebd_cadastros.view">
+              <button onClick={() => { setShowTriForm(true); setEditingTrimestre(null); setTrimestreForm({ nome: "", ano: new Date().getFullYear(), dataInicio: "", dataFim: "", ativo: true }); }}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors">
+                <Plus className="w-4 h-4" /> Novo Trimestre
+              </button>
+            </Permissao>
           </div>
 
           {showTriForm && (
@@ -264,10 +267,12 @@ export default function EbdCadastros() {
                 Ativo
               </label>
               <div className="flex gap-2 mt-4">
-                <button onClick={saveTrimestre} disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 disabled:opacity-50 transition-colors">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
-                </button>
+                <Permissao chave="ebd_cadastros.ebd_cadastros.salvar" rotulo="Salvar — Ebd Cadastros" herda="ebd_cadastros.view">
+                  <button onClick={saveTrimestre} disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 disabled:opacity-50 transition-colors">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
+                  </button>
+                </Permissao>
                 <button onClick={() => { setShowTriForm(false); setEditingTrimestre(null); }}
                   className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
                   Cancelar
@@ -306,9 +311,11 @@ export default function EbdCadastros() {
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors">
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => deleteTrimestre(t.id)} disabled={deletingId === t.id} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50">
-                          {deletingId === t.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        </button>
+                        <Permissao chave="ebd_cadastros.ebd_cadastros.excluir_trimestre" rotulo="Excluir (trimestre) — Ebd Cadastros" herda="ebd_cadastros.view">
+                          <button onClick={() => deleteTrimestre(t.id)} disabled={deletingId === t.id} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50">
+                            {deletingId === t.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                          </button>
+                        </Permissao>
                       </div>
                     </td>
                   </tr>
@@ -330,10 +337,12 @@ export default function EbdCadastros() {
                 Inserir categorias padrão
               </button>
             )}
-            <button onClick={() => { setShowCatForm(true); setEditingCat(null); setCatForm({ nome: "", descricao: "", ordem: 0 }); }}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors">
-              <Plus className="w-4 h-4" /> Nova Categoria
-            </button>
+            <Permissao chave="ebd_cadastros.ebd_cadastros.nova_categoria" rotulo="Nova Categoria — Ebd Cadastros" herda="ebd_cadastros.view">
+              <button onClick={() => { setShowCatForm(true); setEditingCat(null); setCatForm({ nome: "", descricao: "", ordem: 0 }); }}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors">
+                <Plus className="w-4 h-4" /> Nova Categoria
+              </button>
+            </Permissao>
           </div>
 
           {showCatForm && (
@@ -357,10 +366,12 @@ export default function EbdCadastros() {
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
-                <button onClick={saveCategoria} disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 disabled:opacity-50 transition-colors">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
-                </button>
+                <Permissao chave="ebd_cadastros.ebd_cadastros.salvar" rotulo="Salvar — Ebd Cadastros" herda="ebd_cadastros.view">
+                  <button onClick={saveCategoria} disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 disabled:opacity-50 transition-colors">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
+                  </button>
+                </Permissao>
                 <button onClick={() => { setShowCatForm(false); setEditingCat(null); }}
                   className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
               </div>
@@ -383,9 +394,11 @@ export default function EbdCadastros() {
                     className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors">
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button onClick={() => deleteCategoria(c.id)} disabled={deletingId === c.id} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50">
-                    {deletingId === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  </button>
+                  <Permissao chave="ebd_cadastros.ebd_cadastros.excluir_categoria" rotulo="Excluir (categoria) — Ebd Cadastros" herda="ebd_cadastros.view">
+                    <button onClick={() => deleteCategoria(c.id)} disabled={deletingId === c.id} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50">
+                      {deletingId === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </Permissao>
                 </div>
               </div>
             ))}
@@ -397,10 +410,12 @@ export default function EbdCadastros() {
       {tab === "produtos" && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <button onClick={() => { setShowProdForm(true); setEditingProd(null); codigoManualRef.current = false; setProdForm({ nome: "", tipo: "Revista", categoriaId: "", trimestreId: "", codigo: "", tema: "", descricao: "", unidade: "un", precoCusto: 0, precoVenda: 0, ativo: true }); }}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors">
-              <Plus className="w-4 h-4" /> Novo Produto
-            </button>
+            <Permissao chave="ebd_cadastros.ebd_cadastros.novo_produto" rotulo="Novo Produto — Ebd Cadastros" herda="ebd_cadastros.view">
+              <button onClick={() => { setShowProdForm(true); setEditingProd(null); codigoManualRef.current = false; setProdForm({ nome: "", tipo: "Revista", categoriaId: "", trimestreId: "", codigo: "", tema: "", descricao: "", unidade: "un", precoCusto: 0, precoVenda: 0, ativo: true }); }}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors">
+                <Plus className="w-4 h-4" /> Novo Produto
+              </button>
+            </Permissao>
           </div>
 
           {showProdForm && (
@@ -467,10 +482,12 @@ export default function EbdCadastros() {
                 Ativo
               </label>
               <div className="flex gap-2 mt-4">
-                <button onClick={saveProduto} disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 disabled:opacity-50 transition-colors">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
-                </button>
+                <Permissao chave="ebd_cadastros.ebd_cadastros.salvar" rotulo="Salvar — Ebd Cadastros" herda="ebd_cadastros.view">
+                  <button onClick={saveProduto} disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 disabled:opacity-50 transition-colors">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
+                  </button>
+                </Permissao>
                 <button onClick={() => { setShowProdForm(false); setEditingProd(null); }}
                   className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
               </div>
@@ -511,9 +528,11 @@ export default function EbdCadastros() {
                         }} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors">
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => deleteProduto(p.id)} disabled={deletingId === p.id} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50">
-                          {deletingId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        </button>
+                        <Permissao chave="ebd_cadastros.ebd_cadastros.excluir_produto" rotulo="Excluir (produto) — Ebd Cadastros" herda="ebd_cadastros.view">
+                          <button onClick={() => deleteProduto(p.id)} disabled={deletingId === p.id} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50">
+                            {deletingId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                          </button>
+                        </Permissao>
                       </div>
                     </td>
                   </tr>

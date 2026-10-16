@@ -4,6 +4,7 @@ import { FileCheck, Loader2, CheckCircle2, XCircle, AlertTriangle, Printer, Shar
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { printReport } from '../../lib/printReport';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export default function AssetInventoryReport() {
   const { id } = useParams();
@@ -106,9 +107,11 @@ export default function AssetInventoryReport() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700">
-            <Printer className="w-4 h-4" /> Imprimir
-          </button>
+          <Permissao chave="asset_inventory.asset_inventory_report.imprimir" rotulo="Imprimir — Asset Inventory Report" herda="asset_inventory.view">
+            <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700">
+              <Printer className="w-4 h-4" /> Imprimir
+            </button>
+          </Permissao>
           <button onClick={handleShare} className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700">
             <Share2 className="w-4 h-4" /> Compartilhar
           </button>

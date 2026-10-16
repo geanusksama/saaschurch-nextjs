@@ -5,6 +5,7 @@ import { apiBase } from '../../lib/apiBase';
 import { CellForm, EMPTY_CELL_FORM, leadersFromApi, type CellFormValues } from './cells/CellForm';
 import { AlertDialog, ConfirmDialog } from './shared/ConfirmDialog';
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function perfilAtual(): string {
   try {
@@ -182,18 +183,20 @@ export function CellGroups() {
           </div>
         </div>
         {canCreate('cells') && (
-        <button
-          onClick={() => {
-            setEditandoId(null);
-            setNovo(EMPTY_CELL_FORM);
-            setErroNovo('');
-            setShowNew(true);
-          }}
-          className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Novo GF
-        </button>
+        <Permissao chave="cells.cell_groups.novo_gf" rotulo="Novo GF — Cell Groups" herda="cells.create">
+          <button
+            onClick={() => {
+              setEditandoId(null);
+              setNovo(EMPTY_CELL_FORM);
+              setErroNovo('');
+              setShowNew(true);
+            }}
+            className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Novo GF
+          </button>
+        </Permissao>
         )}
       </div>
 
@@ -272,22 +275,26 @@ export function CellGroups() {
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         {canEdit('cells') && (
-                        <button
-                          onClick={() => abrirEdicao(cell)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-slate-100"
-                          title="Editar GF"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                        <Permissao chave="cells.cell_groups.editar_gf" rotulo="Editar GF — Cell Groups" herda="cells.edit">
+                          <button
+                            onClick={() => abrirEdicao(cell)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-slate-100"
+                            title="Editar GF"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        </Permissao>
                         )}
                         {canDelete('cells') && (
-                        <button
-                          onClick={() => setExcluindo(cell)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-100"
-                          title="Excluir GF"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <Permissao chave="cells.cell_groups.excluir_gf" rotulo="Excluir GF — Cell Groups" herda="cells.delete">
+                          <button
+                            onClick={() => setExcluindo(cell)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-100"
+                            title="Excluir GF"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </Permissao>
                         )}
                       </div>
                     </td>

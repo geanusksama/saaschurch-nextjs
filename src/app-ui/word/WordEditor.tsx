@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type RibbonTab = 'home' | 'insert' | 'data' | 'view' | 'arquivo' | 'table';
@@ -1767,17 +1768,21 @@ export default function WordEditor() {
               {docTitle}
             </span>
           )}
-          <button onClick={() => buildPrintFrame(editorRef.current?.innerHTML || '', docTitle, marginLeft, marginRight)} title="Imprimir documento"
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded border transition-colors"
-            style={{ borderColor: isDarkTheme ? '#334155' : '#cbd5e1', color: isDarkTheme ? '#94a3b8' : '#64748b', background: 'transparent' }}
-            onMouseEnter={e => (e.currentTarget.style.background = isDarkTheme ? '#1e293b' : '#f1f5f9')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-            <Ico.Print />
-          </button>
-          <button onClick={saveDoc} disabled={saving}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors disabled:opacity-60">
-            <Ico.Save />{saving ? 'Salvando...' : 'Salvar'}
-          </button>
+          <Permissao chave="word_docs.word_editor.imprimir_documento" rotulo="Imprimir documento — Word Editor" herda="word_docs.view">
+            <button onClick={() => buildPrintFrame(editorRef.current?.innerHTML || '', docTitle, marginLeft, marginRight)} title="Imprimir documento"
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border transition-colors"
+              style={{ borderColor: isDarkTheme ? '#334155' : '#cbd5e1', color: isDarkTheme ? '#94a3b8' : '#64748b', background: 'transparent' }}
+              onMouseEnter={e => (e.currentTarget.style.background = isDarkTheme ? '#1e293b' : '#f1f5f9')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+              <Ico.Print />
+            </button>
+          </Permissao>
+          <Permissao chave="word_docs.word_editor.salvar" rotulo="Salvar — Word Editor" herda="word_docs.view">
+            <button onClick={saveDoc} disabled={saving}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors disabled:opacity-60">
+              <Ico.Save />{saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </Permissao>
         </div>
       </div>
 
@@ -2280,10 +2285,14 @@ export default function WordEditor() {
         <span className="text-[10px]">·</span>
         <span className="text-[10px]">Zoom {zoom}%</span>
         <div className="ml-auto flex items-center gap-3">
-          <button onClick={() => buildPrintFrame(editorRef.current?.innerHTML || '', docTitle, marginLeft, marginRight)}
-            className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700 transition-colors"><Ico.Print /> Imprimir</button>
-          <button onClick={() => exportDocx(editorRef.current?.innerHTML || '', docTitle)}
-            className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700 transition-colors"><Ico.Download /> Exportar .doc</button>
+          <Permissao chave="word_docs.word_editor.imprimir" rotulo="Imprimir — Word Editor" herda="word_docs.view">
+            <button onClick={() => buildPrintFrame(editorRef.current?.innerHTML || '', docTitle, marginLeft, marginRight)}
+              className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700 transition-colors"><Ico.Print /> Imprimir</button>
+          </Permissao>
+          <Permissao chave="word_docs.word_editor.exportar_doc" rotulo="Exportar .doc — Word Editor" herda="word_docs.view">
+            <button onClick={() => exportDocx(editorRef.current?.innerHTML || '', docTitle)}
+              className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700 transition-colors"><Ico.Download /> Exportar .doc</button>
+          </Permissao>
         </div>
       </div>
 
@@ -2334,10 +2343,12 @@ export default function WordEditor() {
               )}
             </div>
             <div className="px-3 pb-3 pt-2 border-t border-slate-200">
-              <button onClick={newDocument}
-                className="w-full py-2 text-xs border-2 border-dashed border-slate-300 rounded hover:bg-slate-50 text-slate-500 flex items-center justify-center gap-1">
-                <Ico.Plus /> Novo Documento em Branco
-              </button>
+              <Permissao chave="word_docs.word_editor.novo_documento_em_branco" rotulo="Novo Documento em Branco — Word Editor" herda="word_docs.view">
+                <button onClick={newDocument}
+                  className="w-full py-2 text-xs border-2 border-dashed border-slate-300 rounded hover:bg-slate-50 text-slate-500 flex items-center justify-center gap-1">
+                  <Ico.Plus /> Novo Documento em Branco
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -2383,7 +2394,9 @@ export default function WordEditor() {
             <p className="text-sm text-slate-500 mb-5">"{confirmDelete.displayName}" será removido permanentemente.</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmDelete(null)} className="px-4 py-1.5 text-sm border border-slate-200 rounded hover:bg-slate-50 text-slate-600">Cancelar</button>
-              <button onClick={() => deleteFile(confirmDelete)} className="px-4 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded font-medium">Excluir</button>
+              <Permissao chave="word_docs.word_editor.excluir" rotulo="Excluir — Word Editor" herda="word_docs.view">
+                <button onClick={() => deleteFile(confirmDelete)} className="px-4 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded font-medium">Excluir</button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -2397,7 +2410,9 @@ export default function WordEditor() {
             <p className="text-sm text-slate-500 mb-5">O documento atual tem conteúdo não salvo. Ao continuar, o texto será perdido.</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmNew(false)} className="px-4 py-1.5 text-sm border border-slate-200 rounded hover:bg-slate-50 text-slate-600">Cancelar</button>
-              <button onClick={clearDocument} className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium">Novo Documento</button>
+              <Permissao chave="word_docs.word_editor.novo_documento" rotulo="Novo Documento — Word Editor" herda="word_docs.view">
+                <button onClick={clearDocument} className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium">Novo Documento</button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -2441,10 +2456,12 @@ export default function WordEditor() {
                   className="px-4 py-1.5 text-sm border border-slate-200 rounded hover:bg-slate-50 text-slate-600">
                   Cancelar
                 </button>
-                <button onClick={doMailMerge} disabled={mergeMembers.length === 0}
-                  className="px-4 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded font-medium disabled:opacity-40 flex items-center gap-1.5">
-                  <Ico.Print /> Imprimir {mergeMembers.length} doc{mergeMembers.length !== 1 ? 's' : ''}
-                </button>
+                <Permissao chave="word_docs.word_editor.imprimir_doc_s" rotulo="Imprimir doc s — Word Editor" herda="word_docs.view">
+                  <button onClick={doMailMerge} disabled={mergeMembers.length === 0}
+                    className="px-4 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded font-medium disabled:opacity-40 flex items-center gap-1.5">
+                    <Ico.Print /> Imprimir {mergeMembers.length} doc{mergeMembers.length !== 1 ? 's' : ''}
+                  </button>
+                </Permissao>
               </div>
             </div>
           </div>
@@ -2483,14 +2500,16 @@ export default function WordEditor() {
                 className="px-4 py-1.5 text-sm border border-slate-200 rounded hover:bg-slate-50 text-slate-600">
                 Cancelar
               </button>
-              <button onClick={() => {
-                if (linkDialog.savedRange) { const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(linkDialog.savedRange); }
-                if (linkDialog.url) applyCmd('createLink', linkDialog.url);
-                setLinkDialog(null);
-              }}
-                className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium flex items-center gap-1.5">
-                <Ico.Link /> Inserir Link
-              </button>
+              <Permissao chave="word_docs.word_editor.inserir_link" rotulo="Inserir Link — Word Editor" herda="word_docs.view">
+                <button onClick={() => {
+                  if (linkDialog.savedRange) { const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(linkDialog.savedRange); }
+                  if (linkDialog.url) applyCmd('createLink', linkDialog.url);
+                  setLinkDialog(null);
+                }}
+                  className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium flex items-center gap-1.5">
+                  <Ico.Link /> Inserir Link
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -2591,7 +2610,9 @@ export default function WordEditor() {
               <div className="flex items-center justify-between">
                 <p className="text-xs text-slate-500">Selecione quais seções deseja incluir no formulário:</p>
                 <div className="flex gap-2 text-[10px]">
-                  <button onClick={() => setFichaCategories(['photo', 'personal', 'contact', 'address', 'church', 'family', 'emergency'])} className="text-blue-600 hover:underline">Todos</button>
+                  <Permissao chave="word_docs.word_editor.todos" rotulo="Todos — Word Editor" herda="word_docs.view">
+                    <button onClick={() => setFichaCategories(['photo', 'personal', 'contact', 'address', 'church', 'family', 'emergency'])} className="text-blue-600 hover:underline">Todos</button>
+                  </Permissao>
                   <span className="text-slate-300">|</span>
                   <button onClick={() => setFichaCategories([])} className="text-red-500 hover:underline">Nenhum</button>
                 </div>

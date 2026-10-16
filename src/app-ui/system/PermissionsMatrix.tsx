@@ -12,6 +12,7 @@ import {
 } from './permissionCatalog';
 import { setGlobalPermissionMatrix } from '../../lib/usePermissions';
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 const PROFILES: { key: ProfileKey; label: string; color: string }[] = [
   { key: 'master', label: 'Master',           color: 'text-red-600 dark:text-red-400' },
@@ -144,20 +145,24 @@ export function PermissionsMatrix() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
-              >
-                Salvar Alterações
-              </button>
+              <Permissao chave="system_roles.permissions_matrix.salvar_alteracoes" rotulo="Salvar Alterações — Permissions Matrix" herda="system_roles.view">
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                >
+                  Salvar Alterações
+                </button>
+              </Permissao>
             </>
           ) : (
-            <button
-              onClick={() => setEditMode(true)}
-              className="px-4 py-2 bg-slate-800 dark:bg-slate-600 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
-            >
-              Editar Permissões
-            </button>
+            <Permissao chave="system_roles.permissions_matrix.editar_permissoes" rotulo="Editar Permissões — Permissions Matrix" herda="system_roles.view">
+              <button
+                onClick={() => setEditMode(true)}
+                className="px-4 py-2 bg-slate-800 dark:bg-slate-600 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+              >
+                Editar Permissões
+              </button>
+            </Permissao>
           )}
         </div>
       </div>

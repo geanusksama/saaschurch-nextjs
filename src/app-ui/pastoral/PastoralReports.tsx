@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BarChart3, FileDown, Printer } from 'lucide-react';
 import { usePastoralReportSummary } from '../../lib/pastoralHooks';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -68,13 +69,15 @@ export default function PastoralReports() {
           </div>
         </div>
 
-        <button
-          onClick={handlePrintPdf}
-          className="no-print inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
-        >
-          <Printer className="h-4 w-4" />
-          Imprimir
-        </button>
+        <Permissao chave="pastoral_reports.pastoral_reports.imprimir" rotulo="Imprimir — Pastoral Reports" herda="pastoral_reports.view">
+          <button
+            onClick={handlePrintPdf}
+            className="no-print inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+          >
+            <Printer className="h-4 w-4" />
+            Imprimir
+          </button>
+        </Permissao>
       </div>
 
       <div className="no-print mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
@@ -88,10 +91,12 @@ export default function PastoralReports() {
             <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
           </div>
           <div className="flex items-end">
-            <button onClick={handlePrintPdf} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100">
-              <FileDown className="h-4 w-4" />
-              Imprimir relatório
-            </button>
+            <Permissao chave="pastoral_reports.pastoral_reports.imprimir_relatorio" rotulo="Imprimir relatório — Pastoral Reports" herda="pastoral_reports.view">
+              <button onClick={handlePrintPdf} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100">
+                <FileDown className="h-4 w-4" />
+                Imprimir relatório
+              </button>
+            </Permissao>
           </div>
         </div>
       </div>
