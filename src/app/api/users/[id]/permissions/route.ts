@@ -35,7 +35,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const targetUser = await prisma.user.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true, fullName: true, email: true, profileType: true, permissions: true, campoId: true },
+      // roleId/role: a tela precisa saber da categoria — com ela, sobrescrita
+      // pessoal vira lista fechada (resolvePermission) e o que não está marcado é negado.
+      select: { id: true, fullName: true, email: true, profileType: true, permissions: true, campoId: true, roleId: true, role: { select: { name: true } } },
     });
     if (!targetUser) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
     const ok = await assertUserManagementAccess(user, targetUser);

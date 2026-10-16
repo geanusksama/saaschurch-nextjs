@@ -44,7 +44,14 @@ export async function pode(user: AuthUser, chave: string): Promise<boolean> {
   return podeChave(chave, {
     profileType: user.profileType,
     modules: await modulosDoPerfil(user),
-    userOverrides: (user.permissions ?? {}) as Record<string, boolean>,
+    // Em grupo: o mapa efetivo do grupo (auth.ts). Fora de grupo: as
+    // sobrescritas PESSOAIS, que é o que o navegador usa (mrm_user.permissions
+    // vem do /auth/me = users.permissions). user.permissions do auth.ts junta
+    // categoria + pessoal — com ele, um tesoureiro (categoria sem reports.view)
+    // via o card do relatório e o servidor recusava os dados.
+    userOverrides: (user.emGrupo
+      ? user.permissions ?? {}
+      : ((user.profile as { permissions?: unknown } | null)?.permissions ?? {})) as Record<string, boolean>,
     userRoleId: user.roleId,
     emGrupo: user.emGrupo,
   });

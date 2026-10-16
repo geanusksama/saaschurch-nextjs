@@ -129,6 +129,12 @@ type Props =
       valores: Mapa;
       onChange: (novo: Mapa) => void;
       profileType: string;
+      /**
+       * Categoria (role) do usuário. Com categoria, ter QUALQUER sobrescrita
+       * vira lista fechada (resolvePermission): o que não está marcado é negado.
+       */
+      roleId?: string | null;
+      roleName?: string | null;
     };
 
 export function ArvorePermissoes(props: Props) {
@@ -144,9 +150,28 @@ export function ArvorePermissoes(props: Props) {
       return (k: string) => efetivoNoGrupo(valores, k, cache);
     }
     const pt = (props as { profileType: string }).profileType as ProfileKey;
+    const roleId = (props as { roleId?: string | null }).roleId ?? null;
+    // Com a categoria: mostra o que vale de fato, inclusive a lista fechada.
     return (k: string) =>
-      podeChave(k, { profileType: pt, modules: DEFAULT_PERMISSION_MODULES, userOverrides: valores });
+      podeChave(k, { profileType: pt, modules: DEFAULT_PERMISSION_MODULES, userOverrides: valores, userRoleId: roleId });
   }, [modo, valores, props]);
+
+  const roleIdUsuario = modo === 'usuario' ? ((props as { roleId?: string | null }).roleId ?? null) : null;
+  const roleNameUsuario = modo === 'usuario' ? ((props as { roleName?: string | null }).roleName ?? null) : null;
+
+  /**
+   * Ponto de partida de uma alteração no modo usuário. Quem tem categoria e
+   * ainda não tem sobrescrita está no padrão do perfil; a primeira sobrescrita
+   * liga a lista fechada e o resto SUMIRIA ("permitir tudo" numa seção
+   * apagava as outras). Então, antes da primeira, grava o estado atual de
+   * todas as chaves — a alteração só acrescenta ou tira o que foi clicado.
+   */
+  function base(): Mapa {
+    if (modo !== 'usuario' || !roleIdUsuario || Object.keys(valores).length > 0) return { ...valores };
+    const n: Mapa = {};
+    for (const { no, ocultas } of RAIZES) for (const k of [...chavesDaSubarvore(no), ...ocultas]) n[k] = efetivo(k);
+    return n;
+  }
 
   function alternarGrupo(no: No, marcar: boolean, raizOcultas: string[]) {
     const n = { ...valores };
@@ -162,7 +187,7 @@ export function ArvorePermissoes(props: Props) {
     const atual = valores[no.chave];
     const prox: boolean | undefined = atual === undefined ? true : atual === true ? false : undefined;
     const alvo = no.tipo === 'tela' ? [...chavesDaSubarvore(no), ...raizOcultas] : [no.chave];
-    const n = { ...valores };
+    const n = base();
     for (const k of alvo) {
       if (prox === undefined) delete n[k];
       else n[k] = prox;
@@ -172,7 +197,7 @@ export function ArvorePermissoes(props: Props) {
   }
 
   function marcarSecao(raizes: typeof RAIZES, v: boolean | undefined) {
-    const n = { ...valores };
+    const n = base();
     for (const { no, ocultas } of raizes)
       for (const k of [...chavesDaSubarvore(no), ...ocultas]) {
         if (v === undefined) delete n[k];
@@ -284,6 +309,13 @@ export function ArvorePermissoes(props: Props) {
 
   return (
     <div className="h-full flex flex-col min-h-0">
+      {roleIdUsuario && (
+        <p className="shrink-0 px-4 py-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+          Usuário com a categoria <strong>{roleNameUsuario ?? 'definida'}</strong>: com sobrescritas, vale
+          lista fechada — o que não estiver permitido fica bloqueado. Na primeira alteração a tela grava o
+          estado atual de todas as telas, para nada sumir; depois só muda o que você clicar.
+        </p>
+      )}
       <div className="shrink-0 flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-700">
         <select
           value={filtroGrupo}
