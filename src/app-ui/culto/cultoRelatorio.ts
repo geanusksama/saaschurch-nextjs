@@ -17,6 +17,9 @@ import {
   fmtMoeda,
   ROTULO_BLOCO,
   ROTULO_STATUS,
+  type Bloco,
+  type Lancamento,
+  type Nivel,
   type Registro,
 } from './cultoApi';
 
@@ -428,6 +431,199 @@ export function imprimirRelatorioCulto(opts: OpcoesRelatorio): boolean {
 </body></html>`;
 
   const janela = window.open('', '_blank', 'width=1024,height=768');
+  if (!janela) return false;
+  janela.document.write(html);
+  janela.document.close();
+  return true;
+}
+
+/**
+ * Ficha de um culto só — a mesma leitura do drawer de detalhe, no papel.
+ *
+ * O relatório acima é tabela para comparar muitos cultos; quem imprime de
+ * dentro de um culto quer o fechamento dele: Presença e Financeiro lado a lado,
+ * as observações de quem enviou, a decisão de cada dirigente e o parecer do
+ * presidente, na ordem em que o culto é conferido.
+ *
+ * Só sai o que veio do servidor: bloco podado aparece como "visão limitada",
+ * igual à tela — a impressão não pode mostrar mais do que o usuário vê.
+ */
+export interface OpcoesFicha {
+  registro: Registro;
+  /** Quem decide no nível local, quando há alguém anexado. */
+  aprovadorLocal?: string | null;
+  /** Quem deveria enviar cada bloco ainda pendente. */
+  responsavel?: (b: Bloco) => string | null;
+}
+
+const CAMPOS_FICHA: Record<'PRESENCA' | 'FINANCEIRO', { campo: keyof Lancamento; label: string; moeda?: boolean }[]> = {
+  PRESENCA: [
+    { campo: 'qtdHomens', label: 'Homens' },
+    { campo: 'qtdMulheres', label: 'Mulheres' },
+    { campo: 'qtdCriancas', label: 'Crianças' },
+    { campo: 'qtdVisitantes', label: 'Visitantes' },
+    { campo: 'qtdConversoes', label: 'Conversões' },
+    { campo: 'qtdReconciliacoes', label: 'Reconciliações' },
+    { campo: 'cadeirasVazias', label: 'Cadeiras vazias' },
+  ],
+  FINANCEIRO: [
+    { campo: 'totalDizimos', label: 'Valor total de dízimos', moeda: true },
+    { campo: 'totalOfertas', label: 'Valor total de ofertas', moeda: true },
+    { campo: 'qtdDizimos', label: 'Qtd. de dízimos' },
+  ],
+};
+
+/** Pastilha do cabeçalho de cada cartão. */
+function selo(texto: string, cor: 'verde' | 'vermelho' | 'ambar' | 'cinza'): string {
+  return `<span class="selo ${cor}">${escapar(texto)}</span>`;
+}
+
+const SEM_OBSERVACAO = '<span class="leve">Sem observação.</span>';
+
+function cartaoBloco(r: Registro, bloco: Bloco, opts: OpcoesFicha): string {
+  const lanc = r.lancamentos.find((l) => l.bloco === bloco);
+  const exigido = r.blocosExigidos.includes(bloco);
+  const enviado = Boolean(lanc?.enviadoEm) || r.blocosEnviados.includes(bloco);
+  if (!lanc && !exigido && !enviado) return '';
+
+  let corpo: string;
+  if (lanc) {
+    const campos =
+      bloco === 'EXTRA'
+        ? `<div class="texto">${escapar(lanc.texto || '—')}</div>`
+        : `<div class="campos">${CAMPOS_FICHA[bloco]
+            .map((c) => {
+              const v = lanc[c.campo] as string | number | null;
+              const valor = c.moeda ? fmtMoeda(v) : num(v as number | null);
+              return `<div><div class="rot">${escapar(c.label)}</div><div class="val${c.moeda ? ' num' : ''}">${escapar(valor)}</div></div>`;
+            })
+            .join('')}</div>`;
+    const quando = lanc.enviadoEm ? ` em ${new Date(lanc.enviadoEm).toLocaleString('pt-BR')}` : '';
+    corpo =
+      campos +
+      `<div class="rot obs-rot">Observação para o dirigente</div>` +
+      `<div class="caixa">${lanc.observacao ? escapar(lanc.observacao) : SEM_OBSERVACAO}</div>` +
+      (lanc.enviadoPorUser
+        ? `<div class="rodape-cartao">Enviado por ${escapar(lanc.enviadoPorUser.fullName + quando)}</div>`
+        : '');
+  } else if (enviado) {
+    corpo = '<p class="leve">Enviado · visão limitada.</p>';
+  } else {
+    const quem = opts.responsavel?.(bloco);
+    corpo = `<p class="leve">Ainda não enviado.${quem ? ` Responsável: ${escapar(quem)}.` : ''}</p>`;
+  }
+
+  return (
+    `<section class="cartao"><header><span><strong>${escapar(ROTULO_BLOCO[bloco])}</strong>` +
+    `${exigido ? ' <span class="tag">obrigatório</span>' : ''}</span>` +
+    `${selo(enviado ? 'enviado' : 'pendente', enviado ? 'verde' : 'vermelho')}</header>` +
+    `<div class="corpo">${corpo}</div></section>`
+  );
+}
+
+function cartaoNivel(r: Registro, nivel: Nivel, opts: OpcoesFicha): string {
+  const decisao = r.aprovacoes.find((a) => a.nivel === nivel);
+  const titulo = nivel === 'LOCAL' ? 'Dirigente da congregação' : 'Dirigente hospedeiro';
+  const quem = nivel === 'LOCAL' ? (opts.aprovadorLocal ?? null) : (r.hostChurch?.name ?? null);
+  const estado =
+    decisao?.decisao === 'APROVADO'
+      ? selo('aprovou', 'verde')
+      : decisao?.decisao === 'REJEITADO'
+        ? selo('devolveu', 'ambar')
+        : selo('aguardando', 'cinza');
+
+  const corpo = decisao
+    ? `<div class="leve">${escapar(`${decisao.aprovador?.fullName ?? '—'} · ${fmtData(decisao.decididoEm)}`)}</div>` +
+      `<div class="caixa">${decisao.motivo ? escapar(decisao.motivo) : SEM_OBSERVACAO}</div>`
+    : '<p class="leve">Ainda não decidiu.</p>';
+
+  return (
+    `<section class="cartao"><header><strong>${titulo}</strong>${estado}</header>` +
+    `<div class="corpo">${quem ? `<div class="leve">${escapar(quem)}</div>` : ''}${corpo}</div></section>`
+  );
+}
+
+/** Monta a ficha do culto e abre o diálogo de impressão numa janela nova. */
+export function imprimirFichaCulto(opts: OpcoesFicha): boolean {
+  const r = opts.registro;
+  const hora = fmtHora(r.horaInicio, r.horaFim);
+  const linha = [fmtData(r.dataCulto), hora, r.tipoCulto, ROTULO_STATUS[r.status]]
+    .filter(Boolean)
+    .join(' · ');
+
+  const faltando = r.blocosFaltando
+    .map((b) => {
+      const quem = opts.responsavel?.(b);
+      return `${ROTULO_BLOCO[b]}${quem ? ` (${quem})` : ''}`;
+    })
+    .join(', ');
+  const avisos =
+    (faltando ? `<div class="aviso"><strong>Faltando enviar:</strong> ${escapar(faltando)}</div>` : '') +
+    (r.observacao
+      ? `<div class="aviso"><strong>Observação do culto:</strong> ${escapar(r.observacao)}</div>`
+      : '');
+
+  const extra = cartaoBloco(r, 'EXTRA', opts);
+  const parecer = r.observacaoPresidente
+    ? `<div class="um"><section class="cartao"><header><strong>Parecer do Pastor Presidente</strong></header>` +
+      `<div class="corpo"><div class="caixa">${escapar(r.observacaoPresidente)}</div></div></section></div>`
+    : '';
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>${escapar(`${r.church.name} — ${linha}`)}</title><style>
+  /* @page fora de @media print — ver imprimirRelatorioCulto. */
+  @page{size:A4 portrait;margin:1.2cm}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#1e293b;padding:20px}
+  h1{font-size:16px;font-weight:700}
+  .sub{font-size:11px;font-weight:700;color:#334155;margin-top:2px}
+  .gerado{font-size:9px;color:#94a3b8;margin:2px 0 12px}
+  .aviso{border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;margin-bottom:8px;color:#475569}
+  /* Presença | Financeiro e Dirigente | Hospedeiro lado a lado, como no drawer. */
+  .par{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;margin-bottom:10px}
+  .um{margin-bottom:10px}
+  .cartao{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;page-break-inside:avoid}
+  .cartao header{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px}
+  .cartao .corpo{padding:8px 10px}
+  .tag{font-size:8px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;font-weight:400}
+  .selo{font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px}
+  .selo.verde{background:#dcfce7;color:#15803d}
+  .selo.vermelho{background:#ffe4e6;color:#b91c1c}
+  .selo.ambar{background:#fef3c7;color:#b45309}
+  .selo.cinza{background:#f1f5f9;color:#64748b}
+  .campos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px}
+  .rot{font-size:9px;color:#64748b}
+  .val{font-size:12px;font-weight:700;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;margin-top:2px;background:#f8fafc}
+  .val.num{text-align:right}
+  .obs-rot{margin-top:8px}
+  .caixa{border:1px solid #e2e8f0;border-radius:6px;padding:5px 7px;margin-top:2px;background:#f8fafc;white-space:pre-wrap;min-height:26px}
+  .texto{white-space:pre-wrap}
+  .leve{color:#94a3b8}
+  .rodape-cartao{font-size:9px;color:#94a3b8;margin-top:5px}
+  /* Fundo e pastilhas saem na impressão; sem isto o Chrome as apaga. */
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @media print{body{padding:0}}
+</style></head><body>
+  <h1>${escapar(r.church.name)}</h1>
+  <p class="sub">${escapar(linha)}</p>
+  <p class="gerado">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
+  ${avisos}
+  <div class="par">${cartaoBloco(r, 'PRESENCA', opts)}${cartaoBloco(r, 'FINANCEIRO', opts)}</div>
+  ${extra ? `<div class="um">${extra}</div>` : ''}
+  <div class="${r.hostChurchId ? 'par' : 'um'}">${cartaoNivel(r, 'LOCAL', opts)}${
+    r.hostChurchId ? cartaoNivel(r, 'HOSPEDEIRA', opts) : ''
+  }</div>
+  ${parecer}
+  <script>
+    window.onload = function () {
+      window.onafterprint = function () { window.close(); };
+      window.print();
+      setTimeout(function () { window.close(); }, 1500);
+    };
+  <\/script>
+</body></html>`;
+
+  const janela = window.open('', '_blank', 'width=900,height=1000');
   if (!janela) return false;
   janela.document.write(html);
   janela.document.close();
