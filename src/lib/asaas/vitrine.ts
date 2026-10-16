@@ -107,6 +107,9 @@ function validarComprador(c: Partial<Comprador>): Comprador {
   return { nome, cpf: soDigitos(c.cpf), celular, email };
 }
 
+/** id vindo do navegador: sem formato de uuid, nem chega ao banco (o cast ::uuid daria erro 500). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const codigo = (prefixo: string) => `${prefixo}-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
 /** Cria o pedido (preços e vagas do banco, numa transação) e devolve id, número e total. */
@@ -225,6 +228,7 @@ export async function checkoutSite(req: NextRequest, corpo: Record<string, unkno
 
 /** Status para a tela "aguardando pagamento" do site (id da cobrança é o segredo). */
 export async function statusSite(cobrancaId: string) {
+  if (!UUID.test(cobrancaId)) throw new Recusado('Pagamento não encontrado.');
   let c = await prisma.asaasCobranca.findUnique({ where: { id: cobrancaId } });
   if (!c || !(c.pedidoId || c.penielInscricaoId || c.origem === 'DEPTO')) throw new Recusado('Pagamento não encontrado.');
   if (estadoDe(c.status) === 'PENDENTE' && Date.now() - c.updatedAt.getTime() > 4_000) {
@@ -252,6 +256,7 @@ export async function statusSite(cobrancaId: string) {
  * id + código de check-in (os dois juntos, como na consulta pública).
  */
 export async function pagarPeniel(corpo: Record<string, unknown>) {
+  if (!UUID.test(String(corpo.inscricaoId ?? ''))) throw new Recusado('Inscrição não encontrada.');
   const reg = await prisma.penielRegistration.findFirst({
     where: { id: String(corpo.inscricaoId ?? ''), checkInCode: String(corpo.codigo ?? '').toUpperCase(), deletedAt: null },
     include: { event: true },
@@ -287,6 +292,7 @@ export async function pagarPeniel(corpo: Record<string, unknown>) {
 
 /** O campo da inscrição tem Asaas ativo? (o modal decide entre pagar agora ou o fluxo antigo). */
 export async function penielTemAsaas(eventId: string) {
+  if (!UUID.test(eventId)) return false;
   const ev = await prisma.penielEvent.findUnique({ where: { id: eventId }, select: { campoId: true } });
   if (!ev) return false;
   return Boolean(await prisma.asaasConfig.findFirst({ where: { campoId: ev.campoId, deletedAt: null, ativo: true }, select: { id: true } }));
@@ -305,6 +311,7 @@ export async function pagarDept(corpo: Record<string, unknown>) {
   const tipo = corpo.tipo === 'inscricao' ? 'inscricao' : 'pedido';
   const id = String(corpo.id ?? '');
   const token = String(corpo.token ?? '');
+  if (!UUID.test(id) || !token) throw new Recusado(tipo === 'pedido' ? 'Pedido não encontrado.' : 'Inscrição não encontrada.');
   const metodo = corpo.metodo === 'CARTAO' ? 'CARTAO' : 'PIX';
   const linhas = tipo === 'pedido'
     ? await prisma.$queryRaw<{ id: string; campo_id: string; nome: string; cpf: string; telefone: string; email: string | null; valor: Prisma.Decimal; ref: string; payment_status: string }[]>`
