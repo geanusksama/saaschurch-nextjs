@@ -4693,6 +4693,8 @@ model AppV3Evento {
   mundialId         String?   @map("mundial_id") @db.Uuid
   campoId           String?   @map("campo_id") @db.Uuid
   churchId          String?   @map("church_id") @db.Uuid
+  /// Ministério/departamento responsável (ministries) — migration 20261016090000
+  ministerioId      String?   @map("ministerio_id") @db.Uuid
   titulo            String    @db.VarChar(255)
   tituloCurto       String?   @map("titulo_curto") @db.VarChar(120)
   categoria         String?   @db.VarChar(80)
@@ -4873,6 +4875,8 @@ model AppV3ConviteModelo {
 model AppV3Produto {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   campoId   String   @map("campo_id") @db.Uuid
+  /// Ministério/departamento responsável (ministries)
+  ministerioId String? @map("ministerio_id") @db.Uuid
   nome      String   @db.VarChar(255)
   categoria String?  @db.VarChar(60)
   descricao String?
@@ -5122,7 +5126,8 @@ model AppV3Contribuicao {
 model AppV3Pedido {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   numero     BigInt    @unique @default(autoincrement())
-  perfilId   String    @map("perfil_id") @db.Uuid
+  /// null = pedido feito pelo site, sem conta no app (comprador_*)
+  perfilId   String?   @map("perfil_id") @db.Uuid
   campoId    String    @map("campo_id") @db.Uuid
   churchId   String?   @map("church_id") @db.Uuid
   subtotal   Decimal   @default(0) @db.Decimal(12, 2)
@@ -5136,8 +5141,14 @@ model AppV3Pedido {
   gatewayRef String?   @map("gateway_ref")
   criadoEm   DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
   pagoEm     DateTime? @map("pago_em") @db.Timestamptz(6)
+  /// APP | SITE
+  origem           String  @default("APP") @db.VarChar(10)
+  compradorNome    String? @map("comprador_nome") @db.VarChar(255)
+  compradorCpf     String? @map("comprador_cpf") @db.VarChar(14)
+  compradorCelular String? @map("comprador_celular") @db.VarChar(20)
+  compradorEmail   String? @map("comprador_email") @db.VarChar(255)
 
-  perfil     AppV3Perfil       @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  perfil     AppV3Perfil?      @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   campo      Campo             @relation(fields: [campoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   church     Church?           @relation(fields: [churchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   itens      AppV3PedidoItem[]
@@ -5179,7 +5190,7 @@ model AppV3Ingresso {
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   pedidoId     String    @map("pedido_id") @db.Uuid
   itemId       String?   @map("item_id") @db.Uuid
-  perfilId     String    @map("perfil_id") @db.Uuid
+  perfilId     String?   @map("perfil_id") @db.Uuid
   eventoId     String?   @map("evento_id") @db.Uuid
   opcaoId      String?   @map("opcao_id") @db.Uuid
   codigo       String    @unique @db.VarChar(20)
@@ -5192,7 +5203,7 @@ model AppV3Ingresso {
 
   pedido     AppV3Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   item       AppV3PedidoItem?  @relation(fields: [itemId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  perfil     AppV3Perfil       @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  perfil     AppV3Perfil?      @relation(fields: [perfilId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   evento     AppV3Evento?      @relation(fields: [eventoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   opcao      AppV3EventoOpcao? @relation(fields: [opcaoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   reembolsos AppV3Reembolso[]
@@ -5412,6 +5423,7 @@ model AsaasCliente {
   @@index([perfilId])
   @@index([memberId])
   @@index([configId, cpfCnpj], map: "asaas_clientes_cpf_cnpj_idx")
+  @@index([configId, perfilId], map: "asaas_clientes_config_perfil_idx")
   @@map("asaas_clientes")
 }
 
@@ -5446,6 +5458,7 @@ model AsaasAssinatura {
 
   @@index([campoId, status])
   @@index([perfilId])
+  @@index([campoId, createdAt], map: "asaas_assinaturas_campo_created_idx")
   @@map("asaas_assinaturas")
 }
 
@@ -5468,6 +5481,10 @@ model AsaasLink {
   url          String
   ativo        Boolean   @default(true)
   encerraEm    DateTime? @map("encerra_em") @db.Date
+  /// Campanha de um site de departamento (department_sites)
+  departmentSiteId String? @map("department_site_id") @db.Uuid
+  /// Link de inscrição de um evento do app (appv3_eventos)
+  eventoId     String?   @map("evento_id") @db.Uuid
   criadoPor    String?   @map("criado_por") @db.Uuid
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
@@ -5476,6 +5493,8 @@ model AsaasLink {
   cobrancas AsaasCobranca[]
 
   @@index([campoId])
+  @@index([departmentSiteId], map: "asaas_links_department_site_idx")
+  @@index([eventoId], map: "asaas_links_evento_idx")
   @@map("asaas_links")
 }
 
@@ -5492,6 +5511,7 @@ model AsaasCobranca {
   pedidoId           String?   @map("pedido_id") @db.Uuid
   assinaturaId       String?   @map("assinatura_id") @db.Uuid
   linkId             String?   @map("link_id") @db.Uuid
+  penielInscricaoId  String?   @map("peniel_inscricao_id") @db.Uuid
   asaasPaymentId     String    @unique @map("asaas_payment_id") @db.VarChar(40)
   asaasInstallmentId String?   @map("asaas_installment_id") @db.VarChar(40)
   asaasCustomerId    String?   @map("asaas_customer_id") @db.VarChar(40)
@@ -5529,6 +5549,11 @@ model AsaasCobranca {
   @@index([assinaturaId])
   @@index([perfilId])
   @@index([asaasInstallmentId], map: "asaas_cobrancas_installment_idx")
+  @@index([campoId, pagoEm], map: "asaas_cobrancas_campo_pago_idx")
+  @@index([churchId, createdAt], map: "asaas_cobrancas_church_created_idx")
+  @@index([linkId], map: "asaas_cobrancas_link_id_idx")
+  @@index([penielInscricaoId], map: "asaas_cobrancas_peniel_idx")
+  // + índice de expressão (payload->'payment'->>'id') em asaas_webhook_eventos: só no SQL (o Prisma não descreve).
   @@map("asaas_cobrancas")
 }
 

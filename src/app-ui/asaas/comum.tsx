@@ -142,7 +142,7 @@ export function Selo({ estado, status }: { estado: string; status?: string }) {
 }
 
 export const ORIGENS: Record<string, string> = {
-  CONTRIBUICAO: 'Dízimo/oferta (app)', PEDIDO: 'Loja/ingresso (app)', ASSINATURA: 'Recorrência', AVULSA: 'Cobrança rápida', LINK: 'Link de pagamento',
+  CONTRIBUICAO: 'Dízimo/oferta (app)', PEDIDO: 'Loja/ingresso', ASSINATURA: 'Recorrência', AVULSA: 'Cobrança rápida', LINK: 'Link de pagamento', PENIEL: 'Inscrição Peniel',
 };
 
 export function Botao({ children, onClick, tipo = 'primario', disabled, carregando, className, title }: {

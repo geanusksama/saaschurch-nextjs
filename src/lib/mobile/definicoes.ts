@@ -246,7 +246,15 @@ export const RECURSOS: Record<string, RecursoDef> = {
     aviso: 'Para vender ingressos: salve o evento e cadastre os tipos de ingresso (Inteira, Meia, Gratuito…) na seção "Ingressos à venda" do próprio evento. Evento sem tipo de ingresso aparece só como divulgação.',
     criar: true, excluir: true, filhos: ['evento-opcoes'], busca: ['titulo', 'categoria'],
     vazio: 'Nenhum evento do campo.',
-    campos: [...EVENTO_CAMPOS.slice(0, 9), { col: 'churchId', rotulo: 'Igreja (opcional)', tipo: 'igreja' }, ...EVENTO_CAMPOS.slice(9)],
+    campos: [
+      ...EVENTO_CAMPOS.slice(0, 3),
+      // Logo abaixo da Categoria, como no produto. Categoria = filtro do app (aba Categorias);
+      // Departamento = ministério responsável (Missões, Varões, CIBE…), o mesmo dos sites de departamento.
+      { col: 'ministerioId', rotulo: 'Departamento', tipo: 'ministerio', obrigatorio: true, lista: true, ajuda: 'Ministério que organiza o evento. Aparece no app, no site (Eventos) e no menu do departamento.' },
+      ...EVENTO_CAMPOS.slice(3, 9),
+      { col: 'churchId', rotulo: 'Igreja (opcional)', tipo: 'igreja' },
+      ...EVENTO_CAMPOS.slice(9),
+    ],
   },
   'evento-opcoes': {
     chave: 'evento-opcoes', titulo: 'Ingressos à venda', item: 'opção de ingresso', permKey: 'mobile_eventos',
@@ -308,6 +316,7 @@ export const RECURSOS: Record<string, RecursoDef> = {
     campos: [
       { col: 'nome', rotulo: 'Nome', tipo: 'texto', obrigatorio: true, lista: true },
       { col: 'categoria', rotulo: 'Categoria', tipo: 'categoria', categoria: 'PRODUTO', lista: true, ajuda: 'Cadastre novas na aba Categorias.' },
+      { col: 'ministerioId', rotulo: 'Departamento', tipo: 'ministerio', lista: true, ajuda: 'Opcional: ministério que vende o produto (ex.: camisetas da Juventude).' },
       { col: 'preco', rotulo: 'Preço', tipo: 'dinheiro', obrigatorio: true, lista: true },
       { col: 'descricao', rotulo: 'Descrição', tipo: 'textoLongo' },
       { col: 'tamanhos', rotulo: 'Tamanhos', tipo: 'tags', ajuda: 'Separados por vírgula: P, M, G. Vazio = tamanho único.' },

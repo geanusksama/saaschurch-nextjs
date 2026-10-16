@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { PenielPagamento, usePenielAsaas } from "./PenielPagamento";
 import { useNavigate } from "react-router";
 import {
   X, Calendar, MapPin, Clock, ArrowRight, ArrowLeft, Loader2, Sparkles, Check, CheckCircle2,
@@ -104,6 +105,9 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
   const [lookupProofUploading, setLookupProofUploading] = useState(false);
   const [lookupResending, setLookupResending] = useState(false);
   const [lookupInfo, setLookupInfo] = useState("");
+  // Asaas no campo do evento: pagamento automático (Pix/cartão) no lugar de link + comprovante.
+  const penielAsaas = usePenielAsaas(selectedEvent?.id);
+  const lookupAsaas = usePenielAsaas(lookupData?.event?.id);
   const lookupProofRef = useRef<HTMLInputElement>(null);
 
   const slideContainerRef = useRef<HTMLDivElement>(null);
@@ -1147,6 +1151,28 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
                           <ArrowLeft size={14} /> Voltar para a ficha de inscrição
                         </button>
 
+                        {penielAsaas ? (
+                          <div className="space-y-3">
+                            <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <CreditCard size={16} className="text-[#d4af37]" />
+                                <h4 className="text-[11px] font-extrabold tracking-widest text-slate-600 uppercase">Pagamento da Ficha</h4>
+                              </div>
+                              <p className="text-sm text-slate-700">
+                                Valor do Encontro: <span className="font-extrabold text-slate-900">{selectedEvent.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                              </p>
+                              <p className="text-xs text-slate-500">Na próxima tela você paga por <b>Pix</b> ou <b>cartão</b>. A confirmação é automática e o ingresso chega no seu WhatsApp — sem comprovante.</p>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={submitting}
+                              onClick={() => submitRegistration(false)}
+                              className="w-full py-3 rounded-xl text-white font-bold bg-[#22c55e] hover:bg-emerald-600 shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                            >
+                              <Check size={16} /> {submitting ? "Enviando..." : "Confirmar inscrição e pagar"}
+                            </button>
+                          </div>
+                        ) : (<>
                         <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 space-y-3">
                           <div className="flex items-center gap-2">
                             <CreditCard size={16} className="text-[#d4af37]" />
@@ -1238,6 +1264,7 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
                             Caso opte por enviar sem comprovante, sua vaga ficará como <b>pagamento pendente</b> até que a equipe verifique.
                           </p>
                         </div>
+                        </>)}
                       </div>
                     )}
 
@@ -1326,7 +1353,9 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
               <p className="text-xs text-white/50 leading-relaxed font-light">
                 {successData.status === "fila_espera"
                   ? "Você foi colocado na fila de espera com sucesso. Se uma vaga for liberada, enviaremos uma mensagem automática."
-                  : `Sua inscrição para o encontro "${successData.event?.title || "Peniel"}" foi confirmada. Uma mensagem automática de confirmação foi enviada para o seu WhatsApp.`}
+                  : successData.paymentStatus === "pendente" && penielAsaas
+                    ? `Sua ficha para o encontro "${successData.event?.title || "Peniel"}" foi recebida. Falta só o pagamento: pague abaixo e sua vaga fica garantida.`
+                    : `Sua inscrição para o encontro "${successData.event?.title || "Peniel"}" foi confirmada. Uma mensagem automática de confirmação foi enviada para o seu WhatsApp.`}
               </p>
             </div>
 
@@ -1342,6 +1371,10 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
                 <span className="truncate">{successData.event?.location}</span>
               </div>
             </div>
+
+            {successData.status === "inscrito" && successData.paymentStatus === "pendente" && penielAsaas && successData.checkInCode && (
+              <PenielPagamento inscricaoId={successData.id} codigo={successData.checkInCode} valor={Number(selectedEvent?.value ?? 0)} />
+            )}
 
             {successData.checkInCode && (
               <div className="p-4 rounded-xl text-center border border-amber-500/30 bg-amber-500/5">
@@ -1423,8 +1456,14 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
                   </span>
                 </div>
 
-                {/* Link de pagamento se pendente */}
-                {lookupData.paymentStatus !== "pago" && lookupData.paymentStatus !== "gratuito" && lookupData.event?.paymentLink && (
+                {/* Asaas: paga aqui mesmo */}
+                {lookupAsaas && !["pago", "gratuito"].includes(lookupData.paymentStatus) && lookupData.status === "inscrito" && (
+                  <PenielPagamento inscricaoId={lookupData.id} codigo={lookupData.checkInCode} valor={Number(lookupData.event?.value ?? 0)}
+                    onPago={() => setLookupData({ ...lookupData, paymentStatus: "pago" })} />
+                )}
+
+                {/* Link de pagamento se pendente (campo sem Asaas) */}
+                {!lookupAsaas && lookupData.paymentStatus !== "pago" && lookupData.paymentStatus !== "gratuito" && lookupData.event?.paymentLink && (
                   <a
                     href={lookupData.event.paymentLink}
                     target="_blank"
@@ -1435,8 +1474,8 @@ export function PenielRegistrationModal({ isOpen, onClose, initialSelectedEvent 
                   </a>
                 )}
 
-                {/* Anexar comprovante */}
-                {lookupData.paymentStatus !== "gratuito" && (
+                {/* Anexar comprovante (só sem Asaas) */}
+                {!lookupAsaas && lookupData.paymentStatus !== "gratuito" && (
                   <div className="space-y-2">
                     <input ref={lookupProofRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleLookupProofUpload(f); }} />
                     {lookupData.hasProof ? (

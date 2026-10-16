@@ -423,6 +423,7 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Cobrança rápida',        path: '/app-ui/pagamentos/cobrar',        icon: QrCode,         permKey: 'asaas_cobrar' },
       { name: 'Contribuições e vendas', path: '/app-ui/pagamentos/vendas',        icon: ListChecksIcon, permKey: 'asaas_vendas' },
       { name: 'Recorrências',           path: '/app-ui/pagamentos/recorrencias',  icon: RepeatIcon,     permKey: 'asaas_recorrencias' },
+      { name: 'Eventos e loja',         path: '/app-ui/pagamentos/eventos',       icon: Calendar,       permKey: 'mobile_eventos' },
       { name: 'Links e campanhas',      path: '/app-ui/pagamentos/links',         icon: Link2Icon,      permKey: 'asaas_links' },
       { name: 'Financeiro',             path: '/app-ui/pagamentos/financeiro',    icon: Wallet,         permKey: 'asaas_financeiro' },
     ]

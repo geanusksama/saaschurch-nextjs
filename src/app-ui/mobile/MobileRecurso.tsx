@@ -161,7 +161,7 @@ function Campo({ c, valor, onChange, pasta, paiId, travado, valores }: {
       entrada = <input type="number" className={inputCls} value={valor == null ? '' : String(valor)} disabled={desab} onChange={(e) => onChange(e.target.value)} />;
       break;
     case 'dinheiro':
-      entrada = <input type="number" step="0.01" min="0" className={inputCls} value={valor == null ? '' : String(valor)} disabled={desab} onChange={(e) => onChange(e.target.value)} />;
+      entrada = <CampoDinheiro valor={valor} disabled={desab} className={inputCls} onChange={onChange} />;
       break;
     case 'bool':
       entrada = (
@@ -604,6 +604,32 @@ export function MobileRecurso({ recurso, paiId = null, compacto = false }: { rec
       <ConfirmDialog open={!!excluirAlvo} title={`Excluir ${def.item}?`} variant="danger" loading={excluindo}
         message="Some do app na hora. Não dá para desfazer."
         confirmLabel="Excluir" onConfirm={excluir} onCancel={() => setExcluirAlvo(null)} />
+    </div>
+  );
+}
+
+/**
+ * Campo de moeda: mostra "R$ 30,00" e digita como maquininha (os números entram
+ * pelos centavos). Grava o decimal com ponto ("30.00"), que é o que a API espera.
+ */
+function CampoDinheiro({ valor, disabled, className, onChange }: { valor: unknown; disabled?: boolean; className: string; onChange: (v: unknown) => void }) {
+  const centavos = valor === null || valor === undefined || valor === '' ? null : Math.round(Number(valor) * 100);
+  const texto = centavos === null || Number.isNaN(centavos) ? '' : (centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">R$</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        className={`${className} pl-10`}
+        value={texto}
+        placeholder="0,00"
+        disabled={disabled}
+        onChange={(e) => {
+          const digitos = e.target.value.replace(/\D/g, '').slice(0, 11);
+          onChange(digitos ? (Number(digitos) / 100).toFixed(2) : null);
+        }}
+      />
     </div>
   );
 }

@@ -6,7 +6,7 @@
  */
 import type { ElementType } from 'react';
 import { Navigate, useParams } from 'react-router';
-import { Banknote, LayoutDashboard, Link2, ListChecks, Lock, QrCode, Repeat, Settings, Wallet } from 'lucide-react';
+import { Banknote, CalendarPlus, LayoutDashboard, Link2, ListChecks, Lock, QrCode, Repeat, Settings, Wallet } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermissions';
 import { perfilAtual } from './comum';
 import Visao from './Visao';
@@ -16,6 +16,7 @@ import Recorrencias from './Recorrencias';
 import Links from './Links';
 import Financeiro from './Financeiro';
 import Configuracoes from './Configuracoes';
+import EventosLoja from './EventosLoja';
 
 interface Tela { titulo: string; sub: string; icone: ElementType; perm: string; C: ElementType }
 
@@ -24,6 +25,7 @@ const TELAS: Record<string, Tela> = {
   cobrar: { titulo: 'Cobrança rápida', sub: 'Valor e quem paga: o QR aparece na tela e vira PAGO sozinho.', icone: QrCode, perm: 'asaas_cobrar', C: Cobrar },
   vendas: { titulo: 'Contribuições e vendas', sub: 'Tudo o que passou pelo Asaas no campo, com estorno e linha do tempo.', icone: ListChecks, perm: 'asaas_vendas', C: Vendas },
   recorrencias: { titulo: 'Recorrências', sub: 'Dízimos e ofertas mensais feitos pelo app.', icone: Repeat, perm: 'asaas_recorrencias', C: Recorrencias },
+  eventos: { titulo: 'Eventos e loja', sub: 'Crie eventos com ingressos e produtos: aparecem no app e no site, pagos pelo Asaas.', icone: CalendarPlus, perm: 'mobile_eventos', C: EventosLoja },
   links: { titulo: 'Links e campanhas', sub: 'Links e QR para divulgar fora do app.', icone: Link2, perm: 'asaas_links', C: Links },
   financeiro: { titulo: 'Financeiro', sub: 'Saldo, a receber e extrato da conta Asaas.', icone: Wallet, perm: 'asaas_financeiro', C: Financeiro },
 };

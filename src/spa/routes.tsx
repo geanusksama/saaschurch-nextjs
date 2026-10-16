@@ -14,6 +14,8 @@ import { DesignSystem } from "../components/DesignSystem";
 // Public Website
 import { PublicWebsite } from "../components/public/PublicWebsite";
 import { PublicHome } from "../components/public/PublicHome";
+import PublicEventosPage from "../components/public/vitrine/PublicEventosPage";
+import PublicLojaPage from "../components/public/vitrine/PublicLojaPage";
 import { PublicEvents } from "../components/public/PublicEvents";
 import { LiveStreaming } from "../components/public/LiveStreaming";
 import { About } from "../components/public/About";
@@ -331,6 +333,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: PublicHome },
       { path: "peniel", Component: PenielPublicPage },
+      // Site: Eventos e Compras pagos pelo Asaas (src/components/public/vitrine)
+      { path: "eventos", Component: PublicEventosPage },
+      { path: "loja", Component: PublicLojaPage },
     ]
   },
   // Portal standalone pages (opened from CMSDashboard preview or direct link)

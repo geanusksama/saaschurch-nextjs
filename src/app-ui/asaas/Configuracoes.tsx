@@ -4,7 +4,8 @@
  * quais campos esta mesma conta recebe.
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import { CheckCircle2, KeyRound, Plug, RefreshCcw, ShieldCheck, Webhook, XCircle } from 'lucide-react';
+import { CheckCircle2, KeyRound, Plug, RefreshCcw, Rocket, ShieldCheck, Webhook, XCircle } from 'lucide-react';
+import { Assistente } from './Assistente';
 import { toast } from 'sonner';
 import { api, Botao, Campo, Cartao, Carregando, confirmar, CopiaECola, cx, dataBr, Erro, inputCls, Interruptor, perfilAtual, useDados } from './comum';
 import { Tabela } from './tabela';
@@ -27,6 +28,7 @@ export default function Configuracoes() {
   const [email, setEmail] = useState('');
   const [registrando, setRegistrando] = useState(false);
   const master = perfilAtual() === 'master';
+  const [assistente, setAssistente] = useState(false);
   const [campos, setCampos] = useState<CampoConta[] | null>(null);
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
 
@@ -92,8 +94,16 @@ export default function Configuracoes() {
   if (erro) return <Erro msg={erro} onTentar={recarregar} />;
   if (!c) return null;
 
+  // Campo sem conta: o assistente vem primeiro (a igreja liga a própria conta Asaas).
+  if (!c.configurado || assistente) {
+    return <Assistente campoNome={c.campoNome} onPronto={() => { setAssistente(false); recarregar(); }} onCancelar={c.configurado ? () => setAssistente(false) : undefined} />;
+  }
+
   return (
     <div className="space-y-4">
+    <div className="flex justify-end">
+      <Botao tipo="secundario" onClick={() => setAssistente(true)}><Rocket className="w-4 h-4" />Trocar de conta (assistente)</Botao>
+    </div>
     <div className="grid gap-4 lg:grid-cols-2">
       <Cartao className="p-5 space-y-4">
         <div className="flex items-center gap-2">

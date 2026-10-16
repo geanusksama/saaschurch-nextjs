@@ -72,7 +72,9 @@ export async function GET(req: NextRequest, { params }: Params) {
       break;
     case 'pessoas': return rota(req, COBRAR, (e) => P.pessoasParaCobrar(e, sp.get('q') ?? ''));
     case 'assinaturas': return rota(req, RECORRENCIAS, (e) => P.listarAssinaturas(e, sp));
-    case 'links': return rota(req, LINKS, (e) => P.listarLinks(e));
+    case 'links':
+      if (id === 'opcoes') return rota(req, LINKS, (e) => P.opcoesLink(e));
+      return rota(req, LINKS, (e) => P.listarLinks(e));
     case 'financeiro': return rota(req, FINANCEIRO, (e) => P.financeiro(e, sp));
     case 'config':
       if (id === 'campos') return rota(req, CONFIG_VER, (e) => P.camposDaConta(e));
@@ -111,6 +113,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     case 'config':
       if (!id) return rota(req, CONFIG, async (e) => { await P.salvarConfig(e, corpo); await P.aplicarNosCampos(e, corpo.campos); return P.lerConfig(e, req); });
       if (id === 'testar') return rota(req, CONFIG_VER, (e) => P.testarConexao(e));
+      if (id === 'configurar') return rota(req, CONFIG, (e) => P.configurarConta(e, req, corpo));
       if (id === 'webhook') return rota(req, CONFIG, (e, user) => P.registrarWebhook(e, req, String(corpo.email || user.email || '')));
       if (id === 'campos') return rota(req, CONFIG, (e) => P.aplicarContaNoCampo(e, String(corpo.campoId ?? ''), Boolean(corpo.ativo)));
       break;

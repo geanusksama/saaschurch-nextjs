@@ -199,11 +199,12 @@ export interface Vinculo {
   churchId?: string | null;
   perfilId?: string | null;
   memberId?: string | null;
-  origem: 'CONTRIBUICAO' | 'PEDIDO' | 'ASSINATURA' | 'AVULSA' | 'LINK';
+  origem: 'CONTRIBUICAO' | 'PEDIDO' | 'ASSINATURA' | 'AVULSA' | 'LINK' | 'PENIEL';
   contribuicaoId?: string | null;
   pedidoId?: string | null;
   assinaturaId?: string | null;
   linkId?: string | null;
+  penielInscricaoId?: string | null;
   pagadorNome?: string | null;
   criadoPor?: string | null;
 }
@@ -238,6 +239,7 @@ export async function registrar(v: Vinculo, pg: PagamentoAsaas, extra: { pixPayl
       pedidoId: v.pedidoId ?? null,
       assinaturaId: v.assinaturaId ?? null,
       linkId: v.linkId ?? null,
+      penielInscricaoId: v.penielInscricaoId ?? null,
       pagadorNome: v.pagadorNome ?? null,
       criadoPor: v.criadoPor ?? null,
       asaasPaymentId: pg.id,
@@ -329,6 +331,21 @@ export async function aplicarNoApp(cobrancaId: string) {
           prisma.appV3Reembolso.updateMany({ where: { pedidoId: ped.id, status: { in: ['SOLICITADO', 'APROVADO'] } }, data: { status: 'PAGO' } }),
           ...(await cancelarIngressosDoPedido(ped.id)),
         ]);
+      }
+    }
+  }
+
+  if (c.penielInscricaoId) {
+    // Peniel: pago → vaga garantida e ingresso (QR) pelo WhatsApp, uma vez só.
+    const alvo = e === 'PAGO' ? 'pago' : e === 'ESTORNADO' ? 'estornado' : null;
+    if (alvo) {
+      const mudou = await prisma.penielRegistration.updateMany({
+        where: { id: c.penielInscricaoId, paymentStatus: { notIn: [alvo, 'gratuito'] } },
+        data: { paymentStatus: alvo },
+      });
+      if (mudou.count && alvo === 'pago') {
+        const { sendTicketWhatsApp } = await import('@/lib/penielTicket');
+        await sendTicketWhatsApp(c.penielInscricaoId).catch((err) => console.error('[asaas peniel ticket]', err));
       }
     }
   }
