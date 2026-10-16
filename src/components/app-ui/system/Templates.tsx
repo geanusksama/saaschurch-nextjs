@@ -1,5 +1,6 @@
 import { Mail, MessageSquare, Smartphone, Plus, Edit, Trash2, Copy, Eye, Search, Filter } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 const templates = [
   {
@@ -111,10 +112,12 @@ export function Templates() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Templates de Notificação</h1>
-          <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
-            <Plus className="w-5 h-5" />
-            Novo Template
-          </button>
+          <Permissao chave="settings_templates.templates.novo_template" rotulo="Novo Template — Templates" herda="settings_templates.view">
+            <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
+              <Plus className="w-5 h-5" />
+              Novo Template
+            </button>
+          </Permissao>
         </div>
         <p className="text-slate-600 dark:text-slate-400">Modelos de email, WhatsApp e SMS</p>
       </div>
@@ -244,10 +247,12 @@ export function Templates() {
           <Mail className="w-12 h-12 text-slate-300 mx-auto mb-4" />
           <h3 className="font-bold text-slate-900 mb-2">Nenhum template encontrado</h3>
           <p className="text-slate-600 mb-4">Tente ajustar os filtros ou criar um novo template</p>
-          <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-700 transition-colors mx-auto">
-            <Plus className="w-5 h-5" />
-            Criar Template
-          </button>
+          <Permissao chave="settings_templates.templates.criar_template" rotulo="Criar Template — Templates" herda="settings_templates.view">
+            <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-700 transition-colors mx-auto">
+              <Plus className="w-5 h-5" />
+              Criar Template
+            </button>
+          </Permissao>
         </div>
       )}
 

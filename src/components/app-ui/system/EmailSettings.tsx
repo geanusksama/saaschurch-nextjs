@@ -1,5 +1,6 @@
 import { Mail, Server, User, Lock, Send, Check, AlertTriangle, Save, TestTube } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 export function EmailSettings() {
   const [config, setConfig] = useState({
@@ -59,18 +60,20 @@ export function EmailSettings() {
               <p className="text-xs text-slate-600 dark:text-slate-400">Use seu próprio servidor</p>
             </button>
 
-            <button
-              onClick={() => setConfig(prev => ({ ...prev, provider: 'sendgrid' }))}
-              className={`p-4 border-2 rounded-lg transition-all ${
-                config.provider === 'sendgrid'
-                  ? 'border-purple-600 bg-purple-50'
-                  : 'border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              <Mail className={`w-6 h-6 mb-2 ${config.provider === 'sendgrid' ? 'text-purple-600' : 'text-slate-600'}`} />
-              <p className="font-semibold text-slate-900 mb-1">SendGrid</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">API do SendGrid</p>
-            </button>
+            <Permissao chave="settings_email_config.email_settings.sendgrid_api_do_sendgrid" rotulo="SendGrid API do SendGrid — Email Settings" herda="settings_email_config.view">
+              <button
+                onClick={() => setConfig(prev => ({ ...prev, provider: 'sendgrid' }))}
+                className={`p-4 border-2 rounded-lg transition-all ${
+                  config.provider === 'sendgrid'
+                    ? 'border-purple-600 bg-purple-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <Mail className={`w-6 h-6 mb-2 ${config.provider === 'sendgrid' ? 'text-purple-600' : 'text-slate-600'}`} />
+                <p className="font-semibold text-slate-900 mb-1">SendGrid</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">API do SendGrid</p>
+              </button>
+            </Permissao>
 
             <button
               onClick={() => setConfig(prev => ({ ...prev, provider: 'mailgun' }))}
@@ -299,10 +302,12 @@ export function EmailSettings() {
           <button className="px-6 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
-          <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
-            <Save className="w-5 h-5" />
-            Salvar Configurações
-          </button>
+          <Permissao chave="settings_email_config.email_settings.salvar_configuracoes" rotulo="Salvar Configurações — Email Settings" herda="settings_email_config.view">
+            <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
+              <Save className="w-5 h-5" />
+              Salvar Configurações
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

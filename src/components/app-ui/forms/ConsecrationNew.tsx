@@ -1,5 +1,6 @@
 import { ArrowLeft, Save, Gift, User } from 'lucide-react';
 import { Link } from 'react-router';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 export function ConsecrationNew() {
   return (
@@ -89,10 +90,12 @@ export function ConsecrationNew() {
           >
             Cancelar
           </Link>
-          <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
-            <Save className="w-5 h-5" />
-            Salvar Consagração
-          </button>
+          <Permissao chave="consecration.consecration_new.salvar_consagracao" rotulo="Salvar Consagração — Consecration New" herda="consecration.view">
+            <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
+              <Save className="w-5 h-5" />
+              Salvar Consagração
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

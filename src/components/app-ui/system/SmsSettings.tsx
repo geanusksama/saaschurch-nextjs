@@ -1,5 +1,6 @@
 import { Smartphone, CreditCard, DollarSign, TrendingUp, Save, Plus, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 export function SmsSettings() {
   const [provider, setProvider] = useState('twilio');
@@ -306,10 +307,12 @@ export function SmsSettings() {
           <button className="px-6 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
-          <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
-            <Save className="w-5 h-5" />
-            Salvar Configurações
-          </button>
+          <Permissao chave="settings_sms_config.sms_settings.salvar_configuracoes" rotulo="Salvar Configurações — Sms Settings" herda="settings_sms_config.view">
+            <button className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition-colors">
+              <Save className="w-5 h-5" />
+              Salvar Configurações
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

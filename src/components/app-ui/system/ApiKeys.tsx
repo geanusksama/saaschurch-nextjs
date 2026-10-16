@@ -1,5 +1,6 @@
 import { Key, Plus, Copy, Eye, EyeOff, Trash2, Calendar, Clock } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 const apiKeys = [
   { id: 1, name: 'Integração Mobile App', key: 'sk_live_51Hxt...kJ9P', created: '2024-01-15', lastUsed: '2 horas atrás', status: 'active' },
@@ -18,13 +19,15 @@ export function ApiKeys() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Chaves de API</h1>
           <p className="text-slate-600 dark:text-slate-400">Gerencie tokens de acesso à API do MRM</p>
         </div>
-        <button 
-          onClick={() => setShowNewKeyModal(true)}
-          className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Nova Chave
-        </button>
+        <Permissao chave="settings_api_keys.api_keys.nova_chave" rotulo="Nova Chave — Api Keys" herda="settings_api_keys.view">
+          <button 
+            onClick={() => setShowNewKeyModal(true)}
+            className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Nova Chave
+          </button>
+        </Permissao>
       </div>
 
       {/* Stats */}
@@ -214,9 +217,11 @@ export function ApiKeys() {
               >
                 Cancelar
               </button>
-              <button className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                Criar Chave
-              </button>
+              <Permissao chave="settings_api_keys.api_keys.criar_chave" rotulo="Criar Chave — Api Keys" herda="settings_api_keys.view">
+                <button className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                  Criar Chave
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

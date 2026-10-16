@@ -22,6 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ehBotaoDeAcao, jaMarcado, semComentarios } from './lib/botoes.mjs';
+import { analisarDonos, ehDoPainel } from './lib/donos.mjs';
 
 const RAIZ = process.cwd();
 const SRC = path.join(RAIZ, 'src');
@@ -50,9 +51,14 @@ function pendentesDe(txt) {
   return n;
 }
 
+// Só conta o que renderiza no painel: página pública (sem login no painel) e
+// código morto (nenhuma rota, nem a moldura, alcança) ficam fora. Ligar um
+// arquivo morto a uma rota faz os botões dele passarem a contar.
+const DONOS = analisarDonos(RAIZ).arquivos;
 const atual = {};
 for (const arq of arquivos(SRC)) {
   const rel = path.relative(RAIZ, arq).split(path.sep).join('/');
+  if (!ehDoPainel(DONOS[rel])) continue;
   const n = pendentesDe(semComentarios(fs.readFileSync(arq, 'utf8')));
   if (n) atual[rel] = n;
 }

@@ -33,7 +33,13 @@ function transpilar(arq) {
 }
 
 // localStorage mínimo (os componentes leem token/usuário).
-globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+// localStorage mínimo: o perfil logado decide o que <Permissao> mostra.
+let perfilLogado = 'church';
+globalThis.localStorage = {
+  getItem: (k) => (k === 'mrm_user' ? JSON.stringify({ profileType: perfilLogado }) : null),
+  setItem() {},
+  removeItem() {},
+};
 
 transpilar('src/app-ui/system/ArvorePermissoes.tsx');
 transpilar('src/app-ui/system/GruposUsuarios.tsx');
@@ -76,8 +82,13 @@ const t2 = texto(h2);
 ok('árvore (usuário) renderiza com estados', t2.includes('bloqueado') && t2.includes('padrão:'), t2.slice(0, 200));
 
 // Telas inteiras.
+// O botão "Novo grupo" está marcado (herda o Ver da tela, só master por padrão).
+perfilLogado = 'master';
 const h3 = renderToString(React.createElement(GruposUsuarios));
-ok('tela Grupos de Usuários renderiza', texto(h3).includes('Grupos de Usuários') && texto(h3).includes('Novo grupo'));
+ok('tela Grupos de Usuários renderiza (master vê "Novo grupo")', texto(h3).includes('Grupos de Usuários') && texto(h3).includes('Novo grupo'));
+perfilLogado = 'church';
+const h3b = renderToString(React.createElement(GruposUsuarios));
+ok('perfil igreja: "Novo grupo" escondido pelo <Permissao>', texto(h3b).includes('Grupos de Usuários') && !texto(h3b).includes('Novo grupo'));
 const h4 = renderToString(React.createElement(MemoryRouter, { initialEntries: ['/u/1'] },
   React.createElement(Routes, null, React.createElement(Route, { path: '/u/:id', element: React.createElement(UserPermissions) }))));
 ok('tela Permissões do Usuário renderiza', texto(h4).includes('Carregando') || texto(h4).includes('Permissões'), texto(h4).slice(0, 200));

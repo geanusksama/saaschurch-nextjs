@@ -3,6 +3,7 @@ import { ArrowLeft, BookOpen, Calendar, Save, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { getCurrentChurchId } from '../../lib/pastoralService';
 import { useCreateDiscipleship, useDiscipleshipPrograms, useMemberOptions, useUserOptions } from '../../lib/pastoralHooks';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export default function DiscipleshipNew() {
   const navigate = useNavigate();
@@ -136,14 +137,16 @@ export default function DiscipleshipNew() {
               </div>
             )}
 
-            <button
-              onClick={handleSubmit}
-              disabled={createDiscipleship.isPending}
-              className="mb-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
-            >
-              <Save className="h-4 w-4" />
-              {createDiscipleship.isPending ? 'Salvando...' : 'Salvar discipulado'}
-            </button>
+            <Permissao chave="discipleship.discipleship_new.salvar_discipulado" rotulo="Salvar discipulado — Discipleship New" herda="discipleship.view">
+              <button
+                onClick={handleSubmit}
+                disabled={createDiscipleship.isPending}
+                className="mb-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {createDiscipleship.isPending ? 'Salvando...' : 'Salvar discipulado'}
+              </button>
+            </Permissao>
 
             <Link to="/app-ui/discipleship-curriculum" className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-100">
               <BookOpen className="h-4 w-4" />

@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../shared/ConfirmDialog';
 
 import { apiBase } from '../../../lib/apiBase';
 import { useCampoVisible } from '../../../lib/campoVisibility';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 type CampoOption = {
   id: string;
@@ -266,13 +267,15 @@ export function Roles() {
           </p>
         </div>
 
-        <button
-          onClick={openCreateModal}
-          className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-700"
-        >
-          <Plus className="h-4 w-4" />
-          Nova Funcao
-        </button>
+        <Permissao chave="system_roles.roles.nova_funcao" rotulo="Nova Funcao — Roles" herda="system_roles.view">
+          <button
+            onClick={openCreateModal}
+            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+          >
+            <Plus className="h-4 w-4" />
+            Nova Funcao
+          </button>
+        </Permissao>
       </div>
 
       <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
@@ -371,20 +374,24 @@ export function Roles() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openEditModal(role)}
-                        className="rounded-lg p-2 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/20"
-                        title="Editar funcao"
-                      >
-                        <Edit className="h-4 w-4 text-blue-600" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(role)}
-                        className="rounded-lg p-2 transition-colors hover:bg-red-100 dark:hover:bg-red-900/20"
-                        title="Excluir funcao"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </button>
+                      <Permissao chave="system_roles.roles.editar_funcao" rotulo="Editar funcao — Roles" herda="system_roles.view">
+                        <button
+                          onClick={() => openEditModal(role)}
+                          className="rounded-lg p-2 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/20"
+                          title="Editar funcao"
+                        >
+                          <Edit className="h-4 w-4 text-blue-600" />
+                        </button>
+                      </Permissao>
+                      <Permissao chave="system_roles.roles.excluir_funcao" rotulo="Excluir funcao — Roles" herda="system_roles.view">
+                        <button
+                          onClick={() => handleDelete(role)}
+                          className="rounded-lg p-2 transition-colors hover:bg-red-100 dark:hover:bg-red-900/20"
+                          title="Excluir funcao"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </button>
+                      </Permissao>
                     </div>
                   </td>
                 </tr>
@@ -538,13 +545,15 @@ export function Roles() {
                 >
                   Fechar
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-60"
-                >
-                  {saving ? 'Salvando...' : editingRole ? 'Salvar alteracoes' : 'Criar funcao'}
-                </button>
+                <Permissao chave="system_roles.roles.salvar_alteracoes_criar_funcao" rotulo="Salvar alteracoes Criar funcao — Roles" herda="system_roles.view">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-60"
+                  >
+                    {saving ? 'Salvando...' : editingRole ? 'Salvar alteracoes' : 'Criar funcao'}
+                  </button>
+                </Permissao>
               </div>
             </form>
           </div>

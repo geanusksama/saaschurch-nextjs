@@ -1,5 +1,6 @@
 import { Webhook, Plus, Play, Pause, Trash2, Check, X, Clock } from 'lucide-react';
 import { useState } from 'react';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 const webhooks = [
   { id: 1, name: 'Novo Membro', url: 'https://api.exemplo.com/webhooks/novo-membro', event: 'member.created', status: 'active', calls: 145, lastTrigger: '2 horas atrás', success: 143, failed: 2 },
@@ -24,13 +25,15 @@ export function Webhooks() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Webhooks</h1>
           <p className="text-slate-600 dark:text-slate-400">Configure callbacks HTTP para eventos do sistema</p>
         </div>
-        <button 
-          onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Novo Webhook
-        </button>
+        <Permissao chave="settings_webhooks.webhooks.novo_webhook" rotulo="Novo Webhook — Webhooks" herda="settings_webhooks.view">
+          <button 
+            onClick={() => setShowNewModal(true)}
+            className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Novo Webhook
+          </button>
+        </Permissao>
       </div>
 
       {/* Stats */}
@@ -240,9 +243,11 @@ export function Webhooks() {
               >
                 Cancelar
               </button>
-              <button className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                Criar Webhook
-              </button>
+              <Permissao chave="settings_webhooks.webhooks.criar_webhook" rotulo="Criar Webhook — Webhooks" herda="settings_webhooks.view">
+                <button className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                  Criar Webhook
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>

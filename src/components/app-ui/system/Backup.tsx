@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { apiBase } from "../../../lib/apiBase";
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 interface BackupEntry {
   id: string;
@@ -286,10 +287,12 @@ export function Backup() {
               <button onClick={load} disabled={loadingList} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
                 {loadingList ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
               </button>
-              <button onClick={handleCreate} disabled={creating} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-60">
-                {creating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                {creating ? "Criando..." : "Criar Backup Manual"}
-              </button>
+              <Permissao chave="settings_backup.backup.criar_backup_manual" rotulo="Criar Backup Manual — Backup" herda="settings_backup.view">
+                <button onClick={handleCreate} disabled={creating} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-60">
+                  {creating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  {creating ? "Criando..." : "Criar Backup Manual"}
+                </button>
+              </Permissao>
             </div>
           </div>
 
@@ -374,11 +377,15 @@ export function Backup() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => handleDownload(entry)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-blue-600" title="Download"><Download size={15} /></button>
+                        <Permissao chave="settings_backup.backup.download" rotulo="Download — Backup" herda="settings_backup.view">
+                          <button onClick={() => handleDownload(entry)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-blue-600" title="Download"><Download size={15} /></button>
+                        </Permissao>
                         <button onClick={openRestoreModal} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-purple-600" title="Restaurar"><Upload size={15} /></button>
-                        <button onClick={() => setDeleteTarget(entry)} disabled={deletingId === entry.id} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-red-600 disabled:opacity-50" title="Excluir">
-                          {deletingId === entry.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                        </button>
+                        <Permissao chave="settings_backup.backup.excluir" rotulo="Excluir — Backup" herda="settings_backup.view">
+                          <button onClick={() => setDeleteTarget(entry)} disabled={deletingId === entry.id} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-red-600 disabled:opacity-50" title="Excluir">
+                            {deletingId === entry.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                          </button>
+                        </Permissao>
                       </div>
                     </td>
                   </tr>
@@ -453,9 +460,11 @@ export function Backup() {
           {cloudStorage && (
             <p className="text-xs text-blue-600 flex items-center gap-1 -mt-2"><Cloud size={11} /> Bucket Supabase: dados/backups/</p>
           )}
-          <button onClick={handleSaveSettings} className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium py-2 rounded-lg">
-            <Save size={14} /> Salvar Configuracoes
-          </button>
+          <Permissao chave="settings_backup.backup.salvar_configuracoes" rotulo="Salvar Configuracoes — Backup" herda="settings_backup.view">
+            <button onClick={handleSaveSettings} className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium py-2 rounded-lg">
+              <Save size={14} /> Salvar Configuracoes
+            </button>
+          </Permissao>
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800 space-y-1">
             <p className="font-semibold flex items-center gap-1"><AlertTriangle size={12} /> Importante</p>
             <p>Mantenha backups regulares dos dados</p>
@@ -476,7 +485,9 @@ export function Backup() {
             <p className="text-sm text-slate-700">Tem certeza que deseja excluir <span className="font-medium break-all">{deleteTarget.filename}</span>?</p>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setDeleteTarget(null)} className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-700 hover:bg-slate-50">Cancelar</button>
-              <button onClick={handleDeleteConfirm} className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg py-2 text-sm font-medium">Excluir</button>
+              <Permissao chave="settings_backup.backup.excluir" rotulo="Excluir — Backup" herda="settings_backup.view">
+                <button onClick={handleDeleteConfirm} className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg py-2 text-sm font-medium">Excluir</button>
+              </Permissao>
             </div>
           </div>
         </div>

@@ -32,6 +32,7 @@ import { DEFAULT_PERMISSION_MODULES } from './permissionCatalog';
 import { COMPONENTES_PERMISSAO } from '../../lib/permissoes/arvore.generated';
 import { ACOES_MODULO } from '../../lib/permissoes/definir';
 import { ArvorePermissoes, efetivoNoGrupo, type Mapa } from './ArvorePermissoes';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface GrupoResumo {
   id: string;
@@ -197,12 +198,14 @@ export default function GruposUsuarios() {
         {/* ── Lista de grupos ─────────────────────────────────────────── */}
         <section className="flex flex-col min-h-0 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
           <div className="shrink-0 p-3 border-b border-slate-100 dark:border-slate-700 space-y-2">
-            <button
-              onClick={() => setCriando(true)}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 px-3 py-2 text-sm font-semibold text-white"
-            >
-              <Plus className="w-4 h-4" /> Novo grupo
-            </button>
+            <Permissao chave="system_grupos_usuarios.grupos_usuarios.novo_grupo" rotulo="Novo grupo — Grupos Usuarios" herda="system_grupos_usuarios.view">
+              <button
+                onClick={() => setCriando(true)}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 px-3 py-2 text-sm font-semibold text-white"
+              >
+                <Plus className="w-4 h-4" /> Novo grupo
+              </button>
+            </Permissao>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -386,22 +389,26 @@ function CabecalhoGrupo({
           Ativo
         </label>
         {mudou && (
-          <button
-            onClick={() => void salvar()}
-            disabled={salvando}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-          >
-            {salvando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            Salvar nome
-          </button>
+          <Permissao chave="system_grupos_usuarios.grupos_usuarios.salvar_nome" rotulo="Salvar nome — Grupos Usuarios" herda="system_grupos_usuarios.view">
+            <button
+              onClick={() => void salvar()}
+              disabled={salvando}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {salvando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Salvar nome
+            </button>
+          </Permissao>
         )}
-        <button
-          onClick={onExcluir}
-          title="Excluir grupo"
-          className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <Permissao chave="system_grupos_usuarios.grupos_usuarios.excluir_grupo" rotulo="Excluir grupo — Grupos Usuarios" herda="system_grupos_usuarios.view">
+          <button
+            onClick={onExcluir}
+            title="Excluir grupo"
+            className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </Permissao>
       </div>
       {!grupo.isActive && (
         <p className="w-full text-xs text-amber-700 dark:text-amber-400">
@@ -447,14 +454,16 @@ function AbaRegras({ grupo, onSalvo }: { grupo: GrupoDetalhe; onSalvo: () => Pro
           Marque a tela inteira (raiz) ou só os botões que o grupo pode usar. Botão desmarcado some
           da tela e a ação é recusada no servidor.
         </p>
-        <button
-          onClick={() => void salvar()}
-          disabled={!sujo || salvando}
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
-        >
-          {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Salvar regras
-        </button>
+        <Permissao chave="system_grupos_usuarios.grupos_usuarios.salvar_regras" rotulo="Salvar regras — Grupos Usuarios" herda="system_grupos_usuarios.view">
+          <button
+            onClick={() => void salvar()}
+            disabled={!sujo || salvando}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Salvar regras
+          </button>
+        </Permissao>
       </div>
       <div className="flex-1 min-h-0">
         <ArvorePermissoes modo="grupo" valores={regras} onChange={setRegras} />
@@ -547,14 +556,16 @@ function AbaUsuarios({ grupo, onMudou }: { grupo: GrupoDetalhe; onMudou: () => P
                   {noGrupo.has(u.id) ? (
                     <span className="text-xs text-slate-400">já está</span>
                   ) : (
-                    <button
-                      onClick={() => void adicionar(u.id)}
-                      disabled={ocupado !== null}
-                      className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-slate-300 dark:border-slate-600 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
-                    >
-                      {ocupado === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
-                      Adicionar
-                    </button>
+                    <Permissao chave="system_grupos_usuarios.grupos_usuarios.adicionar" rotulo="Adicionar — Grupos Usuarios" herda="system_grupos_usuarios.view">
+                      <button
+                        onClick={() => void adicionar(u.id)}
+                        disabled={ocupado !== null}
+                        className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-slate-300 dark:border-slate-600 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
+                      >
+                        {ocupado === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+                        Adicionar
+                      </button>
+                    </Permissao>
                   )}
                 </div>
               ))}
@@ -574,14 +585,16 @@ function AbaUsuarios({ grupo, onMudou }: { grupo: GrupoDetalhe; onMudou: () => P
         {grupo.users.map((u) => (
           <div key={u.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
             <LinhaUsuario u={u} />
-            <button
-              onClick={() => void remover(u)}
-              disabled={ocupado !== null}
-              title="Tirar do grupo"
-              className="shrink-0 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 disabled:opacity-50"
-            >
-              {ocupado === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserMinus className="w-3.5 h-3.5" />}
-            </button>
+            <Permissao chave="system_grupos_usuarios.grupos_usuarios.tirar_do_grupo" rotulo="Tirar do grupo — Grupos Usuarios" herda="system_grupos_usuarios.view">
+              <button
+                onClick={() => void remover(u)}
+                disabled={ocupado !== null}
+                title="Tirar do grupo"
+                className="shrink-0 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 disabled:opacity-50"
+              >
+                {ocupado === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserMinus className="w-3.5 h-3.5" />}
+              </button>
+            </Permissao>
           </div>
         ))}
       </div>
@@ -672,14 +685,16 @@ function AbaIgrejas({ grupo, onSalvo }: { grupo: GrupoDetalhe; onSalvo: () => Pr
           limpar
         </button>
         <span className="text-xs text-slate-500">{marcadas.size} marcada(s)</span>
-        <button
-          onClick={() => void salvar()}
-          disabled={!sujo || salvando}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
-        >
-          {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Salvar igrejas
-        </button>
+        <Permissao chave="system_grupos_usuarios.grupos_usuarios.salvar_igrejas" rotulo="Salvar igrejas — Grupos Usuarios" herda="system_grupos_usuarios.view">
+          <button
+            onClick={() => void salvar()}
+            disabled={!sujo || salvando}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Salvar igrejas
+          </button>
+        </Permissao>
       </div>
       <p className="shrink-0 px-4 pt-3 text-xs text-slate-500 dark:text-slate-400">
         <strong>Ainda não aplicado:</strong> a lista é gravada, mas por enquanto cada usuário continua
@@ -784,14 +799,16 @@ function ModalNovoGrupo({
             O grupo nasce sem nada liberado. Quem for colocado nele só usa o que você marcar.
           </p>
           {erro && <p className="text-xs text-rose-600">{erro}</p>}
-          <button
-            onClick={() => void criar()}
-            disabled={!nome.trim() || salvando}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-          >
-            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            Criar grupo
-          </button>
+          <Permissao chave="system_grupos_usuarios.grupos_usuarios.criar_grupo" rotulo="Criar grupo — Grupos Usuarios" herda="system_grupos_usuarios.view">
+            <button
+              onClick={() => void criar()}
+              disabled={!nome.trim() || salvando}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Criar grupo
+            </button>
+          </Permissao>
         </div>
       </div>
     </div>

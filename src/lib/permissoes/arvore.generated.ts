@@ -162,6 +162,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/AttendanceModule.tsx"
   },
   {
+    "chave": "audit_log.audit_log.exportar",
+    "rotulo": "Exportar — Audit Log",
+    "herda": "audit_log.view",
+    "arquivo": "src/components/app-ui/system/AuditLog.tsx"
+  },
+  {
     "chave": "baptism.baptism_event_detail.adicionar_candidato",
     "rotulo": "Adicionar Candidato — Baptism Event Detail",
     "herda": "baptism.view",
@@ -178,6 +184,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Enviar Convites — Baptism Event Detail",
     "herda": "baptism.view",
     "arquivo": "src/components/app-ui/BaptismEventDetail.tsx"
+  },
+  {
+    "chave": "baptism.baptism_request_new.salvar_pedido",
+    "rotulo": "Salvar Pedido — Baptism Request New",
+    "herda": "baptism.view",
+    "arquivo": "src/components/app-ui/forms/BaptismRequestNew.tsx"
   },
   {
     "chave": "baptism.baptism.editar",
@@ -306,6 +318,24 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/finance/RelatorioModal.tsx"
   },
   {
+    "chave": "cells.attach_member_modal.listas_importadas",
+    "rotulo": "Listas importadas — Attach Member Modal",
+    "herda": "cells.view",
+    "arquivo": "src/components/app-ui/cells/AttachMemberModal.tsx"
+  },
+  {
+    "chave": "cells.attach_member_modal.neste_gf_anexar",
+    "rotulo": "Neste GF Anexar — Attach Member Modal",
+    "herda": "cells.view",
+    "arquivo": "src/components/app-ui/cells/AttachMemberModal.tsx"
+  },
+  {
+    "chave": "cells.cell_detail.remover_do_gf",
+    "rotulo": "Remover do GF — Cell Detail",
+    "herda": "cell_group_members.delete",
+    "arquivo": "src/components/app-ui/CellDetail.tsx"
+  },
+  {
     "chave": "cells.cell_groups.editar_gf",
     "rotulo": "Editar GF — Cell Groups",
     "herda": "cells.edit",
@@ -402,6 +432,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/churches/LeaderReportModal.tsx"
   },
   {
+    "chave": "consecration.consecration_new.salvar_consagracao",
+    "rotulo": "Salvar Consagração — Consecration New",
+    "herda": "consecration.view",
+    "arquivo": "src/components/app-ui/forms/ConsecrationNew.tsx"
+  },
+  {
     "chave": "consecration.consecration.editar",
     "rotulo": "Editar — Consecration",
     "herda": "consecration.view",
@@ -448,6 +484,48 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Salvar Alteracoes Salvar Data — Consecration",
     "herda": "consecration.view",
     "arquivo": "src/components/app-ui/Consecration.tsx"
+  },
+  {
+    "chave": "contabilidade_agendamentos.contabilidade_agendamentos.cadastrar",
+    "rotulo": "Cadastrar — Contabilidade Agendamentos",
+    "herda": "contabilidade_agendamentos.view",
+    "arquivo": "src/app-ui/system/ContabilidadeAgendamentos.tsx"
+  },
+  {
+    "chave": "contabilidade_agendamentos.contabilidade_agendamentos.editar_contador",
+    "rotulo": "Editar contador — Contabilidade Agendamentos",
+    "herda": "contabilidade_agendamentos.view",
+    "arquivo": "src/app-ui/system/ContabilidadeAgendamentos.tsx"
+  },
+  {
+    "chave": "contabilidade_agendamentos.contabilidade_agendamentos.enviar_agora",
+    "rotulo": "Enviar agora — Contabilidade Agendamentos",
+    "herda": "contabilidade_agendamentos.view",
+    "arquivo": "src/app-ui/system/ContabilidadeAgendamentos.tsx"
+  },
+  {
+    "chave": "contabilidade_agendamentos.contabilidade_agendamentos.excluir",
+    "rotulo": "Excluir — Contabilidade Agendamentos",
+    "herda": "contabilidade_agendamentos.view",
+    "arquivo": "src/app-ui/system/ContabilidadeAgendamentos.tsx"
+  },
+  {
+    "chave": "contabilidade_agendamentos.contabilidade_agendamentos.excluir_contador",
+    "rotulo": "Excluir contador — Contabilidade Agendamentos",
+    "herda": "contabilidade_agendamentos.view",
+    "arquivo": "src/app-ui/system/ContabilidadeAgendamentos.tsx"
+  },
+  {
+    "chave": "contabilidade_agendamentos.contabilidade_agendamentos.novo_contador",
+    "rotulo": "Novo Contador — Contabilidade Agendamentos",
+    "herda": "contabilidade_agendamentos.view",
+    "arquivo": "src/app-ui/system/ContabilidadeAgendamentos.tsx"
+  },
+  {
+    "chave": "contabilidade_agendamentos.contabilidade_agendamentos.salvar",
+    "rotulo": "Salvar — Contabilidade Agendamentos",
+    "herda": "contabilidade_agendamentos.view",
+    "arquivo": "src/app-ui/system/ContabilidadeAgendamentos.tsx"
   },
   {
     "chave": "contas_pagar.conta_pagar_form_drawer.cadastrar_novo_credor",
@@ -748,6 +826,30 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Salvar — Daily Bread",
     "herda": "daily_bread.view",
     "arquivo": "src/components/app-ui/DailyBread.tsx"
+  },
+  {
+    "chave": "discipleship.discipleship_curriculum.adicionar_materia",
+    "rotulo": "Adicionar matéria — Discipleship Curriculum",
+    "herda": "discipleship.view",
+    "arquivo": "src/app-ui/pastoral/DiscipleshipCurriculum.tsx"
+  },
+  {
+    "chave": "discipleship.discipleship_curriculum.novo_programa",
+    "rotulo": "Novo Programa — Discipleship Curriculum",
+    "herda": "discipleship.view",
+    "arquivo": "src/app-ui/pastoral/DiscipleshipCurriculum.tsx"
+  },
+  {
+    "chave": "discipleship.discipleship_curriculum.salvar_programa",
+    "rotulo": "Salvar Programa — Discipleship Curriculum",
+    "herda": "discipleship.view",
+    "arquivo": "src/app-ui/pastoral/DiscipleshipCurriculum.tsx"
+  },
+  {
+    "chave": "discipleship.discipleship_new.salvar_discipulado",
+    "rotulo": "Salvar discipulado — Discipleship New",
+    "herda": "discipleship.view",
+    "arquivo": "src/app-ui/pastoral/DiscipleshipNew.tsx"
   },
   {
     "chave": "discipleship.discipleship_tracking.registrar_encontro",
@@ -2268,6 +2370,204 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/ecclesiastical/ServicesMatrix.tsx"
   },
   {
+    "chave": "settings_api_keys.api_keys.criar_chave",
+    "rotulo": "Criar Chave — Api Keys",
+    "herda": "settings_api_keys.view",
+    "arquivo": "src/components/app-ui/system/ApiKeys.tsx"
+  },
+  {
+    "chave": "settings_api_keys.api_keys.nova_chave",
+    "rotulo": "Nova Chave — Api Keys",
+    "herda": "settings_api_keys.view",
+    "arquivo": "src/components/app-ui/system/ApiKeys.tsx"
+  },
+  {
+    "chave": "settings_backup.backup.criar_backup_manual",
+    "rotulo": "Criar Backup Manual — Backup",
+    "herda": "settings_backup.view",
+    "arquivo": "src/components/app-ui/system/Backup.tsx"
+  },
+  {
+    "chave": "settings_backup.backup.download",
+    "rotulo": "Download — Backup",
+    "herda": "settings_backup.view",
+    "arquivo": "src/components/app-ui/system/Backup.tsx"
+  },
+  {
+    "chave": "settings_backup.backup.excluir",
+    "rotulo": "Excluir — Backup",
+    "herda": "settings_backup.view",
+    "arquivo": "src/components/app-ui/system/Backup.tsx"
+  },
+  {
+    "chave": "settings_backup.backup.salvar_configuracoes",
+    "rotulo": "Salvar Configuracoes — Backup",
+    "herda": "settings_backup.view",
+    "arquivo": "src/components/app-ui/system/Backup.tsx"
+  },
+  {
+    "chave": "settings_branding.ai_settings.salvar_configuracoes",
+    "rotulo": "Salvar Configurações — Ai Settings",
+    "herda": "settings_branding.view",
+    "arquivo": "src/components/app-ui/AiSettings.tsx"
+  },
+  {
+    "chave": "settings_branding.branding.remover_logo",
+    "rotulo": "Remover logo — Branding",
+    "herda": "settings_branding.view",
+    "arquivo": "src/components/app-ui/system/Branding.tsx"
+  },
+  {
+    "chave": "settings_branding.branding.salvo_salvar_alteracoes",
+    "rotulo": "Salvo! Salvar Alterações — Branding",
+    "herda": "settings_branding.view",
+    "arquivo": "src/components/app-ui/system/Branding.tsx"
+  },
+  {
+    "chave": "settings_church_info.church_info.adicionar",
+    "rotulo": "Adicionar — Church Info",
+    "herda": "settings_church_info.view",
+    "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
+  },
+  {
+    "chave": "settings_church_info.church_info.endereco",
+    "rotulo": "Endereco — Church Info",
+    "herda": "settings_church_info.view",
+    "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
+  },
+  {
+    "chave": "settings_church_info.church_info.escolher_icone",
+    "rotulo": "Escolher ícone — Church Info",
+    "herda": "settings_church_info.view",
+    "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
+  },
+  {
+    "chave": "settings_church_info.church_info.excluir_access",
+    "rotulo": "Excluir (access) — Church Info",
+    "herda": "settings_church_info.view",
+    "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
+  },
+  {
+    "chave": "settings_church_info.church_info.excluir_schedule",
+    "rotulo": "Excluir (schedule) — Church Info",
+    "herda": "settings_church_info.view",
+    "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
+  },
+  {
+    "chave": "settings_church_info.church_info.salvar",
+    "rotulo": "Salvar — Church Info",
+    "herda": "settings_church_info.view",
+    "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
+  },
+  {
+    "chave": "settings_church_info.church_info.salvar_alteracoes",
+    "rotulo": "Salvar Alteracoes — Church Info",
+    "herda": "settings_church_info.view",
+    "arquivo": "src/components/app-ui/system/ChurchInfo.tsx"
+  },
+  {
+    "chave": "settings_email_config.email_settings.salvar_configuracoes",
+    "rotulo": "Salvar Configurações — Email Settings",
+    "herda": "settings_email_config.view",
+    "arquivo": "src/components/app-ui/system/EmailSettings.tsx"
+  },
+  {
+    "chave": "settings_email_config.email_settings.sendgrid_api_do_sendgrid",
+    "rotulo": "SendGrid API do SendGrid — Email Settings",
+    "herda": "settings_email_config.view",
+    "arquivo": "src/components/app-ui/system/EmailSettings.tsx"
+  },
+  {
+    "chave": "settings_home_publica.home_publica.adicionar_cartao",
+    "rotulo": "Adicionar cartão — Home Publica",
+    "herda": "settings_home_publica.view",
+    "arquivo": "src/components/app-ui/system/HomePublica.tsx"
+  },
+  {
+    "chave": "settings_home_publica.home_publica.editar",
+    "rotulo": "Editar — Home Publica",
+    "herda": "settings_home_publica.view",
+    "arquivo": "src/components/app-ui/system/HomePublica.tsx"
+  },
+  {
+    "chave": "settings_home_publica.home_publica.enviar_imagem",
+    "rotulo": "Enviar imagem — Home Publica",
+    "herda": "settings_home_publica.view",
+    "arquivo": "src/components/app-ui/system/HomePublica.tsx"
+  },
+  {
+    "chave": "settings_home_publica.home_publica.remover",
+    "rotulo": "Remover — Home Publica",
+    "herda": "settings_home_publica.view",
+    "arquivo": "src/components/app-ui/system/HomePublica.tsx"
+  },
+  {
+    "chave": "settings_home_publica.home_publica.remover_cartao",
+    "rotulo": "Remover cartão — Home Publica",
+    "herda": "settings_home_publica.view",
+    "arquivo": "src/components/app-ui/system/HomePublica.tsx"
+  },
+  {
+    "chave": "settings_home_publica.home_publica.remover_cor",
+    "rotulo": "Remover cor — Home Publica",
+    "herda": "settings_home_publica.view",
+    "arquivo": "src/components/app-ui/system/HomePublica.tsx"
+  },
+  {
+    "chave": "settings_home_publica.home_publica.salvo_salvar",
+    "rotulo": "Salvo Salvar — Home Publica",
+    "herda": "settings_home_publica.view",
+    "arquivo": "src/components/app-ui/system/HomePublica.tsx"
+  },
+  {
+    "chave": "settings_notifications.notification_settings.salvar_configuracoes",
+    "rotulo": "Salvar Configurações — Notification Settings",
+    "herda": "settings_notifications.view",
+    "arquivo": "src/components/app-ui/system/NotificationSettings.tsx"
+  },
+  {
+    "chave": "settings_security.security.adicionar",
+    "rotulo": "Adicionar — Security",
+    "herda": "settings_security.view",
+    "arquivo": "src/components/app-ui/system/Security.tsx"
+  },
+  {
+    "chave": "settings_security.security.salvar_configuracoes",
+    "rotulo": "Salvar Configurações — Security",
+    "herda": "settings_security.view",
+    "arquivo": "src/components/app-ui/system/Security.tsx"
+  },
+  {
+    "chave": "settings_sms_config.sms_settings.salvar_configuracoes",
+    "rotulo": "Salvar Configurações — Sms Settings",
+    "herda": "settings_sms_config.view",
+    "arquivo": "src/components/app-ui/system/SmsSettings.tsx"
+  },
+  {
+    "chave": "settings_templates.templates.criar_template",
+    "rotulo": "Criar Template — Templates",
+    "herda": "settings_templates.view",
+    "arquivo": "src/components/app-ui/system/Templates.tsx"
+  },
+  {
+    "chave": "settings_templates.templates.novo_template",
+    "rotulo": "Novo Template — Templates",
+    "herda": "settings_templates.view",
+    "arquivo": "src/components/app-ui/system/Templates.tsx"
+  },
+  {
+    "chave": "settings_webhooks.webhooks.criar_webhook",
+    "rotulo": "Criar Webhook — Webhooks",
+    "herda": "settings_webhooks.view",
+    "arquivo": "src/components/app-ui/system/Webhooks.tsx"
+  },
+  {
+    "chave": "settings_webhooks.webhooks.novo_webhook",
+    "rotulo": "Novo Webhook — Webhooks",
+    "herda": "settings_webhooks.view",
+    "arquivo": "src/components/app-ui/system/Webhooks.tsx"
+  },
+  {
     "chave": "spreadsheets.spreadsheet.excluir",
     "rotulo": "Excluir — Spreadsheet",
     "herda": "spreadsheets.view",
@@ -2298,6 +2598,54 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/spreadsheet/Spreadsheet.tsx"
   },
   {
+    "chave": "system_grupos_usuarios.grupos_usuarios.adicionar",
+    "rotulo": "Adicionar — Grupos Usuarios",
+    "herda": "system_grupos_usuarios.view",
+    "arquivo": "src/app-ui/system/GruposUsuarios.tsx"
+  },
+  {
+    "chave": "system_grupos_usuarios.grupos_usuarios.criar_grupo",
+    "rotulo": "Criar grupo — Grupos Usuarios",
+    "herda": "system_grupos_usuarios.view",
+    "arquivo": "src/app-ui/system/GruposUsuarios.tsx"
+  },
+  {
+    "chave": "system_grupos_usuarios.grupos_usuarios.excluir_grupo",
+    "rotulo": "Excluir grupo — Grupos Usuarios",
+    "herda": "system_grupos_usuarios.view",
+    "arquivo": "src/app-ui/system/GruposUsuarios.tsx"
+  },
+  {
+    "chave": "system_grupos_usuarios.grupos_usuarios.novo_grupo",
+    "rotulo": "Novo grupo — Grupos Usuarios",
+    "herda": "system_grupos_usuarios.view",
+    "arquivo": "src/app-ui/system/GruposUsuarios.tsx"
+  },
+  {
+    "chave": "system_grupos_usuarios.grupos_usuarios.salvar_igrejas",
+    "rotulo": "Salvar igrejas — Grupos Usuarios",
+    "herda": "system_grupos_usuarios.view",
+    "arquivo": "src/app-ui/system/GruposUsuarios.tsx"
+  },
+  {
+    "chave": "system_grupos_usuarios.grupos_usuarios.salvar_nome",
+    "rotulo": "Salvar nome — Grupos Usuarios",
+    "herda": "system_grupos_usuarios.view",
+    "arquivo": "src/app-ui/system/GruposUsuarios.tsx"
+  },
+  {
+    "chave": "system_grupos_usuarios.grupos_usuarios.salvar_regras",
+    "rotulo": "Salvar regras — Grupos Usuarios",
+    "herda": "system_grupos_usuarios.view",
+    "arquivo": "src/app-ui/system/GruposUsuarios.tsx"
+  },
+  {
+    "chave": "system_grupos_usuarios.grupos_usuarios.tirar_do_grupo",
+    "rotulo": "Tirar do grupo — Grupos Usuarios",
+    "herda": "system_grupos_usuarios.view",
+    "arquivo": "src/app-ui/system/GruposUsuarios.tsx"
+  },
+  {
     "chave": "system_roles.permissions_matrix.editar_permissoes",
     "rotulo": "Editar Permissões — Permissions Matrix",
     "herda": "system_roles.view",
@@ -2308,6 +2656,30 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Salvar Alterações — Permissions Matrix",
     "herda": "system_roles.view",
     "arquivo": "src/app-ui/system/PermissionsMatrix.tsx"
+  },
+  {
+    "chave": "system_roles.roles.editar_funcao",
+    "rotulo": "Editar funcao — Roles",
+    "herda": "system_roles.view",
+    "arquivo": "src/components/app-ui/system/Roles.tsx"
+  },
+  {
+    "chave": "system_roles.roles.excluir_funcao",
+    "rotulo": "Excluir funcao — Roles",
+    "herda": "system_roles.view",
+    "arquivo": "src/components/app-ui/system/Roles.tsx"
+  },
+  {
+    "chave": "system_roles.roles.nova_funcao",
+    "rotulo": "Nova Funcao — Roles",
+    "herda": "system_roles.view",
+    "arquivo": "src/components/app-ui/system/Roles.tsx"
+  },
+  {
+    "chave": "system_roles.roles.salvar_alteracoes_criar_funcao",
+    "rotulo": "Salvar alteracoes Criar funcao — Roles",
+    "herda": "system_roles.view",
+    "arquivo": "src/components/app-ui/system/Roles.tsx"
   },
   {
     "chave": "system_users.user_edit.salvar_alteracoes",
@@ -2344,6 +2716,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Salvar Nova Senha — Users List",
     "herda": "system_users.view",
     "arquivo": "src/app-ui/system/UsersList.tsx"
+  },
+  {
+    "chave": "transfer.transfer_new.salvar_transferencia",
+    "rotulo": "Salvar Transferência — Transfer New",
+    "herda": "transfer.view",
+    "arquivo": "src/components/app-ui/forms/TransferNew.tsx"
   },
   {
     "chave": "transfer.transfer.editar",

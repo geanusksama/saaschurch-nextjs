@@ -8,6 +8,7 @@ import {
   saveThemeSettings,
   type ThemeSettings,
 } from '../../../lib/themeSettings';
+import { Permissao } from '../../../lib/permissoes/Permissao';
 
 function hexShade(hex: string, amount: number): string {
   try {
@@ -109,13 +110,15 @@ export function Branding() {
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={handleLogoUpload} />
           </div>
           {data.logoUrl && (
-            <button
-              type="button"
-              onClick={() => setData(d => ({ ...d, logoUrl: null }))}
-              className="mt-3 w-full rounded-xl border border-red-200 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
-            >
-              Remover logo
-            </button>
+            <Permissao chave="settings_branding.branding.remover_logo" rotulo="Remover logo — Branding" herda="settings_branding.view">
+              <button
+                type="button"
+                onClick={() => setData(d => ({ ...d, logoUrl: null }))}
+                className="mt-3 w-full rounded-xl border border-red-200 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
+              >
+                Remover logo
+              </button>
+            </Permissao>
           )}
         </div>
 
@@ -214,15 +217,17 @@ export function Branding() {
           <RotateCcw className="h-4 w-4" />
           Restaurar Padrão
         </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-          style={{ backgroundColor: data.primaryColor }}
-        >
-          {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-          {saved ? 'Salvo!' : 'Salvar Alterações'}
-        </button>
+        <Permissao chave="settings_branding.branding.salvo_salvar_alteracoes" rotulo="Salvo! Salvar Alterações — Branding" herda="settings_branding.view">
+          <button
+            type="button"
+            onClick={handleSave}
+            className="flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+            style={{ backgroundColor: data.primaryColor }}
+          >
+            {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+            {saved ? 'Salvo!' : 'Salvar Alterações'}
+          </button>
+        </Permissao>
       </div>
     </div>
   );

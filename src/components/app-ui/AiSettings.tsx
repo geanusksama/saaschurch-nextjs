@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Sparkles, Key, Cpu, ToggleLeft, ToggleRight, Check, AlertCircle, RefreshCw, Eye, EyeOff, Save } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 export default function AiSettings() {
   const navigate = useNavigate();
@@ -444,18 +445,20 @@ export default function AiSettings() {
 
           {/* Botão de Ação Salvar */}
           <div className="flex justify-end pt-4 border-t border-slate-100">
-            <button
-              onClick={handleSave}
-              disabled={loading}
-              className="bg-emerald-600 text-white font-bold text-sm px-6 py-3 rounded-xl hover:bg-emerald-700 active:scale-98 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
-            >
-              {loading ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              <span>Salvar Configurações</span>
-            </button>
+            <Permissao chave="settings_branding.ai_settings.salvar_configuracoes" rotulo="Salvar Configurações — Ai Settings" herda="settings_branding.view">
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                className="bg-emerald-600 text-white font-bold text-sm px-6 py-3 rounded-xl hover:bg-emerald-700 active:scale-98 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+              >
+                {loading ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>Salvar Configurações</span>
+              </button>
+            </Permissao>
           </div>
 
         </div>

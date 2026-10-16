@@ -6,6 +6,7 @@ import { buildAddressLabel, buildMapEmbedUrl, buildMapsLink } from '../../lib/ge
 import { AttachMemberModal } from './cells/AttachMemberModal';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 function perfilAtual(): string {
   try {
@@ -321,13 +322,15 @@ export function CellDetail() {
                       </a>
                     )}
                     {canDelete('cell_group_members') && (
-                    <button
-                      onClick={() => setRemovendo(p)}
-                      className="text-slate-400 hover:text-red-500"
-                      title="Remover do GF"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <Permissao chave="cells.cell_detail.remover_do_gf" rotulo="Remover do GF — Cell Detail" herda="cell_group_members.delete">
+                      <button
+                        onClick={() => setRemovendo(p)}
+                        className="text-slate-400 hover:text-red-500"
+                        title="Remover do GF"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </Permissao>
                     )}
                   </div>
                 </div>
