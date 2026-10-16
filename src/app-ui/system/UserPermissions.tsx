@@ -29,7 +29,7 @@ export default function UserPermissions() {
   const { id } = useParams<{ id: string }>();
   const token = localStorage.getItem('mrm_token');
 
-  const [user, setUser] = useState<{ id: string; fullName: string; email: string; profileType: string } | null>(null);
+  const [user, setUser] = useState<{ id: string; fullName: string; email: string; profileType: string; roleId: string | null; roleName: string | null } | null>(null);
   const [perms, setPerms] = useState<PermMap>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,7 +54,7 @@ export default function UserPermissions() {
         throw new Error(body.error || `Erro ${res.status}`);
       }
       const data = await res.json();
-      setUser({ id: data.id, fullName: data.fullName, email: data.email, profileType: data.profileType });
+      setUser({ id: data.id, fullName: data.fullName, email: data.email, profileType: data.profileType, roleId: data.roleId ?? null, roleName: data.role?.name ?? null });
       setPerms((data.permissions as PermMap) || {});
     } catch (err: any) {
       setError(err.message || 'Falha ao carregar permissões.');
@@ -242,6 +242,8 @@ export default function UserPermissions() {
           <ArvorePermissoes
             modo="usuario"
             profileType={user?.profileType ?? 'church'}
+            roleId={user?.roleId ?? null}
+            roleName={user?.roleName ?? null}
             valores={perms}
             onChange={(novo) => {
               setPerms(novo);

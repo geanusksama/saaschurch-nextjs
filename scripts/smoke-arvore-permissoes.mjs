@@ -67,6 +67,24 @@ ok('tela_*: igreja e campo sem nada continuam vendo', rp('tela_app', { profileTy
 ok('tela_*: bloqueio explícito na tela do usuário ainda vale', rp('tela_app', { profileType: 'church', userRoleId: 'r1', userOverrides: { 'tela_app.view': false } }) === false);
 ok('controle: chave comum ausente na whitelist é negada', rp('app_orders', { profileType: 'church', userRoleId: 'r1', userOverrides: { 'members.view': true } }) === false);
 
+// Usuário com CATEGORIA (João Batista: igreja + tesoureiro, 0 sobrescritas).
+// "Permitir tudo" numa seção não pode apagar as outras: a tela grava antes o
+// estado atual de todas as chaves (base() da ArvorePermissoes) e só então muda.
+{
+  const { podeChave } = await import(pathToFileURL(path.join(OUT, 'src/lib/permissoes/resolver.mjs')).href);
+  const ctx = (ov) => ({ profileType: 'church', modules: DEFAULT_PERMISSION_MODULES, userOverrides: ov, userRoleId: 'categoria' });
+  const todas = RAIZES.flatMap((r) => [r.no.chave, ...r.no.filhos.flatMap(function f(x) { return [x.chave, ...x.filhos.flatMap(f)]; }), ...r.ocultas]);
+  ok('igreja: Gestão de Culto é "padrão: não" (igual ao menu)', podeChave('culto_gestao.view', ctx({})) === false);
+  ok('igreja: Livro Caixa liberado sem sobrescrita', podeChave('cashbook.view', ctx({})) === true);
+  const semente = Object.fromEntries(todas.map((k) => [k, podeChave(k, ctx({}))]));
+  const pastoral = RAIZES.filter((r) => r.grupo === 'Gestão Pastoral').flatMap((r) => [r.no.chave, ...r.no.filhos.map((x) => x.chave), ...r.ocultas]);
+  const comPastoral = { ...semente, ...Object.fromEntries(pastoral.map((k) => [k, true])) };
+  ok('permitir tudo na Gestão Pastoral mantém o Livro Caixa', podeChave('cashbook.view', ctx(comPastoral)) === true);
+  ok('…e libera Aconselhamentos (antes "não")', podeChave('counseling.view', ctx({})) === false && podeChave('counseling.view', ctx(comPastoral)) === true);
+  const semSemente = Object.fromEntries(pastoral.map((k) => [k, true]));
+  ok('controle: sem gravar o estado antes, o Livro Caixa sumiria (o bug relatado)', podeChave('cashbook.view', ctx(semSemente)) === false);
+}
+
 // Árvore em modo grupo: tela de Relatórios marcada, Exportar Excel de membros desmarcado.
 const h1 = renderToString(React.createElement(ArvorePermissoes, {
   modo: 'grupo',
