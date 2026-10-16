@@ -901,7 +901,7 @@ export function PublicHome() {
               style={{ boxShadow: `0 30px 80px -20px ${cor}66` }}
             >
               <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-40" style={{ background: cor }} />
-              <button onClick={() => setAppAberto(null)} aria-label="Fechar" className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center ${isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-slate-700'}`}><X className="w-4 h-4" /></button>
+              <button onClick={() => setAppAberto(null)} aria-label="Fechar" className={`absolute top-4 right-4 z-20 w-9 h-9 rounded-full flex items-center justify-center ${isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-slate-700'}`}><X className="w-4 h-4" /></button>
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="relative space-y-4">
                 <span className="w-16 h-16 rounded-[20px] flex items-center justify-center" style={{ background: `linear-gradient(145deg, ${cor}40, ${cor}14)`, boxShadow: `inset 0 0 0 1px ${cor}66` }}>
                   <Icone className="w-8 h-8" style={{ color: cor }} />

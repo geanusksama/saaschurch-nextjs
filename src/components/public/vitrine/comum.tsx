@@ -124,8 +124,8 @@ export function useCarrinho() {
 // ── Menu do topo ───────────────────────────────────────────────────────────
 
 /**
- * Links do topo: Eventos · Compras · Peniel · CIBE — só texto, como o menu do
- * Peniel (maiúsculas espaçadas); o ativo ganha um traço na cor da igreja.
+ * Links do topo: Eventos · Compras · Peniel · CIBE — só texto, sem caixa alta
+ * (pedido do dono); o ativo ganha um traço na cor da igreja.
  */
 export function NavPublica({ isDark, accent, onPeniel, className }: { isDark: boolean; accent: string; onPeniel?: () => void; className?: string }) {
   const { pathname, search } = useLocation();
@@ -138,7 +138,7 @@ export function NavPublica({ isDark, accent, onPeniel, className }: { isDark: bo
   ];
   const cor = isDark ? 'text-white/60 hover:text-white' : 'text-slate-500 hover:text-slate-900';
   return (
-    <nav className={cx('flex items-center gap-6 md:gap-9 text-[11px] md:text-xs font-semibold uppercase tracking-[0.18em]', className)}>
+    <nav className={cx('flex items-center gap-6 md:gap-9 text-[13px] md:text-sm font-semibold tracking-wide', className)}>
       {itens.map((i) => {
         const conteudo = (
           <span className="relative py-2 inline-block">
