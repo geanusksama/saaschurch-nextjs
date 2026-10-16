@@ -22,7 +22,19 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_PERMISSION_MODULES } from '../src/app-ui/system/permissionCatalog.ts';
+/**
+ * Chaves de módulo lidas do catálogo COMO TEXTO — este script roda no build
+ * da Vercel (permissoes:check), e importar o .ts direto só funciona no Node
+ * 23.6+. O repositório não fixa a versão do Node, então nada de .ts aqui.
+ */
+const catalogoTxt = fs.readFileSync(path.join(process.cwd(), 'src/app-ui/system/permissionCatalog.ts'), 'utf8');
+const iniCatalogo = catalogoTxt.indexOf('export const DEFAULT_PERMISSION_MODULES');
+const fimCatalogo = catalogoTxt.indexOf('\n];', iniCatalogo);
+const DEFAULT_PERMISSION_MODULES = [...catalogoTxt.slice(iniCatalogo, fimCatalogo).matchAll(/\bkey:\s*'([a-z0-9_]+)'/g)].map((m) => ({ key: m[1] }));
+if (DEFAULT_PERMISSION_MODULES.length < 50) {
+  console.error(`Catálogo lido com só ${DEFAULT_PERMISSION_MODULES.length} módulos — formato mudou?`);
+  process.exit(1);
+}
 
 const RAIZ = process.cwd();
 const SRC = path.join(RAIZ, 'src');
