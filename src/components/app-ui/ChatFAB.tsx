@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { usePermissions } from '../../lib/usePermissions';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 interface ChatMessage {
   id: string;
@@ -1560,19 +1561,21 @@ export function ChatFAB() {
                       </button>
                       {/* Delete */}
                       {(isSelfMsg || canDeleteAnyMessage) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm("Deseja excluir esta mensagem para todos?")) {
-                              handleDeleteMessage(activeDropdownMsgId);
-                            }
-                            setActiveDropdownMsgId(null);
-                          }}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl flex items-center gap-2 font-bold text-rose-600 dark:text-rose-400 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Excluir
-                        </button>
+                        <Permissao chave="internal_chat.chat_fab.excluir" rotulo="Excluir — Chat FAB" herda="internal_chat.delete">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm("Deseja excluir esta mensagem para todos?")) {
+                                handleDeleteMessage(activeDropdownMsgId);
+                              }
+                              setActiveDropdownMsgId(null);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl flex items-center gap-2 font-bold text-rose-600 dark:text-rose-400 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Excluir
+                          </button>
+                        </Permissao>
                       )}
                       {/* Cancel */}
                       <button

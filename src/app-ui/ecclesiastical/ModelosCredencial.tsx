@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
 import { usePermissions } from "../../lib/usePermissions";
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CredentialModel {
@@ -144,12 +145,14 @@ export default function ModelosCredencial() {
           </div>
         </div>
         {canCreate("credential_models") ? (
-          <button
-            onClick={() => { setEditing(null); setModalOpen(true); }}
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-          >
-            <Plus size={16} /> Novo Modelo
-          </button>
+          <Permissao chave="credential_models.modelos_credencial.novo_modelo" rotulo="Novo Modelo — Modelos Credencial" herda="credential_models.create">
+            <button
+              onClick={() => { setEditing(null); setModalOpen(true); }}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            >
+              <Plus size={16} /> Novo Modelo
+            </button>
+          </Permissao>
         ) : null}
       </div>
 
@@ -245,14 +248,18 @@ export default function ModelosCredencial() {
                         <Eye size={15} />
                       </button>
                       {canEdit("credential_models") ? (
-                        <button onClick={() => { setEditing(m); setModalOpen(true); }} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-purple-600" title="Editar">
-                          <Edit2 size={15} />
-                        </button>
+                        <Permissao chave="credential_models.modelos_credencial.editar" rotulo="Editar — Modelos Credencial" herda="credential_models.edit">
+                          <button onClick={() => { setEditing(m); setModalOpen(true); }} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-purple-600" title="Editar">
+                            <Edit2 size={15} />
+                          </button>
+                        </Permissao>
                       ) : null}
                       {canDelete("credential_models") ? (
-                        <button onClick={() => setDeleteTarget(m)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-red-600" title="Excluir">
-                          <Trash2 size={15} />
-                        </button>
+                        <Permissao chave="credential_models.modelos_credencial.excluir" rotulo="Excluir — Modelos Credencial" herda="credential_models.delete">
+                          <button onClick={() => setDeleteTarget(m)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-red-600" title="Excluir">
+                            <Trash2 size={15} />
+                          </button>
+                        </Permissao>
                       ) : null}
                     </div>
                   </td>

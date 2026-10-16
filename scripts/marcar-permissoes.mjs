@@ -110,9 +110,13 @@ let totalMarcados = 0;
 for (const [rel, info] of Object.entries(DONOS)) {
   if (SO && rel !== SO) continue;
   // Público (site, portal, membro): nunca — o botão sumiria para quem não tem login.
-  if (info.publico || info.donos.length !== 1 || info.rotasSemTrava.length) continue;
-  const dono = info.donos[0];
-  if (!MODULOS.has(dono) || !fs.existsSync(rel)) continue;
+  if (info.publico || !fs.existsSync(rel)) continue;
+  // Dono único comprovado: todo botão de ação pode ser marcado (sem trava →
+  // "<dono>.view"). Sem dono único (vários donos, rota livre, moldura): SÓ o
+  // botão que já tem trava explícita na frente — herdar a própria trava dá
+  // exatamente o resultado de hoje, em qualquer tela.
+  const donoUnico = info.donos.length === 1 && !info.rotasSemTrava.length && MODULOS.has(info.donos[0]);
+  const dono = donoUnico ? info.donos[0] : null;
   const original = fs.readFileSync(rel, 'utf8');
   const limpo = semComentarios(original);
   const consts = constantes(limpo);
@@ -128,6 +132,7 @@ for (const [rel, info] of Object.entries(DONOS)) {
     if (!rot) { pendentes.push(`${rel}: botão sem rótulo legível`); continue; }
     const trava = travaNaFrente(limpo, m.index, consts);
     if (trava === 'DINAMICA') { pendentes.push(`${rel}: trava dinâmica não resolvida (${rot})`); continue; }
+    if (!dono && !trava) { pendentes.push(`${rel}: sem dono único e sem trava na frente (${rot})`); continue; }
     const herda = trava ?? `${dono}.view`;
     if (herda.split('.').length === 2 && !MODULOS.has(herda.split('.')[0])) {
       pendentes.push(`${rel}: trava com módulo fora do catálogo (${herda})`);
@@ -143,7 +148,8 @@ for (const [rel, info] of Object.entries(DONOS)) {
   for (const a of alvos) {
     a.rotulo = `${a.rot.replace(/["{}<>]/g, '')} — ${humano(rel)}`.slice(0, 90);
     const assinatura = `${a.rotulo}|${a.herda}`;
-    const base = `${dono}.${arqSlug}.${slug(a.rot)}`;
+    // Sem dono único, a chave nasce no módulo da própria trava.
+    const base = `${dono ?? a.herda.split('.')[0]}.${arqSlug}.${slug(a.rot)}`;
     let k = base;
     let n = 2;
     while (usadas.has(k) && usadas.get(k) !== assinatura) k = `${base}_${n++}`;

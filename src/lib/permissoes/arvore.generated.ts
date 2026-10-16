@@ -594,6 +594,24 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/finance/ParcelaDetailModal.tsx"
   },
   {
+    "chave": "credential_models.modelos_credencial.editar",
+    "rotulo": "Editar — Modelos Credencial",
+    "herda": "credential_models.edit",
+    "arquivo": "src/app-ui/ecclesiastical/ModelosCredencial.tsx"
+  },
+  {
+    "chave": "credential_models.modelos_credencial.excluir",
+    "rotulo": "Excluir — Modelos Credencial",
+    "herda": "credential_models.delete",
+    "arquivo": "src/app-ui/ecclesiastical/ModelosCredencial.tsx"
+  },
+  {
+    "chave": "credential_models.modelos_credencial.novo_modelo",
+    "rotulo": "Novo Modelo — Modelos Credencial",
+    "herda": "credential_models.create",
+    "arquivo": "src/app-ui/ecclesiastical/ModelosCredencial.tsx"
+  },
+  {
     "chave": "credentials.credentials.excel",
     "rotulo": "Excel — Credentials",
     "herda": "credentials.view",
@@ -1144,6 +1162,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Remover (attachment) — Inbox",
     "herda": "inbox.view",
     "arquivo": "src/components/app-ui/Inbox.tsx"
+  },
+  {
+    "chave": "internal_chat.chat_fab.excluir",
+    "rotulo": "Excluir — Chat FAB",
+    "herda": "internal_chat.delete",
+    "arquivo": "src/components/app-ui/ChatFAB.tsx"
   },
   {
     "chave": "members.family_relationships.adicionar_membro",
