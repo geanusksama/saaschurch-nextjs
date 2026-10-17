@@ -22,6 +22,11 @@ interface LocationPickerProps {
   onChange: (next: LocationValue & { address?: Partial<AddressLike> }) => void;
   /** Quando true, preenche também os campos de endereço vazios do formulário. */
   fillAddress?: boolean;
+  /**
+   * "cartao": bloco enxuto do assistente de Novo Membro — sem os campos de
+   * latitude/longitude à mostra, só o estado e o botão. O modal é o mesmo.
+   */
+  variante?: 'padrao' | 'cartao';
 }
 
 /**
@@ -32,7 +37,7 @@ interface LocationPickerProps {
  * calcular a distância até a igreja. Endereço em texto não serve: mudança de
  * grafia já quebraria o cálculo.
  */
-export function LocationPicker({ value, address, onChange, fillAddress = true }: LocationPickerProps) {
+export function LocationPicker({ value, address, onChange, fillAddress = true, variante = 'padrao' }: LocationPickerProps) {
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(false);
@@ -96,6 +101,57 @@ export function LocationPicker({ value, address, onChange, fillAddress = true }:
 
   return (
     <>
+      {variante === 'cartao' ? (
+        <div className="overflow-hidden rounded-[20px] border border-[#eef2f6] bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60">
+          <div className="flex flex-wrap items-center gap-4 px-6 py-5">
+            <span
+              className={`grid h-11 w-11 flex-none place-items-center rounded-[14px] ${
+                definido
+                  ? 'bg-[#dcfce7] text-[#15803d] dark:bg-[#052e16]/60 dark:text-[#86efac]'
+                  : 'bg-[#e9edf2] text-slate-500 dark:bg-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <MapPin className="h-[22px] w-[22px]" strokeWidth={1.8} />
+            </span>
+            <div className="flex min-w-[200px] flex-1 flex-col gap-[3px]">
+              <span className="text-[15px] font-bold text-slate-900 dark:text-white">
+                {definido ? `Localização definida · ${value.latitude}, ${value.longitude}` : 'Localização não definida'}
+              </span>
+              <span className="text-[13px] text-slate-500 dark:text-slate-400">
+                Usada para calcular a distância até a igreja na troca de dirigente.
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {definido ? (
+                <button
+                  type="button"
+                  onClick={() => onChange({ latitude: '', longitude: '' })}
+                  className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Limpar
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={abrir}
+                className="h-11 rounded-xl bg-slate-900 px-[18px] text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                Localizar no mapa
+              </button>
+            </div>
+          </div>
+          {erro && !open ? <p className="px-6 pb-4 text-xs text-rose-600">{erro}</p> : null}
+          {definido ? (
+            <iframe
+              title="Localização do membro"
+              src={buildMapEmbedUrl(value, 16)}
+              className="h-40 w-full border-t border-[#eef2f6] bg-slate-100 dark:border-slate-700"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : null}
+        </div>
+      ) : (
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -178,6 +234,7 @@ export function LocationPicker({ value, address, onChange, fillAddress = true }:
           </div>
         ) : null}
       </div>
+      )}
 
       {open ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4">

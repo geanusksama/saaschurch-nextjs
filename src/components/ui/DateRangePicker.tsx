@@ -51,6 +51,8 @@ interface DateRangePickerProps {
   onChangeFrom: (v: string) => void;
   onChangeTo: (v: string) => void;
   className?: string;
+  /** Troca o visual do botão (ex.: Livro Caixa redesenhado). Sem ele, o botão padrão. */
+  triggerClassName?: string;
 }
 
 function toDateVal(iso: string): Date | undefined {
@@ -74,7 +76,7 @@ const PRESETS = [
   { label: 'Este ano',        from: () => new Date(now().getFullYear(), 0, 1), to: () => new Date(now().getFullYear(), 11, 31) },
 ];
 
-export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className = '' }: DateRangePickerProps) {
+export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className = '', triggerClassName }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange>({});
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -328,7 +330,7 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
           ref={btnRef}
           type="button"
           onClick={openPicker}
-          className="flex h-8 min-w-[200px] items-center gap-2 rounded border border-slate-300 bg-white px-2 text-left text-xs text-slate-700 outline-none transition-colors hover:border-blue-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-200 whitespace-nowrap"
+          className={triggerClassName ?? "flex h-8 min-w-[200px] items-center gap-2 rounded border border-slate-300 bg-white px-2 text-left text-xs text-slate-700 outline-none transition-colors hover:border-blue-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-200 whitespace-nowrap"}
         >
           <CalendarDays className="h-3.5 w-3.5 shrink-0 text-slate-400" />
           <span className="flex-1 truncate">{label}</span>
