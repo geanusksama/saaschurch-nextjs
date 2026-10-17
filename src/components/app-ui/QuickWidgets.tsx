@@ -36,10 +36,12 @@ interface Campaign {
   tip: string;
 }
 
+type HolidayType = 'Nacional' | 'Ponto facultativo' | 'Comemorativa';
+
 interface Holiday {
   date: string;
   name: string;
-  type: string;
+  type: HolidayType;
 }
 
 interface ChurchEvent {
@@ -166,21 +168,78 @@ function dayOfYear(): number {
   return Math.floor((now.getTime() - start.getTime()) / 86400000);
 }
 
-function formatDateBR(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-');
-  return `${day}/${month}/${year}`;
-}
-
-function daysUntilDate(dateStr: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr + 'T00:00:00');
-  return Math.ceil((target.getTime() - today.getTime()) / 86400000);
-}
-
 function toDateStr(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
+
+function localTodayStr(): string {
+  const t = new Date();
+  return toDateStr(t.getFullYear(), t.getMonth(), t.getDate());
+}
+
+// ─── Holidays (calculados localmente, qualquer ano) ──────────────────────────
+
+// Domingo de Páscoa — algoritmo de Meeus/Jones/Butcher (calendário gregoriano)
+function easterSunday(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month, day);
+}
+
+const holidaysCache = new Map<number, Holiday[]>();
+
+function brazilHolidays(year: number): Holiday[] {
+  const cached = holidaysCache.get(year);
+  if (cached) return cached;
+
+  const easter = easterSunday(year);
+  const fromEaster = (offset: number) => {
+    const d = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() + offset);
+    return toDateStr(d.getFullYear(), d.getMonth(), d.getDate());
+  };
+  const fixed = (m: number, d: number) => toDateStr(year, m - 1, d);
+
+  const list: Holiday[] = [
+    { date: fixed(1, 1), name: 'Confraternização Universal', type: 'Nacional' },
+    { date: fromEaster(-48), name: 'Carnaval (segunda)', type: 'Ponto facultativo' },
+    { date: fromEaster(-47), name: 'Carnaval (terça)', type: 'Ponto facultativo' },
+    { date: fromEaster(-46), name: 'Quarta-feira de Cinzas (até 14h)', type: 'Ponto facultativo' },
+    { date: fromEaster(-2), name: 'Sexta-feira Santa', type: 'Nacional' },
+    { date: fromEaster(0), name: 'Páscoa', type: 'Comemorativa' },
+    { date: fixed(4, 21), name: 'Tiradentes', type: 'Nacional' },
+    { date: fixed(5, 1), name: 'Dia do Trabalho', type: 'Nacional' },
+    { date: fromEaster(60), name: 'Corpus Christi', type: 'Ponto facultativo' },
+    { date: fixed(9, 7), name: 'Independência do Brasil', type: 'Nacional' },
+    { date: fixed(10, 12), name: 'Nossa Senhora Aparecida', type: 'Nacional' },
+    { date: fixed(11, 2), name: 'Finados', type: 'Nacional' },
+    { date: fixed(11, 15), name: 'Proclamação da República', type: 'Nacional' },
+    { date: fixed(12, 25), name: 'Natal', type: 'Nacional' },
+  ];
+  // Lei 14.759/2023 tornou o 20/11 feriado nacional a partir de 2024
+  if (year >= 2024) list.push({ date: fixed(11, 20), name: 'Dia Nacional de Zumbi e da Consciência Negra', type: 'Nacional' });
+
+  list.sort((x, y) => x.date.localeCompare(y.date));
+  holidaysCache.set(year, list);
+  return list;
+}
+
+const HOLIDAY_BADGE: Record<HolidayType, string> = {
+  'Nacional': 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'Ponto facultativo': 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  'Comemorativa': 'bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
+};
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 
@@ -414,58 +473,102 @@ function CampaignsModal({ campaigns, onClose }: { campaigns: Campaign[]; onClose
 
 // ─── Holidays Modal ───────────────────────────────────────────────────────────
 
-const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const WEEKDAY_COLORS: Record<number, string> = {
-  0: 'text-red-500',   // domingo
-  6: 'text-orange-500', // sábado
-};
+const WEEKDAYS_PT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
-function holidayWeekday(dateStr: string): { short: string; colorClass: string; isWeekend: boolean } {
-  const d = new Date(dateStr + 'T12:00:00');
-  const idx = d.getDay();
-  return {
-    short: WEEKDAYS_PT[idx],
-    colorClass: WEEKDAY_COLORS[idx] ?? 'text-slate-400',
-    isWeekend: idx === 0 || idx === 6,
-  };
+function YearNav({ year, onChange, children }: { year: number; onChange: (y: number) => void; children?: React.ReactNode }) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="flex items-center gap-1">
+        <button type="button" onClick={() => onChange(year - 1)} title="Ano anterior" className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"><ChevronLeft className="h-4 w-4" /></button>
+        <span className="min-w-[3rem] text-center text-base font-bold text-slate-900 dark:text-white">{year}</span>
+        <button type="button" onClick={() => onChange(year + 1)} title="Próximo ano" className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"><ChevronRight className="h-4 w-4" /></button>
+        {year !== new Date().getFullYear() && (
+          <button type="button" onClick={() => onChange(new Date().getFullYear())} className="ml-1 rounded-lg px-2 py-1 text-[11px] font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30">Hoje</button>
+        )}
+      </div>
+      <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">{children}</div>
+    </div>
+  );
 }
 
-function HolidaysModal({ loading, data, onClose }: { loading: boolean; data: Holiday[] | null; onClose: () => void }) {
-  const year = new Date().getFullYear();
-  const todayStr = new Date().toISOString().split('T')[0];
+function HolidaysModal({ onClose }: { onClose: () => void }) {
+  const [year, setYear] = useState(new Date().getFullYear());
+  const data = brazilHolidays(year);
+  const todayStr = localTodayStr();
   return (
-    <ModalShell title={`Feriados Nacionais ${year}`} icon={Calendar} iconColor="bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300" onClose={onClose}>
-      {loading ? <LoadingState /> : !data ? <EmptyState message="Não foi possível carregar os feriados." /> : (
-        <div className="space-y-1.5">
-          {data.map((h) => {
-            const days = daysUntilDate(h.date);
-            const isToday = h.date === todayStr;
-            const isPast = days < 0;
-            const { short: weekday, colorClass: wdColor, isWeekend } = holidayWeekday(h.date);
-            return (
-              <div key={h.date} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${isToday ? 'bg-blue-100 ring-1 ring-blue-300 dark:bg-blue-900/40 dark:ring-blue-700' : isPast ? 'opacity-40' : 'bg-slate-50 dark:bg-slate-900/50'}`}>
-                <div className="w-20 shrink-0 text-center">
-                  <p className="text-xs font-bold text-blue-600 dark:text-blue-400">{formatDateBR(h.date)}</p>
-                  <p className={`text-[10px] font-semibold ${wdColor}`}>
-                    {weekday}{isWeekend && ' 🎉'}
-                  </p>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className={`truncate text-sm font-medium ${isPast ? 'text-slate-500' : 'text-slate-900 dark:text-white'}`}>{h.name}</p>
-                  <p className="text-xs capitalize text-slate-400">{h.type}</p>
-                </div>
-                {isToday && <span className="shrink-0 rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white">Hoje</span>}
-                {!isToday && !isPast && (
-                  <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-green-600 dark:text-green-400">
-                    em {days}d
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+    <ModalShell title="Feriados" icon={Calendar} iconColor="bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300" onClose={onClose}>
+      <YearNav year={year} onChange={setYear}>Nacionais e pontos facultativos</YearNav>
+      <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+        {data.map((h) => {
+          const isToday = h.date === todayStr;
+          const isPast = h.date < todayStr;
+          const [, mm, dd] = h.date.split('-');
+          const weekday = WEEKDAYS_PT[new Date(h.date + 'T12:00:00').getDay()];
+          return (
+            <div key={h.date} className={`flex items-center gap-3 px-3 py-2.5 ${isToday ? 'bg-blue-50 dark:bg-blue-900/30' : ''}`}>
+              <span className={`w-20 shrink-0 text-xs tabular-nums ${isPast ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
+                {dd}/{mm} · {weekday}
+              </span>
+              <span className={`min-w-0 flex-1 truncate text-sm ${isPast ? 'text-slate-400 dark:text-slate-500' : 'font-medium text-slate-900 dark:text-white'}`}>{h.name}</span>
+              {isToday && <span className="shrink-0 rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white">Hoje</span>}
+              <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${HOLIDAY_BADGE[h.type]} ${isPast ? 'opacity-60' : ''}`}>{h.type}</span>
+            </div>
+          );
+        })}
+      </div>
     </ModalShell>
+  );
+}
+
+// ─── Year Calendar (usado pela Agenda) ────────────────────────────────────────
+
+function YearCalendar({ year, holidays, datesWithNotes, onSelect }: {
+  year: number;
+  holidays: Holiday[];
+  datesWithNotes: Set<string>;
+  onSelect: (dateStr: string) => void;
+}) {
+  const todayStr = localTodayStr();
+  const holidayByDate = new Map(holidays.map(h => [h.date, h]));
+  return (
+    <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 md:grid-cols-3">
+      {MONTHS_PT.map((monthName, month) => {
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDay = new Date(year, month, 1).getDay();
+        const monthCampaigns = CAMPAIGNS_BY_MONTH[month + 1] || [];
+        return (
+          <div key={month} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700">
+            <p className="text-sm font-bold text-slate-900 dark:text-white">{monthName}</p>
+            {monthCampaigns.length > 0 && (
+              <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-500 dark:text-slate-400" title={monthCampaigns.map(c => c.name).join(' · ')}>
+                {monthCampaigns.map(c => (
+                  <span key={c.name} className="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-slate-300 dark:ring-slate-600" style={{ background: c.color }} />
+                ))}
+                <span className="truncate">{monthCampaigns.map(c => c.name).join(' · ')}</span>
+              </p>
+            )}
+            <div className="mt-2 grid grid-cols-7 gap-y-0.5 text-center">
+              {DAYS_SHORT.map((d, i) => <div key={i} className="pb-0.5 text-[9px] font-medium text-slate-400">{d}</div>)}
+              {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const dateStr = toDateStr(year, month, day);
+                const holiday = holidayByDate.get(dateStr);
+                const isToday = dateStr === todayStr;
+                const hasNote = datesWithNotes.has(dateStr);
+                return (
+                  <button key={day} type="button" onClick={() => onSelect(dateStr)} title={holiday ? `${holiday.name} — ${holiday.type}` : undefined}
+                    className={`relative mx-auto flex h-6 w-7 items-center justify-center rounded-md text-[11px] tabular-nums transition-colors ${holiday ? 'bg-amber-200 font-semibold text-amber-900 hover:bg-amber-300 dark:bg-amber-500/30 dark:text-amber-200' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'} ${isToday ? 'ring-2 ring-blue-500' : ''}`}>
+                    {day}
+                    {hasNote && <span className="absolute bottom-0 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-indigo-500" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -640,9 +743,7 @@ function CalculatorModal({ onClose }: { onClose: () => void }) {
 // ─── Agenda Modal ─────────────────────────────────────────────────────────────
 
 function AgendaModal({ onClose }: { onClose: () => void }) {
-  const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [noteContent, setNoteContent] = useState('');
   const [noteLoading, setNoteLoading] = useState(false);
@@ -651,7 +752,7 @@ function AgendaModal({ onClose }: { onClose: () => void }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [datesWithNotes, setDatesWithNotes] = useState<Set<string>>(new Set());
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+  const holidays = brazilHolidays(viewYear);
 
   useEffect(() => {
     authFetch('/api/user-notes')
@@ -701,73 +802,67 @@ function AgendaModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  function prevMonth() { const d = new Date(viewYear, viewMonth - 1); setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); }
-  function nextMonth() { const d = new Date(viewYear, viewMonth + 1); setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); }
+  function shiftSelectedDay(delta: number) {
+    if (!selectedDate) return;
+    const d = new Date(selectedDate + 'T12:00:00');
+    d.setDate(d.getDate() + delta);
+    setViewYear(d.getFullYear());
+    setSelectedDate(toDateStr(d.getFullYear(), d.getMonth(), d.getDate()));
+  }
 
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const selectedHoliday = selectedDate ? brazilHolidays(Number(selectedDate.slice(0, 4))).find(h => h.date === selectedDate) : undefined;
 
   return (
-    <ModalShell title="Agenda" icon={BookMarked} iconColor="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300" onClose={onClose}>
-      <div className="space-y-3">
-        {/* Month nav */}
-        <div className="flex items-center justify-between">
-          <button type="button" onClick={prevMonth} className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700"><ChevronLeft className="h-4 w-4" /></button>
-          <span className="text-sm font-semibold text-slate-800 dark:text-white">{MONTHS_PT[viewMonth]} {viewYear}</span>
-          <button type="button" onClick={nextMonth} className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700"><ChevronRight className="h-4 w-4" /></button>
-        </div>
-
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {DAYS_SHORT.map((d, i) => <div key={i} className="py-1 text-[10px] font-medium text-slate-400">{d}</div>)}
-          {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const day = i + 1;
-            const dateStr = toDateStr(viewYear, viewMonth, day);
-            const isToday = dateStr === todayStr;
-            const isSelected = dateStr === selectedDate;
-            const hasNote = datesWithNotes.has(dateStr);
-            return (
-              <button key={day} type="button" onClick={() => setSelectedDate(dateStr)}
-                className={`relative flex aspect-square items-center justify-center rounded-lg text-xs font-medium transition-all ${isSelected ? 'bg-indigo-600 text-white' : isToday ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'}`}>
-                {day}
-                {hasNote && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-indigo-400" />}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Note editor */}
-        {selectedDate ? (
-          <div className="border-t border-slate-200 pt-3 dark:border-slate-700">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="min-w-0 flex-1 text-xs font-semibold capitalize text-slate-600 dark:text-slate-300">
-                {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </p>
-              <div className="flex shrink-0 items-center gap-2">
-                {saveError && <span className="text-[10px] text-red-500">{saveError}</span>}
-                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />}
-                {saved && !saving && <span className="text-[10px] text-green-500">✓ Salvo</span>}
-                <Permissao chave="tela_moldura.quick_widgets.salvar" rotulo="Salvar — Quick Widgets" herda="tela_moldura.view">
-                  <button type="button" onClick={() => saveNote()}
-                    disabled={saving}
-                    className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50">
-                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                    Salvar
-                  </button>
-                </Permissao>
+    <ModalShell title="Agenda do Ano" icon={BookMarked} iconColor="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300" onClose={onClose}>
+      {!selectedDate ? (
+        <>
+          <YearNav year={viewYear} onChange={setViewYear}>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-amber-200 dark:bg-amber-500/30" /> feriado</span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full ring-2 ring-blue-500" /> hoje</span>
+            <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-indigo-500" /> nota</span>
+          </YearNav>
+          <YearCalendar year={viewYear} holidays={holidays} datesWithNotes={datesWithNotes} onSelect={setSelectedDate} />
+          <p className="pt-3 text-center text-xs text-slate-400">Clique em um dia para escrever uma nota.</p>
+        </>
+      ) : (
+        <div className="space-y-3">
+          <button type="button" onClick={() => setSelectedDate(null)} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">
+            <ChevronLeft className="h-3.5 w-3.5" /> Ano {viewYear}
+          </button>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              <button type="button" onClick={() => shiftSelectedDay(-1)} title="Dia anterior" className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"><ChevronLeft className="h-4 w-4" /></button>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold capitalize text-slate-800 dark:text-white">
+                  {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+                {selectedHoliday && (
+                  <p className="truncate text-[11px] text-amber-700 dark:text-amber-300">{selectedHoliday.name} · {selectedHoliday.type}</p>
+                )}
               </div>
+              <button type="button" onClick={() => shiftSelectedDay(1)} title="Próximo dia" className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"><ChevronRight className="h-4 w-4" /></button>
             </div>
-            {noteLoading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-indigo-400" /></div>
-            ) : (
-              <RichEditor key={selectedDate} value={noteContent} onChange={handleContentChange} placeholder="Escreva sua nota para este dia..." minHeight={100} />
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {saveError && <span className="text-[10px] text-red-500">{saveError}</span>}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />}
+              {saved && !saving && <span className="text-[10px] text-green-500">✓ Salvo</span>}
+              <Permissao chave="tela_moldura.quick_widgets.salvar" rotulo="Salvar — Quick Widgets" herda="tela_moldura.view">
+                <button type="button" onClick={() => saveNote()}
+                  disabled={saving}
+                  className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50">
+                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                  Salvar
+                </button>
+              </Permissao>
+            </div>
           </div>
-        ) : (
-          <p className="py-3 text-center text-xs text-slate-400">Selecione um dia para escrever uma nota.</p>
-        )}
-      </div>
+          {noteLoading ? (
+            <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-indigo-400" /></div>
+          ) : (
+            <RichEditor key={selectedDate} value={noteContent} onChange={handleContentChange} placeholder="Escreva sua nota para este dia..." minHeight={160} />
+          )}
+        </div>
+      )}
     </ModalShell>
   );
 }
@@ -1003,8 +1098,6 @@ export function QuickWidgets({ churchId, campoId, notesOpen, onToggleNotes }: Qu
   const [birthdaysLoading, setBirthdaysLoading] = useState(false);
   const [bibleVerse, setBibleVerse] = useState<BibleVerse | null>(null);
   const [bibleLoading, setBibleLoading] = useState(false);
-  const [holidays, setHolidays] = useState<Holiday[] | null>(null);
-  const [holidaysLoading, setHolidaysLoading] = useState(false);
   const [events, setEvents] = useState<ChurchEvent[] | null>(null);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [newMembers, setNewMembers] = useState<NewMember[] | null>(null);
@@ -1073,15 +1166,6 @@ export function QuickWidgets({ churchId, campoId, notesOpen, onToggleNotes }: Qu
       } catch { /* silent */ } finally { setBibleLoading(false); }
     }
 
-    if (id === 'holidays' && !holidays) {
-      setHolidaysLoading(true);
-      try {
-        const year = new Date().getFullYear();
-        const data = await fetch(`https://brasilapi.com.br/api/feriados/v1/${year}`).then(r => r.json());
-        setHolidays(Array.isArray(data) ? data : []);
-      } catch { /* silent */ } finally { setHolidaysLoading(false); }
-    }
-
     if (id === 'events' && !events) {
       setEventsLoading(true);
       try {
@@ -1108,12 +1192,14 @@ export function QuickWidgets({ churchId, campoId, notesOpen, onToggleNotes }: Qu
         setNewMembers(Array.isArray(data?.data) ? data.data : []);
       } catch { /* silent */ } finally { setNewMembersLoading(false); }
     }
-  }, [birthdays, bibleVerse, holidays, events, newMembers, churchId, campoId, currentMonth]);
+  }, [birthdays, bibleVerse, events, newMembers, churchId, campoId, currentMonth]);
 
   // Widget modal container width varies per widget
   function widgetMaxWidth(id: WidgetId): string {
     if (id === 'calculator') return 'max-w-xs';
     if (id === 'notes') return 'max-w-xl';
+    if (id === 'agenda') return 'max-w-3xl';
+    if (id === 'holidays') return 'max-w-2xl';
     return 'max-w-lg';
   }
 
@@ -1125,7 +1211,7 @@ export function QuickWidgets({ churchId, campoId, notesOpen, onToggleNotes }: Qu
     { id: 'events' as WidgetId, icon: CalendarDays, label: 'Próx. Eventos', badge: upcomingEventsCount, badgeColor: 'bg-purple-500', btnClass: 'bg-purple-50 ring-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:ring-purple-800 dark:hover:bg-purple-900/40', iconClass: 'text-purple-600' },
     { id: 'newMembers' as WidgetId, icon: UserPlus, label: 'Novos Membros', badge: newMembersCount, badgeColor: 'bg-sky-500', btnClass: 'bg-sky-50 ring-sky-200 hover:bg-sky-100 dark:bg-sky-900/20 dark:ring-sky-800 dark:hover:bg-sky-900/40', iconClass: 'text-sky-600' },
     { id: 'calculator' as WidgetId, icon: Calculator, label: 'Calculadora', badge: null, badgeColor: '', btnClass: 'bg-slate-50 ring-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:ring-slate-700 dark:hover:bg-slate-700', iconClass: 'text-slate-600' },
-    { id: 'agenda' as WidgetId, icon: BookMarked, label: 'Agenda', badge: null, badgeColor: '', btnClass: 'bg-indigo-50 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:ring-indigo-800 dark:hover:bg-indigo-900/40', iconClass: 'text-indigo-600' },
+    { id: 'agenda' as WidgetId, icon: BookMarked, label: 'Agenda do Ano', badge: null, badgeColor: '', btnClass: 'bg-indigo-50 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:ring-indigo-800 dark:hover:bg-indigo-900/40', iconClass: 'text-indigo-600' },
     { id: 'notes' as WidgetId, icon: StickyNote, label: 'Bloco de Notas', badge: null, badgeColor: '', btnClass: 'bg-yellow-50 ring-yellow-200 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:ring-yellow-800 dark:hover:bg-yellow-900/40', iconClass: 'text-yellow-600' },
   ];
 
@@ -1170,7 +1256,7 @@ export function QuickWidgets({ churchId, campoId, notesOpen, onToggleNotes }: Qu
                 {openWidget === 'birthdays' && <BirthdaysModal loading={birthdaysLoading} data={birthdays} onClose={() => setOpenWidget(null)} />}
                 {openWidget === 'bible' && <BibleModal loading={bibleLoading} data={bibleVerse} onClose={() => setOpenWidget(null)} />}
                 {openWidget === 'campaigns' && <CampaignsModal campaigns={campaigns} onClose={() => setOpenWidget(null)} />}
-                {openWidget === 'holidays' && <HolidaysModal loading={holidaysLoading} data={holidays} onClose={() => setOpenWidget(null)} />}
+                {openWidget === 'holidays' && <HolidaysModal onClose={() => setOpenWidget(null)} />}
                 {openWidget === 'events' && <EventsModal loading={eventsLoading} data={events} onClose={() => setOpenWidget(null)} />}
                 {openWidget === 'newMembers' && <NewMembersModal loading={newMembersLoading} data={newMembers} onClose={() => setOpenWidget(null)} />}
                 {openWidget === 'calculator' && <CalculatorModal onClose={() => setOpenWidget(null)} />}

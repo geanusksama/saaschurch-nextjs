@@ -38,7 +38,7 @@ import {
   type Registro,
 } from './cultoApi';
 import { BORDA, PASTILHA, PONTO, TEXTO } from './cultoCores';
-import { imprimirFichaCulto } from './cultoRelatorio';
+import CultoImprimirModal from './CultoImprimirModal';
 import { Permissao } from '../../lib/permissoes/Permissao';
 
 const CAMPOS_FINANCEIRO: { campo: string; label: string; moeda?: boolean }[] = [
@@ -127,6 +127,7 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
   }
 
   const [versao, setVersao] = useState(0);
+  const [imprimindo, setImprimindo] = useState(false);
   const recarregar = useCallback(() => {
     setCarregando(true);
     setVersao((v) => v + 1);
@@ -725,20 +726,17 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {/* A ficha deste culto como está na tela — o que foi gravado, não o
+            {/* Relatório deste culto no mesmo formato da Gestão de Culto — o que foi gravado, não o
                 que está sendo digitado e ainda não foi enviado. */}
             {registro && (
               <Permissao chave="tela_culto_registro.culto_registro_drawer.imprimir" rotulo="Imprimir — Culto Registro Drawer" herda="tela_culto_registro.view">
                 <button
-                  onClick={() => {
-                    const abriu = imprimirFichaCulto({ registro, aprovadorLocal, responsavel });
-                    if (!abriu) setErro('O navegador bloqueou a janela de impressão. Libere pop-ups deste site.');
-                  }}
-                  title="Imprimir este culto"
-                  aria-label="Imprimir este culto"
-                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+                  onClick={() => setImprimindo(true)}
+                  title="Imprimir o relatório deste culto"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold shadow-sm"
                 >
-                  <Printer className="w-5 h-5" />
+                  <Printer className="w-4 h-4" />
+                  Imprimir
                 </button>
               </Permissao>
             )}
@@ -906,6 +904,19 @@ export default function CultoRegistroDrawer({ registroId, onFechar, onMudou }: P
           )}
         </div>
       </div>
+      {imprimindo && registro && (
+        // Mesmo relatório da Gestão de Culto (mesmas colunas e opções), só com
+        // este culto: dentro e fora do card a folha tem de sair igual.
+        <CultoImprimirModal
+          registros={[registro]}
+          titulo="Relatório do Culto"
+          periodo={[fmtData(registro.dataCulto), fmtHora(registro.horaInicio, registro.horaFim)]
+            .filter(Boolean)
+            .join(' · ')}
+          origem="culto"
+          onFechar={() => setImprimindo(false)}
+        />
+      )}
     </div>
   );
 }

@@ -3540,6 +3540,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/ProspectingModule.tsx"
   },
   {
+    "chave": "tela_culto_registro.culto_imprimir_modal.imprimir",
+    "rotulo": "Imprimir — Relatório do culto",
+    "herda": "tela_culto_registro.view",
+    "arquivo": "src/app-ui/culto/CultoImprimirModal.tsx"
+  },
+  {
     "chave": "tela_culto_registro.culto_registro_drawer.aprovar_e_concluir",
     "rotulo": "Aprovar e concluir — Culto Registro Drawer",
     "herda": "tela_culto_registro.view",
