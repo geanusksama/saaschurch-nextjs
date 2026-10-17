@@ -38,7 +38,6 @@ import {
   Receipt,
   Hash,
   TrendingDown,
-  Home,
   MessageCircle,
   Plus,
   User,
@@ -83,6 +82,7 @@ import {
   Link2 as Link2Icon,
   ListChecks as ListChecksIcon,
 } from 'lucide-react';
+import { House, HeartHandshake, Boxes, CalendarDays, Settings2, BookOpenText, UsersRound } from 'lucide-react';
 import { PixIcon } from '../icons/PixIcon';
 
 function Dove(props: React.SVGProps<SVGSVGElement>) {
@@ -283,20 +283,20 @@ const FAVORITES_SECTION = '__favoritos__';
 
 /** Icone representativo de cada categoria do menu lateral colapsado. */
 const SECTION_ICONS: Record<string, any> = {
-  'Principal': Bell,
-  'Secretaria': Clipboard,
+  'Principal': House,
+  'Secretaria': ClipboardList,
   'Gestão de Culto': Church,
   'Comunicação': Megaphone,
-  'Ministérios': Users,
-  'GF (Grupos Familiares)': Home,
-  'Patrimônio': Package,
-  'Eventos': Calendar,
+  'Ministérios': UsersRound,
+  'GF (Grupos Familiares)': HeartHandshake,
+  'Patrimônio': Boxes,
+  'Eventos': CalendarDays,
   'Mobile': Smartphone,
   'Pagamentos': PixIcon,
-  'Finanças': DollarSign,
-  'Gestão EBD': BookOpen,
+  'Finanças': Wallet,
+  'Gestão EBD': BookOpenText,
   'Peniel': Dove,
-  'Sistema': Settings,
+  'Sistema': Settings2,
 };
 
 export const appNavigation: NavigationSection[] = [
@@ -672,6 +672,8 @@ export function AppUI() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  // Barra superior: busca recolhida na lupa (só no celular).
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const [topSearchQuery, setTopSearchQuery] = useState('');
   // Últimas buscas do usuário, mostradas ao focar o campo ainda vazio.
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -848,6 +850,7 @@ export function AppUI() {
     const handleKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
+        setSearchExpanded(true);
         topSearchInputRef.current?.focus();
         topSearchInputRef.current?.select();
       }
@@ -1362,25 +1365,31 @@ export function AppUI() {
     return (
       <div
         key={item.path}
-        className={`group flex items-center gap-2 rounded-lg text-sm transition-all ${
-          isActive ? 'bg-purple-100 dark:bg-purple-900/40' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+        className={`group flex items-center gap-2 rounded-2xl text-sm transition-all ${
+          isActive ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'
         }`}
       >
         <Link
           to={item.path}
           onClick={closeSectionPanel}
-          className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
+          className={`flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-2 py-1.5 text-sm transition-all ${
             isActive
-              ? 'font-semibold text-purple-700 dark:text-purple-300'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              ? 'font-bold text-slate-900 dark:text-white'
+              : 'font-medium text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
           }`}
         >
-          <Icon className="h-5 w-5 shrink-0" />
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl transition-colors ${
+            isActive
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+              : 'bg-[#eef1f5] text-slate-600 group-hover:bg-[#e6eaf0] dark:bg-slate-700 dark:text-slate-300'
+          }`}>
+            <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+          </span>
           <span className="flex-1 truncate">{item.name}</span>
           {badge && (
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
               isActive
-                ? 'bg-purple-200 text-purple-700 dark:bg-purple-800 dark:text-purple-200'
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                 : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
             }`}>
               {badge}
@@ -1486,13 +1495,13 @@ export function AppUI() {
             animate={{ x: 0 }}
             exit={{ x: -288 }}
             transition={{ type: 'tween', duration: 0.22 }}
-            className={`w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-colors duration-200${isMobile ? ' fixed inset-y-0 left-0 z-50 shadow-2xl' : ''}`}
+            className={`w-72 bg-[#f7f8fa] dark:bg-slate-900 border-r border-[#e8ecf1] dark:border-slate-700 flex flex-col transition-colors duration-200${isMobile ? ' fixed inset-y-0 left-0 z-50 shadow-2xl' : ''}`}
           >
             {/* Logo */}
-            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+            <div className="px-5 py-5 border-b border-[#e8ecf1] dark:border-slate-700">
               <div className="flex items-center gap-3">
                 <Link to="/" onClick={() => isMobile && setSidebarOpen(false)} className="flex items-center gap-3 group">
-                  <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-black ring-1 ring-white/10 group-hover:ring-white/30 transition-all">
+                  <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-[14px] bg-black shadow-[0_10px_24px_-12px_rgba(15,23,42,.6)] ring-1 ring-white/10 group-hover:ring-white/30 transition-all">
                     {/* Sem logo cadastrada, o quadrado fica neutro. A logo da
                         AD Campinas estava fixa aqui e aparecia no sistema de
                         toda igreja que ainda não subiu a sua. */}
@@ -1503,7 +1512,7 @@ export function AppUI() {
                     )}
                   </div>
                   <div>
-                    <h1 className="font-bold text-slate-900 dark:text-white group-hover:text-emerald-500 transition-colors">MRM</h1>
+                    <h1 className="text-[15px] font-extrabold tracking-[-.01em] text-slate-900 dark:text-white">MRM</h1>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Gestão Ministerial</p>
                   </div>
                 </Link>
@@ -1535,15 +1544,15 @@ export function AppUI() {
             </div>}
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto px-4 py-4">
-              <div className="sticky top-0 z-10 mb-4 bg-white pb-3 dark:bg-slate-800">
+            <nav className="flex-1 overflow-y-auto px-3 py-4">
+              <div className="sticky top-0 z-10 mb-3 bg-[#f7f8fa] pb-2 dark:bg-slate-900">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     value={sidebarSearchQuery}
                     onChange={(event) => setSidebarSearchQuery(event.target.value)}
                     placeholder="Buscar atalho ou módulo"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-9 text-sm text-slate-700 outline-none transition focus:border-purple-200 focus:bg-white focus:ring-2 focus:ring-purple-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:border-purple-500/40 dark:focus:bg-slate-800 dark:focus:ring-purple-500/10"
+                    className="h-11 w-full rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-9 pr-9 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-slate-300"
                   />
                   {sidebarSearchQuery && (
                     <button
@@ -1563,14 +1572,23 @@ export function AppUI() {
               <Link
                 to="/app-ui"
                 onClick={() => isMobile && setSidebarOpen(false)}
-                className={`mb-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                className={`group mb-1 flex items-center gap-2.5 rounded-2xl px-2 py-1.5 md:gap-3 md:px-2.5 transition-all ${
                   location.pathname === '/app-ui'
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700'
+                    ? 'bg-white shadow-[0_1px_2px_rgba(15,23,42,.06),0_8px_24px_-12px_rgba(15,23,42,.18)] dark:bg-slate-800'
+                    : 'hover:bg-white dark:hover:bg-slate-800'
                 }`}
               >
-                <LayoutGrid className="h-5 w-5" />
-                <span>Apps</span>
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-[11px] md:h-9 md:w-9 md:rounded-xl transition-colors ${
+                  location.pathname === '/app-ui'
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                    : 'bg-[#e9edf2] text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                }`}>
+                  <LayoutGrid className="h-4 w-4 md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-[13px] font-bold text-slate-900 md:text-sm dark:text-white">Apps</span>
+                  <span className="text-[11px] font-medium text-slate-400 md:text-xs">Todos os módulos</span>
+                </span>
               </Link>
 
               {/* Favoritos — agora colapsado como as categorias; abre no painel lateral.
@@ -1581,18 +1599,23 @@ export function AppUI() {
                 data-section-trigger
                 aria-expanded={openSection === FAVORITES_SECTION}
                 onClick={(event) => openSectionPanel(FAVORITES_SECTION, event.currentTarget)}
-                className={`mb-4 flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
+                className={`group mb-1 flex w-full cursor-pointer items-center gap-2.5 rounded-2xl px-2 py-1.5 md:gap-3 md:px-2.5 text-left transition-all ${
                   openSection === FAVORITES_SECTION
-                    ? 'bg-purple-100 font-semibold text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'
+                    ? 'bg-white shadow-[0_1px_2px_rgba(15,23,42,.06),0_8px_24px_-12px_rgba(15,23,42,.18)] dark:bg-slate-800'
+                    : 'hover:bg-white dark:hover:bg-slate-800'
                 }`}
               >
-                <Star className={`h-5 w-5 shrink-0 ${favoriteQuickAccessItems.length ? 'fill-current text-amber-500' : ''}`} />
-                <span className="flex-1 truncate text-left">Favoritos</span>
-                <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
-                  {favoriteQuickAccessItems.length}
+                {/* Âmbar em hex: as classes amber são repintadas pelo tema (globals.css). */}
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[11px] md:h-9 md:w-9 md:rounded-xl bg-[#fef3c7] text-[#b45309] dark:bg-[#451a03]/50 dark:text-[#fcd34d]">
+                  <Star className="h-4 w-4 fill-current md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
                 </span>
-                <ChevronRight className="h-4 w-4 shrink-0" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-[13px] font-bold text-slate-900 md:text-sm dark:text-white">Favoritos</span>
+                  <span className="text-[11px] font-medium text-slate-400 md:text-xs">
+                    {favoriteQuickAccessItems.length} {favoriteQuickAccessItems.length === 1 ? 'atalho' : 'atalhos'}
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
               </button>
               )}
 
@@ -1614,6 +1637,7 @@ export function AppUI() {
               ) : (
                 /* Menu principal: so as categorias — os itens abrem no painel lateral */
                 <div className="space-y-1">
+                  <p className="px-3 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[.08em] text-slate-400">Módulos</p>
                   {visibleNavigation.map((section) => {
                     const SectionIcon = SECTION_ICONS[section.section] ?? LayoutGrid;
                     const hasActiveItem = section.items.some((item) =>
@@ -1630,22 +1654,30 @@ export function AppUI() {
                         data-section-trigger
                         aria-expanded={isOpen}
                         onClick={(event) => openSectionPanel(section.section, event.currentTarget)}
-                        className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
+                        className={`group flex w-full cursor-pointer items-center gap-2.5 rounded-2xl px-2 py-1.5 md:gap-3 md:px-2.5 text-left transition-all ${
                           hasActiveItem || isOpen
-                            ? 'bg-purple-100 font-semibold text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                            ? 'bg-white shadow-[0_1px_2px_rgba(15,23,42,.06),0_8px_24px_-12px_rgba(15,23,42,.18)] dark:bg-slate-800'
+                            : 'hover:bg-white dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-[11px] md:h-9 md:w-9 md:rounded-xl transition-colors ${
+                          hasActiveItem || isOpen
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                             : section.section === 'Finanças'
                               // Verde leve em hex: as classes emerald/green são
                               // repintadas pelo tema (globals.css) e sairiam escuras.
-                              ? 'bg-[#ecfdf5] text-[#047857] hover:bg-[#d1fae5] dark:bg-[#064e3b]/40 dark:text-[#6ee7b7] dark:hover:bg-[#064e3b]/60'
-                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white'
-                        }`}
-                      >
-                        <SectionIcon className="h-5 w-5 shrink-0" />
-                        <span className="flex-1 truncate text-left">{section.section}</span>
-                        <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
-                          {section.items.length}
+                              ? 'bg-[#dcfce7] text-[#15803d] dark:bg-[#052e16]/60 dark:text-[#86efac]'
+                              : 'bg-[#e9edf2] text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                        }`}>
+                          <SectionIcon className="h-4 w-4 md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
                         </span>
-                        <ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'translate-x-0.5' : ''}`} />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-[13px] font-bold text-slate-900 md:text-sm dark:text-white">{section.section}</span>
+                          <span className="text-[11px] font-medium text-slate-400 md:text-xs">
+                            {hasActiveItem ? 'Você está aqui' : `${section.items.length} ${section.items.length === 1 ? 'tela' : 'telas'}`}
+                          </span>
+                        </span>
+                        <ChevronRight className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isOpen ? 'translate-x-0.5' : ''}`} />
                       </button>
                     );
                   })}
@@ -1654,10 +1686,10 @@ export function AppUI() {
             </nav>
 
             {/* User Profile */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-3 px-3 py-2">
-                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center">
-                  <span className="text-purple-700 dark:text-purple-300 font-semibold">{initials}</span>
+            <div className="p-3 border-t border-[#e8ecf1] dark:border-slate-700">
+              <div className="flex items-center gap-3 rounded-2xl bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(15,23,42,.06)] dark:bg-slate-800">
+                <div className="grid h-8 w-8 place-items-center rounded-[11px] bg-slate-900 md:h-9 md:w-9 md:rounded-xl dark:bg-white">
+                  <span className="text-sm font-bold text-white dark:text-slate-900">{initials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{displayName}</p>
@@ -1973,7 +2005,8 @@ export function AppUI() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-16 flex items-center px-6 gap-4 transition-colors duration-200">
+        {/* Celular: os ícones se distribuem pela barra inteira (justify-between, grupos viram "contents"). */}
+        <header className="relative bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-16 flex items-center px-3 sm:px-6 gap-2 sm:gap-4 max-md:justify-between transition-colors duration-200">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -1981,147 +2014,146 @@ export function AppUI() {
             <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
           </button>
 
-          <Link
-            to="/app-ui"
-            title="Todos os aplicativos"
-            aria-label="Todos os aplicativos"
-            className={`p-2 rounded-lg transition-colors ${
-              location.pathname === '/app-ui'
-                ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
-            }`}
-          >
-            <LayoutGrid className="w-5 h-5" />
-          </Link>
-
-          {/* Search */}
-          <div className="flex flex-1 items-center gap-3 max-w-3xl">
-            <div className="relative flex-1 max-w-lg">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
-              <input
-                ref={topSearchInputRef}
-                type="text"
-                value={topSearchQuery}
-                onChange={(event) => {
-                  setTopSearchQuery(event.target.value);
-                  setRecentSearchesOpen(!event.target.value.trim());
-                }}
-                onFocus={() => {
-                  setRecentSearches(readRecentSearches());
-                  setRecentSearchesOpen(!topSearchQuery.trim());
-                }}
-                // Fecha depois do clique na sugestão, senão o blur derruba a lista antes.
-                onBlur={() => setTimeout(() => setRecentSearchesOpen(false), 150)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    if (!topSearchQuery.trim()) {
-                      return;
-                    }
-                    setRecentSearches(pushRecentSearch(topSearchQuery));
-                    setRecentSearchesOpen(false);
-                    setSearchOpen(true);
-                    return;
-                  }
-
-                  if (event.key === 'Escape') {
-                    setTopSearchQuery('');
-                    setRecentSearchesOpen(false);
-                  }
-                }}
-                placeholder="Buscar membro por nome ou rol..."
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-16 text-sm text-slate-700 transition-colors hover:bg-white hover:border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-400">Ctrl K</span>
-
-              {recentSearchesOpen && recentSearches.length > 0 ? (
-                <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-600 dark:bg-slate-800">
-                  <div className="flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                    <span>Buscas recentes</span>
-                    <button
-                      type="button"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => setRecentSearches(clearRecentSearches())}
-                      className="font-semibold normal-case tracking-normal text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    >
-                      Limpar
-                    </button>
-                  </div>
-                  {recentSearches.map((term) => (
-                    <button
-                      key={term}
-                      type="button"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => {
-                        setTopSearchQuery(term);
-                        setRecentSearches(pushRecentSearch(term));
+          {/* Início da barra: busca, chat e Novo Membro */}
+          <div className="flex items-center gap-1 sm:gap-2 max-md:contents">
+            {/* Busca: aberta no computador. No celular é só a lupa e, aberta,
+                cobre a barra inteira. */}
+            <div
+              className={
+                searchExpanded
+                  ? 'absolute inset-x-0 top-0 z-30 flex h-16 items-center gap-2 bg-white px-3 dark:bg-slate-800 sm:static sm:h-auto sm:bg-transparent sm:px-0 sm:dark:bg-transparent'
+                  : 'relative flex items-center'
+              }
+            >
+              {!searchExpanded && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchExpanded(true);
+                    requestAnimationFrame(() => topSearchInputRef.current?.focus());
+                  }}
+                  title="Buscar membro (Ctrl K)"
+                  aria-label="Buscar membro"
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors sm:hidden"
+                >
+                  <Search className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                </button>
+              )}
+              <div className={searchExpanded ? 'relative flex-1 sm:w-64 sm:flex-none lg:w-80' : 'absolute h-0 w-0 overflow-hidden opacity-0 sm:relative sm:h-auto sm:w-64 sm:overflow-visible sm:opacity-100 lg:w-80'}>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                  <input
+                    ref={topSearchInputRef}
+                    type="text"
+                    value={topSearchQuery}
+                    onChange={(event) => {
+                      setTopSearchQuery(event.target.value);
+                      setRecentSearchesOpen(!event.target.value.trim());
+                    }}
+                    onFocus={() => {
+                      setRecentSearches(readRecentSearches());
+                      setRecentSearchesOpen(!topSearchQuery.trim());
+                    }}
+                    // Fecha depois do clique na sugestão, senão o blur derruba a lista antes.
+                    // Campo vazio volta a ser só a lupa.
+                    onBlur={() => setTimeout(() => {
+                      setRecentSearchesOpen(false);
+                      if (!topSearchInputRef.current?.value.trim()) setSearchExpanded(false);
+                    }, 150)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        if (!topSearchQuery.trim()) {
+                          return;
+                        }
+                        setRecentSearches(pushRecentSearch(topSearchQuery));
                         setRecentSearchesOpen(false);
                         setSearchOpen(true);
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                      <Search className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
-                      <span className="truncate">{term}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+                        return;
+                      }
+
+                      if (event.key === 'Escape') {
+                        setTopSearchQuery('');
+                        setRecentSearchesOpen(false);
+                        setSearchExpanded(false);
+                        topSearchInputRef.current?.blur();
+                      }
+                    }}
+                    placeholder="Buscar membro por nome ou rol..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-16 text-sm text-slate-700 transition-colors hover:bg-white hover:border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-400">Ctrl K</span>
+
+                  {recentSearchesOpen && recentSearches.length > 0 ? (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-600 dark:bg-slate-800">
+                      <div className="flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        <span>Buscas recentes</span>
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => setRecentSearches(clearRecentSearches())}
+                          className="font-semibold normal-case tracking-normal text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                      {recentSearches.map((term) => (
+                        <button
+                          key={term}
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => {
+                            setTopSearchQuery(term);
+                            setRecentSearches(pushRecentSearch(term));
+                            setRecentSearchesOpen(false);
+                            setSearchOpen(true);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
+                        >
+                          <Search className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                          <span className="truncate">{term}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+              </div>
+              {searchExpanded && (
+                <button
+                  type="button"
+                  onClick={() => { setTopSearchQuery(''); setSearchExpanded(false); }}
+                  aria-label="Fechar busca"
+                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 sm:hidden dark:hover:bg-slate-700"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
             </div>
-            {/* Mais button + Novo Membro — hidden on mobile (available in 3-dots drawer) */}
-            <button
-              type="button"
-              onClick={() => setQuickAddOpen(true)}
-              className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-755"
-              title={weather.label}
-            >
-              {renderWeatherIcon()}
-              Mais
-            </button>
-            {/* Novo Membro — visible on sm+ screens, e só para quem pode criar */}
+
+            {/* Chat do campo — na barra, não mais flutuando no canto */}
+            {canView('internal_chat') && <ChatFAB naBarra />}
+
+            {/* Novo Membro — só para quem pode criar */}
             {podeCriarMembro && (
               <Link
                 to="/app-ui/members/new"
-                className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+                title="Novo Membro"
+                aria-label="Novo Membro"
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
-                <UserPlus className="h-4 w-4" />
-                Novo Membro
+                <UserPlus className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </Link>
             )}
-            {/* 3-dots mobile button — visible only on xs screens */}
-            <button
-              type="button"
-              onClick={() => setMobileDrawerOpen(true)}
-              className="inline-flex sm:hidden items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700"
-              title="Mais opções"
-            >
-              <MoreHorizontal className="h-5 w-5" />
-            </button>
           </div>
 
-          {/* Actions — ml-auto garante alinhamento à direita */}
-          <div className="ml-auto flex items-center gap-2">
-            {/* Dark mode toggle — hidden on mobile (available in 3-dots drawer) */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="hidden sm:inline-flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors items-center justify-center"
-              title={darkMode ? 'Modo claro' : 'Modo escuro'}
-            >
-              {darkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-slate-600" />}
-            </button>
+          {/* Caminho de navegação na própria barra, só texto. No celular fica
+              de fora: cada tela mostra o próprio título. */}
+          <div className="hidden min-w-0 flex-1 md:block">
+            <Breadcrumbs trail={breadcrumbTrail} naBarra />
+          </div>
 
-            {/* Central de Ajuda — página com a documentação do sistema e a IA
-                que responde só com base nela. Diferente dos Assistentes
-                (Finanças), que analisam os dados do banco. */}
-            <Link
-              to="/app-ui/help"
-              title="Central de Ajuda"
-              className="inline-flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors items-center justify-center"
-            >
-              <HelpCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            </Link>
-
-            {/* Notifications button — hidden on mobile (available in 3-dots drawer) */}
-            <div className="relative hidden sm:block" ref={notificationRef}>
+          {/* Direita: sininho e o ⋯ (perfil + opções) — ml-auto garante o alinhamento */}
+          <div className="ml-auto flex items-center gap-1 sm:gap-2 max-md:contents">
+            {/* Notifications button */}
+            <div className="relative" ref={notificationRef}>
               <button 
                 onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
                 className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -2211,23 +2243,17 @@ export function AppUI() {
               </AnimatePresence>
             </div>
 
-            {/* Profile button — hidden on mobile (available in 3-dots drawer) */}
-            <div className="relative hidden sm:block" ref={profileRef}>
+            {/* ⋯ — menu único: perfil da pessoa, aplicativos, Mais, ajuda, tema e sair */}
+            <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2 pl-2 pr-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                title="Perfil e opções"
+                aria-label="Perfil e opções"
+                className={`p-2 rounded-lg transition-colors ${
+                  profileOpen ? 'bg-slate-100 dark:bg-slate-700' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
               >
-                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center overflow-hidden">
-                  {userFoto
-                    ? <img src={userFoto} alt={displayName} className="w-8 h-8 rounded-full object-cover" />
-                    : <span className="text-purple-700 dark:text-purple-300 text-xs font-bold">{initials}</span>
-                  }
-                </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">{displayName.split(' ')[0]}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight">{displayRole}</p>
-                </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <MoreHorizontal className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
 
               {/* Profile dropdown */}
@@ -2258,7 +2284,70 @@ export function AppUI() {
                     </div>
 
                     {/* Menu items */}
-                    <div className="p-2 dark:bg-slate-800">
+                    <div className="max-h-[calc(100vh-14rem)] overflow-y-auto p-2 dark:bg-slate-800">
+                      <Link
+                        to="/app-ui"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                      >
+                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                          <LayoutGrid className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">Todos os aplicativos</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Tela inicial dos módulos</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => { setProfileOpen(false); setQuickAddOpen(true); }}
+                        title={weather.label}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                      >
+                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300">
+                          {renderWeatherIcon()}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">Mais</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Atalhos rápidos</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                      {/* Celular: favoritos ficam na gaveta lateral */}
+                      <button
+                        type="button"
+                        onClick={() => { setProfileOpen(false); setMobileDrawerOpen(true); }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group sm:hidden"
+                      >
+                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                          <Star className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">Atalhos favoritos</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Seus atalhos marcados</p>
+                        </div>
+                      </button>
+                      {/* Central de Ajuda — página com a documentação do sistema e a IA
+                          que responde só com base nela. Diferente dos Assistentes
+                          (Finanças), que analisam os dados do banco. */}
+                      <Link
+                        to="/app-ui/help"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                      >
+                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                          <HelpCircle className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">Central de Ajuda</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Documentação e dúvidas</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </Link>
+
+                      <div className="mx-3 my-1 border-t border-slate-100 dark:border-slate-700" />
+
                       <Permissao chave="tela_moldura.app_ui.meu_perfil_ver_e_editar_dados" rotulo="Meu Perfil Ver e editar dados — App UI" herda="tela_moldura.view">
                         <button
                           type="button"
@@ -2578,7 +2667,6 @@ export function AppUI() {
         <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
           {isCurrentPathAllowed ? (
             <>
-              <Breadcrumbs trail={breadcrumbTrail} />
               <Outlet />
             </>
           ) : (
@@ -2788,7 +2876,6 @@ export function AppUI() {
           />
         )}
       </AnimatePresence>
-      {canView('internal_chat') && <ChatFAB />}
     </div>
   );
 }

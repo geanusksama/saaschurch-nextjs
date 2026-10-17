@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
-  DollarSign, Plus, Search, Download, Printer, Eye, AlertCircle,
-  TrendingDown, TrendingUp, Building2, X, ChevronUp, ChevronDown,
-  ChevronsUpDown, ChevronLeft, ChevronRight,
-  Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet, CalendarDays, Share2,
-  BarChart3, ArrowUp, ArrowDown, UserX
+  Search, Printer, Eye, AlertCircle, X, ChevronDown, ChevronLeft, ChevronRight,
+  Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet, Share2,
+  BarChart3, ArrowUp, ArrowDown, UserX, Wallet, ArrowDownLeft, ArrowUpRight,
+  Church, Percent, Pin, PinOff, Heart, Gift, Clock, Activity, MoreHorizontal, CalendarDays, Building2,
 } from 'lucide-react';
 import { DateRangePicker } from '../../components/ui/DateRangePicker';
 import { Link, useNavigate } from 'react-router';
@@ -17,6 +16,7 @@ import { RelatorioModal } from './RelatorioModal';
 import { AnalyticsModal } from './AnalyticsModal';
 import { ChurchPickerModal, type ChurchOption } from './ChurchPickerModal';
 import { Permissao } from '../../lib/permissoes/Permissao';
+import { FONTE_MODELO_FAMILIA, useFonteModelo } from '../../lib/fonteModelo';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -168,175 +168,44 @@ function readStoredUser() {
   try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
 }
 
-function RibbonGroup({
-  label,
-  children,
-  className = '',
-  bodyClassName = '',
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-  bodyClassName?: string;
-}) {
-  return (
-    <div className={`flex flex-col items-center min-w-fit ${className}`.trim()}>
-      <div className={`flex w-full items-end gap-1 px-1 ${bodyClassName}`.trim()}>{children}</div>
-      {/* Respiro entre os botões e o nome do grupo: colado, ficava apertado. */}
-      <div className="mt-1.5 text-[9px] uppercase tracking-[0.18em] text-slate-600 whitespace-nowrap leading-tight">{label}</div>
-    </div>
-  );
-}
-
-function RibbonDivider() {
-  return <div className="hidden md:block w-px self-stretch bg-slate-200 mx-1" />;
-}
-
-function RibbonField({
-  label,
-  icon,
-  children,
-  className = '',
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`flex flex-col gap-0.5 px-1 py-0.5 ${className}`.trim()}>
-      <div className="flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-slate-600">
-        {icon ? <span className="text-slate-500">{icon}</span> : null}
-        <span>{label}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function RibbonButton({
-  icon,
-  label,
-  title,
+/** Item do menu "Relatórios" (mesmas ações dos botões da faixa antiga). */
+function ItemMenu({
+  icone,
+  rotulo,
+  descricao,
   onClick,
   disabled,
-  tone = 'default',
-  size = 'sm',
-  className = '',
 }: {
-  icon?: React.ReactNode;
-  label?: string;
-  title: string;
-  onClick?: (e: React.MouseEvent) => void;
+  icone: React.ReactNode;
+  rotulo: string;
+  descricao: string;
+  onClick: () => void;
   disabled?: boolean;
-  tone?: 'default' | 'primary' | 'danger' | 'blue';
-  size?: 'sm' | 'lg';
-  className?: string;
 }) {
-  const baseTone = activeTone(tone);
-
-  if (size === 'lg') {
-    return (
-      <button
-        type="button"
-        title={title}
-        onClick={onClick}
-        disabled={disabled}
-        className={`flex min-h-[42px] min-w-[44px] shrink-0 flex-col items-center justify-center gap-0 rounded px-2 py-0.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${baseTone} ${className}`.trim()}
-      >
-        {icon ? <span className="flex items-center justify-center">{icon}</span> : null}
-        {label ? <span className="mt-0.5 max-w-[60px] text-center text-[10px] leading-tight">{label}</span> : null}
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
-      title={title}
       onClick={onClick}
       disabled={disabled}
-      className={`flex h-7 shrink-0 items-center justify-center gap-1 rounded px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${baseTone} ${className}`.trim()}
+      className="flex items-center gap-3 rounded-xl p-2.5 text-left hover:bg-[#f4f6f8] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent dark:hover:bg-slate-700"
     >
-      {icon ? <span className="flex items-center justify-center">{icon}</span> : null}
-      {label ? <span className="whitespace-nowrap">{label}</span> : null}
+      <span className="grid h-9 w-9 flex-none place-items-center rounded-[11px] bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">{icone}</span>
+      <span className="flex flex-col gap-px">
+        <span className="text-sm font-bold text-slate-900 dark:text-white">{rotulo}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{descricao}</span>
+      </span>
     </button>
   );
 }
 
-function activeTone(tone: 'default' | 'primary' | 'danger' | 'blue') {
-  if (tone === 'primary') return 'text-slate-700 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700';
-  if (tone === 'danger') return 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30';
-  if (tone === 'blue') return 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50';
-  return 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700';
-}
+/** Preferência do usuário (por navegador): totais fixados na tela. */
+const TOTAIS_FIXOS_KEY = 'livro_caixa_totais_fixos';
 
 /** Variação percentual atual x mês anterior; null quando não há base de comparação. */
 function calcDelta(cur: number, prev: number | undefined): number | null {
   if (prev === undefined) return null;
   if (prev === 0) return cur === 0 ? 0 : 100;
   return ((cur - prev) / Math.abs(prev)) * 100;
-}
-
-function SummaryPanel({
-  label,
-  value,
-  tone = 'neutral',
-  curNum,
-  prevNum,
-  onClick,
-  alert = false,
-}: {
-  label: string;
-  value: string;
-  tone?: 'neutral' | 'positive' | 'negative';
-  curNum?: number;
-  prevNum?: number;
-  onClick?: () => void;
-  alert?: boolean;
-}) {
-  const labelStyle = tone === 'positive'
-    ? { color: '#15803d' }
-    : tone === 'negative'
-      ? { color: '#b91c1c' }
-      : undefined;
-
-  const valStyle = tone === 'positive'
-    ? { color: '#16a34a', fontWeight: 'bold' as const }
-    : tone === 'negative'
-      ? { color: '#dc2626', fontWeight: 'bold' as const }
-      : { fontWeight: '700' as const };
-
-  const delta = curNum !== undefined ? calcDelta(curNum, prevNum) : null;
-  const up = (delta ?? 0) >= 0;
-
-  return (
-    <div
-      onClick={onClick}
-      className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 ${
-        alert
-          ? 'border-amber-300 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-950/40'
-          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
-      } ${onClick ? 'cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-colors' : ''}`}
-    >
-      {/* metade 1: rótulo + valor */}
-      <div className="min-w-0">
-        <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400" style={labelStyle}>{label}</div>
-        <div className="text-[13px] leading-tight truncate" style={valStyle}>{value}</div>
-      </div>
-      {/* metade 2: variação vs mês anterior */}
-      {delta !== null && (
-        <div
-          className="flex items-center gap-0.5 text-[10px] font-bold shrink-0"
-          style={{ color: up ? '#16a34a' : '#dc2626' }}
-          title="Variação em relação ao mês anterior"
-        >
-          {up ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />}
-          {Math.abs(delta).toFixed(0)}%
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -359,14 +228,6 @@ type SortDir = 'asc' | 'desc';
 // seletor, e duas cópias dariam dois históricos para o mesmo usuário.
 type RegionalOption = { id: string; name: string; campoId?: string };
 
-// ─── Sort helper ─────────────────────────────────────────────────────────────
-function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
-  if (col !== sortKey) return <ChevronsUpDown className="w-3 h-3 text-slate-300 inline ml-1" />;
-  return sortDir === 'asc'
-    ? <ChevronUp className="w-3 h-3 text-slate-600 inline ml-1" />
-    : <ChevronDown className="w-3 h-3 text-slate-600 inline ml-1" />;
-}
-
 // ─── Pagination helper ───────────────────────────────────────────────────────
 function Pagination({
   page, totalPages, total, pageSize, onPage
@@ -385,26 +246,26 @@ function Pagination({
     pages.push(totalPages);
   }
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eef2f6] px-3.5 py-3 text-[13px] text-slate-500 md:px-5 dark:border-slate-800 dark:text-slate-400">
       <span>Exibindo {start}–{end} de {total} registros</span>
       <div className="flex items-center gap-1">
         <button onClick={() => onPage(page - 1)} disabled={page === 1}
-          className="p-1.5 rounded hover:bg-slate-200 disabled:opacity-40">
+          className="grid h-[34px] w-[34px] place-items-center rounded-[10px] border border-slate-200 bg-white hover:border-slate-900 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900">
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
         {pages.map((p, i) => p === '...'
           ? <span key={`dots-${i}`} className="px-1">…</span>
           : <button key={`page-${p}`} onClick={() => onPage(p as number)}
-              className={`px-2.5 py-1 rounded font-medium transition-all ${
+              className={`h-[34px] min-w-[34px] rounded-[10px] px-2 font-bold transition-all ${
                 page === p
-                  ? 'bg-violet-500 text-white shadow-md shadow-violet-200 ring-2 ring-violet-300'
-                  : 'hover:bg-slate-200 text-slate-600'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}>
               {p}
             </button>
         )}
         <button onClick={() => onPage(page + 1)} disabled={page === totalPages}
-          className="p-1.5 rounded hover:bg-slate-200 disabled:opacity-40">
+          className="grid h-[34px] w-[34px] place-items-center rounded-[10px] border border-slate-200 bg-white hover:border-slate-900 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900">
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -1065,8 +926,15 @@ export default function Cashbook() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
-  // Summary accordion (mobile only – collapsed by default)
-  const [summaryOpen, setSummaryOpen] = useState(false);
+  // Interface: menu Relatórios, painel de Totais (fixável) e ⋯ do lançamento no celular.
+  const [relatoriosAberto, setRelatoriosAberto] = useState(false);
+  const [totaisAberto, setTotaisAberto] = useState(false);
+  const [totaisFixos, setTotaisFixos] = useState(() => {
+    // Sem escolha salva, os totais ficam à vista — como antes, quando os cards eram fixos.
+    try { return localStorage.getItem(TOTAIS_FIXOS_KEY) !== '0'; } catch { return true; }
+  });
+  const [menuLinha, setMenuLinha] = useState<Row | null>(null);
+  useFonteModelo();
 
   /**
    * Contas a pagar em aberto que vencem dentro do período consultado.
@@ -1337,522 +1205,838 @@ export default function Cashbook() {
       );
   }, [rows, prevDizimoMembers]);
 
-  function Th({ col, label }: { col: SortKey; label: string }) {
-    return (
-      <th
-        className="px-4 py-3 text-left text-xs font-semibold text-slate-500 cursor-pointer select-none hover:text-slate-700 whitespace-nowrap"
-        onClick={() => handleSort(col)}
-      >
-        {label}<SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />
-      </th>
-    );
+  const periodoLabel = (() => {
+    const ini = new Date(dataInicio + 'T12:00:00');
+    const fim = new Date(dataFim + 'T12:00:00');
+    const ultimoDia = new Date(ini.getFullYear(), ini.getMonth() + 1, 0).getDate();
+    const mesCheio = ini.getDate() === 1 && fim.getFullYear() === ini.getFullYear() && fim.getMonth() === ini.getMonth() && fim.getDate() === ultimoDia;
+    if (mesCheio) {
+      const nome = ini.toLocaleDateString('pt-BR', { month: 'long' });
+      return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} ${ini.getFullYear()}`;
+    }
+    return `${ini.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')}`;
+  })();
+
+  // ── Interface (modelo "Livro Caixa v2") ─────────────────────────────────
+  // Só apresentação: consulta, filtros, totais e ações são os mesmos de antes.
+  const temDados = searched && !loading && rows.length > 0;
+  const comPrev = prevMonthRows.length > 0;
+
+  /** Desloca o período para o mês anterior/seguinte ao do início (mês cheio). */
+  function deslocarMes(delta: number) {
+    const base = new Date(dataInicio + 'T12:00:00');
+    const ini = new Date(base.getFullYear(), base.getMonth() + delta, 1);
+    const fim = new Date(ini.getFullYear(), ini.getMonth() + 1, 0);
+    const f = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setDataInicio(f(ini));
+    setDataFim(f(fim));
   }
 
+  function alternarFixarTotais() {
+    const proximo = !totaisFixos;
+    setTotaisFixos(proximo);
+    setTotaisAberto(false);
+    try { localStorage.setItem(TOTAIS_FIXOS_KEY, proximo ? '1' : '0'); } catch { /* sem armazenamento: vale só nesta visita */ }
+  }
+
+  const ordenavel = (col: SortKey, label: string, extra = '') => (
+    <button
+      type="button"
+      onClick={() => handleSort(col)}
+      className={`flex items-center gap-1 whitespace-nowrap text-left ${sortKey === col ? 'text-slate-900 dark:text-white' : ''} ${extra}`}
+    >
+      {label}
+      <span className="text-[11px]">{sortKey === col ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+    </button>
+  );
+
+  const deltaBadge = (cur: number, prev: number, escuro = false) => {
+    if (!comPrev) return null;
+    const d = calcDelta(cur, prev);
+    if (d === null) return null;
+    const sobe = d >= 0;
+    return (
+      <span
+        title="Variação em relação ao mês anterior"
+        className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${
+          escuro ? (sobe ? 'text-[#86efac]' : 'text-[#fca5a5]') : sobe ? 'text-[#15803d]' : 'text-[#b91c1c]'
+        }`}
+      >
+        {sobe ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+        {Math.abs(d).toFixed(0)}%
+      </span>
+    );
+  };
+
+  const somaRD = (totalReceita + totalDespesa) || 1;
+
+  const cardTotais = (props: { titulo: string; valor: string; sub: React.ReactNode; icone: React.ReactNode; tom: string; onClick?: () => void; delta?: React.ReactNode; alerta?: boolean }) => {
+    const conteudo = (
+      <>
+        <span className="flex items-center gap-2.5">
+          <span className={`grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] ${props.tom}`}>{props.icone}</span>
+          <span className="min-w-0 truncate text-[13px] font-bold text-slate-600 dark:text-slate-300">{props.titulo}</span>
+          {props.delta ? <span className="ml-auto flex-none">{props.delta}</span> : null}
+        </span>
+        <span className="max-w-full truncate text-[22px] font-extrabold leading-[1.1] tracking-[-.02em]">{props.valor}</span>
+        <span className={`text-xs font-semibold leading-snug ${props.alerta ? 'text-[#b45309]' : 'text-slate-500 dark:text-slate-400'}`}>{props.sub}</span>
+      </>
+    );
+    const classe = `flex min-w-0 flex-col gap-2.5 rounded-[18px] border-[1.5px] bg-white p-4 text-left dark:bg-slate-800 ${
+      props.alerta ? 'border-[#fde68a]' : 'border-[#e8ecf1] dark:border-slate-700'
+    }`;
+    return props.onClick ? (
+      <button type="button" onClick={props.onClick} className={`${classe} transition-colors hover:border-slate-900 dark:hover:border-slate-300`}>{conteudo}</button>
+    ) : (
+      <div className={classe}>{conteudo}</div>
+    );
+  };
+
+  const chipTotal = (props: { rotulo: string; valor: string; icone: React.ReactNode; tom: string; corValor?: string; escuro?: boolean; ativo?: boolean; onClick?: () => void }) => {
+    const conteudo = (
+      <>
+        <span className={`grid h-8 w-8 flex-none place-items-center rounded-[10px] ${props.tom}`}>{props.icone}</span>
+        <span className="flex flex-col">
+          <span className={`whitespace-nowrap text-[11px] font-semibold ${props.escuro ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>{props.rotulo}</span>
+          <span className={`whitespace-nowrap text-[15px] font-extrabold tracking-[-.01em] ${props.corValor ?? (props.escuro ? 'text-white' : '')}`}>{props.valor}</span>
+        </span>
+      </>
+    );
+    const classe = `flex flex-[1_0_auto] items-center gap-2.5 rounded-[14px] border-[1.5px] py-[7px] pl-[7px] pr-3.5 text-left ${
+      props.escuro
+        ? 'border-slate-900 bg-slate-900 dark:border-slate-700 dark:bg-slate-950'
+        : `${props.ativo ? 'border-slate-900 dark:border-slate-300' : 'border-[#e8ecf1] dark:border-slate-700'} bg-white dark:bg-slate-800`
+    }`;
+    return props.onClick ? (
+      <button type="button" onClick={props.onClick} className={`${classe} transition-colors hover:border-slate-900 dark:hover:border-slate-300`}>{conteudo}</button>
+    ) : (
+      <div className={classe}>{conteudo}</div>
+    );
+  };
+
+  const filtrarTipo = (tipo: 'all' | 'RECEITA' | 'DESPESA') => { setFilterType(tipo); setPage(1); setTableSearch(''); };
+
   return (
-    <div className="flex min-h-[calc(100vh-64px)] flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <div className="px-4 pt-1.5 sm:px-6">
-          <div className="flex items-center justify-between gap-3 overflow-x-auto text-sm text-slate-500 dark:text-slate-400">
-            <div className="flex min-w-max items-end gap-1">
-              <span className="px-4 py-1 font-semibold text-slate-700 dark:text-slate-200">Livro Caixa</span>
-            </div>
+    <div className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100" style={{ fontFamily: FONTE_MODELO_FAMILIA }}>
+      <style>{'@keyframes lcSlide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}@keyframes lcPop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}'}</style>
+
+      {/* Cabeçalho */}
+      <header className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-800 dark:text-slate-200">
+            <Wallet className="h-5 w-5" strokeWidth={1.8} />
+          </div>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Financeiro</span>
+            <span className="whitespace-nowrap text-[17px] font-bold">Livro Caixa</span>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/app-ui/finance/expense/new"
+            title="Nova despesa"
+            className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#fee2e2] px-[11px] text-sm font-bold text-[#b91c1c] hover:bg-[#fecaca] md:px-3.5"
+          >
+            <ArrowDownLeft className="h-4 w-4" strokeWidth={2.4} />
+            <span className="hidden md:inline">Nova despesa</span>
+          </Link>
+          <Link
+            to="/app-ui/finance/income/new"
+            title="Nova receita"
+            className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#15803d] px-[11px] text-sm font-bold text-white hover:bg-[#166534] md:px-3.5"
+          >
+            <ArrowUpRight className="h-4 w-4" strokeWidth={2.4} />
+            <span className="hidden md:inline">Nova receita</span>
+          </Link>
+        </div>
+      </header>
 
-        <div className="border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 px-3 py-1.5 sm:px-4">
-          <div className="flex flex-wrap items-stretch gap-x-2 gap-y-1.5 md:items-center md:overflow-x-auto">
-            <RibbonGroup
-              label="Escopo"
-              className="w-full md:w-auto flex-1 min-w-[260px]"
-              bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-full md:items-center md:gap-1 md:px-1"
-            >
-              {canChooseChurch ? (
-                <RibbonField label="Igreja" icon={<Building2 className="h-3 w-3" />} className="col-span-2 flex-1 min-w-[260px] w-full">
-                  <button
-                    type="button"
-                    onClick={() => setChurchPickerOpen(true)}
-                    className="flex h-8 w-full items-center gap-2 rounded border border-slate-300 bg-white px-2 text-left text-xs text-slate-700 outline-none transition-colors hover:border-blue-300"
-                  >
-                    <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                    <span className={`truncate ${selectedChurch ? 'font-medium text-slate-800' : 'text-slate-500'}`}>
-                      {selectedChurch ? selectedChurch.name : 'Consultar por Igreja'}
-                    </span>
-                    {selectedChurch ? (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={e => { e.stopPropagation(); setSelectedChurch(null); }}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSelectedChurch(null);
-                          }
-                        }}
-                        className="ml-auto flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </span>
-                    ) : <Search className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-300" />}
-                  </button>
-                </RibbonField>
-              ) : null}
-
-              {isChurchProfile && selectedChurch ? (
-                <RibbonField label="Igreja" icon={<Building2 className="h-3 w-3" />} className="col-span-2 min-w-[220px]">
-                  <div className="flex h-8 items-center gap-2 rounded border border-slate-200 bg-white px-2 text-xs text-slate-700">
-                    <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                    <span className="truncate font-medium">{selectedChurch.name}</span>
-                  </div>
-                </RibbonField>
-              ) : null}
-            </RibbonGroup>
-
-            <RibbonDivider />
-
-            <RibbonGroup label="Período">
-              <RibbonField label="Intervalo de datas">
-                <DateRangePicker
-                  from={dataInicio}
-                  to={dataFim}
-                  onChangeFrom={setDataInicio}
-                  onChangeTo={setDataFim}
-                />
-              </RibbonField>
-            </RibbonGroup>
-
-            <RibbonDivider />
-
-            <RibbonGroup
-              label="Consultas"
-              className="w-full md:w-auto"
-              bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-auto md:items-center md:gap-1 md:px-1"
-            >
-              <RibbonButton
-                size="lg"
-                title="Consultar lançamentos por igreja e período"
-                icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                label={loading ? 'Consultando' : 'Consultar Livro Caixa'}
-                onClick={() => { void buscar(); }}
-                disabled={loading}
-                className="w-full md:w-auto !bg-green-600 !text-white hover:!bg-green-700 shadow-md"
-              />
-              <RibbonButton
-                size="lg"
-                title="Consultar lançamento por categoria, nome, ROL ou igreja"
-                icon={<Filter className="h-4 w-4" />}
-                label="Consultar Lançamento"
-                onClick={() => setShowSearchModal(true)}
-                className="w-full md:w-auto !bg-orange-500 !text-white hover:!bg-orange-600 shadow-md"
-              />
-            </RibbonGroup>
-
-            <RibbonDivider />
-
-            <RibbonGroup
-              label="Relatórios"
-              className="w-full md:w-auto"
-              bodyClassName="grid w-full grid-cols-3 gap-2 px-0 md:flex md:w-auto md:gap-1 md:px-1"
-            >
-              <RibbonButton
-                size="lg"
-                title="Imprimir relatório"
-                icon={<Printer className="h-4 w-4" />}
-                label="Imprimir"
-                onClick={() => { if (searched && rows.length > 0) { setRelatorioAutoShare(false); setShowRelatorio(true); } }}
-                disabled={!searched || rows.length === 0}
-                className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
-              />
-              <RibbonButton
-                size="lg"
-                title="Compartilhar relatório"
-                icon={<Share2 className="h-4 w-4" />}
-                label="Compartilhar"
-                onClick={() => { if (searched && rows.length > 0) { setRelatorioAutoShare(true); setShowRelatorio(true); } }}
-                disabled={!searched || rows.length === 0}
-                className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
-              />
-              <RibbonButton
-                size="lg"
-                title="Exportar para Excel"
-                icon={
-                  <span className="relative flex items-center justify-center">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    <span className="absolute -bottom-1 -right-1 rounded-[2px] bg-emerald-500 px-[2px] text-[6px] font-bold leading-none text-white">XLS</span>
-                  </span>
-                }
-                label="Exportar"
-                onClick={() => exportToExcel(sorted, dataInicio, dataFim)}
-                disabled={!searched || sorted.length === 0}
-                className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
-              />
-            </RibbonGroup>
-
-            <RibbonDivider />
-
-            <RibbonGroup
-              label="Análise"
-              className="w-full md:w-auto"
-              bodyClassName="grid w-full grid-cols-1 gap-2 px-0 md:flex md:w-auto md:gap-1 md:px-1"
-            >
-              <RibbonButton
-                size="lg"
-                title="Visualizar gráficos analíticos"
-                icon={<BarChart3 className="h-4 w-4" />}
-                label="Gráficos"
-                onClick={() => setShowAnalyticsModal(true)}
-                disabled={!searched || rows.length === 0}
-                className="min-w-[88px] w-full md:w-auto bg-slate-900 text-white hover:!bg-slate-700 shadow-md"
-              />
-            </RibbonGroup>
-
-            <RibbonDivider />
-
-            <RibbonGroup
-              label="Lançamentos"
-              className="w-full md:w-auto"
-              bodyClassName="grid w-full grid-cols-2 gap-2 px-0 md:flex md:w-auto md:gap-1 md:px-1"
-            >
-              <Link to="/app-ui/finance/income/new" className="w-full shrink-0 md:w-auto">
-                <span className="flex min-h-[42px] min-w-[80px] w-full flex-col items-center justify-center gap-0 rounded px-3 py-0.5 text-xs text-white bg-[#059669] hover:bg-[#047857] shadow-sm transition-colors md:w-auto">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="text-center text-[10px] leading-tight font-semibold">Nova Receita</span>
-                </span>
-              </Link>
-              <Link to="/app-ui/finance/expense/new" className="w-full shrink-0 md:w-auto">
-                <span className="flex min-h-[42px] min-w-[80px] w-full flex-col items-center justify-center gap-0 rounded px-3 py-0.5 text-xs text-white bg-red-600 hover:bg-red-700 shadow-sm transition-colors md:w-auto">
-                  <TrendingDown className="h-4 w-4" />
-                  <span className="text-center text-[10px] leading-tight font-semibold">Nova Despesa</span>
-                </span>
-              </Link>
-            </RibbonGroup>
-          </div>
-
-          {/* ── Summary accordion (mobile: collapsible / desktop: always visible) ── */}
-          <div className="mt-1.5">
-            {/* Toggle button – visible only on mobile */}
+      <div className="box-border flex w-full flex-1 flex-col gap-2.5 px-2.5 pb-8 pt-2.5 md:px-7 md:pt-3.5">
+        {/* Igreja, período e ações */}
+        <div className="relative flex flex-wrap items-stretch gap-2">
+          {canChooseChurch ? (
             <button
               type="button"
-              onClick={() => setSummaryOpen(o => !o)}
-              className="md:hidden w-full flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition-colors"
+              onClick={() => setChurchPickerOpen(true)}
+              className="relative flex h-12 min-w-[220px] flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-3 text-left text-sm font-semibold hover:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-300"
             >
-              {summaryOpen ? (
-                <><ChevronUp className="h-3.5 w-3.5" /><span>Ocultar resumo</span></>
+              <Church className="h-[18px] w-[18px] flex-none text-slate-500" strokeWidth={1.8} />
+              <span className={`flex-1 truncate ${selectedChurch ? '' : 'font-medium text-slate-500 dark:text-slate-400'}`}>
+                {selectedChurch ? selectedChurch.name : 'Todas as igrejas · escolher'}
+              </span>
+              {selectedChurch ? (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Tirar igreja escolhida"
+                  onClick={e => { e.stopPropagation(); setSelectedChurch(null); }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedChurch(null);
+                    }
+                  }}
+                  className="grid h-7 w-7 flex-none place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+                >
+                  <X className="h-4 w-4" />
+                </span>
               ) : (
-                <><ChevronDown className="h-3.5 w-3.5" /><span>Ver resumo</span></>
+                <ChevronDown className="h-4 w-4 flex-none text-slate-500" />
               )}
             </button>
+          ) : null}
 
-            {/* Grid – always visible on md+, toggled on mobile */}
-            <div className={`grid gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 ${
-              summaryOpen ? 'mt-2' : 'hidden'
-            } md:grid md:mt-2`}>
-              <SummaryPanel label="Líquido"   value={`R$ ${fmt(liquido)}`}      tone={liquido >= 0 ? 'positive' : 'negative'} curNum={liquido} prevNum={prevMonthRows.length ? prevLiquido : undefined} />
-              <SummaryPanel label="Receitas"  value={`R$ ${fmt(totalReceita)}`} tone="positive" curNum={totalReceita} prevNum={prevMonthRows.length ? prevTotalReceita : undefined} />
-              <SummaryPanel label="Despesas"  value={`R$ ${fmt(totalDespesa)}`} tone="negative" curNum={totalDespesa} prevNum={prevMonthRows.length ? prevTotalDespesa : undefined} />
-              <SummaryPanel label="Mov."      value={`${totalMovimentos}`}      curNum={totalMovimentos} prevNum={prevMonthRows.length ? prevMovimentos : undefined} />
-              {/* Contas a pagar com vencimento no período. O card fica sempre
-                  visível (zerado quando não há pendência); o projetado só
-                  aparece quando há algo a descontar. */}
-              <SummaryPanel
-                label="A pagar"
-                value={`R$ ${fmt(aPagarAberto)}`}
-                tone={aPagarAberto > 0 ? 'negative' : 'neutral'}
-                onClick={() => navigate('/app-ui/finance/contas-a-pagar')}
-              />
-              {aPagarAberto > 0 && (
-                <SummaryPanel
-                  label="Líquido projetado"
-                  value={`R$ ${fmt(liquidoProjetado)}`}
-                  tone={liquidoProjetado >= 0 ? 'positive' : 'negative'}
-                />
-              )}
-              <SummaryPanel label="Dízimos"   value={`R$ ${fmt(totalDizimos)}`} tone="positive" curNum={totalDizimos} prevNum={prevMonthRows.length ? prevTotalDizimos : undefined} />
-              <SummaryPanel label="Ofertas"   value={`R$ ${fmt(totalOfertas)}`} tone="positive" curNum={totalOfertas} prevNum={prevMonthRows.length ? prevTotalOfertas : undefined} />
-              <SummaryPanel label="Qtd Rec."  value={`${qtdReceitas}`}          tone="positive" curNum={qtdReceitas} prevNum={prevMonthRows.length ? prevQtdReceitas : undefined} />
-              <SummaryPanel label="Qtd Desp." value={`${qtdDespesas}`}          tone="negative" curNum={qtdDespesas} prevNum={prevMonthRows.length ? prevQtdDespesas : undefined} />
-              <SummaryPanel label="Qtd Díz."  value={`${qtdDizimos}`}           tone="positive" curNum={qtdDizimos} prevNum={prevMonthRows.length ? prevQtdDizimos : undefined} />
-              <SummaryPanel label="Qtd Ofe."  value={`${qtdOfertas}`}           tone="positive" curNum={qtdOfertas} prevNum={prevMonthRows.length ? prevQtdOfertas : undefined} />
-              {/* Card novo: membros que dizimaram mês passado e ainda não neste */}
-              <SummaryPanel
-                label="Díz. faltando"
-                value={`${dizimoMembrosFaltando.length}`}
-                alert={dizimoMembrosFaltando.length > 0}
-                onClick={() => setShowDizimosFaltando(true)}
-              />
+          {isChurchProfile && selectedChurch ? (
+            <div className="flex h-12 min-w-[220px] flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-3 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900">
+              <Church className="h-[18px] w-[18px] flex-none text-slate-500" strokeWidth={1.8} />
+              <span className="truncate">{selectedChurch.name}</span>
             </div>
+          ) : null}
+
+          <div className="flex w-full min-w-0 items-center gap-0.5 rounded-[14px] md:w-[340px] md:flex-none border-[1.5px] border-slate-200 bg-white p-[3px] dark:border-slate-700 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => deslocarMes(-1)}
+              title="Mês anterior"
+              className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <ChevronLeft className="h-[17px] w-[17px]" strokeWidth={2.2} />
+            </button>
+            <DateRangePicker
+              from={dataInicio}
+              to={dataFim}
+              onChangeFrom={setDataInicio}
+              onChangeTo={setDataFim}
+              className="min-w-0 flex-1"
+              triggerClassName="flex h-[38px] w-full min-w-0 items-center justify-center gap-1.5 rounded-[11px] px-2 text-center text-[13px] font-bold text-slate-900 outline-none hover:bg-slate-50 dark:text-white dark:hover:bg-slate-800 [&>svg]:hidden"
+            />
+            <button
+              type="button"
+              onClick={() => deslocarMes(1)}
+              title="Próximo mês"
+              className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <ChevronRight className="h-[17px] w-[17px]" strokeWidth={2.2} />
+            </button>
           </div>
 
-          {error ? (
-            <div className="mt-3 flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          ) : null}
-
-          {truncado ? (
-            <div className="mt-3 flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>
-                Período muito amplo: a consulta parou em {MAX_LINHAS.toLocaleString('pt-BR')} lançamentos
-                e <strong>há mais no período</strong>. Os totais acima somam apenas o que foi carregado —
-                reduza o intervalo de datas ou escolha uma igreja para fechar os números.
-              </span>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col px-4 py-4 sm:px-6">
-      {!searched && (
-        <div className="flex flex-1 flex-col justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
-          <div className="mx-auto flex max-w-xl flex-col items-center text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-              <Search className="h-7 w-7 text-slate-400 dark:text-slate-500" />
-            </div>
-            <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">Nenhum lançamento exibido</p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Use a faixa superior para definir igreja e período, depois execute a consulta para carregar os lançamentos.
-            </p>
-            <p className="mt-3 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
-              Período preparado: {new Date(dataInicio + 'T12:00:00').toLocaleDateString('pt-BR')} até {new Date(dataFim + 'T12:00:00').toLocaleDateString('pt-BR')}
-            </p>
+          <div className="ml-auto flex flex-none gap-2">
+            {/* Ordem: Consultar, Relatórios, Buscar lançamento, Totais, Gráficos. */}
             <button
               type="button"
               onClick={() => { void buscar(); }}
               disabled={loading}
-              className="mt-5 inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-60"
+              title="Consultar lançamentos por igreja e período"
+              className="flex h-12 items-center gap-2 rounded-[14px] bg-slate-900 px-3.5 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60 md:px-4 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <Search className="h-4 w-4" />
-              Consultar agora
+              {loading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Search className="h-[18px] w-[18px]" strokeWidth={2.2} />}
+              <span className="hidden md:inline">{loading ? 'Consultando...' : 'Consultar'}</span>
+            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setRelatoriosAberto(aberto => !aberto)}
+                title="Relatórios"
+                className="flex h-12 items-center gap-2 whitespace-nowrap rounded-[14px] bg-slate-900 px-3.5 text-sm font-bold text-white hover:bg-slate-800 md:px-4 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                <Printer className="h-4 w-4" strokeWidth={2} />
+                <span className="hidden md:inline">Relatórios</span>
+                <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </button>
+              {relatoriosAberto && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setRelatoriosAberto(false)} />
+                  <div className="absolute right-0 top-[56px] z-40 flex w-[260px] animate-[lcPop_.18s_ease] flex-col gap-0.5 rounded-[18px] border border-[#e8ecf1] bg-white p-2 shadow-[0_20px_40px_-16px_rgba(15,23,42,.25)] dark:border-slate-700 dark:bg-slate-800">
+                    <ItemMenu
+                      icone={<Printer className="h-[18px] w-[18px]" strokeWidth={1.9} />}
+                      rotulo="Imprimir"
+                      descricao={searched && rows.length > 0 ? 'Relatório do período consultado' : 'Consulte o caixa primeiro'}
+                      disabled={!searched || rows.length === 0}
+                      onClick={() => { setRelatoriosAberto(false); setRelatorioAutoShare(false); setShowRelatorio(true); }}
+                    />
+                    <ItemMenu
+                      icone={<Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />}
+                      rotulo="Compartilhar"
+                      descricao={searched && rows.length > 0 ? 'Enviar o relatório do período' : 'Consulte o caixa primeiro'}
+                      disabled={!searched || rows.length === 0}
+                      onClick={() => { setRelatoriosAberto(false); setRelatorioAutoShare(true); setShowRelatorio(true); }}
+                    />
+                    <ItemMenu
+                      icone={<FileSpreadsheet className="h-[18px] w-[18px]" strokeWidth={1.9} />}
+                      rotulo="Exportar"
+                      descricao={searched && sorted.length > 0 ? 'Planilha Excel (.xlsx) da lista' : 'Consulte o caixa primeiro'}
+                      disabled={!searched || sorted.length === 0}
+                      onClick={() => { setRelatoriosAberto(false); exportToExcel(sorted, dataInicio, dataFim); }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSearchModal(true)}
+              title="Consultar lançamento por categoria, nome, ROL ou igreja"
+              className="flex h-12 items-center gap-2 rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-sm font-semibold hover:border-slate-900 md:px-4 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-300"
+            >
+              <Filter className="h-[18px] w-[18px]" strokeWidth={2} />
+              <span className="hidden min-[1800px]:inline">Buscar lançamento</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTotaisAberto(aberto => !aberto)}
+              title="Totais"
+              disabled={!searched}
+              className={`flex h-12 items-center gap-2 rounded-[14px] border-[1.5px] px-3.5 text-sm font-semibold disabled:opacity-50 md:px-4 ${
+                totaisAberto || totaisFixos
+                  ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
+                  : 'border-slate-200 bg-white text-slate-900 hover:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white'
+              }`}
+            >
+              <Percent className="h-[18px] w-[18px]" strokeWidth={2} />
+              <span className="hidden md:inline">Totais</span>
+              {searched && (
+                <span
+                  className={`hidden font-extrabold md:inline ${
+                    totaisAberto || totaisFixos
+                      ? liquido >= 0 ? 'text-[#86efac] dark:text-[#15803d]' : 'text-[#fca5a5] dark:text-[#b91c1c]'
+                      : liquido >= 0 ? 'text-[#15803d]' : 'text-[#b91c1c]'
+                  }`}
+                >
+                  R$ {fmt(liquido)}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAnalyticsModal(true)}
+              disabled={!searched || rows.length === 0}
+              title="Visualizar gráficos analíticos"
+              className="flex h-12 items-center gap-2 rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-sm font-semibold hover:border-slate-900 disabled:opacity-50 md:px-4 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-300"
+            >
+              <BarChart3 className="h-[18px] w-[18px]" strokeWidth={2} />
+              <span className="hidden md:inline">Gráficos</span>
             </button>
           </div>
-        </div>
-      )}
 
-      {/* ── Loading ── */}
-      {loading && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-16 text-center shadow-sm dark:shadow-none">
-          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Consultando lancamentos...</p>
-        </div>
-      )}
-
-      {/* ── Sem resultados ── */}
-      {searched && !loading && rows.length === 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center shadow-sm dark:shadow-none">
-          <DollarSign className="w-10 h-10 text-slate-200 dark:text-slate-700 mx-auto mb-3" />
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Nenhum lancamento encontrado no periodo selecionado.</p>
-        </div>
-      )}
-
-      {/* ── Tabela ── */}
-      {searched && !loading && rows.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm dark:shadow-none overflow-hidden">
-          {/* Toolbar */}
-          <div className="flex flex-col gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/70">
-            {/* Row 1: tabs + pager */}
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              {/* Left: type filter */}
-              <div className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
-                {/* Todos */}
-                <button onClick={() => { setFilterType('all'); setPage(1); setTableSearch(''); }}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                    filterType === 'all' ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'
-                  }`}>
-                  Todos ({rows.length})
-                </button>
-                {/* Receitas */}
-                <button
-                  onClick={() => { setFilterType('RECEITA'); setPage(1); setTableSearch(''); }}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border"
-                  style={filterType === 'RECEITA'
-                    ? { background: '#16a34a', color: '#fff', borderColor: '#16a34a' }
-                    : { background: '#dcfce7', color: '#166534', borderColor: '#86efac' }
-                  }>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'currentColor', opacity: 0.8 }} />
-                  Receitas ({qtdReceitas})
-                </button>
-                {/* Despesas */}
-                <button
-                  onClick={() => { setFilterType('DESPESA'); setPage(1); setTableSearch(''); }}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border"
-                  style={filterType === 'DESPESA'
-                    ? { background: '#dc2626', color: '#fff', borderColor: '#dc2626' }
-                    : { background: '#fee2e2', color: '#991b1b', borderColor: '#fca5a5' }
-                  }>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'currentColor', opacity: 0.8 }} />
-                  Despesas ({qtdDespesas})
-                  {totalReceita > 0 && (
-                    <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold"
-                      style={filterType === 'DESPESA'
-                        ? { background: 'rgba(255,255,255,0.22)', color: '#fff' }
-                        : { background: '#fecaca', color: '#991b1b' }
-                      }>
-                      {((totalDespesa / totalReceita) * 100).toFixed(1)}%
-                    </span>
-                  )}
-                </button>
-
-                {/* Divisor + switch triplo de forma de pagamento (para conferir com o relatório contábil, que conta só dinheiro) */}
-                <span className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-700" />
-                <div className="inline-flex rounded-full border border-slate-200 dark:border-slate-700 overflow-hidden">
-                  {([
-                    { v: 'all', l: `Todos` },
-                    { v: 'DINHEIRO', l: `Dinheiro (${qtdDinheiro})` },
-                    { v: 'PIX', l: `PIX (${qtdPix})` },
-                  ] as const).map(opt => (
-                    <button
-                      key={opt.v}
-                      onClick={() => { setFilterPg(opt.v); setPage(1); }}
-                      className={`px-3 py-1 text-xs font-semibold transition-all ${
-                        filterPg === opt.v
-                          ? 'bg-emerald-600 text-white'
-                          : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      {opt.l}
-                    </button>
-                  ))}
+          {/* Painel de totais (botão "Totais") */}
+          {totaisAberto && searched && (
+            <>
+              <div className="fixed inset-0 z-[14]" onClick={() => setTotaisAberto(false)} />
+              <div className="absolute inset-x-0 top-[calc(100%+8px)] z-[15] flex animate-[lcSlide_.2s_ease] flex-col gap-3.5 rounded-2xl border border-[#e8ecf1] bg-white p-3 shadow-[0_28px_60px_-24px_rgba(15,23,42,.35)] md:rounded-[20px] md:p-4 dark:border-slate-700 dark:bg-slate-900">
+                <div className="flex items-center gap-2.5">
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-extrabold">Totais · {periodoLabel}</span>
+                  <button
+                    type="button"
+                    onClick={alternarFixarTotais}
+                    title={totaisFixos ? 'Desafixar' : 'Deixar visível'}
+                    className={`flex h-9 items-center gap-1.5 whitespace-nowrap rounded-[10px] border-[1.5px] px-3 text-[13px] font-semibold ${
+                      totaisFixos ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'
+                    }`}
+                  >
+                    <Pin className="h-[15px] w-[15px]" strokeWidth={2} />
+                    <span className="hidden md:inline">{totaisFixos ? 'Desafixar' : 'Deixar visível'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTotaisAberto(false)}
+                    aria-label="Fechar"
+                    className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <X className="h-[18px] w-[18px]" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3 2xl:grid-cols-[minmax(300px,1.6fr)_repeat(5,minmax(0,1fr))]">
+                  <div className="col-span-2 flex min-w-0 flex-col gap-3.5 rounded-[18px] bg-slate-900 px-[22px] py-5 text-white lg:col-span-3 2xl:col-span-1 dark:bg-slate-950">
+                    <div className="flex items-center justify-between gap-2.5">
+                      <span className="text-[13px] font-semibold text-slate-300">Líquido do período</span>
+                      <span className="flex items-center gap-2">
+                        {deltaBadge(liquido, prevLiquido, true)}
+                        <span className={`flex h-6 items-center rounded-full px-2.5 text-xs font-bold ${liquido >= 0 ? 'bg-[#22c55e]/20 text-[#86efac]' : 'bg-[#f87171]/20 text-[#fca5a5]'}`}>
+                          {liquido >= 0 ? 'Positivo' : 'Negativo'}
+                        </span>
+                      </span>
+                    </div>
+                    <span className="text-[30px] font-extrabold leading-none tracking-[-.03em] md:text-[38px]">R$ {fmt(liquido)}</span>
+                    <div className="flex h-2 gap-[3px] overflow-hidden rounded-full bg-slate-800">
+                      <span className="rounded-full bg-[#22c55e]" style={{ width: `${(totalReceita / somaRD) * 100}%` }} />
+                      <span className="rounded-full bg-[#f87171]" style={{ width: `${(totalDespesa / somaRD) * 100}%` }} />
+                    </div>
+                    <div className="flex flex-wrap gap-[18px] text-[13px]">
+                      <span className="flex items-center gap-2 text-slate-200"><span className="h-2 w-2 rounded-full bg-[#22c55e]" />Receitas <b className="text-white">R$ {fmt(totalReceita)}</b></span>
+                      <span className="flex items-center gap-2 text-slate-200"><span className="h-2 w-2 rounded-full bg-[#f87171]" />Despesas <b className="text-white">R$ {fmt(totalDespesa)}</b></span>
+                    </div>
+                  </div>
+                  {cardTotais({
+                    titulo: 'Dízimos',
+                    valor: `R$ ${fmt(totalDizimos)}`,
+                    sub: `${qtdDizimos} lançamento${qtdDizimos === 1 ? '' : 's'}`,
+                    icone: <Heart className="h-[17px] w-[17px]" strokeWidth={1.9} />,
+                    tom: 'bg-[#dcfce7] text-[#15803d]',
+                    delta: deltaBadge(totalDizimos, prevTotalDizimos),
+                  })}
+                  {cardTotais({
+                    titulo: 'Ofertas',
+                    valor: `R$ ${fmt(totalOfertas)}`,
+                    sub: `${qtdOfertas} lançamento${qtdOfertas === 1 ? '' : 's'}`,
+                    icone: <Gift className="h-[17px] w-[17px]" strokeWidth={1.9} />,
+                    tom: 'bg-[#e0f2fe] text-[#075985]',
+                    delta: deltaBadge(totalOfertas, prevTotalOfertas),
+                  })}
+                  {cardTotais({
+                    titulo: 'A pagar',
+                    valor: `R$ ${fmt(aPagarAberto)}`,
+                    sub: aPagarAberto > 0 ? `Líquido projetado R$ ${fmt(liquidoProjetado)}` : 'Nada em aberto no período',
+                    icone: <Clock className="h-[17px] w-[17px]" strokeWidth={1.9} />,
+                    tom: 'bg-[#fef3c7] text-[#b45309]',
+                    alerta: aPagarAberto > 0,
+                    onClick: () => navigate('/app-ui/finance/contas-a-pagar'),
+                  })}
+                  {cardTotais({
+                    titulo: 'Movimentações',
+                    valor: String(totalMovimentos),
+                    sub: `${qtdReceitas} receita${qtdReceitas === 1 ? '' : 's'} · ${qtdDespesas} despesa${qtdDespesas === 1 ? '' : 's'}`,
+                    icone: <Activity className="h-[17px] w-[17px]" strokeWidth={1.9} />,
+                    tom: 'bg-[#f1f5f9] text-[#334155]',
+                    delta: deltaBadge(totalMovimentos, prevMovimentos),
+                  })}
+                  {cardTotais({
+                    titulo: 'Dízimos faltando',
+                    valor: String(dizimoMembrosFaltando.length),
+                    sub: 'Dizimaram no mês anterior e ainda não neste · ver lista',
+                    icone: <UserX className="h-[17px] w-[17px]" strokeWidth={1.9} />,
+                    tom: 'bg-[#f1f5f9] text-[#334155]',
+                    alerta: dizimoMembrosFaltando.length > 0,
+                    onClick: () => { setTotaisAberto(false); setShowDizimosFaltando(true); },
+                  })}
                 </div>
               </div>
+            </>
+          )}
+        </div>
 
-              {/* Right: per-page + info */}
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span>Exibir</span>
-                <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
-                  className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded text-sm bg-white dark:bg-slate-900">
-                  {[1000, 2000, 3000, 4000, 5000].map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
-                <span>por pagina</span>
-                <span className="text-slate-400 ml-2">{sorted.length} lançamento{sorted.length !== 1 ? 's' : ''}</span>
-              </div>
+        {/* Totais fixados na tela */}
+        {totaisFixos && searched && !loading && (
+          <div className="flex flex-none animate-[lcSlide_.2s_ease] gap-2 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0">
+            {chipTotal({
+              rotulo: 'Líquido',
+              valor: `R$ ${fmt(liquido)}`,
+              icone: <Wallet className="h-4 w-4 text-white" strokeWidth={2} />,
+              tom: liquido >= 0 ? 'bg-[#166534]' : 'bg-[#991b1b]',
+              corValor: liquido >= 0 ? 'text-[#86efac]' : 'text-[#fca5a5]',
+              escuro: true,
+              onClick: () => filtrarTipo('all'),
+            })}
+            {chipTotal({
+              rotulo: `Receitas · ${qtdReceitas}`,
+              valor: `R$ ${fmt(totalReceita)}`,
+              icone: <ArrowUpRight className="h-4 w-4" strokeWidth={2} />,
+              tom: 'bg-[#dcfce7] text-[#15803d]',
+              corValor: 'text-[#15803d]',
+              ativo: filterType === 'RECEITA',
+              onClick: () => filtrarTipo('RECEITA'),
+            })}
+            {chipTotal({
+              rotulo: `Despesas · ${qtdDespesas}`,
+              valor: `R$ ${fmt(totalDespesa)}`,
+              icone: <ArrowDownLeft className="h-4 w-4" strokeWidth={2} />,
+              tom: 'bg-[#fee2e2] text-[#b91c1c]',
+              corValor: 'text-[#b91c1c]',
+              ativo: filterType === 'DESPESA',
+              onClick: () => filtrarTipo('DESPESA'),
+            })}
+            {chipTotal({
+              rotulo: `Dízimos · ${qtdDizimos}`,
+              valor: `R$ ${fmt(totalDizimos)}`,
+              icone: <Heart className="h-4 w-4" strokeWidth={2} />,
+              tom: 'bg-[#dcfce7] text-[#15803d]',
+            })}
+            {chipTotal({
+              rotulo: `Ofertas · ${qtdOfertas}`,
+              valor: `R$ ${fmt(totalOfertas)}`,
+              icone: <Gift className="h-4 w-4" strokeWidth={2} />,
+              tom: 'bg-[#e0f2fe] text-[#075985]',
+            })}
+            {chipTotal({
+              rotulo: 'A pagar',
+              valor: `R$ ${fmt(aPagarAberto)}`,
+              icone: <Clock className="h-4 w-4" strokeWidth={2} />,
+              tom: 'bg-[#fef3c7] text-[#b45309]',
+              corValor: aPagarAberto > 0 ? 'text-[#b45309]' : undefined,
+              onClick: () => navigate('/app-ui/finance/contas-a-pagar'),
+            })}
+            {aPagarAberto > 0 && chipTotal({
+              rotulo: 'Líquido projetado',
+              valor: `R$ ${fmt(liquidoProjetado)}`,
+              icone: <Wallet className="h-4 w-4" strokeWidth={2} />,
+              tom: 'bg-[#f1f5f9] text-[#334155]',
+              corValor: liquidoProjetado >= 0 ? 'text-[#15803d]' : 'text-[#b91c1c]',
+            })}
+            {chipTotal({
+              rotulo: 'Movimentações',
+              valor: String(totalMovimentos),
+              icone: <Activity className="h-4 w-4" strokeWidth={2} />,
+              tom: 'bg-[#f1f5f9] text-[#334155]',
+            })}
+            {chipTotal({
+              rotulo: 'Dízimos faltando',
+              valor: `${dizimoMembrosFaltando.length} membro${dizimoMembrosFaltando.length === 1 ? '' : 's'}`,
+              icone: <UserX className="h-4 w-4" strokeWidth={2} />,
+              tom: 'bg-[#f1f5f9] text-[#334155]',
+              corValor: dizimoMembrosFaltando.length > 0 ? 'text-[#b45309]' : undefined,
+              onClick: () => setShowDizimosFaltando(true),
+            })}
+            <button
+              type="button"
+              onClick={alternarFixarTotais}
+              title="Desafixar totais"
+              className="grid w-11 flex-none place-items-center rounded-[14px] border-[1.5px] border-dashed border-slate-300 text-slate-500 hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:hover:border-slate-300 dark:hover:text-white"
+            >
+              <PinOff className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </div>
+        )}
+
+        {error ? (
+          <div className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+
+        {truncado ? (
+          <div className="flex items-center gap-2 rounded-2xl border border-[#fde68a] bg-[#fffbeb] px-4 py-3 text-sm text-[#92400e]">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>
+              Período muito amplo: a consulta parou em {MAX_LINHAS.toLocaleString('pt-BR')} lançamentos
+              e <strong>há mais no período</strong>. Os totais somam apenas o que foi carregado —
+              reduza o intervalo de datas ou escolha uma igreja para fechar os números.
+            </span>
+          </div>
+        ) : null}
+
+        {!searched && (
+          <section className="flex flex-1 flex-col items-center justify-center gap-3.5 rounded-2xl border border-[#e8ecf1] bg-white px-6 py-16 text-center md:rounded-[20px] dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid h-20 w-20 place-items-center rounded-[26px] bg-slate-900 text-white shadow-[0_14px_30px_-14px_rgba(15,23,42,.6)] dark:bg-white dark:text-slate-900">
+              <Wallet className="h-9 w-9" strokeWidth={1.7} />
             </div>
+            <h2 className="m-0 mt-1.5 text-2xl font-extrabold tracking-[-.02em]">Escolha a igreja e o período</h2>
+            <p className="m-0 max-w-[440px] text-[15px] text-slate-500 dark:text-slate-400">
+              Depois toque em Consultar para carregar o caixa de {new Date(dataInicio + 'T12:00:00').toLocaleDateString('pt-BR')} até {new Date(dataFim + 'T12:00:00').toLocaleDateString('pt-BR')}.
+            </p>
+          </section>
+        )}
 
-            {/* Row 2: search */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+        {loading && (
+          <section className="flex flex-col items-center gap-3 rounded-2xl border border-[#e8ecf1] bg-white p-16 text-center md:rounded-[20px] dark:border-slate-800 dark:bg-slate-900">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <p className="text-sm text-slate-500 dark:text-slate-400">Consultando lançamentos...</p>
+          </section>
+        )}
+
+        {searched && !loading && rows.length === 0 && (
+          <section className="flex flex-col items-center gap-1.5 rounded-2xl border border-[#e8ecf1] bg-white px-6 py-14 text-center md:rounded-[20px] dark:border-slate-800 dark:bg-slate-900">
+            <span className="text-base font-bold">Nenhum lançamento no período</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">Mude a igreja ou o período, ou registre uma nova receita ou despesa.</span>
+          </section>
+        )}
+
+        {/* ── Lista ── */}
+        {temDados && (
+          <section className="@container flex flex-col overflow-hidden rounded-2xl border border-[#e8ecf1] bg-white md:rounded-[20px] dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-wrap items-center gap-2.5 border-b border-[#eef2f6] px-3.5 py-3 md:px-5 dark:border-slate-800">
+              <div className="relative min-w-0 flex-[1_1_240px] md:max-w-[340px]">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" strokeWidth={2} />
                 <input
                   value={tableSearch}
                   onChange={e => { setTableSearch(e.target.value); setPage(1); }}
-                  placeholder="Buscar por favorecido, categoria, plano, forma de pgto…"
-                  className="w-full pl-8 pr-8 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none focus:border-blue-400"
+                  placeholder="Buscar favorecido, categoria, plano, forma de pgto…"
+                  className="h-9 w-full rounded-xl border-[1.5px] border-slate-200 bg-white pl-9 pr-8 text-[13px] outline-none placeholder:text-slate-400 focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:focus:border-slate-300"
                 />
                 {tableSearch && (
-                  <button onClick={() => { setTableSearch(''); setPage(1); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    <X className="w-3.5 h-3.5" />
+                  <button
+                    type="button"
+                    onClick={() => { setTableSearch(''); setPage(1); }}
+                    aria-label="Limpar busca"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
-              {tableSearch && (
-                <span className="text-xs text-slate-500">{sorted.length} resultado{sorted.length !== 1 ? 's' : ''}</span>
-              )}
+              <div className="flex max-w-full flex-none gap-1.5 overflow-x-auto">
+                {([
+                  { v: 'all', rotulo: 'Todos', n: rows.length, ponto: '' },
+                  { v: 'RECEITA', rotulo: 'Receitas', n: qtdReceitas, ponto: 'bg-[#16a34a]' },
+                  { v: 'DESPESA', rotulo: 'Despesas', n: qtdDespesas, ponto: 'bg-[#dc2626]' },
+                ] as const).map(aba => (
+                  <button
+                    key={aba.v}
+                    type="button"
+                    onClick={() => filtrarTipo(aba.v)}
+                    className={`flex h-[34px] flex-none items-center gap-1.5 whitespace-nowrap rounded-full border-[1.5px] px-3 text-[13px] font-bold ${
+                      filterType === aba.v
+                        ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
+                        : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                    }`}
+                  >
+                    {aba.ponto ? <span className={`h-[7px] w-[7px] rounded-full ${aba.ponto}`} /> : null}
+                    {aba.rotulo}
+                    <span className="font-semibold opacity-70">{aba.n}</span>
+                    {aba.v === 'DESPESA' && totalReceita > 0 && (
+                      <span title="Despesas sobre receitas" className={`rounded px-1 text-[10px] font-bold ${filterType === 'DESPESA' ? 'bg-white/20' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
+                        {((totalDespesa / totalReceita) * 100).toFixed(1)}%
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <span className="hidden h-[22px] w-px bg-slate-200 md:block dark:bg-slate-700" />
+              {/* Forma de pagamento — para conferir com o relatório contábil, que conta só dinheiro. */}
+              <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-xl bg-slate-100 p-[3px] dark:bg-slate-800">
+                {([
+                  { v: 'all', rotulo: 'Todos', n: null },
+                  { v: 'DINHEIRO', rotulo: 'Dinheiro', n: qtdDinheiro },
+                  { v: 'PIX', rotulo: 'PIX', n: qtdPix },
+                ] as const).map(opcao => (
+                  <button
+                    key={opcao.v}
+                    type="button"
+                    onClick={() => { setFilterPg(opcao.v); setPage(1); }}
+                    className={`h-7 flex-none whitespace-nowrap rounded-[9px] px-2.5 text-xs font-semibold ${
+                      filterPg === opcao.v
+                        ? 'bg-white text-slate-900 shadow-[0_1px_3px_rgba(15,23,42,.12)] dark:bg-slate-950 dark:text-white'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    {opcao.rotulo}{opcao.n !== null ? <span className="ml-1 opacity-60">{opcao.n}</span> : null}
+                  </button>
+                ))}
+              </div>
+              <span className="flex-1" />
+              <div className="hidden items-center gap-2 whitespace-nowrap text-[13px] text-slate-500 md:flex dark:text-slate-400">
+                Exibir
+                <span className="relative">
+                  <select
+                    value={pageSize}
+                    onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    className="h-[34px] appearance-none rounded-[10px] border border-slate-200 bg-white pl-2.5 pr-7 text-[13px] font-bold text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  >
+                    {[1000, 2000, 3000, 4000, 5000].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                </span>
+                por página
+                <span className="ml-1 text-slate-400">{sorted.length} lançamento{sorted.length !== 1 ? 's' : ''}</span>
+              </div>
+            </div>
+
+            <Pagination page={page} totalPages={totalPages} total={sorted.length} pageSize={pageSize} onPage={setPage} />
+
+            {/* Cabeçalho (some no celular, onde cada lançamento vira um cartão) */}
+            <div className="hidden items-center gap-3.5 border-b border-[#eef2f6] bg-slate-50 px-5 py-[11px] text-xs font-bold tracking-[.03em] text-slate-500 @3xl:grid @3xl:grid-cols-[96px_minmax(0,2fr)_minmax(0,1.3fr)_120px_86px_148px] @6xl:grid-cols-[104px_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.3fr)_124px_92px_148px] dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
+              {ordenavel('data_lancamento', 'Ref / Data')}
+              {ordenavel('church', 'Igreja / Caixa', 'hidden @6xl:flex')}
+              {ordenavel('favorecido', 'Descrição / Favorecido')}
+              <span className="whitespace-nowrap">Plano / Categoria</span>
+              {ordenavel('valor', 'Valor', 'justify-end')}
+              {ordenavel('tipo', 'Tipo')}
+              <span className="text-right">Ações</span>
+            </div>
+
+            {paginated.length === 0 ? (
+              <div className="flex flex-col items-center gap-1.5 px-6 py-14 text-center">
+                <span className="text-base font-bold">Nenhum lançamento aqui</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">Mude o filtro ou a busca.</span>
+              </div>
+            ) : paginated.map(row => {
+              const receita = row.tipo === 'RECEITA';
+              const dataBR = new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR');
+              const plano = row.plano_de_conta || row.categoria || '—';
+              return (
+                <div
+                  key={row.id}
+                  className="group flex items-center gap-3 border-t border-[#f1f5f9] px-3.5 py-3 first:border-t-0 hover:bg-slate-50 @3xl:grid @3xl:grid-cols-[96px_minmax(0,2fr)_minmax(0,1.3fr)_120px_86px_148px] @3xl:gap-3.5 @3xl:px-5 @6xl:grid-cols-[104px_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.3fr)_124px_92px_148px] dark:border-slate-800 dark:hover:bg-slate-800/50"
+                >
+                  {/* Celular: ícone de entrada/saída */}
+                  <span className={`grid h-[38px] w-[38px] flex-none place-items-center rounded-xl @3xl:hidden ${receita ? 'bg-[#dcfce7] text-[#15803d]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
+                    {receita ? <ArrowUpRight className="h-[17px] w-[17px]" strokeWidth={2.2} /> : <ArrowDownLeft className="h-[17px] w-[17px]" strokeWidth={2.2} />}
+                  </span>
+
+                  <span className="hidden min-w-0 flex-col gap-0.5 @3xl:flex">
+                    <span className="font-mono text-[11px] font-semibold text-slate-500">{row.legacy_id ?? '—'}</span>
+                    <span className="whitespace-nowrap text-[13px] font-bold">{dataBR}</span>
+                    {row.num_doc && <span className="whitespace-nowrap text-[11px] text-slate-400">DOC {row.num_doc}</span>}
+                  </span>
+
+                  <span className="hidden min-w-0 flex-col gap-0.5 @6xl:flex">
+                    <span className="truncate text-[13px] font-semibold">{(row.churches as any)?.name ?? '—'}</span>
+                  </span>
+
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="truncate text-sm font-bold">{row.favorecido || '—'}</span>
+                    {row.obs && <span className="hidden truncate text-xs text-slate-500 @3xl:block dark:text-slate-400">{row.obs}</span>}
+                    <span className="truncate text-xs text-slate-500 @3xl:hidden dark:text-slate-400">{plano} · {dataBR}</span>
+                    {row.forma_pg && <span className="hidden truncate text-[11px] text-slate-400 @3xl:block">{row.forma_pg}</span>}
+                  </span>
+
+                  <span className="hidden min-w-0 flex-col gap-0.5 @3xl:flex">
+                    <span className="truncate text-[13px] font-semibold">{plano}</span>
+                    {row.referencia && <span className="truncate text-[11px] text-slate-400">{row.referencia}</span>}
+                  </span>
+
+                  <span className="flex flex-none justify-end">
+                    <span className={`whitespace-nowrap text-sm font-extrabold ${receita ? 'text-[#15803d]' : 'text-[#b91c1c]'}`}>
+                      {receita ? '+ ' : '− '}R$ {fmt(Number(row.valor))}
+                    </span>
+                  </span>
+
+                  <span className="hidden @3xl:flex">
+                    <span className={`flex h-6 items-center gap-[5px] whitespace-nowrap rounded-full px-[9px] text-[11px] font-extrabold tracking-[.03em] ${receita ? 'bg-[#dcfce7] text-[#15803d]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                      {row.tipo}
+                    </span>
+                  </span>
+
+                  <span className="hidden justify-end gap-0.5 @3xl:flex">
+                    <Permissao chave="cashbook.cashbook.imprimir_recibo" rotulo="Imprimir recibo — Cashbook" herda="cashbook.view">
+                      <button
+                        type="button"
+                        onClick={() => printRecibo(row, !!row.foto, row.foto)}
+                        title="Imprimir recibo"
+                        className="grid h-[34px] w-[34px] place-items-center rounded-[10px] text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      >
+                        <Printer className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                    </Permissao>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRow(row)}
+                      title="Visualizar detalhes"
+                      className="grid h-[34px] w-[34px] place-items-center rounded-[10px] text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      <Eye className="h-4 w-4" strokeWidth={2} />
+                    </button>
+                    <Permissao chave="cashbook.cashbook.editar_lancamento" rotulo="Editar lançamento — Cashbook" herda="cashbook.view">
+                      <button
+                        type="button"
+                        onClick={() => setEditRow(row)}
+                        title="Editar lançamento"
+                        className="grid h-[34px] w-[34px] place-items-center rounded-[10px] text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      >
+                        <Pencil className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                    </Permissao>
+                    <Permissao chave="cashbook.cashbook.excluir" rotulo="Excluir — Cashbook" herda="cashbook.view">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(row)}
+                        title="Excluir"
+                        className="grid h-[34px] w-[34px] place-items-center rounded-[10px] text-slate-400 hover:bg-[#fee2e2] hover:text-[#dc2626]"
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                    </Permissao>
+                  </span>
+
+                  {/* Celular: ações no ⋯ */}
+                  <button
+                    type="button"
+                    onClick={() => setMenuLinha(row)}
+                    aria-label={`Opções do lançamento de ${row.favorecido || 'sem favorecido'}`}
+                    className="grid h-9 w-9 flex-none place-items-center rounded-[10px] text-slate-500 hover:bg-slate-100 @3xl:hidden dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <MoreHorizontal className="h-5 w-5" strokeWidth={2} />
+                  </button>
+                </div>
+              );
+            })}
+
+            <Pagination page={page} totalPages={totalPages} total={sorted.length} pageSize={pageSize} onPage={setPage} />
+            <div className="flex items-center justify-between gap-3 border-t border-[#eef2f6] px-3.5 py-3 text-[13px] text-slate-500 md:px-5 dark:border-slate-800 dark:text-slate-400">
+              <span>{sorted.length} lançamento{sorted.length !== 1 ? 's' : ''}{tableSearch ? ' na busca' : ''}</span>
+              <span className="md:hidden">
+                <span className="relative">
+                  <select
+                    value={pageSize}
+                    onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    aria-label="Lançamentos por página"
+                    className="h-[34px] appearance-none rounded-[10px] border border-slate-200 bg-white pl-2.5 pr-7 text-[13px] font-bold text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  >
+                    {[1000, 2000, 3000, 4000, 5000].map(n => <option key={n} value={n}>{n} por página</option>)}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                </span>
+              </span>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* Celular: ⋯ do lançamento — mesmas ações e permissões da linha */}
+      {menuLinha && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMenuLinha(null)} />
+          <div className="relative w-full max-w-sm animate-[lcPop_.2s_ease] rounded-t-3xl bg-white p-4 pb-6 shadow-2xl sm:rounded-3xl sm:pb-4 dark:bg-slate-900">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 sm:hidden dark:bg-slate-700" />
+            <div className="flex items-center gap-3 px-1">
+              <span className={`grid h-11 w-11 flex-none place-items-center rounded-xl ${menuLinha.tipo === 'RECEITA' ? 'bg-[#dcfce7] text-[#15803d]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
+                {menuLinha.tipo === 'RECEITA' ? <ArrowUpRight className="h-5 w-5" strokeWidth={2.2} /> : <ArrowDownLeft className="h-5 w-5" strokeWidth={2.2} />}
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="line-clamp-2 text-[15px] font-bold leading-tight">{menuLinha.favorecido || '—'}</span>
+                <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {new Date(menuLinha.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR')} · {menuLinha.plano_de_conta || menuLinha.categoria || '—'}
+                </span>
+              </span>
+              <span className={`flex-none whitespace-nowrap text-sm font-extrabold ${menuLinha.tipo === 'RECEITA' ? 'text-[#15803d]' : 'text-[#b91c1c]'}`}>
+                R$ {fmt(Number(menuLinha.valor))}
+              </span>
+            </div>
+            <div className="my-3 h-px bg-[#eef2f6] dark:bg-slate-800" />
+            <div className="flex flex-col gap-0.5">
+              <Permissao chave="cashbook.cashbook.imprimir_recibo" rotulo="Imprimir recibo — Cashbook" herda="cashbook.view">
+                <button
+                  type="button"
+                  onClick={() => { const alvo = menuLinha; setMenuLinha(null); printRecibo(alvo, !!alvo.foto, alvo.foto); }}
+                  className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><Printer className="h-[18px] w-[18px]" strokeWidth={1.8} /></span>
+                  Imprimir recibo
+                </button>
+              </Permissao>
+              <button
+                type="button"
+                onClick={() => { const alvo = menuLinha; setMenuLinha(null); setSelectedRow(alvo); }}
+                className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><Eye className="h-[18px] w-[18px]" strokeWidth={1.8} /></span>
+                Visualizar detalhes
+              </button>
+              <Permissao chave="cashbook.cashbook.editar_lancamento" rotulo="Editar lançamento — Cashbook" herda="cashbook.view">
+                <button
+                  type="button"
+                  onClick={() => { const alvo = menuLinha; setMenuLinha(null); setEditRow(alvo); }}
+                  className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><Pencil className="h-[18px] w-[18px]" strokeWidth={1.8} /></span>
+                  Editar lançamento
+                </button>
+              </Permissao>
+              <Permissao chave="cashbook.cashbook.excluir" rotulo="Excluir — Cashbook" herda="cashbook.view">
+                <button
+                  type="button"
+                  onClick={() => { const alvo = menuLinha; setMenuLinha(null); setDeleteTarget(alvo); }}
+                  className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm font-semibold text-[#dc2626] hover:bg-[#fef2f2] dark:hover:bg-red-950/30"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#fee2e2] text-[#dc2626]"><Trash2 className="h-[18px] w-[18px]" strokeWidth={1.8} /></span>
+                  Excluir
+                </button>
+              </Permissao>
             </div>
           </div>
-
-          {/* Top pagination */}
-          <Pagination page={page} totalPages={totalPages} total={sorted.length} pageSize={pageSize} onPage={setPage} />
-
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
-              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <Th col="data_lancamento" label="Ref / Data" />
-                  <Th col="church" label="Igreja / Caixa" />
-                  <Th col="favorecido" label="Descricao / Favorecido" />
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Plano / Categoria</th>
-                  <Th col="valor" label="Valor" />
-                  <Th col="tipo" label="Tipo" />
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500">Acoes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {paginated.map(row => (
-                  <tr key={row.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors group border-b border-slate-100 dark:border-slate-800/60">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <p className="font-mono text-[11px] font-semibold text-slate-600">{row.legacy_id ?? '—'}</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
-                        {new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR')}
-                      </p>
-                      {row.num_doc && <p className="text-[9px] text-slate-400">DOC: {row.num_doc}</p>}
-                    </td>
-                    <td className="px-4 py-3 max-w-[160px]">
-                      <p className="text-[11px] text-slate-700 dark:text-slate-200 truncate font-medium">{(row.churches as any)?.name ?? '—'}</p>
-                    </td>
-                    <td className="px-4 py-3 max-w-[220px]">
-                      <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-100 truncate">{row.favorecido || '—'}</p>
-                      {row.obs && <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{row.obs}</p>}
-                      {row.forma_pg && <p className="text-[9px] text-slate-400">{row.forma_pg}</p>}
-                    </td>
-                    <td className="px-4 py-3 max-w-[180px]">
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">{row.plano_de_conta || row.categoria || '—'}</p>
-                      {row.referencia && <p className="text-[9px] text-slate-400 truncate">{row.referencia}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <span 
-                        className="font-bold text-[11px] px-2 py-0.5 rounded"
-                        style={{
-                          color: row.tipo === 'RECEITA' ? '#16a34a' : '#dc2626',
-                          backgroundColor: row.tipo === 'RECEITA' ? '#f0fdf4' : '#fef2f2'
-                        }}
-                      >
-                        R$ {fmt(Number(row.valor))}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span 
-                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide"
-                        style={{
-                          color: row.tipo === 'RECEITA' ? '#15803d' : '#b91c1c',
-                          backgroundColor: row.tipo === 'RECEITA' ? '#dcfce7' : '#fee2e2'
-                        }}
-                      >
-                        {row.tipo}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                        <Permissao chave="cashbook.cashbook.imprimir_recibo" rotulo="Imprimir recibo — Cashbook" herda="cashbook.view">
-                          <button onClick={() => printRecibo(row, !!row.foto, row.foto)} title="Imprimir recibo"
-                            className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-500 hover:text-sky-700 border border-sky-200 transition-all">
-                            <Printer className="w-4 h-4" />
-                          </button>
-                        </Permissao>
-                        <button onClick={() => setSelectedRow(row)} title="Visualizar detalhes"
-                          className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <Permissao chave="cashbook.cashbook.editar_lancamento" rotulo="Editar lançamento — Cashbook" herda="cashbook.view">
-                          <button onClick={() => setEditRow(row)} title="Editar lançamento"
-                            className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                        </Permissao>
-                        <Permissao chave="cashbook.cashbook.excluir" rotulo="Excluir — Cashbook" herda="cashbook.view">
-                          <button onClick={async () => {
-                            setDeleteTarget(row);
-                          }} title="Excluir"
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </Permissao>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Bottom pagination */}
-          <Pagination page={page} totalPages={totalPages} total={sorted.length} pageSize={pageSize} onPage={setPage} />
         </div>
       )}
-      </div>
 
       {/* ── Modals ── */}
       {showSearchModal && (
@@ -1905,10 +2089,10 @@ export default function Cashbook() {
 
       {showDizimosFaltando && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowDizimosFaltando(false)}>
-          <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-md max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white dark:bg-slate-900" style={{ fontFamily: FONTE_MODELO_FAMILIA }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-2">
-                <UserX className="w-5 h-5 text-amber-500" />
+                <UserX className="h-5 w-5 text-[#b45309]" />
                 <div>
                   <h3 className="font-bold text-slate-900 dark:text-slate-100">Dízimos faltando</h3>
                   <p className="text-xs text-slate-500">Dizimaram no mês anterior e ainda não no período atual</p>
@@ -1960,9 +2144,9 @@ export default function Cashbook() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { if (!deleting) setDeleteTarget(null); }} />
-          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+          <div className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800" style={{ fontFamily: FONTE_MODELO_FAMILIA }}>
             <div className="flex items-center gap-3 px-6 pt-6 pb-4">
-              <div className="w-11 h-11 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[14px] bg-red-100 dark:bg-red-900/30">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
@@ -1975,7 +2159,7 @@ export default function Cashbook() {
                 a parcela na referência ("CP CP-2026-000001 parcela 2/4"). */}
             {String(deleteTarget.referencia || '').startsWith('CP ') && (
               <div className="px-6 pb-3">
-                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                <div className="rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-xs text-[#92400e]">
                   Este lançamento é o pagamento de <strong>{String(deleteTarget.referencia).replace(/^CP\s/, '')}</strong>.
                   Excluir aqui <strong>estorna o pagamento</strong>: a parcela volta a ficar em aberto no Contas a Pagar
                   e o histórico do estorno fica registrado.

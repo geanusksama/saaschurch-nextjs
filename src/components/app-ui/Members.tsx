@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { AlertTriangle, ArrowUpDown, Building2, ChevronDown, Download, Mail, MoreVertical, MapPin, Pencil, Phone, Plus, Trash2, User, UserRound, Users, Search, Loader2 } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, ChevronDown, Church, Download, FilterX, Mail, MapPin, MoreHorizontal, PauseCircle, Pencil, Phone, Plus, Printer, SlidersHorizontal, Trash2, UserPlus, UserRound, Users, Search, Loader2, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MemberEditDrawer } from './MemberEditDrawer';
@@ -13,7 +13,9 @@ import { qk } from '../../lib/queryClient';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { logClientAudit } from '../../lib/auditClient';
-import { Permissao } from '../../lib/permissoes/Permissao';
+import { Permissao, usePode } from '../../lib/permissoes/Permissao';
+import { FONTE_MODELO_FAMILIA, useFonteModelo } from '../../lib/fonteModelo';
+import { fotoDisponivel } from '../../lib/fotoMembro';
 
 type CampoOption = {
   id: string;
@@ -223,19 +225,6 @@ function getMemberTypeLabel(memberType?: string | null) {
   return 'Membro';
 }
 
-function getMemberTypeBadgeClass(memberType?: string | null) {
-  const normalized = normalizeMemberType(memberType);
-  if (normalized === 'PJ') {
-    return 'bg-indigo-100 text-indigo-700';
-  }
-
-  if (normalized === 'PF') {
-    return 'bg-sky-100 text-sky-700';
-  }
-
-  return 'bg-violet-100 text-violet-700';
-}
-
 function buildAuthHeaders(token: string | null): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -300,16 +289,62 @@ function sortTitles(titles: EcclesiasticalTitleOption[]) {
   });
 }
 
-function getStatusBadgeClass(status: string) {
-  if (status === 'inativo') {
-    return 'bg-gray-100 text-gray-600';
-  }
+// Tons do modelo em hex: as classes green/amber/sky/violet... são repintadas
+// pelo tema global (globals.css) e sairiam cinza.
+const STATUS_TOM: Record<string, string> = {
+  ativo: 'bg-[#dcfce7] text-[#15803d]',
+  inativo: 'bg-[#fee2e2] text-[#b91c1c]',
+  aguardando: 'bg-[#fef3c7] text-[#b45309]',
+  visitante: 'bg-[#f1f5f9] text-[#334155]',
+};
 
-  if (status === 'aguardando') {
-    return 'bg-amber-100 text-amber-700';
-  }
+const TIPO_TOM: Record<string, string> = {
+  MEMBRO: 'bg-[#f1f5f9] text-[#334155]',
+  PF: 'bg-[#e0f2fe] text-[#075985]',
+  PJ: 'bg-[#ede9fe] text-[#5b21b6]',
+};
 
-  return 'bg-green-100 text-green-700';
+const AVATAR_TONS: Array<[string, string]> = [
+  ['#e0e7ff', '#3730a3'],
+  ['#dcfce7', '#166534'],
+  ['#fef3c7', '#92400e'],
+  ['#fce7f3', '#9d174d'],
+  ['#e0f2fe', '#075985'],
+  ['#f1f5f9', '#334155'],
+];
+
+/** Cor do avatar fixa por membro (não muda ao reordenar a lista). */
+function corDoAvatar(id: string) {
+  let hash = 0;
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return hash % AVATAR_TONS.length;
+}
+
+/**
+ * Avatar do membro: foto quando carrega, iniciais quando não há foto ou ela
+ * falha (ex.: URL ainda apontando para o projeto antigo do Supabase, que não
+ * existe mais) — em vez do ícone de imagem quebrada com o texto alternativo.
+ */
+function AvatarMembro({ id, nome, foto, className }: { id: string; nome: string; foto?: string | null; className: string }) {
+  const [falhou, setFalhou] = useState(false);
+  const tom = AVATAR_TONS[corDoAvatar(id)];
+  // Foto do projeto antigo do Supabase nem é pedida: o domínio não existe mais.
+  const url = fotoDisponivel(foto);
+  return (
+    <span className={`grid flex-none place-items-center overflow-hidden rounded-full font-bold ${className}`} style={{ background: tom[0], color: tom[1] }}>
+      {url && !falhou ? (
+        <img src={url} alt={nome} className="h-full w-full object-cover" onError={() => setFalhou(true)} />
+      ) : (
+        getInitials(nome)
+      )}
+    </span>
+  );
+}
+
+/** Situação como está gravada, só com a caixa ajustada ("ATIVO" → "Ativo"). */
+function rotuloStatus(status?: string | null) {
+  const texto = (status || 'VISITANTE').toLowerCase();
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
 function getTitleLabel(member: MemberRecord) {
@@ -342,49 +377,6 @@ function getInitials(fullName: string) {
 
 function SkeletonBlock({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-700/70 ${className}`} />;
-}
-
-function MembersTableSkeleton() {
-  return (
-    <>
-      {Array.from({ length: 6 }).map((_, index) => (
-        <tr key={index} className="border-b border-slate-200 last:border-b-0">
-          <td className="px-4 py-4">
-            <div className="flex items-center gap-3">
-              <SkeletonBlock className="h-10 w-10 rounded-full" />
-              <div className="space-y-2">
-                <SkeletonBlock className="h-4 w-40" />
-                <SkeletonBlock className="h-3 w-16" />
-                <SkeletonBlock className="h-3 w-24" />
-              </div>
-            </div>
-          </td>
-          <td className="px-4 py-4">
-            <div className="space-y-2">
-              <SkeletonBlock className="h-4 w-36" />
-              <SkeletonBlock className="h-4 w-44" />
-            </div>
-          </td>
-          <td className="px-4 py-4"><SkeletonBlock className="h-4 w-32" /></td>
-          <td className="px-4 py-4">
-            <div className="space-y-2">
-              <SkeletonBlock className="h-4 w-40" />
-              <SkeletonBlock className="h-3 w-28" />
-            </div>
-          </td>
-          <td className="px-4 py-4"><SkeletonBlock className="h-7 w-16 rounded-full" /></td>
-          <td className="px-4 py-4"><SkeletonBlock className="h-4 w-24" /></td>
-          <td className="px-4 py-4">
-            <div className="flex justify-end gap-2">
-              <SkeletonBlock className="h-8 w-8 rounded-lg" />
-              <SkeletonBlock className="h-8 w-8 rounded-lg" />
-              <SkeletonBlock className="h-8 w-8 rounded-lg" />
-            </div>
-          </td>
-        </tr>
-      ))}
-    </>
-  );
 }
 
 // null  = todos selecionados (sem filtro)
@@ -475,13 +467,13 @@ function MultiSelectDropdown({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((p) => !p)}
-        className="w-full flex items-center justify-between gap-1 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-950 text-left text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
+        className="flex h-[50px] w-full items-center justify-between gap-1 rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-left text-[15px] font-medium text-slate-900 outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800"
       >
         <span className="truncate">{displayLabel}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-full min-w-[240px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl">
+        <div className="absolute z-50 mt-1 w-full min-w-[240px] overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
           {searchable && (
             <div className="border-b border-slate-100 dark:border-slate-700 p-2">
               <div className="relative">
@@ -492,7 +484,7 @@ function MultiSelectDropdown({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Filtrar..."
-                  className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1.5 pl-8 pr-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1.5 pl-8 pr-2 text-sm focus:outline-none focus:border-slate-900"
                 />
               </div>
             </div>
@@ -503,7 +495,7 @@ function MultiSelectDropdown({
                 type="checkbox"
                 checked={isAll}
                 onChange={handleTodos}
-                className="h-4 w-4 rounded border-slate-300 accent-purple-600"
+                className="h-4 w-4 rounded border-slate-300 accent-slate-900"
               />
               {search.trim() ? 'Marcar filtrados' : allLabel}
             </label>
@@ -515,7 +507,7 @@ function MultiSelectDropdown({
                   type="checkbox"
                   checked={isAll || selected.includes(option.value)}
                   onChange={() => toggle(option.value)}
-                  className="h-4 w-4 rounded border-slate-300 accent-purple-600"
+                  className="h-4 w-4 rounded border-slate-300 accent-slate-900"
                 />
                 {option.label}
               </label>
@@ -597,6 +589,13 @@ export function Members() {
   const [preparingPrint, setPreparingPrint] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [isNavigatingNew, setIsNavigatingNew] = useState(false);
+  // Interface: menu "Novo cadastro", painel de filtros e fonte do modelo.
+  const [novoMenuAberto, setNovoMenuAberto] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  // Celular: o ⋯ da linha abre a situação e as ações do membro.
+  const [menuLinha, setMenuLinha] = useState<MemberRecord | null>(null);
+  const pode = usePode();
+  useFonteModelo();
   type AppliedFilters = {
     churchIds?: string;
     regionalIds?: string;
@@ -1129,533 +1128,799 @@ export function Members() {
     }
   };
 
+  // ── Interface (modelo "Lista de Membros v2") ─────────────────────────────
+  // Só apresentação: os filtros continuam sendo o formulário de antes e a
+  // consulta acontece só no Buscar (ou Enter na busca) — tirar um chip,
+  // limpar ou clicar nos números só mexe no filtro.
+  const statusAtual = selectedStatusFilters && selectedStatusFilters.length === 1 ? selectedStatusFilters[0] : null;
+  const regionalNome = (id: string) => {
+    const regional = regionais.find((item) => item.id === id);
+    return regional ? `${regional.code ? `${regional.code} - ` : ''}${regional.name}` : id;
+  };
+  const igrejaNome = (id: string) => {
+    const church = churches.find((item) => item.id === id);
+    return church ? `${church.code ? `${church.code} - ` : ''}${church.name}` : id;
+  };
+  const tituloNome = (id: string) => titleFilterOptions.find((option) => option.value === id)?.label || id;
+  const estadoCivilNome = (id: string) => maritalStatusFilterOptions.find((option) => option.value === id)?.label || id;
+  const resumoLista = (ids: string[], nome: (id: string) => string, plural: string) =>
+    ids.length === 1 ? nome(ids[0]) : `${ids.length} ${plural}`;
+
+  const filtrosAtivos: Array<{ key: string; label: string; limpar?: () => void }> = [];
+  if (selectedTypeFilter !== 'MEMBRO') {
+    filtrosAtivos.push({
+      key: 'Tipo',
+      label: selectedTypeFilter === 'ALL' ? 'Todos os tipos' : selectedTypeFilter === 'PF' ? 'Pessoa física' : 'Pessoa jurídica',
+      limpar: () => setSelectedTypeFilter('MEMBRO'),
+    });
+  }
+  if (selectedRegionalIds?.length) {
+    filtrosAtivos.push({
+      key: 'Regional',
+      label: resumoLista(selectedRegionalIds, regionalNome, 'regionais'),
+      // Trocar a regional invalida a igreja escolhida (mesma regra do seletor).
+      limpar: canChooseRegional ? () => { setSelectedRegionalIds(null); setSelectedChurchIds(null); } : undefined,
+    });
+  }
+  if (selectedChurchIds?.length) {
+    filtrosAtivos.push({
+      key: 'Igreja',
+      label: resumoLista(selectedChurchIds, igrejaNome, 'igrejas'),
+      limpar: canChooseChurch ? () => setSelectedChurchIds(null) : undefined,
+    });
+  }
+  if (selectedTitleFilters?.length) {
+    filtrosAtivos.push({ key: 'Título', label: resumoLista(selectedTitleFilters, tituloNome, 'títulos'), limpar: () => setSelectedTitleFilters(null) });
+  }
+  if (selectedStatusFilters?.length) {
+    filtrosAtivos.push({
+      key: 'Situação',
+      label: resumoLista(selectedStatusFilters, (id) => getMembershipStatusLabel(id as Exclude<MembershipStatusFilter, 'ALL'>), 'situações'),
+      limpar: () => setSelectedStatusFilters(null),
+    });
+  }
+  if (selectedMaritalStatusFilters?.length) {
+    filtrosAtivos.push({ key: 'Estado civil', label: resumoLista(selectedMaritalStatusFilters, estadoCivilNome, 'estados civis'), limpar: () => setSelectedMaritalStatusFilters(null) });
+  }
+
+  const limparFiltros = () => {
+    setSelectedTypeFilter('MEMBRO');
+    if (canChooseRegional) setSelectedRegionalIds(null);
+    if (canChooseChurch) setSelectedChurchIds(null);
+    setSelectedTitleFilters(null);
+    setSelectedStatusFilters(null);
+    setSelectedMaritalStatusFilters(null);
+  };
+
+  // Perfil de igreja não pode tirar a própria regional/igreja: só aparece o
+  // botão de limpar quando há algo que ele limpa de fato.
+  const temFiltroLimpavel = filtrosAtivos.some((filtro) => filtro.limpar);
+
+  // Chip de vários valores: "Todos" = null (sem filtro), como no seletor de antes.
+  const alternarFiltro = (atual: string[] | null, valor: string) => {
+    const base = atual ?? [];
+    const proximo = base.includes(valor) ? base.filter((item) => item !== valor) : [...base, valor];
+    return proximo.length ? proximo : null;
+  };
+
+  const podeNovo = pode('members.members.novo_membro') || pode('members.members.novo_pf') || pode('members.members.novo_pj');
+
+  const statCards = [
+    { label: 'Total', value: serverTotal, icon: Users, bg: 'bg-[#f1f5f9]', fg: 'text-[#334155]', status: '' },
+    { label: 'Ativos', value: stats.activeMembers, icon: CheckCircle2, bg: 'bg-[#dcfce7]', fg: 'text-[#15803d]', status: 'ativo' },
+    { label: 'Inativos', value: stats.inactiveMembers, icon: PauseCircle, bg: 'bg-[#fee2e2]', fg: 'text-[#b91c1c]', status: 'inativo' },
+  ];
+
+  const cabecalhos: Array<{ label: string; key?: SortKey; esconderMeio?: boolean; direita?: boolean }> = [
+    { label: selectedTypeFilter === 'MEMBRO' ? 'Membro' : 'Nome', key: 'fullName' },
+    { label: 'Contato', key: 'contact' },
+    { label: 'Tipo', key: 'memberType', esconderMeio: true },
+    { label: 'Título', key: 'ecclesiasticalTitle', esconderMeio: true },
+    { label: 'Igreja', key: 'churchName' },
+    { label: 'Status', key: 'membershipStatus' },
+    { label: 'Desde', key: 'membershipDate', esconderMeio: true },
+    { label: 'Ações', direita: true },
+  ];
+
+  const chipClasse = (ligado: boolean) =>
+    `h-10 rounded-full border-[1.5px] px-4 text-sm font-semibold transition-all ${
+      ligado
+        ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
+        : 'border-slate-200 bg-white text-slate-900 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-white'
+    }`;
+
   return (
-    <div className="p-6 space-y-4 text-slate-900 dark:text-slate-100">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-            <Users className="h-5 w-5 text-blue-600" />
+    <div
+      className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100"
+      style={{ fontFamily: FONTE_MODELO_FAMILIA }}
+    >
+      <style>{'@keyframes nmRowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@keyframes nmDrawerIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}@keyframes nmPopIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}'}</style>
+
+      {/* Cabeçalho */}
+      <header className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-700 dark:text-slate-200">
+            <Users className="h-5 w-5" strokeWidth={1.8} />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Membros</h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Gerencie membros, cadastros PF e cadastros PJ da igreja</p>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Secretaria</span>
+            <span className="whitespace-nowrap text-[17px] font-bold">Membros</span>
           </div>
         </div>
-
-        <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2">
           <Permissao chave="members.members.imprimir" rotulo="Imprimir — Members" herda="members.view">
             <button
-              className="flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
+              type="button"
               onClick={() => setPrintModalOpen(true)}
               disabled={isAnyActionActive}
+              title="Imprimir"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              {(printModalOpen || preparingPrint) ? (
-                <Loader2 className="h-4 w-4 animate-spin text-slate-600 dark:text-slate-400" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              {preparingPrint ? 'Gerando...' : printModalOpen ? 'Carregando...' : 'Imprimir'}
+              {(printModalOpen || preparingPrint) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" strokeWidth={2} />}
+              <span className="hidden md:inline">{preparingPrint ? 'Gerando...' : printModalOpen ? 'Carregando...' : 'Imprimir'}</span>
             </button>
           </Permissao>
           <Permissao chave="members.members.exportar_excel" rotulo="Exportar Excel — Members" herda="members.view">
             <button
-              className="flex items-center gap-2 rounded-lg border border-green-300 dark:border-green-800/40 bg-green-50 dark:bg-green-950/20 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/40 hover:border-green-400 dark:hover:border-green-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
+              type="button"
               onClick={handleExportExcel}
               disabled={!visibleMembers.length || isAnyActionActive}
+              title="Exportar Excel"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              {exportingExcel ? (
-                <Loader2 className="h-4 w-4 animate-spin text-green-700 dark:text-green-400" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              {exportingExcel ? 'Exportando...' : 'Exportar Excel'}
+              {exportingExcel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" strokeWidth={2} />}
+              <span className="hidden md:inline">{exportingExcel ? 'Exportando...' : 'Exportar Excel'}</span>
             </button>
           </Permissao>
-
-          <Permissao chave="members.members.novo_pf" rotulo="Novo PF — Members" herda="members.view">
-            <button
-              type="button"
-              onClick={() => setQuickCreateType('PF')}
-              disabled={isAnyActionActive}
-              className="flex items-center gap-2 rounded-lg border border-sky-300 dark:border-sky-800/40 bg-sky-50 dark:bg-sky-950/20 px-4 py-2 text-sm font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-950/40 hover:border-sky-400 dark:hover:border-sky-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
-            >
-              {quickCreateType === 'PF' ? (
-                <Loader2 className="h-4 w-4 animate-spin text-sky-700 dark:text-sky-400" />
-              ) : (
-                <UserRound className="h-4 w-4" />
-              )}
-              {quickCreateType === 'PF' ? 'Carregando...' : 'Novo PF'}
-            </button>
-          </Permissao>
-          <Permissao chave="members.members.novo_pj" rotulo="Novo PJ — Members" herda="members.view">
-            <button
-              type="button"
-              onClick={() => setQuickCreateType('PJ')}
-              disabled={isAnyActionActive}
-              className="flex items-center gap-2 rounded-lg border border-indigo-300 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/20 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/40 hover:border-indigo-400 dark:hover:border-indigo-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
-            >
-              {quickCreateType === 'PJ' ? (
-                <Loader2 className="h-4 w-4 animate-spin text-indigo-700 dark:text-indigo-400" />
-              ) : (
-                <Building2 className="h-4 w-4" />
-              )}
-              {quickCreateType === 'PJ' ? 'Carregando...' : 'Novo PJ'}
-            </button>
-          </Permissao>
-          <Permissao chave="members.members.novo_membro" rotulo="Novo Membro — Members" herda="members.view">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                setIsNavigatingNew(true);
-                navigate('/app-ui/members/new');
-              }}
-              disabled={isAnyActionActive}
-              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 hover:shadow-sm transition-all duration-150 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none focus:outline-none"
-            >
-              {isNavigatingNew ? (
-                <Loader2 className="h-4 w-4 animate-spin text-white" />
-              ) : (
-                <Plus className="h-4 w-4" />
-              )}
-              {isNavigatingNew ? 'Carregando...' : 'Novo Membro'}
-            </button>
-          </Permissao>
-        </div>
-      </div>
-
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{hasSearched ? serverTotal : '—'}</p>}
-          </div>
-          <User className="h-5 w-5 text-blue-600" />
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Ativos</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{hasSearched ? stats.activeMembers : '—'}</p>}
-          </div>
-          <User className="h-5 w-5 text-green-600" />
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Inativos</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{hasSearched ? stats.inactiveMembers : '—'}</p>}
-          </div>
-          <User className="h-5 w-5 text-orange-600" />
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Igrejas</p>
-            {isLoadingScreen ? <SkeletonBlock className="mt-1 h-7 w-12" /> : <p className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{hasSearched ? stats.uniqueChurches : '—'}</p>}
-          </div>
-          <MapPin className="h-5 w-5 text-purple-600" />
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-        {/* Botão Buscar na mesma linha dos filtros: coluna própria no fim
-            (7 filtros com o Campo visível, 6 sem ele). */}
-        <div
-          className={`grid gap-3 md:grid-cols-2 xl:items-end ${
-            campoVisible
-              ? 'xl:grid-cols-[minmax(200px,1.25fr)_repeat(7,minmax(120px,0.8fr))_auto]'
-              : 'xl:grid-cols-[minmax(200px,1.25fr)_repeat(6,minmax(130px,0.8fr))_auto]'
-          }`}
-        >
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
+          {podeNovo && (
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <button
+                type="button"
+                onClick={() => setNovoMenuAberto((aberto) => !aberto)}
+                disabled={isAnyActionActive}
+                data-sem-permissao="só abre o menu; cada opção (membro, PF, PJ) tem a própria permissão"
+                className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 pl-3 pr-3.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                {(isNavigatingNew || quickCreateType) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" strokeWidth={2.2} />}
+                <span className="md:hidden">Novo</span>
+                <span className="hidden md:inline">Novo cadastro</span>
+                <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </button>
+              {novoMenuAberto && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setNovoMenuAberto(false)} />
+                  <div className="absolute right-0 top-12 z-40 flex w-[290px] animate-[nmPopIn_.18s_ease] flex-col gap-0.5 rounded-[18px] border border-[#e8ecf1] bg-white p-2 shadow-[0_20px_40px_-16px_rgba(15,23,42,.25)] dark:border-slate-700 dark:bg-slate-800">
+                    <Permissao chave="members.members.novo_membro" rotulo="Novo Membro — Members" herda="members.view">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNovoMenuAberto(false);
+                          setIsNavigatingNew(true);
+                          navigate('/app-ui/members/new');
+                        }}
+                        className="flex items-center gap-3 rounded-xl p-2.5 text-left hover:bg-[#f4f6f8] dark:hover:bg-slate-700"
+                      >
+                        <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                          <UserPlus className="h-5 w-5" strokeWidth={1.8} />
+                        </span>
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-sm font-bold">Novo membro</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Cadastro completo, passo a passo</span>
+                        </span>
+                      </button>
+                    </Permissao>
+                    <Permissao chave="members.members.novo_pf" rotulo="Novo PF — Members" herda="members.view">
+                      <button
+                        type="button"
+                        onClick={() => { setNovoMenuAberto(false); setQuickCreateType('PF'); }}
+                        className="flex items-center gap-3 rounded-xl p-2.5 text-left hover:bg-[#f4f6f8] dark:hover:bg-slate-700"
+                      >
+                        <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-[#e0f2fe] text-[#075985]">
+                          <UserRound className="h-5 w-5" strokeWidth={1.8} />
+                        </span>
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-sm font-bold">Novo cadastro PF</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Pessoa física sem vínculo de membro</span>
+                        </span>
+                      </button>
+                    </Permissao>
+                    <Permissao chave="members.members.novo_pj" rotulo="Novo PJ — Members" herda="members.view">
+                      <button
+                        type="button"
+                        onClick={() => { setNovoMenuAberto(false); setQuickCreateType('PJ'); }}
+                        className="flex items-center gap-3 rounded-xl p-2.5 text-left hover:bg-[#f4f6f8] dark:hover:bg-slate-700"
+                      >
+                        <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-[#ede9fe] text-[#5b21b6]">
+                          <Building2 className="h-5 w-5" strokeWidth={1.8} />
+                        </span>
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-sm font-bold">Novo cadastro PJ</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Empresas, fornecedores e parceiros</span>
+                        </span>
+                      </button>
+                    </Permissao>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      <div className="box-border flex w-full flex-1 flex-col gap-3 px-3 pb-10 pt-3 md:px-7 md:pt-4">
+        {/* Busca + números */}
+        <div className="flex flex-wrap items-stretch gap-3">
+          <div className="flex min-w-0 flex-[1_1_380px] gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Buscar por nome, email, telefone, CPF, título ou igreja..."
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 pl-10 pr-4 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                onKeyDown={(event) => { if (event.key === 'Enter') handleSearchMembers(); }}
+                placeholder="Nome, email, telefone, CPF, título ou igreja"
+                className="h-full min-h-[52px] w-full rounded-2xl border-[1.5px] border-slate-200 bg-white pl-12 pr-3.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-slate-300"
               />
             </div>
-          </div>
-
-          {campoVisible && (
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
-            <select
-              value={selectedFieldId}
-              onChange={(event) => {
-                setSelectedFieldId(event.target.value);
-                // Trocar de campo invalida regional e igreja escolhidas.
-                setSelectedRegionalIds(null);
-                setSelectedChurchIds(null);
-              }}
-              disabled={!canChooseField || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
+            <button
+              type="button"
+              onClick={() => setFiltrosAbertos(true)}
+              title="Filtros"
+              className={`flex min-h-[52px] flex-none items-center gap-2 rounded-2xl border-[1.5px] bg-white px-[15px] text-sm font-semibold text-slate-900 hover:border-slate-900 md:px-[18px] dark:bg-slate-800 dark:text-white ${
+                filtrosAtivos.length ? 'border-slate-900 dark:border-slate-300' : 'border-slate-200 dark:border-slate-600'
+              }`}
             >
-              {!hasFixedChurchScope && <option value="">Todos os campos</option>}
-              {fields.map((field) => (
-                <option key={field.id} value={field.id}>
-                  {field.code ? `${field.code} - ` : ''}
-                  {field.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          )}
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>
-            <MultiSelectDropdown
-              searchable
-              options={filteredRegionais.map((regional) => ({
-                value: regional.id,
-                label: `${regional.code ? `${regional.code} - ` : ''}${regional.name}`,
-              }))}
-              value={selectedRegionalIds}
-              onChange={(next) => {
-                setSelectedRegionalIds(next);
-                // Trocar a regional invalida a igreja escolhida: ela pode nem
-                // pertencer mais as regionais selecionadas.
-                setSelectedChurchIds(null);
-              }}
-              allLabel="Todas as regionais"
-              disabled={!canChooseRegional || loadingFilters}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Igreja</label>
-            <MultiSelectDropdown
-              searchable
-              options={filteredChurches.map((church) => ({
-                value: church.id,
-                label: `${church.code ? `${church.code} - ` : ''}${church.name}`,
-              }))}
-              value={selectedChurchIds}
-              onChange={setSelectedChurchIds}
-              allLabel="Todas as igrejas"
-              disabled={!canChooseChurch || loadingFilters}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Tipo</label>
-            <select
-              value={selectedTypeFilter}
-              onChange={(event) => setSelectedTypeFilter(event.target.value as MemberTypeFilter)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="ALL">Todos os tipos</option>
-              <option value="MEMBRO">Membro</option>
-              <option value="PF">PF</option>
-              <option value="PJ">PJ</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Título eclesiástico</label>
-            <MultiSelectDropdown
-              options={titleFilterOptions.filter((o) => o.value !== 'ALL')}
-              value={selectedTitleFilters}
-              onChange={setSelectedTitleFilters}
-              allLabel="Todos os títulos"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Situação</label>
-            <MultiSelectDropdown
-              options={[
-                { value: 'ativo', label: 'Ativo' },
-                { value: 'inativo', label: 'Inativo' },
-                { value: 'aguardando', label: 'Aguardando ativação' },
-                { value: 'visitante', label: 'Visitante' },
-              ]}
-              value={selectedStatusFilters}
-              onChange={setSelectedStatusFilters}
-              allLabel="Todas as situações"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Estado civil</label>
-            <MultiSelectDropdown
-              options={maritalStatusFilterOptions.filter((o) => o.value !== 'ALL')}
-              value={selectedMaritalStatusFilters}
-              onChange={setSelectedMaritalStatusFilters}
-              allLabel="Todos os estados civis"
-            />
-          </div>
-
-          {/* Consulta explicita: nada e buscado ate clicar aqui. */}
-          <div className="flex items-end">
+              <SlidersHorizontal className="h-[19px] w-[19px]" strokeWidth={2} />
+              <span className="hidden md:inline">Filtros</span>
+              {filtrosAtivos.length > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1.5 text-[11px] font-bold text-white dark:bg-white dark:text-slate-900">
+                  {filtrosAtivos.length}
+                </span>
+              )}
+            </button>
+            {temFiltroLimpavel && (
+              <button
+                type="button"
+                onClick={limparFiltros}
+                title="Limpar filtros (aplica no Buscar)"
+                aria-label="Limpar filtros"
+                className="grid min-h-[52px] w-[52px] flex-none place-items-center rounded-2xl border-[1.5px] border-slate-200 bg-white text-slate-600 hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white"
+              >
+                <FilterX className="h-[19px] w-[19px]" strokeWidth={2} />
+              </button>
+            )}
+            {/* Consulta explícita: nada é buscado até clicar aqui (ou Enter na busca). */}
             <button
               type="button"
               onClick={handleSearchMembers}
               disabled={membersQuery.isFetching}
-              className="inline-flex w-full xl:w-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              title="Buscar"
+              className="flex min-h-[52px] flex-none items-center gap-2 rounded-2xl bg-slate-900 px-[15px] text-sm font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 md:px-[18px] dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <Search className="h-4 w-4" />
-              {membersQuery.isFetching ? 'Buscando...' : 'Buscar'}
+              {membersQuery.isFetching ? <Loader2 className="h-[19px] w-[19px] animate-spin" /> : <Search className="h-[19px] w-[19px]" strokeWidth={2.2} />}
+              <span className="hidden md:inline">{membersQuery.isFetching ? 'Buscando...' : 'Buscar'}</span>
             </button>
           </div>
-        </div>
-      </div>
-
-      {loadingFilters ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          Carregando opções dos filtros...
-        </div>
-      ) : isLoadingMembersList ? (
-        <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-          Carregando dados dos membros...
-        </div>
-      ) : null}
-
-      {!hasSearched ? (
-        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-12 text-center">
-          <Search className="mx-auto mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Ajuste os filtros e clique em Buscar
-          </p>
-          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-            A lista carrega apenas os membros que você escolher.
-          </p>
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
-
-      {hasSearched ? (
-      <div className="relative rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-        {isRefetching && (
-          <div className="absolute inset-0 z-20 flex items-start justify-center rounded-xl bg-white/60 pt-24 backdrop-blur-[1px] dark:bg-slate-900/60">
-            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-md dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Atualizando lista...
+          <div className="flex min-w-0 flex-[1_1_auto] gap-2 overflow-x-auto">
+            {statCards.map((card) => {
+              const Icon = card.icon;
+              const ligado = card.status ? statusAtual === card.status : !selectedStatusFilters?.length;
+              return (
+                <button
+                  key={card.label}
+                  type="button"
+                  title={card.status ? `Filtrar só ${card.label.toLowerCase()} (aplica no Buscar)` : 'Todas as situações (aplica no Buscar)'}
+                  onClick={() => {
+                    // Só troca a situação no filtro — a consulta continua sendo só no Buscar.
+                    setSelectedStatusFilters(card.status ? [card.status] : null);
+                  }}
+                  className={`flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] bg-white py-2 pl-2 pr-3.5 text-left transition-colors hover:border-slate-900 dark:bg-slate-800 ${
+                    ligado && hasSearched ? 'border-slate-900 dark:border-slate-300' : 'border-[#e8ecf1] dark:border-slate-700'
+                  }`}
+                >
+                  <span className={`grid h-[38px] w-[38px] flex-none place-items-center rounded-xl ${card.bg} ${card.fg}`}>
+                    <Icon className="h-[19px] w-[19px]" strokeWidth={1.8} />
+                  </span>
+                  <span className="flex flex-col">
+                    {isLoadingScreen ? (
+                      <SkeletonBlock className="my-0.5 h-5 w-10" />
+                    ) : (
+                      <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em]">{hasSearched ? card.value : '—'}</span>
+                    )}
+                    <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">{card.label}</span>
+                  </span>
+                </button>
+              );
+            })}
+            <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+              <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-[#e0e7ff] text-[#3730a3]">
+                <Church className="h-[19px] w-[19px]" strokeWidth={1.8} />
+              </span>
+              <span className="flex flex-col">
+                {isLoadingScreen ? (
+                  <SkeletonBlock className="my-0.5 h-5 w-10" />
+                ) : (
+                  <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em]">{hasSearched ? stats.uniqueChurches : '—'}</span>
+                )}
+                <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Igrejas</span>
+              </span>
             </div>
           </div>
-        )}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1380px]">
-            <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
-                  <button type="button" onClick={() => handleSort('fullName')} className="inline-flex items-center gap-2">
-                    Membro
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
-                  <button type="button" onClick={() => handleSort('contact')} className="inline-flex items-center gap-2">
-                    Contato
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
-                  <button type="button" onClick={() => handleSort('memberType')} className="inline-flex items-center gap-2">
-                    Tipo
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
-                  <button type="button" onClick={() => handleSort('ecclesiasticalTitle')} className="inline-flex items-center gap-2">
-                    Título Eclesiástico
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
-                  <button type="button" onClick={() => handleSort('churchName')} className="inline-flex items-center gap-2">
-                    Igreja
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
-                  <button type="button" onClick={() => handleSort('membershipStatus')} className="inline-flex items-center gap-2">
-                    Status
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
-                  <button type="button" onClick={() => handleSort('membershipDate')} className="inline-flex items-center gap-2">
-                    Desde
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {isLoadingScreen ? <MembersTableSkeleton /> : paginatedMembers.map((member) => {
-                const normalizedStatus = normalizeMembershipStatus(member.membershipStatus);
-                const displayStatus = member.membershipStatus || 'VISITANTE';
-                const normalizedType = normalizeMemberType(member.memberType);
+        </div>
 
+        {loadingFilters ? (
+          <p className="px-1 text-sm text-slate-500 dark:text-slate-400">Carregando opções dos filtros...</p>
+        ) : null}
+
+        {error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            {error}
+          </div>
+        ) : null}
+
+        {!hasSearched ? (
+          <section className="flex flex-col items-center gap-1.5 rounded-[18px] border border-[#e8ecf1] bg-white px-6 py-14 text-center md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+            <span className="mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-[#f1f5f9] text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+              <Search className="h-6 w-6" strokeWidth={1.8} />
+            </span>
+            <span className="text-base font-bold">Ajuste os filtros e clique em Buscar</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">A lista carrega apenas os membros que você escolher.</span>
+          </section>
+        ) : (
+          <section className="@container relative overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+            {isRefetching && (
+              <div className="absolute inset-0 z-20 flex items-start justify-center bg-white/60 pt-24 backdrop-blur-[1px] dark:bg-slate-900/60">
+                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-md dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Atualizando lista...
+                </div>
+              </div>
+            )}
+
+            {/* Cabeçalho da tabela (some no celular, onde cada linha vira um cartão) */}
+            <div className="hidden items-center gap-4 border-b border-[#eef2f6] bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-[.04em] text-slate-500 @3xl:grid @3xl:grid-cols-[minmax(200px,2fr)_minmax(170px,1.5fr)_minmax(150px,1.3fr)_150px_84px] @6xl:grid-cols-[minmax(220px,2.2fr)_minmax(180px,1.6fr)_80px_minmax(100px,.9fr)_minmax(160px,1.4fr)_150px_96px_84px] dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
+              {cabecalhos.map((cab) => (
+                <button
+                  key={cab.label}
+                  type="button"
+                  onClick={() => cab.key && handleSort(cab.key)}
+                  className={`items-center gap-1 text-left uppercase tracking-[.04em] ${cab.esconderMeio ? 'hidden @6xl:flex' : 'flex'} ${cab.direita ? 'justify-end' : ''} ${
+                    cab.key ? 'cursor-pointer' : 'cursor-default'
+                  } ${cab.key && cab.key === sortKey ? 'text-slate-900 dark:text-white' : ''}`}
+                >
+                  {cab.label}
+                  {cab.key && cab.key === sortKey ? <span className="text-[11px]">{sortDirection === 'asc' ? '↑' : '↓'}</span> : null}
+                </button>
+              ))}
+            </div>
+
+            {isLoadingScreen ? (
+              <div className="divide-y divide-[#f1f5f9] dark:divide-slate-700">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="flex items-center gap-3 px-5 py-3.5">
+                    <SkeletonBlock className="h-[42px] w-[42px] rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <SkeletonBlock className="h-4 w-48" />
+                      <SkeletonBlock className="h-3 w-32" />
+                    </div>
+                    <SkeletonBlock className="hidden h-6 w-20 rounded-full @3xl:block" />
+                  </div>
+                ))}
+              </div>
+            ) : paginatedMembers.length === 0 ? (
+              <div className="flex flex-col items-center gap-1.5 px-6 py-14 text-center">
+                <span className="text-base font-bold">Ninguém encontrado</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">Tente outro nome ou remova algum filtro.</span>
+              </div>
+            ) : (
+              paginatedMembers.map((member, index) => {
+                const normalizedStatus = normalizeMembershipStatus(member.membershipStatus);
+                const normalizedType = normalizeMemberType(member.memberType);
+                const statusTom = STATUS_TOM[normalizedStatus] ?? STATUS_TOM.visitante;
+                const tipoTom = TIPO_TOM[normalizedType];
+                const documento = normalizedType === 'PJ' ? formatCnpj(member.cnpj) : formatCpf(member.cpf);
+                const telefone = formatPhone(member.mobile || member.phone);
                 return (
-                  <tr key={member.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-                    <td className="px-4 py-4 align-top">
-                      <div className="flex items-center gap-3">
-                        {/* Atalho para o perfil, à frente do nome (antes era o olho nas ações). */}
-                        <Link
-                          to={`/app-ui/members/${member.id}`}
-                          className="-ml-2 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition-colors flex-shrink-0"
-                          title="Abrir perfil do membro"
-                          aria-label={`Abrir perfil de ${member.fullName}`}
-                        >
-                          <MoreVertical className="h-5 w-5" />
-                        </Link>
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-700 overflow-hidden flex-shrink-0">
-                          {member.photoUrl ? (
-                            <img src={member.photoUrl} alt={member.fullName} className="w-full h-full object-cover" />
-                          ) : (
-                            getInitials(member.fullName)
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-semibold uppercase text-slate-900 dark:text-slate-100">{member.fullName}</p>
-                          {member.rol != null && (
-                            <p className="text-xs font-semibold text-purple-600">ROL #{member.rol}</p>
-                          )}
-                          <p className="text-sm text-slate-500">{normalizedType === 'PJ' ? (formatCnpj(member.cnpj) || '-') : (formatCpf(member.cpf) || '-')}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <div className="max-w-[260px] space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                          <Phone className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{formatPhone(member.mobile || member.phone) || '-'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                          <Mail className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{member.email || '-'}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getMemberTypeBadgeClass(member.memberType)}`}>
-                        {getMemberTypeLabel(member.memberType)}
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-3 border-t border-[#f1f5f9] px-3.5 py-3 transition-colors first:border-t-0 hover:bg-slate-50 @3xl:grid @3xl:grid-cols-[minmax(200px,2fr)_minmax(170px,1.5fr)_minmax(150px,1.3fr)_150px_84px] @3xl:gap-4 @3xl:px-5 @6xl:grid-cols-[minmax(220px,2.2fr)_minmax(180px,1.6fr)_80px_minmax(100px,.9fr)_minmax(160px,1.4fr)_150px_96px_84px] dark:border-slate-700 dark:hover:bg-slate-700/40"
+                    style={{ animation: `nmRowIn .3s ease ${Math.min(index, 12) * 18}ms both` }}
+                  >
+                    <Link
+                      to={`/app-ui/members/${member.id}`}
+                      title="Abrir perfil do membro"
+                      className="group flex min-w-0 flex-1 items-center gap-3"
+                    >
+                      <AvatarMembro key={member.photoUrl || 'sem-foto'} id={member.id} nome={member.fullName} foto={member.photoUrl} className="h-[42px] w-[42px] text-sm" />
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="truncate text-[15px] font-bold group-hover:underline">{member.fullName}</span>
+                        <span className="truncate text-xs text-slate-500 @3xl:hidden dark:text-slate-400">
+                          {[normalizedType === 'MEMBRO' ? getTitleLabel(member) : getMemberTypeLabel(member.memberType), member.churchName].filter((v) => v && v !== '-').join(' · ')}
+                        </span>
+                        <span className="hidden truncate text-xs text-slate-500 @3xl:block dark:text-slate-400">
+                          {[member.rol != null ? `ROL #${member.rol}` : '', documento].filter(Boolean).join(' · ') || '—'}
+                        </span>
                       </span>
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{getTitleLabel(member)}</span>
-                      {/* Funções ativas do membro */}
+                    </Link>
+
+                    <span className="hidden min-w-0 flex-col gap-1 text-[13px] text-slate-700 @3xl:flex dark:text-slate-300">
+                      <span className="flex items-center gap-2 whitespace-nowrap">
+                        <Phone className="h-3.5 w-3.5 flex-none text-slate-400" strokeWidth={2} />
+                        {telefone || '—'}
+                      </span>
+                      <span className={`flex min-w-0 items-center gap-2 ${member.email ? '' : 'text-slate-400'}`}>
+                        <Mail className="h-3.5 w-3.5 flex-none text-slate-400" strokeWidth={2} />
+                        <span className="truncate">{member.email || '—'}</span>
+                      </span>
+                    </span>
+
+                    <span className="hidden @6xl:flex">
+                      <span className={`flex h-6 items-center rounded-lg px-[9px] text-xs font-bold ${tipoTom}`}>{getMemberTypeLabel(member.memberType)}</span>
+                    </span>
+
+                    <span className="hidden min-w-0 flex-col gap-1 @6xl:flex">
+                      <span className="truncate text-[13px] text-slate-700 dark:text-slate-300">{getTitleLabel(member)}</span>
                       {member.churchFunctions && member.churchFunctions.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
+                        <span className="flex flex-wrap gap-1">
                           {member.churchFunctions.map((f) => (
                             <span
                               key={f.id}
                               title={f.isCampoWide ? 'Função com alcance de campo' : 'Função na igreja'}
-                              className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700"
+                              className="rounded-full border border-[#bbf7d0] bg-[#f0fdf4] px-1.5 py-0.5 text-[11px] font-medium text-[#15803d]"
                             >
                               {f.function?.name}{f.isCampoWide ? ' · Campo' : ''}
                             </span>
                           ))}
-                        </div>
+                        </span>
                       )}
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                        <MapPin className="h-4 w-4 shrink-0" />
-                        <span>{member.churchName || '-'}</span>
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{[member.regionalName, member.fieldName].filter(Boolean).join(' • ') || '-'}</p>
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(normalizedStatus)}`}>
-                        {displayStatus}
+                    </span>
+
+                    <span className="hidden min-w-0 flex-col gap-0.5 @3xl:flex">
+                      <span className="flex items-center gap-1.5 truncate text-[13px] font-semibold">
+                        <MapPin className="h-3.5 w-3.5 flex-none text-slate-400" strokeWidth={2} />
+                        <span className="truncate">{member.churchName || '—'}</span>
                       </span>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300 align-top">
-                      {member.membershipDate ? new Date(member.membershipDate).toLocaleDateString('pt-BR') : '-'}
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <div className="flex items-center justify-end gap-1">
-                        <Permissao chave="members.members.editar" rotulo="Editar — Members" herda="members.view">
-                          <button
-                            type="button"
-                            onClick={() => openEditor(member.id)}
-                            className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                            title="Editar"
-                          >
-                            <Pencil className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                          </button>
-                        </Permissao>
+                      <span className="truncate pl-5 text-xs text-slate-500 dark:text-slate-400">
+                        {[member.regionalName, member.fieldName].filter(Boolean).join(' · ') || '—'}
+                      </span>
+                    </span>
 
-                        <Permissao chave="members.members.excluir" rotulo="Excluir — Members" herda="members.view">
-                          <button
-                            type="button"
-                            onClick={() => requestDelete(member)}
-                            className="rounded-lg p-2 hover:bg-red-50 transition-colors"
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </button>
-                        </Permissao>
-                      </div>
-                    </td>
-                  </tr>
+                    <span className="hidden flex-none @3xl:flex">
+                      <span className={`flex h-[26px] items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-bold ${statusTom}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        {rotuloStatus(member.membershipStatus)}
+                      </span>
+                    </span>
+
+                    {/* Celular: situação e ações ficam no ⋯ (a linha ganha espaço). */}
+                    <button
+                      type="button"
+                      onClick={() => setMenuLinha(member)}
+                      aria-label={`Opções de ${member.fullName}`}
+                      className="grid h-9 w-9 flex-none place-items-center rounded-[10px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 @3xl:hidden dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      <MoreHorizontal className="h-5 w-5" strokeWidth={2} />
+                    </button>
+
+                    <span className="hidden text-[13px] text-slate-700 @6xl:block dark:text-slate-300">
+                      {member.membershipDate ? new Date(member.membershipDate).toLocaleDateString('pt-BR') : '—'}
+                    </span>
+
+                    <span className="hidden justify-end gap-1 @3xl:flex">
+                      <Permissao chave="members.members.editar" rotulo="Editar — Members" herda="members.view">
+                        <button
+                          type="button"
+                          onClick={() => openEditor(member.id)}
+                          title="Editar"
+                          className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
+                        >
+                          <Pencil className="h-[17px] w-[17px]" strokeWidth={2} />
+                        </button>
+                      </Permissao>
+                      <Permissao chave="members.members.excluir" rotulo="Excluir — Members" herda="members.view">
+                        <button
+                          type="button"
+                          onClick={() => requestDelete(member)}
+                          title="Excluir"
+                          className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-400 hover:bg-red-100 hover:text-red-600"
+                        >
+                          <Trash2 className="h-[17px] w-[17px]" strokeWidth={2} />
+                        </button>
+                      </Permissao>
+                    </span>
+                  </div>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
+              })
+            )}
 
-        {!isLoadingScreen && !paginatedMembers.length ? (
-          <div className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-            Nenhum membro encontrado para os filtros selecionados.
-          </div>
-        ) : null}
-
-        <div className="flex flex-col gap-3 border-t border-slate-200 dark:border-slate-700 px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Exibindo {paginatedMembers.length ? (page - 1) * pageSize + 1 : 0} a {(page - 1) * pageSize + paginatedMembers.length} de {serverTotal} membros
-          </p>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-              <span>Linhas por página</span>
-              <select
-                value={pageSize}
-                onChange={(event) => setPageSize(Number(event.target.value))}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                {pageSizeOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+            {/* Rodapé: contagem, linhas por página e páginas */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eef2f6] px-5 py-3.5 text-[13px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+              <span>
+                Exibindo {paginatedMembers.length ? (page - 1) * pageSize + 1 : 0} a {(page - 1) * pageSize + paginatedMembers.length} de {serverTotal} membros
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2">
+                  <span className="hidden sm:inline">Linhas por página</span>
+                  <span className="relative">
+                    <select
+                      value={pageSize}
+                      onChange={(event) => setPageSize(Number(event.target.value))}
+                      className="h-[34px] appearance-none rounded-[10px] border border-slate-200 bg-white pl-3 pr-8 text-[13px] font-semibold text-slate-700 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      {pageSizeOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page === 1}
+                  className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 hover:border-slate-900 disabled:pointer-events-none disabled:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  Anterior
+                </button>
+                <span className="flex h-[34px] min-w-[34px] items-center justify-center rounded-[10px] bg-slate-900 px-2.5 text-[13px] font-bold text-white dark:bg-white dark:text-slate-900">
+                  {page}
+                </span>
+                <span className="text-[13px]">de {totalPages}</span>
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page === totalPages}
+                  className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 hover:border-slate-900 disabled:pointer-events-none disabled:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  Próxima
+                </button>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                disabled={page === 1}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
-              >
-                Anterior
-              </button>
-              <span className="text-sm text-slate-600 dark:text-slate-300">Página {page} de {totalPages}</span>
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                disabled={page === totalPages}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
-              >
-                Próxima
-              </button>
-            </div>
-          </div>
-        </div>
+          </section>
+        )}
       </div>
-      ) : null}
+
+      {/* Painel de filtros — edita o mesmo formulário de antes; "Buscar" aplica. */}
+      {filtrosAbertos && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setFiltrosAbertos(false)} />
+          <aside className="relative flex h-full w-[min(440px,100%)] animate-[nmDrawerIn_.25s_ease] flex-col bg-white shadow-[-20px_0_50px_-20px_rgba(15,23,42,.35)] dark:bg-slate-800">
+            <div className="flex items-center gap-3.5 border-b border-[#eef2f6] px-[22px] py-5 dark:border-slate-700">
+              <span className="grid h-11 w-11 flex-none place-items-center rounded-[14px] bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                <SlidersHorizontal className="h-[22px] w-[22px]" strokeWidth={2} />
+              </span>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-lg font-extrabold">Filtros</span>
+                <span className="text-[13px] text-slate-500 dark:text-slate-400">Refine quem aparece na lista</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos(false)}
+                aria-label="Fechar"
+                className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden p-[22px]">
+              <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">TIPO DE CADASTRO</span>
+                <div className="flex flex-wrap gap-2">
+                  {([['ALL', 'Todos'], ['MEMBRO', 'Membros'], ['PF', 'Pessoa física'], ['PJ', 'Pessoa jurídica']] as Array<[MemberTypeFilter, string]>).map(([valor, rotulo]) => (
+                    <button key={valor} type="button" onClick={() => setSelectedTypeFilter(valor)} className={chipClasse(selectedTypeFilter === valor)}>
+                      {rotulo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">SITUAÇÃO</span>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setSelectedStatusFilters(null)} className={chipClasse(!selectedStatusFilters?.length)}>
+                    Todas
+                  </button>
+                  {(['ativo', 'inativo', 'aguardando', 'visitante'] as const).map((valor) => (
+                    <button
+                      key={valor}
+                      type="button"
+                      onClick={() => setSelectedStatusFilters((atual) => alternarFiltro(atual, valor))}
+                      className={chipClasse(!!selectedStatusFilters?.includes(valor))}
+                    >
+                      {getMembershipStatusLabel(valor)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {campoVisible && (
+                <label className="flex flex-col gap-2.5 text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">
+                  CAMPO
+                  <span className="relative min-w-0">
+                    <select
+                      value={selectedFieldId}
+                      onChange={(event) => {
+                        setSelectedFieldId(event.target.value);
+                        // Trocar de campo invalida regional e igreja escolhidas.
+                        setSelectedRegionalIds(null);
+                        setSelectedChurchIds(null);
+                      }}
+                      disabled={!canChooseField || loadingFilters}
+                      className="h-[50px] w-full appearance-none rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-10 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                    >
+                      {!hasFixedChurchScope && <option value="">Todos os campos</option>}
+                      {fields.map((field) => (
+                        <option key={field.id} value={field.id}>
+                          {field.code ? `${field.code} - ` : ''}
+                          {field.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  </span>
+                </label>
+              )}
+
+              <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">REGIONAL</span>
+                <MultiSelectDropdown
+                  searchable
+                  options={filteredRegionais.map((regional) => ({
+                    value: regional.id,
+                    label: `${regional.code ? `${regional.code} - ` : ''}${regional.name}`,
+                  }))}
+                  value={selectedRegionalIds}
+                  onChange={(next) => {
+                    setSelectedRegionalIds(next);
+                    // Trocar a regional invalida a igreja escolhida: ela pode nem
+                    // pertencer mais as regionais selecionadas.
+                    setSelectedChurchIds(null);
+                  }}
+                  allLabel="Todas as regionais"
+                  disabled={!canChooseRegional || loadingFilters}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">IGREJA</span>
+                <MultiSelectDropdown
+                  searchable
+                  options={filteredChurches.map((church) => ({
+                    value: church.id,
+                    label: `${church.code ? `${church.code} - ` : ''}${church.name}`,
+                  }))}
+                  value={selectedChurchIds}
+                  onChange={setSelectedChurchIds}
+                  allLabel="Todas as igrejas"
+                  disabled={!canChooseChurch || loadingFilters}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">TÍTULO ECLESIÁSTICO</span>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setSelectedTitleFilters(null)} className={chipClasse(!selectedTitleFilters?.length)}>
+                    Todos
+                  </button>
+                  {titleFilterOptions.filter((option) => option.value !== 'ALL').map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSelectedTitleFilters((atual) => alternarFiltro(atual, option.value))}
+                      className={chipClasse(!!selectedTitleFilters?.includes(option.value))}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">ESTADO CIVIL</span>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setSelectedMaritalStatusFilters(null)} className={chipClasse(!selectedMaritalStatusFilters?.length)}>
+                    Todos
+                  </button>
+                  {maritalStatusFilterOptions.filter((option) => option.value !== 'ALL').map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSelectedMaritalStatusFilters((atual) => alternarFiltro(atual, option.value))}
+                      className={chipClasse(!!selectedMaritalStatusFilters?.includes(option.value))}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 border-t border-[#eef2f6] px-[22px] py-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={limparFiltros}
+                className="h-[52px] rounded-[14px] border border-slate-200 bg-white px-[18px] text-[15px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Limpar
+              </button>
+              <button
+                type="button"
+                onClick={() => { setFiltrosAbertos(false); handleSearchMembers(); }}
+                className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-[15px] font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                <Search className="h-[18px] w-[18px]" strokeWidth={2.2} />
+                Buscar
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {menuLinha && (() => {
+        const statusLinha = normalizeMembershipStatus(menuLinha.membershipStatus);
+        const tipoLinha = normalizeMemberType(menuLinha.memberType);
+        return (
+          <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" style={{ fontFamily: FONTE_MODELO_FAMILIA }}>
+            <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMenuLinha(null)} />
+            <div className="relative w-full max-w-sm animate-[nmPopIn_.2s_ease] rounded-t-3xl bg-white p-4 pb-6 shadow-2xl sm:rounded-3xl sm:pb-4 dark:bg-slate-800 dark:text-slate-100">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 sm:hidden dark:bg-slate-600" />
+              <div className="flex items-center gap-3 px-1">
+                <AvatarMembro key={menuLinha.photoUrl || 'sem-foto'} id={menuLinha.id} nome={menuLinha.fullName} foto={menuLinha.photoUrl} className="h-11 w-11 text-sm" />
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="line-clamp-2 text-[15px] font-bold leading-tight">{menuLinha.fullName}</span>
+                  <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {[menuLinha.rol != null ? `ROL #${menuLinha.rol}` : '', tipoLinha === 'PJ' ? formatCnpj(menuLinha.cnpj) : formatCpf(menuLinha.cpf)].filter(Boolean).join(' · ') || getMemberTypeLabel(menuLinha.memberType)}
+                  </span>
+                </span>
+                <span className={`flex h-[26px] flex-none items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-bold ${STATUS_TOM[statusLinha] ?? STATUS_TOM.visitante}`}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  {rotuloStatus(menuLinha.membershipStatus)}
+                </span>
+              </div>
+              <div className="my-3 h-px bg-[#eef2f6] dark:bg-slate-700" />
+              <div className="flex flex-col gap-0.5">
+                <Link
+                  to={`/app-ui/members/${menuLinha.id}`}
+                  onClick={() => setMenuLinha(null)}
+                  className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                    <UserRound className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                  </span>
+                  Ver ficha do membro
+                </Link>
+                <Permissao chave="members.members.editar" rotulo="Editar — Members" herda="members.view">
+                  <button
+                    type="button"
+                    onClick={() => { const id = menuLinha.id; setMenuLinha(null); openEditor(id); }}
+                    className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                      <Pencil className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                    </span>
+                    Editar
+                  </button>
+                </Permissao>
+                <Permissao chave="members.members.excluir" rotulo="Excluir — Members" herda="members.view">
+                  <button
+                    type="button"
+                    onClick={() => { const alvo = menuLinha; setMenuLinha(null); requestDelete(alvo); }}
+                    className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  >
+                    <span className="grid h-9 w-9 place-items-center rounded-xl bg-red-100 text-red-600 dark:bg-red-950/50">
+                      <Trash2 className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                    </span>
+                    Excluir
+                  </button>
+                </Permissao>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <MemberEditDrawer
         memberId={editorMemberId}
@@ -1678,23 +1943,23 @@ export function Members() {
       {deleteTarget ? (
         <>
           <div className="fixed inset-0 z-40 bg-slate-900/50" onClick={cancelDelete} />
-          <div className="fixed left-1/2 top-1/2 z-50 w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-700">
+          <div className="fixed left-1/2 top-1/2 z-50 w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-[#e8ecf1] bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900" style={{ fontFamily: FONTE_MODELO_FAMILIA }}>
             <div className="p-6">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-red-100">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Excluir membro</h3>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">Excluir membro</h3>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     O que deseja fazer com <span className="font-semibold uppercase">{deleteTarget.fullName}</span>?
                   </p>
                   <div className="mt-4 space-y-2">
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <p className="text-sm font-semibold text-amber-900">Arquivar (soft delete)</p>
-                      <p className="text-xs text-amber-700 mt-0.5">O membro é desativado e ocultado das listas, mas todo o histórico de eventos e cards do pipeline é preservado.</p>
+                    <div className="rounded-2xl border border-[#fde68a] bg-[#fffbeb] p-3">
+                      <p className="text-sm font-semibold text-[#92400e]">Arquivar (soft delete)</p>
+                      <p className="text-xs text-[#b45309] mt-0.5">O membro é desativado e ocultado das listas, mas todo o histórico de eventos e cards do pipeline é preservado.</p>
                     </div>
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3">
                       <p className="text-sm font-semibold text-red-900">Excluir permanentemente</p>
                       <p className="text-xs text-red-700 mt-0.5">Remove o membro e apaga todo o histórico de eventos vinculado. Esta ação <strong>não pode ser desfeita</strong>.</p>
                     </div>
@@ -1702,12 +1967,12 @@ export function Members() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 rounded-b-xl border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-6 py-3">
+            <div className="flex items-center justify-end gap-2 border-t border-[#eef2f6] bg-white px-6 py-4 dark:border-slate-700 dark:bg-slate-900">
               <button
                 type="button"
                 onClick={cancelDelete}
                 disabled={deleting}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-60"
+                className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 Cancelar
               </button>
@@ -1715,7 +1980,7 @@ export function Members() {
                 type="button"
                 onClick={() => confirmDelete(false)}
                 disabled={deleting}
-                className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                className="h-11 rounded-xl border border-[#fbbf24] bg-[#fffbeb] px-4 text-sm font-semibold text-[#92400e] hover:bg-[#fef3c7] disabled:opacity-60"
               >
                 {deleting ? 'Arquivando...' : 'Arquivar'}
               </button>
@@ -1724,7 +1989,7 @@ export function Members() {
                   type="button"
                   onClick={() => confirmDelete(true)}
                   disabled={deleting}
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                  className="h-11 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
                 >
                   {deleting ? 'Excluindo...' : 'Excluir tudo'}
                 </button>

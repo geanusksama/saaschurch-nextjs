@@ -43,7 +43,11 @@ interface OnlineContact {
   campoName?: string | null;
 }
 
-export function ChatFAB() {
+/**
+ * `naBarra`: o botão vira um ícone da barra superior (em vez do botão redondo
+ * flutuante no canto) e o painel abre logo abaixo da barra.
+ */
+export function ChatFAB({ naBarra = false }: { naBarra?: boolean } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'contacts'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -870,29 +874,33 @@ export function ChatFAB() {
   return (
     <>
       {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className={naBarra ? 'relative' : 'fixed bottom-6 right-6 z-40'}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="relative flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-2xl hover:scale-105 transition-all duration-200"
+          className={
+            naBarra
+              ? 'relative flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+              : 'relative flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-2xl hover:scale-105 transition-all duration-200'
+          }
           title="Chat do Campo"
         >
-          <MessageSquare className="h-6 w-6" />
+          <MessageSquare className={naBarra ? 'h-5 w-5' : 'h-6 w-6'} />
 
           {/* Unread count badge */}
           {unreadCount > 0 && (
-            <span className="absolute -top-2 -left-2 bg-rose-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow animate-bounce">
+            <span className={`absolute ${naBarra ? '-top-0.5 -left-0.5 h-4 w-4 text-[9px]' : '-top-2 -left-2 h-5 w-5 text-[10px] animate-bounce'} bg-rose-600 text-white font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow`}>
               {unreadCount}
             </span>
           )}
 
           {/* Heartbeat notification ring */}
-          <span className="absolute -top-1 -right-1 flex h-4 w-4">
+          <span className={`absolute flex ${naBarra ? 'top-1 right-1 h-2.5 w-2.5' : '-top-1 -right-1 h-4 w-4'}`}>
             <span
               className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
               style={{ backgroundColor: getStatusColor(presenceStatus) }}
             />
             <span
-              className="relative inline-flex rounded-full h-4 w-4"
+              className={`relative inline-flex rounded-full ${naBarra ? 'h-2.5 w-2.5' : 'h-4 w-4'}`}
               style={{
                 backgroundColor: getStatusColor(presenceStatus),
                 boxShadow: `0 0 0 2px ${getStatusColor(presenceStatus)}20`
@@ -910,7 +918,7 @@ export function ChatFAB() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 30 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="fixed bottom-24 right-6 z-40 w-96 max-w-[calc(100vw-3rem)] h-[620px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-800 dark:text-slate-100 font-sans"
+            className={`${naBarra ? 'fixed inset-x-3 top-[72px] max-h-[calc(100vh-5.5rem)] sm:absolute sm:inset-x-auto sm:left-3 sm:top-full sm:mt-2 sm:w-96' : 'fixed bottom-24 right-6 w-96'} z-40 max-w-[calc(100vw-3rem)] h-[620px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-800 dark:text-slate-100 font-sans`}
           >
             {/* Header */}
             <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-2">
