@@ -512,13 +512,13 @@ export default function Requerimentos() {
             <FileText className="w-6 h-6 text-indigo-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Requerimentos</h1>
+            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Requerimentos</h1>
             <p className="text-slate-500 text-sm">Processos administrativos eclesiásticos</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Permissao chave="requirements.requerimentos.exportar" rotulo="Exportar — Requerimentos" herda="requirements.view">
-            <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+            <button className="inline-flex h-10 items-center gap-1.5 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
               <Download size={15} />
               Exportar
             </button>
@@ -526,7 +526,7 @@ export default function Requerimentos() {
           <Permissao chave="requirements.requerimentos.imprimir" rotulo="Imprimir — Requerimentos" herda="requirements.view">
             <button
               onClick={() => setPrintModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="inline-flex h-10 items-center gap-1.5 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               <Printer size={15} />
               Imprimir
@@ -535,7 +535,7 @@ export default function Requerimentos() {
           <Permissao chave="requirements.requerimentos.novo_requerimento" rotulo="Novo Requerimento — Requerimentos" herda="requirements.view">
             <button
               onClick={() => setShowNew(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+              className="inline-flex h-10 items-center gap-1.5 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
               <Plus size={15} />
               Novo Requerimento
@@ -554,7 +554,7 @@ export default function Requerimentos() {
         ].map(({ label, value, icon: Icon, color }) => (
           <div
             key={label}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex items-center gap-3"
+            className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-4 flex items-center gap-3"
           >
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center bg-${color}-100 flex-shrink-0`}>
               <Icon size={18} className={`text-${color}-600`} />
@@ -568,7 +568,7 @@ export default function Requerimentos() {
       </div>
 
       {/* Filters */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         {/* Botão Buscar na mesma linha: coluna própria no fim. */}
         <div
           className={`grid gap-3 md:grid-cols-2 xl:items-end ${
@@ -738,7 +738,7 @@ export default function Requerimentos() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
+                  <tr className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
                     <th className="text-left px-4 py-3 font-medium text-slate-600 whitespace-nowrap">Protocolo</th>
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Membro / Candidato</th>
                     <th className="text-left px-4 py-3 font-medium text-slate-600 whitespace-nowrap">Serviço</th>
@@ -1144,7 +1144,7 @@ function RequerimentoDetalheModal({
             {activeTab === "detalhes" && (
               <div className="space-y-5">
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${(STATUS_LABELS[(card.status || "").toLowerCase()]?.cls) || "bg-slate-100 text-slate-600"}`}>
+                  <span className={`inline-flex h-[26px] items-center whitespace-nowrap rounded-full px-2.5 text-xs font-bold ${(STATUS_LABELS[(card.status || "").toLowerCase()]?.cls) || "bg-slate-100 text-slate-600"}`}>
                     {card.statusLabel || card.status}
                   </span>
                   <span className="text-xs text-slate-400">Aberto em {fmtDate(card.openedAt || card.createdAt)}</span>
@@ -1353,7 +1353,7 @@ function RequerimentoDetalheModal({
         )}
 
         <div className="border-t border-slate-100 px-6 py-4 text-right">
-          <button onClick={onClose} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Fechar</button>
+          <button onClick={onClose} className="h-10 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">Fechar</button>
         </div>
       </div>
     </div>

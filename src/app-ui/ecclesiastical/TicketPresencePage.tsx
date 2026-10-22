@@ -415,7 +415,7 @@ export default function TicketPresencePage() {
       {/* Header Section with Gerar Ticket Button */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tickets criados</h1>
+          <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Tickets criados</h1>
           <p className="text-slate-500 text-sm">Gerencie e imprima tíquetes de presença</p>
         </div>
         <Permissao chave="presence_tickets.ticket_presence_page.gerar_ticket" rotulo="Gerar Ticket — Ticket Presence Page" herda="presence_tickets.view">
@@ -577,7 +577,7 @@ export default function TicketPresencePage() {
         </div>
 
         {/* Tickets List Table */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+        <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />

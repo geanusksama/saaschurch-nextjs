@@ -524,12 +524,18 @@ export function Consecration() {
       const scheduleChurch = churches.find((church) => church.id === schedule.churchId);
       const fieldMatch = !vigentes.fieldId || schedule.fieldId === vigentes.fieldId || scheduleChurch?.regional?.campoId === vigentes.fieldId || scheduleChurch?.regional?.campo?.id === vigentes.fieldId;
       const textMatch = !query || normalizeText(`${schedule.churchCode || ''} ${schedule.churchName} ${schedule.notes || ''}`).includes(query);
-      const dateMatch = dateInRange(schedule.scheduledDate, vigentes.dateFrom, vigentes.dateTo);
-      return fieldMatch && textMatch && dateMatch;
+      return fieldMatch && textMatch;
     });
   }, [sortedSchedules, churches, vigentes]);
 
-  const currentSchedule = visibleSchedules[0] || null;
+  // O card de próxima data ignora o período da busca: mostra o próximo agendamento a partir de hoje.
+  const currentSchedule = useMemo(() => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return visibleSchedules.find((schedule) => getDateOnly(schedule.scheduledDate) >= today)
+      || visibleSchedules[visibleSchedules.length - 1]
+      || null;
+  }, [visibleSchedules]);
 
   const pickerChurches = useMemo(() => {
     const source = modalScopedChurchOptions;
@@ -1000,7 +1006,7 @@ export function Consecration() {
             <Gift className="h-5 w-5 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Consagração</h1>
+            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Consagração</h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">Gerencie separações, consagrações e o histórico ministerial</p>
           </div>
         </div>
@@ -1010,7 +1016,7 @@ export function Consecration() {
             <button
               type="button"
               onClick={() => toast.info('Exportação será habilitada no mesmo padrão dos demais serviços.')}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
+              className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900"
             >
               <Download className="h-4 w-4" />
               Exportar
@@ -1020,7 +1026,7 @@ export function Consecration() {
             <button
               type="button"
               onClick={() => setPrintModalOpen(true)}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
+              className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900"
             >
               <Printer className="h-4 w-4" />
               Imprimir
@@ -1031,7 +1037,7 @@ export function Consecration() {
               <button
                 type="button"
                 onClick={() => void openRequestModal(currentSchedule)}
-                className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700"
+                className="flex h-10 items-center gap-2 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
               >
                 <Plus className="h-4 w-4" />
                 Nova Consagração
@@ -1054,7 +1060,7 @@ export function Consecration() {
         />
       </div>
 
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         <div
           className={`grid gap-3 md:grid-cols-2 xl:items-end ${
             campoVisible
@@ -1063,7 +1069,7 @@ export function Consecration() {
           }`}
         >
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Busca</label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -1071,14 +1077,14 @@ export function Consecration() {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') buscar(); }}
                 placeholder="Buscar por membro, protocolo, igreja, serviço ou observação..."
-                className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full h-[46px] pl-10 pr-4 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
               />
             </div>
           </div>
 
           {campoVisible && (
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
+              <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Campo</label>
               <select
                 value={selectedFieldId}
                 onChange={(event) => {
@@ -1087,7 +1093,7 @@ export function Consecration() {
                   setSelectedChurchId('');
                 }}
                 disabled={!canChooseField || loadingFilters}
-                className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+                className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
               >
                 <option value="">Todos os campos</option>
                 {fields.map((field) => (
@@ -1101,7 +1107,7 @@ export function Consecration() {
           )}
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Regional</label>
             <select
               value={selectedRegionalId}
               onChange={(event) => {
@@ -1109,7 +1115,7 @@ export function Consecration() {
                 setSelectedChurchId('');
               }}
               disabled={!canChooseRegional || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
             >
               <option value="">Todas as regionais</option>
               {filteredRegionais.map((regional) => (
@@ -1122,12 +1128,12 @@ export function Consecration() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Igreja</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Igreja</label>
             <select
               value={selectedChurchId}
               onChange={(event) => setSelectedChurchId(event.target.value)}
               disabled={!canChooseChurch || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
             >
               <option value="">Todas as igrejas</option>
               {filteredChurchOptions.map((church) => (
@@ -1140,11 +1146,11 @@ export function Consecration() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Status</label>
             <select
               value={selectedStatusFilter}
               onChange={(event) => setSelectedStatusFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
             >
               <option value="">Todos os status</option>
               <option value="1">Pendente</option>
@@ -1156,22 +1162,22 @@ export function Consecration() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Data inicial</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data inicial</label>
             <input
               type="date"
               value={dateFrom}
               onChange={(event) => setDateFrom(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Data final</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data final</label>
             <input
               type="date"
               value={dateTo}
               onChange={(event) => setDateTo(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
             />
           </div>
           {/* Consulta explícita: a tabela só muda ao clicar aqui. */}
@@ -1182,7 +1188,7 @@ export function Consecration() {
       </div>
 
       {(loading || loadingFilters) ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
           <span className="inline-flex items-center gap-2">
             <Clock3 className="h-4 w-4 animate-pulse text-purple-600" />
             Carregando consagracoes e filtros...
@@ -1191,17 +1197,17 @@ export function Consecration() {
       ) : null}
 
       {error ? (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
       ) : null}
 
       {dashboard?.truncated ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Sem intervalo de datas a lista para nos {dashboard.queueCap ?? 2000} registros mais recentes.
           Informe uma data inicial e final para ver o periodo inteiro.
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900">
         {insertingLabel ? (
           <div className="flex items-center gap-3 border-b border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800">
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-purple-600" />
@@ -1238,7 +1244,7 @@ export function Consecration() {
                 type="button"
                 onClick={() => setBulkConfirmOpen(true)}
                 disabled={bulkDeleting}
-                className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-rose-600 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Trash2 className="h-4 w-4" />
                 {bulkDeleting ? 'Excluindo...' : 'Excluir selecionados'}
@@ -1248,7 +1254,7 @@ export function Consecration() {
         ) : null}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1660px]">
-            <thead className="border-b border-slate-200 bg-slate-50">
+            <thead className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
               <tr>
                 <th className="w-10 px-4 py-3 text-left">
                   <RowCheckbox
@@ -1259,54 +1265,54 @@ export function Consecration() {
                     disabled={!pageIds.length}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
                   <button type="button" onClick={() => handleSort('member')} className="inline-flex items-center gap-2">
                     Membro
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
                   <button type="button" onClick={() => handleSort('church')} className="inline-flex items-center gap-2">
                     Igreja
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
                   <button type="button" onClick={() => handleSort('service')} className="inline-flex items-center gap-2">
                     Serviço
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Título Atual</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">Título Atual</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
                   <button type="button" onClick={() => handleSort('title')} className="inline-flex items-center gap-2">
                     Título Pretendido
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
                   <button type="button" onClick={() => handleSort('status')} className="inline-flex items-center gap-2">
                     Status
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
                   <button type="button" onClick={() => handleSort('consecrationDate')} className="inline-flex items-center gap-2">
                     Data da Consagração
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
                   <button type="button" onClick={() => handleSort('openedAt')} className="inline-flex items-center gap-2">
                     Aberto em
                     <ArrowUpDown className="h-4 w-4 text-slate-400" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Observações</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900">Acoes</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">Observações</th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[.06em] text-slate-500">Acoes</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-[#f1f5f9] dark:divide-slate-700">
               {loading || loadingFilters ? <TableLoadingRows columns={11} /> : null}
               {insertingLabel && !loading && !loadingFilters ? (
                 <tr className="bg-purple-50/60">
@@ -1346,12 +1352,12 @@ export function Consecration() {
                     </td>
                     <td className="px-4 py-4 align-top">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-700">
+                        <div className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                           {(item.member?.fullName || 'MB').split(' ').map((part) => part[0]).slice(0, 2).join('')}
                         </div>
                         <div>
-                          <p className="font-semibold uppercase text-slate-900">{item.member?.fullName || 'Membro não vinculado'}</p>
-                          <p className="text-xs font-semibold text-purple-600">{item.protocol}</p>
+                          <p className="text-[15px] font-bold uppercase text-slate-900">{item.member?.fullName || 'Membro não vinculado'}</p>
+                          <p className="text-xs font-medium tabular-nums text-slate-500">{item.protocol}</p>
                         </div>
                       </div>
                     </td>
@@ -1363,7 +1369,7 @@ export function Consecration() {
                     <td className="px-4 py-4 align-top text-sm text-slate-700">{item.currentTitle || 'Nao informado'}</td>
                     <td className="px-4 py-4 align-top text-sm font-semibold text-slate-900">{item.intendedTitle || 'Não definido'}</td>
                     <td className="px-4 py-4 align-top">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.columnIndex)}`}>
+                      <span className={`inline-flex h-[26px] items-center whitespace-nowrap rounded-full px-2.5 text-xs font-bold ${statusClass(item.columnIndex)}`}>
                         {item.statusLabel}
                       </span>
                     </td>
@@ -1379,7 +1385,7 @@ export function Consecration() {
                             <button
                               type="button"
                               onClick={() => void openRequestModal(item.nextConsecration || currentSchedule, item)}
-                              className="rounded-lg p-2 transition-colors hover:bg-slate-100"
+                              className="grid h-9 w-9 place-items-center rounded-[10px] transition-colors hover:bg-slate-100"
                               title="Editar"
                             >
                               <Pencil className="h-4 w-4 text-slate-600" />
@@ -1389,7 +1395,7 @@ export function Consecration() {
                             <button
                               type="button"
                               onClick={() => setDeleteTarget({ kind: 'request', id: item.id, label: item.member?.fullName || item.protocol })}
-                              className="rounded-lg p-2 transition-colors hover:bg-rose-50"
+                              className="grid h-9 w-9 place-items-center rounded-[10px] transition-colors hover:bg-[#fee2e2]"
                               title="Excluir"
                             >
                               <Trash2 className="h-4 w-4 text-rose-600" />
@@ -1421,7 +1427,7 @@ export function Consecration() {
               <select
                 value={pageSize}
                 onChange={(event) => setPageSize(Number(event.target.value))}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-2.5 text-sm focus:outline-none focus:border-slate-900"
               >
                 {PAGE_SIZE_OPTIONS.map((option) => (
                   <option key={option} value={option}>{option}</option>
@@ -1433,7 +1439,7 @@ export function Consecration() {
                 type="button"
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 disabled={page === 1}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50"
               >
                 Anterior
               </button>
@@ -1442,7 +1448,7 @@ export function Consecration() {
                 type="button"
                 onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                 disabled={page === totalPages}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50"
               >
                 Proxima
               </button>
@@ -1473,7 +1479,7 @@ export function Consecration() {
                 }
               }}
               disabled={!canPickRequestChurch}
-              className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-left text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+              className="flex w-full min-h-[46px] items-center justify-between rounded-xl border-[1.5px] border-slate-200 bg-white px-3.5 py-2.5 text-left text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
             >
               <span>{selectedChurchLabel(requestForm.churchId, churches, selectedMember)}</span>
               <Building2 className="h-4 w-4 text-slate-400" />
@@ -1491,7 +1497,7 @@ export function Consecration() {
                   setMemberSearchPerformed(false);
                   setMemberSearchOpen(true);
                 }}
-                className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-left text-sm text-slate-700"
+                className="flex w-full min-h-[46px] items-center justify-between rounded-xl border-[1.5px] border-slate-200 bg-white px-3.5 py-2.5 text-left text-sm font-medium text-slate-700"
               >
                 <span>{selectedMember?.fullName || 'Buscar membro'}</span>
                 <UserRound className="h-4 w-4 text-slate-400" />
@@ -1504,7 +1510,7 @@ export function Consecration() {
                 value={requestForm.titleId}
                 onChange={(event) => setRequestForm((current) => ({ ...current, titleId: event.target.value }))}
                 disabled={loadingTitles}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100"
               >
                 <option value="">Selecione o título</option>
                 {titleOptions.map((title) => (
@@ -1521,7 +1527,7 @@ export function Consecration() {
                 type="text"
                 value={selectedTitleOption?.serviceDescription || 'Sem serviço configurado'}
                 readOnly
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 focus:outline-none"
+                className="w-full min-h-[46px] rounded-xl border-[1.5px] border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-600 focus:outline-none"
               />
             </div>
 
@@ -1537,7 +1543,7 @@ export function Consecration() {
                     setRequestForm((current) => ({ ...current, consecrationDate: event.target.value }));
                   }
                 }}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100"
               />
               <p className="mt-1 text-xs text-slate-500">
                 {isAdminOrMaster ? 'Admin/master pode definir a data manualmente.' : 'A data vem da agenda de consagração definida pela sede.'}
@@ -1551,7 +1557,7 @@ export function Consecration() {
               rows={4}
               value={requestForm.notes}
               onChange={(event) => setRequestForm((current) => ({ ...current, notes: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
             />
           </div>
 
@@ -1568,7 +1574,7 @@ export function Consecration() {
                 setSelectedMember(null);
                 setRequestModalOpen(false);
               }}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="h-10 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900"
             >
               Cancelar
             </button>
@@ -1577,7 +1583,7 @@ export function Consecration() {
                 type="button"
                 onClick={submitRequest}
                 disabled={requestSubmitting}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                className="h-10 rounded-[10px] bg-emerald-600 px-3.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
               >
                 {requestSubmitting ? 'Salvando...' : editingRequest ? 'Salvar Alteracoes' : 'Iniciar Processo'}
               </button>
@@ -1599,7 +1605,7 @@ export function Consecration() {
                 setChurchSearch('');
                 setChurchPickerTarget('schedule');
               }}
-              className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-left text-sm text-slate-700"
+              className="flex w-full min-h-[46px] items-center justify-between rounded-xl border-[1.5px] border-slate-200 bg-white px-3.5 py-2.5 text-left text-sm font-medium text-slate-700"
             >
               <span>{selectedChurchLabel(scheduleForm.churchId, churches, null)}</span>
               <Building2 className="h-4 w-4 text-slate-400" />
@@ -1612,7 +1618,7 @@ export function Consecration() {
               type="date"
               value={scheduleForm.scheduledDate}
               onChange={(event) => setScheduleForm((current) => ({ ...current, scheduledDate: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
             />
           </div>
 
@@ -1622,7 +1628,7 @@ export function Consecration() {
               rows={3}
               value={scheduleForm.notes}
               onChange={(event) => setScheduleForm((current) => ({ ...current, notes: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
             />
           </div>
 
@@ -1635,7 +1641,7 @@ export function Consecration() {
                 setEditingSchedule(null);
                 setScheduleModalOpen(false);
               }}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="h-10 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900"
             >
               Cancelar
             </button>
@@ -1644,7 +1650,7 @@ export function Consecration() {
                 type="button"
                 onClick={submitSchedule}
                 disabled={scheduleSubmitting}
-                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
+                className="h-10 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 disabled:opacity-60"
               >
                 {scheduleSubmitting ? 'Salvando...' : editingSchedule ? 'Salvar Alteracoes' : 'Salvar Data'}
               </button>
@@ -1665,7 +1671,7 @@ export function Consecration() {
               }}
               onKeyDown={handleChurchSearchKeyDown}
               placeholder="Buscar igreja..."
-              className="w-full rounded-lg border border-slate-200 py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full min-h-[46px] py-2.5 pl-9 pr-3 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
             />
           </div>
           <p className="mb-3 text-xs text-slate-500">Use as setas ou a roda do mouse para navegar. Pressione Enter para selecionar.</p>
@@ -1709,14 +1715,14 @@ export function Consecration() {
                 }}
                 onKeyDown={handleMemberSearchKeyDown}
                 placeholder="Digite para buscar membro..."
-                className="w-full rounded-lg border border-slate-200 py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full min-h-[46px] py-2.5 pl-9 pr-3 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
               />
             </div>
             <button
               type="button"
               onClick={runMemberSearch}
               disabled={memberSearchLoading}
-              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+              className="h-10 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 disabled:opacity-60"
             >
               {memberSearchLoading ? 'Buscando...' : 'Buscar'}
             </button>
@@ -1854,7 +1860,7 @@ function StatCard({ label, value, icon }: { label: string; value: string | numbe
     <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
       <div>
         <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="text-xl font-bold leading-tight text-slate-900">{value}</p>
+        <p className="text-xl font-bold leading-tight tabular-nums text-slate-900">{value}</p>
       </div>
       {icon}
     </div>
@@ -1938,9 +1944,9 @@ function NextConsecrationCard({
 function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+      <div className="w-full max-w-2xl rounded-[22px] bg-white shadow-[0_30px_70px_-20px_rgba(15,23,42,.45)]">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
           <button onClick={onClose} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
             <X className="h-4 w-4" />
           </button>

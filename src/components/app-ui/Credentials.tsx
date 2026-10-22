@@ -441,25 +441,25 @@ export function Credentials() {
             <CreditCard className="w-6 h-6 text-green-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Credenciais</h1>
+            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Credenciais</h1>
             <p className="text-slate-500 text-sm">Gerencie carteirinhas de membros e obreiros</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Permissao chave="credentials.credentials.excel" rotulo="Excel — Credentials" herda="credentials.view">
             <button onClick={exportToExcel} disabled={exportingExcel}
-              className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+              className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed">
               {exportingExcel ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} className="text-green-600" />}
               {exportingExcel ? 'Gerando...' : 'Excel'}
             </button>
           </Permissao>
           <Permissao chave="credentials.credentials.imprimir" rotulo="Imprimir — Credentials" herda="credentials.view">
-            <button onClick={() => setPrintModalOpen(true)} className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 rounded-lg text-sm">
+            <button onClick={() => setPrintModalOpen(true)} className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
               <Printer size={16} /> Imprimir
             </button>
           </Permissao>
           <Permissao chave="credentials.credentials.nova_credencial" rotulo="Nova Credencial — Credentials" herda="credentials.view">
-            <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <button onClick={() => setModalOpen(true)} className="flex h-10 items-center gap-2 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
               <Plus size={16} /> Nova Credencial
             </button>
           </Permissao>
@@ -474,61 +474,61 @@ export function Credentials() {
           { label: 'Aprovadas', value: stats.aprovado, icon: <CheckCircle2 className="h-5 w-5 text-blue-500" /> },
           { label: 'Entregues / Ativas', value: stats.entregue, icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
         ].map(({ label, value, icon }) => (
-          <div key={label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex items-start gap-4">
+          <div key={label} className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-5 flex items-start gap-4">
             <div className="p-2 rounded-lg bg-slate-50">{icon}</div>
             <div>
               <p className="text-sm text-slate-500">{label}</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{loading ? '—' : value.toLocaleString('pt-BR')}</p>
+              <p className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white mt-1">{loading ? '—' : value.toLocaleString('pt-BR')}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(200px,1.1fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)_minmax(170px,0.9fr)_minmax(120px,0.65fr)_minmax(120px,0.65fr)_minmax(120px,0.65fr)] xl:items-end">
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Busca</label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input type="text" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
                 placeholder="Nome, número, tipo, protocolo..."
-                className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                className="w-full h-[46px] pl-10 pr-4 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
             </div>
           </div>
           {campoVisible && (
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
+              <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Campo</label>
               <select value={selectedFieldId} onChange={(e) => { setSelectedFieldId(e.target.value); setSelectedRegionalId(''); setSelectedChurchId(''); setPage(1); }}
                 disabled={!canChooseField || loadingFilters}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
+                className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:bg-slate-100 disabled:text-slate-500">
                 <option value="">Todos os campos</option>
                 {fields.map((f) => <option key={f.id} value={f.id}>{f.code ? `${f.code} - ` : ''}{f.name}</option>)}
               </select>
             </div>
           )}
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Regional</label>
             <select value={selectedRegionalId} onChange={(e) => { setSelectedRegionalId(e.target.value); setSelectedChurchId(''); setPage(1); }}
               disabled={!canChooseRegional || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:bg-slate-100 disabled:text-slate-500">
               <option value="">Todas as regionais</option>
               {filteredRegionais.map((r) => <option key={r.id} value={r.id}>{r.code ? `${r.code} - ` : ''}{r.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Igreja</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Igreja</label>
             <select value={selectedChurchId} onChange={(e) => { setSelectedChurchId(e.target.value); setPage(1); }}
               disabled={!canChooseChurch || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:bg-slate-100 disabled:text-slate-500">
               <option value="">Todas as igrejas</option>
               {filteredChurchOptions.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} - ` : ''}{c.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Status</label>
             <select value={selectedStatus} onChange={(e) => { setSelectedStatus(e.target.value); setPage(1); }}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
               <option value="">Todos</option>
               <option value="Pendente">Pendente</option>
               <option value="Aprovado">Aprovado</option>
@@ -539,39 +539,39 @@ export function Credentials() {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Data inicial</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data inicial</label>
             <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Data final</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data final</label>
             <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
           </div>
         </div>
       </div>
 
-      {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
       {/* Table */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
-            <thead className="border-b border-slate-200 bg-slate-50">
+            <thead className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
               <tr>
                 {([['nome', 'Membro'], ['tipo', 'Tipo'], ['igrejasolicitante', 'Igreja'], ['situacao', 'Status'], ['dataemissao', 'Emissão'], ['created_at', 'Solicitado em']] as [SortKey, string][]).map(([key, label]) => (
-                  <th key={key} className="px-4 py-3 text-left text-sm font-semibold text-slate-900">
+                  <th key={key} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
                     <button type="button" onClick={() => handleSort(key)} className="inline-flex items-center gap-1.5">
                       {label} <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
                     </button>
                   </th>
                 ))}
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Validade</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Protocolo</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900">Ações</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">Validade</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">Protocolo</th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[.06em] text-slate-500">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-[#f1f5f9] dark:divide-slate-700">
               {loading
                 ? Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} className="animate-pulse border-b border-slate-100">
@@ -660,7 +660,7 @@ export function Credentials() {
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6 space-y-4">
+          <div className="bg-white rounded-[22px] shadow-[0_30px_70px_-20px_rgba(15,23,42,.45)] w-full max-w-sm mx-4 p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                 <Trash2 className="h-5 w-5 text-red-600" />
@@ -673,7 +673,7 @@ export function Credentials() {
             <p className="text-sm text-slate-600">Esta ação não pode ser desfeita.</p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeleteTarget(null)} disabled={deleteLoading}
-                className="px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-60">Cancelar</button>
+                className="h-10 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 disabled:opacity-60">Cancelar</button>
               <Permissao chave="credentials.credentials.excluir" rotulo="Excluir — Credentials" herda="credentials.view">
                 <button disabled={deleteLoading} onClick={async () => {
                   // Optimistic: remove do cache imediatamente
@@ -778,7 +778,7 @@ function ViewCredentialModal({ credential: c, onClose }: { credential: Credentia
   ];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto py-8">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 my-auto">
+      <div className="bg-white rounded-[22px] shadow-[0_30px_70px_-20px_rgba(15,23,42,.45)] w-full max-w-lg mx-4 my-auto">
         <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
           <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
             <CreditCard size={18} className="text-green-600" />
@@ -800,7 +800,7 @@ function ViewCredentialModal({ credential: c, onClose }: { credential: Credentia
           ))}
         </div>
         <div className="px-6 pb-5 flex justify-end">
-          <button onClick={onClose} className="px-5 py-2 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50">Fechar</button>
+          <button onClick={onClose} className="h-10 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">Fechar</button>
         </div>
       </div>
     </div>
@@ -895,7 +895,7 @@ function NovaCredencialModal({
   return (
     <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto py-8">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 my-auto">
+      <div className="bg-white rounded-[22px] shadow-[0_30px_70px_-20px_rgba(15,23,42,.45)] w-full max-w-lg mx-4 my-auto">
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
           <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -918,7 +918,7 @@ function NovaCredencialModal({
               <select
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               >
                 <option value="">Selecione o tipo</option>
                 {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -931,7 +931,7 @@ function NovaCredencialModal({
               <button
                 type="button"
                 onClick={() => { setMemberQuery(''); setMemberResults([]); setMemberSearched(false); setMemberSearchOpen(true); }}
-                className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                className="flex w-full min-h-[46px] items-center justify-between rounded-xl border-[1.5px] border-slate-200 bg-white px-3.5 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
               >
                 <span className={selectedMember ? 'text-slate-900' : 'text-slate-400'}>
                   {selectedMember ? memberDisplayName(selectedMember) : 'Buscar membro...'}
@@ -945,7 +945,7 @@ function NovaCredencialModal({
               <div>
                 <label className="block text-sm text-slate-700 mb-1">Data de Emissão <span className="text-red-500">*</span></label>
                 <input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
               </div>
               <div>
                 <label className="block text-sm text-slate-700 mb-1">Data de Validade</label>
@@ -980,14 +980,14 @@ function NovaCredencialModal({
             <div>
               <label className="block text-sm text-slate-700 mb-1">Número da Credencial</label>
               <input value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="Ex: CRED-2025-001"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
             </div>
 
             {/* Status */}
             <div>
               <label className="block text-sm text-slate-700 mb-1">Status</label>
               <select value={situacao} onChange={(e) => setSituacao(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white">
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                 <option value="Pendente">Pendente</option>
                 <option value="Ativa">Ativa</option>
                 <option value="Inativa">Inativa</option>
@@ -998,7 +998,7 @@ function NovaCredencialModal({
             <div>
               <label className="block text-sm text-slate-700 mb-1">Observações</label>
               <textarea value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Informações adicionais..."
-                rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                rows={3} className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 resize-none" />
             </div>
           </div>
 
@@ -1038,7 +1038,7 @@ function NovaCredencialModal({
                 />
               </div>
               <button onClick={runMemberSearch} disabled={memberSearching}
-                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60">
+                className="h-10 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 disabled:opacity-60">
                 {memberSearching ? 'Buscando...' : 'Buscar'}
               </button>
             </div>
