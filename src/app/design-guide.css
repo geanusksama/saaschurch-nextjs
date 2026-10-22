@@ -1,0 +1,265 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Guia de estilo v2 (novastelas/guia-style.md) — SOMENTE APARÊNCIA.
+
+   Premissas:
+   - Escopo: área logada do sistema (`.app-shell`) e camadas flutuantes que o
+     Radix renderiza no <body> quando o sistema está montado
+     (`body:has(.app-shell)`). Home pública e login não são afetados.
+   - Só tema claro (`html:not(.dark)`): o modo escuro continua como estava.
+   - Nenhuma altura, display, posição ou breakpoint é alterado em elementos
+     genéricos — a responsividade existente é preservada. Alturas do guia só
+     entram nos componentes shadcn identificados por `data-slot`.
+   - A cor primária da igreja (Configurações → Branding) continua mandando.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.app-shell,
+body:has(.app-shell) {
+  --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  --ink: #0f172a;
+  --ink-hover: #1e293b;
+  --text-2: #334155;
+  --text-3: #64748b;
+  --text-4: #94a3b8;
+  --ds-border: #e2e8f0;
+  --line: #e8ecf1;
+  --divider: #f1f5f9;
+  --surface: #ffffff;
+  --bg: #f4f6f8;
+  --hover: #f4f6f8;
+
+  --ok-bg: #dcfce7; --ok: #166534; --receita: #15803d;
+  --err-bg: #fee2e2; --err: #b91c1c; --despesa: #dc2626;
+  --warn-bg: #fef3c7; --warn: #a16207;
+  --info-bg: #e0e7ff; --info: #3730a3;
+  --neutral-bg: #f1f5f9; --neutral: #334155;
+
+  --fs-title: 18px; --fs-section: 15px; --fs-body: 14px;
+  --fs-small: 13px; --fs-caption: 12px;
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px;
+
+  --h-sm: 34px; --h-icon: 36px; --h-md: 40px; --h-field: 46px; --h-search: 52px;
+
+  --r-sm: 8px; --r-md: 10px; --r-lg: 12px; --r-xl: 16px; --r-2xl: 20px; --r-pill: 999px;
+
+  --shadow-pop: 0 20px 40px -16px rgba(15, 23, 42, .25);
+  --shadow-modal: 0 30px 70px -20px rgba(15, 23, 42, .45);
+  --overlay: rgba(15, 23, 42, .45);
+}
+
+/* ── Tipografia ─────────────────────────────────────────────────────────── */
+.app-shell,
+body:has(.app-shell) [data-slot="dialog-content"],
+body:has(.app-shell) [data-slot="sheet-content"],
+body:has(.app-shell) [data-slot="drawer-content"],
+body:has(.app-shell) [data-slot="alert-dialog-content"],
+body:has(.app-shell) [data-slot="dropdown-menu-content"],
+body:has(.app-shell) [data-slot="select-content"],
+body:has(.app-shell) [data-slot="popover-content"],
+body:has(.app-shell) [data-slot="tooltip-content"],
+body:has(.app-shell) [data-sonner-toaster] {
+  font-family: var(--font);
+}
+.app-shell input,
+.app-shell select,
+.app-shell textarea,
+.app-shell button {
+  font-family: inherit;
+}
+
+/* Valores, datas e códigos alinhados */
+.app-shell table td,
+.app-shell .tabular-nums,
+.app-shell input[type="date"],
+.app-shell input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Fundo da página (tema claro) ───────────────────────────────────────── */
+html:not(.dark) .app-shell.bg-slate-50,
+html:not(.dark) .app-shell main.bg-slate-50 {
+  background-color: var(--bg) !important;
+}
+
+/* ── Cartões: borda #e8ecf1, raio 20, sem sombra ────────────────────────── */
+html:not(.dark) .app-shell [data-slot="card"] {
+  border-color: var(--line);
+  border-radius: var(--r-2xl);
+  box-shadow: none;
+}
+/* Telas antigas: cartão = div/section branco com borda e `shadow-sm`.
+   As telas de referência v2 (Membros, Livro Caixa, Novo Membro) não usam
+   `shadow-sm`, então não são tocadas por estas regras. */
+html:not(.dark) .app-shell main :is(div, section, article)[class*="bg-white"][class*="border"][class*="shadow-sm"] {
+  border-color: var(--line) !important;
+  border-radius: var(--r-2xl) !important;
+  box-shadow: none !important;
+}
+/* Cabeçalho de tabela das telas antigas */
+html:not(.dark) .app-shell main thead[class*="bg-slate-50"],
+html:not(.dark) .app-shell main thead tr[class*="bg-slate-50"] {
+  background-color: #f8fafc !important;
+  border-color: #eef2f6 !important;
+}
+/* Pílulas de status das telas antigas: texto 12/700 no raio pill */
+.app-shell main span[class*="rounded-full"][class*="px-2"][class*="text-xs"] {
+  font-weight: 700;
+}
+[data-slot="card-title"] {
+  font-size: var(--fs-section);
+  font-weight: 700;
+}
+
+/* ── Tabelas ────────────────────────────────────────────────────────────── */
+html:not(.dark) .app-shell table thead th {
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-3);
+}
+html:not(.dark) .app-shell table tbody tr {
+  border-color: var(--divider);
+}
+html:not(.dark) .app-shell table tbody tr + tr,
+html:not(.dark) .app-shell table tbody td {
+  border-color: var(--divider);
+}
+
+/* ── Botões shadcn ──────────────────────────────────────────────────────── */
+.app-shell [data-slot="button"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"],
+body:has(.app-shell) [data-slot="sheet-content"] [data-slot="button"],
+body:has(.app-shell) [data-slot="alert-dialog-content"] button {
+  border-radius: var(--r-md);
+  font-weight: 600;
+}
+html:not(.dark) .app-shell [data-slot="button"].border.bg-background,
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"].border.bg-background {
+  border-color: var(--ds-border);
+  color: var(--text-2);
+}
+html:not(.dark) .app-shell [data-slot="button"].border.bg-background:hover,
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"].border.bg-background:hover {
+  border-color: var(--ink);
+  background-color: var(--surface);
+}
+
+/* ── Campos ─────────────────────────────────────────────────────────────── */
+/* Raio e cor de borda em todos os campos; altura só nos componentes shadcn. */
+html:not(.dark) .app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+html:not(.dark) .app-shell select,
+html:not(.dark) .app-shell textarea,
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] select,
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] textarea {
+  border-color: var(--ds-border);
+}
+html:not(.dark) .app-shell input::placeholder,
+html:not(.dark) .app-shell textarea::placeholder {
+  color: var(--text-4);
+}
+.app-shell [data-slot="input"],
+.app-shell [data-slot="select-trigger"],
+.app-shell [data-slot="textarea"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="input"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="select-trigger"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="textarea"] {
+  border-radius: var(--r-lg);
+  border-width: 1.5px;
+}
+.app-shell [data-slot="input"],
+.app-shell [data-slot="select-trigger"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="input"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="select-trigger"] {
+  min-height: var(--h-field);
+}
+html:not(.dark) .app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):focus,
+html:not(.dark) .app-shell select:focus,
+html:not(.dark) .app-shell textarea:focus,
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] input:focus,
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] textarea:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  border-color: var(--ink) !important;
+}
+
+/* Rótulos de campo 13/600 */
+html:not(.dark) .app-shell [data-slot="label"],
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] [data-slot="label"] {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+.app-shell [data-slot="badge"] {
+  border-radius: var(--r-pill);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+}
+
+/* ── Camadas flutuantes ─────────────────────────────────────────────────── */
+html:not(.dark) body:has(.app-shell) [data-slot="dropdown-menu-content"],
+html:not(.dark) body:has(.app-shell) [data-slot="select-content"],
+html:not(.dark) body:has(.app-shell) [data-slot="popover-content"],
+html:not(.dark) body:has(.app-shell) [data-slot="context-menu-content"] {
+  border-color: var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-pop);
+}
+body:has(.app-shell) [data-slot="dropdown-menu-content"],
+body:has(.app-shell) [data-slot="context-menu-content"] {
+  padding: 6px;
+}
+body:has(.app-shell) [data-slot="dropdown-menu-item"],
+body:has(.app-shell) [data-slot="select-item"],
+body:has(.app-shell) [data-slot="context-menu-item"] {
+  border-radius: var(--r-md);
+  font-size: var(--fs-body);
+  font-weight: 500;
+}
+html:not(.dark) body:has(.app-shell) [data-slot="dropdown-menu-item"]:focus,
+html:not(.dark) body:has(.app-shell) [data-slot="select-item"]:focus,
+html:not(.dark) body:has(.app-shell) [data-slot="context-menu-item"]:focus {
+  background-color: var(--hover);
+}
+html:not(.dark) body:has(.app-shell) [data-slot="dropdown-menu-separator"] {
+  background-color: var(--divider);
+}
+
+/* Modal: raio 22, overlay do guia */
+body:has(.app-shell) [data-slot="dialog-overlay"],
+body:has(.app-shell) [data-slot="alert-dialog-overlay"],
+body:has(.app-shell) [data-slot="sheet-overlay"],
+body:has(.app-shell) [data-slot="drawer-overlay"] {
+  background-color: var(--overlay);
+}
+body:has(.app-shell) [data-slot="dialog-content"],
+body:has(.app-shell) [data-slot="alert-dialog-content"] {
+  border-radius: 22px;
+}
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"],
+html:not(.dark) body:has(.app-shell) [data-slot="alert-dialog-content"],
+html:not(.dark) body:has(.app-shell) [data-slot="sheet-content"] {
+  border-color: var(--line);
+  box-shadow: var(--shadow-modal);
+}
+body:has(.app-shell) [data-slot="dialog-title"],
+body:has(.app-shell) [data-slot="alert-dialog-title"],
+body:has(.app-shell) [data-slot="sheet-title"] {
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+html:not(.dark) body:has(.app-shell) [data-slot="dialog-description"],
+html:not(.dark) body:has(.app-shell) [data-slot="sheet-description"] {
+  color: var(--text-3);
+}
+
+/* Tooltip */
+html:not(.dark) body:has(.app-shell) [data-slot="tooltip-content"] {
+  background-color: var(--ink);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-caption);
+}

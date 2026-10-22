@@ -1,4 +1,7 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
+/* Guia de estilo v2 — só aparência, escopado à área logada (.app-shell) */
+@import "./design-guide.css";
 
 /* Use class-based dark mode (toggled via JS adding .dark to <html>) */
 @custom-variant dark (&:where(.dark, .dark *));

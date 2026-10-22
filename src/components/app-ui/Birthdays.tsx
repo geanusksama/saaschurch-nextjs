@@ -1,4 +1,4 @@
-import { Building2, Cake, ChevronLeft, ChevronRight, ExternalLink, Gift, Loader2, Mail, MessageSquare, Phone, Printer, Search, User } from 'lucide-react';
+import { Building2, Cake, Calendar, ChevronLeft, ChevronRight, Clock, ExternalLink, FilterX, Gift, Loader2, Mail, MessageSquare, Phone, Printer, Search, SlidersHorizontal, User, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
@@ -80,6 +80,7 @@ export function Birthdays() {
   const PAGE_SIZE = 50;
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ATIVO');
   const [hideOver100, setHideOver100] = useState(true);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
@@ -437,29 +438,29 @@ export function Birthdays() {
   };
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
+      {/* Header Compacto (Guia v2) */}
+      <header className="flex items-center justify-between border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-800 dark:bg-slate-900 no-print">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center">
-            <Cake className="w-6 h-6 text-pink-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Aniversariantes</h1>
-            <p className="text-slate-600 dark:text-slate-400">Celebre os aniversários dos membros</p>
+          <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-pink-100 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400">
+            <Cake className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="flex flex-col">
+            <span className="text-[11px] font-bold uppercase tracking-[.06em] text-slate-400">Secretaria</span>
+            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Aniversariantes</h1>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Permissao chave="birthdays.birthdays.imprimir" rotulo="Imprimir — Birthdays" herda="birthdays.view">
-            <button onClick={handlePrint} className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors no-print">
-              <Printer className="w-5 h-5" />
-              Imprimir
+            <button onClick={handlePrint} className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              <Printer className="w-4 h-4" />
+              <span className="hidden sm:inline">Imprimir</span>
             </button>
           </Permissao>
           <Permissao chave="birthdays.birthdays.enviar_email_em_massa" rotulo="Enviar Email em Massa — Birthdays" herda="birthdays.view">
-            <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors no-print">
-              <Mail className="w-5 h-5" />
-              Enviar Email em Massa
+            <button className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              <Mail className="w-4 h-4" />
+              <span className="hidden sm:inline">Email</span>
             </button>
           </Permissao>
           <Permissao chave="birthdays.birthdays.enviar_whatsapp" rotulo="Enviar WhatsApp — Birthdays" herda="birthdays.view">
@@ -474,133 +475,100 @@ export function Birthdays() {
                 setCustomMessage(DEFAULT_BIRTHDAY_MESSAGE);
                 setShowWhatsappModal(true);
               }}
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors no-print"
+              className="flex h-10 items-center gap-2 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <MessageSquare className="w-5 h-5" />
-              Enviar WhatsApp
+              <MessageSquare className="w-4 h-4" />
+              <span>WhatsApp</span>
             </button>
           </Permissao>
         </div>
-      </div>
+      </header>
 
-      {/* Stats */}
-      <div className="grid md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Hoje</p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.today}</p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Esta Semana</p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.thisWeek}</p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Este Mês</p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.thisMonth}</p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Próximo Mês</p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.nextMonth}</p>
-        </div>
-      </div>
-
-      {/* Campo / Igreja filters (hidden for church-profile users) */}
-      {showChurchFilter && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4 no-print">
-          <div className="flex flex-wrap gap-4">
-            {canChooseCampo && campoVisible && (
-              <div className="flex-1 min-w-[220px]">
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo Regional</label>
-                <div className="relative">
-                  <Building2 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <select
-                    value={selectedCampoId}
-                    onChange={(e) => handleCampoChange(e.target.value)}
-                    disabled={loadingFilters}
-                    className="w-full rounded-lg border border-slate-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
-                  >
-                    <option value="">Todos os campos</option>
-                    {campos.map((c) => (
-                      <option key={c.id} value={c.id}>{c.code ? `${c.code} – ` : ''}{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+      <div className="box-border flex w-full flex-1 flex-col gap-3 px-3 pb-8 pt-3 md:px-7 md:pt-4">
+        {/* Barra Única: Busca + Filtros + Indicadores Inline */}
+        <div className="flex flex-wrap items-stretch gap-3 no-print">
+          <div className="flex min-w-0 flex-[1_1_380px] gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" strokeWidth={2} />
+              <input
+                type="text"
+                placeholder="Buscar por nome ou igreja..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-full min-h-[52px] w-full rounded-2xl border-[1.5px] border-slate-200 bg-white pl-12 pr-3.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setFiltrosAbertos(true)}
+              title="Filtros"
+              className={`flex min-h-[52px] flex-none items-center gap-2 rounded-2xl border-[1.5px] bg-white px-4 text-sm font-semibold text-slate-900 hover:border-slate-900 md:px-5 dark:bg-slate-800 dark:text-white ${
+                [selectedMonth !== (new Date().getMonth() + 1), Boolean(selectedCampoId), Boolean(selectedChurchId), statusFilter !== 'ALL', hideOver100].filter(Boolean).length > 0 ? 'border-slate-900 dark:border-slate-300' : 'border-slate-200 dark:border-slate-600'
+              }`}
+            >
+              <SlidersHorizontal className="h-[18px] w-[18px]" strokeWidth={2} />
+              <span className="hidden md:inline">Filtros</span>
+              {[selectedMonth !== (new Date().getMonth() + 1), Boolean(selectedCampoId), Boolean(selectedChurchId), statusFilter !== 'ALL'].filter(Boolean).length > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1.5 text-[11px] font-bold text-white dark:bg-white dark:text-slate-900">
+                  {[selectedMonth !== (new Date().getMonth() + 1), Boolean(selectedCampoId), Boolean(selectedChurchId), statusFilter !== 'ALL'].filter(Boolean).length}
+                </span>
+              )}
+            </button>
+            {(search || statusFilter !== 'ALL' || selectedChurchId || hideOver100) && (
+              <button
+                type="button"
+                onClick={() => { setSearch(''); setStatusFilter('ALL'); setSelectedChurchId(''); setHideOver100(false); setPage(1); }}
+                title="Limpar filtros"
+                className="grid min-h-[52px] w-[52px] flex-none place-items-center rounded-2xl border-[1.5px] border-slate-200 bg-white text-slate-600 hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+              >
+                <FilterX className="h-[18px] w-[18px]" strokeWidth={2} />
+              </button>
             )}
-            <div className="flex-1 min-w-[220px]">
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Igreja</label>
-              <div className="relative">
-                <Building2 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <select
-                  value={selectedChurchId}
-                  onChange={(e) => handleChurchChange(e.target.value)}
-                  disabled={loadingFilters}
-                  className="w-full rounded-lg border border-slate-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
-                >
-                  <option value="">Todas as igrejas</option>
-                  {filteredChurches.map((c) => (
-                    <option key={c.id} value={c.id}>{c.code ? `${c.code} – ` : ''}{c.name}</option>
-                  ))}
-                </select>
-              </div>
+          </div>
+
+          {/* Indicadores compactos inline (mesma linha da busca) */}
+          <div className="flex min-w-0 flex-[1_1_auto] gap-2 overflow-x-auto">
+            <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+              <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400">
+                <Cake className="h-[19px] w-[19px]" strokeWidth={1.8} />
+              </span>
+              <span className="flex flex-col">
+                <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em]">{stats.today}</span>
+                <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Hoje</span>
+              </span>
+            </div>
+
+            <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+              <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
+                <Calendar className="h-[19px] w-[19px]" strokeWidth={1.8} />
+              </span>
+              <span className="flex flex-col">
+                <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em]">{stats.thisWeek}</span>
+                <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Esta Semana</span>
+              </span>
+            </div>
+
+            <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+              <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                <Users className="h-[19px] w-[19px]" strokeWidth={1.8} />
+              </span>
+              <span className="flex flex-col">
+                <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em]">{stats.thisMonth}</span>
+                <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Este Mês</span>
+              </span>
+            </div>
+
+            <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+              <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                <Clock className="h-[19px] w-[19px]" strokeWidth={1.8} />
+              </span>
+              <span className="flex flex-col">
+                <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em]">{stats.nextMonth}</span>
+                <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Próx. Mês</span>
+              </span>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Month Selector */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
-        <div className="flex items-center gap-2 overflow-x-auto">
-          {months.map((month, index) => (
-            <button
-              key={month}
-              onClick={() => handleMonthChange(index + 1)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                selectedMonth === index + 1
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
-            >
-              {month}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Search + quick filters */}
-      <div className="flex flex-wrap gap-3 mb-4 no-print">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nome ou igreja..."
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => handleStatusChange(e.target.value as StatusFilter)}
-          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          <option value="ATIVO">Situação: Ativo</option>
-          <option value="INATIVO">Situação: Inativo</option>
-          <option value="AGUARDANDO">Situação: Aguardando</option>
-          <option value="ALL">Todas as situações</option>
-        </select>
-        <button
-          onClick={() => { setHideOver100((v) => !v); setPage(1); }}
-          title={hideOver100 ? 'Exibindo apenas menores de 100 anos' : 'Exibindo todos'}
-          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-            hideOver100
-              ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
-              : 'border-slate-200 bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-          }`}
-        >
-          <User className="w-4 h-4" />
-          {hideOver100 ? '< 100 anos ✓' : 'Todos os idades'}
-        </button>
-      </div>
 
       {/* Loading */}
       {loading && (
@@ -619,7 +587,7 @@ export function Birthdays() {
 
       {/* Empty */}
       {!loading && !error && filtered.length === 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-12 text-center">
+        <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-12 text-center">
           <Cake className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 dark:text-slate-400">
             {search ? 'Nenhum aniversariante encontrado.' : `Nenhum aniversariante em ${months[selectedMonth - 1]}.`}
@@ -854,7 +822,7 @@ export function Birthdays() {
       {showWhatsappModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => !sendingProgress?.active && setShowWhatsappModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-white rounded-[22px] shadow-[0_30px_70px_-20px_rgba(15,23,42,.45)] w-full max-w-2xl p-6" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               Enviar Mensagem via WhatsApp
@@ -952,7 +920,7 @@ export function Birthdays() {
                   <button
                     onClick={() => setShowWhatsappModal(false)}
                     disabled={sendingProgress?.active}
-                    className="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+                    className="flex-1 h-10 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 disabled:opacity-50"
                   >
                     Cancelar
                   </button>
@@ -960,7 +928,7 @@ export function Birthdays() {
                     <button
                       onClick={startSendingQueue}
                       disabled={sendingProgress?.active || !isConnected}
-                      className="flex-1 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      className="flex-1 h-10 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 disabled:opacity-50 flex items-center justify-center gap-1.5"
                     >
                       {sendingProgress?.active ? (
                         <>
@@ -978,6 +946,136 @@ export function Birthdays() {
           </div>
         </div>
       )}
+      {/* Gaveta Lateral de Filtros (Drawer Guia v2) */}
+      {filtrosAbertos && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setFiltrosAbertos(false)} />
+          <aside className="relative flex h-full w-[min(440px,100%)] flex-col bg-white shadow-[-20px_0_50px_-20px_rgba(15,23,42,.35)] dark:bg-slate-800">
+            <div className="flex items-center gap-3.5 border-b border-[#eef2f6] px-5 py-4 dark:border-slate-700">
+              <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                <SlidersHorizontal className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <div className="flex flex-1 flex-col">
+                <span className="text-base font-bold text-slate-900 dark:text-white">Filtros</span>
+                <span className="text-xs text-slate-500">Refine a lista de aniversariantes</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos(false)}
+                className="grid h-9 w-9 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-5 overflow-y-auto p-5">
+              {/* Seletor de Mês */}
+              <div>
+                <label className="mb-2 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Mês de Aniversário</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {months.map((m, idx) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => handleMonthChange(idx + 1)}
+                      className={`h-10 rounded-[10px] text-xs font-semibold transition-colors ${
+                        selectedMonth === idx + 1
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                          : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filtro Campo / Igreja */}
+              {showChurchFilter && (
+                <>
+                  {canChooseCampo && campoVisible && (
+                    <div>
+                      <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Campo Regional</label>
+                      <select
+                        value={selectedCampoId}
+                        onChange={(e) => handleCampoChange(e.target.value)}
+                        disabled={loadingFilters}
+                        className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:bg-slate-100 disabled:text-slate-500"
+                      >
+                        <option value="">Todos os campos</option>
+                        {campos.map((c) => (
+                          <option key={c.id} value={c.id}>{c.code ? `${c.code} – ` : ''}{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Igreja</label>
+                    <select
+                      value={selectedChurchId}
+                      onChange={(e) => handleChurchChange(e.target.value)}
+                      disabled={loadingFilters}
+                      className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:bg-slate-100 disabled:text-slate-500"
+                    >
+                      <option value="">Todas as igrejas</option>
+                      {filteredChurches.map((c) => (
+                        <option key={c.id} value={c.id}>{c.code ? `${c.code} – ` : ''}{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* Situação */}
+              <div>
+                <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Situação do Membro</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => handleStatusChange(e.target.value as StatusFilter)}
+                  className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                >
+                  <option value="ATIVO">Situação: Ativo</option>
+                  <option value="INATIVO">Situação: Inativo</option>
+                  <option value="AGUARDANDO">Situação: Aguardando</option>
+                  <option value="ALL">Todas as situações</option>
+                </select>
+              </div>
+
+              {/* Ocultar maiores de 100 anos */}
+              <div className="pt-2">
+                <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={hideOver100}
+                    onChange={(e) => { setHideOver100(e.target.checked); setPage(1); }}
+                    className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                  />
+                  <span>Ocultar membros com 100 anos ou mais</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 border-t border-[#eef2f6] p-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => { setSearch(''); setStatusFilter('ALL'); setSelectedChurchId(''); setHideOver100(false); setPage(1); }}
+                className="h-10 flex-1 rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              >
+                Limpar
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos(false)}
+                className="h-10 flex-1 rounded-[10px] bg-slate-900 px-3 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+              >
+                Fechar
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+      </div>
     </div>
   );
 }

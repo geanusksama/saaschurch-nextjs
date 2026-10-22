@@ -140,7 +140,7 @@ export default function ModelosCredencial() {
             <CreditCard className="w-6 h-6 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Modelos de Credencial</h1>
+            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Modelos de Credencial</h1>
             <p className="text-slate-500 text-sm">Gerencie os modelos de carteirinha para impressão</p>
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function ModelosCredencial() {
           <Permissao chave="credential_models.modelos_credencial.novo_modelo" rotulo="Novo Modelo — Modelos Credencial" herda="credential_models.create">
             <button
               onClick={() => { setEditing(null); setModalOpen(true); }}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+              className="flex h-10 items-center gap-2 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
               <Plus size={16} /> Novo Modelo
             </button>
@@ -158,7 +158,7 @@ export default function ModelosCredencial() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex items-center gap-3">
+        <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-5 flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
             <CreditCard size={20} className="text-blue-600" />
           </div>
@@ -167,7 +167,7 @@ export default function ModelosCredencial() {
             <p className="text-xl font-bold text-slate-800">{models.length}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex items-center gap-3">
+        <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-5 flex items-center gap-3">
           <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
             <CheckCircle size={20} className="text-green-600" />
           </div>
@@ -176,7 +176,7 @@ export default function ModelosCredencial() {
             <p className="text-xl font-bold text-slate-800">{active.length}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex items-center gap-3">
+        <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-5 flex items-center gap-3">
           <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
             <CreditCard size={20} className="text-slate-400" />
           </div>
@@ -199,7 +199,7 @@ export default function ModelosCredencial() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Modelo</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Tipo</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Cartão (mm)</th>
@@ -282,7 +282,7 @@ export default function ModelosCredencial() {
       {/* ── DELETE MODAL ────────────────────────────────────────────────────── */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6 space-y-4">
+          <div className="bg-white rounded-[22px] shadow-[0_30px_70px_-20px_rgba(15,23,42,.45)] w-full max-w-sm mx-4 p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
                 <Trash2 size={20} className="text-red-600" />
@@ -471,7 +471,7 @@ function CredentialModelModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto py-8">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 my-auto">
+      <div className="bg-white rounded-[22px] shadow-[0_30px_70px_-20px_rgba(15,23,42,.45)] w-full max-w-lg mx-4 my-auto">
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
           <CreditCard size={20} className="text-purple-600" />
@@ -490,7 +490,7 @@ function CredentialModelModal({
               <select
                 value={tipo}
                 onChange={(e) => { setTipo(e.target.value); if (!nome) setNome(e.target.value.toLowerCase().replace(/\s+/g, '')); }}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               >
                 <option value="">Selecione...</option>
                 {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -502,7 +502,7 @@ function CredentialModelModal({
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Ex: credpastor"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
           </div>
@@ -511,7 +511,7 @@ function CredentialModelModal({
           <div>
             <label className="text-sm font-medium text-slate-700 mb-1 block">Descrição</label>
             <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição opcional"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
           </div>
 
           {/* Images */}
@@ -580,36 +580,36 @@ function CredentialModelModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Largura Cartão (mm)</label>
-                <input type="number" value={largura} onChange={(e) => setLargura(e.target.value)} placeholder="Ex: 85.6" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                <input type="number" value={largura} onChange={(e) => setLargura(e.target.value)} placeholder="Ex: 85.6" className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Altura Cartão (mm)</label>
-                <input type="number" value={altura} onChange={(e) => setAltura(e.target.value)} placeholder="Ex: 53.98" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                <input type="number" value={altura} onChange={(e) => setAltura(e.target.value)} placeholder="Ex: 53.98" className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Largura Página (mm)</label>
                 <input type="number" value={largurapg} onChange={(e) => setLargurapg(e.target.value)} placeholder="Ex: 212"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Altura Página (mm)</label>
                 <input type="number" value={alturapg} onChange={(e) => setAlturapg(e.target.value)} placeholder="Ex: 298"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Linhas por Página</label>
                 <input type="number" value={linhaporpg} onChange={(e) => setLinhaporpg(e.target.value)} placeholder="Ex: 2"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Colunas por Página</label>
                 <input type="number" value={colunaporpg} onChange={(e) => setColunaporpg(e.target.value)} placeholder="Ex: 2"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Validade (meses)</label>
                 <input type="number" value={validademeses} onChange={(e) => setValidademeses(e.target.value)} placeholder="Ex: 12"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
               </div>
             </div>
           </div>

@@ -712,13 +712,13 @@ export function Transfer() {
             <ArrowRightLeft className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Transferencia</h1>
+            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Transferencia</h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">Gerencie transferencias no mesmo padrao de batismo e consagracao</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
           <Permissao chave="transfer.transfer.imprimir" rotulo="Imprimir — Transfer" herda="transfer.view">
-            <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
+            <button className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900"
               onClick={() => setPrintModalOpen(true)}
             >
               <Printer className="h-4 w-4" />
@@ -726,7 +726,7 @@ export function Transfer() {
             </button>
           </Permissao>
           <Permissao chave="transfer.transfer.nova_transferencia" rotulo="Nova Transferencia — Transfer" herda="transfer.view">
-            <button onClick={() => openRequestModal()} className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700">
+            <button onClick={() => openRequestModal()} className="flex h-10 items-center gap-2 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
               <Plus className="h-4 w-4" />
               Nova Transferencia
             </button>
@@ -735,20 +735,20 @@ export function Transfer() {
       </div>
 
       {dashboard?.truncated ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Sem intervalo de datas a lista para nos {dashboard.queueCap ?? 2000} registros mais recentes.
           Informe uma data inicial e final para ver o periodo inteiro.
         </div>
       ) : null}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total</p><p className="text-xl font-bold text-slate-900">{stats.total}</p></div><ArrowRightLeft className="h-5 w-5 text-purple-600" /></div>
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Pendentes</p><p className="text-xl font-bold text-slate-900">{stats.pending}</p></div><ArrowRightLeft className="h-5 w-5 text-amber-500" /></div>
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Aprovadas</p><p className="text-xl font-bold text-slate-900">{stats.approved}</p></div><ArrowRightLeft className="h-5 w-5 text-blue-600" /></div>
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Igrejas</p><p className="text-xl font-bold text-slate-900">{stats.churches}</p></div><Building2 className="h-5 w-5 text-green-600" /></div>
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total</p><p className="text-lg font-bold text-slate-900">{stats.total}</p></div><ArrowRightLeft className="h-5 w-5 text-purple-600" /></div>
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Pendentes</p><p className="text-lg font-bold text-slate-900">{stats.pending}</p></div><ArrowRightLeft className="h-5 w-5 text-amber-500" /></div>
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Aprovadas</p><p className="text-lg font-bold text-slate-900">{stats.approved}</p></div><ArrowRightLeft className="h-5 w-5 text-blue-600" /></div>
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Igrejas</p><p className="text-lg font-bold text-slate-900">{stats.churches}</p></div><Building2 className="h-5 w-5 text-green-600" /></div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
         <div
           className={`grid gap-3 md:grid-cols-2 xl:items-end ${
             campoVisible
@@ -757,49 +757,49 @@ export function Transfer() {
           }`}
         >
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Busca</label>
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Busca</label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input type="text" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') buscar(); }} placeholder="Buscar por membro, protocolo, igreja, observacao" className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              <input type="text" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') buscar(); }} placeholder="Buscar por membro, protocolo, igreja, observacao" className="w-full h-[46px] pl-10 pr-4 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900" />
             </div>
           </div>
           {campoVisible && (
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Campo</label>
-              <select value={selectedFieldId} onChange={(event) => { setSelectedFieldId(event.target.value); setSelectedRegionalId(''); setSelectedChurchId(''); }} disabled={!canChooseField || loadingFilters} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
+              <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Campo</label>
+              <select value={selectedFieldId} onChange={(event) => { setSelectedFieldId(event.target.value); setSelectedRegionalId(''); setSelectedChurchId(''); }} disabled={!canChooseField || loadingFilters} className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500">
                 <option value="">Todos os campos</option>
                 {fields.map((field) => <option key={field.id} value={field.id}>{field.code ? `${field.code} - ` : ''}{field.name}</option>)}
               </select>
             </div>
           )}
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Regional</label>
-            <select value={selectedRegionalId} onChange={(event) => { setSelectedRegionalId(event.target.value); setSelectedChurchId(''); }} disabled={!canChooseRegional || loadingFilters} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Regional</label>
+            <select value={selectedRegionalId} onChange={(event) => { setSelectedRegionalId(event.target.value); setSelectedChurchId(''); }} disabled={!canChooseRegional || loadingFilters} className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500">
               <option value="">Todas as regionais</option>
               {filteredRegionais.map((regional) => <option key={regional.id} value={regional.id}>{regional.code ? `${regional.code} - ` : ''}{regional.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Igreja</label>
-            <select value={selectedChurchId} onChange={(event) => setSelectedChurchId(event.target.value)} disabled={!canChooseChurch || loadingFilters} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500">
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Igreja</label>
+            <select value={selectedChurchId} onChange={(event) => setSelectedChurchId(event.target.value)} disabled={!canChooseChurch || loadingFilters} className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500">
               <option value="">Todas as igrejas</option>
               {filteredChurchOptions.map((church) => <option key={church.id} value={church.id}>{church.code ? `${church.code} - ` : ''}{church.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
-            <select value={selectedStatusFilter} onChange={(event) => setSelectedStatusFilter(event.target.value)} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Status</label>
+            <select value={selectedStatusFilter} onChange={(event) => setSelectedStatusFilter(event.target.value)} className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900">
               <option value="">Todos os status</option>
               {(dashboard?.statusOptions || []).map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Data inicial</label>
-            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data inicial</label>
+            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900" />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Data final</label>
-            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data final</label>
+            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900" />
           </div>
           {/* Consulta explícita: a tabela só muda ao clicar aqui. */}
           <div className="flex items-end">
@@ -810,33 +810,33 @@ export function Transfer() {
 
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
 
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1280px]">
-            <thead className="border-b border-slate-200 bg-slate-50">
+            <thead className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('member')} className="inline-flex items-center gap-2">Membro<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('church')} className="inline-flex items-center gap-2">Igreja Inicial<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('destinationChurch')} className="inline-flex items-center gap-2">Igreja Destino<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('title')} className="inline-flex items-center gap-2">Titulo Atual<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('status')} className="inline-flex items-center gap-2">Status<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900"><button type="button" onClick={() => handleSort('openedAt')} className="inline-flex items-center gap-2">Aberto em<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Observacoes</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-900">Acoes</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500"><button type="button" onClick={() => handleSort('member')} className="inline-flex items-center gap-2">Membro<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500"><button type="button" onClick={() => handleSort('church')} className="inline-flex items-center gap-2">Igreja Inicial<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500"><button type="button" onClick={() => handleSort('destinationChurch')} className="inline-flex items-center gap-2">Igreja Destino<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500"><button type="button" onClick={() => handleSort('title')} className="inline-flex items-center gap-2">Titulo Atual<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500"><button type="button" onClick={() => handleSort('status')} className="inline-flex items-center gap-2">Status<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500"><button type="button" onClick={() => handleSort('openedAt')} className="inline-flex items-center gap-2">Aberto em<ArrowUpDown className="h-4 w-4 text-slate-400" /></button></th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">Observacoes</th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[.06em] text-slate-500">Acoes</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-[#f1f5f9] dark:divide-slate-700">
               {loading ? <TableLoadingRows columns={8} /> : paginatedRows.map((item) => (
                 <tr key={item.id} className="transition-colors hover:bg-slate-50">
-                  <td className="px-4 py-4 align-top"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-700">{(item.member?.fullName || '?').split(' ').map((part) => part[0]).slice(0, 2).join('')}</div><div><p className="font-semibold uppercase text-slate-900">{item.member?.fullName || '-'}</p><p className="text-xs font-semibold text-purple-600">{item.protocol}</p></div></div></td>
+                  <td className="px-4 py-4 align-top"><div className="flex items-center gap-3"><div className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">{(item.member?.fullName || '?').split(' ').map((part) => part[0]).slice(0, 2).join('')}</div><div><p className="text-[15px] font-bold uppercase text-slate-900">{item.member?.fullName || '-'}</p><p className="text-xs font-medium tabular-nums text-slate-500">{item.protocol}</p></div></div></td>
                   <td className="px-4 py-4 align-top text-sm text-slate-600">{item.church?.code ? `${item.church.code} - ` : ''}{item.church?.name || '-'}</td>
                   <td className="px-4 py-4 align-top text-sm text-slate-600">{item.destinationChurch?.code ? `${item.destinationChurch.code} - ` : ''}{item.destinationChurch?.name || '-'}</td>
                   <td className="px-4 py-4 align-top text-sm font-medium text-slate-700">{item.currentTitle || item.member?.ecclesiasticalTitle || '-'}</td>
-                  <td className="px-4 py-4 align-top"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item, dashboard?.statusOptions || [])}`}>{item.statusLabel}</span></td>
+                  <td className="px-4 py-4 align-top"><span className={`inline-flex h-[26px] items-center whitespace-nowrap rounded-full px-2.5 text-xs font-bold ${statusClass(item, dashboard?.statusOptions || [])}`}>{item.statusLabel}</span></td>
                   <td className="px-4 py-4 align-top text-sm text-slate-600">{formatDate(item.openedAt)}</td>
                   <td className="px-4 py-4 align-top text-sm text-slate-600">{item.notes || '-'}</td>
                   <td className="px-4 py-4 align-top"><div className="flex items-center justify-end gap-1"><Permissao chave="transfer.transfer.editar" rotulo="Editar — Transfer" herda="transfer.view">
-                    <button type="button" onClick={() => openRequestModal(item)} className="rounded-lg p-2 transition-colors hover:bg-slate-100" title="Editar"><Pencil className="h-4 w-4 text-slate-600" /></button>
+                    <button type="button" onClick={() => openRequestModal(item)} className="grid h-9 w-9 place-items-center rounded-[10px] transition-colors hover:bg-slate-100" title="Editar"><Pencil className="h-4 w-4 text-slate-600" /></button>
                   </Permissao><Permissao chave="transfer.transfer.excluir" rotulo="Excluir — Transfer" herda="transfer.view">
                     <button type="button" onClick={() => setDeleteTarget(item)} className="rounded-lg p-2 transition-colors hover:bg-red-50" title="Excluir"><Trash2 className="h-4 w-4 text-red-600" /></button>
                   </Permissao></div></td>
@@ -849,8 +849,8 @@ export function Transfer() {
         <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-slate-500">Exibindo {paginatedRows.length ? (page - 1) * pageSize + 1 : 0} a {Math.min(page * pageSize, visibleRows.length)} de {visibleRows.length} registros</p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2 text-sm text-slate-600"><span>Linhas por pagina</span><select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">{PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-            <div className="flex items-center gap-2"><button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50">Anterior</button><span className="text-sm text-slate-600">Pagina {page} de {totalPages}</span><button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50">Proxima</button></div>
+            <div className="flex items-center gap-2 text-sm text-slate-600"><span>Linhas por pagina</span><select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-2.5 text-sm focus:outline-none focus:border-slate-900">{PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
+            <div className="flex items-center gap-2"><button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50">Anterior</button><span className="text-sm text-slate-600">Pagina {page} de {totalPages}</span><button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages} className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50">Proxima</button></div>
           </div>
         </div>
       </div>
@@ -858,7 +858,7 @@ export function Transfer() {
       {requestModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
           <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><h2 className="text-xl font-bold text-slate-900">{editingRequest ? 'Editar Transferencia' : 'Nova Transferencia'}</h2><button onClick={closeRequestModal} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="h-4 w-4" /></button></div>
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><h2 className="text-lg font-bold text-slate-900">{editingRequest ? 'Editar Transferencia' : 'Nova Transferencia'}</h2><button onClick={closeRequestModal} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="h-4 w-4" /></button></div>
             <div className="space-y-5 px-6 py-5">
               {modalError ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{modalError}</div> : null}
               <div>
@@ -908,7 +908,7 @@ export function Transfer() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 rounded-b-2xl border-t border-slate-200 bg-slate-50 px-6 py-4"><button onClick={closeRequestModal} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</button><Permissao chave="transfer.transfer.salvar_alteracoes_criar_transferencia" rotulo="Salvar Alteracoes Criar Transferencia — Transfer" herda="transfer.view">
-              <button onClick={handleRequestSubmit} disabled={requestSubmitting} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60">{requestSubmitting ? 'Salvando...' : editingRequest ? 'Salvar Alteracoes' : 'Criar Transferencia'}</button>
+              <button onClick={handleRequestSubmit} disabled={requestSubmitting} className="h-10 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 disabled:opacity-60">{requestSubmitting ? 'Salvando...' : editingRequest ? 'Salvar Alteracoes' : 'Criar Transferencia'}</button>
             </Permissao></div>
           </div>
         </div>
@@ -917,11 +917,11 @@ export function Transfer() {
       {memberSearchOpen ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 px-4">
           <div className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><h3 className="text-xl font-bold text-slate-900">Buscar Membro</h3><button onClick={() => setMemberSearchOpen(false)} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="h-4 w-4" /></button></div>
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><h3 className="text-lg font-bold text-slate-900">Buscar Membro</h3><button onClick={() => setMemberSearchOpen(false)} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="h-4 w-4" /></button></div>
             <div className="space-y-4 px-6 py-5">
               <div className="flex gap-3">
-                <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void runMemberSearch(); } }} placeholder="Buscar membro..." className="w-full rounded-lg border border-slate-200 py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" /></div>
-                <button type="button" onClick={() => void runMemberSearch()} disabled={memberSearchLoading} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60">{memberSearchLoading ? 'Buscando...' : 'Buscar'}</button>
+                <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void runMemberSearch(); } }} placeholder="Buscar membro..." className="w-full min-h-[46px] py-2.5 pl-9 pr-3 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900" /></div>
+                <button type="button" onClick={() => void runMemberSearch()} disabled={memberSearchLoading} className="h-10 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 disabled:opacity-60">{memberSearchLoading ? 'Buscando...' : 'Buscar'}</button>
               </div>
               <p className="text-xs text-slate-500">Os membros so sao carregados quando voce faz a busca. Para perfil de igreja, a pesquisa fica limitada a igreja da conta.</p>
               <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
@@ -942,11 +942,11 @@ export function Transfer() {
       {churchPickerOpen ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 px-4">
           <div className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><h3 className="text-xl font-bold text-slate-900">Buscar Igreja</h3><button onClick={() => setChurchPickerOpen(false)} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="h-4 w-4" /></button></div>
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><h3 className="text-lg font-bold text-slate-900">Buscar Igreja</h3><button onClick={() => setChurchPickerOpen(false)} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="h-4 w-4" /></button></div>
             <div className="space-y-4 px-6 py-5">
               <div className="flex gap-3">
-                <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={churchSearch} onChange={(event) => { setChurchSearch(event.target.value); setActiveChurchIndex(0); }} onKeyDown={handleChurchSearchKeyDown} placeholder="Buscar igreja..." className="w-full rounded-lg border border-slate-200 py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" /></div>
-                <button type="button" onClick={() => void runChurchSearch()} disabled={churchSearchLoading} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60">{churchSearchLoading ? 'Buscando...' : 'Buscar'}</button>
+                <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={churchSearch} onChange={(event) => { setChurchSearch(event.target.value); setActiveChurchIndex(0); }} onKeyDown={handleChurchSearchKeyDown} placeholder="Buscar igreja..." className="w-full min-h-[46px] py-2.5 pl-9 pr-3 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900" /></div>
+                <button type="button" onClick={() => void runChurchSearch()} disabled={churchSearchLoading} className="h-10 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 disabled:opacity-60">{churchSearchLoading ? 'Buscando...' : 'Buscar'}</button>
               </div>
               <p className="text-xs text-slate-500">Selecione a igreja de destino para enviar a solicitacao de transferencia. Nesta tela, o perfil de igreja pesquisa as igrejas do campo.</p>
               <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1" onWheel={(event) => { if (!destinationPickerChurches.length || event.deltaY === 0) return; setActiveChurchIndex((current) => moveActiveIndex(current, destinationPickerChurches.length, event.deltaY > 0 ? 1 : -1)); }}>

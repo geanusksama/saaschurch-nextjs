@@ -1216,7 +1216,7 @@ export function AttendanceModule() {
             <CheckSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Presença Facial</h1>
+            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Presença Facial</h1>
             <p className="text-slate-600 dark:text-slate-400">Gerenciamento e histórico de presenças por reconhecimento facial</p>
           </div>
         </div>
@@ -1502,7 +1502,7 @@ export function AttendanceModule() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-slate-50 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm font-semibold">
+                <thead className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800 text-slate-500 text-xs font-bold uppercase tracking-[.06em]">
                   <tr>
                     <th className="px-6 py-4">ROL</th>
                     <th className="px-6 py-4">Nome</th>
@@ -1850,7 +1850,7 @@ export function AttendanceModule() {
                             <th className="px-4 py-3 text-center">Check-ins Registrados</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-600 dark:text-slate-400">
+                        <tbody className="divide-y divide-[#f1f5f9] dark:divide-slate-700 dark:divide-slate-800/60 text-slate-600 dark:text-slate-400">
                           {memberInsights.weeklyBehavior.map((week, index) => (
                             <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20 transition-colors">
                               <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">{week.label}</td>
@@ -2434,7 +2434,7 @@ export function AttendanceModule() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-850 dark:text-slate-250">
+                  <tbody className="divide-y divide-[#f1f5f9] dark:divide-slate-700 dark:divide-slate-800 text-slate-850 dark:text-slate-250">
                     {reportMembers.map((member) => {
                       const isSelected = selectedReportMemberIds.includes(member.id);
                       return (

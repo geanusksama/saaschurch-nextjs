@@ -6633,7 +6633,7 @@ export function Reports() {
           ) : (
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
               <div className="overflow-x-auto">
-                <table className="report-table min-w-full divide-y divide-slate-200 text-sm">
+                <table className="report-table min-w-full divide-y divide-[#f1f5f9] dark:divide-slate-700 text-sm">
                   <thead className="bg-slate-50">
                     <tr>
                       {baptismReportBuilder.columns.map((column) => (
@@ -6899,7 +6899,7 @@ export function Reports() {
           ) : (
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
               <div className="overflow-x-auto">
-                <table className="report-table min-w-full divide-y divide-slate-200 text-sm">
+                <table className="report-table min-w-full divide-y divide-[#f1f5f9] dark:divide-slate-700 text-sm">
                   <thead className="bg-slate-50">
                     <tr>
                       {consecrationReportBuilder.columns.map((column) => (
@@ -7167,7 +7167,7 @@ export function Reports() {
           ) : (
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
               <div className="overflow-x-auto">
-                <table className="report-table min-w-full divide-y divide-slate-200 text-sm">
+                <table className="report-table min-w-full divide-y divide-[#f1f5f9] dark:divide-slate-700 text-sm">
                   <thead className="bg-slate-50">
                     <tr>
                       {transferReportBuilder.columns.map((column) => (
@@ -7855,7 +7855,7 @@ export function Reports() {
           ) : (
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
               <div className="overflow-x-auto">
-                <table className="report-table min-w-full divide-y divide-slate-200 text-sm">
+                <table className="report-table min-w-full divide-y divide-[#f1f5f9] dark:divide-slate-700 text-sm">
                   <thead className="bg-slate-50">
                     <tr>
                       {memberReportBuilder.columns.map((column) => (
@@ -8107,7 +8107,7 @@ export function Reports() {
             <BarChart3 className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Relatórios de Secretaria</h1>
+            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Relatórios de Secretaria</h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">Central exclusiva para membros, serviços e processos da secretaria.</p>
           </div>
         </div>
@@ -8117,7 +8117,7 @@ export function Reports() {
             <button
               type="button"
               onClick={() => void loadReportsData()}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               <RefreshCw className="h-4 w-4" />
               Atualizar
@@ -8128,7 +8128,7 @@ export function Reports() {
               <button
                 type="button"
                 onClick={openNewChartModal}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-emerald-600 px-3.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
               >
                 <Plus className="h-4 w-4" />
                 Adicionar gráfico
@@ -8745,7 +8745,7 @@ export function Reports() {
                     ) : (
                       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
                         <div className="overflow-x-auto">
-                          <table className="report-table min-w-full divide-y divide-slate-200 text-sm">
+                          <table className="report-table min-w-full divide-y divide-[#f1f5f9] dark:divide-slate-700 text-sm">
                             <thead className="bg-slate-50">
                               <tr>
                                 {memberReportBuilder.columns.map((column) => (
@@ -9160,7 +9160,7 @@ export function Reports() {
                     churchActiveRow ? (
                       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
                         {/* CABEÇALHO */}
-                        <div className="border-b border-slate-200 bg-slate-50 px-6 py-5">
+                        <div className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800 px-6 py-5">
                           <h2 className="text-xl font-bold uppercase tracking-wide text-slate-900">{churchActiveRow.church}</h2>
                           <p className="mt-1 text-xs text-slate-500">{churchActiveRow.field} · {churchActiveRow.regional} · {churchActiveRow.city}/{churchActiveRow.state}</p>
                           <p className="text-xs text-slate-500">{churchActiveRow.address}</p>
@@ -9188,7 +9188,7 @@ export function Reports() {
                           ] as const).map(({ label, value }) => (
                             <div key={label} className="px-3 py-3 text-center">
                               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
-                              <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+                              <p className="mt-1 text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">{value}</p>
                             </div>
                           ))}
                         </div>
@@ -9232,7 +9232,7 @@ export function Reports() {
                             </div>
                             <table className="w-full text-sm">
                               <thead>
-                                <tr className="border-b border-slate-200 bg-slate-50">
+                                <tr className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
                                   <th className="px-6 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nome</th>
                                   <th className="px-6 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Função</th>
                                   <th className="px-6 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Entrada</th>
@@ -9269,7 +9269,7 @@ export function Reports() {
                               <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                   <thead>
-                                    <tr className="border-b border-slate-200 bg-slate-50">
+                                    <tr className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
                                       <th className="px-6 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">#</th>
                                       <th className="px-6 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nome</th>
                                       <th className="px-6 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Título</th>
@@ -9850,7 +9850,7 @@ export function Reports() {
                     ) : (
                       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
                         <div className="overflow-x-auto">
-                          <table className="report-table min-w-full divide-y divide-slate-200 text-sm">
+                          <table className="report-table min-w-full divide-y divide-[#f1f5f9] dark:divide-slate-700 text-sm">
                             <thead className="bg-slate-50">
                               <tr>
                                 {baptismReportBuilder.columns.map((column) => (
@@ -10340,7 +10340,7 @@ export function Reports() {
                     ) : (
                       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
                         <div className="overflow-x-auto">
-                          <table className="report-table min-w-full divide-y divide-slate-200 text-sm">
+                          <table className="report-table min-w-full divide-y divide-[#f1f5f9] dark:divide-slate-700 text-sm">
                             <thead className="bg-slate-50">
                               <tr>
                                 {consecrationReportBuilder.columns.map((column) => (
@@ -10757,7 +10757,7 @@ export function Reports() {
                     ) : (
                       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
                         <div className="overflow-x-auto">
-                          <table className="report-table min-w-full divide-y divide-slate-200 text-sm">
+                          <table className="report-table min-w-full divide-y divide-[#f1f5f9] dark:divide-slate-700 text-sm">
                             <thead className="bg-slate-50">
                               <tr>
                                 {transferReportBuilder.columns.map((column) => (
@@ -11176,7 +11176,7 @@ export function Reports() {
                       <div id="requirements-report-preview-root" className="overflow-x-auto rounded-2xl border border-slate-200">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="border-b border-slate-200 bg-slate-50">
+                            <tr className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
                               {requirementsReportBuilder.columns.map((col) => (
                                 <th
                                   key={col}
@@ -11336,7 +11336,7 @@ export function Reports() {
                         }
                         return (
                           <div className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                            <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3">
+                            <div className="flex items-center gap-3 border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800 px-5 py-3">
                               <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Totais do relatório</span>
                               <span className="ml-auto rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-700">{requirementsFilteredRows.length} requerimento(s)</span>
                             </div>
@@ -11748,7 +11748,7 @@ export function Reports() {
                         <div id="credential-report-preview-root" className="overflow-x-auto rounded-2xl border border-slate-200">
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="border-b border-slate-200 bg-slate-50">
+                              <tr className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
                                 {credentialReportBuilder.columns.map((col) => (
                                   <th
                                     key={col}
@@ -11912,7 +11912,7 @@ export function Reports() {
                           }
                           return (
                             <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                              <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3">
+                              <div className="flex items-center gap-3 border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800 px-5 py-3">
                                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Totais do relatório</span>
                                 <span className="ml-auto rounded-full bg-violet-100 px-3 py-0.5 text-xs font-bold text-violet-700">{credentialFilteredRows.length} credencial(is)</span>
                               </div>
@@ -12642,7 +12642,7 @@ export function Reports() {
                   <button
                     type="button"
                     onClick={openNewChartModal}
-                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    className="mt-5 inline-flex h-10 items-center gap-2 rounded-[10px] bg-emerald-600 px-3.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
                   >
                     <Plus className="h-4 w-4" />
                     Criar primeiro gráfico
@@ -12659,7 +12659,7 @@ export function Reports() {
           <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
               <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{editingChartId ? 'Editar gráfico' : 'Novo gráfico'}</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">{editingChartId ? 'Editar gráfico' : 'Novo gráfico'}</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Construtor de gráficos customizados da secretaria.</p>
               </div>
               <button
@@ -12675,7 +12675,7 @@ export function Reports() {
               <div className="min-h-0 space-y-5 border-r border-slate-200 overflow-y-auto p-6 dark:border-slate-800">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Título</label>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Título</label>
                     <input
                       type="text"
                       value={chartDraft.title}
@@ -12685,7 +12685,7 @@ export function Reports() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Tipo de gráfico</label>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Tipo de gráfico</label>
                     <select
                       value={chartDraft.chartType}
                       onChange={(event) => setChartDraft((current) => ({ ...current, chartType: event.target.value as ChartTypeKey }))}
@@ -12706,7 +12706,7 @@ export function Reports() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Fonte de dados</label>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Fonte de dados</label>
                     <select
                       value={chartDraft.sourceKey}
                       onChange={(event) => handleSourceChange(event.target.value)}
@@ -12719,7 +12719,7 @@ export function Reports() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Tamanho no grid</label>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Tamanho no grid</label>
                     <select
                       value={chartDraft.gridSize}
                       onChange={(event) => setChartDraft((current) => ({ ...current, gridSize: event.target.value as GridSizeKey }))}
@@ -12734,7 +12734,7 @@ export function Reports() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Dimensão</label>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Dimensão</label>
                     <select
                       value={chartDraft.dimensionKey}
                       onChange={(event) => setChartDraft((current) => ({ ...current, dimensionKey: event.target.value }))}
@@ -12747,7 +12747,7 @@ export function Reports() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Resumo</label>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Resumo</label>
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                       {formatMetric(editorSource.records.length)} linhas nesta fonte
                     </div>
@@ -12776,7 +12776,7 @@ export function Reports() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Legenda</label>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Legenda</label>
                     <select
                       value={chartDraft.legendPosition}
                       onChange={(event) => setChartDraft((current) => ({ ...current, legendPosition: event.target.value as LegendPositionKey }))}
@@ -12789,7 +12789,7 @@ export function Reports() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Exibição</label>
+                    <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Exibição</label>
                     <label className="inline-flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                       <input
                         type="checkbox"
@@ -12900,7 +12900,7 @@ export function Reports() {
                 <button
                   type="button"
                   onClick={handleSaveChart}
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-emerald-600 px-3.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
                 >
                   <Save className="h-4 w-4" />
                   Salvar gráfico

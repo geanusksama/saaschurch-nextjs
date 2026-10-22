@@ -182,7 +182,7 @@ export function QrScanReader() {
           <QrCode className="h-5 w-5 text-emerald-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ler QR Code</h1>
+          <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Ler QR Code</h1>
           <p className="text-sm text-slate-600 dark:text-slate-400">Confirme batismos e consagrações lendo o canhoto do candidato</p>
         </div>
       </div>
@@ -307,7 +307,7 @@ export function QrScanReader() {
                 <p className="text-lg font-bold uppercase text-slate-900 dark:text-white">
                   {card.member?.fullName || "Membro não vinculado"}
                 </p>
-                <p className="text-xs font-semibold text-purple-600">{card.protocol}</p>
+                <p className="text-xs font-medium tabular-nums text-slate-500">{card.protocol}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
