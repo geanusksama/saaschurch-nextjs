@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.095Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.628Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b4a9d25bc39e5e6c
+-- Baseline 25d8ef5ff8c5cde0
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -813,6 +813,25 @@ alter table "public"."ecclesiastical_titles" alter column "allow_women" set defa
 alter table "public"."ecclesiastical_titles" alter column "display_order" set default 0;
 alter table "public"."ecclesiastical_titles" alter column "created_at" set default CURRENT_TIMESTAMP;
 alter table "public"."ecclesiastical_titles" alter column "updated_at" set default CURRENT_TIMESTAMP;
+alter table "public"."engajamento_instagram" alter column "id" set default gen_random_uuid();
+alter table "public"."engajamento_instagram" alter column "created_at" set default now();
+alter table "public"."engajamento_instagram" alter column "updated_at" set default now();
+alter table "public"."engajamento_marcacoes" alter column "id" set default gen_random_uuid();
+alter table "public"."engajamento_marcacoes" alter column "imagem_indice" set default 0;
+alter table "public"."engajamento_marcacoes" alter column "created_at" set default now();
+alter table "public"."engajamento_pessoas" alter column "id" set default gen_random_uuid();
+alter table "public"."engajamento_pessoas" alter column "amostras" set default 1;
+alter table "public"."engajamento_pessoas" alter column "oculta" set default false;
+alter table "public"."engajamento_pessoas" alter column "created_at" set default now();
+alter table "public"."engajamento_pessoas" alter column "updated_at" set default now();
+alter table "public"."engajamento_publicacoes" alter column "id" set default gen_random_uuid();
+alter table "public"."engajamento_publicacoes" alter column "origem" set default 'MANUAL'::character varying;
+alter table "public"."engajamento_publicacoes" alter column "imagens" set default '[]'::jsonb;
+alter table "public"."engajamento_publicacoes" alter column "created_at" set default now();
+alter table "public"."engajamento_publicacoes" alter column "updated_at" set default now();
+alter table "public"."engajamento_rostos" alter column "id" set default gen_random_uuid();
+alter table "public"."engajamento_rostos" alter column "imagem_indice" set default 0;
+alter table "public"."engajamento_rostos" alter column "created_at" set default now();
 alter table "public"."event_attendance" alter column "present" set default true;
 alter table "public"."event_attendance" alter column "checkin_datetime" set default CURRENT_TIMESTAMP;
 alter table "public"."event_attendance" alter column "created_at" set default CURRENT_TIMESTAMP;

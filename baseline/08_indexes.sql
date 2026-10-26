@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.097Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.632Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b4a9d25bc39e5e6c
+-- Baseline 25d8ef5ff8c5cde0
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -185,6 +185,17 @@ CREATE INDEX IF NOT EXISTS ebd_produtos_campo_id_idx ON public.ebd_produtos USIN
 CREATE INDEX IF NOT EXISTS ebd_produtos_categoria_id_idx ON public.ebd_produtos USING btree (categoria_id);
 CREATE INDEX IF NOT EXISTS ebd_trimestres_campo_id_idx ON public.ebd_trimestres USING btree (campo_id);
 CREATE UNIQUE INDEX IF NOT EXISTS ecclesiastical_titles_name_key ON public.ecclesiastical_titles USING btree (name);
+CREATE UNIQUE INDEX IF NOT EXISTS engajamento_instagram_campo_key ON public.engajamento_instagram USING btree (campo_id) WHERE (deleted_at IS NULL);
+CREATE INDEX IF NOT EXISTS engajamento_marcacoes_member_idx ON public.engajamento_marcacoes USING btree (member_id);
+CREATE UNIQUE INDEX IF NOT EXISTS engajamento_marcacoes_membro_key ON public.engajamento_marcacoes USING btree (publicacao_id, member_id) WHERE (member_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS engajamento_pessoas_campo_idx ON public.engajamento_pessoas USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS engajamento_pessoas_member_idx ON public.engajamento_pessoas USING btree (member_id);
+CREATE INDEX IF NOT EXISTS engajamento_publicacoes_campo_data_idx ON public.engajamento_publicacoes USING btree (campo_id, data_evento);
+CREATE INDEX IF NOT EXISTS engajamento_publicacoes_church_idx ON public.engajamento_publicacoes USING btree (church_id);
+CREATE UNIQUE INDEX IF NOT EXISTS engajamento_publicacoes_ig_media_key ON public.engajamento_publicacoes USING btree (campo_id, ig_media_id) WHERE (ig_media_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS engajamento_rostos_campo_idx ON public.engajamento_rostos USING btree (campo_id);
+CREATE INDEX IF NOT EXISTS engajamento_rostos_pessoa_idx ON public.engajamento_rostos USING btree (pessoa_id);
+CREATE INDEX IF NOT EXISTS engajamento_rostos_publicacao_idx ON public.engajamento_rostos USING btree (publicacao_id);
 CREATE UNIQUE INDEX IF NOT EXISTS event_attendance_event_id_member_id_key ON public.event_attendance USING btree (event_id, member_id);
 CREATE INDEX IF NOT EXISTS events_campo_id_idx ON public.events USING btree (campo_id);
 CREATE INDEX IF NOT EXISTS events_church_id_idx ON public.events USING btree (church_id);

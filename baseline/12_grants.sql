@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.100Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.634Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b4a9d25bc39e5e6c
+-- Baseline 25d8ef5ff8c5cde0
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -494,6 +494,21 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."ecclesiastical_titles" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."ecclesiastical_titles" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."ecclesiastical_titles" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_instagram" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_instagram" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_instagram" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_marcacoes" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_marcacoes" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_marcacoes" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_pessoas" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_pessoas" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_pessoas" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_publicacoes" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_publicacoes" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_publicacoes" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_rostos" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_rostos" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."engajamento_rostos" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."event_attendance" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."event_attendance" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."event_attendance" to "service_role";

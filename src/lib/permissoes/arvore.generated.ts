@@ -1122,6 +1122,90 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/ebd/EbdRelatorios.tsx"
   },
   {
+    "chave": "engajamento_fotos.fotos.desmarcar",
+    "rotulo": "Desmarcar pessoa",
+    "herda": "engajamento_fotos.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoFotos.tsx"
+  },
+  {
+    "chave": "engajamento_fotos.fotos.editar",
+    "rotulo": "Corrigir data e título",
+    "herda": "engajamento_fotos.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoFotos.tsx"
+  },
+  {
+    "chave": "engajamento_fotos.fotos.excluir",
+    "rotulo": "Remover publicação",
+    "herda": "engajamento_fotos.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoFotos.tsx"
+  },
+  {
+    "chave": "engajamento_fotos.fotos.marcar",
+    "rotulo": "Marcar pessoa na foto",
+    "herda": "engajamento_fotos.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoFotos.tsx"
+  },
+  {
+    "chave": "engajamento_instagram.instagram.conectar",
+    "rotulo": "Entrar com Instagram",
+    "herda": "engajamento_instagram.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoInstagram.tsx"
+  },
+  {
+    "chave": "engajamento_instagram.instagram.desconectar",
+    "rotulo": "Desconectar conta",
+    "herda": "engajamento_instagram.instagram.conectar",
+    "arquivo": "src/app-ui/engajamento/EngajamentoInstagram.tsx"
+  },
+  {
+    "chave": "engajamento_instagram.instagram.sincronizar",
+    "rotulo": "Iniciar (trazer fotos e reconhecer rostos)",
+    "herda": "engajamento_instagram.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoInstagram.tsx"
+  },
+  {
+    "chave": "engajamento_pessoas.pessoas.apagar_rostos",
+    "rotulo": "Apagar todos os dados de rosto",
+    "herda": "engajamento_pessoas.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoPessoas.tsx"
+  },
+  {
+    "chave": "engajamento_pessoas.pessoas.juntar",
+    "rotulo": "Juntar com outra pessoa",
+    "herda": "engajamento_pessoas.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoPessoas.tsx"
+  },
+  {
+    "chave": "engajamento_pessoas.pessoas.nomear",
+    "rotulo": "Dar nome / ligar ao membro",
+    "herda": "engajamento_pessoas.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoPessoas.tsx"
+  },
+  {
+    "chave": "engajamento_pessoas.pessoas.ocultar",
+    "rotulo": "Ocultar do relatório",
+    "herda": "engajamento_pessoas.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoPessoas.tsx"
+  },
+  {
+    "chave": "engajamento_pessoas.pessoas.tirar_rosto",
+    "rotulo": "Tirar rosto (não é esta pessoa)",
+    "herda": "engajamento_pessoas.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoPessoas.tsx"
+  },
+  {
+    "chave": "engajamento.comparativo.exportar",
+    "rotulo": "Exportar planilha (Excel)",
+    "herda": "engajamento.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoComparativo.tsx"
+  },
+  {
+    "chave": "engajamento.comparativo.imprimir",
+    "rotulo": "Imprimir relatório",
+    "herda": "engajamento.view",
+    "arquivo": "src/app-ui/engajamento/EngajamentoComparativo.tsx"
+  },
+  {
     "chave": "events.agenda.adicionar_evento",
     "rotulo": "Adicionar evento — Agenda",
     "herda": "events.view",

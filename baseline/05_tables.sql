@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.089Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.623Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b4a9d25bc39e5e6c
+-- Baseline 25d8ef5ff8c5cde0
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -2655,6 +2655,81 @@ create table if not exists "public"."ecclesiastical_titles" (
   "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
   "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
   "deleted_at" timestamp(3) without time zone
+);
+
+create table if not exists "public"."engajamento_instagram" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "church_id" uuid,
+  "ig_user_id" character varying(40),
+  "username" character varying(100),
+  "token_enc" text,
+  "token_expira_em" timestamp with time zone,
+  "ultima_sincronizacao" timestamp with time zone,
+  "ultimo_erro" text,
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null,
+  "created_by" uuid,
+  "deleted_at" timestamp with time zone
+);
+
+create table if not exists "public"."engajamento_marcacoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "publicacao_id" uuid not null,
+  "member_id" uuid,
+  "nome" character varying(255) not null,
+  "instagram" character varying(100),
+  "imagem_indice" integer default 0 not null,
+  "observacao" text,
+  "created_at" timestamp with time zone default now() not null,
+  "created_by" uuid
+);
+
+create table if not exists "public"."engajamento_pessoas" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "nome" character varying(255),
+  "member_id" uuid,
+  "foto_url" text,
+  "centroide" real[] not null,
+  "amostras" integer default 1 not null,
+  "oculta" boolean default false not null,
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null,
+  "updated_by" uuid
+);
+
+create table if not exists "public"."engajamento_publicacoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "church_id" uuid,
+  "origem" character varying(20) default 'MANUAL'::character varying not null,
+  "ig_media_id" character varying(40),
+  "permalink" character varying(500),
+  "tipo" character varying(30),
+  "titulo" character varying(200),
+  "legenda" text,
+  "publicado_em" timestamp with time zone,
+  "data_evento" date not null,
+  "imagens" jsonb default '[]'::jsonb not null,
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null,
+  "created_by" uuid,
+  "deleted_at" timestamp with time zone,
+  "rostos_analisados_em" timestamp with time zone
+);
+
+create table if not exists "public"."engajamento_rostos" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "publicacao_id" uuid not null,
+  "imagem_indice" integer default 0 not null,
+  "pessoa_id" uuid,
+  "descritor" real[] not null,
+  "caixa" jsonb,
+  "pontuacao" real,
+  "foto_url" text,
+  "created_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "public"."event_attendance" (

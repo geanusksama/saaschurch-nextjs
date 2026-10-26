@@ -746,6 +746,8 @@ model Member {
   credores             Credor[]              @relation("CredorMember")
   eventAttendance      EventAttendance[]
   eventRegistrations   EventRegistration[]
+  engajamentoMarcacoes EngajamentoMarcacao[]
+  engajamentoPessoas   EngajamentoPessoa[]
 
   discipleshipEnrollments       DiscipleshipEnrollment[]
   discipleshipMentorEnrollments DiscipleshipEnrollment[] @relation("DiscipleshipMentor")
@@ -5634,4 +5636,118 @@ model AsaasWebhookEvento {
 
   @@index([configId, recebidoEm], map: "asaas_webhook_eventos_config_recebido_idx")
   @@map("asaas_webhook_eventos")
+}
+
+// ─── Engajamento (docs/modules/engajamento/SPEC.md) ──────────────────────────
+// Presença nas fotos da igreja + comparação entre períodos. As rotas usam SQL
+// direto ($queryRaw) — a comparação cruza estas tabelas com face_presencas.
+
+model EngajamentoInstagram {
+  id                  String    @id @default(uuid()) @db.Uuid
+  campoId             String    @map("campo_id") @db.Uuid
+  churchId            String?   @map("church_id") @db.Uuid
+  igUserId            String?   @map("ig_user_id") @db.VarChar(40)
+  username            String?   @db.VarChar(100)
+  tokenEnc            String?   @map("token_enc")
+  tokenExpiraEm       DateTime? @map("token_expira_em") @db.Timestamptz(6)
+  ultimaSincronizacao DateTime? @map("ultima_sincronizacao") @db.Timestamptz(6)
+  ultimoErro          String?   @map("ultimo_erro")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy           String?   @map("created_by") @db.Uuid
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  // + único parcial (campo_id) where deleted_at is null: só no SQL.
+  @@map("engajamento_instagram")
+}
+
+model EngajamentoPublicacao {
+  id          String    @id @default(uuid()) @db.Uuid
+  campoId     String    @map("campo_id") @db.Uuid
+  churchId    String?   @map("church_id") @db.Uuid
+  origem      String    @default("MANUAL") @db.VarChar(20)
+  igMediaId   String?   @map("ig_media_id") @db.VarChar(40)
+  permalink   String?   @db.VarChar(500)
+  tipo        String?   @db.VarChar(30)
+  titulo      String?   @db.VarChar(200)
+  legenda     String?
+  publicadoEm DateTime? @map("publicado_em") @db.Timestamptz(6)
+  dataEvento  DateTime  @map("data_evento") @db.Date
+  imagens     Json      @default("[]") @db.JsonB
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?   @map("created_by") @db.Uuid
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  rostosAnalisadosEm DateTime? @map("rostos_analisados_em") @db.Timestamptz(6)
+
+  marcacoes EngajamentoMarcacao[]
+  rostos    EngajamentoRosto[]
+
+  // + único parcial (campo_id, ig_media_id) where ig_media_id is not null: só no SQL.
+  @@index([campoId, dataEvento], map: "engajamento_publicacoes_campo_data_idx")
+  @@index([churchId], map: "engajamento_publicacoes_church_idx")
+  @@map("engajamento_publicacoes")
+}
+
+model EngajamentoMarcacao {
+  id           String   @id @default(uuid()) @db.Uuid
+  publicacaoId String   @map("publicacao_id") @db.Uuid
+  memberId     String?  @map("member_id") @db.Uuid
+  nome         String   @db.VarChar(255)
+  instagram    String?  @db.VarChar(100)
+  imagemIndice Int      @default(0) @map("imagem_indice")
+  observacao   String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  publicacao EngajamentoPublicacao @relation(fields: [publicacaoId], references: [id], onDelete: Cascade)
+  member     Member?               @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  // + único parcial (publicacao_id, member_id) where member_id is not null: só no SQL.
+  @@index([memberId], map: "engajamento_marcacoes_member_idx")
+  @@map("engajamento_marcacoes")
+}
+
+/// Pessoa diferente achada nas fotos (reconhecimento de rosto). Biométrico: só servidor.
+model EngajamentoPessoa {
+  id        String   @id @default(uuid()) @db.Uuid
+  campoId   String   @map("campo_id") @db.Uuid
+  nome      String?  @db.VarChar(255)
+  memberId  String?  @map("member_id") @db.Uuid
+  fotoUrl   String?  @map("foto_url")
+  centroide Float[]  @db.Real
+  amostras  Int      @default(1)
+  oculta    Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  member Member?            @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  rostos EngajamentoRosto[]
+
+  @@index([campoId], map: "engajamento_pessoas_campo_idx")
+  @@index([memberId], map: "engajamento_pessoas_member_idx")
+  @@map("engajamento_pessoas")
+}
+
+/// Cada rosto achado em cada foto.
+model EngajamentoRosto {
+  id           String   @id @default(uuid()) @db.Uuid
+  campoId      String   @map("campo_id") @db.Uuid
+  publicacaoId String   @map("publicacao_id") @db.Uuid
+  imagemIndice Int      @default(0) @map("imagem_indice")
+  pessoaId     String?  @map("pessoa_id") @db.Uuid
+  descritor    Float[]  @db.Real
+  caixa        Json?    @db.JsonB
+  pontuacao    Float?   @db.Real
+  fotoUrl      String?  @map("foto_url")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  publicacao EngajamentoPublicacao @relation(fields: [publicacaoId], references: [id], onDelete: Cascade)
+  pessoa     EngajamentoPessoa?    @relation(fields: [pessoaId], references: [id], onDelete: SetNull)
+
+  @@index([publicacaoId], map: "engajamento_rostos_publicacao_idx")
+  @@index([pessoaId], map: "engajamento_rostos_pessoa_idx")
+  @@index([campoId], map: "engajamento_rostos_campo_idx")
+  @@map("engajamento_rostos")
 }
