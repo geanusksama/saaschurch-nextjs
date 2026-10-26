@@ -183,6 +183,10 @@ import CultoHospedeiro from "../app-ui/culto/CultoHospedeiro";
 import CultoLancar from "../app-ui/culto/CultoLancar";
 import GestaoCulto from "../app-ui/culto/GestaoCulto";
 import PosicoesCulto from "../app-ui/culto/PosicoesCulto";
+import EngajamentoComparativo from "../app-ui/engajamento/EngajamentoComparativo";
+import EngajamentoFotos from "../app-ui/engajamento/EngajamentoFotos";
+import EngajamentoPessoas from "../app-ui/engajamento/EngajamentoPessoas";
+import EngajamentoInstagram from "../app-ui/engajamento/EngajamentoInstagram";
 import HelpCenterPage from "../app-ui/help/HelpCenterPage";
 import ServicesMatrix from "../app-ui/ecclesiastical/ServicesMatrix";
 import PipelinesAdmin from "../app-ui/ecclesiastical/PipelinesAdmin";
@@ -542,6 +546,10 @@ export const router = createBrowserRouter([
       { path: "culto/gestao", Component: GestaoCulto },
       { path: "culto/lancar", Component: CultoLancar },
       { path: "culto/posicoes", Component: PosicoesCulto },
+      { path: "engajamento", Component: EngajamentoComparativo },
+      { path: "engajamento/pessoas", Component: EngajamentoPessoas },
+      { path: "engajamento/fotos", Component: EngajamentoFotos },
+      { path: "engajamento/instagram", Component: EngajamentoInstagram },
       { path: "crm/:id", Component: LeadDetail },
       { path: "crm/detail/:id", Component: CRMDetail },
       { path: "finance", Component: Finance },

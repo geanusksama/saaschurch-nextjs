@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.088Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.623Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b4a9d25bc39e5e6c
+-- Baseline 25d8ef5ff8c5cde0
 
 -- Sequences
 create sequence if not exists "public"."appv3_pedidos_numero_seq" as bigint increment by 1 minvalue 1 maxvalue 9223372036854775807 start with 1 no cycle;

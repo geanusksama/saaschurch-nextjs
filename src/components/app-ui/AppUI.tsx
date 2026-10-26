@@ -82,8 +82,9 @@ import {
   Link2 as Link2Icon,
   ListChecks as ListChecksIcon,
 } from 'lucide-react';
-import { House, HeartHandshake, Boxes, CalendarDays, Settings2, BookOpenText, UsersRound } from 'lucide-react';
+import { House, HeartHandshake, Boxes, CalendarDays, Settings2, BookOpenText, UsersRound, Activity, Images, ScanFace } from 'lucide-react';
 import { PixIcon } from '../icons/PixIcon';
+import { InstagramIcon } from '../icons/InstagramIcon';
 
 function Dove(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -260,6 +261,10 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/system/campo-senhas") return "Senha dos Campos";
   if (p === "/app-ui/system/audit-log") return "Log de Auditoria";
   if (p === "/app-ui/system/integrations") return "Integrações";
+  if (p === "/app-ui/engajamento") return "Engajamento — Relatório";
+  if (p === "/app-ui/engajamento/pessoas") return "Engajamento — Pessoas";
+  if (p === "/app-ui/engajamento/fotos") return "Engajamento — Fotos";
+  if (p === "/app-ui/engajamento/instagram") return "Engajamento — Instagram";
 
   if (p === "/app-ui/system/pagamentos-asaas") return "Pagamentos Asaas — Configuração";
   if (p.startsWith("/app-ui/pagamentos")) return "Pagamentos";
@@ -285,6 +290,7 @@ const FAVORITES_SECTION = '__favoritos__';
 const SECTION_ICONS: Record<string, any> = {
   'Principal': House,
   'Secretaria': ClipboardList,
+  'Engajamento': Activity,
   'Gestão de Culto': Church,
   'Comunicação': Megaphone,
   'Ministérios': UsersRound,
@@ -354,6 +360,17 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Relatórios',             path: '/app-ui/reports',                        icon: BarChart3,   permKey: 'reports' },
       { name: 'Documentos',             path: '/app-ui/secretariat/word',               icon: FileText,    permKey: 'word_docs' },
       { name: 'Aniversariantes',        path: '/app-ui/birthdays',                      icon: Cake,        permKey: 'birthdays' },
+    ]
+  },
+  {
+    // Presença nas fotos que a igreja posta no Instagram (rostos reconhecidos),
+    // comparada entre períodos. Nasce só para o master (permissionCatalog.ts).
+    section: 'Engajamento',
+    items: [
+      { name: 'Relatório',   path: '/app-ui/engajamento',           icon: TrendingDown,  permKey: 'engajamento', exact: true },
+      { name: 'Pessoas',     path: '/app-ui/engajamento/pessoas',   icon: ScanFace,      permKey: 'engajamento_pessoas' },
+      { name: 'Fotos',       path: '/app-ui/engajamento/fotos',     icon: Images,        permKey: 'engajamento_fotos' },
+      { name: 'Instagram',   path: '/app-ui/engajamento/instagram', icon: InstagramIcon, permKey: 'engajamento_instagram' },
     ]
   },
   {

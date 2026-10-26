@@ -96,6 +96,17 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Gestão Pastoral', name: 'Pedidos de Oração',     key: 'prayer_requests',   permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Gestão Pastoral', name: 'Follow-up',             key: 'followup',           permissions: mkPerms(full(), full(), full(), admin()) },
 
+  // ── Engajamento ──────────────────────────────────────────────────────────
+  // Presença nas fotos do Instagram da igreja (rostos reconhecidos + marcações),
+  // comparada entre períodos. Rosto é dado biométrico (LGPD art. 11).
+  // Ver docs/modules/engajamento/SPEC.md. NASCE FECHADO: só o master vê até o
+  // administrador liberar para a função, o grupo ou o usuário — a tela junta
+  // presença em culto (dado de convicção religiosa) com nome e telefone.
+  { group: 'Engajamento', name: 'Relatório de presença',   key: 'engajamento',           permissions: mkPerms(master(), master(), master(), master()) },
+  { group: 'Engajamento', name: 'Fotos e marcações',       key: 'engajamento_fotos',     permissions: mkPerms(master(), master(), master(), master()) },
+  { group: 'Engajamento', name: 'Pessoas (rostos)',        key: 'engajamento_pessoas',   permissions: mkPerms(master(), master(), master(), master()) },
+  { group: 'Engajamento', name: 'Conta do Instagram',      key: 'engajamento_instagram', permissions: mkPerms(master(), master(), master(), master()) },
+
   // ── Ministérios ──────────────────────────────────────────────────────────
   { group: 'Ministérios', name: 'Todos os Ministérios', key: 'ministries',     permissions: mkPerms(full(), full(), full(), admin()) },
   { group: 'Ministérios', name: 'Equipes / Escalas',    key: 'ministry_teams', permissions: mkPerms(full(), full(), full(), admin()) },

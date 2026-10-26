@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.091Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.625Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b4a9d25bc39e5e6c
+-- Baseline 25d8ef5ff8c5cde0
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -2148,6 +2148,66 @@ alter table "public"."ecclesiastical_titles" add column if not exists "consecrat
 alter table "public"."ecclesiastical_titles" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."ecclesiastical_titles" add column if not exists "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."ecclesiastical_titles" add column if not exists "deleted_at" timestamp(3) without time zone;
+alter table "public"."engajamento_instagram" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."engajamento_instagram" add column if not exists "campo_id" uuid;
+alter table "public"."engajamento_instagram" add column if not exists "church_id" uuid;
+alter table "public"."engajamento_instagram" add column if not exists "ig_user_id" character varying(40);
+alter table "public"."engajamento_instagram" add column if not exists "username" character varying(100);
+alter table "public"."engajamento_instagram" add column if not exists "token_enc" text;
+alter table "public"."engajamento_instagram" add column if not exists "token_expira_em" timestamp with time zone;
+alter table "public"."engajamento_instagram" add column if not exists "ultima_sincronizacao" timestamp with time zone;
+alter table "public"."engajamento_instagram" add column if not exists "ultimo_erro" text;
+alter table "public"."engajamento_instagram" add column if not exists "created_at" timestamp with time zone default now() not null;
+alter table "public"."engajamento_instagram" add column if not exists "updated_at" timestamp with time zone default now() not null;
+alter table "public"."engajamento_instagram" add column if not exists "created_by" uuid;
+alter table "public"."engajamento_instagram" add column if not exists "deleted_at" timestamp with time zone;
+alter table "public"."engajamento_marcacoes" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."engajamento_marcacoes" add column if not exists "publicacao_id" uuid;
+alter table "public"."engajamento_marcacoes" add column if not exists "member_id" uuid;
+alter table "public"."engajamento_marcacoes" add column if not exists "nome" character varying(255);
+alter table "public"."engajamento_marcacoes" add column if not exists "instagram" character varying(100);
+alter table "public"."engajamento_marcacoes" add column if not exists "imagem_indice" integer default 0 not null;
+alter table "public"."engajamento_marcacoes" add column if not exists "observacao" text;
+alter table "public"."engajamento_marcacoes" add column if not exists "created_at" timestamp with time zone default now() not null;
+alter table "public"."engajamento_marcacoes" add column if not exists "created_by" uuid;
+alter table "public"."engajamento_pessoas" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."engajamento_pessoas" add column if not exists "campo_id" uuid;
+alter table "public"."engajamento_pessoas" add column if not exists "nome" character varying(255);
+alter table "public"."engajamento_pessoas" add column if not exists "member_id" uuid;
+alter table "public"."engajamento_pessoas" add column if not exists "foto_url" text;
+alter table "public"."engajamento_pessoas" add column if not exists "centroide" real[];
+alter table "public"."engajamento_pessoas" add column if not exists "amostras" integer default 1 not null;
+alter table "public"."engajamento_pessoas" add column if not exists "oculta" boolean default false not null;
+alter table "public"."engajamento_pessoas" add column if not exists "created_at" timestamp with time zone default now() not null;
+alter table "public"."engajamento_pessoas" add column if not exists "updated_at" timestamp with time zone default now() not null;
+alter table "public"."engajamento_pessoas" add column if not exists "updated_by" uuid;
+alter table "public"."engajamento_publicacoes" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."engajamento_publicacoes" add column if not exists "campo_id" uuid;
+alter table "public"."engajamento_publicacoes" add column if not exists "church_id" uuid;
+alter table "public"."engajamento_publicacoes" add column if not exists "origem" character varying(20) default 'MANUAL'::character varying not null;
+alter table "public"."engajamento_publicacoes" add column if not exists "ig_media_id" character varying(40);
+alter table "public"."engajamento_publicacoes" add column if not exists "permalink" character varying(500);
+alter table "public"."engajamento_publicacoes" add column if not exists "tipo" character varying(30);
+alter table "public"."engajamento_publicacoes" add column if not exists "titulo" character varying(200);
+alter table "public"."engajamento_publicacoes" add column if not exists "legenda" text;
+alter table "public"."engajamento_publicacoes" add column if not exists "publicado_em" timestamp with time zone;
+alter table "public"."engajamento_publicacoes" add column if not exists "data_evento" date;
+alter table "public"."engajamento_publicacoes" add column if not exists "imagens" jsonb default '[]'::jsonb not null;
+alter table "public"."engajamento_publicacoes" add column if not exists "created_at" timestamp with time zone default now() not null;
+alter table "public"."engajamento_publicacoes" add column if not exists "updated_at" timestamp with time zone default now() not null;
+alter table "public"."engajamento_publicacoes" add column if not exists "created_by" uuid;
+alter table "public"."engajamento_publicacoes" add column if not exists "deleted_at" timestamp with time zone;
+alter table "public"."engajamento_publicacoes" add column if not exists "rostos_analisados_em" timestamp with time zone;
+alter table "public"."engajamento_rostos" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."engajamento_rostos" add column if not exists "campo_id" uuid;
+alter table "public"."engajamento_rostos" add column if not exists "publicacao_id" uuid;
+alter table "public"."engajamento_rostos" add column if not exists "imagem_indice" integer default 0 not null;
+alter table "public"."engajamento_rostos" add column if not exists "pessoa_id" uuid;
+alter table "public"."engajamento_rostos" add column if not exists "descritor" real[];
+alter table "public"."engajamento_rostos" add column if not exists "caixa" jsonb;
+alter table "public"."engajamento_rostos" add column if not exists "pontuacao" real;
+alter table "public"."engajamento_rostos" add column if not exists "foto_url" text;
+alter table "public"."engajamento_rostos" add column if not exists "created_at" timestamp with time zone default now() not null;
 alter table "public"."event_attendance" add column if not exists "id" uuid;
 alter table "public"."event_attendance" add column if not exists "event_id" uuid;
 alter table "public"."event_attendance" add column if not exists "member_id" uuid;

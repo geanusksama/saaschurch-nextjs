@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.098Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.633Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b4a9d25bc39e5e6c
+-- Baseline 25d8ef5ff8c5cde0
 
 -- Row Level Security
 alter table "public"."_prisma_migrations" enable row level security;
@@ -172,6 +172,11 @@ alter table "public"."ebd_negociacoes" enable row level security;
 alter table "public"."ebd_produtos" enable row level security;
 alter table "public"."ebd_trimestres" enable row level security;
 alter table "public"."ecclesiastical_titles" enable row level security;
+alter table "public"."engajamento_instagram" enable row level security;
+alter table "public"."engajamento_marcacoes" enable row level security;
+alter table "public"."engajamento_pessoas" enable row level security;
+alter table "public"."engajamento_publicacoes" enable row level security;
+alter table "public"."engajamento_rostos" enable row level security;
 alter table "public"."event_attendance" enable row level security;
 alter table "public"."event_departments" enable row level security;
 alter table "public"."event_notifications" enable row level security;

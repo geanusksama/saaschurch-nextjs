@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-16T13:20:00.094Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.628Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b4a9d25bc39e5e6c
+-- Baseline 25d8ef5ff8c5cde0
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -535,6 +535,16 @@ alter table "public"."ebd_trimestres" alter column "ano" set not null;
 alter table "public"."ebd_trimestres" alter column "data_inicio" set not null;
 alter table "public"."ebd_trimestres" alter column "data_fim" set not null;
 alter table "public"."ecclesiastical_titles" alter column "name" set not null;
+alter table "public"."engajamento_instagram" alter column "campo_id" set not null;
+alter table "public"."engajamento_marcacoes" alter column "publicacao_id" set not null;
+alter table "public"."engajamento_marcacoes" alter column "nome" set not null;
+alter table "public"."engajamento_pessoas" alter column "campo_id" set not null;
+alter table "public"."engajamento_pessoas" alter column "centroide" set not null;
+alter table "public"."engajamento_publicacoes" alter column "campo_id" set not null;
+alter table "public"."engajamento_publicacoes" alter column "data_evento" set not null;
+alter table "public"."engajamento_rostos" alter column "campo_id" set not null;
+alter table "public"."engajamento_rostos" alter column "publicacao_id" set not null;
+alter table "public"."engajamento_rostos" alter column "descritor" set not null;
 alter table "public"."event_attendance" alter column "id" set not null;
 alter table "public"."event_attendance" alter column "event_id" set not null;
 alter table "public"."event_attendance" alter column "member_id" set not null;
