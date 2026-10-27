@@ -19,3 +19,11 @@ instrução: **nada é afirmado sem ter sido verificado.**
 Um palpite apresentado como fato custa mais caro que uma pergunta: aqui um
 código só roda contra um banco por igreja, e o erro sai multiplicado por todas
 elas no mesmo `git push`.
+
+## Hospedagem por igreja (desde 27/10/2026)
+
+- **Campinas**: Vercel + Supabase Cloud. Não mexer.
+- **AD Vila Solange e todo campo novo**: Coolify na VPS "Uso geral"
+  (179.198.117.28) — app + Supabase self-hosted. Nunca no 212.85.0.189 (SLS CRM).
+- Progresso e decisões da migração da Vila Solange:
+  [docs/infra/MIGRACAO-VILASOLANGE-COOLIFY.md](docs/infra/MIGRACAO-VILASOLANGE-COOLIFY.md).
