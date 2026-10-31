@@ -74,6 +74,7 @@ import { LeaderReportModal } from './churches/LeaderReportModal';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { buildAddressLabel, buildRouteEmbedUrl, buildRouteLink, formatKm, hasCoords, haversineKm } from '../../lib/geo';
+import { MultiSelectDropdown } from './shared/MultiSelectDropdown';
 import { Permissao } from '../../lib/permissoes/Permissao';
 
 const getImageUrl = (photoUrl?: string) => {
@@ -88,17 +89,32 @@ const getImageUrl = (photoUrl?: string) => {
   return photoUrl;
 };
 
-const initialFilters = {
+/** null = todos (sem filtro); lista = só os marcados. Lista vazia vale como todos. */
+type ListaFiltro = string[] | null;
+
+const UFS_BRASIL = ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'];
+
+const initialFilters: {
+  search: string;
+  campoId: string;
+  regionalIds: ListaFiltro;
+  states: ListaFiltro;
+  zones: ListaFiltro;
+  /** 'host' (hospedeiras) | 'hosted' (anexas) | 'unlinked' (sem vinculo) */
+  hosting: ListaFiltro;
+  /** 'active' | 'inactive' — churches.status */
+  status: ListaFiltro;
+} = {
   search: '',
   campoId: '',
-  regionalId: '',
-  state: '',
-  zone: '',
-  /** '' | 'host' (hospedeiras) | 'hosted' (anexas) | 'unlinked' (sem vinculo) */
-  hosting: '',
-  /** '' (todas) | 'active' | 'inactive' — churches.status */
-  status: '',
+  regionalIds: null,
+  states: null,
+  zones: null,
+  hosting: null,
+  status: null,
 };
+
+const temFiltro = (lista: ListaFiltro): lista is string[] => Array.isArray(lista) && lista.length > 0;
 
 const initialChurchForm = {
   id: '',
@@ -952,7 +968,7 @@ export function Churches() {
     const comCampoAtivo = (current: typeof initialFilters) => (
       current.campoId === selectedFieldId
         ? current
-        : { ...current, campoId: selectedFieldId, regionalId: '' }
+        : { ...current, campoId: selectedFieldId, regionalIds: null }
     );
     setFilters(comCampoAtivo);
     // O retrato também: a troca de campo refaz a consulta (loadBaseData acima)
@@ -1059,23 +1075,22 @@ export function Churches() {
       if (filtrosAplicados.campoId && church.campoId !== filtrosAplicados.campoId) {
         return false;
       }
-      if (filtrosAplicados.regionalId && church.regionalId !== filtrosAplicados.regionalId) {
+      const f = filtrosAplicados;
+      if (temFiltro(f.regionalIds) && !f.regionalIds.includes(church.regionalId)) {
         return false;
       }
-      if (filtrosAplicados.state && normalizeText(church.state) !== normalizeText(filtrosAplicados.state)) {
+      if (temFiltro(f.states) && !f.states.some((uf) => normalizeText(uf) === normalizeText(church.state))) {
         return false;
       }
-      if (filtrosAplicados.zone && normalizeText(church.zone) !== normalizeText(filtrosAplicados.zone)) {
+      if (temFiltro(f.zones) && !f.zones.some((zona) => normalizeText(zona) === normalizeText(church.zone))) {
         return false;
       }
-      if (filtrosAplicados.hosting === 'host' && !church.isHost) {
-        return false;
-      }
-      if (filtrosAplicados.hosting === 'hosted' && !church.hostChurchId) {
-        return false;
-      }
-      if (filtrosAplicados.hosting === 'unlinked' && (church.isHost || church.hostChurchId)) {
-        return false;
+      if (temFiltro(f.hosting)) {
+        const bate =
+          (f.hosting.includes('host') && church.isHost) ||
+          (f.hosting.includes('hosted') && Boolean(church.hostChurchId)) ||
+          (f.hosting.includes('unlinked') && !church.isHost && !church.hostChurchId);
+        if (!bate) return false;
       }
       if (!query) {
         return true;
@@ -1089,9 +1104,10 @@ export function Churches() {
   }, [enrichedChurches, filtrosAplicados]);
 
   const filteredChurches = useMemo(() => {
-    if (filtrosAplicados.status === 'inactive') return churchesSemSituacao.filter((church) => church.status === 'inactive');
-    if (filtrosAplicados.status === 'active') return churchesSemSituacao.filter((church) => church.status !== 'inactive');
-    return churchesSemSituacao;
+    const situacao = filtrosAplicados.status;
+    if (!temFiltro(situacao)) return churchesSemSituacao;
+    return churchesSemSituacao.filter((church) =>
+      church.status === 'inactive' ? situacao.includes('inactive') : situacao.includes('active'));
   }, [churchesSemSituacao, filtrosAplicados.status]);
 
   const contagemSituacao = useMemo(() => {
@@ -2089,12 +2105,24 @@ export function Churches() {
   const nomeCampo = (id: string) => campoById.get(id)?.name || id;
   const rotuloHospedagem: Record<string, string> = { host: 'Somente hospedeiras', hosted: 'Somente anexas', unlinked: 'Sem vínculo' };
   const filtrosAtivos: Array<{ key: string; label: string; limpar?: () => void }> = [];
-  if (filters.status) filtrosAtivos.push({ key: 'Situação', label: filters.status === 'inactive' ? 'Inativas' : 'Ativas', limpar: () => setFilters((c) => ({ ...c, status: '' })) });
-  if (campoVisible && filters.campoId && !selectedFieldId) filtrosAtivos.push({ key: 'Campo', label: nomeCampo(filters.campoId), limpar: () => setFilters((c) => ({ ...c, campoId: '', regionalId: '' })) });
-  if (filters.regionalId) filtrosAtivos.push({ key: 'Regional', label: nomeRegional(filters.regionalId), limpar: () => setFilters((c) => ({ ...c, regionalId: '' })) });
-  if (filters.state) filtrosAtivos.push({ key: 'UF', label: filters.state, limpar: () => setFilters((c) => ({ ...c, state: '' })) });
-  if (filters.zone) filtrosAtivos.push({ key: 'Zona', label: filters.zone, limpar: () => setFilters((c) => ({ ...c, zone: '' })) });
-  if (filters.hosting) filtrosAtivos.push({ key: 'Hospedagem', label: rotuloHospedagem[filters.hosting] || filters.hosting, limpar: () => setFilters((c) => ({ ...c, hosting: '' })) });
+  const resumo = (lista: string[], nome: (v: string) => string, plural: string) =>
+    lista.length === 1 ? nome(lista[0]) : `${lista.length} ${plural}`;
+  const rotuloSituacao = (v: string) => (v === 'inactive' ? 'Inativas' : 'Ativas');
+  if (temFiltro(filters.status)) filtrosAtivos.push({ key: 'Situação', label: resumo(filters.status, rotuloSituacao, 'situações'), limpar: () => setFilters((c) => ({ ...c, status: null })) });
+  if (campoVisible && filters.campoId && !selectedFieldId) filtrosAtivos.push({ key: 'Campo', label: nomeCampo(filters.campoId), limpar: () => setFilters((c) => ({ ...c, campoId: '', regionalIds: null })) });
+  if (temFiltro(filters.regionalIds)) filtrosAtivos.push({ key: 'Regional', label: resumo(filters.regionalIds, nomeRegional, 'regionais'), limpar: () => setFilters((c) => ({ ...c, regionalIds: null })) });
+  if (temFiltro(filters.states)) filtrosAtivos.push({ key: 'UF', label: resumo(filters.states, (v) => v, 'UFs'), limpar: () => setFilters((c) => ({ ...c, states: null })) });
+  if (temFiltro(filters.zones)) filtrosAtivos.push({ key: 'Zona', label: resumo(filters.zones, (v) => v, 'zonas'), limpar: () => setFilters((c) => ({ ...c, zones: null })) });
+  if (temFiltro(filters.hosting)) filtrosAtivos.push({ key: 'Hospedagem', label: resumo(filters.hosting, (v) => rotuloHospedagem[v] || v, 'tipos'), limpar: () => setFilters((c) => ({ ...c, hosting: null })) });
+
+  // Chip de várias escolhas: marcar/desmarcar; sem nenhum marcado = todos (null)
+  const alternar = (atual: ListaFiltro, valor: string): ListaFiltro => {
+    const base = atual ?? [];
+    const proximo = base.includes(valor) ? base.filter((v) => v !== valor) : [...base, valor];
+    return proximo.length ? proximo : null;
+  };
+  // UF: as 27, mais alguma diferente que esteja cadastrada nas igrejas
+  const opcoesUf = Array.from(new Set([...UFS_BRASIL, ...uniqueStates.map((uf) => String(uf).toUpperCase())])).sort();
 
   const chipClasse = (ligado: boolean) =>
     `h-10 rounded-full border-[1.5px] px-4 text-sm font-semibold transition-all ${
@@ -2132,8 +2160,11 @@ export function Churches() {
           <div className="flex flex-col gap-2.5">
             <span className={tituloFiltro}>SITUAÇÃO</span>
             <div className="flex flex-wrap gap-2">
-              {([['', 'Todas'], ['active', 'Ativas'], ['inactive', 'Inativas']] as const).map(([valor, rotulo]) => (
-                <button key={rotulo} type="button" onClick={() => setFilters((c) => ({ ...c, status: valor }))} className={chipClasse(filters.status === valor)}>
+              <button type="button" onClick={() => setFilters((c) => ({ ...c, status: null }))} className={chipClasse(!temFiltro(filters.status))}>
+                Todas
+              </button>
+              {([['active', 'Ativas'], ['inactive', 'Inativas']] as const).map(([valor, rotulo]) => (
+                <button key={valor} type="button" onClick={() => setFilters((c) => ({ ...c, status: alternar(c.status, valor) }))} className={chipClasse(!!filters.status?.includes(valor))}>
                   {rotulo}
                 </button>
               ))}
@@ -2146,7 +2177,7 @@ export function Churches() {
               <span className="relative min-w-0">
                 <select
                   value={filters.campoId}
-                  onChange={(event) => setFilters((c) => ({ ...c, campoId: event.target.value, regionalId: '' }))}
+                  onChange={(event) => setFilters((c) => ({ ...c, campoId: event.target.value, regionalIds: null }))}
                   disabled={Boolean(selectedFieldId)}
                   className={selectClasse}
                 >
@@ -2158,45 +2189,47 @@ export function Churches() {
             </label>
           )}
 
-          <label className={`flex flex-col gap-2.5 ${tituloFiltro}`}>
-            REGIONAL
-            <span className="relative min-w-0">
-              <select value={filters.regionalId} onChange={(event) => setFilters((c) => ({ ...c, regionalId: event.target.value }))} className={selectClasse}>
-                <option value="">Todas as regionais</option>
-                {filteredRegionais.map((regional) => <option key={regional.id} value={regional.id}>{regional.name}</option>)}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            </span>
-          </label>
+          <div className="flex flex-col gap-2.5">
+            <span className={tituloFiltro}>REGIONAL</span>
+            <MultiSelectDropdown
+              searchable
+              options={filteredRegionais.map((regional) => ({ value: regional.id, label: regional.name }))}
+              value={filters.regionalIds}
+              onChange={(next) => setFilters((c) => ({ ...c, regionalIds: next }))}
+              allLabel="Todas as regionais"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <label className={`flex flex-col gap-2.5 ${tituloFiltro}`}>
-              UF
-              <span className="relative min-w-0">
-                <select value={filters.state} onChange={(event) => setFilters((c) => ({ ...c, state: event.target.value }))} className={selectClasse}>
-                  <option value="">Todas</option>
-                  {uniqueStates.map((state) => <option key={state} value={state}>{state}</option>)}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              </span>
-            </label>
-            <label className={`flex flex-col gap-2.5 ${tituloFiltro}`}>
-              ZONA
-              <span className="relative min-w-0">
-                <select value={filters.zone} onChange={(event) => setFilters((c) => ({ ...c, zone: event.target.value }))} className={selectClasse}>
-                  <option value="">Todas</option>
-                  {uniqueZones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              </span>
-            </label>
+            <div className="flex min-w-0 flex-col gap-2.5">
+              <span className={tituloFiltro}>UF</span>
+              <MultiSelectDropdown
+                searchable
+                options={opcoesUf.map((uf) => ({ value: uf, label: uf }))}
+                value={filters.states}
+                onChange={(next) => setFilters((c) => ({ ...c, states: next }))}
+                allLabel="Todas"
+              />
+            </div>
+            <div className="flex min-w-0 flex-col gap-2.5">
+              <span className={tituloFiltro}>ZONA</span>
+              <MultiSelectDropdown
+                options={zoneOptions.map((zona) => ({ value: zona, label: zona }))}
+                value={filters.zones}
+                onChange={(next) => setFilters((c) => ({ ...c, zones: next }))}
+                allLabel="Todas"
+              />
+            </div>
           </div>
 
           <div className="flex flex-col gap-2.5">
             <span className={tituloFiltro}>HOSPEDAGEM</span>
             <div className="flex flex-wrap gap-2">
-              {([['', 'Todas'], ['host', 'Hospedeiras'], ['hosted', 'Anexas'], ['unlinked', 'Sem vínculo']] as const).map(([valor, rotulo]) => (
-                <button key={rotulo} type="button" onClick={() => setFilters((c) => ({ ...c, hosting: valor }))} className={chipClasse(filters.hosting === valor)}>
+              <button type="button" onClick={() => setFilters((c) => ({ ...c, hosting: null }))} className={chipClasse(!temFiltro(filters.hosting))}>
+                Todas
+              </button>
+              {([['host', 'Hospedeiras'], ['hosted', 'Anexas'], ['unlinked', 'Sem vínculo']] as const).map(([valor, rotulo]) => (
+                <button key={valor} type="button" onClick={() => setFilters((c) => ({ ...c, hosting: alternar(c.hosting, valor) }))} className={chipClasse(!!filters.hosting?.includes(valor))}>
                   {rotulo}
                 </button>
               ))}
@@ -2354,13 +2387,15 @@ export function Churches() {
               { label: 'Ativas', valor: contagemSituacao.ativas, status: 'active', Icone: CheckCircle2, bg: 'bg-[#dcfce7]', fg: 'text-[#15803d]' },
               { label: 'Inativas', valor: contagemSituacao.inativas, status: 'inactive', Icone: PauseCircle, bg: 'bg-[#fee2e2]', fg: 'text-[#b91c1c]' },
             ] as const).map((card) => {
-              const ligado = filters.status === card.status;
+              const ligado = card.status
+                ? filters.status?.length === 1 && filters.status[0] === card.status
+                : !temFiltro(filters.status);
               return (
                 <button
                   key={card.label}
                   type="button"
                   title={card.status ? `Filtrar só ${card.label.toLowerCase()} (aplica no Buscar)` : 'Todas as situações (aplica no Buscar)'}
-                  onClick={() => setFilters((current) => ({ ...current, status: card.status }))}
+                  onClick={() => setFilters((current) => ({ ...current, status: card.status ? [card.status] : null }))}
                   className={`flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] bg-white py-2 pl-2 pr-3.5 text-left transition-colors hover:border-slate-900 dark:bg-slate-800 ${
                     ligado && hasSearched ? 'border-slate-900 dark:border-slate-300' : 'border-[#e8ecf1] dark:border-slate-700'
                   }`}
