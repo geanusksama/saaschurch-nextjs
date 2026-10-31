@@ -237,7 +237,7 @@ const MARITAL_OPTIONS = [
 const STATUS_LABELS: Record<string, string> = {
   'AGUARDANDO ATIVACAO': 'Aguardando ativação',
   ATIVO: 'Ativo',
-  INATIVO: 'Inativo',
+  DESLIGADO: 'Desligado',
 };
 
 // "image/" + "*" separado de propósito: os scripts de permissão tiram
@@ -1899,7 +1899,7 @@ export function MemberRegistration() {
                         >
                           <option value="AGUARDANDO ATIVACAO">Aguardando ativação</option>
                           <option value="ATIVO">Ativo</option>
-                          <option value="INATIVO">Inativo</option>
+                          <option value="DESLIGADO">Desligado</option>
                         </SelectBox>
                       </Field>
                       <Field label="Título eclesiástico *">

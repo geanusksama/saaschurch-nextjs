@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizarSituacaoMembro } from "@/lib/situacaoMembro";
 import { prisma } from "@/lib/prisma";
 import { resolverTituloDaRegra } from "@/lib/tituloEclesiasticoHistorico";
 import { ehServicoDeReadmissao } from "@/lib/readmissaoTitulo";
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         // Change member status
         if (rule.changeStatus && rule.newStatus) {
-          memberUpdate.membershipStatus = rule.newStatus.toUpperCase();
+          memberUpdate.membershipStatus = normalizarSituacaoMembro(rule.newStatus) ?? undefined;
           appliedActions.push(`Status alterado → ${rule.newStatus}`);
         }
 

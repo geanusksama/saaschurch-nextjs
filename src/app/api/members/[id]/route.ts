@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizarSituacaoMembro } from "@/lib/situacaoMembro";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
@@ -47,6 +48,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // ROL não é editável por este endpoint; e apenas perfis não restritos à própria
     // igreja (campo/admin/master) podem transferir o membro para outra igreja/regional.
     delete data.rol;
+    // Só AGUARDANDO ATIVACAO / ATIVO / DESLIGADO entram no banco (ver lib/situacaoMembro).
+    if (data.membershipStatus !== undefined) {
+      data.membershipStatus = normalizarSituacaoMembro(data.membershipStatus) ?? undefined;
+    }
     if (isRestrictedToOwnChurch(user)) {
       delete data.churchId;
       delete data.regionalId;

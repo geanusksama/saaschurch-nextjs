@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizarSituacaoMembro } from "@/lib/situacaoMembro";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts } from "@/lib/helpers";
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const memberUpdate: Record<string, unknown> = {};
       let prevMember: { ecclesiasticalTitle: string | null; addressCity: string | null; addressState: string | null; nationality: string | null } | null = null;
       if (rule.changeStatus && rule.newStatus) {
-        memberUpdate.membershipStatus = rule.newStatus.toUpperCase();
+        memberUpdate.membershipStatus = normalizarSituacaoMembro(rule.newStatus) ?? undefined;
         applied.push(`Status → ${rule.newStatus}`);
       }
       if (rule.changeTitle && rule.newTitle) {

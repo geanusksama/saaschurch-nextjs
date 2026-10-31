@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { normalizarSituacaoMembro } from "@/lib/situacaoMembro";
 import { prisma } from "@/lib/prisma";
 import { resolverTituloDaRegra } from "@/lib/tituloEclesiasticoHistorico";
 import { ehServicoDeReadmissao } from "@/lib/readmissaoTitulo";
@@ -35,7 +36,7 @@ export async function applyMatrixRule({
     if (card.memberId && (rule.changeStatus || rule.changeTitle || rule.doesTransfer)) {
       const memberData: Record<string, unknown> = {};
       let prevMember: { ecclesiasticalTitle: string | null; addressCity: string | null; addressState: string | null; nationality: string | null } | null = null;
-      if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = rule.newStatus.toUpperCase();
+      if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = normalizarSituacaoMembro(rule.newStatus) ?? undefined;
 
       // O título pode ser fixo (rule.newTitle), restaurado do histórico do
       // membro (restorePreviousTitle) ou — e este vence os dois — o que a

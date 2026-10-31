@@ -956,7 +956,16 @@ function RuleModal({
         <ToggleRow label="Troca situação" value={changeStatus} onChange={setChangeStatus} />
         {changeStatus && (
           <Field label="Nova situação">
-            <input value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className={INPUT} />
+            <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className={INPUT}>
+              <option value="">Selecione</option>
+              <option value="Aguardando Ativação">Aguardando Ativação</option>
+              <option value="Ativo">Ativo</option>
+              <option value="Desligado">Desligado</option>
+              <option value="Excluido">Excluido</option>
+              {newStatus && !["Aguardando Ativação", "Ativo", "Desligado", "Excluido"].includes(newStatus) && (
+                <option value={newStatus}>{newStatus}</option>
+              )}
+            </select>
           </Field>
         )}
 

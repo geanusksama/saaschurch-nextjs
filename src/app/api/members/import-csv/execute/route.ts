@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizarSituacaoMembro } from "@/lib/situacaoMembro";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import type { Prisma } from "@prisma/client";
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
         addressCity: row.addressCity ? String(row.addressCity).trim() : null,
         addressState: row.addressState ? String(row.addressState).trim() : null,
         addressZipcode: row.addressZipcode ? String(row.addressZipcode).trim() : null,
-        membershipStatus: row.membershipStatus ? String(row.membershipStatus).trim() : "AGUARDANDO ATIVACAO",
+        membershipStatus: normalizarSituacaoMembro(row.membershipStatus) ?? "AGUARDANDO ATIVACAO",
         membershipDate,
         ecclesiasticalTitle: row.ecclesiasticalTitle ? String(row.ecclesiasticalTitle).trim() : "CONGREGADO",
         baptismStatus: row.baptismStatus ? String(row.baptismStatus).trim() : null,

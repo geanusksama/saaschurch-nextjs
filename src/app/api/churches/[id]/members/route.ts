@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizarSituacaoMembro } from "@/lib/situacaoMembro";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess, isRestrictedToOwnChurch } from "@/lib/helpers";
@@ -125,7 +126,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const effectiveMembershipDate = membershipDate ? new Date(membershipDate) : new Date();
-    const effectiveStatus = membershipStatus || (normalizedMemberType === "MEMBRO" ? "ATIVO" : "ATIVO");
+    const effectiveStatus = normalizarSituacaoMembro(membershipStatus) ?? "ATIVO";
 
     let member;
     try {

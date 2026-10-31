@@ -46,7 +46,7 @@ const TEMPLATES: EntityTemplate[] = [
       { key: 'addressCity', label: 'Cidade' },
       { key: 'addressState', label: 'Estado (UF)' },
       { key: 'addressZipcode', label: 'CEP' },
-      { key: 'membershipStatus', label: 'Status de Membro', hint: 'ATIVO | INATIVO | AGUARDANDO ATIVACAO' },
+      { key: 'membershipStatus', label: 'Status de Membro', hint: 'ATIVO | DESLIGADO | AGUARDANDO ATIVACAO' },
       { key: 'membershipDate', label: 'Data de Membresia', hint: 'AAAA-MM-DD' },
       { key: 'ecclesiasticalTitle', label: 'Título Eclesiástico', hint: 'CONGREGADO | MEMBRO | DIACONO | PRESBITERO | EVANGELISTA | PASTOR' },
       { key: 'baptismStatus', label: 'Status Batismo', hint: 'NAO_BATIZADO | BATIZADO' },

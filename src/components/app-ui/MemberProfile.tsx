@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Edit, Info, Pencil, Plus, Search, Star, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { normalizarSituacaoMembro } from '@/lib/situacaoMembro';
 import { Link, useParams } from "react-router";
 import { MemberEditDrawer } from "./MemberEditDrawer";
 import { ConfirmDialog } from "./shared/ConfirmDialog";
@@ -63,10 +64,12 @@ function fmtDate(v: string | null | undefined) {
 
 function statusLabel(status: string | null | undefined) {
   if (!status) return { label: "—", cls: "bg-gray-100 text-gray-600" };
-  const s = status.toUpperCase();
-  if (s.includes("ATIVO") || s === "ACTIVE") return { label: "Ativo", cls: "bg-green-100 text-green-700" };
-  if (s.includes("INATIVO") || s === "INACTIVE") return { label: "Inativo", cls: "bg-red-100 text-red-700" };
-  if (s.includes("TRANSFER")) return { label: "Transferido", cls: "bg-blue-100 text-blue-700" };
+  // Comparação exata: "INATIVO".includes("ATIVO") é verdadeiro e fazia desligado aparecer como Ativo.
+  const s = normalizarSituacaoMembro(status);
+  if (s === "ATIVO") return { label: "Ativo", cls: "bg-green-100 text-green-700" };
+  if (s === "AGUARDANDO ATIVACAO") return { label: "Aguardando ativação", cls: "bg-amber-100 text-amber-700" };
+  if (s === "DESLIGADO") return { label: "Desligado", cls: "bg-red-100 text-red-700" };
+  if (s === "EXCLUIDO") return { label: "Excluído", cls: "bg-red-100 text-red-700" };
   return { label: status, cls: "bg-gray-100 text-gray-700" };
 }
 
@@ -472,7 +475,7 @@ export function MemberProfile() {
               </button>
               {/* status dot */}
               <span className={`absolute bottom-2 right-2 h-4 w-4 rounded-full border-2 border-white ${
-                (member?.membershipStatus || "").toUpperCase().includes("ATIVO") || (member?.membershipStatus || "").toUpperCase() === "ACTIVE"
+                normalizarSituacaoMembro(member?.membershipStatus) === "ATIVO"
                   ? "bg-emerald-400" : "bg-slate-400"
               }`} />
             </div>

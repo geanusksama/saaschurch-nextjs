@@ -1,5 +1,6 @@
 import { Building2, Cake, Calendar, ChevronLeft, ChevronRight, Clock, ExternalLink, FilterX, Gift, Loader2, Mail, MessageSquare, Phone, Printer, Search, SlidersHorizontal, User, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { normalizarSituacaoMembro } from '@/lib/situacaoMembro';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
@@ -23,11 +24,12 @@ interface BirthdayMember {
   today: boolean;
 }
 
-type StatusFilter = 'ALL' | 'ATIVO' | 'INATIVO' | 'AGUARDANDO';
+type StatusFilter = 'ALL' | 'ATIVO' | 'DESLIGADO' | 'AGUARDANDO';
 
 function normalizeStatus(s: string | null | undefined): string {
-  const v = (s || '').toUpperCase().trim();
   // null/empty → assume ATIVO (backwards-compatible before server restart)
+  const v = normalizarSituacaoMembro(s);
+  if (v === 'AGUARDANDO ATIVACAO') return 'AGUARDANDO';
   return v || 'ATIVO';
 }
 
@@ -1036,7 +1038,7 @@ export function Birthdays() {
                   className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
                   <option value="ATIVO">Situação: Ativo</option>
-                  <option value="INATIVO">Situação: Inativo</option>
+                  <option value="DESLIGADO">Situação: Desligado</option>
                   <option value="AGUARDANDO">Situação: Aguardando</option>
                   <option value="ALL">Todas as situações</option>
                 </select>
