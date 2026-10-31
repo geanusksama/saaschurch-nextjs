@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { enqueueReply, kickQueue } from '@/lib/aiReplyQueue'
 import type { ZApiWebhookPayload } from '@/types/whatsapp'
 import { parseInbound } from '@/lib/zapiInbound'
+import { lerRecepcao, mensagemEhDaRecepcao, RECEPCAO_JANELA_HORAS } from '@/lib/recepcaoWhatsapp'
 
 // POST /api/whatsapp/webhook
 // Chamado pela Z-API — sem autenticação (IP Z-API)
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
     // Busca instância pelo instance_id Z-API
     const { data: instance } = await supabaseAdmin
       .from('whatsapp_instances')
-      .select('id, owner_user_id')
+      .select('id, owner_user_id, metadata')
       .eq('instance_id', payload.instanceId)
       .single()
 
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
 
     let conversationId: string
     let currentUnread = 0
+    const conversaNova = !existingConv
 
     if (existingConv) {
       conversationId = existingConv.id
@@ -118,6 +120,60 @@ export async function POST(req: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', conversationId)
+
+    // ── Recepção por QR code ─────────────────────────────────────────────────
+    // O QR da recepção abre o WhatsApp com uma mensagem pronta. Quando ela
+    // chega, a conversa passa para o agente configurado na instância
+    // (metadata.recepcao) — e o bloco abaixo enfileira a resposta normalmente.
+    // Ver src/lib/recepcaoWhatsapp.ts.
+    //
+    // Nunca passa por cima de atendimento em curso: conversa que já tem agente
+    // (Envios, outro fluxo) fica com ele; conversa sem agente só é entregue se
+    // é nova ou se ficou RECEPCAO_JANELA_HORAS sem mensagem — senão é alguém
+    // que a equipe "Assumiu" e que repetiu a frase do QR.
+    //
+    // Com "todasNovas" ligado, a PRIMEIRA mensagem de uma conversa nova também
+    // entrega ao agente, mesmo sem a palavra-chave (quem lê o QR e manda "oi").
+    if (msgType === 'text' || msgType === 'button_reply' || msgType === 'list_reply') {
+      try {
+        const recepcao = lerRecepcao(instance.metadata)
+        const novaSemChave =
+          conversaNova && recepcao.ativo && !!recepcao.agentId && recepcao.todasNovas
+        if (novaSemChave || mensagemEhDaRecepcao(recepcao, parsed.content)) {
+          let entregar = conversaNova
+          const { data: conv } = await supabaseAdmin
+            .from('whatsapp_conversations')
+            .select('ai_agent_id, metadata')
+            .eq('id', conversationId)
+            .single()
+          if (!entregar) {
+            if (!conv?.ai_agent_id) {
+              const desde = new Date(Date.now() - RECEPCAO_JANELA_HORAS * 3_600_000).toISOString()
+              const { count } = await supabaseAdmin
+                .from('whatsapp_messages')
+                .select('id', { count: 'exact', head: true })
+                .eq('conversation_id', conversationId)
+                .gte('created_at', desde)
+              // a própria mensagem que acabou de entrar conta 1
+              entregar = (count ?? 0) <= 1
+            }
+          }
+          if (entregar) {
+            // origem marcada: o agente sabe de onde veio a conversa, e a memória
+            // de um atendimento anterior não vaza para a visita nova
+            const meta: Record<string, unknown> = { ...((conv?.metadata ?? {}) as Record<string, unknown>), origem: 'recepcao_qr' }
+            delete meta.recepcao_estado
+            delete meta.quero_ser_membro
+            await supabaseAdmin
+              .from('whatsapp_conversations')
+              .update({ ai_enabled: true, ai_agent_id: recepcao.agentId, metadata: meta })
+              .eq('id', conversationId)
+          }
+        }
+      } catch (recErr) {
+        console.error('[whatsapp/webhook] recepção por QR falhou', recErr)
+      }
+    }
 
     // ── Agente de IA: responde automaticamente conversas marcadas ────────────
     // (ai_enabled + ai_agent_id — atribuídos na aba Envios do módulo em massa)

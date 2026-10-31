@@ -11,6 +11,8 @@ import { prisma } from '@/lib/prisma'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAiConfig } from '@/lib/aiConfig'
 import { CONSOLIDATION_GUIDANCE, EMOJI_GUIDANCE } from '@/lib/whatsappHumanizer'
+import { montarContextoRecepcao } from '@/lib/contextoRecepcao'
+import { extrairAcao, extrairEstado, type DadosQueroSerMembro } from '@/lib/agenteQueroSerMembro'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -99,14 +101,29 @@ export async function loadConversationHistory(
 
 // ── Resposta automática do agente designado ──────────────────────────────────
 
+export interface AgentTurn {
+  /** texto que vai para a pessoa (sem o bloco de ação) */
+  texto: string
+  /** pedido "Quero ser Membro" que o agente de recepção decidiu registrar */
+  queroSerMembro: DadosQueroSerMembro | null
+  /** memória do atendimento devolvida pelo agente (vai para metadata.recepcao_estado) */
+  estado: Record<string, unknown> | null
+  agentCampoId: string | null
+  telefone: string
+}
+
 /**
  * Gera a resposta do agente de IA da conversa (se ai_enabled + ai_agent_id).
  * Retorna null quando a conversa não está sob atendimento de IA.
  */
 export async function generateAgentReply(conversationId: string): Promise<string | null> {
+  return (await generateAgentTurn(conversationId))?.texto ?? null
+}
+
+export async function generateAgentTurn(conversationId: string): Promise<AgentTurn | null> {
   const { data: conv } = await supabaseAdmin
     .from('whatsapp_conversations')
-    .select('id, ai_enabled, ai_agent_id, contact_name')
+    .select('id, ai_enabled, ai_agent_id, contact_name, phone, metadata')
     .eq('id', conversationId)
     .single()
 
@@ -117,7 +134,8 @@ export async function generateAgentReply(conversationId: string): Promise<string
   })
   if (!agent) return null
 
-  const history = await loadConversationHistory(conversationId)
+  // recepção conduz um cadastro longo: 30 mensagens não cobrem a conversa toda
+  const history = await loadConversationHistory(conversationId, agent.role === 'recepcao' ? 80 : 30)
   if (!history.length || history[history.length - 1].role !== 'user') return null
 
   // A IA não tem noção de data: sem dizer que dia é hoje ela erra "hoje/amanhã"
@@ -125,27 +143,57 @@ export async function generateAgentReply(conversationId: string): Promise<string
   const agoraBrt = new Date(Date.now() - 180 * 60_000)
   const diasDaSemana = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
 
+  const ehRecepcao = agent.role === 'recepcao'
+  const meta = (conv.metadata ?? {}) as Record<string, unknown>
+  const pedidoJaRegistrado = !!(meta.quero_ser_membro as { attendanceId?: string } | undefined)?.attendanceId
+  const contextoRecepcao = ehRecepcao
+    ? await montarContextoRecepcao({
+        campoId: agent.campoId,
+        telefone: conv.phone,
+        pedidoJaRegistrado,
+        estado: (meta.recepcao_estado as Record<string, unknown> | undefined) ?? null,
+        origem: typeof meta.origem === 'string' ? meta.origem : null,
+      })
+    : ''
+
   const systemPrompt = [
     agent.systemPrompt,
     '',
     'Você está respondendo uma conversa de WhatsApp em nome da igreja.',
     `Hoje é ${diasDaSemana[agoraBrt.getUTCDay()]}, ${agoraBrt.toISOString().slice(0, 10)} ` +
-      '(horário de Brasília). A igreja tem culto no domingo e na quarta — ' +
+      '(horário de Brasília). ' +
+      // recepção recebe a programação real da sede no contexto, logo abaixo
+      (ehRecepcao ? '' : 'A igreja tem culto no domingo e na quarta — ') +
       'ao falar de "hoje", "amanhã" ou de um dia da semana, use essa data como referência ' +
       'e não invente outros dias de culto.',
     conv.contact_name ? `Nome do contato: ${conv.contact_name}.` : '',
     'Responda de forma curta, acolhedora e objetiva, como uma mensagem de WhatsApp.',
     CONSOLIDATION_GUIDANCE,
-    'Sempre traga uma palavra de ânimo para a pessoa, referenciando uma passagem',
-    'bíblica pertinente (livro, capítulo e versículo), em tom encorajador — mas sem',
-    'transformar a resposta em um texto longo; mantenha o tamanho de uma mensagem normal de WhatsApp.',
+    // Agente de Recepção (QR code) conduz um cadastro pergunta a pergunta: o
+    // versículo em toda mensagem atrapalha. O prompt dele já diz quando usar.
+    ...(ehRecepcao ? [] : [
+      'Sempre traga uma palavra de ânimo para a pessoa, referenciando uma passagem',
+      'bíblica pertinente (livro, capítulo e versículo), em tom encorajador — mas sem',
+      'transformar a resposta em um texto longo; mantenha o tamanho de uma mensagem normal de WhatsApp.',
+    ]),
     EMOJI_GUIDANCE,
     'Escreva como uma pessoa escreve no WhatsApp: sem markdown, sem títulos, sem',
     'listas numeradas e sem assinatura no fim. Não se identifique como IA a menos que perguntem.',
+    contextoRecepcao,
   ].filter(Boolean).join('\n')
 
-  const reply = await generateAiText(agent.campoId, systemPrompt, history)
-  return reply.trim() || null
+  const reply = (await generateAiText(agent.campoId, systemPrompt, history)).trim()
+  // só o agente de recepção pode registrar; de qualquer outro o bloco é só removido
+  const semEstado = extrairEstado(reply)
+  const { texto, dados } = extrairAcao(semEstado.texto)
+  if (!texto && !dados) return null
+  return {
+    texto: texto || 'Vou registrar seu pedido agora 🙏',
+    queroSerMembro: ehRecepcao && !pedidoJaRegistrado ? dados : null,
+    estado: ehRecepcao ? semEstado.estado : null,
+    agentCampoId: agent.campoId,
+    telefone: conv.phone,
+  }
 }
 
 // ── Resumo "smart" da conversa ────────────────────────────────────────────────

@@ -20,6 +20,7 @@ import { apiBase } from '../../lib/apiBase';
 import { renderMessageContent } from '../../components/app-ui/shared/renderMessageContent';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { Permissao } from '../../lib/permissoes/Permissao';
+import { PROMPT_AGENTE_RECEPCAO } from '../../lib/recepcaoWhatsapp';
 
 interface AiAgent {
   id: string;
@@ -51,7 +52,7 @@ interface ChatMessage {
 }
 
 const roleLabel = (role: string) =>
-  role === 'financeiro' ? 'Financeiro' : role === 'secretaria' ? 'Secretaria' : 'Geral';
+  role === 'financeiro' ? 'Financeiro' : role === 'secretaria' ? 'Secretaria' : role === 'recepcao' ? 'Recepção / Secretaria (WhatsApp)' : 'Geral';
 
 function usuarioLogado(): any {
   try { return JSON.parse(localStorage.getItem('mrm_user') || '{}'); } catch { return {}; }
@@ -1100,6 +1101,7 @@ export default function AiAssistants() {
                     <option value="financeiro">Financeiro (Lê livro caixa)</option>
                     <option value="secretaria">Secretaria (Membros/Agenda)</option>
                     <option value="geral">Geral / Auxiliar</option>
+                    <option value="recepcao">Recepção / Secretaria (WhatsApp, QR code e Quero ser Membro)</option>
                   </select>
                 </div>
                 <div>
@@ -1126,10 +1128,26 @@ export default function AiAssistants() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Instruções / Prompt do Sistema *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase">Instruções / Prompt do Sistema *</label>
+                  {role === 'recepcao' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (systemPrompt.trim() && !window.confirm('Substituir o prompt atual pelo modelo de Secretaria/Recepção?')) return;
+                        setSystemPrompt(PROMPT_AGENTE_RECEPCAO);
+                        if (!name.trim()) setName('Secretaria Virtual');
+                        if (!description.trim()) setDescription('Acolhe quem chega pelo WhatsApp/QR, apresenta as opções da home, agenda a visita e registra o Quero ser Membro.');
+                      }}
+                      className="text-xs font-semibold text-indigo-600 hover:underline"
+                    >
+                      Usar modelo de Secretaria/Recepção
+                    </button>
+                  )}
+                </div>
                 <textarea
                   required
-                  rows={5}
+                  rows={role === 'recepcao' ? 14 : 5}
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   placeholder="Defina as regras do assistente, personalidade, restrições e escopo. Ex: 'Você é focado em relatórios financeiros, seja formal e use formatação de tabela quando listar valores...'"

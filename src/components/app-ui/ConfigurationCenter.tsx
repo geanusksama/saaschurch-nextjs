@@ -131,6 +131,7 @@ const configurationModules = [
       { icon: QrCode, name: 'Face ID (Control ID)', description: 'Controle de acesso biométrico', path: '/app-ui/config/face-id', color: 'orange' },
       { icon: Smartphone, name: 'Dispositivos', description: 'Tablets e terminais', path: '/app-ui/config/devices', color: 'slate' },
       { icon: Sparkles, name: 'Configurações de IA', description: 'Chaves de API OpenAI/Claude', path: '/app-ui/config/ai-settings', color: 'emerald' },
+      { icon: Bot, name: 'Agentes de IA', description: 'Listar e criar agentes com prompt', path: '/app-ui/config/ai-agents', color: 'purple' },
     ]
   },
   

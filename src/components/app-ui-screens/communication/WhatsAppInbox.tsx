@@ -10,14 +10,17 @@ import {
   Image as ImageIcon, Video, FileText, Mic, StopCircle,
   ChevronDown, Loader2, Volume2, Download, Trash2, Smartphone,
   ImageOff, Smile, Reply, Forward, Star, Tag, Archive,
-  BellOff, ChevronRight, CheckSquare, Square, AlertTriangle,
+  BellOff, ChevronRight, CheckSquare, Square, AlertTriangle, Bot, UserCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWhatsAppConversations } from '@/hooks/useWhatsAppConversations'
 import { useWhatsAppMessages } from '@/hooks/useWhatsAppMessages'
 import { useWhatsAppInstances } from '@/hooks/useWhatsAppInstances'
 import type { WhatsAppConversation, WhatsAppMessage } from '@/types/whatsapp'
-import { Permissao } from '../../../lib/permissoes/Permissao';
+import { Permissao, usePode } from '../../../lib/permissoes/Permissao';
+import { definirPermissao } from '../../../lib/permissoes/definir';
+
+const PERM_PASSAR_AGENTE = definirPermissao({ chave: 'whatsapp_inbox.whats_app_inbox.passar_para_agente', rotulo: 'Passar conversa para agente de IA — Whats App Inbox', herda: 'whatsapp_inbox.view' })
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -329,7 +332,10 @@ function ConversationItem({ conv, active, onClick, onAction, selectionMode, chec
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-0.5">
-            <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">{name}</p>
+            <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate flex items-center gap-1">
+              {conv.ai_enabled && conv.ai_agent_id && <span title="Atendida por agente de IA"><Bot className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" /></span>}
+              <span className="truncate">{name}</span>
+            </p>
             <span className="text-[11px] text-slate-400 flex-shrink-0 ml-1">{formatTime(conv.last_message_at)}</span>
           </div>
           <div className="flex items-center justify-between gap-1">
@@ -420,7 +426,7 @@ function useAudioRecorder() {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-type StatusFilter = 'open' | 'closed' | 'all'
+type StatusFilter = 'open' | 'closed' | 'all' | 'ia'
 type AttachType   = 'image' | 'video' | 'document' | 'audio'
 
 export default function WhatsAppInbox() {
@@ -452,6 +458,11 @@ export default function WhatsAppInbox() {
   const [forwardMsg, setForwardMsg]       = useState<WhatsAppMessage | null>(null)
   const [showForwardModal, setShowForwardModal] = useState(false)
 
+  // Agentes de IA — para mostrar quem atende e permitir assumir/devolver
+  const [agentes, setAgentes] = useState<{ id: string; name: string }[]>([])
+  const [trocandoAgente, setTrocandoAgente] = useState(false)
+  const pode = usePode()
+
   const imgRef = useRef<HTMLInputElement>(null)
   const vidRef = useRef<HTMLInputElement>(null)
   const docRef = useRef<HTMLInputElement>(null)
@@ -463,6 +474,31 @@ export default function WhatsAppInbox() {
   const { recording, duration, start: startRec, stop: stopRec, cancel: cancelRec } = useAudioRecorder()
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  useEffect(() => {
+    if (!token) return
+    fetch('/api/ai/agents', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setAgentes(Array.isArray(d) ? d.filter((a: { isActive?: boolean }) => a.isActive !== false).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name })) : []))
+      .catch(() => setAgentes([]))
+  }, [token])
+
+  // agentId null = a equipe assume (IA para de responder); id = agente atende
+  const trocarAgente = async (convId: string, agentId: string | null) => {
+    setTrocandoAgente(true)
+    try {
+      const res = await fetch('/api/whatsapp/conversations/assign-ai', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationIds: [convId], agentId }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error ?? 'Falha ao alterar o atendimento')
+      toast.success(agentId ? 'Conversa entregue ao agente.' : 'Você assumiu a conversa. O agente parou de responder.')
+      refetch()
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao alterar o atendimento') }
+    finally { setTrocandoAgente(false) }
+  }
 
   useEffect(() => {
     const el = textareaRef.current; if (!el) return
@@ -615,6 +651,7 @@ export default function WhatsAppInbox() {
 
   const filtered = conversations.filter(c => {
     if (c.status === 'archived' && statusFilter !== 'all') return false
+    if (statusFilter === 'ia' && !(c.ai_enabled && c.ai_agent_id)) return false
     if (statusFilter === 'open'   && c.status !== 'open')   return false
     if (statusFilter === 'closed' && c.status !== 'closed') return false
     if (!search) return true
@@ -626,6 +663,7 @@ export default function WhatsAppInbox() {
     open:   conversations.filter(c => c.status === 'open').length,
     closed: conversations.filter(c => c.status === 'closed').length,
     all:    conversations.filter(c => c.status !== 'archived').length,
+    ia:     conversations.filter(c => (c.status as string) !== 'archived' && c.ai_enabled && c.ai_agent_id).length,
   }
   const unread   = conversations.filter(c => (c.unread_count ?? 0) > 0).length
   const isClosed = selectedConv?.status === 'closed'
@@ -809,6 +847,7 @@ export default function WhatsAppInbox() {
               { key: 'open', label: 'Abertas', count: counts.open },
               { key: 'closed', label: 'Encerradas', count: counts.closed },
               { key: 'all', label: 'Todas', count: counts.all },
+              { key: 'ia', label: 'Com IA', count: counts.ia },
             ] as { key: StatusFilter; label: string; count: number }[]).map(({ key, label, count }) => (
               <button key={key} onClick={() => setStatusFilter(key)}
                 className={`flex-1 py-2 text-xs font-medium relative transition-colors ${statusFilter === key ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
@@ -855,6 +894,27 @@ export default function WhatsAppInbox() {
               </div>
 
               <div className="flex items-center gap-2">
+                {selectedConv.ai_enabled && selectedConv.ai_agent_id ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 rounded-lg">
+                      <Bot className="w-3.5 h-3.5" />
+                      {agentes.find(a => a.id === selectedConv.ai_agent_id)?.name ?? 'Agente de IA'}
+                    </span>
+                    <Permissao chave="whatsapp_inbox.whats_app_inbox.assumir_atendimento" rotulo="Assumir atendimento da IA — Whats App Inbox" herda="whatsapp_inbox.view">
+                      <button onClick={() => trocarAgente(selectedConv.id, null)} disabled={trocandoAgente}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+                        <UserCheck className="w-3.5 h-3.5" /> Assumir
+                      </button>
+                    </Permissao>
+                  </div>
+                ) : agentes.length > 0 && pode(PERM_PASSAR_AGENTE) && (
+                  <select value="" disabled={trocandoAgente}
+                      onChange={e => { if (e.target.value) trocarAgente(selectedConv.id, e.target.value) }}
+                      className="px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg">
+                      <option value="">Passar para agente…</option>
+                      {agentes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                )}
                 {convInstance && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
                     <Smartphone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />

@@ -22,6 +22,7 @@ import {
   DEFAULT_HOME_PAYLOAD, mapsUrlFor, mergeHomePayload, resolveCardUrl,
   type HomeCard, type HomeConfigPayload, type HomeSede,
 } from '../../lib/homeConfig';
+import { SERVICOS_HOME, type ServicoHomeId } from '@/lib/servicosHome';
 
 interface FloatingItem {
   id: number;
@@ -163,24 +164,27 @@ const COMMON_CHURCHES = [
 ];
 
 
-const FAB_OPTIONS = [
-  { id: 'membro_login', label: 'Já sou Membro', icon: LogIn, color: 'bg-blue-600' },
-  { id: 'membership', label: 'Quero ser Membro', icon: Users, color: 'bg-amber-600' },
-  { id: 'visita_pastoral', label: 'Visita Pastoral', icon: MapPin, color: 'bg-emerald-600' },
-  { id: 'aconselhamento', label: 'Aconselhamento', icon: HeartHandshake, color: 'bg-emerald-600' },
-  { id: 'pedido_oracao', label: 'Pedido de Oração', icon: Sparkles, color: 'bg-emerald-600' },
-  { id: 'emergencial', label: 'Atendimento Emergencial', icon: AlertCircle, color: 'bg-rose-600' },
-  { id: 'reconciliacao', label: 'Reconciliação', icon: HeartHandshake, color: 'bg-emerald-600' },
-  { id: 'familiar', label: 'Atendimento Familiar', icon: Users, color: 'bg-emerald-600' },
-  { id: 'jovem', label: 'Atendimento Jovem', icon: Sun, color: 'bg-emerald-600' },
-  { id: 'infantil', label: 'Atendimento Infantil', icon: Moon, color: 'bg-emerald-600' },
-  { id: 'financeiro', label: 'Atendimento Financeiro', icon: DollarSign, color: 'bg-emerald-600' },
-  { id: 'ministerial', label: 'Atendimento Ministerial', icon: Briefcase, color: 'bg-emerald-600' },
-  { id: 'online', label: 'Atendimento Online', icon: Laptop, color: 'bg-emerald-600' },
-  { id: 'presencial', label: 'Atendimento Presencial', icon: MapPin, color: 'bg-emerald-600' },
-  { id: 'casamento', label: 'Casamento', icon: Heart, color: 'bg-emerald-600' },
-  { id: 'apresentacao_criancas', label: 'Apresentação de Crianças', icon: Baby, color: 'bg-emerald-600' },
-];
+// Lista (id + rótulo) em src/lib/servicosHome.ts — o agente de IA do WhatsApp
+// oferece as mesmas opções. Aqui só o visual de cada uma.
+const FAB_VISUAL: Record<ServicoHomeId, { icon: typeof LogIn; color: string }> = {
+  membro_login: { icon: LogIn, color: 'bg-blue-600' },
+  membership: { icon: Users, color: 'bg-amber-600' },
+  visita_pastoral: { icon: MapPin, color: 'bg-emerald-600' },
+  aconselhamento: { icon: HeartHandshake, color: 'bg-emerald-600' },
+  pedido_oracao: { icon: Sparkles, color: 'bg-emerald-600' },
+  emergencial: { icon: AlertCircle, color: 'bg-rose-600' },
+  reconciliacao: { icon: HeartHandshake, color: 'bg-emerald-600' },
+  familiar: { icon: Users, color: 'bg-emerald-600' },
+  jovem: { icon: Sun, color: 'bg-emerald-600' },
+  infantil: { icon: Moon, color: 'bg-emerald-600' },
+  financeiro: { icon: DollarSign, color: 'bg-emerald-600' },
+  ministerial: { icon: Briefcase, color: 'bg-emerald-600' },
+  online: { icon: Laptop, color: 'bg-emerald-600' },
+  presencial: { icon: MapPin, color: 'bg-emerald-600' },
+  casamento: { icon: Heart, color: 'bg-emerald-600' },
+  apresentacao_criancas: { icon: Baby, color: 'bg-emerald-600' },
+};
+const FAB_OPTIONS = SERVICOS_HOME.map(s => ({ id: s.id as string, label: s.label as string, ...FAB_VISUAL[s.id] }));
 
 export function PublicHome() {
   /**

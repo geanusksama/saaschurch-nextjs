@@ -3504,6 +3504,18 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/EmailCampaigns.tsx"
   },
   {
+    "chave": "tela_comunicacao.whats_app_instances.compartilhar_qr_recepcao",
+    "rotulo": "Baixar, imprimir e compartilhar QR da recepção — Whats App Instances",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui-screens/communication/RecepcaoQrModal.tsx"
+  },
+  {
+    "chave": "tela_comunicacao.whats_app_instances.conectar_webhook",
+    "rotulo": "Conectar webhook — Whats App Instances",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui-screens/communication/RecepcaoQrModal.tsx"
+  },
+  {
     "chave": "tela_comunicacao.whats_app_instances.criar_instancia",
     "rotulo": "Criar Instância — Whats App Instances",
     "herda": "tela_comunicacao.view",
@@ -3520,6 +3532,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Nova Instância — Whats App Instances",
     "herda": "tela_comunicacao.view",
     "arquivo": "src/components/app-ui-screens/communication/WhatsAppInstances.tsx"
+  },
+  {
+    "chave": "tela_comunicacao.whats_app_instances.qr_recepcao",
+    "rotulo": "Salvar QR da recepção — Whats App Instances",
+    "herda": "tela_comunicacao.view",
+    "arquivo": "src/components/app-ui-screens/communication/RecepcaoQrModal.tsx"
   },
   {
     "chave": "tela_comunicacao.whats_app_instances.salvar_alteracoes",
@@ -4164,6 +4182,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/Transfer.tsx"
   },
   {
+    "chave": "whatsapp_inbox.whats_app_inbox.assumir_atendimento",
+    "rotulo": "Assumir atendimento da IA — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
     "chave": "whatsapp_inbox.whats_app_inbox.baixar",
     "rotulo": "Baixar — Whats App Inbox",
     "herda": "whatsapp_inbox.view",
@@ -4202,6 +4226,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "whatsapp_inbox.whats_app_inbox.nova_conversa_2",
     "rotulo": "Nova Conversa — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.passar_para_agente",
+    "rotulo": "Passar conversa para agente de IA — Whats App Inbox",
     "herda": "whatsapp_inbox.view",
     "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
   },

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     let query = supabaseAdmin
       .from('whatsapp_conversations')
       .select(`
-        id, instance_id, phone, contact_name, status, ai_enabled,
+        id, instance_id, phone, contact_name, status, ai_enabled, ai_agent_id,
         assigned_to, owner_user_id, last_message_at, last_message, unread_count,
         metadata, created_at, updated_at,
         whatsapp_instances(id, name, phone_number)

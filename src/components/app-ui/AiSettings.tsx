@@ -345,11 +345,21 @@ export default function AiSettings() {
                     <span className="text-base flex-shrink-0">📋</span>
                     <span><strong>Resumos automáticos</strong> de reuniões e chamadas</span>
                   </li>
-                  <li className="flex items-center gap-3 text-sm text-slate-600 text-slate-400">
+                  <li className="flex items-center gap-3 text-sm text-slate-600">
                     <span className="text-base flex-shrink-0">🤖</span>
-                    <span>Assistente virtual para vendas <em>(em breve)</em></span>
+                    <span><strong>Agentes de atendimento</strong> no WhatsApp (ex.: recepção por QR code)</span>
                   </li>
                 </ul>
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Link to="/app-ui/config/ai-agents"
+                    className="text-center px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-semibold hover:bg-indigo-100">
+                    Ver / criar agentes
+                  </Link>
+                  <Link to="/app-ui/communication/whatsapp-instances"
+                    className="text-center px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50">
+                    QR da recepção e webhook
+                  </Link>
+                </div>
               </div>
             </div>
 

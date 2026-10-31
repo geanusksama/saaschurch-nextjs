@@ -11,7 +11,8 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { generateAgentReply } from '@/lib/aiReplyService'
+import { generateAgentTurn } from '@/lib/aiReplyService'
+import { registrarQueroSerMembro } from '@/lib/agenteQueroSerMembro'
 import { markMessageAsRead, persistOutboundMessage, sendTextViaZApi } from '@/lib/whatsappSendService'
 import {
   MAX_WAIT_MS,
@@ -181,10 +182,11 @@ async function replyToConversation(row: QueueRow): Promise<void> {
   }
 
   // 2. gera a resposta com TODO o histórico (as mensagens acumuladas viram uma só)
-  const reply = await generateAgentReply(row.conversation_id)
+  const turn = await generateAgentTurn(row.conversation_id)
+  const reply = turn?.texto ?? null
 
   // sem resposta (IA desligada na conversa, agente removido) — encerra o item
-  if (!reply) {
+  if (!turn || !reply) {
     await supabaseAdmin.from(TABLE).delete().eq('conversation_id', row.conversation_id)
     return
   }
@@ -201,6 +203,25 @@ async function replyToConversation(row: QueueRow): Promise<void> {
       .from('whatsapp_conversations')
       .update({ unread_count: 0 })
       .eq('id', row.conversation_id)
+
+    // 4. memória do atendimento (recepção): volta para o agente na próxima resposta
+    if (turn.estado) {
+      const { data: c } = await supabaseAdmin
+        .from('whatsapp_conversations')
+        .select('metadata')
+        .eq('id', row.conversation_id)
+        .single()
+      await supabaseAdmin
+        .from('whatsapp_conversations')
+        .update({ metadata: { ...((c?.metadata ?? {}) as Record<string, unknown>), recepcao_estado: turn.estado } })
+        .eq('id', row.conversation_id)
+    }
+
+    // 5. agente de recepção pediu o registro "Quero ser Membro" — DEPOIS da
+    //    resposta, para a confirmação (enviada pela rota) chegar em seguida
+    if (turn.queroSerMembro) {
+      await registrarPedidoDaConversa(instance, row, turn)
+    }
   }
 
   await supabaseAdmin.from(TABLE).delete().eq('conversation_id', row.conversation_id)
@@ -223,3 +244,63 @@ export function kickQueue(delayMs = 5_000): void {
   // não segura o processo vivo por causa deste timer
   ;(kickTimer as unknown as { unref?: () => void }).unref?.()
 }
+
+// ── "Quero ser Membro" pelo agente ────────────────────────────────────────────
+
+async function registrarPedidoDaConversa(
+  instance: { id: string; instance_id: string; token: string; client_token: string; status: string },
+  row: QueueRow,
+  turn: NonNullable<Awaited<ReturnType<typeof generateAgentTurn>>>,
+): Promise<void> {
+  let aviso: string | null = null
+  try {
+    const r = await registrarQueroSerMembro({
+      dados: turn.queroSerMembro!,
+      telefone: turn.telefone,
+      campoId: turn.agentCampoId,
+      conversationId: row.conversation_id,
+    })
+
+    // marca a conversa: o agente não gera o bloco de novo (ver contextoRecepcao)
+    const { data: conv } = await supabaseAdmin
+      .from('whatsapp_conversations')
+      .select('metadata')
+      .eq('id', row.conversation_id)
+      .single()
+    const meta = (conv?.metadata ?? {}) as Record<string, unknown>
+    if (r.ok || r.duplicado) {
+      await supabaseAdmin
+        .from('whatsapp_conversations')
+        .update({
+          metadata: {
+            ...meta,
+            quero_ser_membro: r.ok
+              ? { attendanceId: r.attendanceId, modo: r.modo, em: new Date().toISOString() }
+              : { attendanceId: 'existente', duplicado: true, em: new Date().toISOString() },
+          },
+        })
+        .eq('id', row.conversation_id)
+    }
+
+    if (!r.ok) {
+      console.error('[aiReplyQueue] Quero ser Membro não registrado', r.erro)
+      aviso = r.duplicado
+        ? r.erro
+        : 'Não consegui concluir o seu registro automaticamente agora, mas já avisei a secretaria — ' +
+          'eles vão finalizar com você por aqui. 🙏'
+    }
+  } catch (err) {
+    console.error('[aiReplyQueue] Quero ser Membro falhou', err)
+    aviso = 'Não consegui concluir o seu registro automaticamente agora, mas já avisei a secretaria — ' +
+      'eles vão finalizar com você por aqui. 🙏'
+  }
+
+  if (aviso) {
+    const res = await sendTextViaZApi(instance, row.phone, aviso, {
+      delayTyping: typingSecondsFor(aviso),
+      delayMessage: preTypingSeconds(),
+    })
+    if (res.status === 'sent') await persistOutboundMessage(row.conversation_id, aviso, res.messageId || undefined)
+  }
+}
+

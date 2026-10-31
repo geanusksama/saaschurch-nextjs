@@ -27,6 +27,7 @@ export interface WhatsAppConversation {
   contact_name?: string
   status: ConversationStatus
   ai_enabled: boolean
+  ai_agent_id?: string | null
   assigned_to?: string
   owner_user_id: string
   last_message_at?: string
