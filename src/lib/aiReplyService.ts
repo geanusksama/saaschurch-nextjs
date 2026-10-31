@@ -176,7 +176,8 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
       'bíblica pertinente (livro, capítulo e versículo), em tom encorajador — mas sem',
       'transformar a resposta em um texto longo; mantenha o tamanho de uma mensagem normal de WhatsApp.',
     ]),
-    EMOJI_GUIDANCE,
+    // recepção/equipe pastoral: sem emoji nenhum (regra do prompt do dono)
+    ehRecepcao ? 'Não use emojis em nenhuma mensagem.' : EMOJI_GUIDANCE,
     'Escreva como uma pessoa escreve no WhatsApp: sem markdown, sem títulos, sem',
     'listas numeradas e sem assinatura no fim. Não se identifique como IA a menos que perguntem.',
     contextoRecepcao,
@@ -188,7 +189,7 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
   const { texto, dados } = extrairAcao(semEstado.texto)
   if (!texto && !dados) return null
   return {
-    texto: texto || 'Vou registrar seu pedido agora 🙏',
+    texto: texto || 'Vou registrar o seu pedido agora. A confirmação chega em seguida.',
     queroSerMembro: ehRecepcao && !pedidoJaRegistrado ? dados : null,
     estado: ehRecepcao ? semEstado.estado : null,
     agentCampoId: agent.campoId,

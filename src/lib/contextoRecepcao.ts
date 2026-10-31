@@ -14,6 +14,7 @@ import { loadHomePayload } from '@/lib/homeConfigServer'
 import { resolveCardUrl } from '@/lib/homeConfig'
 import { servicosVisiveis } from '@/lib/servicosHome'
 import { publicBaseUrl } from '@/lib/publicUrl'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { MARCA_ESTADO_FIM, MARCA_ESTADO_INICIO, MARCA_FIM, MARCA_INICIO, datasDisponiveis } from '@/lib/agenteQueroSerMembro'
 
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
@@ -34,6 +35,7 @@ export async function montarContextoRecepcao(params: {
 }): Promise<string> {
   const { config, cards, sede } = await loadHomePayload(params.campoId)
   const site = publicBaseUrl()
+  const departamentos = await carregarDepartamentos(params.campoId, site)
 
   const servicos = config.services.enabled ? servicosVisiveis(config.services) : []
   const cartoes = cards
@@ -77,8 +79,9 @@ export async function montarContextoRecepcao(params: {
     '=== MEMÓRIA DO ATENDIMENTO (o que você já registrou nesta conversa) ===',
     params.estado ? JSON.stringify(params.estado) : '(vazia — atendimento começando)',
     'Confie nela: não pergunte de novo o que já está aqui. Se a pessoa corrigir algo, atualize.',
+    'Se "atendente" já estiver preenchido, apresente-se e continue SEMPRE com esse mesmo nome.',
     `Ao FINAL de TODA resposta, acrescente em uma linha o bloco ${MARCA_ESTADO_INICIO}{json}${MARCA_ESTADO_FIM} com a memória`,
-    'atualizada: {"etapa":"nome|igreja|pedido|opcoes|visita|cadastro|resumo|registrado|encerrado","nome":"","igrejaAnterior":"",',
+    'atualizada: {"etapa":"nome|igreja|pedido|departamentos|visita|cadastro|resumo|registrado|encerrado","atendente":"nome com que você se apresentou","nome":"","sexo":"","igrejaAnterior":"",',
     '"pedidoEspecial":"","opcaoEscolhida":"","querVisita":null,"dataVisita":"","estadoCivil":"","modoFicha":"basico|completo",',
     '"ficha":{...campos já informados}}. Só o que a pessoa disse; campo desconhecido fica vazio. A pessoa não vê esse bloco.',
     '',
@@ -91,7 +94,11 @@ export async function montarContextoRecepcao(params: {
     ...(servicos.length ? servicos.map(s => `- ${s.label}`) : ['- (nenhuma opção ativa na home)']),
     cartoes.length ? 'Outros destaques da home:' : '',
     ...cartoes,
-    'Ao apresentar as opções, mande uma por linha, começando com um emoji ou hífen (aqui pode listar).',
+    '',
+    '=== DEPARTAMENTOS DA IGREJA (detalhes dos que têm página publicada no site) ===',
+    ...(departamentos.length ? departamentos : ['(nenhuma página publicada)']),
+    'Os departamentos que não aparecem aqui existem, mas sem detalhes: diga que a equipe passa as informações.',
+    'Ao apresentar opções ou departamentos, mande um por linha, começando com hífen (aqui pode listar). Sem emoji.',
     '',
     '=== DATAS DISPONÍVEIS PARA AGENDAR A VISITA/ENTREVISTA ===',
     'Qualquer data de hoje em diante serve (ainda não há agenda fechada). Sugestões dos próximos dias:',
@@ -115,4 +122,32 @@ export async function montarContextoRecepcao(params: {
           'Nunca gere o bloco sem a pessoa ter aceitado. Na mensagem com o bloco diga só que vai registrar e que a confirmação chega em seguida.',
         ].join('\n'),
   ].filter(l => l !== '').join('\n')
+}
+
+/**
+ * Páginas de departamento publicadas (department_sites) do campo — título,
+ * subtítulo/descrição curtos e o link. É o que o agente pode dizer sobre cada
+ * departamento sem inventar. Nunca lança: sem dados, lista vazia.
+ */
+async function carregarDepartamentos(campoId: string | null, site: string): Promise<string[]> {
+  try {
+    let q = supabaseAdmin
+      .from('department_sites')
+      .select('slug, titulo, subtitulo, descricao')
+      .eq('status', 'PUBLICADO')
+      .is('deleted_at', null)
+      .order('titulo')
+      .limit(30)
+    if (campoId) q = q.eq('campo_id', campoId)
+    const { data } = await q
+    return (data ?? [])
+      .filter(d => d.titulo)
+      .map(d => {
+        const resumo = String(d.subtitulo || d.descricao || '').replace(/\s+/g, ' ').trim().slice(0, 160)
+        return `- ${d.titulo}${resumo ? ` — ${resumo}` : ''} (${site}/${String(d.slug).toLowerCase()})`
+      })
+  } catch (err) {
+    console.error('[contextoRecepcao] departamentos', err)
+    return []
+  }
 }

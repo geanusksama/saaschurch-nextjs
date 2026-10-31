@@ -1136,8 +1136,8 @@ export default function AiAssistants() {
                       onClick={() => {
                         if (systemPrompt.trim() && !window.confirm('Substituir o prompt atual pelo modelo de Secretaria/Recepção?')) return;
                         setSystemPrompt(PROMPT_AGENTE_RECEPCAO);
-                        if (!name.trim()) setName('Secretaria Virtual');
-                        if (!description.trim()) setDescription('Acolhe quem chega pelo WhatsApp/QR, apresenta as opções da home, agenda a visita e registra o Quero ser Membro.');
+                        if (!name.trim()) setName('Equipe Pastoral');
+                        if (!description.trim()) setDescription('Equipe pastoral no WhatsApp: acolhe quem chega pelo QR, apresenta os departamentos, agenda a visita e registra o Quero ser Membro.');
                       }}
                       className="text-xs font-semibold text-indigo-600 hover:underline"
                     >

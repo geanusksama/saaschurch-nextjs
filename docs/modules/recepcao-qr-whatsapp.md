@@ -95,3 +95,26 @@ ficha (completa ou básica) → resumo → registro.
 - Não verificado: a criação de ponta a ponta (gravaria no banco de produção).
   Testadas com tsx: extração do bloco, decisão simples/completo, validação de
   data.
+
+## Equipe Pastoral + espera humana (01/11/2026)
+
+- Prompt do dono (`PROMPT_AGENTE_RECEPCAO`): o agente se apresenta como membro
+  da equipe pastoral (nomes masculinos/femininos conforme a pessoa), mantém o
+  mesmo nome até o fim (`atendente` na memória), "A paz do Senhor", sem
+  emojis, trata mensagens picadas como uma só, apresenta os departamentos
+  (lista fixa do prompt + os publicados em `department_sites`, com descrição e
+  link). Se perguntarem se é robô, não mente. Agente no banco renomeado para
+  "Equipe Pastoral".
+- Para a função `recepcao` o sistema troca a regra de emoji por "não use
+  emojis"; mensagens fixas (fallback e falha do registro) sem emoji.
+- **Fila com interrupção** (`src/lib/aiReplyQueue.ts`): marca como visto →
+  pausa "lendo" (2,5 s) → gera → confere → pausa final (1,5 s) → envia.
+  Mensagem nova ou "digitando..." durante o preparo só empurra o `due_at`; o
+  worker vê (`due_at > locked_at`), descarta a resposta e devolve a linha para
+  a fila — a próxima passada responde lendo tudo. Corrige também a mensagem
+  que chegava no meio do preparo e era apagada sem resposta.
+- Limite da Z-API: não existe endpoint para mostrar só "digitando..."; ele vai
+  junto do envio (`delayTyping`) e não pode ser cancelado. Por isso o
+  "digitando" visível do agente ficou curto (2 a 6 s) — é a única janela em que
+  a pessoa voltar a escrever não impede o envio.
+- Não verificado ponta a ponta (depende da Z-API real e do relógio da fila).

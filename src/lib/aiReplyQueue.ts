@@ -8,6 +8,12 @@
  * Durabilidade: a fila vive no banco, então um restart não perde resposta —
  * o cron (/api/cron/whatsapp-ai) drena o que ficou para trás. O "kick" em
  * memória é só para não depender do cron no caminho feliz.
+ *
+ * Interrupção: enquanto a resposta está sendo preparada (status
+ * "processing"), mensagem nova ou "digitando..." só EMPURRAM o due_at para o
+ * futuro. O worker confere isso antes de enviar (foiInterrompida): se mudou,
+ * descarta o que gerou, devolve a linha para "pending" e a próxima passada
+ * responde lendo tudo — inclusive o que chegou no meio.
  */
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
@@ -25,6 +31,19 @@ import {
 const TABLE = 'whatsapp_ai_reply_queue'
 /** linha travada há mais que isto = worker morreu no meio; volta para a fila */
 const STALE_LOCK_MS = 120_000
+/** "lendo" depois de marcar como visto, antes de gerar a resposta */
+const READING_PAUSE_MS = 2_500
+/** conferência final antes de enviar */
+const PRE_SEND_PAUSE_MS = 1_500
+
+/**
+ * "Digitando..." visível do agente: proporcional ao texto, mas curto (2..6 s).
+ * É a única janela em que a pessoa pode voltar a escrever e a mensagem sai
+ * mesmo assim — a Z-API não cancela um envio com delayTyping.
+ */
+function typingSecondsForAgent(text: string): number {
+  return Math.max(2, Math.min(6, typingSecondsFor(text)))
+}
 
 // ── Entrada na fila ──────────────────────────────────────────────────────────
 
@@ -43,9 +62,26 @@ export async function enqueueReply(input: {
 
   const { data: existing } = await supabaseAdmin
     .from(TABLE)
-    .select('conversation_id, deadline_at, pending_count')
+    .select('conversation_id, deadline_at, pending_count, status')
     .eq('conversation_id', input.conversationId)
     .maybeSingle()
+
+  // Resposta em preparo: só empurra o due_at (o worker vê, descarta e devolve
+  // para "pending"). Trocar o status aqui deixaria outro worker pegar a mesma
+  // conversa, e o delete do fim apagaria esta mensagem sem resposta.
+  if (existing?.status === 'processing') {
+    await supabaseAdmin
+      .from(TABLE)
+      .update({
+        due_at: dueAt.toISOString(),
+        deadline_at: new Date(now + MAX_WAIT_MS).toISOString(),
+        last_message_id: input.messageId ?? null,
+        pending_count: (existing.pending_count ?? 1) + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('conversation_id', input.conversationId)
+    return
+  }
 
   if (existing) {
     // respeita o teto: o due_at nunca passa do deadline da primeira mensagem
@@ -86,10 +122,14 @@ export async function postponeForTyping(conversationId: string): Promise<void> {
     .eq('conversation_id', conversationId)
     .maybeSingle()
 
-  if (!row || row.status === 'processing') return
+  if (!row) return
 
+  // Em preparo: a pessoa voltou a digitar — o worker vê o due_at no futuro e
+  // não envia. Fora de preparo: adia respeitando o teto da primeira mensagem.
   const deadline = new Date(row.deadline_at).getTime()
-  const next = Math.min(Date.now() + TYPING_POSTPONE_MS, deadline)
+  const next = row.status === 'processing'
+    ? Date.now() + TYPING_POSTPONE_MS
+    : Math.min(Date.now() + TYPING_POSTPONE_MS, deadline)
 
   await supabaseAdmin
     .from(TABLE)
@@ -105,6 +145,49 @@ interface QueueRow {
   phone: string
   last_message_id: string | null
   attempts: number
+  locked_at: string
+}
+
+/** Pausa que acorda a cada segundo para ver se a pessoa voltou a escrever. */
+async function esperarSemInterrupcao(conversationId: string, lockedAt: string, ms: number): Promise<boolean> {
+  const fim = Date.now() + ms
+  while (Date.now() < fim) {
+    await new Promise(r => setTimeout(r, Math.min(1_000, fim - Date.now())))
+    if (await foiInterrompida(conversationId, lockedAt)) return false
+  }
+  return true
+}
+
+/**
+ * A pessoa mandou mensagem ou digitou depois que pegamos a conversa?
+ * (enqueueReply/postponeForTyping empurram o due_at para depois do locked_at)
+ */
+async function foiInterrompida(conversationId: string, lockedAt: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from(TABLE)
+    .select('due_at')
+    .eq('conversation_id', conversationId)
+    .maybeSingle()
+  if (!data) return false
+  return new Date(data.due_at).getTime() > new Date(lockedAt).getTime()
+}
+
+/** Desiste desta resposta: a linha volta para a fila com o due_at já empurrado. */
+async function devolverParaFila(conversationId: string): Promise<void> {
+  await supabaseAdmin.from(TABLE).update({ status: 'pending' }).eq('conversation_id', conversationId)
+}
+
+/** Fecha o item — só se nada novo chegou no meio (senão devolve para a fila). */
+async function encerrarItem(conversationId: string, lockedAt: string): Promise<void> {
+  if (await foiInterrompida(conversationId, lockedAt)) {
+    await devolverParaFila(conversationId)
+    return
+  }
+  await supabaseAdmin
+    .from(TABLE)
+    .delete()
+    .eq('conversation_id', conversationId)
+    .lte('due_at', lockedAt)
 }
 
 /** Devolve para a fila o que travou (worker morto no meio do envio). */
@@ -130,7 +213,7 @@ export async function processDueReplies(): Promise<number> {
       .update({ status: 'processing', locked_at: new Date().toISOString() })
       .eq('status', 'pending')
       .lte('due_at', new Date().toISOString())
-      .select('conversation_id, instance_id, phone, last_message_id, attempts')
+      .select('conversation_id, instance_id, phone, last_message_id, attempts, locked_at')
 
     for (const row of (due ?? []) as QueueRow[]) {
       try {
@@ -176,25 +259,46 @@ async function replyToConversation(row: QueueRow): Promise<void> {
     return
   }
 
-  // 1. lê a conversa antes de responder, como um atendente faria
+  const lockedAt = row.locked_at
+
+  // 1. marca como visto, como um atendente que abre a conversa
   if (row.last_message_id && !row.last_message_id.startsWith('synthetic_')) {
     await markMessageAsRead(instance, row.phone, row.last_message_id)
   }
 
-  // 2. gera a resposta com TODO o histórico (as mensagens acumuladas viram uma só)
+  // 2. "lendo": pausa curta; se a pessoa voltar a escrever, para aqui
+  if (!(await esperarSemInterrupcao(row.conversation_id, lockedAt, READING_PAUSE_MS))) {
+    await devolverParaFila(row.conversation_id)
+    return
+  }
+
+  // 3. gera a resposta com TODO o histórico (as mensagens acumuladas viram uma só)
   const turn = await generateAgentTurn(row.conversation_id)
   const reply = turn?.texto ?? null
 
   // sem resposta (IA desligada na conversa, agente removido) — encerra o item
   if (!turn || !reply) {
-    await supabaseAdmin.from(TABLE).delete().eq('conversation_id', row.conversation_id)
+    await encerrarItem(row.conversation_id, lockedAt)
     return
   }
 
-  // 3. envia com "digitando..." proporcional ao tamanho do texto
+  // 4. chegou algo enquanto a IA pensava? descarta e responde depois, a tudo
+  if (await foiInterrompida(row.conversation_id, lockedAt)) {
+    await devolverParaFila(row.conversation_id)
+    return
+  }
+
+  // 5. última conferência logo antes de enviar. A Z-API não tem como mostrar
+  //    "digitando..." sem enviar (o delayTyping vai junto da mensagem e não
+  //    dá para cancelar), então daqui em diante a mensagem sai — por isso o
+  //    "digitando" visível é curto (typingSecondsForAgent).
+  if (!(await esperarSemInterrupcao(row.conversation_id, lockedAt, PRE_SEND_PAUSE_MS))) {
+    await devolverParaFila(row.conversation_id)
+    return
+  }
+
   const result = await sendTextViaZApi(instance, row.phone, reply, {
-    delayTyping: typingSecondsFor(reply),
-    delayMessage: preTypingSeconds(),
+    delayTyping: typingSecondsForAgent(reply),
   })
 
   if (result.status === 'sent') {
@@ -224,7 +328,7 @@ async function replyToConversation(row: QueueRow): Promise<void> {
     }
   }
 
-  await supabaseAdmin.from(TABLE).delete().eq('conversation_id', row.conversation_id)
+  await encerrarItem(row.conversation_id, lockedAt)
 }
 
 // ── Kick em memória ──────────────────────────────────────────────────────────
@@ -286,13 +390,13 @@ async function registrarPedidoDaConversa(
       console.error('[aiReplyQueue] Quero ser Membro não registrado', r.erro)
       aviso = r.duplicado
         ? r.erro
-        : 'Não consegui concluir o seu registro automaticamente agora, mas já avisei a secretaria — ' +
-          'eles vão finalizar com você por aqui. 🙏'
+        : 'Não consegui concluir o seu registro automaticamente agora, mas já avisei a equipe pastoral, ' +
+          'que vai finalizar com você por aqui. Deus abençoe.'
     }
   } catch (err) {
     console.error('[aiReplyQueue] Quero ser Membro falhou', err)
-    aviso = 'Não consegui concluir o seu registro automaticamente agora, mas já avisei a secretaria — ' +
-      'eles vão finalizar com você por aqui. 🙏'
+    aviso = 'Não consegui concluir o seu registro automaticamente agora, mas já avisei a equipe pastoral, ' +
+      'que vai finalizar com você por aqui. Deus abençoe.'
   }
 
   if (aviso) {
