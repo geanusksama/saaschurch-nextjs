@@ -246,12 +246,9 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
     group: 'Comunicação',
     name: 'Instâncias WhatsApp',
     key: 'whatsapp_instances',
-    permissions: mkPerms(
-      { master: true,  admin: true,  campo: false, church: false },
-      { master: true,  admin: true,  campo: false, church: false },
-      { master: true,  admin: true,  campo: false, church: false },
-      { master: true,  admin: false, campo: false, church: false },
-    ),
+    // Só master (pedido do dono, 01/11/2026): a tela mostra token, QR e webhook
+    // do número da igreja. Outro perfil só com a permissão liberada no grupo.
+    permissions: mkPerms(master(), master(), master(), master()),
   },
   {
     group: 'Comunicação',
