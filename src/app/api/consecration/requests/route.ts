@@ -3,6 +3,7 @@ import { normalizarSituacaoMembro } from "@/lib/situacaoMembro";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess, buildProtocol, isRestrictedToOwnChurch } from "@/lib/helpers";
+import { tituloFixoRebaixaria } from "@/lib/tituloEclesiasticoHistorico";
 
 // ── Helpers mirroring old server ────────────────────────────────────────────
 
@@ -188,32 +189,33 @@ async function applyMatrixRule({
       (svc as Record<string, string> | null)?.sigla || "";
 
     // Update member status / title
+    const tituloDaRegra = rule.changeTitle && rule.newTitle && !(await tituloFixoRebaixaria(prisma, card.memberId as string, rule.newTitle)) ? rule.newTitle : null;
     if (card.memberId && (rule.changeStatus || rule.changeTitle)) {
       const memberUpdate: Record<string, unknown> = {};
       let prevMember: { ecclesiasticalTitle: string | null; addressCity: string | null; addressState: string | null; nationality: string | null } | null = null;
       if (rule.changeStatus && rule.newStatus) memberUpdate.membershipStatus = normalizarSituacaoMembro(rule.newStatus) ?? undefined;
-      if (rule.changeTitle && rule.newTitle) {
+      if (tituloDaRegra) {
         prevMember = await prisma.member.findUnique({
           where: { id: card.memberId as string },
           select: { ecclesiasticalTitle: true, addressCity: true, addressState: true, nationality: true },
         });
-        memberUpdate.ecclesiasticalTitle = rule.newTitle;
+        memberUpdate.ecclesiasticalTitle = tituloDaRegra;
         const titleRecord = await prisma.ecclesiasticalTitle.findFirst({
-          where: { name: { equals: rule.newTitle, mode: "insensitive" }, deletedAt: null, isActive: true },
+          where: { name: { equals: tituloDaRegra, mode: "insensitive" }, deletedAt: null, isActive: true },
         });
         memberUpdate.ecclesiasticalTitleId = titleRecord?.id ?? null;
       }
       if (Object.keys(memberUpdate).length > 0) {
         await prisma.member.update({ where: { id: card.memberId as string }, data: memberUpdate });
       }
-      if (rule.changeTitle && rule.newTitle) {
+      if (tituloDaRegra) {
         await prisma.memberTitleHistory.create({
           data: {
             memberId: card.memberId as string,
             churchId: card.churchId as string,
             cardId: card.id ? card.id as string : null,
             previousTitle: prevMember?.ecclesiasticalTitle ?? null,
-            newTitle: rule.newTitle,
+            newTitle: tituloDaRegra,
             source: "MATRIZ",
             serviceGroup,
             serviceName,

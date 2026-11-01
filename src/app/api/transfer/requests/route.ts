@@ -3,6 +3,7 @@ import { normalizarSituacaoMembro } from "@/lib/situacaoMembro";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess, buildProtocol } from "@/lib/helpers";
+import { tituloFixoRebaixaria } from "@/lib/tituloEclesiasticoHistorico";
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
@@ -13,12 +14,13 @@ export async function POST(req: NextRequest) {
         const service = await prisma.kanService.findUnique({ where: { id: serviceId } });
         const serviceGroup = service?.serviceGroup || service?.sigla || "GERAL";
         const serviceName = service?.description || service?.sigla || "";
+        const tituloDaRegra = rule.changeTitle && rule.newTitle && !(await tituloFixoRebaixaria(prisma, card.memberId as string, rule.newTitle)) ? rule.newTitle : null;
         if (card.memberId && (rule.changeStatus || rule.changeTitle || rule.doesTransfer)) {
           const memberData: Record<string, unknown> = {};
           if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = normalizarSituacaoMembro(rule.newStatus) ?? undefined;
-          if (rule.changeTitle && rule.newTitle) {
-            memberData.ecclesiasticalTitle = rule.newTitle;
-            const titleRecord = await prisma.ecclesiasticalTitle.findFirst({ where: { name: { equals: rule.newTitle, mode: "insensitive" }, deletedAt: null, isActive: true } });
+          if (tituloDaRegra) {
+            memberData.ecclesiasticalTitle = tituloDaRegra;
+            const titleRecord = await prisma.ecclesiasticalTitle.findFirst({ where: { name: { equals: tituloDaRegra, mode: "insensitive" }, deletedAt: null, isActive: true } });
             memberData.ecclesiasticalTitleId = titleRecord?.id ?? null;
           }
           if (rule.doesTransfer && card.destinationChurchId) {

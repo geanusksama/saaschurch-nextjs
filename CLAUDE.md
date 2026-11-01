@@ -27,3 +27,6 @@ elas no mesmo `git push`.
   (179.198.117.28) — app + Supabase self-hosted. Nunca no 212.85.0.189 (SLS CRM).
 - Progresso e decisões da migração da Vila Solange:
   [docs/infra/MIGRACAO-VILASOLANGE-COOLIFY.md](docs/infra/MIGRACAO-VILASOLANGE-COOLIFY.md).
+- Correção de títulos eclesiásticos e da matriz de Campinas (01/11/2026) e
+  a regra "a matriz nunca rebaixa obreiro":
+  [docs/database/CORRECAO-TITULOS-CAMPINAS-2026-11.md](docs/database/CORRECAO-TITULOS-CAMPINAS-2026-11.md).

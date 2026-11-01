@@ -149,10 +149,59 @@ export async function resolverTituloDaRegra(
     const encontrado = await ultimoTituloDoHistorico(db, memberId);
     if (encontrado) return { titulo: encontrado.nome, restaurado: encontrado, origem: "HISTORICO" };
     // Sem histórico reconhecível: cai no título fixo da regra, se houver.
-    return { titulo: regra.newTitle ?? null, restaurado: null, origem: "FIXO" };
+    return tituloFixo(db, regra.newTitle, memberId);
   }
 
-  return { titulo: regra.newTitle ?? null, restaurado: null, origem: "FIXO" };
+  return tituloFixo(db, regra.newTitle, memberId);
+}
+
+/** Título fixo da regra, a não ser que ele rebaixe o membro. */
+async function tituloFixo(
+  db: Db,
+  novoTitulo: string | null,
+  memberId: string
+): Promise<TituloResolvido> {
+  if (!novoTitulo) return { titulo: null, restaurado: null, origem: "FIXO" };
+  if (await tituloFixoRebaixaria(db, memberId, novoTitulo)) {
+    return { titulo: null, restaurado: null, origem: null };
+  }
+  return { titulo: novoTitulo, restaurado: null, origem: "FIXO" };
+}
+
+/**
+ * A matriz nunca rebaixa um obreiro.
+ *
+ * Regras de título fixo (Novo Cadastro → CONGREGADO/MEMBRO, Admissão de
+ * Obreiros → MEMBRO, Batismo → MEMBRO…) foram feitas para quem está entrando.
+ * Aplicadas a quem já tem cargo, apagavam o título: um evangelista cadastrado
+ * pela secretaria virava CONGREGADO e depois MEMBRO (caso ROL 32569, 10/2026).
+ *
+ * Devolve true quando o título atual do membro é de obreiro (nível >= 1 no
+ * catálogo) e é MAIOR que o título que a regra quer gravar — aí a troca é
+ * ignorada e o membro fica com o título que tem. Mesmo nível passa (é o
+ * CONGREGADO → MEMBRO do batismo, ou EVANGELISTA → MISSIONARIA). Título atual
+ * fora do catálogo ou vazio não bloqueia nada.
+ *
+ * Não se aplica à restauração do histórico nem ao título confirmado pela
+ * secretaria na readmissão: esses são escolhas explícitas.
+ */
+export async function tituloFixoRebaixaria(
+  db: Db,
+  memberId: string | null | undefined,
+  novoTitulo: string | null | undefined
+): Promise<boolean> {
+  if (!memberId || !novoTitulo) return false;
+  const membro = await db.member.findUnique({
+    where: { id: memberId },
+    select: { ecclesiasticalTitle: true },
+  });
+  if (!membro?.ecclesiasticalTitle) return false;
+  const [atual, novo] = await Promise.all([
+    normalizarTituloDoCatalogo(db, membro.ecclesiasticalTitle),
+    normalizarTituloDoCatalogo(db, novoTitulo),
+  ]);
+  if (!atual || !novo) return false;
+  return atual.level >= 1 && atual.level > novo.level;
 }
 
 /**
