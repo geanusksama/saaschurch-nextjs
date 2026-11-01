@@ -104,5 +104,10 @@ export function useWhatsAppMessages(conversationId: string | null) {
     return res.json()
   }, [conversationId])
 
-  return { messages, isLoading, hasMore, loadMore, sendMessage }
+  // tira da tela o que foi apagado (o realtime só escuta INSERT/UPDATE)
+  const removeMessages = useCallback((ids: string[] | 'all') => {
+    setMessages(prev => (ids === 'all' ? [] : prev.filter(m => !ids.includes(m.id))))
+  }, [])
+
+  return { messages, isLoading, hasMore, loadMore, sendMessage, removeMessages }
 }
