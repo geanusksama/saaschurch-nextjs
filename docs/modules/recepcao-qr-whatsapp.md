@@ -118,3 +118,20 @@ ficha (completa ou básica) → resumo → registro.
   "digitando" visível do agente ficou curto (2 a 6 s) — é a única janela em que
   a pessoa voltar a escrever não impede o envio.
 - Não verificado ponta a ponta (depende da Z-API real e do relógio da fila).
+
+## Cadastro em 3 opções + pedidos anteriores (01/11/2026)
+
+- Antes dos dados do Quero ser Membro o agente pergunta como a pessoa
+  prefere: todas as perguntas de uma vez (numeradas, numa mensagem), uma por
+  vez, ou pelo site (link da home + botão de atendimento → Quero ser Membro;
+  nada é registrado pela conversa nesse caso). Escolha em `modoCadastro`.
+- `src/lib/pedidosDoContato.ts`: pedidos do número no pipeline pastoral
+  (últimos 8 dígitos, mesma regra do antiduplicidade), com fase, link de
+  acompanhamento `/pastoral/timeline/{id}` (a mesma página pública da home) e
+  link da ficha enquanto não preenchida. Entra no contexto; "Quero ser Membro"
+  em aberto impede novo registro e o agente manda os links.
+- Depois de registrar pelo agente, além da confirmação da rota, a pessoa
+  recebe o link de acompanhamento. Em pedido duplicado (409), o aviso leva o
+  link do pedido que já existe.
+- Verificado só em leitura: busca de pedidos com números reais (acha o
+  aberto e o concluído, fase e links corretos); página e API da timeline 200.

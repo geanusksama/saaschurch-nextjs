@@ -15,6 +15,7 @@ import { resolveCardUrl } from '@/lib/homeConfig'
 import { servicosVisiveis } from '@/lib/servicosHome'
 import { publicBaseUrl } from '@/lib/publicUrl'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import type { PedidoDoContato } from '@/lib/pedidosDoContato'
 import { MARCA_ESTADO_FIM, MARCA_ESTADO_INICIO, MARCA_FIM, MARCA_INICIO, datasDisponiveis } from '@/lib/agenteQueroSerMembro'
 
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
@@ -32,6 +33,8 @@ export async function montarContextoRecepcao(params: {
   estado: Record<string, unknown> | null
   /** como a conversa chegou: 'recepcao_qr' ou outra */
   origem: string | null
+  /** pedidos que este número já fez (pedidosDoContato) */
+  pedidos: PedidoDoContato[]
 }): Promise<string> {
   const { config, cards, sede } = await loadHomePayload(params.campoId)
   const site = publicBaseUrl()
@@ -81,7 +84,7 @@ export async function montarContextoRecepcao(params: {
     'Confie nela: não pergunte de novo o que já está aqui. Se a pessoa corrigir algo, atualize.',
     'Se "atendente" já estiver preenchido, apresente-se e continue SEMPRE com esse mesmo nome.',
     `Ao FINAL de TODA resposta, acrescente em uma linha o bloco ${MARCA_ESTADO_INICIO}{json}${MARCA_ESTADO_FIM} com a memória`,
-    'atualizada: {"etapa":"nome|igreja|pedido|departamentos|visita|cadastro|resumo|registrado|encerrado","atendente":"nome com que você se apresentou","nome":"","sexo":"","igrejaAnterior":"",',
+    'atualizada: {"etapa":"nome|igreja|pedido|departamentos|visita|cadastro|resumo|registrado|encerrado","atendente":"nome com que você se apresentou","nome":"","sexo":"","modoCadastro":"","igrejaAnterior":"",',
     '"pedidoEspecial":"","opcaoEscolhida":"","querVisita":null,"dataVisita":"","estadoCivil":"","modoFicha":"basico|completo",',
     '"ficha":{...campos já informados}}. Só o que a pessoa disse; campo desconhecido fica vazio. A pessoa não vê esse bloco.',
     '',
@@ -104,6 +107,29 @@ export async function montarContextoRecepcao(params: {
     'Qualquer data de hoje em diante serve (ainda não há agenda fechada). Sugestões dos próximos dias:',
     ...datasDisponiveis().slice(0, 7).map(d => `- ${rotuloData(d)}`),
     'Se a pessoa disser "sábado que vem", "dia 15" etc., converta para AAAA-MM-DD usando a data de hoje. Nunca use data no passado.',
+    '',
+    '=== PEDIDOS QUE ESTA PESSOA JÁ FEZ (pelo número do WhatsApp) ===',
+    ...(params.pedidos.length
+      ? params.pedidos.map(p =>
+          `- ${p.tipoRotulo} — aberto em ${p.criadoEm.split('-').reverse().join('/')} — ${p.aberto ? `fase: ${p.fase}` : p.fase}` +
+          ` — acompanhar: ${p.linkAcompanhamento}` +
+          (p.linkFicha ? ` — ficha ainda não preenchida: ${p.linkFicha}` : ''))
+      : ['(nenhum)']),
+    params.pedidos.length
+      ? 'Se houver pedido em aberto, diga com naturalidade que já existe e mande o link de acompanhamento para a pessoa ver o histórico ' +
+        'do pedido. Se for "Quero ser Membro" em aberto, NÃO abra outro cadastro: mande o link de acompanhamento e, se houver, o da ficha ' +
+        'para completar. Mande os links exatamente como estão, sem encurtar.'
+      : '',
+    '',
+    '=== COMO A PESSOA PREFERE FAZER O CADASTRO ===',
+    'Antes de pedir os dados do cadastro, pergunte como ela prefere, oferecendo as três opções:',
+    '1) você manda todas as perguntas de uma vez e ela responde na sequência;',
+    '2) você pergunta uma de cada vez;',
+    `3) ela mesma faz pelo site: abrir ${site}, tocar no botão "${config.services.title || 'Atendimento'}" e escolher "Quero ser Membro".`,
+    'Na opção 1, mande as perguntas numeradas numa única mensagem (aqui pode numerar) e depois leia a resposta inteira,',
+    'mesmo que venha em várias mensagens; pergunte só o que faltar. Na opção 3, não registre nada por aqui: mande o link e as',
+    'instruções, diga que a confirmação chega no WhatsApp e encerre com "Deus abençoe".',
+    'Guarde a escolha em "modoCadastro" na MEMÓRIA (todas|uma|site).',
     '',
     '=== REGISTRO "QUERO SER MEMBRO" ===',
     `O WhatsApp da pessoa já é conhecido (${params.telefone}) — não pergunte o telefone.`,

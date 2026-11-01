@@ -19,6 +19,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { generateAgentTurn } from '@/lib/aiReplyService'
 import { registrarQueroSerMembro } from '@/lib/agenteQueroSerMembro'
+import { publicBaseUrl } from '@/lib/publicUrl'
 import { markMessageAsRead, persistOutboundMessage, sendTextViaZApi } from '@/lib/whatsappSendService'
 import {
   MAX_WAIT_MS,
@@ -386,10 +387,16 @@ async function registrarPedidoDaConversa(
         .eq('id', row.conversation_id)
     }
 
+    // como na home: além da confirmação (que a rota manda, com a ficha), a
+    // pessoa recebe o link para acompanhar o histórico do pedido
+    if (r.ok) {
+      aviso = `Para acompanhar o andamento do seu pedido, é por aqui:\n${publicBaseUrl()}/pastoral/timeline/${r.attendanceId}`
+    }
+
     if (!r.ok) {
       console.error('[aiReplyQueue] Quero ser Membro não registrado', r.erro)
       aviso = r.duplicado
-        ? r.erro
+        ? r.erro + (r.attendanceId ? `\n\nPara acompanhar o andamento, é por aqui:\n${publicBaseUrl()}/pastoral/timeline/${r.attendanceId}` : '')
         : 'Não consegui concluir o seu registro automaticamente agora, mas já avisei a equipe pastoral, ' +
           'que vai finalizar com você por aqui. Deus abençoe.'
     }

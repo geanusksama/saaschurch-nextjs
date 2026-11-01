@@ -13,6 +13,7 @@ import { getAiConfig } from '@/lib/aiConfig'
 import { CONSOLIDATION_GUIDANCE, EMOJI_GUIDANCE } from '@/lib/whatsappHumanizer'
 import { montarContextoRecepcao } from '@/lib/contextoRecepcao'
 import { extrairAcao, extrairEstado, type DadosQueroSerMembro } from '@/lib/agenteQueroSerMembro'
+import { pedidosDoContato, temQueroSerMembroAberto } from '@/lib/pedidosDoContato'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -145,7 +146,12 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
 
   const ehRecepcao = agent.role === 'recepcao'
   const meta = (conv.metadata ?? {}) as Record<string, unknown>
-  const pedidoJaRegistrado = !!(meta.quero_ser_membro as { attendanceId?: string } | undefined)?.attendanceId
+  // pedidos que o número já fez (home, agente, secretaria): o agente manda os
+  // links de acompanhamento e não abre um Quero ser Membro repetido
+  const pedidos = ehRecepcao ? await pedidosDoContato(conv.phone) : []
+  const pedidoJaRegistrado =
+    !!(meta.quero_ser_membro as { attendanceId?: string } | undefined)?.attendanceId ||
+    temQueroSerMembroAberto(pedidos)
   const contextoRecepcao = ehRecepcao
     ? await montarContextoRecepcao({
         campoId: agent.campoId,
@@ -153,6 +159,7 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
         pedidoJaRegistrado,
         estado: (meta.recepcao_estado as Record<string, unknown> | undefined) ?? null,
         origem: typeof meta.origem === 'string' ? meta.origem : null,
+        pedidos,
       })
     : ''
 
@@ -179,7 +186,9 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
     // recepção/equipe pastoral: sem emoji nenhum (regra do prompt do dono)
     ehRecepcao ? 'Não use emojis em nenhuma mensagem.' : EMOJI_GUIDANCE,
     'Escreva como uma pessoa escreve no WhatsApp: sem markdown, sem títulos, sem',
-    'listas numeradas e sem assinatura no fim. Não se identifique como IA a menos que perguntem.',
+    ehRecepcao
+      ? 'listas numeradas (exceto as perguntas do cadastro, quando a pessoa pedir todas de uma vez) e sem assinatura no fim. Não se identifique como IA a menos que perguntem.'
+      : 'listas numeradas e sem assinatura no fim. Não se identifique como IA a menos que perguntem.',
     contextoRecepcao,
   ].filter(Boolean).join('\n')
 

@@ -107,7 +107,7 @@ export function montarFicha(raw: Record<string, unknown> | undefined, telefone: 
 
 export type ResultadoQueroSerMembro =
   | { ok: true; modo: 'basico' | 'completo'; attendanceId: string }
-  | { ok: false; duplicado: boolean; erro: string }
+  | { ok: false; duplicado: boolean; erro: string; attendanceId?: string }
 
 export async function registrarQueroSerMembro(params: {
   dados: DadosQueroSerMembro
@@ -157,7 +157,13 @@ export async function registrarQueroSerMembro(params: {
   const json = (await res.json().catch(() => ({}))) as { attendanceId?: string; error?: string; duplicate?: boolean }
 
   if (!res.ok || !json.attendanceId) {
-    return { ok: false, duplicado: res.status === 409 || !!json.duplicate, erro: json.error ?? `HTTP ${res.status}` }
+    return {
+      ok: false,
+      duplicado: res.status === 409 || !!json.duplicate,
+      erro: json.error ?? `HTTP ${res.status}`,
+      // no 409 a rota devolve o card que já existe
+      attendanceId: json.attendanceId,
+    }
   }
 
   // A rota registra "via portal público"; a origem real fica na timeline do card
