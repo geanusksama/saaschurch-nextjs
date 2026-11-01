@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { enqueueReply, kickQueue } from '@/lib/aiReplyQueue'
+import { enqueueReply, drenarQuandoVencer } from '@/lib/aiReplyQueue'
 import type { ZApiWebhookPayload } from '@/types/whatsapp'
 import { parseInbound } from '@/lib/zapiInbound'
 import { lerRecepcao, mensagemEhDaRecepcao, RECEPCAO_JANELA_HORAS } from '@/lib/recepcaoWhatsapp'
+
+// a resposta do agente roda em after(): precisa de tempo além do 200
+export const maxDuration = 60
 
 // POST /api/whatsapp/webhook
 // Chamado pela Z-API — sem autenticação (IP Z-API)
@@ -203,7 +206,9 @@ export async function POST(req: NextRequest) {
             phone,
             messageId: payload.messageId ?? null,
           })
-          kickQueue()
+          // responde no tempo certo (10–15 s após a última mensagem) sem
+          // depender do cron: after() segura a função viva depois do 200
+          after(() => drenarQuandoVencer(conversationId))
         }
       } catch (aiErr) {
         // nunca deixar a IA derrubar o webhook (precisa sempre responder 200)

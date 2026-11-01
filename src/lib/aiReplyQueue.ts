@@ -129,9 +129,8 @@ export async function postponeForTyping(conversationId: string): Promise<void> {
   // Em preparo: a pessoa voltou a digitar — o worker vê o due_at no futuro e
   // não envia. Fora de preparo: adia respeitando o teto da primeira mensagem.
   const deadline = new Date(row.deadline_at).getTime()
-  const next = row.status === 'processing'
-    ? Date.now() + TYPING_POSTPONE_MS
-    : Math.min(Date.now() + TYPING_POSTPONE_MS, deadline)
+  // com teto: quem fica com o teclado aberto não adia a resposta para sempre
+  const next = Math.min(Date.now() + TYPING_POSTPONE_MS, Math.max(deadline, Date.now() + 1_000))
 
   await supabaseAdmin
     .from(TABLE)
@@ -175,7 +174,8 @@ async function foiInterrompida(conversationId: string, lockedAt: string): Promis
 }
 
 /** Desiste desta resposta: a linha volta para a fila com o due_at já empurrado. */
-async function devolverParaFila(conversationId: string): Promise<void> {
+async function devolverParaFila(conversationId: string, motivo = 'interrompida'): Promise<void> {
+  console.info('[aiReplyQueue] resposta descartada', { conversationId, motivo })
   await supabaseAdmin.from(TABLE).update({ status: 'pending' }).eq('conversation_id', conversationId)
 }
 
@@ -263,14 +263,17 @@ async function replyToConversation(row: QueueRow): Promise<void> {
 
   const lockedAt = row.locked_at
 
-  // 1. marca como visto, como um atendente que abre a conversa
-  if (row.last_message_id && !row.last_message_id.startsWith('synthetic_')) {
-    await markMessageAsRead(instance, row.phone, row.last_message_id)
+  // 1. marca como visto TODAS as mensagens que chegaram desde a última
+  //    resposta — não só a última (a pessoa via só uma com o tique azul)
+  const naoLidas = await mensagensDesdeUltimaResposta(row.conversation_id)
+  const ids = naoLidas.length ? naoLidas : (row.last_message_id ? [row.last_message_id] : [])
+  for (const id of ids) {
+    if (!id.startsWith('synthetic_')) await markMessageAsRead(instance, row.phone, id)
   }
 
   // 2. "lendo": pausa curta; se a pessoa voltar a escrever, para aqui
   if (!(await esperarSemInterrupcao(row.conversation_id, lockedAt, READING_PAUSE_MS))) {
-    await devolverParaFila(row.conversation_id)
+    await devolverParaFila(row.conversation_id, 'pessoa voltou a escrever durante a leitura')
     return
   }
 
@@ -286,7 +289,7 @@ async function replyToConversation(row: QueueRow): Promise<void> {
 
   // 4. chegou algo enquanto a IA pensava? descarta e responde depois, a tudo
   if (await foiInterrompida(row.conversation_id, lockedAt)) {
-    await devolverParaFila(row.conversation_id)
+    await devolverParaFila(row.conversation_id, 'chegou mensagem/digitando enquanto a IA gerava')
     return
   }
 
@@ -295,7 +298,7 @@ async function replyToConversation(row: QueueRow): Promise<void> {
   //    dá para cancelar), então daqui em diante a mensagem sai — por isso o
   //    "digitando" visível é curto (typingSecondsForAgent).
   if (!(await esperarSemInterrupcao(row.conversation_id, lockedAt, PRE_SEND_PAUSE_MS))) {
-    await devolverParaFila(row.conversation_id)
+    await devolverParaFila(row.conversation_id, 'pessoa voltou a escrever logo antes do envio')
     return
   }
 
@@ -428,6 +431,59 @@ async function registrarPedidoDaConversa(
       delayMessage: preTypingSeconds(),
     })
     if (res.status === 'sent') await persistOutboundMessage(row.conversation_id, aviso, res.messageId || undefined)
+  }
+}
+
+/** IDs Z-API das mensagens recebidas depois da última resposta (até 15). */
+async function mensagensDesdeUltimaResposta(conversationId: string): Promise<string[]> {
+  const { data: ultima } = await supabaseAdmin
+    .from('whatsapp_messages')
+    .select('created_at')
+    .eq('conversation_id', conversationId)
+    .eq('direction', 'outbound')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  let q = supabaseAdmin
+    .from('whatsapp_messages')
+    .select('metadata, created_at')
+    .eq('conversation_id', conversationId)
+    .eq('direction', 'inbound')
+    .order('created_at', { ascending: true })
+    .limit(15)
+  if (ultima?.created_at) q = q.gt('created_at', ultima.created_at)
+  const { data } = await q
+  return (data ?? [])
+    .map(m => (m.metadata as Record<string, unknown> | null)?.zapi_message_id)
+    .filter((v): v is string => typeof v === 'string' && !!v)
+}
+
+/**
+ * Mantém a função viva (chamada dentro de after() no webhook) até a resposta
+ * desta conversa vencer e ser processada — sem depender do cron de 1 min nem
+ * do timer em memória, que na Vercel congela assim que o webhook responde.
+ * Acompanha o due_at (que mensagens novas e "digitando" empurram) até o teto.
+ */
+export async function drenarQuandoVencer(conversationId: string, tetoMs = 50_000): Promise<void> {
+  const fim = Date.now() + tetoMs
+  while (Date.now() < fim) {
+    const { data: row } = await supabaseAdmin
+      .from(TABLE)
+      .select('due_at, status')
+      .eq('conversation_id', conversationId)
+      .maybeSingle()
+    if (!row) return
+    if (row.status === 'processing') {
+      // outro worker está nela: espera ele terminar ou devolver
+      await new Promise(r => setTimeout(r, 2_000))
+      continue
+    }
+    const falta = new Date(row.due_at).getTime() - Date.now()
+    if (falta > 0) {
+      await new Promise(r => setTimeout(r, Math.min(falta + 250, Math.max(0, fim - Date.now()))))
+      continue
+    }
+    await processDueReplies()
   }
 }
 
