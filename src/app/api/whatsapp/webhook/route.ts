@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     const preview = parsed.preview
 
     // Salva mensagem inbound
-    await supabaseAdmin.from('whatsapp_messages').insert({
+    const { data: msgSalva } = await supabaseAdmin.from('whatsapp_messages').insert({
       conversation_id: conversationId,
       content: parsed.content,
       type: msgType,
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
       media_url: parsed.mediaUrl,
       media_mime_type: parsed.mediaMime,
       metadata: { zapi_message_id: messageId, ...parsed.extra },
-    })
+    }).select('created_at').single()
 
     // Atualiza conversa
     await supabaseAdmin
@@ -167,6 +167,11 @@ export async function POST(req: NextRequest) {
             const meta: Record<string, unknown> = { ...((conv?.metadata ?? {}) as Record<string, unknown>), origem: 'recepcao_qr' }
             delete meta.recepcao_estado
             delete meta.quero_ser_membro
+            // atendimento novo: o agente e o resumo automático leem só daqui
+            // em diante (mensagens de visitas/testes anteriores não entram)
+            meta.recepcao_inicio = msgSalva?.created_at ?? new Date().toISOString()
+            delete meta.resumo_auto_em
+            delete meta.encaminhados
             await supabaseAdmin
               .from('whatsapp_conversations')
               .update({ ai_enabled: true, ai_agent_id: recepcao.agentId, metadata: meta })

@@ -84,12 +84,16 @@ export async function generateAiText(
 
 export async function loadConversationHistory(
   conversationId: string,
-  limit = 30
+  limit = 30,
+  /** só mensagens a partir deste instante (início do atendimento da recepção) */
+  desde?: string | null
 ): Promise<ChatTurn[]> {
-  const { data: messages } = await supabaseAdmin
+  let q = supabaseAdmin
     .from('whatsapp_messages')
     .select('content, type, direction, created_at')
     .eq('conversation_id', conversationId)
+  if (desde) q = q.gte('created_at', desde)
+  const { data: messages } = await q
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -143,7 +147,10 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
   if (!agent) return null
 
   // recepção conduz um cadastro longo: 30 mensagens não cobrem a conversa toda
-  const history = await loadConversationHistory(conversationId, agent.role === 'recepcao' ? 80 : 30)
+  const inicioRecepcao = (conv.metadata as Record<string, unknown> | null)?.recepcao_inicio
+  const history = agent.role === 'recepcao'
+    ? await loadConversationHistory(conversationId, 80, typeof inicioRecepcao === 'string' ? inicioRecepcao : null)
+    : await loadConversationHistory(conversationId, 30)
   if (!history.length || history[history.length - 1].role !== 'user') return null
 
   // A IA não tem noção de data: sem dizer que dia é hoje ela erra "hoje/amanhã"

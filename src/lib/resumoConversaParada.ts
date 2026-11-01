@@ -49,6 +49,10 @@ export async function processarConversasParadas(): Promise<number> {
       for (const c of convs ?? []) {
         const meta = (c.metadata ?? {}) as Record<string, unknown>
         if (meta.resumo_auto_em) continue
+        // só atendimento iniciado depois desta regra (marca recepcao_inicio no
+        // webhook): conversas antigas não disparam resumo em massa aos líderes
+        const inicio = typeof meta.recepcao_inicio === 'string' ? meta.recepcao_inicio : null
+        if (!inicio) continue
         if (Object.keys((meta.encaminhados ?? {}) as Record<string, string>).length) continue
 
         // marca antes: uma passada concorrente do cron não resume duas vezes
@@ -57,7 +61,7 @@ export async function processarConversasParadas(): Promise<number> {
           .update({ metadata: { ...meta, resumo_auto_em: new Date().toISOString() } })
           .eq('id', c.id)
 
-        const historico = await loadConversationHistory(c.id, 80)
+        const historico = await loadConversationHistory(c.id, 80, inicio)
         if (!historico.some(m => m.role === 'user')) continue
 
         const estado = (meta.recepcao_estado ?? {}) as Record<string, unknown>

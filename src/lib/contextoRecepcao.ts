@@ -149,8 +149,12 @@ export async function montarContextoRecepcao(params: {
           `${MARCA_ENCAMINHAR_INICIO}{"interesses":["áreas EXATAMENTE como na lista"],"sexo":"M|F","resumo":"..."}${MARCA_ENCAMINHAR_FIM}`,
           'somente em um destes momentos:',
           '- na mensagem em que você ENCERRA a conversa (despedida, "Deus abençoe"), com todas as áreas anotadas;',
-          '- quando a pessoa pedir para falar com uma pessoa, um pastor, um atendente ou "alguém de verdade": aí mande na hora,' +
+          '- quando a pessoa pedir EXPLICITAMENTE para falar com uma pessoa, um pastor, um atendente ou "alguém de verdade": aí mande na hora,' +
             (padrao ? ` para "${padrao}" e as áreas já anotadas, e diga que alguém da equipe vai falar com ela em breve.` : ' para as áreas anotadas.'),
+          'Pedido de oração, necessidade, desabafo ou situação da família NÃO é pedido para falar com alguém e NÃO encerra a',
+          'conversa: acolha, anote em "pedidoEspecial" e, na mesma mensagem, continue a SEQUÊNCIA DO ATENDIMENTO no passo em que',
+          'parou (se ainda não sabe o nome, pergunte o nome; depois igreja anterior, departamentos, visita...). Nunca mande o',
+          'resumo nessa hora.',
           padrao
             ? `Se a conversa terminar sem interesse em nenhuma área, ou for aleatória (brincadeira, engano, assunto solto), use a área padrão (${padrao}).`
             : 'Se a conversa terminar sem interesse em nenhuma área, não mande resumo.',
