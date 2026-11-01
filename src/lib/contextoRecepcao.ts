@@ -16,6 +16,8 @@ import { servicosVisiveis } from '@/lib/servicosHome'
 import { publicBaseUrl } from '@/lib/publicUrl'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { PedidoDoContato } from '@/lib/pedidosDoContato'
+import type { Encaminhamento } from '@/lib/recepcaoWhatsapp'
+import { MARCA_ENCAMINHAR_FIM, MARCA_ENCAMINHAR_INICIO } from '@/lib/encaminharLider'
 import { MARCA_ESTADO_FIM, MARCA_ESTADO_INICIO, MARCA_FIM, MARCA_INICIO, datasDisponiveis } from '@/lib/agenteQueroSerMembro'
 
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
@@ -35,7 +37,12 @@ export async function montarContextoRecepcao(params: {
   origem: string | null
   /** pedidos que este número já fez (pedidosDoContato) */
   pedidos: PedidoDoContato[]
+  /** líderes por área (recepcao.encaminhamentos da instância) */
+  encaminhamentos: Encaminhamento[]
+  /** áreas já encaminhadas nesta conversa (chaves normalizadas) */
+  jaEncaminhados: string[]
 }): Promise<string> {
+  const areas = [...new Set(params.encaminhamentos.map(e => e.interesse))]
   const { config, cards, sede } = await loadHomePayload(params.campoId)
   const site = publicBaseUrl()
   const departamentos = await carregarDepartamentos(params.campoId, site)
@@ -119,6 +126,21 @@ export async function montarContextoRecepcao(params: {
       ? 'Se houver pedido em aberto, diga com naturalidade que já existe e mande o link de acompanhamento para a pessoa ver o histórico ' +
         'do pedido. Se for "Quero ser Membro" em aberto, NÃO abra outro cadastro: mande o link de acompanhamento e, se houver, o da ficha ' +
         'para completar. Mande os links exatamente como estão, sem encurtar.'
+      : '',
+    '',
+    '=== ÁREAS DA IGREJA COM LÍDER RESPONSÁVEL ===',
+    ...(areas.length ? areas.map(a => `- ${a}`) : ['(nenhuma configurada)']),
+    areas.length
+      ? [
+          'Quando a pessoa demonstrar interesse numa destas áreas (ou pedir ajuda pastoral, acolhimento, Casa de Paz, GF etc.),',
+          'diga que o líder responsável vai entrar em contato com ela e, no FIM da conversa (ou quando o interesse ficar claro),',
+          `acrescente numa linha: ${MARCA_ENCAMINHAR_INICIO}{"interesses":["nome da área EXATAMENTE como na lista"],"sexo":"M|F","resumo":"..."}${MARCA_ENCAMINHAR_FIM}`,
+          'O resumo é para o líder: curto e factual — nome, de onde veio, igreja anterior, interesse, pedido especial (se ela quis',
+          'compartilhar), data da visita e o que ficou combinado. Não invente nada. A pessoa não vê o bloco.',
+          'Use só áreas da lista. Cada área uma vez por conversa' +
+            (params.jaEncaminhados.length ? ` — já encaminhadas aqui: ${params.jaEncaminhados.join(', ')}.` : '.'),
+          'Se nenhuma área servir e a pessoa quiser outras informações, use a área de "outras informações", se existir na lista.',
+        ].join('\n')
       : '',
     '',
     '=== COMO A PESSOA PREFERE FAZER O CADASTRO ===',

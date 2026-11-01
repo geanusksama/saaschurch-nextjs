@@ -135,3 +135,23 @@ ficha (completa ou básica) → resumo → registro.
   link do pedido que já existe.
 - Verificado só em leitura: busca de pedidos com números reais (acha o
   aberto e o concluído, fase e links corretos); página e API da timeline 200.
+
+## Encaminhamento para líderes + aviso de Quero ser Membro (01/11/2026)
+
+- Configuração na instância (`recepcao.encaminhamentos`: área, líder,
+  telefone, sexo opcional; `recepcao.avisoQueroSerMembro`: contatos) e editável
+  no modal "Recepção (QR) e webhook".
+- `src/lib/encaminharLider.ts`: o agente termina com
+  `[[ENCAMINHAR]]{"interesses":[...],"sexo":"M|F","resumo":"..."}[[/ENCAMINHAR]]`;
+  depois de responder a pessoa, o sistema manda a cada líder da área (filtra
+  por sexo quando configurado) a mensagem identificada como "Secretária
+  Virtual da Sede": contato (wa.me), links dos pedidos em aberto, resumo e o
+  pedido de retorno para o relatório. Uma vez por área por conversa
+  (`metadata.encaminhados`). A conversa com o líder aparece na Caixa de Entrada.
+- `src/lib/avisoQueroSerMembro.ts`, no cron `/api/cron/whatsapp-ai`: avisa os
+  contatos a cada novo `new_member_requests` (site, básico ou completo, e
+  agente). Marca em `metadata.recepcao_aviso_qsm_desde` (fora de `recepcao`); a
+  primeira passada só grava a marca, sem despejar o histórico.
+- 01/11: instância "geral" trocada de 5519992126683 para 5519982277174
+  (pareamento por código, `phone-code`), webhooks reapontados, nome do perfil
+  "Pastores da Sede", envio e recebimento testados.

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processDueReplies } from '@/lib/aiReplyQueue'
+import { processarAvisosQueroSerMembro } from '@/lib/avisoQueroSerMembro'
 
 /**
  * GET /api/cron/whatsapp-ai
@@ -22,5 +23,7 @@ export async function GET(req: NextRequest) {
   }
 
   const respondidas = await processDueReplies()
-  return NextResponse.json({ ok: true, respondidas })
+  // avisos de novos "Quero ser Membro" (site e agente) para quem a recepção configurou
+  const avisosQsm = await processarAvisosQueroSerMembro()
+  return NextResponse.json({ ok: true, respondidas, avisosQsm })
 }

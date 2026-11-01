@@ -14,6 +14,8 @@ import { CONSOLIDATION_GUIDANCE, EMOJI_GUIDANCE } from '@/lib/whatsappHumanizer'
 import { montarContextoRecepcao } from '@/lib/contextoRecepcao'
 import { extrairAcao, extrairEstado, type DadosQueroSerMembro } from '@/lib/agenteQueroSerMembro'
 import { pedidosDoContato, temQueroSerMembroAberto } from '@/lib/pedidosDoContato'
+import { extrairEncaminhar, type DadosEncaminhar } from '@/lib/encaminharLider'
+import { lerRecepcao } from '@/lib/recepcaoWhatsapp'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -109,6 +111,8 @@ export interface AgentTurn {
   queroSerMembro: DadosQueroSerMembro | null
   /** memória do atendimento devolvida pelo agente (vai para metadata.recepcao_estado) */
   estado: Record<string, unknown> | null
+  /** áreas de interesse para avisar os líderes (encaminharLider) */
+  encaminhar: DadosEncaminhar | null
   agentCampoId: string | null
   telefone: string
 }
@@ -124,7 +128,7 @@ export async function generateAgentReply(conversationId: string): Promise<string
 export async function generateAgentTurn(conversationId: string): Promise<AgentTurn | null> {
   const { data: conv } = await supabaseAdmin
     .from('whatsapp_conversations')
-    .select('id, ai_enabled, ai_agent_id, contact_name, phone, metadata')
+    .select('id, ai_enabled, ai_agent_id, contact_name, phone, metadata, instance_id')
     .eq('id', conversationId)
     .single()
 
@@ -160,6 +164,8 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
         estado: (meta.recepcao_estado as Record<string, unknown> | undefined) ?? null,
         origem: typeof meta.origem === 'string' ? meta.origem : null,
         pedidos,
+        encaminhamentos: await encaminhamentosDaInstancia(conv.instance_id),
+        jaEncaminhados: Object.keys((meta.encaminhados ?? {}) as Record<string, string>),
       })
     : ''
 
@@ -195,12 +201,14 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
   const reply = (await generateAiText(agent.campoId, systemPrompt, history)).trim()
   // só o agente de recepção pode registrar; de qualquer outro o bloco é só removido
   const semEstado = extrairEstado(reply)
-  const { texto, dados } = extrairAcao(semEstado.texto)
+  const semEncaminhar = extrairEncaminhar(semEstado.texto)
+  const { texto, dados } = extrairAcao(semEncaminhar.texto)
   if (!texto && !dados) return null
   return {
     texto: texto || 'Vou registrar o seu pedido agora. A confirmação chega em seguida.',
     queroSerMembro: ehRecepcao && !pedidoJaRegistrado ? dados : null,
     estado: ehRecepcao ? semEstado.estado : null,
+    encaminhar: ehRecepcao ? semEncaminhar.dados : null,
     agentCampoId: agent.campoId,
     telefone: conv.phone,
   }
@@ -261,4 +269,11 @@ export async function generateSmartSummary(
     // IA não devolveu JSON — entrega o texto cru como resumo
     return { resumo: raw.trim(), quem_mais_falou: '', analise: '', mensagem_sugerida: '' }
   }
+}
+
+/** Encaminhamentos configurados na instância da conversa (recepcao.encaminhamentos). */
+async function encaminhamentosDaInstancia(instanceId: string | null) {
+  if (!instanceId) return []
+  const { data } = await supabaseAdmin.from('whatsapp_instances').select('metadata').eq('id', instanceId).maybeSingle()
+  return lerRecepcao(data?.metadata).encaminhamentos
 }

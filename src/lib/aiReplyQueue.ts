@@ -20,6 +20,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { generateAgentTurn } from '@/lib/aiReplyService'
 import { registrarQueroSerMembro } from '@/lib/agenteQueroSerMembro'
 import { publicBaseUrl } from '@/lib/publicUrl'
+import { encaminharParaLideres } from '@/lib/encaminharLider'
 import { markMessageAsRead, persistOutboundMessage, sendTextViaZApi } from '@/lib/whatsappSendService'
 import {
   MAX_WAIT_MS,
@@ -322,7 +323,22 @@ async function replyToConversation(row: QueueRow): Promise<void> {
         .eq('id', row.conversation_id)
     }
 
-    // 5. agente de recepção pediu o registro "Quero ser Membro" — DEPOIS da
+    // 5. encaminha o contato para o(s) líder(es) da área de interesse
+    if (turn.encaminhar) {
+      try {
+        const r = await encaminharParaLideres({
+          instanceId: instance.id,
+          conversationId: row.conversation_id,
+          telefoneContato: row.phone,
+          dados: turn.encaminhar,
+        })
+        if (r.semLider.length) console.warn('[aiReplyQueue] área sem líder configurado', r.semLider)
+      } catch (err) {
+        console.error('[aiReplyQueue] encaminhamento falhou', err)
+      }
+    }
+
+    // 6. agente de recepção pediu o registro "Quero ser Membro" — DEPOIS da
     //    resposta, para a confirmação (enviada pela rota) chegar em seguida
     if (turn.queroSerMembro) {
       await registrarPedidoDaConversa(instance, row, turn)

@@ -10,6 +10,24 @@
  * existente) — nenhuma coluna nova, então não há baseline a regerar.
  */
 
+/**
+ * Líder que recebe o contato quando a pessoa se interessa por uma área
+ * (EBD, GF, Jovens...). sexo: '' = todos; 'M'/'F' = só quando quem conversa
+ * é homem/mulher (ex.: acolhimento).
+ */
+export interface Encaminhamento {
+  interesse: string
+  nome: string
+  telefone: string
+  sexo: '' | 'M' | 'F'
+}
+
+/** Quem recebe aviso de cada novo "Quero ser Membro" (site ou agente). */
+export interface AvisoContato {
+  nome: string
+  telefone: string
+}
+
 export interface RecepcaoConfig {
   ativo: boolean
   agentId: string | null
@@ -24,6 +42,10 @@ export interface RecepcaoConfig {
    * cobre quem apaga o texto do QR e manda só "oi".
    */
   todasNovas: boolean
+  /** encaminhamento da conversa para o líder da área de interesse */
+  encaminhamentos: Encaminhamento[]
+  /** avisos de novo Quero ser Membro */
+  avisoQueroSerMembro: AvisoContato[]
 }
 
 export const RECEPCAO_PADRAO: RecepcaoConfig = {
@@ -34,6 +56,29 @@ export const RECEPCAO_PADRAO: RecepcaoConfig = {
   telefone: '',
   // desligado: o agente só assume conversas que vieram do QR (pedido do dono)
   todasNovas: false,
+  encaminhamentos: [],
+  avisoQueroSerMembro: [],
+}
+
+const soDigitos = (v: unknown) => String(v ?? '').replace(/\D/g, '')
+
+function lerEncaminhamentos(v: unknown): Encaminhamento[] {
+  if (!Array.isArray(v)) return []
+  return v
+    .map((e: Record<string, unknown>) => ({
+      interesse: String(e?.interesse ?? '').trim(),
+      nome: String(e?.nome ?? '').trim(),
+      telefone: soDigitos(e?.telefone),
+      sexo: (e?.sexo === 'M' || e?.sexo === 'F' ? e.sexo : '') as Encaminhamento['sexo'],
+    }))
+    .filter(e => e.interesse && e.telefone.length >= 10)
+}
+
+function lerAvisos(v: unknown): AvisoContato[] {
+  if (!Array.isArray(v)) return []
+  return v
+    .map((e: Record<string, unknown>) => ({ nome: String(e?.nome ?? '').trim(), telefone: soDigitos(e?.telefone) }))
+    .filter(e => e.telefone.length >= 10)
 }
 
 export function normalizarTexto(s: string): string {
@@ -63,7 +108,14 @@ export function lerRecepcao(metadata: unknown): RecepcaoConfig {
     telefone: typeof raw.telefone === 'string' ? raw.telefone.replace(/\D/g, '') : '',
     // config salva antes desta opção existir: mantém o comportamento antigo
     todasNovas: raw.todasNovas === true,
+    encaminhamentos: lerEncaminhamentos(raw.encaminhamentos),
+    avisoQueroSerMembro: lerAvisos(raw.avisoQueroSerMembro),
   }
+}
+
+/** Áreas distintas configuradas (na ordem em que aparecem). */
+export function areasComLider(cfg: Pick<RecepcaoConfig, 'encaminhamentos'>): string[] {
+  return [...new Set(cfg.encaminhamentos.map(e => e.interesse))]
 }
 
 /** Palavra-chave preenchida e contida na mensagem — mesma regra no cliente e no servidor. */
@@ -157,11 +209,13 @@ Diga que a igreja tem vários departamentos e apresente um por linha, começando
 - EBD (Escola Bíblica Dominical)
 - Casais
 
-Se "DEPARTAMENTOS DA IGREJA" trouxer algum departamento que não está nesta lista, inclua-o também.
+Inclua também as áreas de "ÁREAS DA IGREJA COM LÍDER RESPONSÁVEL" que não estiverem nesta lista (por exemplo Grupo Familiar, Casa de Paz, Diaconato) e os departamentos de "DEPARTAMENTOS DA IGREJA" que faltarem.
 
 Pergunte se algum deles interessa a ela ou a alguém da família.
 - Se escolher um, explique em uma frase como funciona usando só o que está em "DEPARTAMENTOS DA IGREJA" (e o link da página, se houver) e diga que a equipe dá sequência. Se aquele departamento não estiver lá, diga apenas que a equipe passa os detalhes — não invente horário nem atividade.
 - Informe o site da igreja para quem quiser ver mais.
+- Quando a área tiver líder responsável, diga que esse líder vai entrar em contato com a pessoa (o sistema avisa o líder com o resumo da conversa — veja "ÁREAS DA IGREJA COM LÍDER RESPONSÁVEL").
+- Se a pessoa pedir ajuda pastoral, acolhimento ou outras informações, encaminhe para a área correspondente da mesma forma.
 
 ## 5. Agendar visita
 Pergunte se a pessoa GOSTARIA DE AGENDAR UMA VISITA à igreja para conhecer melhor e conversar pessoalmente com a equipe pastoral.
