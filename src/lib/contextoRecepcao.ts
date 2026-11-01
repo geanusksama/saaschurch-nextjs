@@ -18,6 +18,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { PedidoDoContato } from '@/lib/pedidosDoContato'
 import type { Encaminhamento } from '@/lib/recepcaoWhatsapp'
 import { MARCA_ENCAMINHAR_FIM, MARCA_ENCAMINHAR_INICIO } from '@/lib/encaminharLider'
+import { AREA_PADRAO_ROTULO } from '@/lib/recepcaoWhatsapp'
+import { MARCA_REAGIR_FIM, MARCA_REAGIR_INICIO, REACOES_PERMITIDAS } from '@/lib/reacaoAgente'
 import { MARCA_ESTADO_FIM, MARCA_ESTADO_INICIO, MARCA_FIM, MARCA_INICIO, datasDisponiveis } from '@/lib/agenteQueroSerMembro'
 
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
@@ -43,7 +45,7 @@ export async function montarContextoRecepcao(params: {
   jaEncaminhados: string[]
 }): Promise<string> {
   const areas = [...new Set(params.encaminhamentos.map(e => e.interesse))]
-  const padrao = params.encaminhamentos.find(e => e.padrao)?.interesse ?? null
+  const padrao = params.encaminhamentos.some(e => e.padrao) ? AREA_PADRAO_ROTULO : null
   const { config, cards, sede } = await loadHomePayload(params.campoId)
   const site = publicBaseUrl()
   const departamentos = await carregarDepartamentos(params.campoId, site)
@@ -129,9 +131,13 @@ export async function montarContextoRecepcao(params: {
         'para completar. Mande os links exatamente como estão, sem encurtar.'
       : '',
     '',
+    '=== DEPARTAMENTOS E ÁREAS PARA APRESENTAR (lista pronta — mostre todos, nesta ordem) ===',
+    ...listaParaApresentar(areas).map(a => `- ${a}`),
+    '',
     '=== ÁREAS DA IGREJA COM LÍDER RESPONSÁVEL ===',
     ...(areas.length ? areas.map(a => `- ${a}`) : ['(nenhuma configurada)']),
-    padrao ? `Área padrão: ${padrao}` : '',
+    padrao ? `- ${padrao} (use para: sem interesse definido, conversa aleatória ou pedido de falar com alguém; o sistema escolhe o líder do mesmo sexo da pessoa)` : '',
+    'No bloco, informe "sexo" ("M" ou "F") sempre que souber — é ele que define se o contato vai para um líder homem ou mulher.',
     areas.length
       ? [
           'Quando a pessoa demonstrar interesse numa destas áreas, diga que o líder responsável vai entrar em contato com ela',
@@ -141,7 +147,7 @@ export async function montarContextoRecepcao(params: {
           'somente em um destes momentos:',
           '- na mensagem em que você ENCERRA a conversa (despedida, "Deus abençoe"), com todas as áreas anotadas;',
           '- quando a pessoa pedir para falar com uma pessoa, um pastor, um atendente ou "alguém de verdade": aí mande na hora,' +
-            (padrao ? ` para a área padrão (${padrao}) e as áreas já anotadas, e diga que ${padrao === areas[0] ? 'o responsável' : 'o responsável pela área'} vai falar com ela em breve.` : ' para as áreas anotadas.'),
+            (padrao ? ` para "${padrao}" e as áreas já anotadas, e diga que alguém da equipe vai falar com ela em breve.` : ' para as áreas anotadas.'),
           padrao
             ? `Se a conversa terminar sem interesse em nenhuma área, ou for aleatória (brincadeira, engano, assunto solto), use a área padrão (${padrao}).`
             : 'Se a conversa terminar sem interesse em nenhuma área, não mande resumo.',
@@ -152,6 +158,13 @@ export async function montarContextoRecepcao(params: {
           'Se a pessoa sumir sem se despedir, o sistema manda o resumo sozinho depois de 2 horas — você não precisa se preocupar.',
         ].join('\n')
       : '',
+    '',
+    '=== REAÇÃO À MENSAGEM DA PESSOA ===',
+    `Você pode reagir à última mensagem da pessoa com UM destes emojis: ${REACOES_PERMITIDAS.join(' ')} —`,
+    'só quando fizer sentido de verdade: 🙏 quando a pessoa contar algo triste, pedir oração ou agradecer (mostra que você',
+    'se importa), 👍 a uma confirmação. Nunca coração, risada nem nada que quebre a formalidade.',
+    'Não reaja a toda mensagem: no máximo uma vez a cada 3 ou 4 mensagens. Para reagir, acrescente numa linha',
+    `${MARCA_REAGIR_INICIO}🙏${MARCA_REAGIR_FIM}. A reação aparece na mensagem dela; NUNCA escreva emoji no texto.`,
     '',
     '=== COMO A PESSOA PREFERE FAZER O CADASTRO ===',
     'Antes de pedir os dados do cadastro, pergunte como ela prefere, oferecendo as três opções:',
@@ -209,3 +222,32 @@ async function carregarDepartamentos(campoId: string | null, site: string): Prom
     return []
   }
 }
+
+/** Departamentos que sempre aparecem, tenham ou não líder configurado. */
+const DEPARTAMENTOS_FIXOS = ['Jovens', 'Adolescentes', 'Varões', 'EBD (Escola Bíblica Dominical)', 'Casais']
+
+/** Chave para casar "EBD" com "EBD (Escola Bíblica Dominical)". */
+const chaveArea = (t: string) =>
+  t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split('(')[0].replace(/[^a-z0-9 ]/g, ' ').trim()
+
+/**
+ * A lista que o agente apresenta: os fixos + todas as áreas com líder, sem
+ * repetir. Montada aqui (e não pelo modelo) para nenhuma área ficar de fora.
+ * O nome da área configurada vence o fixo, para o encaminhamento casar.
+ */
+export function listaParaApresentar(areas: string[]): string[] {
+  const out: string[] = []
+  const vistos = new Set<string>()
+  const porChave = new Map(areas.map(a => [chaveArea(a), a]))
+  for (const f of DEPARTAMENTOS_FIXOS) {
+    const k = chaveArea(f)
+    out.push(porChave.get(k) ?? f)
+    vistos.add(k)
+  }
+  for (const a of areas) {
+    const k = chaveArea(a)
+    if (!vistos.has(k)) { out.push(a); vistos.add(k) }
+  }
+  return out
+}
+

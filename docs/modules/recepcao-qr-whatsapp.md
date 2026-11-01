@@ -168,3 +168,22 @@ ficha (completa ou básica) → resumo → registro.
   sem nenhum encaminhamento → resumo gerado pela IA e enviado às áreas
   anotadas (ou à padrão). Uma vez (`metadata.resumo_auto_em`). As duas
   conversas de teste existentes foram marcadas para não disparar.
+
+## Ajustes de conversa (01/11/2026, noite)
+
+- Lista de departamentos montada pelo código (`listaParaApresentar`): os 5
+  fixos + todas as áreas com líder; o agente apresenta exatamente essa lista.
+- Área sem líder → líderes padrão. Padrão = todos os líderes marcados, pelo
+  sexo da pessoa (`lideresPadrao`); rótulo "Atendimento geral".
+- Varões → Francisco Lima (5519992126683). Crimério padrão (M); enquanto não
+  houver líder mulher marcada como padrão, ele recebe também as mulheres.
+- Tamanho: no máximo 2 parágrafos; acima de ~550 caracteres a IA reescreve
+  curto antes de enviar (questionário numerado passa). "Digitando" ~12
+  caracteres/s, 3–15 s.
+- Conversa fluida (sem repetir aberturas, sem se reapresentar). Atendente pelo
+  nome do perfil do WhatsApp; se o sexo só ficar claro depois, "vou te passar
+  para..." e troca o nome.
+- Reação com emoji (`src/lib/reacaoAgente.ts`, Z-API send-reaction): só 🙏 e 👍;
+  o texto nunca leva emoji (removido no código).
+- Trava contra resposta em dobro: o envio confere se a linha da fila ainda é
+  do worker (status e locked_at).

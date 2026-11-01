@@ -21,6 +21,7 @@ import { generateAgentTurn } from '@/lib/aiReplyService'
 import { registrarQueroSerMembro } from '@/lib/agenteQueroSerMembro'
 import { publicBaseUrl } from '@/lib/publicUrl'
 import { encaminharParaLideres } from '@/lib/encaminharLider'
+import { enviarReacao } from '@/lib/reacaoAgente'
 import { markMessageAsRead, persistOutboundMessage, sendTextViaZApi } from '@/lib/whatsappSendService'
 import {
   MAX_WAIT_MS,
@@ -39,12 +40,13 @@ const READING_PAUSE_MS = 2_500
 const PRE_SEND_PAUSE_MS = 1_500
 
 /**
- * "Digitando..." visível do agente: proporcional ao texto, mas curto (2..6 s).
- * É a única janela em que a pessoa pode voltar a escrever e a mensagem sai
- * mesmo assim — a Z-API não cancela um envio com delayTyping.
+ * "Digitando..." visível do agente, no ritmo de quem digita no celular
+ * (~12 caracteres/s), de 3 a 15 s (teto da Z-API): texto maior demora mais,
+ * como uma pessoa. É também a janela em que a pessoa voltar a escrever não
+ * impede o envio — a Z-API não cancela um envio com delayTyping.
  */
 function typingSecondsForAgent(text: string): number {
-  return Math.max(2, Math.min(6, typingSecondsFor(text)))
+  return Math.max(3, Math.min(15, Math.ceil((text?.length ?? 0) / 12)))
 }
 
 // ── Entrada na fila ──────────────────────────────────────────────────────────
@@ -166,10 +168,14 @@ async function esperarSemInterrupcao(conversationId: string, lockedAt: string, m
 async function foiInterrompida(conversationId: string, lockedAt: string): Promise<boolean> {
   const { data } = await supabaseAdmin
     .from(TABLE)
-    .select('due_at')
+    .select('due_at, locked_at, status')
     .eq('conversation_id', conversationId)
     .maybeSingle()
   if (!data) return false
+  // outro worker pegou a conversa (a minha trava venceu): não envio em dobro
+  if (data.status !== 'processing' || (data.locked_at && new Date(data.locked_at).getTime() !== new Date(lockedAt).getTime())) {
+    return true
+  }
   return new Date(data.due_at).getTime() > new Date(lockedAt).getTime()
 }
 
@@ -300,6 +306,11 @@ async function replyToConversation(row: QueueRow): Promise<void> {
   if (!(await esperarSemInterrupcao(row.conversation_id, lockedAt, PRE_SEND_PAUSE_MS))) {
     await devolverParaFila(row.conversation_id, 'pessoa voltou a escrever logo antes do envio')
     return
+  }
+
+  // reação à última mensagem da pessoa (quando o agente quis), antes do texto
+  if (turn.reacao && row.last_message_id && !row.last_message_id.startsWith('synthetic_')) {
+    await enviarReacao(instance, row.phone, row.last_message_id, turn.reacao)
   }
 
   const result = await sendTextViaZApi(instance, row.phone, reply, {

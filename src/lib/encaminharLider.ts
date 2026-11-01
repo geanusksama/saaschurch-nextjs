@@ -14,7 +14,7 @@
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { ensureConversation, persistOutboundMessage, sendTextViaZApi } from '@/lib/whatsappSendService'
-import { lerRecepcao, normalizarTexto, type Encaminhamento } from '@/lib/recepcaoWhatsapp'
+import { AREA_PADRAO_ROTULO, lerRecepcao, lideresPadrao, normalizarTexto, type Encaminhamento } from '@/lib/recepcaoWhatsapp'
 import { pedidosDoContato } from '@/lib/pedidosDoContato'
 
 export const MARCA_ENCAMINHAR_INICIO = '[[ENCAMINHAR]]'
@@ -101,6 +101,7 @@ export async function encaminharParaLideres(params: {
     .single()
   if (!inst) return { enviados: 0, semLider: params.dados.interesses }
   const cfg = lerRecepcao(inst.metadata)
+  const temPadrao = cfg.encaminhamentos.some(e => e.padrao)
 
   const { data: conv } = await supabaseAdmin
     .from('whatsapp_conversations')
@@ -122,12 +123,23 @@ export async function encaminharParaLideres(params: {
   for (const interesse of params.dados.interesses) {
     const chave = normalizarTexto(interesse)
     if (ja[chave]) continue
-    const lideres = lideresDaArea(cfg.encaminhamentos, interesse, params.dados.sexo ?? '')
-    if (!lideres.length) { semLider.push(interesse); continue }
+    const sexo = params.dados.sexo ?? ''
+    const ehPadrao = chave === normalizarTexto(AREA_PADRAO_ROTULO)
+    let lideres = ehPadrao ? lideresPadrao(cfg.encaminhamentos, sexo) : lideresDaArea(cfg.encaminhamentos, interesse, sexo)
+    let rotuloArea = ehPadrao ? 'Atendimento geral (sem área definida ou pedido de falar com alguém)' : (lideres[0]?.interesse ?? interesse)
+    if (!lideres.length) {
+      // área sem líder configurado (ex.: Adolescentes): vai para os líderes
+      // padrão do sexo da pessoa — nunca some sem avisar ninguém
+      semLider.push(interesse)
+      if (!temPadrao) continue
+      lideres = lideresPadrao(cfg.encaminhamentos, sexo)
+      if (!lideres.length) continue
+      rotuloArea = `${interesse} (área sem líder cadastrado — encaminhado ao atendimento padrão)`
+    }
 
     for (const l of lideres) {
       const texto = montarMensagemLider({
-        lider: l.nome, interesse: lideres[0].interesse, nome,
+        lider: l.nome, interesse: rotuloArea, nome,
         telefone: params.telefoneContato, resumo: params.dados.resumo ?? '', links,
       })
       try {

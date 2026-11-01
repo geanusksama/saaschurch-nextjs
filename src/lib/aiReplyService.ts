@@ -16,6 +16,7 @@ import { extrairAcao, extrairEstado, type DadosQueroSerMembro } from '@/lib/agen
 import { pedidosDoContato, temQueroSerMembroAberto } from '@/lib/pedidosDoContato'
 import { extrairEncaminhar, type DadosEncaminhar } from '@/lib/encaminharLider'
 import { lerRecepcao } from '@/lib/recepcaoWhatsapp'
+import { extrairReacao, semEmoji } from '@/lib/reacaoAgente'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -113,6 +114,8 @@ export interface AgentTurn {
   estado: Record<string, unknown> | null
   /** áreas de interesse para avisar os líderes (encaminharLider) */
   encaminhar: DadosEncaminhar | null
+  /** emoji de reação à última mensagem da pessoa (reacaoAgente) */
+  reacao: string | null
   agentCampoId: string | null
   telefone: string
 }
@@ -179,7 +182,9 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
       (ehRecepcao ? '' : 'A igreja tem culto no domingo e na quarta — ') +
       'ao falar de "hoje", "amanhã" ou de um dia da semana, use essa data como referência ' +
       'e não invente outros dias de culto.',
-    conv.contact_name ? `Nome do contato: ${conv.contact_name}.` : '',
+    conv.contact_name
+      ? `Nome do contato: ${conv.contact_name}.`
+      : (ehRecepcao ? 'Nome do contato: (não informado no WhatsApp — pergunte o nome).' : ''),
     'Responda de forma curta, acolhedora e objetiva, como uma mensagem de WhatsApp.',
     CONSOLIDATION_GUIDANCE,
     // Agente de Recepção (QR code) conduz um cadastro pergunta a pergunta: o
@@ -202,13 +207,20 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
   // só o agente de recepção pode registrar; de qualquer outro o bloco é só removido
   const semEstado = extrairEstado(reply)
   const semEncaminhar = extrairEncaminhar(semEstado.texto)
-  const { texto, dados } = extrairAcao(semEncaminhar.texto)
+  const semReacao = extrairReacao(semEncaminhar.texto)
+  const extraido = extrairAcao(semReacao.texto)
+  const dados = extraido.dados
+  // recepção: mensagem longa demais (3+ parágrafos) é reescrita curta antes de
+  // sair. O questionário numerado do cadastro é longo de propósito e passa.
+  // e nunca leva emoji no texto (só na reação)
+  const texto = ehRecepcao ? semEmoji(await encurtarSeLongo(agent.campoId, extraido.texto)) : extraido.texto
   if (!texto && !dados) return null
   return {
     texto: texto || 'Vou registrar o seu pedido agora. A confirmação chega em seguida.',
     queroSerMembro: ehRecepcao && !pedidoJaRegistrado ? dados : null,
     estado: ehRecepcao ? semEstado.estado : null,
     encaminhar: ehRecepcao ? semEncaminhar.dados : null,
+    reacao: ehRecepcao ? semReacao.reacao : null,
     agentCampoId: agent.campoId,
     telefone: conv.phone,
   }
@@ -277,3 +289,26 @@ async function encaminhamentosDaInstancia(instanceId: string | null) {
   const { data } = await supabaseAdmin.from('whatsapp_instances').select('metadata').eq('id', instanceId).maybeSingle()
   return lerRecepcao(data?.metadata).encaminhamentos
 }
+
+const LIMITE_RECEPCAO = 550
+
+/** Reescreve em no máximo 2 parágrafos curtos quando passa do limite. Nunca lança. */
+async function encurtarSeLongo(campoId: string | null, texto: string): Promise<string> {
+  const paragrafos = texto.split(/\n\s*\n/).filter(p => p.trim()).length
+  const questionario = (texto.match(/^\s*\d+[.)]\s/gm) ?? []).length >= 3
+  if (questionario || (texto.length <= LIMITE_RECEPCAO && paragrafos <= 2)) return texto
+  try {
+    const curto = (await generateAiText(
+      campoId,
+      'Reescreva a mensagem de WhatsApp abaixo, de um pastor da igreja para um visitante, em NO MÁXIMO 2 parágrafos ' +
+        `curtos e até ${LIMITE_RECEPCAO} caracteres. Mantenha o calor humano, o nome da pessoa, a pergunta final (se houver) ` +
+        'e todos os links exatamente como estão. Sem emoji, sem markdown, sem acrescentar nada. Responda só a mensagem.',
+      [{ role: 'user', content: texto }],
+    )).trim()
+    return curto && curto.length < texto.length ? curto : texto
+  } catch (err) {
+    console.error('[aiReplyService] encurtar falhou', err)
+    return texto
+  }
+}
+

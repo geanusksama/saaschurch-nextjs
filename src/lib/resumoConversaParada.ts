@@ -65,6 +65,7 @@ export async function processarConversasParadas(): Promise<number> {
           .map(x => areas.get(normalizarTexto(String(x))))
           .filter((x): x is string => !!x)
         const interesses = [...new Set([...anotadas, ...(estado.pediuHumano && padrao ? [padrao] : [])])]
+        // sem área anotada: vai para os líderes padrão do sexo da pessoa
         if (!interesses.length && padrao) interesses.push(padrao)
         if (!interesses.length) continue
 
