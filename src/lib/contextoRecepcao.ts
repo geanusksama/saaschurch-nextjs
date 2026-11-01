@@ -18,7 +18,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { PedidoDoContato } from '@/lib/pedidosDoContato'
 import type { Encaminhamento } from '@/lib/recepcaoWhatsapp'
 import { MARCA_ENCAMINHAR_FIM, MARCA_ENCAMINHAR_INICIO } from '@/lib/encaminharLider'
-import { AREA_PADRAO_ROTULO } from '@/lib/recepcaoWhatsapp'
+import { AREA_PADRAO_ROTULO, normalizarTexto } from '@/lib/recepcaoWhatsapp'
 import { MARCA_REAGIR_FIM, MARCA_REAGIR_INICIO, REACOES_PERMITIDAS } from '@/lib/reacaoAgente'
 import { MARCA_ESTADO_FIM, MARCA_ESTADO_INICIO, MARCA_FIM, MARCA_INICIO, datasDisponiveis } from '@/lib/agenteQueroSerMembro'
 
@@ -132,10 +132,13 @@ export async function montarContextoRecepcao(params: {
       : '',
     '',
     '=== DEPARTAMENTOS E ÁREAS PARA APRESENTAR (lista pronta — mostre todos, nesta ordem) ===',
-    ...listaParaApresentar(areas).map(a => `- ${a}`),
+    // "Atendimento geral" é o destino padrão, não um departamento: não aparece para a pessoa
+    ...listaParaApresentar(areas.filter(a => normalizarTexto(a) !== normalizarTexto(AREA_PADRAO_ROTULO))).map(a => `- ${a}`),
     '',
     '=== ÁREAS DA IGREJA COM LÍDER RESPONSÁVEL ===',
-    ...(areas.length ? areas.map(a => `- ${a}`) : ['(nenhuma configurada)']),
+    ...(areas.length
+      ? areas.filter(a => normalizarTexto(a) !== normalizarTexto(AREA_PADRAO_ROTULO)).map(a => `- ${a}`)
+      : ['(nenhuma configurada)']),
     padrao ? `- ${padrao} (use para: sem interesse definido, conversa aleatória ou pedido de falar com alguém; o sistema escolhe o líder do mesmo sexo da pessoa)` : '',
     'No bloco, informe "sexo" ("M" ou "F") sempre que souber — é ele que define se o contato vai para um líder homem ou mulher.',
     areas.length
