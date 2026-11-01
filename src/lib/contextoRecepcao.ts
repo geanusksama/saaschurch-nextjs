@@ -43,6 +43,7 @@ export async function montarContextoRecepcao(params: {
   jaEncaminhados: string[]
 }): Promise<string> {
   const areas = [...new Set(params.encaminhamentos.map(e => e.interesse))]
+  const padrao = params.encaminhamentos.find(e => e.padrao)?.interesse ?? null
   const { config, cards, sede } = await loadHomePayload(params.campoId)
   const site = publicBaseUrl()
   const departamentos = await carregarDepartamentos(params.campoId, site)
@@ -91,7 +92,7 @@ export async function montarContextoRecepcao(params: {
     'Confie nela: não pergunte de novo o que já está aqui. Se a pessoa corrigir algo, atualize.',
     'Se "atendente" já estiver preenchido, apresente-se e continue SEMPRE com esse mesmo nome.',
     `Ao FINAL de TODA resposta, acrescente em uma linha o bloco ${MARCA_ESTADO_INICIO}{json}${MARCA_ESTADO_FIM} com a memória`,
-    'atualizada: {"etapa":"nome|igreja|pedido|departamentos|visita|cadastro|resumo|registrado|encerrado","atendente":"nome com que você se apresentou","nome":"","sexo":"","modoCadastro":"","igrejaAnterior":"",',
+    'atualizada: {"etapa":"nome|igreja|pedido|departamentos|visita|cadastro|resumo|registrado|encerrado","atendente":"nome com que você se apresentou","nome":"","sexo":"","modoCadastro":"","interesses":[],"pediuHumano":false,"igrejaAnterior":"",',
     '"pedidoEspecial":"","opcaoEscolhida":"","querVisita":null,"dataVisita":"","estadoCivil":"","modoFicha":"basico|completo",',
     '"ficha":{...campos já informados}}. Só o que a pessoa disse; campo desconhecido fica vazio. A pessoa não vê esse bloco.',
     '',
@@ -130,16 +131,25 @@ export async function montarContextoRecepcao(params: {
     '',
     '=== ÁREAS DA IGREJA COM LÍDER RESPONSÁVEL ===',
     ...(areas.length ? areas.map(a => `- ${a}`) : ['(nenhuma configurada)']),
+    padrao ? `Área padrão: ${padrao}` : '',
     areas.length
       ? [
-          'Quando a pessoa demonstrar interesse numa destas áreas (ou pedir ajuda pastoral, acolhimento, Casa de Paz, GF etc.),',
-          'diga que o líder responsável vai entrar em contato com ela e, no FIM da conversa (ou quando o interesse ficar claro),',
-          `acrescente numa linha: ${MARCA_ENCAMINHAR_INICIO}{"interesses":["nome da área EXATAMENTE como na lista"],"sexo":"M|F","resumo":"..."}${MARCA_ENCAMINHAR_FIM}`,
-          'O resumo é para o líder: curto e factual — nome, de onde veio, igreja anterior, interesse, pedido especial (se ela quis',
-          'compartilhar), data da visita e o que ficou combinado. Não invente nada. A pessoa não vê o bloco.',
-          'Use só áreas da lista. Cada área uma vez por conversa' +
-            (params.jaEncaminhados.length ? ` — já encaminhadas aqui: ${params.jaEncaminhados.join(', ')}.` : '.'),
-          'Se nenhuma área servir e a pessoa quiser outras informações, use a área de "outras informações", se existir na lista.',
+          'Quando a pessoa demonstrar interesse numa destas áreas, diga que o líder responsável vai entrar em contato com ela',
+          'e anote a área em "interesses" na MEMÓRIA. NÃO mande o resumo ainda.',
+          'Mande o resumo UMA ÚNICA VEZ, acrescentando numa linha',
+          `${MARCA_ENCAMINHAR_INICIO}{"interesses":["áreas EXATAMENTE como na lista"],"sexo":"M|F","resumo":"..."}${MARCA_ENCAMINHAR_FIM}`,
+          'somente em um destes momentos:',
+          '- na mensagem em que você ENCERRA a conversa (despedida, "Deus abençoe"), com todas as áreas anotadas;',
+          '- quando a pessoa pedir para falar com uma pessoa, um pastor, um atendente ou "alguém de verdade": aí mande na hora,' +
+            (padrao ? ` para a área padrão (${padrao}) e as áreas já anotadas, e diga que ${padrao === areas[0] ? 'o responsável' : 'o responsável pela área'} vai falar com ela em breve.` : ' para as áreas anotadas.'),
+          padrao
+            ? `Se a conversa terminar sem interesse em nenhuma área, ou for aleatória (brincadeira, engano, assunto solto), use a área padrão (${padrao}).`
+            : 'Se a conversa terminar sem interesse em nenhuma área, não mande resumo.',
+          'O resumo é para o líder: curto e factual — nome, de onde veio, igreja anterior, interesses, pedido especial (se ela quis',
+          'compartilhar), data da visita, se pediu atendimento humano e o que ficou combinado. Não invente nada. A pessoa não vê o bloco.',
+          'Use só áreas da lista' +
+            (params.jaEncaminhados.length ? ` — já encaminhadas nesta conversa (não repita): ${params.jaEncaminhados.join(', ')}.` : '.'),
+          'Se a pessoa sumir sem se despedir, o sistema manda o resumo sozinho depois de 2 horas — você não precisa se preocupar.',
         ].join('\n')
       : '',
     '',

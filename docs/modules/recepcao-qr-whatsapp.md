@@ -155,3 +155,16 @@ ficha (completa ou básica) → resumo → registro.
 - 01/11: instância "geral" trocada de 5519992126683 para 5519982277174
   (pareamento por código, `phone-code`), webhooks reapontados, nome do perfil
   "Pastores da Sede", envio e recebimento testados.
+
+## Resumo só no fim + área padrão + conversa parada (01/11/2026)
+
+- O agente anota as áreas de interesse na memória (`interesses`) e manda o
+  `[[ENCAMINHAR]]` uma única vez: na despedida, ou na hora em que a pessoa
+  pede para falar com alguém (vai também para a área padrão).
+- `padrao` por líder (coluna "Padrão" na tela): recebe quando não há
+  interesse definido, a conversa é aleatória ou a pessoa pede atendimento
+  humano. Em Campinas: Ajuda pastoral / Pr. Crimério.
+- `src/lib/resumoConversaParada.ts` no cron: conversa do QR parada há 2–48 h
+  sem nenhum encaminhamento → resumo gerado pela IA e enviado às áreas
+  anotadas (ou à padrão). Uma vez (`metadata.resumo_auto_em`). As duas
+  conversas de teste existentes foram marcadas para não disparar.

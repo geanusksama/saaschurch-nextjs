@@ -20,6 +20,11 @@ export interface Encaminhamento {
   nome: string
   telefone: string
   sexo: '' | 'M' | 'F'
+  /**
+   * Área padrão: recebe quando a conversa termina sem interesse definido, é
+   * aleatória, ou a pessoa pede para falar com alguém (atendimento humano).
+   */
+  padrao: boolean
 }
 
 /** Quem recebe aviso de cada novo "Quero ser Membro" (site ou agente). */
@@ -70,6 +75,7 @@ function lerEncaminhamentos(v: unknown): Encaminhamento[] {
       nome: String(e?.nome ?? '').trim(),
       telefone: soDigitos(e?.telefone),
       sexo: (e?.sexo === 'M' || e?.sexo === 'F' ? e.sexo : '') as Encaminhamento['sexo'],
+      padrao: e?.padrao === true,
     }))
     .filter(e => e.interesse && e.telefone.length >= 10)
 }
@@ -111,6 +117,11 @@ export function lerRecepcao(metadata: unknown): RecepcaoConfig {
     encaminhamentos: lerEncaminhamentos(raw.encaminhamentos),
     avisoQueroSerMembro: lerAvisos(raw.avisoQueroSerMembro),
   }
+}
+
+/** Área marcada como padrão (a primeira, se mais de uma). */
+export function areaPadrao(cfg: Pick<RecepcaoConfig, 'encaminhamentos'>): string | null {
+  return cfg.encaminhamentos.find(e => e.padrao)?.interesse ?? null
 }
 
 /** Áreas distintas configuradas (na ordem em que aparecem). */
@@ -216,6 +227,7 @@ Pergunte se algum deles interessa a ela ou a alguém da família.
 - Informe o site da igreja para quem quiser ver mais.
 - Quando a área tiver líder responsável, diga que esse líder vai entrar em contato com a pessoa (o sistema avisa o líder com o resumo da conversa — veja "ÁREAS DA IGREJA COM LÍDER RESPONSÁVEL").
 - Se a pessoa pedir ajuda pastoral, acolhimento ou outras informações, encaminhe para a área correspondente da mesma forma.
+- O resumo para os líderes vai uma única vez, no fim da conversa. Se a pessoa pedir para falar com uma pessoa (pastor, atendente, "alguém de verdade"), diga com calma que vai passar o contato para a equipe e que um pastor fala com ela em breve.
 
 ## 5. Agendar visita
 Pergunte se a pessoa GOSTARIA DE AGENDAR UMA VISITA à igreja para conhecer melhor e conversar pessoalmente com a equipe pastoral.

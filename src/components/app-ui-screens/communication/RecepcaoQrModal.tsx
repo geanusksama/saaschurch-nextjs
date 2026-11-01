@@ -295,17 +295,22 @@ export default function RecepcaoQrModal({ instance, onClose }: { instance: Whats
                 <h5 className="font-semibold text-slate-900 flex items-center gap-2 text-sm"><Users className="w-4 h-4 text-purple-600" /> Encaminhar para os líderes</h5>
                 <p className="text-xs text-slate-500 mb-2">
                   Quando a pessoa se interessar por uma área, o agente manda ao líder (como Secretária Virtual da Sede) o contato, os links dos pedidos e o resumo da conversa.
-                  Sexo “Homem/Mulher” serve para áreas com líder diferente para cada um.
+                  Sexo “Homem/Mulher” serve para áreas com líder diferente para cada um. “Padrão” recebe quando a conversa termina sem
+                  interesse definido, é aleatória ou a pessoa pede para falar com alguém. O resumo vai uma vez, no fim da conversa (ou após 2 h sem resposta).
                 </p>
                 <div className="space-y-2">
                   {cfg.encaminhamentos.map((e, idx) => (
                     <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                      <input value={e.interesse} placeholder="Área (ex.: EBD)" onChange={ev => setCfg(c => ({ ...c, encaminhamentos: c.encaminhamentos.map((x, i) => i === idx ? { ...x, interesse: ev.target.value } : x) }))} className={`${inputCls} col-span-4`} />
+                      <input value={e.interesse} placeholder="Área (ex.: EBD)" onChange={ev => setCfg(c => ({ ...c, encaminhamentos: c.encaminhamentos.map((x, i) => i === idx ? { ...x, interesse: ev.target.value } : x) }))} className={`${inputCls} col-span-3`} />
                       <input value={e.nome} placeholder="Líder" onChange={ev => setCfg(c => ({ ...c, encaminhamentos: c.encaminhamentos.map((x, i) => i === idx ? { ...x, nome: ev.target.value } : x) }))} className={`${inputCls} col-span-3`} />
                       <input value={e.telefone} placeholder="55DDDnúmero" onChange={ev => setCfg(c => ({ ...c, encaminhamentos: c.encaminhamentos.map((x, i) => i === idx ? { ...x, telefone: ev.target.value } : x) }))} className={`${inputCls} col-span-3 font-mono`} />
                       <select value={e.sexo} onChange={ev => setCfg(c => ({ ...c, encaminhamentos: c.encaminhamentos.map((x, i) => i === idx ? { ...x, sexo: ev.target.value as '' | 'M' | 'F' } : x) }))} className={`${inputCls} col-span-1 px-1`}>
                         <option value="">Todos</option><option value="M">Homem</option><option value="F">Mulher</option>
                       </select>
+                      <label className="col-span-1 flex flex-col items-center text-[10px] text-slate-500 cursor-pointer" title="Recebe quando não há interesse definido, a conversa é aleatória ou a pessoa pede para falar com alguém">
+                        <input type="checkbox" checked={e.padrao} onChange={ev => setCfg(c => ({ ...c, encaminhamentos: c.encaminhamentos.map((x, i) => i === idx ? { ...x, padrao: ev.target.checked } : x) }))} className="w-4 h-4 accent-purple-600" />
+                        Padrão
+                      </label>
                       <Permissao chave="tela_comunicacao.whats_app_instances.qr_recepcao" rotulo="Salvar QR da recepção — Whats App Instances" herda="tela_comunicacao.view">
                         <button type="button" title="Remover" onClick={() => setCfg(c => ({ ...c, encaminhamentos: c.encaminhamentos.filter((_, i) => i !== idx) }))} className="col-span-1 p-2 text-red-500 hover:bg-red-50 rounded-lg justify-self-center"><Trash2 className="w-4 h-4" /></button>
                       </Permissao>
@@ -313,7 +318,7 @@ export default function RecepcaoQrModal({ instance, onClose }: { instance: Whats
                   ))}
                 </div>
                 <Permissao chave="tela_comunicacao.whats_app_instances.qr_recepcao" rotulo="Salvar QR da recepção — Whats App Instances" herda="tela_comunicacao.view">
-                  <button type="button" onClick={() => setCfg(c => ({ ...c, encaminhamentos: [...c.encaminhamentos, { interesse: '', nome: '', telefone: '', sexo: '' }] }))} className="mt-2 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg hover:bg-slate-100 flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Adicionar líder</button>
+                  <button type="button" onClick={() => setCfg(c => ({ ...c, encaminhamentos: [...c.encaminhamentos, { interesse: '', nome: '', telefone: '', sexo: '', padrao: false }] }))} className="mt-2 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg hover:bg-slate-100 flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Adicionar líder</button>
                 </Permissao>
 
                 <h5 className="font-semibold text-slate-900 text-sm mt-4">Avisar cada novo “Quero ser Membro” (site ou agente)</h5>
