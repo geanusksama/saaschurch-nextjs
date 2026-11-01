@@ -217,9 +217,11 @@ export function parseInbound(payload: ZApiWebhookPayload): ParsedInbound {
 
   // ── resposta de lista ──
   if (p.listResponseMessage?.message || p.listResponseMessage?.title) {
+    // title = opção escolhida; message = descrição dela (developer.z-api.io,
+    // exemplos do webhook on-message-received)
     const escolha = first<string>(p.listResponseMessage.title, p.listResponseMessage.message)!
     return base('list_reply', {
-      content: p.listResponseMessage.message ?? escolha,
+      content: escolha,
       preview: `📋 ${escolha}`,
       extra: {
         title: p.listResponseMessage.title ?? null,

@@ -17,6 +17,7 @@ import { pedidosDoContato, temQueroSerMembroAberto } from '@/lib/pedidosDoContat
 import { extrairEncaminhar, type DadosEncaminhar } from '@/lib/encaminharLider'
 import { lerRecepcao } from '@/lib/recepcaoWhatsapp'
 import { extrairReacao, semEmoji } from '@/lib/reacaoAgente'
+import { extrairOpcoes, type OpcoesMensagem } from '@/lib/opcoesAgente'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -120,6 +121,8 @@ export interface AgentTurn {
   encaminhar: DadosEncaminhar | null
   /** emoji de reação à última mensagem da pessoa (reacaoAgente) */
   reacao: string | null
+  /** opções clicáveis (botões/lista) da pergunta — opcoesAgente */
+  opcoes: OpcoesMensagem | null
   agentCampoId: string | null
   telefone: string
 }
@@ -215,7 +218,8 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
   const semEstado = extrairEstado(reply)
   const semEncaminhar = extrairEncaminhar(semEstado.texto)
   const semReacao = extrairReacao(semEncaminhar.texto)
-  const extraido = extrairAcao(semReacao.texto)
+  const semOpcoes = extrairOpcoes(semReacao.texto)
+  const extraido = extrairAcao(semOpcoes.texto)
   const dados = extraido.dados
   // recepção: mensagem longa demais (3+ parágrafos) é reescrita curta antes de
   // sair. O questionário numerado do cadastro é longo de propósito e passa.
@@ -228,6 +232,7 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
     estado: ehRecepcao ? semEstado.estado : null,
     encaminhar: ehRecepcao ? semEncaminhar.dados : null,
     reacao: ehRecepcao ? semReacao.reacao : null,
+    opcoes: ehRecepcao ? semOpcoes.opcoes : null,
     agentCampoId: agent.campoId,
     telefone: conv.phone,
   }

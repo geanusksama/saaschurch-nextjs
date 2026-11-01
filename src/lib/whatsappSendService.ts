@@ -94,7 +94,7 @@ export async function getAccessibleInstanceIds(
 }
 
 // ── Respeita rate limit por instância (5 s) ───────────────────────────────────
-async function enforceRateLimit(instanceId: string): Promise<void> {
+export async function enforceRateLimit(instanceId: string): Promise<void> {
   const { data } = await supabaseAdmin
     .from('whatsapp_instance_rate_limit')
     .select('last_sent_at')

@@ -20,6 +20,7 @@ import type { Encaminhamento } from '@/lib/recepcaoWhatsapp'
 import { MARCA_ENCAMINHAR_FIM, MARCA_ENCAMINHAR_INICIO } from '@/lib/encaminharLider'
 import { AREA_PADRAO_ROTULO, normalizarTexto } from '@/lib/recepcaoWhatsapp'
 import { MARCA_REAGIR_FIM, MARCA_REAGIR_INICIO, REACOES_PERMITIDAS } from '@/lib/reacaoAgente'
+import { MARCA_OPCOES_FIM, MARCA_OPCOES_INICIO } from '@/lib/opcoesAgente'
 import { MARCA_ESTADO_FIM, MARCA_ESTADO_INICIO, MARCA_FIM, MARCA_INICIO, datasDisponiveis } from '@/lib/agenteQueroSerMembro'
 
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
@@ -111,7 +112,7 @@ export async function montarContextoRecepcao(params: {
     '=== DEPARTAMENTOS DA IGREJA (detalhes dos que têm página publicada no site) ===',
     ...(departamentos.length ? departamentos : ['(nenhuma página publicada)']),
     'Os departamentos que não aparecem aqui existem, mas sem detalhes: diga que a equipe passa as informações.',
-    'Ao apresentar opções ou departamentos, mande um por linha, começando com hífen (aqui pode listar). Sem emoji.',
+    'Ao apresentar opções ou departamentos, use o bloco de OPÇÕES CLICÁVEIS (abaixo) em vez de listar no texto. Sem emoji.',
     '',
     '=== DATAS DISPONÍVEIS PARA AGENDAR A VISITA/ENTREVISTA ===',
     'Qualquer data de hoje em diante serve (ainda não há agenda fechada). Sugestões dos próximos dias:',
@@ -165,6 +166,22 @@ export async function montarContextoRecepcao(params: {
           'Se a pessoa sumir sem se despedir, o sistema manda o resumo sozinho depois de 2 horas — você não precisa se preocupar.',
         ].join('\n')
       : '',
+    '',
+    '=== OPÇÕES CLICÁVEIS (botões e lista do WhatsApp) ===',
+    'Sempre que a pergunta tiver respostas fechadas, a pessoa responde tocando, não digitando. Use para: sim/não (ex.: se já',
+    'participou de igreja, se quer deixar pedido especial, se quer agendar visita), os departamentos, as datas da visita, a',
+    'forma de fazer o cadastro (todas de uma vez / uma de cada vez / pelo site), estado civil, ficha completa ou básica.',
+    `Para isso, acrescente numa linha ${MARCA_OPCOES_INICIO}{"opcoes":["Sim","Não"],"botao":"Ver opções"}${MARCA_OPCOES_FIM}.`,
+    '- "opcoes": de 2 a 10 itens, textos curtos (até 20 letras), sem emoji. Para datas, use "Sáb 08/11", "Dom 09/11".',
+    '- Até 3 opções viram botões; mais que isso vira uma lista que abre pelo "botao" (até 20 letras, ex.: "Ver departamentos").',
+    '- NÃO repita as opções no texto: o texto é só a pergunta (as opções aparecem embaixo dela).',
+    '- Um bloco por mensagem, só para a pergunta daquela mensagem. Pergunta aberta (nome, CPF, endereço) não leva bloco.',
+    '- A pessoa pode digitar outra coisa em vez de tocar: aceite normalmente.',
+    '- Isto vale acima de qualquer instrução de listar opções no texto com hífen.',
+    '',
+    '=== FORMATO DO TEXTO ===',
+    'Mensagens curtas, em parágrafos de 1 ou 2 frases separados por uma linha em branco. A pergunta fica sozinha no último',
+    'parágrafo. Sem markdown, sem títulos, sem asteriscos. Datas no formato "sábado, 08/11".',
     '',
     '=== REAÇÃO À MENSAGEM DA PESSOA ===',
     `Você pode reagir à última mensagem da pessoa com UM destes emojis: ${REACOES_PERMITIDAS.join(' ')} —`,

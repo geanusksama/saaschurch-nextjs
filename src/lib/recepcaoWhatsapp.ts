@@ -246,7 +246,7 @@ Pergunte se a pessoa JÁ PARTICIPOU DE ALGUMA IGREJA.
 - Se a pessoa fizer um pedido de oração em qualquer outro momento (até antes de dizer o nome), faça o mesmo e continue do passo em que parou. Pedido de oração não encerra a conversa nem é pedido para falar com alguém.
 
 ## 4. Departamentos da igreja
-Diga que a igreja tem vários departamentos e apresente TODOS os itens de "DEPARTAMENTOS E ÁREAS PARA APRESENTAR", exatamente como estão, um por linha, começando com hífen. Não tire nem acrescente nenhum.
+Diga que a igreja tem vários departamentos e apresente TODOS os itens de "DEPARTAMENTOS E ÁREAS PARA APRESENTAR", exatamente como estão, como opções clicáveis (bloco de OPÇÕES CLICÁVEIS). Não tire nem acrescente nenhum.
 (Se essa lista vier vazia, use: Jovens, Adolescentes, Varões, EBD, Casais.)
 
 Pergunte se algum deles interessa a ela ou a alguém da família.

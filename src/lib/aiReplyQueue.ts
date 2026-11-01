@@ -22,6 +22,7 @@ import { registrarQueroSerMembro } from '@/lib/agenteQueroSerMembro'
 import { publicBaseUrl } from '@/lib/publicUrl'
 import { encaminharParaLideres } from '@/lib/encaminharLider'
 import { enviarReacao } from '@/lib/reacaoAgente'
+import { enviarComOpcoes, textoComOpcoes } from '@/lib/opcoesAgente'
 import { markMessageAsRead, persistOutboundMessage, sendTextViaZApi } from '@/lib/whatsappSendService'
 import {
   MAX_WAIT_MS,
@@ -313,12 +314,19 @@ async function replyToConversation(row: QueueRow): Promise<void> {
     await enviarReacao(instance, row.phone, row.last_message_id, turn.reacao)
   }
 
-  const result = await sendTextViaZApi(instance, row.phone, reply, {
-    delayTyping: typingSecondsForAgent(reply),
-  })
+  // pergunta com respostas fechadas: botões (até 3) ou lista; senão, texto
+  const result = turn.opcoes
+    ? await enviarComOpcoes(instance, row.phone, reply, turn.opcoes, typingSecondsForAgent(reply))
+    : await sendTextViaZApi(instance, row.phone, reply, {
+        delayTyping: typingSecondsForAgent(reply),
+      })
 
   if (result.status === 'sent') {
-    await persistOutboundMessage(row.conversation_id, reply, result.messageId || undefined)
+    await persistOutboundMessage(
+      row.conversation_id,
+      turn.opcoes ? textoComOpcoes(reply, turn.opcoes) : reply,
+      result.messageId || undefined,
+    )
     await supabaseAdmin
       .from('whatsapp_conversations')
       .update({ unread_count: 0 })
