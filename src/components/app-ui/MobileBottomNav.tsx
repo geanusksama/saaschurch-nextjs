@@ -1,10 +1,11 @@
 import { useState, type ComponentType } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
+import { toast } from 'sonner';
 import { Permissao } from '../../lib/permissoes/Permissao';
 import { useFavoritePaths, toggleFavoritePath } from '../../lib/favorites';
 import {
-  BookOpen, CalendarPlus, ChevronLeft, ChevronRight, ClipboardCheck, Crown, Droplet, LayoutGrid,
+  BookOpen, CalendarPlus, ChevronLeft, ChevronRight, ClipboardCheck, Crown, Droplet, LayoutGrid, Lock,
   Pin, Plus, ReceiptText, Search, TrendingUp, UserCheck, UserPlus, Users, X,
 } from 'lucide-react';
 
@@ -216,6 +217,25 @@ export function MobileBottomNav({
   const lancamentoAtivo = !aberto && isActivePath(location.pathname, { path: lancamentoPath });
   const gestaoCultoAtivo = !aberto && isActivePath(location.pathname, { path: gestaoCultoPath });
 
+  // Aba sem permissão (pedido do dono, 02/11/2026): continua à vista, apagada
+  // e com cadeado; ao tocar mostra o aviso de bloqueio e NÃO abre a tela. A
+  // regra de acesso é a mesma de sempre (lista `sections` já filtrada por
+  // permissão); aqui só muda o que a pessoa vê.
+  const abaBloqueada = (rotulo: string, Icon: IconCmp) => (
+    <button
+      type="button"
+      onClick={() => { fechar(); toast.error(`Acesso bloqueado: você não tem permissão para ${rotulo}.`, { description: 'Peça a liberação ao administrador.' }); }}
+      aria-label={`${rotulo} (sem permissão)`}
+      className={`${aba} text-[var(--sl-text-4)] opacity-60`}
+    >
+      <span className={`${pilula(false)}`}>
+        <Icon className="h-5 w-5" strokeWidth={1.8} />
+        <Lock className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--sl-solid)] p-[1px]" strokeWidth={2.4} />
+      </span>
+      <span className="whitespace-nowrap">{rotulo}</span>
+    </button>
+  );
+
   /** Linha de tela: ícone sólido colorido, nome, módulo (na busca) e pin de favorito. */
   const linhaDeTela = (item: NavItem & { section?: string }, corSolida: string) => {
     const Icon = item.icon;
@@ -388,7 +408,7 @@ export function MobileBottomNav({
             <span className={pilula(membrosAtivo)}><Users className="h-5 w-5" strokeWidth={1.8} /></span>
             Membros
           </Link>
-        ) : <span className="flex-1" />}
+        ) : abaBloqueada('Membros', Users)}
 
         {grupos.length > 0 ? (
           <Permissao chave="tela_moldura.app_ui.criar_rapido_celular" rotulo="Criar rápido (menu do celular) — App UI" herda="tela_moldura.view">
@@ -415,14 +435,14 @@ export function MobileBottomNav({
             <span className={pilula(lancamentoAtivo)}><TrendingUp className="h-5 w-5" strokeWidth={1.8} /></span>
             Financeiro
           </Link>
-        ) : <span className="flex-1" />}
+        ) : abaBloqueada('Financeiro', TrendingUp)}
 
         {temGestaoCulto ? (
           <Link to={gestaoCultoPath} onClick={fechar} className={`${aba} ${cor(gestaoCultoAtivo)}`}>
             <span className={pilula(gestaoCultoAtivo)}><ClipboardCheck className="h-5 w-5" strokeWidth={1.8} /></span>
             <span className="whitespace-nowrap">Gestão Culto</span>
           </Link>
-        ) : <span className="flex-1" />}
+        ) : abaBloqueada('Gestão Culto', ClipboardCheck)}
 
       </nav>
 
