@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Edit, Info, Pencil, Plus, Search, Star, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Camera, Check, CheckCircle2, Edit, FileText, Info, Pencil, Plus, Search, Star, Trash2, UserPlus, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { normalizarSituacaoMembro } from '@/lib/situacaoMembro';
 import { Link, useParams } from "react-router";
 import { MemberEditDrawer } from "./MemberEditDrawer";
@@ -169,6 +169,8 @@ export function MemberProfile() {
   const [histSearch, setHistSearch] = useState("");
 
   const [abaPrincipal, setAbaPrincipal] = useState<AbaPrincipal>("perfil");
+  // Só visual: "hoje" fixo na abertura da tela, para contar os dias como membro.
+  const [agora] = useState(() => Date.now());
   const [activeTab, setActiveTab] = useState<Tab>("historico");
   const [showOccModal, setShowOccModal] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
@@ -410,7 +412,6 @@ export function MemberProfile() {
   const canManageHistory = storedUser.profileType === "master" || storedUser.profileType === "admin" || storedUser.profileType === "campo";
 
   const maxDay = Math.max(...attendanceByDay, 1);
-  const maxPeriod = Math.max(...Object.values(attendanceByPeriod), 1);
   const memberSince = member?.membershipDate || member?.baptismDate;
 
   const filteredHistory = history.filter((h) => {
@@ -435,179 +436,46 @@ export function MemberProfile() {
     { key: "igrejas", label: "Outras Igrejas" },
   ];
 
+  // Só apresentação: cartão branco e cartão escuro do guia Silas.
+  const cartao = "rounded-[22px] border border-[#e8ecf1] bg-white dark:border-slate-700 dark:bg-slate-800";
+  const totalPresencasDia = attendanceByDay.reduce((s, n) => s + n, 0);
+  const periodoMaior = attendanceByPeriod.manha === attendanceByPeriod.noite ? null : attendanceByPeriod.manha > attendanceByPeriod.noite ? "manha" : "noite";
+  // Métricas só de exibição, contadas a partir dos mesmos campos do bloco
+  // Informações (nada novo é buscado nem gravado).
+  const preenchido = (v: string | null | undefined) => !!v && v !== "—";
+  const gruposCadastro = [
+    { rotulo: "Vínculo", campos: [regionalCode, campoName, churchName, member?.membershipDate] },
+    { rotulo: "Contato", campos: [member?.mobile || member?.phone, member?.email] },
+    { rotulo: "Dados pessoais", campos: [genderLabel, maritalLabel, member?.cpf, member?.spouseName] },
+    { rotulo: "Vida cristã", campos: [member?.baptismDate, member?.ministryMemberships?.length ? "sim" : null] },
+  ].map((g) => ({ rotulo: g.rotulo, feitos: g.campos.filter(preenchido).length, total: g.campos.length }));
+  const camposFeitos = gruposCadastro.reduce((s, g) => s + g.feitos, 0);
+  const camposTotal = gruposCadastro.reduce((s, g) => s + g.total, 0);
+  const diasComoMembro = memberSince && !Number.isNaN(new Date(memberSince).getTime())
+    ? Math.max(0, Math.floor((agora - new Date(memberSince).getTime()) / 86400000))
+    : null;
+  const tituloRol = [titleName !== "—" ? titleName : null, member?.rol != null ? `ROL ${member.rol}` : null].filter(Boolean).join(" · ");
+
   return (
-    <div className="p-6 w-full space-y-4">
-      {/* Back */}
-      <div>
+    <div className="w-full space-y-4 p-4 sm:p-6">
+      {/* Voltar + troca Perfil / Históricos (mesmo estado de antes) */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/app-ui/members"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-slate-500 transition-colors hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
           Voltar para membros
         </Link>
-      </div>
-
-      {/* ── Hero card ──────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm">
-        {/* decorative blob */}
-        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-slate-100/60 blur-3xl" />
-
-        <div className="flex flex-col lg:flex-row">
-          {/* Photo column */}
-          <div className="relative flex-shrink-0 flex items-end justify-center lg:justify-start lg:items-stretch px-6 pt-6 pb-4 lg:pb-6 lg:w-56">
-            <div className="relative group">
-              <div className="h-36 w-36 lg:h-44 lg:w-44 rounded-2xl border-4 border-slate-200 shadow-lg overflow-hidden bg-slate-100 flex items-center justify-center text-slate-400 text-4xl font-bold">
-                {member?.photoUrl ? (
-                  <img src={member.photoUrl} alt={member?.fullName ?? ""} className="h-full w-full object-cover" />
-                ) : (
-                  <span>{ini}</span>
-                )}
-              </div>
-              <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-              <button
-                onClick={() => photoInputRef.current?.click()}
-                disabled={uploadingPhoto}
-                className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Alterar foto"
-              >
-                <Camera className="w-6 h-6" />
-              </button>
-              {/* status dot */}
-              <span className={`absolute bottom-2 right-2 h-4 w-4 rounded-full border-2 border-white ${
-                normalizarSituacaoMembro(member?.membershipStatus) === "ATIVO"
-                  ? "bg-emerald-400" : "bg-slate-400"
-              }`} />
-            </div>
-          </div>
-
-          {/* Info column */}
-          <div className="flex-1 px-6 pb-6 pt-2 lg:pt-6 flex flex-col justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 leading-tight">{member?.fullName || "—"}</h1>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    {member?.ecclesiasticalTitleRef?.name || member?.ecclesiasticalTitle ? (
-                      <span className="text-sm text-indigo-600 font-medium">
-                        {member.ecclesiasticalTitleRef?.name || member.ecclesiasticalTitle}
-                      </span>
-                    ) : null}
-                    {member?.rol != null && (
-                      <span className="text-xs text-slate-400 font-mono">ROL {member.rol}</span>
-                    )}
-                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${sCls}`}>{sLabel}</span>
-                  </div>
-                  {activeFunctions.length > 0 && (
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      {activeFunctions.map((f) => (
-                        <span
-                          key={f.id}
-                          title={f.isCampoWide ? 'Função com alcance de campo' : 'Função na igreja do membro'}
-                          className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        >
-                          {f.name}{f.isCampoWide ? ' · Campo' : ''}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {memberTags.length > 0 && (
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      {memberTags.map((t) => (
-                        <span
-                          key={t.id}
-                          className="text-xs font-semibold px-2 py-0.5 rounded-full text-white"
-                          style={{ backgroundColor: t.color || '#8b5cf6' }}
-                        >
-                          {t.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm transition-colors">
-                    <Star className="w-4 h-4" />
-                    Favoritar
-                  </button>
-                  <Permissao chave="members.member_profile.editar" rotulo="Editar — Member Profile" herda="members.view">
-                    <button
-                      onClick={() => setShowEditDrawer(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                      Editar
-                    </button>
-                  </Permissao>
-                  {canManageHistory && (
-                    <Permissao chave="members.member_profile.nova_ocorrencia" rotulo="Nova Ocorrência — Member Profile" herda="members.view">
-                      <button
-                        onClick={() => setShowOccModal(true)}
-                        // `bg-green-600` é só a rede de segurança: o tema o repinta com a
-                        // cor da igreja, e `.btn-acao-verde` (em globals.css) vence os dois
-                        // e deixa verde. Sem ela o botão continua visível, só não verde —
-                        // em vez de virar texto branco sobre fundo transparente.
-                        className="btn-acao-verde inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium transition-colors"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Nova Ocorrência
-                      </button>
-                    </Permissao>
-                  )}
-                </div>
-              </div>
-
-              {/* Quick info chips */}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {member?.church?.name && (
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
-                    <Info className="w-3 h-3 flex-shrink-0" />
-                    {member.church.name}
-                  </span>
-                )}
-                {member?.church?.regional?.campo?.name && (
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
-                    Campo: {member.church.regional.campo.name}
-                  </span>
-                )}
-                {member?.addressCity && (
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
-                    {member.addressCity}{member.addressState ? `, ${member.addressState}` : ""}
-                  </span>
-                )}
-                {memberSince && (
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
-                    Desde {fmtDate(memberSince)}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Bottom stats row inside hero */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-200">
-              <HeroStat label="Ocorrências" value={String(history.length)} />
-              <HeroStat label="Último serviço" value={lastService?.serviceName || lastService?.serviceGroup || lastService?.action || "—"} />
-              <HeroStat label="Última atividade" value={lastService?.createdAt ? fmtDate(lastService.createdAt) : "—"} />
-              <HeroStat label="Ministérios" value={String(member?.ministryMemberships?.length ?? 0)} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Abas principais ─────────────────────────────────────────────
-          Antes o grupo de histórico/títulos/funções ficava embaixo dos painéis
-          e só aparecia depois de rolar a tela — dava para não perceber que
-          existia. Agora os dois grupos são irmãos e trocam no mesmo lugar. */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="flex border-b border-slate-200">
+        <div className="flex gap-1 rounded-full border border-[#e8ecf1] bg-white p-1 dark:border-slate-700 dark:bg-slate-800">
           {ABAS_PRINCIPAIS.map((aba) => (
             <button
               key={aba.key}
               onClick={() => setAbaPrincipal(aba.key)}
-              className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+              className={`rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors ${
                 abaPrincipal === aba.key
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
               {aba.label}
@@ -618,98 +486,339 @@ export function MemberProfile() {
 
       {/* Aba "Perfil": dados cadastrais e presença. */}
       {abaPrincipal === "perfil" && (
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Details card */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Informações</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-            <InfoCell label="Regional" value={regionalCode} />
-            <InfoCell label="Campo" value={campoName} />
-            <InfoCell label="Igreja" value={churchName} />
-            <InfoCell label="Sexo" value={genderLabel} />
-            <InfoCell label="Estado Civil" value={maritalLabel} />
-            <InfoCell label="Cônjuge" value={member?.spouseName || "—"} />
-            <InfoCell label="CPF" value={member?.cpf || "—"} />
-            <InfoCell label="E-mail" value={member?.email || "—"} />
-            <InfoCell label="Contato" value={member?.mobile || member?.phone || "—"} />
-            <InfoCell label="Ministérios" value={
-              member?.ministryMemberships?.length
-                ? member.ministryMemberships.map((m) => m.ministry.name).join(", ")
-                : "—"
-            } />
-            <InfoCell label="Batismo" value={fmtDate(member?.baptismDate)} />
-            <InfoCell label="Membro desde" value={fmtDate(member?.membershipDate)} />
+      <>
+      {/* ── Cabeçalho: nome, situação, chips e ações ─────────────────────── */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-slate-900 sm:text-[36px] dark:text-white">{member?.fullName || "—"}</h1>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${sCls}`}>{sLabel}</span>
           </div>
-        </div>
-
-        {/* Attendance card */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col gap-5">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Presença por dia</h2>
-            <div className="flex items-end gap-1.5 h-16">
-              {DAY_NAMES.map((d, i) => (
-                <div key={d} className="flex-1 flex flex-col items-center gap-1">
-                  <div
-                    className="w-full rounded-t-sm transition-all"
-                    style={{
-                      height: `${Math.round((attendanceByDay[i] / maxDay) * 52) + 4}px`,
-                      background: attendanceByDay[i] > 0
-                        ? `hsl(${220 + i * 10}, 80%, ${55 - Math.round((attendanceByDay[i] / maxDay) * 20)}%)`
-                        : "#e2e8f0",
-                    }}
-                  />
-                  <span className="text-[10px] text-slate-400 font-medium">{d}</span>
-                </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {tituloRol && (
+              <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white dark:bg-white dark:text-slate-900">{tituloRol}</span>
+            )}
+            {member?.church?.name && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8ecf1] bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <Info className="h-3 w-3 flex-shrink-0" />
+                {member.church.name}
+              </span>
+            )}
+            {member?.church?.regional?.campo?.name && (
+              <span className="rounded-full border border-[#e8ecf1] bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                Campo: {member.church.regional.campo.name}
+              </span>
+            )}
+            {member?.addressCity && (
+              <span className="rounded-full border border-[#e8ecf1] bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                {member.addressCity}{member.addressState ? `, ${member.addressState}` : ""}
+              </span>
+            )}
+            {memberSince && (
+              <span className="rounded-full border border-[#e8ecf1] bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                Desde {fmtDate(memberSince)}
+              </span>
+            )}
+          </div>
+          {activeFunctions.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {activeFunctions.map((f) => (
+                <span
+                  key={f.id}
+                  title={f.isCampoWide ? 'Função com alcance de campo' : 'Função na igreja do membro'}
+                  className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700"
+                >
+                  {f.name}{f.isCampoWide ? ' · Campo' : ''}
+                </span>
               ))}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Período de maior presença</h2>
-            <div className="space-y-2">
-              {([
-                { key: 'manha', label: 'Manhã', color: '#f59e0b' },
-                { key: 'noite', label: 'Noite', color: '#6366f1' },
-              ] as const).map((p) => (
-                <div key={p.key} className="flex items-center gap-2">
-                  <span className="w-10 text-xs text-slate-500">{p.label}</span>
-                  <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${Math.round((attendanceByPeriod[p.key] / maxPeriod) * 100)}%`,
-                        background: p.color,
-                      }}
-                    />
-                  </div>
-                  <span className="w-5 text-right text-xs font-medium text-slate-600">{attendanceByPeriod[p.key]}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Última presença real (face_presencas) */}
-          {attendance?.lastPresence ? (
-            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Última presença</p>
-              <p className="text-sm font-semibold text-slate-800 leading-tight">
-                {fmtDate(attendance.lastPresence.horario)}
-              </p>
-              {attendance.lastPresence.igrejaRegional && (
-                <p className="text-xs text-indigo-600 mt-0.5">{attendance.lastPresence.igrejaRegional}</p>
-              )}
-              <p className="text-xs text-slate-500 mt-1">
-                {attendance.distinctDays} dia(s) com presença · {attendance.total} detecção(ões)
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Última presença</p>
-              <p className="text-sm text-slate-400">Nenhum registro de presença facial.</p>
             </div>
           )}
+          {memberTags.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {memberTags.map((t) => (
+                <span
+                  key={t.id}
+                  className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-white"
+                  style={{ backgroundColor: t.color || '#8b5cf6' }}
+                >
+                  {t.name}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="mt-4 max-w-xl">
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="font-medium text-slate-600 dark:text-slate-300">Cadastro completo</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-100">
+                {camposFeitos} de {camposTotal} campos · {Math.round((camposFeitos / camposTotal) * 100)}%
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-4 gap-2">
+              {gruposCadastro.map((g) => (
+                <div key={g.rotulo} className="min-w-0">
+                  <p className="mb-1 truncate text-[10.5px] text-slate-500 dark:text-slate-400">{g.rotulo}</p>
+                  <div className={`flex h-7 items-center rounded-full px-3 text-[11px] font-bold ${
+                    g.feitos === g.total
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                      : g.feitos === 0
+                        ? "border border-[#e8ecf1] bg-white text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                        : "bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-slate-100"
+                  }`}>
+                    {g.feitos}/{g.total}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 lg:items-end">
+          <div className="flex flex-wrap items-center gap-2">
+            <button className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#e8ecf1] bg-white px-4 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+              <Star className="h-4 w-4" />
+              Favoritar
+            </button>
+            <Permissao chave="members.member_profile.editar" rotulo="Editar — Member Profile" herda="members.view">
+              <button
+                onClick={() => setShowEditDrawer(true)}
+                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#e8ecf1] bg-white px-4 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <Edit className="h-4 w-4" />
+                Editar
+              </button>
+            </Permissao>
+            {canManageHistory && (
+              <Permissao chave="members.member_profile.nova_ocorrencia" rotulo="Nova Ocorrência — Member Profile" herda="members.view">
+                <button
+                  onClick={() => setShowOccModal(true)}
+                  // `bg-green-600` é só a rede de segurança: o tema o repinta com a
+                  // cor da igreja, e `.btn-acao-verde` (em globals.css) vence os dois
+                  // e deixa verde. Sem ela o botão continua visível, só não verde —
+                  // em vez de virar texto branco sobre fundo transparente.
+                  className="btn-acao-verde inline-flex h-10 items-center gap-1.5 rounded-full bg-green-600 px-4 text-[13px] font-semibold text-white transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nova Ocorrência
+                </button>
+              </Permissao>
+            )}
+          </div>
+          <div className="flex items-end gap-8">
+            <div className="text-right">
+              <p className="text-[34px] font-light leading-none tracking-[-0.03em] text-slate-900 dark:text-white">{history.length}</p>
+              <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Ocorrências</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[34px] font-light leading-none tracking-[-0.03em] text-slate-900 dark:text-white">{member?.ministryMemberships?.length ?? 0}</p>
+              <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Ministérios</p>
+            </div>
+            {diasComoMembro !== null && (
+              <div className="text-right">
+                <p className="text-[34px] font-light leading-none tracking-[-0.03em] text-slate-900 dark:text-white">{diasComoMembro}</p>
+                <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Dias como membro</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* ── Painéis ───────────────────────────────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {/* Cartão do membro (foto) */}
+        <div className="relative flex min-h-[250px] flex-col overflow-hidden rounded-[22px] bg-slate-900 p-5 text-white dark:bg-slate-950">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-[1.4px] text-white/60">Membro</span>
+            <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="grid h-9 w-9 place-items-center rounded-full border border-white/20 text-white/80 transition-colors hover:bg-white/10"
+              title="Alterar foto"
+            >
+              <Camera className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex flex-1 items-center justify-center py-3">
+            {member?.photoUrl ? (
+              <img src={member.photoUrl} alt={member?.fullName ?? ""} className="h-28 w-28 rounded-full border-4 border-white/15 object-cover" />
+            ) : (
+              <span className="text-[64px] font-extralight leading-none tracking-[-0.02em] text-white/90">{ini}</span>
+            )}
+          </div>
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-[15px] font-bold">{member?.fullName || "—"}</p>
+              <p className="truncate text-xs text-white/60">{genderLabel} · {maritalLabel}</p>
+            </div>
+            {member?.rol != null && (
+              <span className="shrink-0 rounded-full border border-white/25 px-2.5 py-1 font-mono text-xs">#{member.rol}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Presença por dia (face_presencas) */}
+        <div className={`${cartao} flex flex-col p-5`}>
+          <h2 className="text-[15px] font-bold text-slate-900 dark:text-white">Presença por dia</h2>
+          <div className="mt-3 flex items-end gap-2">
+            <span className="text-[34px] font-light leading-none text-slate-900 dark:text-white">{totalPresencasDia}</span>
+            <span className="pb-1 text-[11px] leading-tight text-slate-500 dark:text-slate-400">registros de<br />presença</span>
+          </div>
+          <div className="mt-auto flex items-end justify-between gap-1 pt-4">
+            {DAY_NAMES.map((d, i) => (
+              <div key={d} className="flex flex-1 flex-col items-center gap-1.5">
+                <div className="relative h-20 w-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                  <div
+                    className="absolute inset-x-0 bottom-0 rounded-full bg-[var(--sl-primary)] transition-all"
+                    style={{ height: `${Math.round((attendanceByDay[i] / maxDay) * 100)}%` }}
+                  />
+                </div>
+                <span className={`h-1.5 w-1.5 rounded-full ${attendanceByDay[i] > 0 ? "bg-[var(--sl-primary)]" : "bg-slate-300 dark:bg-slate-600"}`} title={`${attendanceByDay[i]} em ${d}`} />
+                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{d.charAt(0)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Período de maior presença (corte às 13h) */}
+        <div className={`${cartao} flex flex-col p-5`}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-[15px] font-bold text-slate-900 dark:text-white">Maior presença</h2>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Período</span>
+          </div>
+          <div className="flex flex-1 items-center justify-center py-3">
+            <div className="grid h-28 w-28 place-items-center rounded-full border-[10px] border-slate-100 dark:border-slate-700">
+              <div className="text-center">
+                <p className="text-[28px] font-light leading-none text-slate-900 dark:text-white">{attendance?.total ?? 0}</p>
+                <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">registros</p>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { key: 'manha', label: 'Manhã' },
+              { key: 'noite', label: 'Noite' },
+            ] as const).map((p) => (
+              <div
+                key={p.key}
+                className={`flex items-center justify-between rounded-full px-3.5 py-2 text-xs font-semibold ${
+                  periodoMaior === p.key
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                    : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+                }`}
+              >
+                <span>{p.label}</span>
+                <span>{attendanceByPeriod[p.key]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Histórico (resumo) + última presença */}
+        <div className="flex flex-col rounded-[22px] bg-slate-900 p-5 text-white md:row-span-2 dark:bg-slate-950">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[17px] font-bold">Histórico</h2>
+            <span className="text-[30px] font-light leading-none">
+              {Math.min(history.length, 3)}<span className="text-white/40">/{history.length}</span>
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-white/60">
+            Último serviço: <strong className="font-semibold text-white">{lastService?.serviceName || lastService?.serviceGroup || lastService?.action || "—"}</strong>
+            {" · "}Última atividade {lastService?.createdAt ? fmtDate(lastService.createdAt) : "—"}
+          </p>
+          <div className="mt-4 flex flex-col">
+            {history.slice(0, 3).map((h, i) => {
+              const { Icone } = iconeDoProcesso(h.action || h.serviceName);
+              return (
+                <div key={h.id} className="flex items-center gap-3 border-b border-white/10 py-3 last:border-b-0">
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${i === 0 ? "bg-white text-slate-900" : "bg-white/10 text-white"}`}>
+                    <Icone className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-semibold">{h.action || h.serviceName || "—"}</p>
+                    <p className="truncate text-[11px] text-white/50">
+                      {h.createdAt ? new Date(h.createdAt).toLocaleDateString("pt-BR") : "—"}{h.serviceName ? ` · ${h.serviceName}` : ""}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-mono text-[10px] text-white/50">{(h.card?.protocol || h.id).slice(-6).toUpperCase()}</span>
+                </div>
+              );
+            })}
+            {history.length === 0 && (
+              <p className="py-4 text-sm text-white/50">{historyLoading ? "Carregando histórico..." : "Nenhum registro encontrado."}</p>
+            )}
+          </div>
+          <div className="mt-auto pt-4">
+            <div className="rounded-2xl bg-white/5 p-3.5">
+              <p className="text-[10px] font-bold uppercase tracking-[1.2px] text-white/50">Última presença</p>
+              {attendance?.lastPresence ? (
+                <>
+                  <p className="mt-1 text-sm font-semibold">{fmtDate(attendance.lastPresence.horario)}</p>
+                  {attendance.lastPresence.igrejaRegional && (
+                    <p className="text-xs text-white/70">{attendance.lastPresence.igrejaRegional}</p>
+                  )}
+                  <p className="mt-1 text-[11px] text-white/50">
+                    {attendance.distinctDays} dia(s) com presença · {attendance.total} detecção(ões)
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-sm text-white/70">Nenhum registro de presença facial.</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => { setActiveTab("historico"); setAbaPrincipal("historicos"); }}
+              className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-white text-[13px] font-bold text-slate-900"
+            >
+              Ver históricos completos
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Informações (os mesmos campos de antes, em grupos) */}
+        <div className={`${cartao} p-5 md:col-span-2 xl:col-span-3`}>
+          <h2 className="text-[17px] font-bold text-slate-900 dark:text-white">Informações</h2>
+          <div className="mt-4 grid gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <p className="mb-3 border-b border-[#eef2f6] pb-2 text-[13px] font-bold text-slate-800 dark:border-slate-700 dark:text-slate-100">Vínculo</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <InfoCell label="Regional" value={regionalCode} />
+                <InfoCell label="Campo" value={campoName} />
+                <InfoCell label="Igreja" value={churchName} />
+                <InfoCell label="Membro desde" value={fmtDate(member?.membershipDate)} />
+              </div>
+            </div>
+            <div>
+              <p className="mb-3 border-b border-[#eef2f6] pb-2 text-[13px] font-bold text-slate-800 dark:border-slate-700 dark:text-slate-100">Dados pessoais</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <InfoCell label="Sexo" value={genderLabel} />
+                <InfoCell label="Estado Civil" value={maritalLabel} />
+                <InfoCell label="CPF" value={member?.cpf || "—"} />
+                <InfoCell label="Cônjuge" value={member?.spouseName || "—"} />
+              </div>
+            </div>
+            <div>
+              <p className="mb-3 border-b border-[#eef2f6] pb-2 text-[13px] font-bold text-slate-800 dark:border-slate-700 dark:text-slate-100">Contato</p>
+              <div className="grid grid-cols-1 gap-y-3 text-sm">
+                <InfoCell label="Contato" value={member?.mobile || member?.phone || "—"} />
+                <InfoCell label="E-mail" value={member?.email || "—"} />
+              </div>
+            </div>
+            <div>
+              <p className="mb-3 border-b border-[#eef2f6] pb-2 text-[13px] font-bold text-slate-800 dark:border-slate-700 dark:text-slate-100">Vida cristã</p>
+              <div className="grid grid-cols-1 gap-y-3 text-sm">
+                <InfoCell label="Batismo" value={fmtDate(member?.baptismDate)} />
+                <InfoCell label="Ministérios" value={
+                  member?.ministryMemberships?.length
+                    ? member.ministryMemberships.map((m) => m.ministry.name).join(", ")
+                    : "—"
+                } />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </>
       )}
 
       {member && (
@@ -828,30 +937,90 @@ export function MemberProfile() {
 
       {/* Aba "Históricos": tudo o que é linha do tempo do membro. */}
       {abaPrincipal === "historicos" && (
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="flex border-b border-slate-200">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === t.key
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+      <div className="space-y-4">
+        {/* Resumo do membro */}
+        <div className={`${cartao} flex flex-wrap items-center gap-x-8 gap-y-4 p-5`}>
+          <div className="flex min-w-0 items-center gap-4">
+            {member?.photoUrl ? (
+              <span role="img" aria-label={member?.fullName ?? ""} className="h-16 w-16 shrink-0 rounded-2xl bg-cover bg-center" style={{ backgroundImage: `url("${member.photoUrl}")` }} />
+            ) : (
+              <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-slate-900 text-2xl font-light text-white dark:bg-slate-950">{ini}</span>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-[22px] font-extrabold leading-tight tracking-[-0.02em] text-slate-900 dark:text-white">{member?.fullName || "—"}</p>
+              <p className="truncate text-[13px] text-slate-500 dark:text-slate-400">
+                {[tituloRol || null, member?.church?.name || null].filter(Boolean).join(" · ") || "—"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-end gap-8">
+            <div>
+              <p className="text-[30px] font-light leading-none text-slate-900 dark:text-white">{history.length}</p>
+              <p className="mt-1 text-[12px] font-medium text-slate-500 dark:text-slate-400">Registros</p>
+            </div>
+            <div>
+              <p className="text-[30px] font-light leading-none text-slate-900 dark:text-white">
+                {lastService?.createdAt ? new Date(lastService.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "—"}
+              </p>
+              <p className="mt-1 text-[12px] font-medium text-slate-500 dark:text-slate-400">Última atividade</p>
+            </div>
+          </div>
+          {canManageHistory && (
+            <div className="sm:ml-auto">
+              <Permissao chave="members.member_profile.nova_ocorrencia" rotulo="Nova Ocorrência — Member Profile" herda="members.view">
+                <button
+                  onClick={() => setShowOccModal(true)}
+                  className="btn-acao-verde inline-flex h-11 items-center gap-1.5 rounded-full bg-green-600 px-5 text-sm font-semibold text-white transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nova Ocorrência
+                </button>
+              </Permissao>
+            </div>
+          )}
         </div>
 
-        <div className="p-6">
+        <div className={`${cartao} p-4 sm:p-5`}>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTab(t.key)}
+                  className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors ${
+                    activeTab === t.key
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                  }`}
+                >
+                  {t.label}
+                  {t.key === "historico" && (
+                    <span className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-bold ${
+                      activeTab === t.key ? "bg-white/20" : "bg-slate-200 dark:bg-slate-600"
+                    }`}>{history.length}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            {activeTab === "historico" && (
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por processo, origem..."
+                  value={histSearch}
+                  onChange={(e) => setHistSearch(e.target.value)}
+                  className="h-10 w-full rounded-full border border-[#e8ecf1] bg-white pl-10 pr-4 text-sm text-slate-800 placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+            )}
+          </div>
+
           {activeTab === "historico" && (
             <HistoricoTab
               history={filteredHistory}
+              total={history.length}
               loading={historyLoading}
-              search={histSearch}
-              onSearch={setHistSearch}
               canManage={canManageHistory}
               onDelete={(hid) => setDeleteHistId(hid)}
               onEdit={(h) => { setEditHistRow(h); setEditHistNotes(h.notes || ""); }}
@@ -960,14 +1129,6 @@ function InfoCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function HeroStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">{label}</p>
-      <p className="text-sm font-semibold text-slate-900 truncate" title={value}>{value}</p>
-    </div>
-  );
-}
 function TitulosTab({ memberId, refreshKey }: { memberId: string; refreshKey: number }) {
   const [rows, setRows] = useState<{
     id: string; previousTitle: string | null; newTitle: string; source: string | null;
@@ -2506,104 +2667,117 @@ function OccurrenceModal({
   );
 }
 
+/**
+ * Ícone do processo na lista de histórico. Só apresentação: escolhe pelo texto
+ * que já vem do registro; não muda nada no dado.
+ */
+function iconeDoProcesso(texto: string | null | undefined): { Icone: typeof FileText } {
+  const t = (texto || "").toLowerCase();
+  if (t.includes("conclu")) return { Icone: Check };
+  if (t.includes("ativad")) return { Icone: Zap };
+  if (t.includes("cadastr")) return { Icone: UserPlus };
+  return { Icone: FileText };
+}
+
 function HistoricoTab({
   history,
+  total,
   loading,
-  search,
-  onSearch,
   canManage,
   onDelete,
   onEdit,
 }: {
   history: HistoryRow[];
+  total: number;
   loading: boolean;
-  search: string;
-  onSearch: (v: string) => void;
   canManage?: boolean;
   onDelete?: (id: string) => void;
   onEdit?: (h: HistoryRow) => void;
 }) {
+  // A busca fica na faixa das abas (MemberProfile); aqui chega a lista já filtrada.
   return (
     <div>
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input
-          type="text"
-          placeholder="Buscar por processo, origem..."
-          value={search}
-          onChange={(e) => onSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
       {loading ? (
-        <div className="text-sm text-slate-400 py-8 text-center">Carregando histórico...</div>
+        <div className="py-8 text-center text-sm text-slate-400">Carregando histórico...</div>
       ) : history.length === 0 ? (
-        <div className="text-sm text-slate-400 py-8 text-center">Nenhum registro encontrado.</div>
+        <div className="py-8 text-center text-sm text-slate-400">Nenhum registro encontrado.</div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200">
+        <div className="overflow-x-auto rounded-[18px] border border-[#e8ecf1] dark:border-slate-700">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-4 py-3 text-left font-medium">Ref.</th>
-                <th className="px-4 py-3 text-left font-medium">Processo</th>
-                <th className="px-4 py-3 text-left font-medium">Data</th>
-                <th className="px-4 py-3 text-left font-medium">Origem</th>
-                <th className="px-4 py-3 text-left font-medium">Cidade</th>
-                <th className="px-4 py-3 text-left font-medium">País</th>
-                <th className="px-4 py-3 text-left font-medium">Situação Gerada</th>
-                <th className="px-4 py-3 text-left font-medium">Ações</th>
+              <tr className="bg-slate-50 text-[11px] uppercase tracking-[0.08em] text-slate-500 dark:bg-slate-900/40 dark:text-slate-400">
+                <th className="px-5 py-3.5 text-left font-semibold">Ref.</th>
+                <th className="px-5 py-3.5 text-left font-semibold">Processo</th>
+                <th className="px-5 py-3.5 text-left font-semibold">Data</th>
+                <th className="px-5 py-3.5 text-left font-semibold">Origem</th>
+                <th className="px-5 py-3.5 text-left font-semibold">Cidade / País</th>
+                <th className="px-5 py-3.5 text-left font-semibold">Situação Gerada</th>
+                <th className="px-5 py-3.5 text-right font-semibold">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {history.map((h, i) => (
+              {history.map((h, i) => {
+                const { Icone } = iconeDoProcesso(h.action || h.serviceName);
+                return (
                 <tr
                   key={h.id}
-                  className={`border-t border-slate-100 hover:bg-slate-50 transition-colors ${
-                    i % 2 === 0 ? "bg-white" : "bg-slate-50/30"
-                  }`}
+                  className="border-t border-[#eef2f6] transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/40"
                 >
-                  <td className="px-4 py-3 font-mono text-slate-500 text-xs">
+                  <td className="whitespace-nowrap px-5 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">
                     {h.card?.protocol || h.id.slice(-6).toUpperCase()}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{h.action || h.serviceName || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                  <td className="px-5 py-4">
+                    <span className="flex items-center gap-3">
+                      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${i === 0 ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200"}`}>
+                        <Icone className="h-4 w-4" />
+                      </span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-100">{h.action || h.serviceName || "—"}</span>
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 text-slate-600 dark:text-slate-300">
                     {h.createdAt ? new Date(h.createdAt).toLocaleDateString("pt-BR") : "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{h.card?.church?.name || h.church?.name || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{h.memberCity || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{h.memberCountry || "—"}</td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {h.serviceName || h.notes || h.action || "—"}
-                    {h.destinationChurch?.name && (
-                      <span className="text-slate-500"> → {h.destinationChurch.name}</span>
-                    )}
+                  <td className="px-5 py-4 text-slate-600 dark:text-slate-300">{h.card?.church?.name || h.church?.name || "—"}</td>
+                  <td className="whitespace-nowrap px-5 py-4 text-slate-600 dark:text-slate-300">
+                    {[h.memberCity, h.memberCountry].filter(Boolean).join(" / ") || "—"}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
+                  <td className="px-5 py-4">
+                    <span className="inline-flex flex-wrap items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                      {h.serviceName || h.notes || h.action || "—"}
+                      {h.destinationChurch?.name && (
+                        <span className="font-normal text-slate-500 dark:text-slate-400"> → {h.destinationChurch.name}</span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center justify-end gap-1.5">
                       <button
                         onClick={() => canManage && onEdit?.(h)}
                         disabled={!canManage}
-                        className={`p-1 rounded transition-colors ${canManage ? "hover:bg-slate-200 text-slate-500 hover:text-slate-700 cursor-pointer" : "text-slate-300 cursor-not-allowed"}`}
+                        className={`grid h-9 w-9 place-items-center rounded-full border transition-colors ${canManage ? "cursor-pointer border-[#e8ecf1] text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700" : "cursor-not-allowed border-slate-100 text-slate-300 dark:border-slate-700 dark:text-slate-600"}`}
                         title={canManage ? "Editar" : "Sem permissão"}
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => canManage && onDelete?.(h.id)}
                         disabled={!canManage}
-                        className={`p-1 rounded transition-colors ${canManage ? "hover:bg-red-100 text-slate-500 hover:text-red-600 cursor-pointer" : "text-slate-300 cursor-not-allowed"}`}
+                        className={`grid h-9 w-9 place-items-center rounded-full border transition-colors ${canManage ? "cursor-pointer border-[#e8ecf1] text-slate-600 hover:bg-red-50 hover:text-red-600 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-red-900/30" : "cursor-not-allowed border-slate-100 text-slate-300 dark:border-slate-700 dark:text-slate-600"}`}
                         title={canManage ? "Excluir" : "Sem permissão"}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
+      )}
+      {!loading && history.length > 0 && (
+        <p className="mt-3 text-[13px] text-slate-500 dark:text-slate-400">Mostrando {history.length} de {total} registros</p>
       )}
     </div>
   );
