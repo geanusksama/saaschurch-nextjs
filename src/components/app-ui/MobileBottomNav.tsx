@@ -11,7 +11,8 @@ import {
 /**
  * Tab bar do painel no celular (< 640px), guia adcampinas-mobile-first
  * (AdminModulos, AdminModulo, AdminAcoes):
- * Módulos · Membros · Criar (FAB escuro) · Lançamento · Gestão de Culto.
+ * Módulos · Membros · Criar (FAB escuro) · Financeiro (abre o Lançamento) ·
+ * Gestão de Culto.
  * Nova ordem pedida pelo dono em 02/11/2026 (antes: Início · Membros · Criar
  * · Avisos · Módulos). Início e Avisos seguem no header. Decidido pelo dono
  * em 02/11/2026.
@@ -254,10 +255,14 @@ export function MobileBottomNav({
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.18 }}
             onKeyDown={(e) => { if (e.key === 'Escape') fechar(); }}
-            className="fixed inset-x-0 top-0 z-30 overflow-y-auto bg-[#F4F6F9] dark:bg-[#0d1017] sm:hidden"
+            // Começa abaixo do header do painel (h-16 = 64px) para o menu do
+            // topo continuar à vista e utilizável com Módulos aberto. z-[35]: acima
+            // das barras fixas das telas (ex.: Nova despesa/receita do Livro
+            // Caixa, z-30) e abaixo da tab bar (z-40).
+            className="fixed inset-x-0 top-16 z-[35] overflow-y-auto bg-[#F4F6F9] dark:bg-[#0d1017] sm:hidden"
             style={{ bottom: 'calc(64px + max(6px, env(safe-area-inset-bottom)))' }}
           >
-            <div className="px-5 pb-6" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
+            <div className="px-5 pb-6 pt-5">
               {moduloAberto ? (
                 <>
                   <button type="button" onClick={() => setModulo(null)}
@@ -408,7 +413,7 @@ export function MobileBottomNav({
         {temLancamento ? (
           <Link to={lancamentoPath} onClick={fechar} className={`${aba} ${cor(lancamentoAtivo)}`}>
             <span className={pilula(lancamentoAtivo)}><TrendingUp className="h-5 w-5" strokeWidth={1.8} /></span>
-            Lançamento
+            Financeiro
           </Link>
         ) : <span className="flex-1" />}
 

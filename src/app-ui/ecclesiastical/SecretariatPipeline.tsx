@@ -1337,7 +1337,12 @@ function KanbanView({
       )}
 
       {/* ── Colunas ──────────────────────────────────────────────────────── */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
+      {/* Celular: cada coluna ocupa quase a tela e o quadro desliza de lado,
+          uma coluna por vez (antes as colunas dividiam 360 px). Só layout. */}
+      <div
+        className="grid gap-4 max-sm:-mx-4 max-sm:grid-flow-col max-sm:auto-cols-[86%] max-sm:[grid-template-columns:none]! max-sm:snap-x max-sm:snap-mandatory max-sm:overflow-x-auto max-sm:px-4 max-sm:pb-2 max-sm:scroll-px-4 max-sm:[&>*]:snap-start"
+        style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
+      >
         {columns.map((col) => {
           const colorBadge = COLOR_BADGE[col.color || "blue"] || COLOR_BADGE.blue;
           const colorBorder = COLOR_BORDER[col.color || "blue"] || COLOR_BORDER.blue;
