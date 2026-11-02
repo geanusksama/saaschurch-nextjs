@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   CheckSquare, Download, Search, Trash2, ChevronLeft, ChevronRight, 
-  RefreshCw, User, Calendar, Printer, MessageSquare, BarChart2, List, FileText,
-  Cpu
+  RefreshCw, User, Printer, MessageSquare, BarChart2, List, FileText,
+  Cpu, SlidersHorizontal, X, ChevronDown
 } from 'lucide-react';
+import { FONTE_MODELO_FAMILIA, useFonteModelo } from '../../lib/fonteModelo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Badge } from '../../design-system/components/Badge';
 import { ConfirmDialog } from './shared/ConfirmDialog';
@@ -172,6 +173,9 @@ export function AttendanceModule() {
 
   // Navigation tabs (5 Tabs)
   const [activeTab, setActiveTab] = useState<'general' | 'member_history' | 'insights' | 'report' | 'devices'>('general');
+  // Gaveta de filtros (estado puramente visual)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  useFonteModelo();
 
   // Confirmation dialog state
   const [pendingConfirm, setPendingConfirm] = useState<{
@@ -1180,8 +1184,22 @@ export function AttendanceModule() {
     window.open(url, '_blank');
   };
 
+  // Classes puramente visuais (padrão das telas redesenhadas)
+  const botaoContornoClasse = 'flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';
+  const pilulaClasse = 'flex h-10 flex-none items-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors';
+  const pilulaAtivaClasse = 'bg-slate-900 text-white dark:bg-white dark:text-slate-900';
+  const pilulaInativaClasse = 'bg-[#eef2f6] text-slate-600 hover:bg-[#e2e8f0] hover:text-slate-900 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white';
+  const campoFiltroClasse = 'h-[50px] w-full appearance-none rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-10 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white';
+  const campoDataClasse = 'h-[50px] w-full rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-[15px] font-medium tracking-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white';
+  const rotuloFiltroClasse = 'flex flex-col gap-2.5 text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400';
+  const filtrosAtivosCount = activeTab === 'general' ? [rol, selectedDayOfWeek].filter(Boolean).length : 0;
+
   return (
-    <div className="p-6 space-y-6 bg-slate-50 dark:bg-slate-900 min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-200">
+    <div
+      className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased transition-colors duration-200 dark:bg-slate-900 dark:text-slate-100"
+      style={{ fontFamily: FONTE_MODELO_FAMILIA }}
+    >
+      <style>{'@keyframes nmDrawerIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}'}</style>
       
       {/* CSS style block for clean print styling (Aba 2) */}
       <style>{`
@@ -1210,259 +1228,145 @@ export function AttendanceModule() {
       `}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 no-print">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-950/40 rounded-xl flex items-center justify-center">
-            <CheckSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+      <header className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 no-print dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-700 dark:text-slate-200">
+            <CheckSquare className="h-5 w-5" strokeWidth={1.8} />
           </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Presença Facial</h1>
-            <p className="text-slate-600 dark:text-slate-400">Gerenciamento e histórico de presenças por reconhecimento facial</p>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Secretaria</span>
+            <h1 className="truncate whitespace-nowrap text-[17px] font-bold text-slate-900 dark:text-white">Presença Facial</h1>
           </div>
         </div>
-        
-        {/* Navigation Tabs (4 Tabs) */}
-        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm no-print">
+        {activeTab === 'general' && (
+          <div className="flex items-center gap-2">
+            <Permissao chave="attendance.attendance_module.csv" rotulo="CSV — Attendance Module" herda="attendance.view">
+              <button
+                type="button"
+                onClick={exportToCSV}
+                disabled={generalTotal === 0 || exportingAll}
+                className={botaoContornoClasse}
+                title="Exportar todos os registros do filtro (CSV)"
+              >
+                <Download className="h-4 w-4" strokeWidth={2} />
+                <span className="hidden md:inline">CSV</span>
+              </button>
+            </Permissao>
+            <Permissao chave="attendance.attendance_module.excel" rotulo="Excel — Attendance Module" herda="attendance.view">
+              <button
+                type="button"
+                onClick={exportToExcel}
+                disabled={generalTotal === 0 || exportingAll}
+                className={botaoContornoClasse}
+                title="Exportar todos os registros do filtro (Excel)"
+              >
+                <Download className="h-4 w-4" strokeWidth={2} />
+                <span className="hidden md:inline">Excel</span>
+              </button>
+            </Permissao>
+            <Permissao chave="attendance.attendance_module.imprimir" rotulo="Imprimir — Attendance Module" herda="attendance.view">
+              <button
+                type="button"
+                onClick={printAllGeneral}
+                disabled={generalTotal === 0 || exportingAll}
+                className={botaoContornoClasse}
+                title="Imprimir todos os registros do filtro"
+              >
+                <Printer className="h-4 w-4" strokeWidth={2} />
+                <span className="hidden md:inline">Imprimir</span>
+              </button>
+            </Permissao>
+          </div>
+        )}
+      </header>
+
+      <div className="box-border flex w-full flex-1 flex-col gap-4 px-3 pb-10 pt-3 md:px-7 md:pt-4">
+        {/* Navigation Tabs (5 Tabs) — pílulas */}
+        <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 no-print [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => setActiveTab('general')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-              activeTab === 'general'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
+            className={`${pilulaClasse} ${activeTab === 'general' ? pilulaAtivaClasse : pilulaInativaClasse}`}
           >
-            <List className="w-4 h-4" />
+            <List className="h-4 w-4" />
             Presença Geral
           </button>
           <button
             onClick={() => setActiveTab('member_history')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-              activeTab === 'member_history'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
+            className={`${pilulaClasse} ${activeTab === 'member_history' ? pilulaAtivaClasse : pilulaInativaClasse}`}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="h-4 w-4" />
             Histórico do Membro
           </button>
           <button
             onClick={() => setActiveTab('report')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-              activeTab === 'report'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
+            className={`${pilulaClasse} ${activeTab === 'report' ? pilulaAtivaClasse : pilulaInativaClasse}`}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="h-4 w-4" />
             Relatório de Presença
           </button>
           <button
             onClick={() => setActiveTab('insights')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-              activeTab === 'insights'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
+            className={`${pilulaClasse} ${activeTab === 'insights' ? pilulaAtivaClasse : pilulaInativaClasse}`}
           >
-            <BarChart2 className="w-4 h-4" />
+            <BarChart2 className="h-4 w-4" />
             Gráficos e Insights
           </button>
           <button
             onClick={() => setActiveTab('devices')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-              activeTab === 'devices'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
+            className={`${pilulaClasse} ${activeTab === 'devices' ? pilulaAtivaClasse : pilulaInativaClasse}`}
           >
-            <Cpu className="w-4 h-4" />
+            <Cpu className="h-4 w-4" />
             Dispositivos Face ID
           </button>
         </div>
-      </div>
-      {/* Date Interval filter (Shared - shown in all tabs except report, default set to current month) */}
-      {activeTab !== 'report' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex flex-wrap items-center justify-between gap-4 no-print animate-fade-in">
-          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            <Calendar className="w-4 h-4 text-blue-500" />
-            <span>Filtros Gerais de Pesquisa (Datas e Igreja):</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Church Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Igreja:</span>
-              <select
-                value={selectedChurchId}
-                onChange={(e) => {
-                  setSelectedChurchId(e.target.value);
-                  setPage(1);
-                }}
-                className="px-3 py-1.5 border border-slate-350 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm dark:text-slate-100 text-slate-700 focus:outline-none"
+
+        {/* Busca + Filtros (Igreja/De/Até em todas as abas exceto relatório; ROL e Dia só na Presença Geral) */}
+        {activeTab !== 'report' && (
+          <div className="flex min-w-0 gap-2 no-print">
+            {activeTab === 'general' ? (
+              <form
+                id="attendance-general-filtros"
+                onSubmit={handleGeneralSearch}
+                onSubmitCapture={() => setFiltrosAbertos(false)}
+                className="relative min-w-0 flex-1"
               >
-                {currentUser?.profileType === "master" && (
-                  <option value="all">Todas as Igrejas</option>
-                )}
-                {churches.map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">De:</span>
-              <input
-                type="datetime-local"
-                value={de}
-                onChange={(e) => {
-                  setDe(e.target.value);
-                  setPage(1);
-                }}
-                className="px-3 py-1.5 border border-slate-350 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm dark:text-slate-100 text-slate-700 focus:outline-none"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Até:</span>
-              <input
-                type="datetime-local"
-                value={ate}
-                onChange={(e) => {
-                  setAte(e.target.value);
-                  setPage(1);
-                }}
-                className="px-3 py-1.5 border border-slate-350 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm dark:text-slate-100 text-slate-700 focus:outline-none"
-              />
-            </div>
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome (Ex: Francisco)"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="h-full min-h-[52px] w-full rounded-2xl border-[1.5px] border-slate-200 bg-white pl-12 pr-3.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-slate-300"
+                />
+              </form>
+            ) : (
+              <div className="min-w-0 flex-1" />
+            )}
             <button
-              onClick={() => {
-                if (activeTab === 'general') loadGeneralPresences();
-                else if (activeTab === 'insights') loadInsights();
-                else if (selectedMember) loadMemberHistory(selectedMember);
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
+              type="button"
+              onClick={() => setFiltrosAbertos(true)}
+              title="Filtros"
+              className={`flex min-h-[52px] flex-none items-center gap-2 rounded-2xl border-[1.5px] bg-white px-[15px] text-sm font-semibold text-slate-900 hover:border-slate-900 md:px-[18px] dark:bg-slate-800 dark:text-white ${
+                filtrosAtivosCount ? 'border-slate-900 dark:border-slate-300' : 'border-slate-200 dark:border-slate-600'
+              }`}
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Atualizar
+              <SlidersHorizontal className="h-[19px] w-[19px]" strokeWidth={2} />
+              <span className="hidden md:inline">Filtros</span>
+              {filtrosAtivosCount > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1.5 text-[11px] font-bold text-white dark:bg-white dark:text-slate-900">
+                  {filtrosAtivosCount}
+                </span>
+              )}
             </button>
           </div>
-        </div>
-      )}
+        )}
 
       {/* ─── TAB 1: GENERAL PRESENCE LIST ─── */}
       {activeTab === 'general' && (
         <div className="space-y-6">
-          
-          {/* Filters Form */}
-          <form onSubmit={handleGeneralSearch} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm no-print">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-              
-              {/* Nome */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Buscar por nome</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Francisco"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-650"
-                />
-              </div>
-
-              {/* ROL */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">ROL</label>
-                <input
-                  type="text"
-                  placeholder="Ex: 27269"
-                  value={rol}
-                  onChange={(e) => setRol(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-650"
-                />
-              </div>
-
-              {/* Dia da Semana */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Dia da Semana</label>
-                <select
-                  value={selectedDayOfWeek}
-                  onChange={(e) => setSelectedDayOfWeek(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 text-slate-700"
-                >
-                  <option value="">Todos os dias</option>
-                  <option value="Domingo">Domingo</option>
-                  <option value="Segunda-feira">Segunda-feira</option>
-                  <option value="Terça-feira">Terça-feira</option>
-                  <option value="Quarta-feira">Quarta-feira</option>
-                  <option value="Quinta-feira">Quinta-feira</option>
-                  <option value="Sexta-feira">Sexta-feira</option>
-                  <option value="Sábado">Sábado</option>
-                </select>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-2">
-                <button
-                  type="submit"
-                  disabled={loadingGeneral}
-                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2 px-4 rounded-lg transition-colors h-[38px] disabled:opacity-60"
-                >
-                  {loadingGeneral ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4" />
-                  )}
-                  Filtrar Lista
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearGeneralFilters}
-                  className="flex items-center justify-center border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm p-2 rounded-lg transition-colors h-[38px] w-[38px]"
-                  title="Limpar filtros"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <Permissao chave="attendance.attendance_module.csv" rotulo="CSV — Attendance Module" herda="attendance.view">
-                  <button
-                    type="button"
-                    onClick={exportToCSV}
-                    disabled={generalTotal === 0 || exportingAll}
-                    className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
-                    title="Exportar todos os registros do filtro (CSV)"
-                  >
-                    <Download className="w-4 h-4" />
-                    CSV
-                  </button>
-                </Permissao>
-                <Permissao chave="attendance.attendance_module.excel" rotulo="Excel — Attendance Module" herda="attendance.view">
-                  <button
-                    type="button"
-                    onClick={exportToExcel}
-                    disabled={generalTotal === 0 || exportingAll}
-                    className="flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white text-sm px-4 py-2 rounded-lg border border-green-800 transition-colors disabled:opacity-40 h-[38px]"
-                    title="Exportar todos os registros do filtro (Excel)"
-                  >
-                    <Download className="w-4 h-4" />
-                    Excel
-                  </button>
-                </Permissao>
-                <Permissao chave="attendance.attendance_module.imprimir" rotulo="Imprimir — Attendance Module" herda="attendance.view">
-                  <button
-                    type="button"
-                    onClick={printAllGeneral}
-                    disabled={generalTotal === 0 || exportingAll}
-                    className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-40 h-[38px]"
-                    title="Imprimir todos os registros do filtro"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Imprimir
-                  </button>
-                </Permissao>
-              </div>
-            </div>
-          </form>
 
           {/* Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden printable-report">
+          <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 shadow-sm overflow-hidden printable-report">
             {/* Printable Report Header (only visible on print) */}
             <div className="hidden print:flex justify-between items-start border-b-2 border-slate-900 dark:border-slate-100 pb-4 mb-6">
               <div>
@@ -1479,8 +1383,8 @@ export function AttendanceModule() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 flex-wrap no-print">
-              <h3 className="font-bold text-slate-900 dark:text-white">Registros Gerais</h3>
+            <div className="px-4 py-3.5 md:px-5 border-b border-[#eef2f6] dark:border-slate-700 flex items-center justify-between gap-4 flex-wrap no-print">
+              <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">Registros Gerais</h3>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                   Exibir:
@@ -1642,7 +1546,7 @@ export function AttendanceModule() {
         <div className="space-y-6">
           
           {/* Search Bar (Invisible when printing) */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4 no-print">
+          <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-6 shadow-sm space-y-4 no-print">
             <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <User className="w-5 h-5 text-blue-500" />
               Pesquisar Histórico Individual do Membro
@@ -1701,7 +1605,7 @@ export function AttendanceModule() {
           {/* Detailed Printable Report View */}
           {selectedMember ? (
             loadingMember ? (
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500 font-medium no-print">
+              <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-8 text-center text-slate-500 font-medium no-print">
                 Carregando relatório do membro...
               </div>
             ) : memberInsights ? (
@@ -1724,7 +1628,7 @@ export function AttendanceModule() {
                 </div>
 
                 {/* Printable Document Sheet Card */}
-                <div className="printable-report bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-8 shadow-md space-y-6">
+                <div className="printable-report bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-8 shadow-md space-y-6">
                   
                   {/* Report Document Header */}
                   <div className="border-b-2 border-slate-900 dark:border-slate-100 pb-4 flex justify-between items-start">
@@ -1942,7 +1846,7 @@ export function AttendanceModule() {
               </div>
             ) : null
           ) : (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 font-medium no-print">
+            <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-12 text-center text-slate-500 font-medium no-print">
               Pesquise e selecione um membro acima para carregar o seu relatório de histórico individual.
             </div>
           )}
@@ -1956,7 +1860,7 @@ export function AttendanceModule() {
         <div className="space-y-6 no-print">
           
           {loadingInsights ? (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 font-medium">
+            <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-12 text-center text-slate-500 font-medium">
               Carregando estatísticas e insights...
             </div>
           ) : generalInsights ? (
@@ -1964,7 +1868,7 @@ export function AttendanceModule() {
               
               {/* Key Indicators Grid */}
               <div className="grid md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-6 shadow-sm">
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider block">Total de Detecções Facial no Período</span>
                   <span className="text-3xl font-black text-slate-900 dark:text-white mt-2 block">
                     {generalInsights.totalCheckins}
@@ -1972,7 +1876,7 @@ export function AttendanceModule() {
                   <span className="text-xs text-slate-400 block mt-1">Registros de check-ins faciais recebidos</span>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-6 shadow-sm">
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider block">Dia de Maior Frequência</span>
                   <span className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-2 block">
                     {generalInsights.highestDay}
@@ -1980,7 +1884,7 @@ export function AttendanceModule() {
                   <span className="text-xs text-slate-400 block mt-1">Dia com maior quantidade de registros acumulados</span>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-6 shadow-sm">
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider block">Membros Faltosos</span>
                   <span className="text-3xl font-black text-red-500 mt-2 block">
                     {generalInsights.absentMembers.length}
@@ -1993,7 +1897,7 @@ export function AttendanceModule() {
               <div className="grid lg:grid-cols-2 gap-6">
                 
                 {/* Checkins by Day of Week Chart */}
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-6 shadow-sm">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white mb-6">Detecções por Dia da Semana</h3>
                   <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -2012,7 +1916,7 @@ export function AttendanceModule() {
                 </div>
 
                 {/* Period distribution chart */}
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-6 shadow-sm">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white mb-6">Detecções por Período</h3>
                   <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -2033,8 +1937,8 @@ export function AttendanceModule() {
               </div>
 
               {/* Absent Members List (Ausentes por mais de um culto) */}
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 shadow-sm overflow-hidden">
+                <div className="px-4 py-3.5 md:px-5 border-b border-[#eef2f6] dark:border-slate-700">
                   <h3 className="font-bold text-slate-900 dark:text-white">
                     Membros Ausentes (Faltaram a mais de 1 Culto no Período)
                   </h3>
@@ -2100,7 +2004,7 @@ export function AttendanceModule() {
 
             </div>
           ) : (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 font-medium">
+            <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-12 text-center text-slate-500 font-medium">
               Sem dados suficientes no período para exibir gráficos e insights.
             </div>
           )}
@@ -2114,7 +2018,7 @@ export function AttendanceModule() {
         <div className="space-y-6">
           
           {/* Report Filters Card (Invisible when printing) */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm no-print space-y-6">
+          <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-6 shadow-sm no-print space-y-6">
             <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <FileText className="w-5 h-5 text-blue-500" />
               Relatório Completo de Presença Facial
@@ -2386,7 +2290,7 @@ export function AttendanceModule() {
 
           {/* Printable Report Spreadsheet Card */}
           {reportMembers.length > 0 ? (
-            <div className="printable-report bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-8 shadow-md space-y-6">
+            <div className="printable-report bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-8 shadow-md space-y-6">
               
               {/* Spreadsheet Header */}
               <div className="border-b-2 border-slate-900 dark:border-slate-100 pb-4 flex justify-between items-start">
@@ -2518,7 +2422,7 @@ export function AttendanceModule() {
 
             </div>
           ) : (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 font-medium">
+            <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-12 text-center text-slate-500 font-medium">
               {generatingReport ? "Carregando membros e calculando frequências..." : "Utilize os filtros acima e clique em 'Gerar' para carregar a planilha de frequência."}
             </div>
           )}
@@ -2530,7 +2434,7 @@ export function AttendanceModule() {
       {activeTab === 'devices' && (
         <div className="space-y-6 no-print animate-fade-in">
           
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-6 shadow-sm flex items-center justify-between">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-lg">
                 <Cpu className="w-5 h-5 text-blue-500" />
@@ -2553,7 +2457,7 @@ export function AttendanceModule() {
 
           {/* Token do Agente da igreja — para a máquina que detecta e
               cadastra os leitores automaticamente (plug and play). */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 p-6 shadow-sm">
             <h3 className="font-bold text-slate-900 dark:text-white text-base mb-1">
               Instalação automática (Agente)
             </h3>
@@ -2591,7 +2495,7 @@ export function AttendanceModule() {
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-[18px] md:rounded-[22px] border border-[#e8ecf1] dark:border-slate-700 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
@@ -2909,6 +2813,166 @@ export function AttendanceModule() {
         </div>
       )}
 
+      </div>
+
+      {/* Painel de filtros — os mesmos campos e botões de antes */}
+      {filtrosAbertos && activeTab !== 'report' && (
+        <div className="fixed inset-0 z-50 flex justify-end no-print">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setFiltrosAbertos(false)} />
+          <aside className="relative flex h-full w-[min(440px,100%)] animate-[nmDrawerIn_.25s_ease] flex-col bg-white shadow-[-20px_0_50px_-20px_rgba(15,23,42,.35)] dark:bg-slate-800">
+            <div className="flex items-center gap-3.5 border-b border-[#eef2f6] px-[22px] py-5 dark:border-slate-700">
+              <span className="grid h-11 w-11 flex-none place-items-center rounded-[14px] bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                <SlidersHorizontal className="h-[22px] w-[22px]" strokeWidth={2} />
+              </span>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-lg font-extrabold text-slate-900 dark:text-white">Filtros</span>
+                <span className="text-[13px] text-slate-500 dark:text-slate-400">Datas e Igreja</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos(false)}
+                aria-label="Fechar"
+                className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden p-[22px]">
+              <label className={rotuloFiltroClasse}>
+                IGREJA
+                <span className="relative min-w-0">
+                  <select
+                    value={selectedChurchId}
+                    onChange={(e) => {
+                      setSelectedChurchId(e.target.value);
+                      setPage(1);
+                    }}
+                    className={campoFiltroClasse}
+                  >
+                    {currentUser?.profileType === "master" && (
+                      <option value="all">Todas as Igrejas</option>
+                    )}
+                    {churches.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <label className={rotuloFiltroClasse}>
+                DE
+                <input
+                  type="datetime-local"
+                  value={de}
+                  onChange={(e) => {
+                    setDe(e.target.value);
+                    setPage(1);
+                  }}
+                  className={campoDataClasse}
+                />
+              </label>
+
+              <label className={rotuloFiltroClasse}>
+                ATÉ
+                <input
+                  type="datetime-local"
+                  value={ate}
+                  onChange={(e) => {
+                    setAte(e.target.value);
+                    setPage(1);
+                  }}
+                  className={campoDataClasse}
+                />
+              </label>
+
+              {activeTab === 'general' && (
+                <>
+                  <label className={rotuloFiltroClasse}>
+                    ROL
+                    <input
+                      type="text"
+                      form="attendance-general-filtros"
+                      placeholder="Ex: 27269"
+                      value={rol}
+                      onChange={(e) => setRol(e.target.value)}
+                      className={campoDataClasse}
+                    />
+                  </label>
+
+                  <label className={rotuloFiltroClasse}>
+                    DIA DA SEMANA
+                    <span className="relative min-w-0">
+                      <select
+                        form="attendance-general-filtros"
+                        value={selectedDayOfWeek}
+                        onChange={(e) => setSelectedDayOfWeek(e.target.value)}
+                        className={campoFiltroClasse}
+                      >
+                        <option value="">Todos os dias</option>
+                        <option value="Domingo">Domingo</option>
+                        <option value="Segunda-feira">Segunda-feira</option>
+                        <option value="Terça-feira">Terça-feira</option>
+                        <option value="Quarta-feira">Quarta-feira</option>
+                        <option value="Quinta-feira">Quinta-feira</option>
+                        <option value="Sexta-feira">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                    </span>
+                  </label>
+                </>
+              )}
+            </div>
+
+            <div className="flex gap-2.5 border-t border-[#eef2f6] px-[22px] py-4 dark:border-slate-700">
+              {activeTab === 'general' && (
+                <button
+                  type="button"
+                  onClick={handleClearGeneralFilters}
+                  className="grid h-[52px] w-[52px] flex-none place-items-center rounded-[14px] border-[1.5px] border-slate-200 bg-white text-slate-600 hover:border-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  title="Limpar filtros"
+                >
+                  <Trash2 className="h-[18px] w-[18px]" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClickCapture={() => setFiltrosAbertos(false)}
+                onClick={() => {
+                  if (activeTab === 'general') loadGeneralPresences();
+                  else if (activeTab === 'insights') loadInsights();
+                  else if (selectedMember) loadMemberHistory(selectedMember);
+                }}
+                className={activeTab === 'general'
+                  ? 'flex h-[52px] flex-none items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-slate-200 bg-white px-4 text-[15px] font-semibold text-slate-700 hover:border-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200'
+                  : 'flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-[15px] font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200'}
+              >
+                <RefreshCw className="h-[18px] w-[18px]" />
+                Atualizar
+              </button>
+              {activeTab === 'general' && (
+                <button
+                  type="submit"
+                  form="attendance-general-filtros"
+                  disabled={loadingGeneral}
+                  className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-[15px] font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                >
+                  {loadingGeneral ? (
+                    <RefreshCw className="h-[18px] w-[18px] animate-spin" />
+                  ) : (
+                    <Search className="h-[18px] w-[18px]" strokeWidth={2.2} />
+                  )}
+                  Filtrar Lista
+                </button>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
       {/* Standard System Confirm Dialog */}
       <ConfirmDialog
         open={Boolean(pendingConfirm)}

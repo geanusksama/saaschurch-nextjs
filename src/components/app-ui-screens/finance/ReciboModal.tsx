@@ -227,7 +227,12 @@ export async function generateReciboPdf(row: ReciboRow, incluirComprovante: bool
 }
 
 export async function printRecibo(row: ReciboRow, incluirComprovante: boolean, foto: string | null) {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window);
+  // Celular de verdade gera o PDF (baixar/compartilhar); computador abre a
+  // janela de impressão. Antes também entrava aqui qualquer navegador com
+  // 'ontouchstart' (notebook com tela de toque, simulador de celular), e o
+  // Imprimir baixava PDF no computador (pedido do dono, 02/11/2026).
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   
   const userName = row.operador || (() => {
     try { const u = JSON.parse(localStorage.getItem('mrm_user') || '{}'); return u.fullName || u.email || 'Sistema'; } catch { return 'Sistema'; }

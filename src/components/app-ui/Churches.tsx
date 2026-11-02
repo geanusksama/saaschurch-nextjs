@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { CartoesTotais } from './CartoesTotais';
 import { toast } from 'sonner';
 import {
   ArrowUpDown,
@@ -2381,7 +2382,7 @@ export function Churches() {
           </div>
 
           {/* Números: clicar troca só o filtro de situação (vale no Buscar). */}
-          <div className="flex min-w-0 flex-[1_1_auto] gap-2 overflow-x-auto">
+          <CartoesTotais>
             {([
               { label: 'Total', valor: contagemSituacao.total, status: '', Icone: Building2, bg: 'bg-[#f1f5f9]', fg: 'text-[#334155]' },
               { label: 'Ativas', valor: contagemSituacao.ativas, status: 'active', Icone: CheckCircle2, bg: 'bg-[#dcfce7]', fg: 'text-[#15803d]' },
@@ -2410,7 +2411,7 @@ export function Churches() {
                 </button>
               );
             })}
-          </div>
+          </CartoesTotais>
         </div>
 
         {/* Filtros ligados, cada um com o seu X — como na Lista de Membros. */}

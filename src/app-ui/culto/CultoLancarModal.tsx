@@ -20,6 +20,7 @@ import {
   Plus,
   ChevronRight,
   ArrowLeftRight,
+  Minus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { apiBase } from '../../lib/apiBase';
@@ -534,14 +535,15 @@ export default function CultoLancarModal({
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onFechar}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 max-sm:items-stretch max-sm:p-0" onClick={onFechar}>
       <div
-        className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden max-sm:max-w-none max-sm:max-h-none max-sm:h-full max-sm:rounded-none max-sm:shadow-none max-sm:bg-[#F4F6F9] dark:max-sm:bg-[#0d1017]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700 max-sm:px-4 max-sm:pt-[calc(12px+env(safe-area-inset-top))] max-sm:bg-white dark:max-sm:bg-slate-800 max-sm:border-[#e5e7eb]">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            <p className="sm:hidden text-xs font-semibold text-slate-500 dark:text-slate-400">Gestão de Culto</p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white max-sm:text-xl max-sm:font-extrabold">
               {bloco === 'FINANCEIRO' ? 'Financeiro do culto' : 'Presença no culto'}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -558,7 +560,7 @@ export default function CultoLancarModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 max-sm:px-4">
           {/* Cabeçalho do formulário.
               No celular vira uma grade de duas colunas: data, horário, nome e
               igreja ocupam a linha toda e só Início/Fim dividem espaço — são
@@ -575,7 +577,7 @@ export default function CultoLancarModal({
                   setBuscando(true);
                   setChurchId(e.target.value);
                 }}
-                className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:py-2.5 max-sm:text-base max-sm:bg-white dark:max-sm:bg-slate-900 max-sm:border-[#e5e7eb]"
               >
                 {igrejas.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -598,7 +600,7 @@ export default function CultoLancarModal({
                   setBuscando(true);
                   setData(e.target.value);
                 }}
-                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:py-2.5 max-sm:text-base max-sm:bg-white dark:max-sm:bg-slate-900 max-sm:border-[#e5e7eb]"
               />
             </label>
             <label className="col-span-2 block sm:w-auto">
@@ -630,7 +632,7 @@ export default function CultoLancarModal({
                       );
                     }
                   }}
-                  className="w-full sm:w-44 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                  className="w-full sm:w-44 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:py-2.5 max-sm:text-base max-sm:bg-white dark:max-sm:bg-slate-900 max-sm:border-[#e5e7eb]"
                 >
                   <option value="">Sem horário definido</option>
                   {horarioExibido === HORA_AVULSA && (
@@ -672,7 +674,7 @@ export default function CultoLancarModal({
                 type="time"
                 value={horaInicio}
                 onChange={(e) => setHoraInicio(e.target.value)}
-                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:py-2.5 max-sm:text-base max-sm:bg-white dark:max-sm:bg-slate-900 max-sm:border-[#e5e7eb]"
               />
             </label>
             <label className="block sm:w-auto">
@@ -681,7 +683,7 @@ export default function CultoLancarModal({
                 type="time"
                 value={horaFim}
                 onChange={(e) => setHoraFim(e.target.value)}
-                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:py-2.5 max-sm:text-base max-sm:bg-white dark:max-sm:bg-slate-900 max-sm:border-[#e5e7eb]"
               />
             </label>
               </>
@@ -694,7 +696,7 @@ export default function CultoLancarModal({
                 <select
                   value={tipoCulto}
                   onChange={(e) => setTipoCulto(e.target.value)}
-                  className="w-full sm:w-44 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                  className="w-full sm:w-44 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:py-2.5 max-sm:text-base max-sm:bg-white dark:max-sm:bg-slate-900 max-sm:border-[#e5e7eb]"
                 >
                   {tipos.length === 0 && tipoCulto !== 'CULTO' && <option value="CULTO">Culto</option>}
                   {/* Culto lançado com um tipo que saiu do cadastro (ou antes
@@ -728,8 +730,26 @@ export default function CultoLancarModal({
           {/* Os cultos do dia moram na escolha; aqui fica só qual está aberto
               e o caminho de volta para ela. */}
           {doDia.length > 0 && (
-            <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-4 py-3 text-sm ${PASTILHA.azul}`}>
-              <span>
+            <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-4 py-3 text-sm ${PASTILHA.azul} max-sm:flex-nowrap max-sm:gap-3 max-sm:rounded-2xl max-sm:border max-sm:border-[#e5e7eb] max-sm:bg-white max-sm:px-3 max-sm:text-slate-800 dark:max-sm:bg-slate-800 dark:max-sm:border-slate-700 dark:max-sm:text-slate-100`}>
+              {/* Celular: a linha do culto — ícone, nome · dia, horário · igreja. */}
+              <span className="sm:hidden shrink-0 w-11 h-11 rounded-xl bg-[#151b28] flex items-center justify-center">
+                <CalendarDays className="w-5 h-5 text-white" />
+              </span>
+              <span className="sm:hidden min-w-0 flex-1">
+                {registro ? (
+                  <>
+                    <span className="block truncate font-bold">
+                      {nomeDoTipo(registro.tipoCulto)} · {fmtData(registro.dataCulto)}
+                    </span>
+                    <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                      {rotuloHorario(registro)} · {registro.church.name}
+                    </span>
+                  </>
+                ) : (
+                  <span className="block font-bold">Culto novo em {fmtData(data)}</span>
+                )}
+              </span>
+              <span className="max-sm:hidden">
                 {registro ? (
                   <>
                     Lançando em: <strong>{rotuloHorario(registro)} · {nomeDoTipo(registro.tipoCulto)}</strong>
@@ -745,10 +765,11 @@ export default function CultoLancarModal({
                     setAvisoEscolha(null);
                     setEscolhendo(true);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 max-sm:shrink-0 max-sm:border-0 max-sm:px-2 max-sm:text-sm max-sm:font-bold max-sm:text-emerald-600"
                 >
-                  <ArrowLeftRight className="w-3.5 h-3.5" />
-                  Escolher outro culto ({doDia.length} no dia)
+                  <ArrowLeftRight className="w-3.5 h-3.5 max-sm:hidden" />
+                  <span className="sm:hidden">Alterar</span>
+                  <span className="max-sm:hidden">Escolher outro culto ({doDia.length} no dia)</span>
                 </button>
               </Permissao>
             </div>
@@ -847,21 +868,48 @@ export default function CultoLancarModal({
           {grupos.map((g) => (
             <div key={g.titulo ?? 'sem-titulo'} className="space-y-3">
               {g.titulo && (
-                <div className="pt-1 border-t border-slate-100 dark:border-slate-700">
-                  <h3 className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                <div className="pt-1 border-t border-slate-100 dark:border-slate-700 max-sm:border-0 max-sm:pt-0">
+                  <h3 className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200 max-sm:mt-1 max-sm:text-[11px] max-sm:font-bold max-sm:uppercase max-sm:tracking-wider max-sm:text-slate-500 dark:max-sm:text-slate-400">
                     {g.titulo}
                   </h3>
                 </div>
               )}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div
+                className={`grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:grid-cols-1 ${
+                  bloco === 'PRESENCA'
+                    ? 'max-sm:gap-0 max-sm:divide-y max-sm:divide-[#eef0f3] max-sm:rounded-[20px] max-sm:border max-sm:border-[#e5e7eb] max-sm:bg-white max-sm:px-4 dark:max-sm:divide-slate-700 dark:max-sm:border-slate-700 dark:max-sm:bg-slate-800'
+                    : 'max-sm:gap-4'
+                }`}
+              >
                 {g.campos.map((c) => (
-              <label key={c.campo} className="block">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <label
+                key={c.campo}
+                className={`block ${
+                  bloco === 'PRESENCA'
+                    ? 'max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:py-3'
+                    : ''
+                }`}
+              >
+                <span
+                  className={`text-xs font-medium text-slate-500 dark:text-slate-400 ${
+                    bloco === 'PRESENCA'
+                      ? 'max-sm:text-[15px] max-sm:font-semibold max-sm:text-slate-800 dark:max-sm:text-slate-100'
+                      : 'max-sm:text-[13px] max-sm:font-semibold max-sm:text-slate-600'
+                  }`}
+                >
                   {c.label}
                 </span>
-                <div className="mt-1 relative">
+                <div
+                  className={`mt-1 relative ${
+                    c.moeda
+                      ? 'max-sm:mt-1.5 max-sm:rounded-2xl max-sm:border max-sm:border-[#e5e7eb] max-sm:bg-white dark:max-sm:border-slate-700 dark:max-sm:bg-slate-800'
+                      : bloco === 'PRESENCA'
+                        ? 'max-sm:mt-0 max-sm:shrink-0 max-sm:flex max-sm:items-center max-sm:gap-2'
+                        : 'max-sm:mt-1.5 max-sm:flex max-sm:items-center max-sm:gap-2 max-sm:rounded-2xl max-sm:border max-sm:border-[#e5e7eb] max-sm:bg-white max-sm:p-2 dark:max-sm:border-slate-700 dark:max-sm:bg-slate-800'
+                  }`}
+                >
                   {c.moeda && (
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none max-sm:left-4 max-sm:text-base max-sm:font-bold max-sm:text-slate-500">
                       R$
                     </span>
                   )}
@@ -881,14 +929,80 @@ export default function CultoLancarModal({
                       }))
                     }
                     disabled={jaAprovado}
-                    className={`w-full border border-slate-200 dark:border-slate-700 rounded-lg py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60 ${
-                      c.moeda ? 'pl-9 pr-3 text-right tabular-nums' : 'px-3'
+                    className={`w-full border border-slate-200 dark:border-slate-700 rounded-lg py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60 max-sm:border-0 max-sm:bg-transparent dark:max-sm:bg-transparent max-sm:font-extrabold max-sm:tabular-nums ${
+                      c.moeda
+                        ? 'pl-9 pr-3 text-right tabular-nums max-sm:h-16 max-sm:rounded-2xl max-sm:pl-12 max-sm:pr-4 max-sm:text-[28px]'
+                        : `px-3 max-sm:order-2 max-sm:px-0 max-sm:text-center ${
+                            bloco === 'PRESENCA'
+                              ? 'max-sm:w-14 max-sm:text-xl'
+                              : 'max-sm:flex-1 max-sm:min-w-0 max-sm:text-[28px]'
+                          }`
                     }`}
                   />
+                  {/* Celular: − e + ao lado do número. Mesmo setter do campo,
+                      um a menos (nunca abaixo de zero) ou um a mais. */}
+                  {!c.moeda && (
+                    <>
+                      <button
+                        type="button"
+                        aria-label={`Diminuir ${c.label}`}
+                        disabled={jaAprovado}
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            [c.campo]: String(Math.max(0, (Number(f[c.campo]) || 0) - 1)),
+                          }))
+                        }
+                        className="sm:hidden order-1 shrink-0 w-11 h-11 rounded-xl border border-[#e5e7eb] bg-white text-slate-700 flex items-center justify-center active:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                      >
+                        <Minus className="w-5 h-5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Aumentar ${c.label}`}
+                        disabled={jaAprovado}
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            [c.campo]: String(Math.max(0, (Number(f[c.campo]) || 0) + 1)),
+                          }))
+                        }
+                        className={`sm:hidden order-3 shrink-0 w-11 h-11 rounded-xl flex items-center justify-center disabled:opacity-50 ${
+                          bloco === 'PRESENCA'
+                            ? 'bg-pink-50 text-[#be185d] active:bg-pink-100 dark:bg-pink-950/40 dark:text-pink-300'
+                            : 'bg-[#151b28] text-white active:bg-slate-700'
+                        }`}
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </label>
                 ))}
               </div>
+              {/* Só exibição: soma do que já está digitado nos campos acima.
+                  Não é gravada nem enviada; o lançamento continua igual. */}
+              {g.campos.some((c) => c.campo === 'totalDizimos') && (
+                <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 dark:bg-emerald-950/30">
+                  <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                    Total do culto
+                  </span>
+                  <span className="text-xl font-extrabold tabular-nums text-emerald-900 dark:text-emerald-200">
+                    {((moedaParaNumero(form.totalDizimos ?? '') ?? 0) + (moedaParaNumero(form.totalOfertas ?? '') ?? 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+              )}
+              {g.campos.some((c) => c.campo === 'qtdHomens') && (
+                <div className="flex items-center justify-between rounded-2xl bg-pink-50 px-4 py-3 dark:bg-pink-950/30">
+                  <span className="text-[12px] font-bold uppercase tracking-wider text-[#be185d] dark:text-pink-300">
+                    Presentes
+                  </span>
+                  <span className="text-xl font-extrabold tabular-nums text-[#9d174d] dark:text-pink-200">
+                    {['qtdHomens', 'qtdMulheres', 'qtdCriancas'].reduce((soma, k) => soma + (Number(form[k]) || 0), 0)}
+                  </span>
+                </div>
+              )}
             </div>
           ))}
 
@@ -903,7 +1017,7 @@ export default function CultoLancarModal({
               onChange={(e) => setObservacao(e.target.value)}
               disabled={jaAprovado}
               placeholder="Algo que explique estes números? Ex.: a oferta do sábado entrou junto."
-              className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
+              className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60 max-sm:rounded-2xl max-sm:border-[#e5e7eb] max-sm:bg-white dark:max-sm:bg-slate-800 max-sm:px-4 max-sm:py-3 max-sm:text-base"
             />
           </label>
 
@@ -916,11 +1030,11 @@ export default function CultoLancarModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-200 dark:border-slate-700 max-sm:px-4 max-sm:pb-[calc(16px+env(safe-area-inset-bottom))] max-sm:bg-white dark:max-sm:bg-slate-800 max-sm:border-[#e5e7eb]">
+          <div className="flex items-center gap-2 max-sm:w-full">
             <button
               onClick={onFechar}
-              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 max-sm:hidden"
             >
               Fechar
             </button>
@@ -930,10 +1044,11 @@ export default function CultoLancarModal({
                 // Enviado fica travado até escolher outro culto: reenviar o
                 // mesmo formulário era o envio duplicado.
                 disabled={salvando || salvo || jaAprovado || !churchId || Boolean(conflito)}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50 max-sm:w-full max-sm:justify-center max-sm:rounded-2xl max-sm:py-3.5 max-sm:text-base max-sm:font-bold max-sm:bg-[#151b28] max-sm:hover:bg-[#151b28]"
               >
                 {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                {salvo ? 'Enviado' : 'Enviar'}
+                <span className="max-sm:hidden">{salvo ? 'Enviado' : 'Enviar'}</span>
+                <span className="sm:hidden">{salvo ? 'Enviado' : 'Enviar para o dirigente'}</span>
               </button>
             </Permissao>
           </div>
@@ -944,14 +1059,14 @@ export default function CultoLancarModal({
     {/* A escolha do culto, por cima do formulário. Fechar aqui fecha tudo:
         quem quer lançar um culto novo usa o botão próprio. */}
     {escolhendo && (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4" onClick={onFechar}>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 max-sm:items-stretch max-sm:p-0" onClick={onFechar}>
         <div
-          className="w-full max-w-2xl max-h-[85vh] flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
+          className="w-full max-w-2xl max-h-[85vh] flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden max-sm:max-w-none max-sm:max-h-none max-sm:h-full max-sm:rounded-none max-sm:shadow-none max-sm:bg-[#F4F6F9] dark:max-sm:bg-[#0d1017]"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700 max-sm:px-4 max-sm:pt-[calc(12px+env(safe-area-inset-top))] max-sm:bg-white dark:max-sm:bg-slate-800 max-sm:border-[#e5e7eb]">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white max-sm:text-xl max-sm:font-extrabold">
                 Qual culto você vai lançar?
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -969,7 +1084,7 @@ export default function CultoLancarModal({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="flex-1 overflow-y-auto p-5 space-y-4 max-sm:px-4">
             {avisoEscolha && (
               <div className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${PASTILHA.verde}`}>
                 <Check className="w-4 h-4 shrink-0" />
@@ -989,7 +1104,7 @@ export default function CultoLancarModal({
                   setAvisoEscolha(null);
                   setData(e.target.value);
                 }}
-                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                className="mt-1 w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:py-2.5 max-sm:text-base max-sm:bg-white dark:max-sm:bg-slate-900 max-sm:border-[#e5e7eb]"
               />
             </label>
 
@@ -1003,7 +1118,7 @@ export default function CultoLancarModal({
                 abrir um.
               </p>
             ) : (
-              <div className={`rounded-lg px-4 py-3 text-sm space-y-2 ${PASTILHA.azul}`}>
+              <div className={`rounded-lg px-4 py-3 text-sm space-y-2 ${PASTILHA.azul} max-sm:rounded-2xl`}>
                 {/* A conta do que falta é a que diminui a cada envio; os já
                     lançados continuam na tabela para conferir ou corrigir. */}
                 <p>
@@ -1017,9 +1132,9 @@ export default function CultoLancarModal({
                     ? `Todos já têm o ${ROTULO_BLOCO[bloco].toLowerCase()}. Clique em um para conferir, ou lance um culto novo.`
                     : `${pendentes.length === 1 ? 'Falta 1' : `Faltam ${pendentes.length}`} com o ${ROTULO_BLOCO[bloco].toLowerCase()}. Clique no culto que você vai lançar.`}
                 </p>
-                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                  <table className="w-full text-xs text-slate-700 dark:text-slate-200">
-                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 max-sm:rounded-2xl max-sm:border-[#e5e7eb]">
+                  <table className="w-full text-xs text-slate-700 dark:text-slate-200 max-sm:block max-sm:text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 max-sm:hidden">
                       <tr>
                         <th className="px-3 py-2 text-left font-medium">Horário</th>
                         <th className="px-3 py-2 text-left font-medium">Culto</th>
@@ -1028,7 +1143,7 @@ export default function CultoLancarModal({
                         <th className="px-3 py-2" />
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="max-sm:block">
                       {/* Quem lançou cada parte fica à vista: é o que diz ao
                           tesoureiro qual culto o secretário já abriu. */}
                       {paraEscolher.map((r) => {
@@ -1037,15 +1152,24 @@ export default function CultoLancarModal({
                           <tr
                             key={r.id}
                             onClick={() => escolher(r)}
-                            className={`border-t border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                            className={`border-t border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 max-sm:flex max-sm:flex-wrap max-sm:items-center max-sm:gap-x-2 max-sm:gap-y-1 max-sm:p-4 max-sm:first:border-t-0 ${
                               falta ? 'font-semibold' : ''
                             }`}
                           >
-                            <td className="px-3 py-2 whitespace-nowrap tabular-nums">{rotuloHorario(r)}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{nomeDoTipo(r.tipoCulto)}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{situacaoBloco(r, 'FINANCEIRO')}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{situacaoBloco(r, 'PRESENCA')}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-right">
+                            <td className="px-3 py-2 whitespace-nowrap tabular-nums max-sm:p-0 max-sm:font-bold">{rotuloHorario(r)}</td>
+                            <td className="px-3 py-2 whitespace-nowrap max-sm:p-0 max-sm:font-bold">
+                              <span className="sm:hidden">· </span>
+                              {nomeDoTipo(r.tipoCulto)}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap max-sm:basis-full max-sm:p-0 max-sm:text-xs max-sm:text-slate-500">
+                              <span className="sm:hidden">Financeiro · </span>
+                              {situacaoBloco(r, 'FINANCEIRO')}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap max-sm:basis-full max-sm:p-0 max-sm:text-xs max-sm:text-slate-500">
+                              <span className="sm:hidden">Presença · </span>
+                              {situacaoBloco(r, 'PRESENCA')}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-right max-sm:basis-full max-sm:p-0 max-sm:pt-2 max-sm:text-left">
                               {/* Botão de verdade, na cor do Enviar: um "Abrir"
                                   em texto passava despercebido e a pessoa não
                                   via que precisava escolher o culto. */}
@@ -1056,7 +1180,7 @@ export default function CultoLancarModal({
                                     e.stopPropagation();
                                     escolher(r);
                                   }}
-                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold"
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold max-sm:w-full max-sm:justify-center max-sm:rounded-xl max-sm:py-2.5 max-sm:text-sm"
                                 >
                                   Selecionar e lançar
                                   <ChevronRight className="w-3.5 h-3.5" />
@@ -1073,7 +1197,7 @@ export default function CultoLancarModal({
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-200 dark:border-slate-700">
+          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-200 dark:border-slate-700 max-sm:px-4 max-sm:pb-[calc(16px+env(safe-area-inset-bottom))] max-sm:bg-white dark:max-sm:bg-slate-800 max-sm:border-[#e5e7eb]">
             <button
               onClick={onFechar}
               className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
@@ -1084,7 +1208,7 @@ export default function CultoLancarModal({
               <button
                 onClick={novoLancamento}
                 disabled={buscando}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-sm font-semibold disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-sm font-semibold disabled:opacity-50 max-sm:flex-1 max-sm:justify-center max-sm:rounded-2xl max-sm:py-3 max-sm:bg-[#151b28]"
               >
                 <Plus className="w-4 h-4" />
                 Novo lançamento

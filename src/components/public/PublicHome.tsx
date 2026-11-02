@@ -1,7 +1,7 @@
 import { NavPublica } from './vitrine/comum';
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router';
-import { Download, Gamepad2, History, User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby, Clock, Home as HomeIcon } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router';
+import { Download, Gamepad2, History, User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby, Clock, Home as HomeIcon, UserPlus, ShoppingBag, CalendarDays, ArrowRight, Church } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MembroLogin } from '../membro/MembroLogin';
 import { MembroProvider } from '../membro/MembroProvider';
@@ -381,6 +381,7 @@ export function PublicHome() {
   }, [activeForm, campos.length]);
 
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   // Persiste o tema escolhido para que outras páginas públicas (Peniel) o sigam
   useEffect(() => {
@@ -884,7 +885,27 @@ export function PublicHome() {
         const tile = card.action === 'pwa'
           ? <InstallAppCard key={card.key} isDark={isDark} botao={(instalar) => tileApp(card.key, Download, card.iconColor || '#38bdf8', 'Instalar o app', () => setAppAberto({ card, instalar }))} />
           : tileApp(card.key, Icone, card.iconColor, tituloCurto, () => setAppAberto({ card }), vivo);
-        return i === 0 ? [tile, tileApp('__ciclo', Gamepad2, accent, 'Ciclo da fé', () => setAppAberto({ card: 'ciclo' }))] : [tile];
+        if (i !== 0) return [tile];
+        const extras = [tile, tileApp('__ciclo', Gamepad2, accent, 'Ciclo da fé', () => setAppAberto({ card: 'ciclo' }))];
+        // "Sou Visitante": o mesmo cadastro da opção "Quero ser Membro" do atendimento. Some se
+        // a igreja ocultou esse serviço em Sistema → Home Pública.
+        if (cfg.services.enabled && !cfg.services.hidden.includes('membership')) {
+          // Logo depois de "Sou Membro", antes do Ciclo da fé (pedido do dono).
+          extras.splice(1, 0,
+            <button key="__sou_visitante" type="button" onClick={() => escolherServico('membership')} className="group flex flex-col items-center gap-2 text-center focus:outline-none" data-card-acao>
+              <span
+                className="relative w-[68px] h-[68px] md:w-[76px] md:h-[76px] rounded-[22px] flex items-center justify-center transition-transform group-hover:scale-105 group-active:scale-95"
+                style={{ background: 'linear-gradient(145deg, #8b5cf633, #8b5cf614)', boxShadow: 'inset 0 0 0 1px #8b5cf655, 0 10px 30px -14px #8b5cf6' }}
+              >
+                <UserPlus className="w-7 h-7 md:w-8 md:h-8" style={{ color: '#8b5cf6' }} />
+              </span>
+              <span className={`text-[11px] md:text-xs font-semibold leading-tight line-clamp-2 max-w-[84px] ${textPrimary}`}>
+                Sou Visitante
+              </span>
+            </button>
+          );
+        }
+        return extras;
       })}
     </div>
   );
@@ -942,6 +963,264 @@ export function PublicHome() {
   const fabOptions = FAB_OPTIONS
     .filter(opt => !cfg.services.hidden.includes(opt.id))
     .map(opt => ({ ...opt, label: cfg.services.labels[opt.id] || opt.label }));
+
+  // ── Home no celular (< 768 px, modo clássico) ─────────────────────────────
+  // Estrutura do guia adcampinas-mobile-first (Main): header fixo, cartão da
+  // missão, Sou Membro / Sou Visitante em destaque, Rádio em largura total,
+  // demais atalhos em cartões neutros e tab bar embaixo. Cores: as do tema da
+  // home (escuro refinado). Só apresentação — cada toque chama a MESMA função
+  // que a home já usava; nenhuma regra nova.
+  const cardMembro = cardsVisiveis.find(c => c.action === 'membro') || null;
+  const cardRadio = cardsVisiveis.find(c => c.liveDot) || null;
+  const cardsNeutros = cardsVisiveis.filter(c => c !== cardMembro && c !== cardRadio);
+  const visitanteDisponivel = cfg.services.enabled && !cfg.services.hidden.includes('membership');
+  const rotuloVisitante = cfg.services.labels['membership'] || 'Sou Visitante';
+
+  /** Mesmo caminho da opção "Quero ser Membro" do botão de atendimento. */
+  const abrirCadastroVisitante = () => {
+    setFabOpen(false);
+    setVisitorName('');
+    setPhone('');
+    setNotes('');
+    setSelectedPastChurches([]);
+    setAfroBackgrounds([]);
+    setFormError('');
+    setMembershipTab('basico');
+    setFicha(EMPTY_FICHA);
+    setChurchId('');
+    removerFoto();
+    setOtpFlow('membership');
+    setActiveForm('membership');
+    setShowFabModal(true);
+  };
+
+  const superficie = isDark ? 'bg-white/[0.06] ring-1 ring-white/10' : 'bg-black/[0.04] ring-1 ring-black/5';
+  const quadradoIcone = isDark ? 'bg-white/10' : 'bg-white';
+  const corIcone = isDark ? '#e2e8f0' : '#334155';
+
+  const cartaoNeutro = (key: string, Icone: React.ElementType, titulo: string, sub: string | null, onClick: () => void, cor?: string | null) => (
+    <button key={key} type="button" onClick={onClick} data-card-acao
+      className={`flex min-h-[104px] flex-col items-start gap-3 rounded-[22px] p-4 text-left transition active:scale-[.98] ${superficie}`}>
+      <span className={`grid h-[42px] w-[42px] place-items-center rounded-[14px] ${quadradoIcone}`}>
+        <Icone className="h-5 w-5" strokeWidth={1.8} style={{ color: cor || corIcone }} />
+      </span>
+      <span className="min-w-0">
+        <span className={`block text-[15px] font-extrabold leading-tight ${textPrimary}`}>{titulo}</span>
+        {sub && <span className={`mt-0.5 block text-[12px] leading-snug line-clamp-2 ${textSub}`}>{sub}</span>}
+      </span>
+    </button>
+  );
+
+  const cartaoDestaque = (key: string, Icone: React.ElementType, titulo: string, sub: string, cor: string, onClick: () => void) => (
+    <button key={key} type="button" onClick={onClick} data-card-acao
+      className="flex min-h-[112px] flex-col items-start justify-between gap-3 rounded-[22px] p-4 text-left text-white transition active:scale-[.98]"
+      style={{ background: `linear-gradient(145deg, ${cor}, ${cor}cc)`, boxShadow: `0 14px 30px -14px ${cor}` }}>
+      <span className="grid h-[42px] w-[42px] place-items-center rounded-[14px]" style={{ background: 'rgba(255,255,255,.18)' }}>
+        <Icone className="h-5 w-5" strokeWidth={1.8} />
+      </span>
+      <span>
+        <span className="block text-[16px] font-extrabold leading-tight">{titulo}</span>
+        <span className="mt-0.5 block text-[12px] text-white/80">{sub}</span>
+      </span>
+    </button>
+  );
+
+  /** Nome do dia como a pessoa lê (o cadastro grava "Terca", "Sabado"). */
+  const diaLegivel = (dia: string) =>
+    ({ Terca: 'Terça', Sabado: 'Sábado' } as Record<string, string>)[dia] || dia;
+
+  /** "Dias de culto" no celular: um item por horário, em vez do parágrafo corrido. */
+  const cartaoAgenda = (card: HomeCard) => (
+    <div key={card.key} className={`col-span-2 rounded-[22px] p-4 ${superficie}`}>
+      <div className="mb-3 flex items-center gap-3">
+        <span className={`grid h-[42px] w-[42px] place-items-center rounded-[14px] ${quadradoIcone}`}>
+          <CalendarDays className="h-5 w-5" strokeWidth={1.8} style={{ color: card.iconColor || corIcone }} />
+        </span>
+        <span className={`text-[15px] font-extrabold ${textPrimary}`}>{card.title.split('\n')[0]}</span>
+      </div>
+      <ul className="flex flex-col">
+        {sede.schedules.map((linha, i) => {
+          const ehCulto = /culto/i.test(linha.name);
+          const Icone = ehCulto ? Church : /ebd|escola/i.test(linha.name) ? BookOpen : /vig[ií]lia/i.test(linha.name) ? Moon : Calendar;
+          return (
+            <li key={`${linha.dayOfWeek}-${linha.time}-${i}`}
+              className={`flex items-center gap-3 py-2.5 ${i > 0 ? `border-t ${isDark ? 'border-white/10' : 'border-black/5'}` : ''}`}>
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${quadradoIcone}`}>
+                <Icone className="h-[18px] w-[18px]" strokeWidth={1.8} style={{ color: ehCulto ? accent : corIcone }} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={`block text-[14px] font-bold leading-snug ${textPrimary}`}>{linha.name}</span>
+                <span className={`mt-0.5 flex items-center gap-3 text-[12px] ${textSub}`}>
+                  <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{diaLegivel(linha.dayOfWeek)}</span>
+                  {linha.time && <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{linha.time}</span>}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+
+  const homeCelular = (
+    <div className="md:hidden relative z-10 flex flex-col px-5 pb-[132px]">
+      {/* Cartão da missão */}
+      <section className={`mt-2 rounded-[24px] p-5 ${isDark ? 'bg-white/[0.05] ring-1 ring-white/10' : 'bg-[#1c1d22] text-white'}`}>
+        {cfg.heroEyebrow && <p className={`text-[13px] ${isDark ? textMuted : 'text-white/60'}`}>{cfg.heroEyebrow}</p>}
+        <h1 className={`mt-1 text-[44px] font-extrabold leading-none tracking-[-0.03em] ${isDark ? textPrimary : 'text-white'}`}>
+          {cfg.heroTitle || cfg.siteTitle || '—'}
+        </h1>
+        {cfg.heroText && <p className={`mt-3 text-[14px] leading-relaxed ${isDark ? textSub : 'text-white/75'}`}>{cfg.heroText}</p>}
+        {cfg.showVerse && (
+          <div className="mt-4 flex items-center gap-3">
+            <span className={`text-[12px] ${isDark ? textMuted : 'text-white/55'}`}>{cfg.verseRef}</span>
+            <button type="button" onClick={() => setShowVerseModal(true)} className="inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: accent }}>
+              {cfg.verseLabel} <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* Acesso rápido */}
+      <h2 className={`mt-6 mb-3 text-[16px] font-bold ${textPrimary}`}>Acesso rápido</h2>
+      <div className={`grid grid-cols-2 gap-3 transition-opacity duration-500 ${homeCarregada ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        {cardMembro && cartaoDestaque('__membro', resolveHomeIcon(cardMembro.icon), cardMembro.title.split('\n')[0], 'Acesse sua área', cardMembro.iconColor || '#0E8A5F', () => setShowMembroLogin(true))}
+        {visitanteDisponivel && (
+          <button type="button" onClick={abrirCadastroVisitante} data-card-acao
+            className="flex min-h-[112px] flex-col items-start justify-between gap-3 rounded-[22px] p-4 text-left text-white transition active:scale-[.98]"
+            style={{ background: 'linear-gradient(145deg, #4A3AA0, #4A3AA0cc)', boxShadow: '0 14px 30px -14px #4A3AA0' }}>
+            <span className="grid h-[42px] w-[42px] place-items-center rounded-[14px]" style={{ background: 'rgba(255,255,255,.18)' }}>
+              <UserPlus className="h-5 w-5" strokeWidth={1.8} />
+            </span>
+            <span>
+              <span className="block text-[16px] font-extrabold leading-tight">Sou Visitante</span>
+              <span className="mt-0.5 block text-[12px] text-white/80">{rotuloVisitante === 'Sou Visitante' ? 'Faça seu cadastro' : rotuloVisitante}</span>
+            </span>
+          </button>
+        )}
+
+        {/* Rádio: largura total, com o mesmo destino do cartão da rádio */}
+        {cardRadio && (
+          <div className={`col-span-2 flex items-center gap-3 rounded-[22px] p-4 ${superficie}`}>
+            <span className={`grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[14px] ${quadradoIcone}`}>
+              {(() => { const I = resolveHomeIcon(cardRadio.icon); return <I className="h-5 w-5" strokeWidth={1.8} style={{ color: cardRadio.iconColor || corIcone }} />; })()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[.12em] text-[#00b894]">
+                <span className="h-2 w-2 rounded-full bg-[#00b894] animate-pulse" /> Ao vivo
+              </span>
+              <span className={`block truncate text-[16px] font-extrabold ${textPrimary}`}>{cardRadio.title.split('\n')[0]}</span>
+              <span className={`block text-[12px] ${textSub}`}>Toque para ouvir</span>
+            </span>
+            <button type="button" aria-label={`Ouvir ${cardRadio.title}`} onClick={(e) => executarApp(cardRadio, e)} data-card-acao
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-[#071C30]" style={{ background: accent }}>
+              <Play className="h-5 w-5 fill-current" />
+            </button>
+          </div>
+        )}
+
+        {/* Ciclo da fé + demais atalhos: mesmo comportamento da grade de ícones */}
+        {cartaoNeutro('__ciclo', Gamepad2, 'Ciclo da fé', 'Sua jornada', () => setAppAberto({ card: 'ciclo' }), accent)}
+        {cardsNeutros.map((card) => {
+          if (card.action === 'agenda' && sede.schedules.length > 0) return cartaoAgenda(card);
+          if (card.action === 'pwa') {
+            return (
+              <InstallAppCard key={card.key} isDark={isDark}
+                botao={(instalar) => cartaoNeutro(card.key, Download, 'Instalar o app', 'Abra direto da tela de início', () => setAppAberto({ card, instalar }), card.iconColor || '#38bdf8')} />
+            );
+          }
+          return cartaoNeutro(card.key, resolveHomeIcon(card.icon), card.title.split(/\n/)[0], descricaoCurta(card), () => setAppAberto({ card }), card.iconColor);
+        })}
+      </div>
+    </div>
+  );
+
+  /**
+   * Escolha de um serviço do atendimento. Era o onClick inline do menu do botão
+   * flutuante; virou função (corpo idêntico) para o menu do celular usar o
+   * MESMO caminho.
+   */
+  const escolherServico = (id: string) => {
+    setFabOpen(false);
+    setVisitorName('');
+    setPhone('');
+    setNotes('');
+    setSelectedPastChurches([]);
+    setAfroBackgrounds([]);
+    setFormError('');
+    setMembershipTab('basico');
+    setFicha(EMPTY_FICHA);
+    setChurchId('');
+    removerFoto();
+
+    if (id === 'membro_login') {
+      setShowMembroLogin(true);
+    } else if (id === 'membership') {
+      setOtpFlow('membership');
+      setActiveForm('membership');
+      setShowFabModal(true);
+    } else {
+      setOtpFlow('pastoral');
+      setAttendanceType(id);
+      setActiveForm('pastoral');
+      setShowFabModal(true);
+    }
+  };
+
+  // Atendimento no celular (guia: tela Atendimento). Mesmas opções do menu do
+  // botão flutuante (respeita as ocultas e os rótulos de Sistema → Home
+  // Pública), só agrupadas.
+  const GRUPOS_ATENDIMENTO: { titulo: string; ids: string[] }[] = [
+    { titulo: 'Membresia', ids: ['membro_login', 'membership'] },
+    { titulo: 'Cuidado pastoral', ids: ['visita_pastoral', 'aconselhamento', 'pedido_oracao', 'reconciliacao'] },
+    { titulo: 'Atendimentos', ids: ['familiar', 'jovem', 'infantil', 'financeiro', 'ministerial'] },
+    { titulo: 'Celebrações', ids: ['casamento', 'apresentacao_criancas'] },
+  ];
+  const opcaoPorId = new Map(fabOptions.map(o => [o.id, o]));
+  const idsAgrupados = new Set(['online', 'presencial', 'emergencial', ...GRUPOS_ATENDIMENTO.flatMap(g => g.ids)]);
+  const gruposAtendimento = [
+    ...GRUPOS_ATENDIMENTO.map(g => ({ titulo: g.titulo, opcoes: g.ids.map(id => opcaoPorId.get(id)).filter((o): o is NonNullable<typeof o> => !!o) })),
+    { titulo: 'Outros', opcoes: fabOptions.filter(o => !idsAgrupados.has(o.id)) },
+  ].filter(g => g.opcoes.length > 0);
+  const opcaoOnline = opcaoPorId.get('online');
+  const opcaoPresencial = opcaoPorId.get('presencial');
+  const opcaoEmergencial = opcaoPorId.get('emergencial');
+
+  /** Tab bar do celular: Início · Eventos · Atendimento (FAB) · Loja · Perfil. */
+  const tabBarCelular = (
+    <nav aria-label="Navegação" className={`md:hidden fixed inset-x-0 bottom-0 z-40 flex items-end justify-around border-t px-2 pt-2 backdrop-blur-xl ${isDark ? 'border-white/10 bg-[#0b0d12]/90' : 'border-black/5 bg-white/95'}`}
+      style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
+      {[
+        { rotulo: 'Início', Icone: HomeIcon, to: '/', ativo: pathname === '/' },
+        { rotulo: 'Eventos', Icone: CalendarDays, to: '/eventos', ativo: false },
+      ].map(({ rotulo, Icone, to, ativo }) => (
+        <Link key={rotulo} to={to} className="flex min-h-[52px] w-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+          <span className="grid h-[30px] w-[52px] place-items-center rounded-full" style={ativo ? { background: `${accent}2e`, color: accent } : { color: isDark ? '#94a3b8' : '#64748b' }}>
+            <Icone className="h-5 w-5" strokeWidth={1.8} />
+          </span>
+          <span style={{ color: ativo ? accent : (isDark ? '#94a3b8' : '#64748b') }}>{rotulo}</span>
+        </Link>
+      ))}
+      {cfg.services.enabled ? (
+        <button type="button" onClick={() => setFabOpen(o => !o)} aria-label="Atendimento" className="flex w-20 flex-col items-center gap-1 text-[11px] font-semibold text-[#10b981]">
+          <span className="-mt-[26px] grid h-14 w-14 place-items-center rounded-full text-white shadow-lg"
+            style={{ background: 'linear-gradient(135deg,#059669,#10b981)', border: `4px solid ${isDark ? '#0b0d12' : '#ffffff'}` }}>
+            {fabOpen ? <X className="h-6 w-6" /> : <MessageSquare className="h-6 w-6" />}
+          </span>
+          Atendimento
+        </button>
+      ) : <span className="w-20" />}
+      {[
+        { rotulo: 'Loja', Icone: ShoppingBag, to: '/loja' },
+        { rotulo: 'Perfil', Icone: User, to: '/auth/login' },
+      ].map(({ rotulo, Icone, to }) => (
+        <Link key={rotulo} to={to} className="flex min-h-[52px] w-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
+          <span className="grid h-[30px] w-[52px] place-items-center rounded-full"><Icone className="h-5 w-5" strokeWidth={1.8} /></span>
+          {rotulo}
+        </Link>
+      ))}
+    </nav>
+  );
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden font-sans transition-colors duration-500"
@@ -1064,8 +1343,33 @@ export function PublicHome() {
           }} />
       )}
 
+      {/* Header do celular (modo clássico): fixo no topo, saudação + Entrar */}
+      {!modoAnimado && (
+        <header className={`md:hidden sticky top-0 z-30 flex items-center gap-3 border-b px-5 pb-3 backdrop-blur-xl ${isDark ? 'border-white/10' : 'border-black/5'}`}
+          style={{ paddingTop: 'max(14px, env(safe-area-inset-top))', background: isDark ? 'rgba(11,13,18,.82)' : 'rgba(255,255,255,.85)' }}>
+          {cfg.logoUrl ? (
+            <img src={cfg.logoUrl} alt={cfg.siteTitle || 'Logo da igreja'} className={`h-11 w-11 shrink-0 rounded-full object-cover ring-1 ${isDark ? 'ring-white/10' : 'ring-black/10'}`} />
+          ) : (
+            <div aria-hidden="true" className={`h-11 w-11 shrink-0 rounded-full ring-1 ${isDark ? 'ring-white/10 bg-white/5' : 'ring-black/10 bg-black/5'}`} />
+          )}
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className={`text-[12px] ${textSub}`}>Bem-vindo à</p>
+            <p className={`truncate text-[16px] font-extrabold ${textPrimary}`}>{cfg.siteTitle || '—'}</p>
+          </div>
+          {/* Mesmo gatilho invisível da contabilidade do cabeçalho do desktop */}
+          <button onClick={registrarToqueContabilidade} aria-hidden="true" tabIndex={-1} className="h-10 w-6 opacity-0 cursor-default select-none" />
+          <button onClick={() => setIsDark(d => !d)} aria-label={isDark ? 'Tema claro' : 'Tema escuro'}
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${avatarCls}`}>
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+          </button>
+          <Link to="/auth/login" className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[14px] font-bold ${isDark ? 'bg-[#ffffff] text-[#0b0d12]' : 'bg-[#16181D] text-[#ffffff]'}`}>
+            <LogIn className="h-4 w-4" /> Entrar
+          </Link>
+        </header>
+      )}
+
       {/* Header */}
-      <header className={`flex items-center justify-between p-6 md:px-12 z-30 ${modoAnimado ? 'absolute top-0 inset-x-0' : 'relative'}`}>
+      <header className={`flex items-center justify-between p-6 md:px-12 z-30 ${modoAnimado ? 'absolute top-0 inset-x-0' : 'relative max-md:hidden'}`}>
         {/* Sem logo cadastrada, um círculo neutro: melhor um espaço vazio do
             que a marca de outra igreja (ou o ícone de imagem quebrada). */}
         {/* Logo e, ao lado, a chamada da igreja ("Nossa missão é / REINAR"). */}
@@ -1120,9 +1424,24 @@ export function PublicHome() {
         </div>
       </header>
       {/* No celular o menu desce para uma linha própria, abaixo do cabeçalho. */}
-      <div className={`md:hidden flex justify-center px-4 -mt-2 mb-2 z-30 ${modoAnimado ? 'absolute top-[84px] inset-x-0' : 'relative'}`}>
-        <NavPublica isDark={isDark} accent={accent} onPeniel={() => setShowPenielModal(true)} />
-      </div>
+      {modoAnimado ? (
+        <div className="md:hidden flex justify-center px-4 z-30 -mt-2 mb-2 absolute top-[84px] inset-x-0">
+          <NavPublica isDark={isDark} accent={accent} onPeniel={() => setShowPenielModal(true)} />
+        </div>
+      ) : (
+        // Modo clássico no celular: Eventos e Compras já estão na tab bar de
+        // baixo; aqui ficam só Peniel e CIBE, que não têm outro acesso.
+        <div className="md:hidden relative z-30 mt-3 mb-1 flex justify-center gap-2 px-5">
+          <button type="button" onClick={() => setShowPenielModal(true)}
+            className={`h-9 rounded-full px-4 text-[13px] font-semibold ${isDark ? 'bg-white/[0.06] text-white/80 ring-1 ring-white/10' : 'bg-black/[0.04] text-slate-700 ring-1 ring-black/5'}`}>
+            Peniel
+          </button>
+          <Link to="/eventos?dep=cibe"
+            className={`inline-flex h-9 items-center rounded-full px-4 text-[13px] font-semibold ${isDark ? 'bg-white/[0.06] text-white/80 ring-1 ring-white/10' : 'bg-black/[0.04] text-slate-700 ring-1 ring-black/5'}`}>
+            CIBE
+          </Link>
+        </div>
+      )}
 
       {modoAnimado ? (
         <>
@@ -1183,9 +1502,10 @@ export function PublicHome() {
         </>
       ) : (
         <>
+      {homeCelular}
       {/* Main content */}
-      <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 md:px-24 py-12 relative z-10 gap-16 lg:gap-32">
-        <div className="w-full md:w-1/2 max-w-lg">
+      <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 md:px-24 py-12 relative z-10 gap-16 lg:gap-32 max-md:p-0 max-md:flex-none">
+        <div className="w-full md:w-1/2 max-w-lg max-md:hidden">
           {/* Texto ainda não cadastrado vira um traço — a home nasce em branco
               e espera o cadastro, em vez de exibir o texto de outra igreja. */}
           {cfg.heroEyebrow && (
@@ -1217,7 +1537,7 @@ export function PublicHome() {
             troca o destino de cada um em Sistema → Home Pública. */}
         {/* Espaço entre os cards definido no estilo: com as classes de gap os
             cards ficavam colados uns nos outros. */}
-        <div className="w-full md:w-1/2 max-w-xl flex justify-center">
+        <div className="w-full md:w-1/2 max-w-xl flex justify-center max-md:hidden">
           {gradeDeApps}
         </div>
         {appExpandido}
@@ -1227,12 +1547,80 @@ export function PublicHome() {
 
       {/* Indicador de "tem mais abaixo" — mobile, onde a barra de rolagem
           está escondida pelo CSS global desta página */}
-      <ScrollHint hidden={fabOpen || showFabModal || showMembroLogin || showPenielModal} />
+      {/* No modo clássico o celular tem a tab bar no rodapé; a dica ficaria por cima dela. */}
+      <ScrollHint hidden={!modoAnimado || fabOpen || showFabModal || showMembroLogin || showPenielModal} />
 
       {/* Botão flutuante de atendimento da secretaria. A igreja pode desligá-lo
           inteiro em Sistema → Home Pública. */}
+      {!modoAnimado && tabBarCelular}
+      {/* Atendimento no celular: tela cheia acima da tab bar */}
+      <AnimatePresence>
+        {!modoAnimado && fabOpen && cfg.services.enabled && (
+          <motion.div
+            role="dialog"
+            aria-label="Atendimento"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.18 }}
+            onKeyDown={(e) => { if (e.key === 'Escape') setFabOpen(false); }}
+            className="md:hidden fixed inset-x-0 top-0 z-[35] overflow-y-auto px-5"
+            style={{ background: bg, bottom: 'calc(76px + max(10px, env(safe-area-inset-bottom)))', paddingTop: 'max(24px, env(safe-area-inset-top))' }}
+          >
+            <h2 className={`text-[28px] font-extrabold leading-tight tracking-[-0.8px] ${textPrimary}`}>Como podemos te ajudar?</h2>
+            <p className={`mt-1 text-[14px] ${textSub}`}>Escolha o atendimento e fale com a equipe pastoral.</p>
+
+            {(opcaoOnline || opcaoPresencial) && (
+              <div className={`mt-5 grid grid-cols-2 gap-1 rounded-[16px] p-1 ${isDark ? 'bg-white/[0.06]' : 'bg-black/[0.05]'}`}>
+                {[opcaoOnline, opcaoPresencial].filter((o): o is NonNullable<typeof o> => !!o).map((o) => (
+                  <button key={o.id} type="button" onClick={() => escolherServico(o.id)}
+                    className={`h-11 rounded-[12px] text-[14px] font-bold ${isDark ? 'bg-white/[0.08] text-white' : 'bg-white text-slate-800 shadow-sm'}`}>
+                    {o.id === 'online' ? 'Online' : 'Presencial'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {opcaoEmergencial && (
+              <button type="button" onClick={() => escolherServico(opcaoEmergencial.id)}
+                className="mt-4 flex w-full items-center gap-3 rounded-[20px] p-4 text-left"
+                style={{ background: isDark ? 'rgba(225,29,72,.14)' : '#fff1f2', border: `1px solid ${isDark ? 'rgba(244,63,94,.35)' : '#fecdd3'}` }}>
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-rose-600 text-white">
+                  <AlertCircle className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block text-[15px] font-extrabold ${isDark ? 'text-rose-200' : 'text-rose-700'}`}>{opcaoEmergencial.label}</span>
+                  <span className={`block text-[12.5px] ${isDark ? 'text-rose-200/70' : 'text-rose-600/80'}`}>Precisa de ajuda agora? Fale com um pastor.</span>
+                </span>
+                <ArrowRight className={`h-5 w-5 ${isDark ? 'text-rose-200' : 'text-rose-600'}`} />
+              </button>
+            )}
+
+            {gruposAtendimento.map((g) => (
+              <section key={g.titulo} className="mt-6">
+                <p className={`mb-2.5 text-[12px] font-bold uppercase tracking-[1.2px] ${textMuted}`}>{g.titulo}</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {g.opcoes.map((o) => {
+                    const Icone = o.icon;
+                    return (
+                      <button key={o.id} type="button" onClick={() => escolherServico(o.id)}
+                        className={`flex min-h-[64px] items-center gap-2.5 rounded-[18px] p-3 text-left transition active:scale-[.98] ${superficie}`}>
+                        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-white ${o.color}`}>
+                          <Icone className="h-5 w-5" />
+                        </span>
+                        <span className={`min-w-0 text-[13px] font-bold leading-tight ${textPrimary}`}>{o.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+            <div className="h-6" />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {cfg.services.enabled && (
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+      <div className={`fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 ${modoAnimado ? '' : 'max-md:bottom-[104px]'}`}>
         {/* Floating Menu Stack */}
         <AnimatePresence>
           {fabOpen && (
@@ -1243,7 +1631,7 @@ export function PublicHome() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setFabOpen(false)}
-                className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-30"
+                className={`fixed inset-0 bg-black/40 backdrop-blur-[2px] z-30 ${modoAnimado ? '' : 'max-md:hidden'}`}
               />
               
               {/* Menu Container */}
@@ -1251,7 +1639,7 @@ export function PublicHome() {
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                className="z-40 grid grid-cols-1 sm:grid-cols-2 gap-3 justify-items-end max-h-[70vh] max-w-[95vw] sm:max-w-2xl overflow-y-auto pr-1 pb-2 no-scrollbar"
+                className={`z-40 grid grid-cols-2 gap-2 w-[min(92vw,560px)] max-h-[70vh] overflow-y-auto pb-2 no-scrollbar ${modoAnimado ? '' : 'max-md:hidden'}`}
                 style={{
                   scrollbarWidth: 'none',
                   msOverflowStyle: 'none'
@@ -1269,45 +1657,16 @@ export function PublicHome() {
                         transition: { delay: (fabOptions.length - 1 - index) * 0.02 }
                       }}
                       exit={{ opacity: 0, x: 20 }}
-                      className="flex items-center gap-3 cursor-pointer group"
-                      onClick={() => {
-                        setFabOpen(false);
-                        setVisitorName('');
-                        setPhone('');
-                        setNotes('');
-                        setSelectedPastChurches([]);
-                        setAfroBackgrounds([]);
-                        setFormError('');
-                        setMembershipTab('basico');
-                        setFicha(EMPTY_FICHA);
-                        setChurchId('');
-                        removerFoto();
-
-                        if (opt.id === 'membro_login') {
-                          setShowMembroLogin(true);
-                        } else if (opt.id === 'membership') {
-                          setOtpFlow('membership');
-                          setActiveForm('membership');
-                          setShowFabModal(true);
-                        } else {
-                          setOtpFlow('pastoral');
-                          setAttendanceType(opt.id);
-                          setActiveForm('pastoral');
-                          setShowFabModal(true);
-                        }
-                      }}
+                      className={`flex flex-row-reverse items-center justify-end gap-2.5 rounded-2xl p-2.5 cursor-pointer group shadow-md backdrop-blur-sm transition-transform active:scale-[.98] ${isDark ? 'bg-slate-800/95 border border-slate-700/60' : 'bg-white/95 border border-slate-200/70'}`}
+                      onClick={() => escolherServico(opt.id)}
                     >
                       {/* Label badge */}
-                      <span className={`px-3 py-1.5 rounded-lg shadow-md text-xs font-semibold whitespace-nowrap transition-transform group-hover:-translate-x-1 ${
-                        isDark 
-                          ? 'bg-slate-800/90 text-white border border-slate-700/50 backdrop-blur-sm' 
-                          : 'bg-white/90 text-slate-800 border border-slate-200/50 backdrop-blur-sm'
-                      }`}>
+                      <span className={`min-w-0 text-left text-[12.5px] font-semibold leading-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
                         {opt.label}
                       </span>
                       
                       {/* Round Icon Button */}
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110 ${opt.color}`}>
+                      <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110 ${opt.color}`}>
                         <Icon className="w-5 h-5" />
                       </div>
                     </motion.div>
@@ -1321,7 +1680,7 @@ export function PublicHome() {
         {/* Toggle Button */}
         <button
           onClick={() => setFabOpen(!fabOpen)}
-          className="relative w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 z-40"
+          className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 z-40 ${modoAnimado ? '' : 'max-md:hidden'}`}
           style={{
             background: 'linear-gradient(135deg,#059669,#10b981)',
             boxShadow: '0 4px 20px rgba(16,185,129,0.4)',

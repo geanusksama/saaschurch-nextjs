@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { CartoesTotais } from './CartoesTotais';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AvisoDefinaFiltros, BotaoBuscar, type FiltrosConsulta } from './BotaoBuscar';
+import { type FiltrosConsulta } from './BotaoBuscar';
 import { qk } from '../../lib/queryClient';
-import { ArrowUpDown, Building2, Calendar, CheckCircle2, Clock3, Download, Droplets, Loader2, Pencil, Plus, Printer, Search, Trash2, UserRound, X, XCircle } from 'lucide-react';
+import { ArrowUpDown, Building2, Calendar, CheckCircle2, ChevronDown, Clock3, Download, Droplets, Loader2, Pencil, Plus, Printer, Search, SlidersHorizontal, Trash2, UserRound, X, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
@@ -345,6 +346,8 @@ export function Baptism() {
   } | null>(null);
   const [reiniciandoBatismo, setReiniciandoBatismo] = useState(false);
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  // Estado puramente visual: abre/fecha a gaveta de filtros.
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const churchOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const memberOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -999,212 +1002,162 @@ export function Baptism() {
     }
   }
 
+  // Puramente visual: quantos filtros da gaveta estão preenchidos agora.
+  const filtrosAtivosCount = [selectedRegionalId, selectedChurchId, selectedStatusFilter, dateFrom, dateTo].filter(Boolean).length;
+  const buscandoAgora = aplicados !== null && dashboardQuery.isFetching;
+  const campoFiltroClasse =
+    'h-[50px] w-full appearance-none rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-10 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white';
+  const dataFiltroClasse =
+    'h-[50px] w-full rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white';
+  const rotuloFiltroClasse = 'flex flex-col gap-2.5 text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400';
+
   return (
-    <div className="space-y-4 p-6 text-slate-900 dark:text-slate-100">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-            <Droplets className="h-5 w-5 text-blue-600" />
+    <div className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
+      <style>{'@keyframes bzDrawerIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}'}</style>
+
+      {/* Cabeçalho */}
+      <header className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-700 dark:text-slate-200">
+            <Droplets className="h-5 w-5" strokeWidth={1.8} />
           </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Batismo</h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Gerencie pedidos e processos de batismo</p>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Secretaria</span>
+            <h1 className="whitespace-nowrap text-[17px] font-bold">Batismo</h1>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2">
           <Permissao chave="baptism.baptism.exportar" rotulo="Exportar — Baptism" herda="baptism.view">
             <button
               type="button"
               onClick={() => toast.info('Exportacao sera ligada no mesmo padrao dos demais servicos.')}
-              className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900"
+              title="Exportar"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              <Download className="h-4 w-4" />
-              Exportar
+              <Download className="h-4 w-4" strokeWidth={2} />
+              <span className="hidden md:inline">Exportar</span>
             </button>
           </Permissao>
           <Permissao chave="baptism.baptism.imprimir" rotulo="Imprimir — Baptism" herda="baptism.view">
             <button
               type="button"
               onClick={() => setPrintModalOpen(true)}
-              className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900"
+              title="Imprimir"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              <Printer className="h-4 w-4" />
-              Imprimir
+              <Printer className="h-4 w-4" strokeWidth={2} />
+              <span className="hidden md:inline">Imprimir</span>
             </button>
           </Permissao>
           <Permissao chave="baptism.baptism.novo_batismo" rotulo="Novo Batismo — Baptism" herda="baptism.view">
             <button
               type="button"
               onClick={() => openRequestModal(currentSchedule)}
-              className="flex h-10 items-center gap-2 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 pl-3 pr-3.5 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <Plus className="h-4 w-4" />
-              Novo Batismo
+              <Plus className="h-4 w-4" strokeWidth={2.2} />
+              <span className="md:hidden">Novo</span>
+              <span className="hidden md:inline">Novo Batismo</span>
             </button>
           </Permissao>
         </div>
-      </div>
+      </header>
 
-      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Pendentes" value={stats.pending} icon={<Clock3 className="h-5 w-5 text-blue-600" />} />
-        <StatCard label="Aprovados" value={stats.approved} icon={<CheckCircle2 className="h-5 w-5 text-green-600" />} />
-        <StatCard label="Cancelados" value={stats.cancelled} icon={<XCircle className="h-5 w-5 text-rose-600" />} />
-        <NextScheduleCard
-          schedule={currentSchedule}
-          canManageSchedules={canManageSchedules}
-          onCreate={() => openScheduleModal()}
-          onEdit={() => currentSchedule && openScheduleModal(currentSchedule)}
-          onDelete={() => currentSchedule && setDeleteTarget({ kind: 'schedule', id: currentSchedule.id, label: `${currentSchedule.churchName} - ${formatDate(currentSchedule.scheduledDate)}` })}
-        />
-      </div>
-
-      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-        <div
-          className={`grid gap-3 md:grid-cols-2 xl:items-end ${
-            campoVisible
-              ? 'xl:grid-cols-[minmax(180px,1fr)_minmax(135px,0.72fr)_minmax(135px,0.72fr)_minmax(150px,0.8fr)_minmax(120px,0.62fr)_minmax(125px,0.62fr)_minmax(125px,0.62fr)_auto]'
-              : 'xl:grid-cols-[minmax(180px,1fr)_minmax(135px,0.72fr)_minmax(150px,0.8fr)_minmax(120px,0.62fr)_minmax(125px,0.62fr)_minmax(125px,0.62fr)_auto]'
-          }`}
-        >
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Busca</label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <div className="box-border flex w-full flex-1 flex-col gap-3 px-3 pb-10 pt-3 md:px-7 md:pt-4">
+        {/* Busca + números */}
+        <div className="flex flex-wrap items-stretch gap-3">
+          <div className="flex min-w-0 flex-[1_1_380px] gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') buscar(); }}
                 placeholder="Buscar por membro, protocolo, igreja, servico ou observacao..."
-                className="w-full h-[46px] pl-10 pr-4 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
+                className="h-full min-h-[52px] w-full rounded-2xl border-[1.5px] border-slate-200 bg-white pl-12 pr-3.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-slate-300"
               />
             </div>
-          </div>
-
-          {campoVisible && (
-            <div>
-              <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Campo</label>
-              <select
-                value={selectedFieldId}
-                onChange={(event) => {
-                  setSelectedFieldId(event.target.value);
-                  setSelectedRegionalId('');
-                  setSelectedChurchId('');
-                }}
-                disabled={!canChooseField || loadingFilters}
-                className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
-              >
-                <option value="">Todos os campos</option>
-                {fields.map((field) => (
-                  <option key={field.id} value={field.id}>
-                    {field.code ? `${field.code} - ` : ''}
-                    {field.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Regional</label>
-            <select
-              value={selectedRegionalId}
-              onChange={(event) => {
-                setSelectedRegionalId(event.target.value);
-                setSelectedChurchId('');
-              }}
-              disabled={!canChooseRegional || loadingFilters}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
+            <button
+              type="button"
+              onClick={() => setFiltrosAbertos(true)}
+              title="Filtros"
+              className={`flex min-h-[52px] flex-none items-center gap-2 rounded-2xl border-[1.5px] bg-white px-[15px] text-sm font-semibold text-slate-900 hover:border-slate-900 md:px-[18px] dark:bg-slate-800 dark:text-white ${
+                filtrosAtivosCount ? 'border-slate-900 dark:border-slate-300' : 'border-slate-200 dark:border-slate-600'
+              }`}
             >
-              <option value="">Todas as regionais</option>
-              {filteredRegionais.map((regional) => (
-                <option key={regional.id} value={regional.id}>
-                  {regional.code ? `${regional.code} - ` : ''}
-                  {regional.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Igreja</label>
-            <select
-              value={selectedChurchId}
-              onChange={(event) => setSelectedChurchId(event.target.value)}
-              disabled={!canChooseChurch || loadingFilters}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
+              <SlidersHorizontal className="h-[19px] w-[19px]" strokeWidth={2} />
+              <span className="hidden md:inline">Filtros</span>
+              {filtrosAtivosCount > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1.5 text-[11px] font-bold text-white dark:bg-white dark:text-slate-900">
+                  {filtrosAtivosCount}
+                </span>
+              )}
+            </button>
+            {/* Consulta explícita: a tabela só muda ao clicar aqui (ou Enter na busca). */}
+            <button
+              type="button"
+              onClick={buscar}
+              disabled={buscandoAgora}
+              title="Buscar"
+              className="flex min-h-[52px] flex-none items-center gap-2 rounded-2xl bg-slate-900 px-[15px] text-sm font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 md:px-[18px] dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <option value="">Todas as igrejas</option>
-              {filteredChurchOptions.map((church) => (
-                <option key={church.id} value={church.id}>
-                  {church.code ? `${church.code} - ` : ''}
-                  {church.name}
-                </option>
-              ))}
-            </select>
+              {buscandoAgora ? <Loader2 className="h-[19px] w-[19px] animate-spin" /> : <Search className="h-[19px] w-[19px]" strokeWidth={2.2} />}
+              <span className="hidden md:inline">{buscandoAgora ? 'Buscando...' : 'Buscar'}</span>
+            </button>
           </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Status</label>
-            <select
-              value={selectedStatusFilter}
-              onChange={(event) => setSelectedStatusFilter(event.target.value)}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
-            >
-              <option value="">Todos os status</option>
-              <option value="1">Pendente</option>
-              <option value="2">Aprovado</option>
-              <option value="3">Cancelado</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data inicial</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
+          <CartoesTotais>
+            <StatCard label="Pendentes" value={stats.pending} icon={<Clock3 className="h-[19px] w-[19px]" strokeWidth={1.8} />} tone="bg-[#dbeafe] text-[#1d4ed8]" />
+            <StatCard label="Aprovados" value={stats.approved} icon={<CheckCircle2 className="h-[19px] w-[19px]" strokeWidth={1.8} />} tone="bg-[#dcfce7] text-[#15803d]" />
+            <StatCard label="Cancelados" value={stats.cancelled} icon={<XCircle className="h-[19px] w-[19px]" strokeWidth={1.8} />} tone="bg-[#fee2e2] text-[#b91c1c]" />
+            <NextScheduleCard
+              schedule={currentSchedule}
+              canManageSchedules={canManageSchedules}
+              onCreate={() => openScheduleModal()}
+              onEdit={() => currentSchedule && openScheduleModal(currentSchedule)}
+              onDelete={() => currentSchedule && setDeleteTarget({ kind: 'schedule', id: currentSchedule.id, label: `${currentSchedule.churchName} - ${formatDate(currentSchedule.scheduledDate)}` })}
             />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data final</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
-            />
-          </div>
-          {/* Consulta explícita: a tabela só muda ao clicar aqui. */}
-          <div className="flex items-end">
-            <BotaoBuscar onClick={buscar} buscando={aplicados !== null && dashboardQuery.isFetching} />
-          </div>
+          </CartoesTotais>
         </div>
-      </div>
 
-      {(loading || loadingFilters) ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          <span className="inline-flex items-center gap-2">
-            <Clock3 className="h-4 w-4 animate-pulse text-blue-600" />
+        {(loading || loadingFilters) ? (
+          <p className="inline-flex items-center gap-2 px-1 text-sm text-slate-500 dark:text-slate-400">
+            <Clock3 className="h-4 w-4 animate-pulse" />
             Carregando batismos e filtros...
-          </span>
-        </div>
-      ) : null}
+          </p>
+        ) : null}
 
-      {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
-      ) : null}
+        {error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{error}</div>
+        ) : null}
 
-      {dashboard?.truncated ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Sem intervalo de datas a lista para nos {dashboard.queueCap ?? 2000} registros mais recentes.
-          Informe uma data inicial e final para ver o periodo inteiro.
-        </div>
-      ) : null}
+        {dashboard?.truncated ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            Sem intervalo de datas a lista para nos {dashboard.queueCap ?? 2000} registros mais recentes.
+            Informe uma data inicial e final para ver o periodo inteiro.
+          </div>
+        ) : null}
 
-      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900">
+        {!aplicados ? (
+          <section className="overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+            {insertingLabel ? (
+              <div className="flex items-center gap-3 border-b border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600" />
+                <span>
+                  Incluindo <strong className="font-semibold uppercase">{insertingLabel}</strong> no batismo e atualizando a lista...
+                </span>
+              </div>
+            ) : null}
+            <div className="flex flex-col items-center gap-1.5 px-6 py-14 text-center">
+              <span className="mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-[#f1f5f9] text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                <Search className="h-6 w-6" strokeWidth={1.8} />
+              </span>
+              <span className="text-base font-bold">Defina os filtros e clique em Buscar</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">A lista carrega apenas os batismos que você escolher.</span>
+            </div>
+          </section>
+        ) : (
+      <div className="overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
         {insertingLabel ? (
           <div className="flex items-center gap-3 border-b border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600" />
@@ -1397,10 +1350,8 @@ export function Baptism() {
           </table>
         </div>
 
-        {!aplicados ? (
-          <AvisoDefinaFiltros />
-        ) : !loading && !paginatedRows.length ? (
-          <div className="px-6 py-10 text-center text-sm text-slate-500">Nenhum registro de batismo encontrado para os filtros selecionados.</div>
+        {!loading && !paginatedRows.length ? (
+          <div className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Nenhum registro de batismo encontrado para os filtros selecionados.</div>
         ) : null}
 
         <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between">
@@ -1442,6 +1393,158 @@ export function Baptism() {
           </div>
         </div>
       </div>
+        )}
+      </div>
+
+      {/* Painel de filtros — os mesmos campos de antes; só "Buscar" aplica. */}
+      {filtrosAbertos && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setFiltrosAbertos(false)} />
+          <aside className="relative flex h-full w-[min(440px,100%)] animate-[bzDrawerIn_.25s_ease] flex-col bg-white text-slate-900 shadow-[-20px_0_50px_-20px_rgba(15,23,42,.35)] dark:bg-slate-800 dark:text-slate-100">
+            <div className="flex items-center gap-3.5 border-b border-[#eef2f6] px-[22px] py-5 dark:border-slate-700">
+              <span className="grid h-11 w-11 flex-none place-items-center rounded-[14px] bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                <SlidersHorizontal className="h-[22px] w-[22px]" strokeWidth={2} />
+              </span>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-lg font-extrabold">Filtros</span>
+                <span className="text-[13px] text-slate-500 dark:text-slate-400">Refine os batismos que aparecem na lista</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos(false)}
+                aria-label="Fechar"
+                className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden p-[22px]">
+              {campoVisible && (
+                <label className={rotuloFiltroClasse}>
+                  CAMPO
+                  <span className="relative min-w-0">
+                    <select
+                      value={selectedFieldId}
+                      onChange={(event) => {
+                        setSelectedFieldId(event.target.value);
+                        setSelectedRegionalId('');
+                        setSelectedChurchId('');
+                      }}
+                      disabled={!canChooseField || loadingFilters}
+                      className={campoFiltroClasse}
+                    >
+                      <option value="">Todos os campos</option>
+                      {fields.map((field) => (
+                        <option key={field.id} value={field.id}>
+                          {field.code ? `${field.code} - ` : ''}
+                          {field.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  </span>
+                </label>
+              )}
+
+              <label className={rotuloFiltroClasse}>
+                REGIONAL
+                <span className="relative min-w-0">
+                  <select
+                    value={selectedRegionalId}
+                    onChange={(event) => {
+                      setSelectedRegionalId(event.target.value);
+                      setSelectedChurchId('');
+                    }}
+                    disabled={!canChooseRegional || loadingFilters}
+                    className={campoFiltroClasse}
+                  >
+                    <option value="">Todas as regionais</option>
+                    {filteredRegionais.map((regional) => (
+                      <option key={regional.id} value={regional.id}>
+                        {regional.code ? `${regional.code} - ` : ''}
+                        {regional.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <label className={rotuloFiltroClasse}>
+                IGREJA
+                <span className="relative min-w-0">
+                  <select
+                    value={selectedChurchId}
+                    onChange={(event) => setSelectedChurchId(event.target.value)}
+                    disabled={!canChooseChurch || loadingFilters}
+                    className={campoFiltroClasse}
+                  >
+                    <option value="">Todas as igrejas</option>
+                    {filteredChurchOptions.map((church) => (
+                      <option key={church.id} value={church.id}>
+                        {church.code ? `${church.code} - ` : ''}
+                        {church.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <label className={rotuloFiltroClasse}>
+                STATUS
+                <span className="relative min-w-0">
+                  <select
+                    value={selectedStatusFilter}
+                    onChange={(event) => setSelectedStatusFilter(event.target.value)}
+                    className={campoFiltroClasse}
+                  >
+                    <option value="">Todos os status</option>
+                    <option value="1">Pendente</option>
+                    <option value="2">Aprovado</option>
+                    <option value="3">Cancelado</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className={rotuloFiltroClasse}>
+                  DATA INICIAL
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(event) => setDateFrom(event.target.value)}
+                    className={dataFiltroClasse}
+                  />
+                </label>
+                <label className={rotuloFiltroClasse}>
+                  DATA FINAL
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(event) => setDateTo(event.target.value)}
+                    className={dataFiltroClasse}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 border-t border-[#eef2f6] px-[22px] py-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => { setFiltrosAbertos(false); buscar(); }}
+                disabled={buscandoAgora}
+                className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-[15px] font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                <Search className="h-[18px] w-[18px]" strokeWidth={2.2} />
+                Buscar
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {requestModalOpen ? (
         <ModalShell title={editingRequest ? 'Editar Batismo' : 'Iniciar Batismo'} onClose={() => {
@@ -1868,14 +1971,14 @@ function selectedChurchLabel(churchId: string, churches: ChurchOption[], selecte
   return 'Selecionar igreja';
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string | number; icon: ReactNode }) {
+function StatCard({ label, value, icon, tone }: { label: string; value: string | number; icon: ReactNode; tone: string }) {
   return (
-    <div className="flex min-h-[94px] items-center justify-between rounded-[20px] border border-[#e8ecf1] bg-white px-4 py-3 dark:border-slate-700">
-      <div>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="text-xl font-bold leading-tight tabular-nums text-slate-900">{value}</p>
-      </div>
-      {icon}
+    <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+      <span className={`grid h-[38px] w-[38px] flex-none place-items-center rounded-xl ${tone}`}>{icon}</span>
+      <span className="flex flex-col">
+        <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] tabular-nums">{value}</span>
+        <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</span>
+      </span>
     </div>
   );
 }
@@ -1896,59 +1999,56 @@ function NextScheduleCard({
   const daysUntilLabel = getDaysUntilLabel(schedule?.scheduledDate);
   const cardTone = schedule
     ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/70 dark:bg-emerald-950/45'
-    : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
+    : 'border-[#e8ecf1] bg-white dark:border-slate-700 dark:bg-slate-800';
 
   return (
-    <div className={`min-h-[94px] rounded-3xl border px-4 py-3 ${cardTone}`}>
+    <div className={`flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] py-2 pl-2 pr-2 ${cardTone}`}>
       {!schedule ? (
-        <div className="flex h-full items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
-              <Calendar className="h-5 w-5 text-slate-500 dark:text-slate-300" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Próximo Batismo</p>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Nenhuma data agendada</p>
-            </div>
-          </div>
+        <>
+          <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-[#f1f5f9] text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+            <Calendar className="h-[19px] w-[19px]" strokeWidth={1.8} />
+          </span>
+          <span className="flex flex-1 flex-col">
+            <span className="whitespace-nowrap text-[13px] font-bold leading-[1.3]">Nenhuma data agendada</span>
+            <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Próximo batismo</span>
+          </span>
           {canManageSchedules ? (
             <Permissao chave="baptism.baptism.agendar" rotulo="Agendar — Baptism" herda="baptism.view">
-              <button onClick={onCreate} className="rounded-2xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700">
+              <button onClick={onCreate} className="h-8 flex-none rounded-[10px] bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
                 Agendar
               </button>
             </Permissao>
           ) : null}
-        </div>
+        </>
       ) : (
-        <div className="flex h-full items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-white dark:border-emerald-800/80 dark:bg-emerald-900/40">
-              <Calendar className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Próximo Batismo</p>
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <p className="text-2xl font-extrabold leading-tight text-emerald-950 dark:text-emerald-50">{formatDate(schedule.scheduledDate)}</p>
-                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">{daysUntilLabel}</p>
-              </div>
-              <p className="text-xs font-medium text-emerald-800/80 dark:text-emerald-200/80">{schedule.churchCode ? `${schedule.churchCode} - ` : ''}{schedule.churchName}</p>
-            </div>
-          </div>
+        <>
+          <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-[#d1fae5] text-[#047857] dark:bg-emerald-900/60 dark:text-emerald-200">
+            <Calendar className="h-[19px] w-[19px]" strokeWidth={1.8} />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] text-emerald-950 dark:text-emerald-50">{formatDate(schedule.scheduledDate)}</span>
+              <span className="whitespace-nowrap text-xs font-semibold text-emerald-700 dark:text-emerald-300">{daysUntilLabel}</span>
+            </span>
+            <span className="truncate text-xs font-semibold text-emerald-800/80 dark:text-emerald-200/80">
+              Próximo batismo · {schedule.churchCode ? `${schedule.churchCode} - ` : ''}{schedule.churchName}
+            </span>
+          </span>
           {canManageSchedules ? (
-            <div className="flex items-center gap-1 rounded-2xl border border-emerald-200 bg-white p-1 dark:border-emerald-800/70 dark:bg-emerald-900/40">
+            <div className="flex flex-none items-center gap-0.5 rounded-xl border border-emerald-200 bg-white p-0.5 dark:border-emerald-800/70 dark:bg-emerald-900/40">
               <Permissao chave="baptism.baptism.editar" rotulo="Editar — Baptism" herda="baptism.view">
-                <button onClick={onEdit} className="rounded-xl p-2 transition hover:bg-emerald-100 dark:hover:bg-emerald-800/60" title="Editar">
+                <button onClick={onEdit} className="rounded-[10px] p-1.5 transition hover:bg-emerald-100 dark:hover:bg-emerald-800/60" title="Editar">
                   <Pencil className="h-4 w-4 text-emerald-700 dark:text-emerald-200" />
                 </button>
               </Permissao>
               <Permissao chave="baptism.baptism.excluir" rotulo="Excluir — Baptism" herda="baptism.view">
-                <button onClick={onDelete} className="rounded-xl p-2 transition hover:bg-rose-50" title="Excluir">
+                <button onClick={onDelete} className="rounded-[10px] p-1.5 transition hover:bg-rose-50 dark:hover:bg-rose-950/40" title="Excluir">
                   <Trash2 className="h-4 w-4 text-rose-600" />
                 </button>
               </Permissao>
             </div>
           ) : null}
-        </div>
+        </>
       )}
     </div>
   );

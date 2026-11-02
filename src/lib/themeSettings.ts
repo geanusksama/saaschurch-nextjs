@@ -19,12 +19,13 @@ export interface ThemeSettings {
 const LEGACY_DEFAULT_THEMES = [
   { primaryColor: '#334155', secondaryColor: '#7b8fb3' },
   { primaryColor: '#7c8ba1', secondaryColor: '#c7d2df' }, // cinza claro demais
+  { primaryColor: '#475569', secondaryColor: '#94a3b8' }, // cinza do guia v2 (até 02/11/2026)
 ];
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   logoUrl: null,
-  primaryColor: '#475569',
-  secondaryColor: '#94a3b8',
+  primaryColor: '#6d4aff', // violeta do guia Silas CRM
+  secondaryColor: '#14a3b8',
   radius: 10,
   preset: 'lite-flat',
 };

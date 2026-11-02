@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { X, ChevronRight, CheckCircle, AlertCircle, Loader2, Hash, IdCard, Smartphone } from 'lucide-react';
 import { useMembroSession } from './MembroProvider';
 import type { MembroSession } from './MembroProvider';
 
@@ -66,14 +66,23 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
     return () => clearTimeout(t);
   }, [countdown]);
 
+  // Guia mobile-first: o campo é a caixa de 56px com ícone; o <input> fica
+  // transparente dentro dela. Só aparência — valores e handlers são os mesmos.
   const inputStyle: React.CSSProperties = {
-    background: inputBg,
-    border: `1px solid ${inputBorder}`,
+    background: 'transparent',
     color: textPri,
     caretColor: TEAL,
   };
+  const boxStyle: React.CSSProperties = {
+    background: inputBg,
+    border: `1px solid ${inputBorder}`,
+    color: textSub,
+    ['--tw-ring-color' as string]: TEAL,
+  };
 
-  const inputClass = "w-full px-4 py-3 rounded-xl text-sm outline-none transition-all";
+  const inputClass = "flex-1 min-w-0 h-full bg-transparent border-0 text-[17px] font-medium outline-none";
+  const boxClass = "h-14 rounded-2xl flex items-center gap-2.5 pl-4 pr-3 transition-all focus-within:ring-2";
+  const labelClass = "block text-[13px] font-semibold mb-1.5";
 
   // Step 1 → lookup + auto send OTP
   const handleLookup = async () => {
@@ -193,44 +202,50 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 48 }}
         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden"
-        style={{ background: bg, border: `1px solid ${border}` }}
+        className="w-full sm:max-w-sm rounded-t-[28px] sm:rounded-3xl overflow-y-auto max-h-[100dvh] sm:max-h-[92vh]"
+        style={{ background: bg, border: `1px solid ${border}`, scrollbarWidth: 'none' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base" style={{ background: `${TEAL}20`, border: `1px solid ${TEAL}40` }}>
-              👤
-            </div>
-            <span className="text-sm font-semibold" style={{ color: textPri }}>Sou Membro</span>
-          </div>
+        <div className="flex items-center justify-between px-3 pt-3 pb-2">
+          <span className="w-11" />
+          <span className="text-[15px] font-bold" style={{ color: textPri }}>Entrar</span>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+            aria-label="Fechar"
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
             style={{ color: textSub }}
           >
-            <X size={16} />
+            <X size={20} />
           </button>
         </div>
 
         <div style={{ height: 1, background: divider }} />
 
         {/* Content */}
-        <div className="px-6 py-5 min-h-[300px]">
+        <div className="px-6 pt-5 pb-6 min-h-[300px]">
           <AnimatePresence mode="wait">
 
             {/* Passo 1: ROL + CPF + Celular */}
             {step === 'credentials' && (
-              <motion.div key="cred" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="space-y-4">
-                <div>
-                  <p className="text-base font-bold mb-1" style={{ color: textPri }}>Acesse sua área</p>
-                  <p className="text-xs leading-relaxed" style={{ color: textSub }}>Busca por ROL e CPF. O código de acesso será enviado para o celular informado.</p>
+              <motion.div key="cred" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="space-y-5">
+                <div className="flex flex-col gap-2">
+                  <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-extrabold tracking-tight"
+                    style={{ background: dark ? '#f1f5f9' : '#111111', color: dark ? '#0f1117' : '#ffffff' }}
+                    aria-hidden="true"
+                  >
+                    AD
+                  </div>
+                  <p className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight" style={{ color: textPri }}>Bem-vindo de volta</p>
+                  <p className="text-sm leading-relaxed" style={{ color: textSub }}>Entre com seu número de ROL, CPF e celular para acessar sua área. O código de acesso será enviado para o celular informado.</p>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wide" style={{ color: textSub }}>Número de ROL</label>
+                    <label className={labelClass} style={{ color: textPri }}>Número de ROL</label>
+                    <div className={boxClass} style={boxStyle}>
+                    <Hash size={20} className="flex-shrink-0" />
                     <input
                       type="text"
                       inputMode="numeric"
@@ -241,9 +256,12 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
                       className={inputClass}
                       style={inputStyle}
                     />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wide" style={{ color: textSub }}>CPF</label>
+                    <label className={labelClass} style={{ color: textPri }}>CPF</label>
+                    <div className={boxClass} style={boxStyle}>
+                    <IdCard size={20} className="flex-shrink-0" />
                     <input
                       type="text"
                       inputMode="numeric"
@@ -255,10 +273,13 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
                       className={inputClass}
                       style={inputStyle}
                     />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold mb-1 uppercase tracking-wide" style={{ color: textSub }}>Celular para receber o código</label>
-                    <p className="text-[10px] mb-1.5" style={{ color: textSub, opacity: 0.6 }}>Informe o número onde o código será enviado via WhatsApp</p>
+                    <label className="block text-[13px] font-semibold mb-0.5" style={{ color: textPri }}>Celular para receber o código</label>
+                    <p className="text-xs mb-1.5" style={{ color: textSub }}>Informe o número onde o código será enviado via WhatsApp</p>
+                    <div className={boxClass} style={boxStyle}>
+                    <Smartphone size={20} className="flex-shrink-0" />
                     <input
                       type="text"
                       inputMode="numeric"
@@ -270,22 +291,23 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
                       className={inputClass}
                       style={inputStyle}
                     />
+                    </div>
                   </div>
                 </div>
 
                 {error && (
-                  <div className="flex items-center gap-2 text-red-500 text-xs">
-                    <AlertCircle size={13} className="flex-shrink-0" /> {error}
+                  <div className="flex items-center gap-2 text-red-500 text-sm">
+                    <AlertCircle size={16} className="flex-shrink-0" /> {error}
                   </div>
                 )}
 
                 <button
                   onClick={handleLookup}
                   disabled={loading}
-                  className="w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="w-full h-14 rounded-2xl text-base font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
                   style={{ background: TEAL, color: '#0d0f17' }}
                 >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : <><span>Enviar código</span><ChevronRight size={15} /></>}
+                  {loading ? <Loader2 size={20} className="animate-spin" /> : <><span>Enviar código</span><ChevronRight size={18} /></>}
                 </button>
               </motion.div>
             )}
@@ -298,8 +320,8 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
                     <img src={memberPhoto} alt="" className="w-12 h-12 rounded-full object-cover flex-shrink-0" style={{ border: `2px solid ${TEAL}44` }} />
                   )}
                   <div>
-                    <p className="text-base font-bold leading-tight" style={{ color: textPri }}>Olá, {memberName.split(' ')[0]}!</p>
-                    <p className="text-xs mt-0.5" style={{ color: textSub }}>
+                    <p className="text-xl font-extrabold leading-tight" style={{ color: textPri }}>Olá, {memberName.split(' ')[0]}!</p>
+                    <p className="text-sm mt-0.5" style={{ color: textSub }}>
                       Código enviado para <span style={{ color: textPri }}>{phoneMasked}</span>
                     </p>
                   </div>
@@ -320,9 +342,9 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
                         value={filled ? digit : ''}
                         onChange={e => handleCodeInput(i, e.target.value)}
                         onKeyDown={e => handleCodeKeyDown(i, e)}
-                        className="w-full rounded-xl text-center text-xl font-bold outline-none transition-all"
+                        className="w-full rounded-2xl text-center text-xl font-bold outline-none transition-all"
                         style={{
-                          height: '52px',
+                          height: '56px',
                           background: filled ? `${TEAL}18` : inputBg,
                           border: `1.5px solid ${filled ? TEAL + '55' : inputBorder}`,
                           color: textPri,
@@ -334,28 +356,28 @@ export function MembroLogin({ isDark = true, onClose, onSuccess }: MembroLoginPr
                 </div>
 
                 {error && (
-                  <div className="flex items-center gap-2 text-red-500 text-xs">
-                    <AlertCircle size={13} /> {error}
+                  <div className="flex items-center gap-2 text-red-500 text-sm">
+                    <AlertCircle size={16} className="flex-shrink-0" /> {error}
                   </div>
                 )}
 
                 <button
                   onClick={() => handleVerify()}
                   disabled={loading || code.replace(/ /g, '').length !== 6}
-                  className="w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-40"
+                  className="w-full h-14 rounded-2xl text-base font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-40"
                   style={{ background: TEAL, color: '#0d0f17' }}
                 >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : 'Verificar código'}
+                  {loading ? <Loader2 size={20} className="animate-spin" /> : 'Verificar código'}
                 </button>
 
                 <div className="flex items-center justify-between">
-                  <button onClick={() => setStep('credentials')} className="text-xs transition-colors" style={{ color: textSub }}>
+                  <button onClick={() => setStep('credentials')} className="min-h-11 text-sm transition-colors" style={{ color: textSub }}>
                     ← Voltar
                   </button>
                   {countdown > 0 ? (
-                    <span className="text-xs" style={{ color: textSub }}>Reenviar em {countdown}s</span>
+                    <span className="text-sm" style={{ color: textSub }}>Reenviar em {countdown}s</span>
                   ) : (
-                    <button onClick={handleResend} disabled={loading} className="text-xs font-medium transition-opacity hover:opacity-70" style={{ color: TEAL }}>
+                    <button onClick={handleResend} disabled={loading} className="min-h-11 text-sm font-semibold transition-opacity hover:opacity-70" style={{ color: TEAL }}>
                       Reenviar código
                     </button>
                   )}

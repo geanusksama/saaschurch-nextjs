@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { CartoesTotais } from './CartoesTotais';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AvisoDefinaFiltros, BotaoBuscar, type FiltrosConsulta } from './BotaoBuscar';
+import { type FiltrosConsulta } from './BotaoBuscar';
+import { FONTE_MODELO_FAMILIA, useFonteModelo } from '../../lib/fonteModelo';
 import { qk } from '../../lib/queryClient';
-import { ArrowUpDown, Building2, Calendar, CheckCircle2, Clock3, Download, Gift, Loader2, Pencil, Plus, Printer, Search, Trash2, UserRound, X, XCircle } from 'lucide-react';
+import { ArrowUpDown, Building2, Calendar, CheckCircle2, ChevronDown, Clock3, Download, Gift, Loader2, Pencil, Plus, Printer, Search, SlidersHorizontal, Trash2, UserRound, X, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
@@ -260,6 +262,7 @@ function TableLoadingRows({ columns, rows = 6 }: { columns: number; rows?: numbe
 }
 
 export function Consecration() {
+  useFonteModelo();
   const storedUser = useMemo(parseStoredUser, []);
   const defaultDateRange = useMemo(() => getMonthDateRange(), []);
   const dashboardScopeKey = useMemo(() => ({
@@ -383,6 +386,8 @@ export function Consecration() {
   // Nome em processamento: fica na tela desde o envio até a linha aparecer na lista.
   const [insertingLabel, setInsertingLabel] = useState<string | null>(null);
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  // Só visual: abre/fecha a gaveta de filtros.
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const churchOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const memberOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -998,38 +1003,57 @@ export function Consecration() {
     }
   }
 
+  // Só apresentação: quantos filtros da gaveta diferem do padrão da tela.
+  const filtrosAtivosCount = [
+    selectedFieldId !== filtrosPadrao.fieldId,
+    selectedRegionalId !== filtrosPadrao.regionalId,
+    selectedChurchId !== filtrosPadrao.churchId,
+    selectedStatusFilter !== filtrosPadrao.status,
+    dateFrom !== filtrosPadrao.dateFrom || dateTo !== filtrosPadrao.dateTo,
+  ].filter(Boolean).length;
+  const buscando = aplicados !== null && dashboardQuery.isFetching;
+  const campoFiltroClasse = 'h-[50px] w-full appearance-none rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-10 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white';
+  const rotuloFiltroClasse = 'flex flex-col gap-2.5 text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400';
+
   return (
-    <div className="space-y-4 p-6 text-slate-900 dark:text-slate-100">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-            <Gift className="h-5 w-5 text-purple-600" />
+    <div
+      className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100"
+      style={{ fontFamily: FONTE_MODELO_FAMILIA }}
+    >
+      <style>{'@keyframes nmDrawerIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}'}</style>
+
+      {/* Cabeçalho */}
+      <header className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-700 dark:text-slate-200">
+            <Gift className="h-5 w-5" strokeWidth={1.8} />
           </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Consagração</h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Gerencie separações, consagrações e o histórico ministerial</p>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Secretaria</span>
+            <span className="whitespace-nowrap text-[17px] font-bold">Consagração</span>
           </div>
         </div>
-
-        <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2">
           <Permissao chave="consecration.consecration.exportar" rotulo="Exportar — Consecration" herda="consecration.view">
             <button
               type="button"
               onClick={() => toast.info('Exportação será habilitada no mesmo padrão dos demais serviços.')}
-              className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900"
+              title="Exportar"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              <Download className="h-4 w-4" />
-              Exportar
+              <Download className="h-4 w-4" strokeWidth={2} />
+              <span className="hidden md:inline">Exportar</span>
             </button>
           </Permissao>
           <Permissao chave="consecration.consecration.imprimir" rotulo="Imprimir — Consecration" herda="consecration.view">
             <button
               type="button"
               onClick={() => setPrintModalOpen(true)}
-              className="flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900"
+              title="Imprimir"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              <Printer className="h-4 w-4" />
-              Imprimir
+              <Printer className="h-4 w-4" strokeWidth={2} />
+              <span className="hidden md:inline">Imprimir</span>
             </button>
           </Permissao>
           {canCreateRequest ? (
@@ -1037,425 +1061,513 @@ export function Consecration() {
               <button
                 type="button"
                 onClick={() => void openRequestModal(currentSchedule)}
-                className="flex h-10 items-center gap-2 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 pl-3 pr-3.5 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
               >
-                <Plus className="h-4 w-4" />
-                Nova Consagração
+                <Plus className="h-4 w-4" strokeWidth={2.2} />
+                <span className="md:hidden">Nova</span>
+                <span className="hidden md:inline">Nova Consagração</span>
               </button>
             </Permissao>
           ) : null}
         </div>
-      </div>
+      </header>
 
-      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total" value={stats.total} icon={<Gift className="h-5 w-5 text-purple-600" />} />
-        <StatCard label="Este Mês" value={stats.thisMonth} icon={<Calendar className="h-5 w-5 text-blue-600" />} />
-        <StatCard label="Pendentes" value={stats.pending} icon={<Clock3 className="h-5 w-5 text-amber-600" />} />
-        <NextConsecrationCard
-          schedule={currentSchedule}
-          canManageSchedules={canManageSchedules}
-          onCreate={() => openScheduleModal()}
-          onEdit={() => currentSchedule && openScheduleModal(currentSchedule)}
-          onDelete={() => currentSchedule && setDeleteTarget({ kind: 'schedule', id: currentSchedule.id, label: `${currentSchedule.churchName} - ${formatDate(currentSchedule.scheduledDate)}` })}
-        />
-      </div>
-
-      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-        <div
-          className={`grid gap-3 md:grid-cols-2 xl:items-end ${
-            campoVisible
-              ? 'xl:grid-cols-[minmax(180px,1fr)_minmax(135px,0.72fr)_minmax(135px,0.72fr)_minmax(150px,0.8fr)_minmax(120px,0.62fr)_minmax(125px,0.62fr)_minmax(125px,0.62fr)_auto]'
-              : 'xl:grid-cols-[minmax(180px,1fr)_minmax(135px,0.72fr)_minmax(150px,0.8fr)_minmax(120px,0.62fr)_minmax(125px,0.62fr)_minmax(125px,0.62fr)_auto]'
-          }`}
-        >
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Busca</label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <div className="box-border flex w-full flex-1 flex-col gap-3 px-3 pb-10 pt-3 md:px-7 md:pt-4">
+        {/* Busca + números */}
+        <div className="flex flex-wrap items-stretch gap-3">
+          <div className="flex min-w-0 flex-[1_1_380px] gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') buscar(); }}
                 placeholder="Buscar por membro, protocolo, igreja, serviço ou observação..."
-                className="w-full h-[46px] pl-10 pr-4 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
+                className="h-full min-h-[52px] w-full rounded-2xl border-[1.5px] border-slate-200 bg-white pl-12 pr-3.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-slate-300"
               />
             </div>
-          </div>
-
-          {campoVisible && (
-            <div>
-              <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Campo</label>
-              <select
-                value={selectedFieldId}
-                onChange={(event) => {
-                  setSelectedFieldId(event.target.value);
-                  setSelectedRegionalId('');
-                  setSelectedChurchId('');
-                }}
-                disabled={!canChooseField || loadingFilters}
-                className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
-              >
-                <option value="">Todos os campos</option>
-                {fields.map((field) => (
-                  <option key={field.id} value={field.id}>
-                    {field.code ? `${field.code} - ` : ''}
-                    {field.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Regional</label>
-            <select
-              value={selectedRegionalId}
-              onChange={(event) => {
-                setSelectedRegionalId(event.target.value);
-                setSelectedChurchId('');
-              }}
-              disabled={!canChooseRegional || loadingFilters}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
+            <button
+              type="button"
+              onClick={() => setFiltrosAbertos(true)}
+              title="Filtros"
+              className={`flex min-h-[52px] flex-none items-center gap-2 rounded-2xl border-[1.5px] bg-white px-[15px] text-sm font-semibold text-slate-900 hover:border-slate-900 md:px-[18px] dark:bg-slate-800 dark:text-white ${
+                filtrosAtivosCount ? 'border-slate-900 dark:border-slate-300' : 'border-slate-200 dark:border-slate-600'
+              }`}
             >
-              <option value="">Todas as regionais</option>
-              {filteredRegionais.map((regional) => (
-                <option key={regional.id} value={regional.id}>
-                  {regional.code ? `${regional.code} - ` : ''}
-                  {regional.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Igreja</label>
-            <select
-              value={selectedChurchId}
-              onChange={(event) => setSelectedChurchId(event.target.value)}
-              disabled={!canChooseChurch || loadingFilters}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
+              <SlidersHorizontal className="h-[19px] w-[19px]" strokeWidth={2} />
+              <span className="hidden md:inline">Filtros</span>
+              {filtrosAtivosCount > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1.5 text-[11px] font-bold text-white dark:bg-white dark:text-slate-900">
+                  {filtrosAtivosCount}
+                </span>
+              )}
+            </button>
+            {/* Consulta explícita: a tabela só muda ao clicar aqui (ou Enter na busca). */}
+            <button
+              type="button"
+              onClick={buscar}
+              disabled={buscando}
+              title="Buscar"
+              className="flex min-h-[52px] flex-none items-center gap-2 rounded-2xl bg-slate-900 px-[15px] text-sm font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 md:px-[18px] dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <option value="">Todas as igrejas</option>
-              {filteredChurchOptions.map((church) => (
-                <option key={church.id} value={church.id}>
-                  {church.code ? `${church.code} - ` : ''}
-                  {church.name}
-                </option>
-              ))}
-            </select>
+              {buscando ? <Loader2 className="h-[19px] w-[19px] animate-spin" /> : <Search className="h-[19px] w-[19px]" strokeWidth={2.2} />}
+              <span className="hidden md:inline">{buscando ? 'Buscando...' : 'Buscar'}</span>
+            </button>
           </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Status</label>
-            <select
-              value={selectedStatusFilter}
-              onChange={(event) => setSelectedStatusFilter(event.target.value)}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
-            >
-              <option value="">Todos os status</option>
-              <option value="1">Pendente</option>
-              <option value="2">Aprovado</option>
-              <option value="3">Documentos Aprovados</option>
-              <option value="4">Consagrado</option>
-              <option value="5">Cancelado</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data inicial</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
+          <CartoesTotais>
+            <StatCard label="Total" value={stats.total} icon={<Gift className="h-[19px] w-[19px]" strokeWidth={1.8} />} tone="bg-[#ede9fe] text-[#5b21b6]" />
+            <StatCard label="Este Mês" value={stats.thisMonth} icon={<Calendar className="h-[19px] w-[19px]" strokeWidth={1.8} />} tone="bg-[#e0f2fe] text-[#075985]" />
+            <StatCard label="Pendentes" value={stats.pending} icon={<Clock3 className="h-[19px] w-[19px]" strokeWidth={1.8} />} tone="bg-[#fef3c7] text-[#92400e]" />
+            <NextConsecrationCard
+              schedule={currentSchedule}
+              canManageSchedules={canManageSchedules}
+              onCreate={() => openScheduleModal()}
+              onEdit={() => currentSchedule && openScheduleModal(currentSchedule)}
+              onDelete={() => currentSchedule && setDeleteTarget({ kind: 'schedule', id: currentSchedule.id, label: `${currentSchedule.churchName} - ${formatDate(currentSchedule.scheduledDate)}` })}
             />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-[13px] font-semibold text-slate-700 dark:text-slate-300">Data final</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
-              className="w-full h-[46px] px-3.5 rounded-xl border-[1.5px] border-slate-200 bg-white text-sm font-medium focus:outline-none focus:border-slate-900"
-            />
-          </div>
-          {/* Consulta explícita: a tabela só muda ao clicar aqui. */}
-          <div className="flex items-end">
-            <BotaoBuscar onClick={buscar} buscando={aplicados !== null && dashboardQuery.isFetching} />
-          </div>
+          </CartoesTotais>
         </div>
-      </div>
 
-      {(loading || loadingFilters) ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          <span className="inline-flex items-center gap-2">
-            <Clock3 className="h-4 w-4 animate-pulse text-purple-600" />
-            Carregando consagracoes e filtros...
-          </span>
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
-      ) : null}
-
-      {dashboard?.truncated ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Sem intervalo de datas a lista para nos {dashboard.queueCap ?? 2000} registros mais recentes.
-          Informe uma data inicial e final para ver o periodo inteiro.
-        </div>
-      ) : null}
-
-      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900">
-        {insertingLabel ? (
-          <div className="flex items-center gap-3 border-b border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800">
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-purple-600" />
-            <span>
-              Incluindo <strong className="font-semibold uppercase">{insertingLabel}</strong> na consagração e atualizando a lista...
+        {(loading || loadingFilters) ? (
+          <div className="rounded-2xl border border-[#e8ecf1] bg-white px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2">
+              <Clock3 className="h-4 w-4 animate-pulse text-purple-600" />
+              Carregando consagracoes e filtros...
             </span>
           </div>
         ) : null}
-        {selection.count > 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-purple-50 px-4 py-3">
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
-              <span className="font-semibold text-purple-700">
-                {selection.count} registro(s) selecionado(s)
-              </span>
-              {selection.count < visibleRows.length ? (
-                <button
-                  type="button"
-                  onClick={() => selection.setMany(selectableIds, true)}
-                  className="font-medium text-purple-700 underline underline-offset-2 hover:text-purple-900"
-                >
-                  Selecionar todos os {visibleRows.length} filtrados
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={selection.clear}
-                className="font-medium text-slate-500 underline underline-offset-2 hover:text-slate-700"
-              >
-                Limpar seleção
-              </button>
-            </div>
-            <Permissao chave="consecration.consecration.excluir_selecionados" rotulo="Excluir selecionados — Consecration" herda="consecration.view">
-              <button
-                type="button"
-                onClick={() => setBulkConfirmOpen(true)}
-                disabled={bulkDeleting}
-                className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-rose-600 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Trash2 className="h-4 w-4" />
-                {bulkDeleting ? 'Excluindo...' : 'Excluir selecionados'}
-              </button>
-            </Permissao>
+
+        {error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{error}</div>
+        ) : null}
+
+        {dashboard?.truncated ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            Sem intervalo de datas a lista para nos {dashboard.queueCap ?? 2000} registros mais recentes.
+            Informe uma data inicial e final para ver o periodo inteiro.
           </div>
         ) : null}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1660px]">
-            <thead className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
-              <tr>
-                <th className="w-10 px-4 py-3 text-left">
-                  <RowCheckbox
-                    checked={pageAllSelected}
-                    indeterminate={pageSomeSelected}
-                    onChange={(checked) => selection.setMany(pageIds, checked)}
-                    label="Selecionar todos os registros desta página"
-                    disabled={!pageIds.length}
-                  />
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
-                  <button type="button" onClick={() => handleSort('member')} className="inline-flex items-center gap-2">
-                    Membro
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
-                  <button type="button" onClick={() => handleSort('church')} className="inline-flex items-center gap-2">
-                    Igreja
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
-                  <button type="button" onClick={() => handleSort('service')} className="inline-flex items-center gap-2">
-                    Serviço
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">Título Atual</th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
-                  <button type="button" onClick={() => handleSort('title')} className="inline-flex items-center gap-2">
-                    Título Pretendido
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
-                  <button type="button" onClick={() => handleSort('status')} className="inline-flex items-center gap-2">
-                    Status
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
-                  <button type="button" onClick={() => handleSort('consecrationDate')} className="inline-flex items-center gap-2">
-                    Data da Consagração
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">
-                  <button type="button" onClick={() => handleSort('openedAt')} className="inline-flex items-center gap-2">
-                    Aberto em
-                    <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500">Observações</th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[.06em] text-slate-500">Acoes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f1f5f9] dark:divide-slate-700">
-              {loading || loadingFilters ? <TableLoadingRows columns={11} /> : null}
-              {insertingLabel && !loading && !loadingFilters ? (
-                <tr className="bg-purple-50/60">
-                  <td className="px-4 py-4">
-                    <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 animate-pulse rounded-full bg-purple-100" />
-                      <div>
-                        <p className="font-semibold uppercase text-purple-900">{insertingLabel}</p>
-                        <p className="text-xs text-purple-700">Gerando protocolo...</p>
-                      </div>
-                    </div>
-                  </td>
-                  {Array.from({ length: 9 }).map((_, columnIndex) => (
-                    <td key={columnIndex} className="px-4 py-4">
-                      <div className="h-4 animate-pulse rounded bg-purple-100" />
-                    </td>
-                  ))}
-                </tr>
-              ) : null}
-              {!loading && !loadingFilters ? paginatedRows.map((item) => {
-                const churchMeta = churches.find((church) => church.id === item.church?.id);
-                const rowSelected = selection.selectedSet.has(item.id);
-                return (
-                  <tr
-                    key={item.id}
-                    className={`transition-colors ${rowSelected ? 'bg-purple-50' : 'hover:bg-slate-50'}`}
-                  >
-                    <td className="px-4 py-4 align-top">
-                      <RowCheckbox
-                        checked={rowSelected}
-                        onChange={() => selection.toggle(item.id)}
-                        label={`Selecionar ${item.member?.fullName || item.protocol}`}
-                      />
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                          {(item.member?.fullName || 'MB').split(' ').map((part) => part[0]).slice(0, 2).join('')}
-                        </div>
-                        <div>
-                          <p className="text-[15px] font-bold uppercase text-slate-900">{item.member?.fullName || 'Membro não vinculado'}</p>
-                          <p className="text-xs font-medium tabular-nums text-slate-500">{item.protocol}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 align-top text-sm text-slate-600">
-                      <p>{item.church?.code ? `${item.church.code} - ` : ''}{item.church?.name || '-'}</p>
-                      <p className="mt-1 text-xs text-slate-500">{[churchMeta?.regional?.name, churchMeta?.regional?.campo?.name].filter(Boolean).join(' • ') || '-'}</p>
-                    </td>
-                    <td className="px-4 py-4 align-top text-sm text-slate-700">{item.service?.description || 'Consagração'}</td>
-                    <td className="px-4 py-4 align-top text-sm text-slate-700">{item.currentTitle || 'Nao informado'}</td>
-                    <td className="px-4 py-4 align-top text-sm font-semibold text-slate-900">{item.intendedTitle || 'Não definido'}</td>
-                    <td className="px-4 py-4 align-top">
-                      <span className={`inline-flex h-[26px] items-center whitespace-nowrap rounded-full px-2.5 text-xs font-bold ${statusClass(item.columnIndex)}`}>
-                        {item.statusLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 align-top text-sm text-slate-600">{formatDate(item.consecrationDate || item.nextConsecration?.scheduledDate)}</td>
-                    <td className="px-4 py-4 align-top text-sm text-slate-600">{formatDate(item.openedAt || null)}</td>
-                    <td className="px-4 py-4 align-top text-sm text-slate-600">
-                      <div className="max-w-[260px] whitespace-pre-wrap break-words">{item.notes || '-'}</div>
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      {canCreateRequest ? (
-                        <div className="flex items-center justify-end gap-1">
-                          <Permissao chave="consecration.consecration.editar" rotulo="Editar — Consecration" herda="consecration.view">
-                            <button
-                              type="button"
-                              onClick={() => void openRequestModal(item.nextConsecration || currentSchedule, item)}
-                              className="grid h-9 w-9 place-items-center rounded-[10px] transition-colors hover:bg-slate-100"
-                              title="Editar"
-                            >
-                              <Pencil className="h-4 w-4 text-slate-600" />
-                            </button>
-                          </Permissao>
-                          <Permissao chave="consecration.consecration.excluir" rotulo="Excluir — Consecration" herda="consecration.view">
-                            <button
-                              type="button"
-                              onClick={() => setDeleteTarget({ kind: 'request', id: item.id, label: item.member?.fullName || item.protocol })}
-                              className="grid h-9 w-9 place-items-center rounded-[10px] transition-colors hover:bg-[#fee2e2]"
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4 text-rose-600" />
-                            </button>
-                          </Permissao>
-                        </div>
-                      ) : null}
-                    </td>
-                  </tr>
-                );
-              }) : null}
-            </tbody>
-          </table>
-        </div>
 
         {!aplicados ? (
-          <AvisoDefinaFiltros />
-        ) : !loading && !paginatedRows.length ? (
-          <div className="px-6 py-10 text-center text-sm text-slate-500">Nenhum registro de consagração encontrado para os filtros selecionados.</div>
-        ) : null}
-
-        <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-slate-500">
-            Exibindo {paginatedRows.length ? (page - 1) * pageSize + 1 : 0} a {Math.min(page * pageSize, visibleRows.length)} de {visibleRows.length} registros
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span>Linhas por pagina</span>
-              <select
-                value={pageSize}
-                onChange={(event) => setPageSize(Number(event.target.value))}
-                className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-2.5 text-sm focus:outline-none focus:border-slate-900"
-              >
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
+          <section className="overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+          {insertingLabel ? (
+            <div className="flex items-center gap-3 border-b border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-200">
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-purple-600" />
+              <span>
+                Incluindo <strong className="font-semibold uppercase">{insertingLabel}</strong> na consagração e atualizando a lista...
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                disabled={page === 1}
-                className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50"
-              >
-                Anterior
-              </button>
-              <span className="text-sm text-slate-600">Pagina {page} de {totalPages}</span>
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                disabled={page === totalPages}
-                className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50"
-              >
-                Proxima
-              </button>
+          ) : null}
+            <div className="flex flex-col items-center gap-1.5 px-6 py-14 text-center">
+              <span className="mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-[#f1f5f9] text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                <Search className="h-6 w-6" strokeWidth={1.8} />
+              </span>
+              <span className="text-base font-bold">Defina os filtros e clique em Buscar.</span>
+            </div>
+          </section>
+        ) : (
+        <section className="relative overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+          {insertingLabel ? (
+            <div className="flex items-center gap-3 border-b border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-200">
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-purple-600" />
+              <span>
+                Incluindo <strong className="font-semibold uppercase">{insertingLabel}</strong> na consagração e atualizando a lista...
+              </span>
+            </div>
+          ) : null}
+          {selection.count > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eef2f6] bg-purple-50 px-4 py-3 dark:border-slate-700 dark:bg-purple-950/30">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
+                <span className="font-semibold text-purple-700 dark:text-purple-300">
+                  {selection.count} registro(s) selecionado(s)
+                </span>
+                {selection.count < visibleRows.length ? (
+                  <button
+                    type="button"
+                    onClick={() => selection.setMany(selectableIds, true)}
+                    className="font-medium text-purple-700 underline underline-offset-2 hover:text-purple-900"
+                  >
+                    Selecionar todos os {visibleRows.length} filtrados
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={selection.clear}
+                  className="font-medium text-slate-500 underline underline-offset-2 hover:text-slate-700"
+                >
+                  Limpar seleção
+                </button>
+              </div>
+              <Permissao chave="consecration.consecration.excluir_selecionados" rotulo="Excluir selecionados — Consecration" herda="consecration.view">
+                <button
+                  type="button"
+                  onClick={() => setBulkConfirmOpen(true)}
+                  disabled={bulkDeleting}
+                  className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-rose-600 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {bulkDeleting ? 'Excluindo...' : 'Excluir selecionados'}
+                </button>
+              </Permissao>
+            </div>
+          ) : null}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1660px]">
+              <thead className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
+                <tr>
+                  <th className="w-10 px-4 py-3 text-left">
+                    <RowCheckbox
+                      checked={pageAllSelected}
+                      indeterminate={pageSomeSelected}
+                      onChange={(checked) => selection.setMany(pageIds, checked)}
+                      label="Selecionar todos os registros desta página"
+                      disabled={!pageIds.length}
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">
+                    <button type="button" onClick={() => handleSort('member')} className="inline-flex items-center gap-2">
+                      Membro
+                      <ArrowUpDown className="h-4 w-4 text-slate-400" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">
+                    <button type="button" onClick={() => handleSort('church')} className="inline-flex items-center gap-2">
+                      Igreja
+                      <ArrowUpDown className="h-4 w-4 text-slate-400" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">
+                    <button type="button" onClick={() => handleSort('service')} className="inline-flex items-center gap-2">
+                      Serviço
+                      <ArrowUpDown className="h-4 w-4 text-slate-400" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">Título Atual</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">
+                    <button type="button" onClick={() => handleSort('title')} className="inline-flex items-center gap-2">
+                      Título Pretendido
+                      <ArrowUpDown className="h-4 w-4 text-slate-400" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">
+                    <button type="button" onClick={() => handleSort('status')} className="inline-flex items-center gap-2">
+                      Status
+                      <ArrowUpDown className="h-4 w-4 text-slate-400" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">
+                    <button type="button" onClick={() => handleSort('consecrationDate')} className="inline-flex items-center gap-2">
+                      Data da Consagração
+                      <ArrowUpDown className="h-4 w-4 text-slate-400" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">
+                    <button type="button" onClick={() => handleSort('openedAt')} className="inline-flex items-center gap-2">
+                      Aberto em
+                      <ArrowUpDown className="h-4 w-4 text-slate-400" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">Observações</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">Acoes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f1f5f9] dark:divide-slate-700">
+                {loading || loadingFilters ? <TableLoadingRows columns={11} /> : null}
+                {insertingLabel && !loading && !loadingFilters ? (
+                  <tr className="bg-purple-50/60">
+                    <td className="px-4 py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 animate-pulse rounded-full bg-purple-100" />
+                        <div>
+                          <p className="font-semibold uppercase text-purple-900">{insertingLabel}</p>
+                          <p className="text-xs text-purple-700">Gerando protocolo...</p>
+                        </div>
+                      </div>
+                    </td>
+                    {Array.from({ length: 9 }).map((_, columnIndex) => (
+                      <td key={columnIndex} className="px-4 py-4">
+                        <div className="h-4 animate-pulse rounded bg-purple-100" />
+                      </td>
+                    ))}
+                  </tr>
+                ) : null}
+                {!loading && !loadingFilters ? paginatedRows.map((item) => {
+                  const churchMeta = churches.find((church) => church.id === item.church?.id);
+                  const rowSelected = selection.selectedSet.has(item.id);
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`transition-colors ${rowSelected ? 'bg-purple-50 dark:bg-purple-950/30' : 'hover:bg-[#fafbfc] dark:hover:bg-slate-700/40'}`}
+                    >
+                      <td className="px-4 py-4 align-top">
+                        <RowCheckbox
+                          checked={rowSelected}
+                          onChange={() => selection.toggle(item.id)}
+                          label={`Selecionar ${item.member?.fullName || item.protocol}`}
+                        />
+                      </td>
+                      <td className="px-4 py-4 align-top">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                            {(item.member?.fullName || 'MB').split(' ').map((part) => part[0]).slice(0, 2).join('')}
+                          </div>
+                          <div>
+                            <p className="text-[15px] font-bold uppercase text-slate-900 dark:text-white">{item.member?.fullName || 'Membro não vinculado'}</p>
+                            <p className="text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">{item.protocol}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 align-top text-sm text-slate-600 dark:text-slate-300">
+                        <p>{item.church?.code ? `${item.church.code} - ` : ''}{item.church?.name || '-'}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{[churchMeta?.regional?.name, churchMeta?.regional?.campo?.name].filter(Boolean).join(' • ') || '-'}</p>
+                      </td>
+                      <td className="px-4 py-4 align-top text-sm text-slate-700 dark:text-slate-200">{item.service?.description || 'Consagração'}</td>
+                      <td className="px-4 py-4 align-top text-sm text-slate-700 dark:text-slate-200">{item.currentTitle || 'Nao informado'}</td>
+                      <td className="px-4 py-4 align-top text-sm font-semibold text-slate-900 dark:text-white">{item.intendedTitle || 'Não definido'}</td>
+                      <td className="px-4 py-4 align-top">
+                        <span className={`inline-flex h-[26px] items-center whitespace-nowrap rounded-full px-2.5 text-xs font-bold ${statusClass(item.columnIndex)}`}>
+                          {item.statusLabel}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 align-top text-sm text-slate-600 dark:text-slate-300">{formatDate(item.consecrationDate || item.nextConsecration?.scheduledDate)}</td>
+                      <td className="px-4 py-4 align-top text-sm text-slate-600 dark:text-slate-300">{formatDate(item.openedAt || null)}</td>
+                      <td className="px-4 py-4 align-top text-sm text-slate-600 dark:text-slate-300">
+                        <div className="max-w-[260px] whitespace-pre-wrap break-words">{item.notes || '-'}</div>
+                      </td>
+                      <td className="px-4 py-4 align-top">
+                        {canCreateRequest ? (
+                          <div className="flex items-center justify-end gap-1">
+                            <Permissao chave="consecration.consecration.editar" rotulo="Editar — Consecration" herda="consecration.view">
+                              <button
+                                type="button"
+                                onClick={() => void openRequestModal(item.nextConsecration || currentSchedule, item)}
+                                className="grid h-9 w-9 place-items-center rounded-[10px] transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
+                                title="Editar"
+                              >
+                                <Pencil className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              </button>
+                            </Permissao>
+                            <Permissao chave="consecration.consecration.excluir" rotulo="Excluir — Consecration" herda="consecration.view">
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget({ kind: 'request', id: item.id, label: item.member?.fullName || item.protocol })}
+                                className="grid h-9 w-9 place-items-center rounded-[10px] transition-colors hover:bg-[#fee2e2] dark:hover:bg-red-950/40"
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4 text-rose-600" />
+                              </button>
+                            </Permissao>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                }) : null}
+              </tbody>
+            </table>
+          </div>
+
+          {!loading && !paginatedRows.length ? (
+            <div className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Nenhum registro de consagração encontrado para os filtros selecionados.</div>
+          ) : null}
+
+          <div className="flex flex-col gap-3 border-t border-[#eef2f6] px-4 py-4 md:flex-row dark:border-slate-700 md:items-center md:justify-between">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Exibindo {paginatedRows.length ? (page - 1) * pageSize + 1 : 0} a {Math.min(page * pageSize, visibleRows.length)} de {visibleRows.length} registros
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                <span>Linhas por pagina</span>
+                <select
+                  value={pageSize}
+                  onChange={(event) => setPageSize(Number(event.target.value))}
+                  className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-2.5 text-sm focus:outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                >
+                  {PAGE_SIZE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page === 1}
+                  className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-slate-600 dark:text-slate-300">Pagina {page} de {totalPages}</span>
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page === totalPages}
+                  className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  Proxima
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
+        )}
+
       </div>
+
+      {/* Painel de filtros — os mesmos campos de antes; só valem no Buscar. */}
+      {filtrosAbertos && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setFiltrosAbertos(false)} />
+          <aside className="relative flex h-full w-[min(440px,100%)] animate-[nmDrawerIn_.25s_ease] flex-col bg-white shadow-[-20px_0_50px_-20px_rgba(15,23,42,.35)] dark:bg-slate-800">
+            <div className="flex items-center gap-3.5 border-b border-[#eef2f6] px-[22px] py-5 dark:border-slate-700">
+              <span className="grid h-11 w-11 flex-none place-items-center rounded-[14px] bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                <SlidersHorizontal className="h-[22px] w-[22px]" strokeWidth={2} />
+              </span>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-lg font-extrabold">Filtros</span>
+                <span className="text-[13px] text-slate-500 dark:text-slate-400">Refine quem aparece na lista</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos(false)}
+                aria-label="Fechar"
+                className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden p-[22px]">
+              {campoVisible && (
+                <label className={rotuloFiltroClasse}>
+                  CAMPO
+                  <span className="relative min-w-0">
+                    <select
+                      value={selectedFieldId}
+                      onChange={(event) => {
+                        setSelectedFieldId(event.target.value);
+                        setSelectedRegionalId('');
+                        setSelectedChurchId('');
+                      }}
+                      disabled={!canChooseField || loadingFilters}
+                      className={campoFiltroClasse}
+                    >
+                      <option value="">Todos os campos</option>
+                      {fields.map((field) => (
+                        <option key={field.id} value={field.id}>
+                          {field.code ? `${field.code} - ` : ''}
+                          {field.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  </span>
+                </label>
+              )}
+
+              <label className={rotuloFiltroClasse}>
+                REGIONAL
+                <span className="relative min-w-0">
+                  <select
+                    value={selectedRegionalId}
+                    onChange={(event) => {
+                      setSelectedRegionalId(event.target.value);
+                      setSelectedChurchId('');
+                    }}
+                    disabled={!canChooseRegional || loadingFilters}
+                    className={campoFiltroClasse}
+                  >
+                    <option value="">Todas as regionais</option>
+                    {filteredRegionais.map((regional) => (
+                      <option key={regional.id} value={regional.id}>
+                        {regional.code ? `${regional.code} - ` : ''}
+                        {regional.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <label className={rotuloFiltroClasse}>
+                IGREJA
+                <span className="relative min-w-0">
+                  <select
+                    value={selectedChurchId}
+                    onChange={(event) => setSelectedChurchId(event.target.value)}
+                    disabled={!canChooseChurch || loadingFilters}
+                    className={campoFiltroClasse}
+                  >
+                    <option value="">Todas as igrejas</option>
+                    {filteredChurchOptions.map((church) => (
+                      <option key={church.id} value={church.id}>
+                        {church.code ? `${church.code} - ` : ''}
+                        {church.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <label className={rotuloFiltroClasse}>
+                STATUS
+                <span className="relative min-w-0">
+                  <select
+                    value={selectedStatusFilter}
+                    onChange={(event) => setSelectedStatusFilter(event.target.value)}
+                    className={campoFiltroClasse}
+                  >
+                    <option value="">Todos os status</option>
+                    <option value="1">Pendente</option>
+                    <option value="2">Aprovado</option>
+                    <option value="3">Documentos Aprovados</option>
+                    <option value="4">Consagrado</option>
+                    <option value="5">Cancelado</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className={rotuloFiltroClasse}>
+                  DATA INICIAL
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(event) => setDateFrom(event.target.value)}
+                    className="h-[50px] w-full rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                  />
+                </label>
+                <label className={rotuloFiltroClasse}>
+                  DATA FINAL
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(event) => setDateTo(event.target.value)}
+                    className="h-[50px] w-full rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 border-t border-[#eef2f6] px-[22px] py-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => { setFiltrosAbertos(false); buscar(); }}
+                disabled={buscando}
+                className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-[15px] font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                <Search className="h-[18px] w-[18px]" strokeWidth={2.2} />
+                Buscar
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {requestModalOpen ? (
         <ModalShell title={editingRequest ? 'Editar Consagração' : 'Iniciar Consagração'} onClose={() => {
@@ -1855,14 +1967,16 @@ function selectedChurchLabel(churchId: string, churches: ChurchOption[], selecte
   return 'Selecionar igreja';
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string | number; icon: ReactNode }) {
+function StatCard({ label, value, icon, tone }: { label: string; value: string | number; icon: ReactNode; tone: string }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
-      <div>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="text-xl font-bold leading-tight tabular-nums text-slate-900">{value}</p>
-      </div>
-      {icon}
+    <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+      <span className={`grid h-[38px] w-[38px] flex-none place-items-center rounded-xl ${tone}`}>
+        {icon}
+      </span>
+      <span className="flex flex-col">
+        <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] tabular-nums">{value}</span>
+        <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</span>
+      </span>
     </div>
   );
 }
@@ -1881,62 +1995,50 @@ function NextConsecrationCard({
   onDelete: () => void;
 }) {
   const daysUntilLabel = getDaysUntilLabel(schedule?.scheduledDate);
-  const cardTone = schedule
-    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/70 dark:bg-emerald-950/45'
-    : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
 
   return (
-    <div className={`rounded-3xl border px-4 py-3 ${cardTone}`}>
+    <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-2 dark:border-slate-700 dark:bg-slate-800">
+      <span className={`grid h-[38px] w-[38px] flex-none place-items-center rounded-xl ${schedule ? 'bg-[#dcfce7] text-[#15803d]' : 'bg-[#f1f5f9] text-[#334155]'}`}>
+        <Calendar className="h-[19px] w-[19px]" strokeWidth={1.8} />
+      </span>
       {!schedule ? (
-        <div className="flex h-full min-h-[76px] items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
-              <Calendar className="h-5 w-5 text-slate-500 dark:text-slate-300" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Próxima Consagração</p>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Nenhuma data agendada</p>
-            </div>
-          </div>
-          {canManageSchedules ? (
-            <Permissao chave="consecration.consecration.agendar" rotulo="Agendar — Consecration" herda="consecration.view">
-              <button onClick={onCreate} className="rounded-2xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-700">
-                Agendar
+        <span className="flex flex-col pr-1.5">
+          <span className="whitespace-nowrap text-[15px] font-bold leading-[1.3] text-slate-500 dark:text-slate-400">Nenhuma data agendada</span>
+          <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Próxima Consagração</span>
+        </span>
+      ) : (
+        <span className="flex min-w-0 flex-col pr-1.5" title={`${schedule.churchCode ? `${schedule.churchCode} - ` : ''}${schedule.churchName}`}>
+          <span className="flex items-baseline gap-2 whitespace-nowrap">
+            <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em]">{formatDate(schedule.scheduledDate)}</span>
+            <span className="text-xs font-semibold text-[#15803d] dark:text-emerald-300">{daysUntilLabel}</span>
+          </span>
+          <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">
+            Próxima Consagração · {schedule.churchCode ? `${schedule.churchCode} - ` : ''}{schedule.churchName}
+          </span>
+        </span>
+      )}
+      {canManageSchedules ? (
+        !schedule ? (
+          <Permissao chave="consecration.consecration.agendar" rotulo="Agendar — Consecration" herda="consecration.view">
+            <button onClick={onCreate} className="ml-auto h-9 whitespace-nowrap rounded-[10px] bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+              Agendar
+            </button>
+          </Permissao>
+        ) : (
+          <div className="ml-auto flex flex-none items-center gap-0.5">
+            <Permissao chave="consecration.consecration.editar" rotulo="Editar — Consecration" herda="consecration.view">
+              <button onClick={onEdit} className="grid h-9 w-9 place-items-center rounded-[10px] transition hover:bg-slate-100 dark:hover:bg-slate-700" title="Editar">
+                <Pencil className="h-4 w-4 text-slate-600 dark:text-slate-300" />
               </button>
             </Permissao>
-          ) : null}
-        </div>
-      ) : (
-        <div className="flex h-full min-h-[76px] items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-white dark:border-emerald-800/80 dark:bg-emerald-900/40">
-              <Calendar className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Próxima Consagração</p>
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <p className="text-2xl font-extrabold leading-tight text-emerald-950 dark:text-emerald-50">{formatDate(schedule.scheduledDate)}</p>
-                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">{daysUntilLabel}</p>
-              </div>
-              <p className="text-xs font-medium text-emerald-800/80 dark:text-emerald-200/80">{schedule.churchCode ? `${schedule.churchCode} - ` : ''}{schedule.churchName}</p>
-            </div>
+            <Permissao chave="consecration.consecration.excluir" rotulo="Excluir — Consecration" herda="consecration.view">
+              <button onClick={onDelete} className="grid h-9 w-9 place-items-center rounded-[10px] transition hover:bg-[#fee2e2] dark:hover:bg-red-950/40" title="Excluir">
+                <Trash2 className="h-4 w-4 text-rose-600" />
+              </button>
+            </Permissao>
           </div>
-          {canManageSchedules ? (
-            <div className="flex items-center gap-1 rounded-2xl border border-emerald-200 bg-white p-1 dark:border-emerald-800/70 dark:bg-emerald-900/40">
-              <Permissao chave="consecration.consecration.editar" rotulo="Editar — Consecration" herda="consecration.view">
-                <button onClick={onEdit} className="rounded-xl p-2 transition hover:bg-emerald-100 dark:hover:bg-emerald-800/60" title="Editar">
-                  <Pencil className="h-4 w-4 text-emerald-700 dark:text-emerald-200" />
-                </button>
-              </Permissao>
-              <Permissao chave="consecration.consecration.excluir" rotulo="Excluir — Consecration" herda="consecration.view">
-                <button onClick={onDelete} className="rounded-xl p-2 transition hover:bg-rose-50" title="Excluir">
-                  <Trash2 className="h-4 w-4 text-rose-600" />
-                </button>
-              </Permissao>
-            </div>
-          ) : null}
-        </div>
-      )}
+        )
+      ) : null}
     </div>
   );
 }

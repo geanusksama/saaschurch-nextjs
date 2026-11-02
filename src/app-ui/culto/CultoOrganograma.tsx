@@ -13,8 +13,10 @@
  *        └───────────┘
  *
  * Cada nó é uma caixa com o semáforo, a contagem e o [+] que abre o nível de
- * baixo. Uma hospedeira chega a ter 11 filhas, então a árvore é n-ária e rola
- * na horizontal — binária de verdade não caberia na hierarquia real.
+ * baixo. Uma hospedeira chega a ter 11 filhas: em vez de abrir os níveis numa
+ * fila horizontal que saía da tela, as hospedeiras ficam numa grade (1/2/3
+ * colunas) e cada nível abre para baixo, recuado, com a linha vertical à
+ * esquerda (só visual — os mesmos nós, cliques, [+] e cadeados).
  *
  * As cores de status vêm de cultoCores.ts em hex, para escapar da camada de
  * tema do globals.css que repinta as classes do Tailwind (ver o comentário lá).
@@ -45,7 +47,6 @@ import {
   type StatusCulto,
 } from './cultoApi';
 import {
-  BORDA,
   PASTILHA,
   PONTO,
   TEXTO,
@@ -71,43 +72,26 @@ interface Props {
   onAlternarBloqueio?: (churchId: string, bloquear: boolean) => void;
 }
 
-/** Barra que une os irmãos: neutra, mas visível. */
-const COR_BARRA = 'bg-slate-400 dark:bg-slate-500';
-
 /**
- * Haste vertical. Recebe o tom do nó de destino, para a linha já dizer se
- * aquele ramo está verde ou vermelho antes de você ler a caixa.
- */
-function Haste({ tom }: { tom?: Tom }) {
-  return <div className={`w-0.5 h-5 rounded ${tom ? PONTO[tom] : COR_BARRA}`} />;
-}
-
-/**
- * Uma linha de filhos com as ramificações em T.
+ * Os filhos de um nó, um abaixo do outro.
  *
- * Para cada filho desenha metade esquerda e metade direita da barra
- * horizontal: o primeiro não tem a esquerda, o último não tem a direita. Com um
- * filho só, nenhuma das duas — fica apenas a haste reta.
+ * A linha vertical à esquerda une os irmãos; cada filho recebe um galho
+ * horizontal na cor do estado dele, para o ramo já dizer se está verde ou
+ * vermelho antes de você ler a caixa. Só CSS: nada aqui decide o que aparece.
  */
 function Ramificacao({ filhos }: { filhos: { tom: Tom; conteudo: React.ReactNode }[] }) {
   if (filhos.length === 0) return null;
   return (
-    <div className="flex items-start justify-center">
-      {filhos.map((filho, i) => {
-        const primeiro = i === 0;
-        const ultimo = i === filhos.length - 1;
-        return (
-          <div key={i} className="flex flex-col items-center px-2">
-            <div className="flex w-full h-0.5">
-              <div className={`flex-1 rounded-l ${primeiro ? '' : COR_BARRA}`} />
-              <div className={`flex-1 rounded-r ${ultimo ? '' : COR_BARRA}`} />
-            </div>
-            {/* A descida até o filho já vem na cor do estado dele. */}
-            <Haste tom={filho.tom} />
-            {filho.conteudo}
-          </div>
-        );
-      })}
+    <div className="ml-5 mt-2 flex flex-col gap-2.5 border-l-2 border-[#e8ecf1] dark:border-[var(--sl-border-2)] pl-4 pt-1">
+      {filhos.map((filho, i) => (
+        <div key={i} className="relative min-w-0">
+          <span
+            aria-hidden
+            className={`absolute -left-4 top-6 h-0.5 w-4 rounded-r ${PONTO[filho.tom]}`}
+          />
+          {filho.conteudo}
+        </div>
+      ))}
     </div>
   );
 }
@@ -124,7 +108,7 @@ function Alternador({
 }) {
   if (!temFilhos) {
     return (
-      <span className="w-5 h-5 shrink-0 inline-flex items-center justify-center text-slate-300 dark:text-slate-600">
+      <span className="w-6 h-6 shrink-0 inline-flex items-center justify-center text-slate-300 dark:text-slate-600">
         ·
       </span>
     );
@@ -136,7 +120,7 @@ function Alternador({
         onClick();
       }}
       aria-label={aberto ? 'Recolher' : 'Expandir'}
-      className="w-5 h-5 shrink-0 inline-flex items-center justify-center rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-500 hover:border-slate-500 transition-colors"
+      className="w-6 h-6 shrink-0 inline-flex items-center justify-center rounded-lg border border-[#e8ecf1] dark:border-[var(--sl-border-2)] bg-white dark:bg-[var(--sl-solid)] text-slate-500 hover:border-slate-400 transition-colors"
     >
       {aberto ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
     </button>
@@ -179,22 +163,50 @@ function Caixa({
   temFilhos,
   onAlternar,
   onTitulo,
-  largura = 'w-56',
+  largura = 'w-full',
   numeros,
   bloqueado,
   onBloquear,
 }: CaixaProps) {
   return (
     <div
-      className={`${largura} shrink-0 rounded-xl border-2 ${BORDA[tom]} bg-white dark:bg-slate-800 shadow-sm px-3 py-2`}
+      className={`${largura} relative min-w-0 overflow-hidden rounded-[20px] border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] pl-4 pr-3 py-3`}
     >
-      <div className="flex items-center gap-1.5">
-        <Alternador aberto={aberto} temFilhos={temFilhos} onClick={onAlternar} />
-        <Icone className={`w-4 h-4 shrink-0 ${corIcone}`} />
-        <span className={`w-2 h-2 rounded-full shrink-0 ${PONTO[tom]}`} />
+      {/* O semáforo do nó, numa faixa à esquerda (antes era a borda inteira). */}
+      <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${PONTO[tom]}`} />
+      <div className="flex items-start gap-2.5">
+        <span className="mt-2 inline-flex">
+          <Alternador aberto={aberto} temFilhos={temFilhos} onClick={onAlternar} />
+        </span>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-[#f1f5f9] dark:bg-[var(--sl-chip)]">
+          <Icone className={`w-5 h-5 ${corIcone}`} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <button
+            onClick={onTitulo}
+            disabled={!onTitulo}
+            title={onTitulo ? 'Ver o resumo consolidado' : undefined}
+            className={`block w-full text-left text-[14px] font-bold leading-snug text-slate-900 dark:text-slate-100 truncate ${
+              onTitulo ? 'hover:underline' : 'cursor-default'
+            }`}
+          >
+            {titulo}
+          </button>
+          {etiqueta && (
+            <span className="block text-[10px] uppercase tracking-wide font-bold text-slate-400">
+              {etiqueta}
+            </span>
+          )}
+          {detalhe && (
+            <span className="block text-[12px] text-slate-500 dark:text-slate-400 truncate">
+              {detalhe}
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1 pt-1">
         {contagem && (
           <span
-            className={`ml-auto shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded ${PASTILHA[tom]}`}
+            className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${PASTILHA[tom]}`}
           >
             {contagem}
           </span>
@@ -214,44 +226,30 @@ function Caixa({
                 ? 'Visão trancada: quem dirige este nó não vê os valores lançados abaixo. Clique para liberar.'
                 : 'Visão liberada: quem dirige este nó vê os valores lançados abaixo. Clique para trancar.'
             }
-            className={`shrink-0 p-0.5 rounded ${contagem ? 'ml-1' : 'ml-auto'} ${
+            className={`shrink-0 p-1 rounded-lg ${
               bloqueado
                 ? 'text-[#b45309] dark:text-[#fbbf24]'
                 : 'text-slate-300 dark:text-slate-600'
             } ${onBloquear ? 'hover:bg-slate-100 dark:hover:bg-slate-700' : 'cursor-default'}`}
           >
-            {bloqueado ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+            {bloqueado ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
           </button>
         )}
+        </div>
       </div>
 
-      <button
-        onClick={onTitulo}
-        disabled={!onTitulo}
-        title={onTitulo ? 'Ver o resumo consolidado' : undefined}
-        className={`mt-1 block w-full text-left text-sm font-semibold text-slate-800 dark:text-slate-100 truncate ${
-          onTitulo ? 'hover:underline' : 'cursor-default'
-        }`}
-      >
-        {titulo}
-      </button>
-
-      {etiqueta && (
-        <span className="block text-[10px] uppercase tracking-wide font-bold text-slate-400">
-          {etiqueta}
-        </span>
-      )}
       {numeros && (
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
-          <span className="text-slate-500 dark:text-slate-400">{numeros.igrejas} igrejas</span>
-          <span className={`font-bold ${TEXTO.verde}`}>{numeros.concluidas} concluídas</span>
-          <span className={`font-bold ${TEXTO.vermelho}`}>{numeros.pendentes} pendentes</span>
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+          <span className="rounded-full bg-[#f1f5f9] dark:bg-[var(--sl-chip)] px-2 py-0.5 font-semibold text-slate-600 dark:text-slate-300">
+            {numeros.igrejas} igrejas
+          </span>
+          <span className={`rounded-full px-2 py-0.5 font-bold ${PASTILHA.verde}`}>
+            {numeros.concluidas} concluídas
+          </span>
+          <span className={`rounded-full px-2 py-0.5 font-bold ${PASTILHA.vermelho}`}>
+            {numeros.pendentes} pendentes
+          </span>
         </div>
-      )}
-      {detalhe && (
-        <span className="block text-[11px] text-slate-500 dark:text-slate-400 truncate">
-          {detalhe}
-        </span>
       )}
     </div>
   );
@@ -395,8 +393,9 @@ export default function CultoOrganograma({
       <div
         key={r.id}
         onClick={() => onAbrirRegistro(r.id)}
-        className={`w-48 shrink-0 rounded-lg border ${BORDA[tom]} bg-white dark:bg-slate-800 px-2.5 py-1.5 cursor-pointer hover:shadow-md transition-shadow`}
+        className={`relative w-full min-w-0 overflow-hidden rounded-[14px] border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] pl-4 pr-3 py-2 cursor-pointer hover:shadow-md transition-shadow`}
       >
+        <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${PONTO[tom]}`} />
         <div className="flex items-center gap-1.5">
           <CalendarDays className="w-3.5 h-3.5 shrink-0 text-slate-400" />
           <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
@@ -426,7 +425,7 @@ export default function CultoOrganograma({
     const tom = tomDoSemaforo(igreja.status === 'CONCLUIDO');
 
     return (
-      <div key={igreja.churchId} className="flex flex-col items-center">
+      <div key={igreja.churchId} className="flex min-w-0 flex-col">
         <Caixa
           icone={Church}
           corIcone="text-slate-400"
@@ -444,7 +443,7 @@ export default function CultoOrganograma({
           onTitulo={() =>
             onAbrirResumo({ nivel: 'IGREJA', id: igreja.churchId, rotulo: igreja.nome })
           }
-          largura="w-52"
+          largura="w-full"
           bloqueado={bloqueados ? bloqueados.has(igreja.churchId) : undefined}
           onBloquear={
             podeBloquear && onAlternarBloqueio
@@ -454,7 +453,6 @@ export default function CultoOrganograma({
         />
         {aberto && cultos.length > 0 && (
           <>
-            <Haste />
             <Ramificacao
               filhos={cultos.map((r) => ({
                 tom: TOM_DO_STATUS[r.status as StatusCulto],
@@ -476,7 +474,7 @@ export default function CultoOrganograma({
     const tom = tomDoSemaforo(g.cor === 'VERDE');
 
     return (
-      <div key={chave} className="flex flex-col items-center">
+      <div key={chave} className="flex min-w-0 flex-col">
         <Caixa
           icone={g.tipo === 'HOSPEDEIRA' ? Building2 : MapPin}
           corIcone={g.tipo === 'HOSPEDEIRA' ? 'text-[#0284c7]' : 'text-[#7c3aed]'}
@@ -491,7 +489,7 @@ export default function CultoOrganograma({
           onTitulo={() =>
             onAbrirResumo({ nivel: 'GRUPO', id: g.id, tipoGrupo: g.tipo, rotulo: g.nome })
           }
-          largura="w-72"
+          largura="w-full"
           numeros={{
             igrejas: g.totalIgrejas,
             concluidas: g.concluidas.length,
@@ -508,7 +506,6 @@ export default function CultoOrganograma({
         />
         {aberto && igrejas.length > 0 && (
           <>
-            <Haste />
             <Ramificacao
               filhos={igrejas.map((i) => ({
                 tom: tomDoSemaforo(i.status === 'CONCLUIDO'),
@@ -538,16 +535,16 @@ export default function CultoOrganograma({
       onWheel={aoRolar}
       // Ocupa o que sobra da janela e encosta nas bordas: a árvore é grande e
       // qualquer moldura só rouba espaço dela.
-      className={`relative bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 overflow-hidden touch-none -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 h-[calc(100vh-13rem)] sm:h-[calc(100vh-9.5rem)] ${
+      className={`relative bg-[#f8fafc] dark:bg-slate-900/60 border-t border-[#e8ecf1] dark:border-[var(--sl-border)] overflow-hidden touch-none -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 h-[calc(100vh-13rem)] sm:h-[calc(100vh-9.5rem)] ${
         arrastando ? 'cursor-grabbing' : 'cursor-grab'
       }`}
     >
       {/* Controles de zoom, no canto — como no editor do n8n. */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-1">
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-2xl border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] shadow-sm p-1">
         <button
           onClick={() => aplicarZoom(-0.15)}
           title="Afastar"
-          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+          className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
@@ -557,14 +554,14 @@ export default function CultoOrganograma({
         <button
           onClick={() => aplicarZoom(0.15)}
           title="Aproximar"
-          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+          className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
         >
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
           onClick={reenquadrar}
           title="Reenquadrar"
-          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+          className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
         >
           <Maximize2 className="w-4 h-4" />
         </button>
@@ -576,7 +573,7 @@ export default function CultoOrganograma({
 
       {/* Camada que recebe zoom e deslocamento. */}
       <div
-        className="absolute top-0 left-0 origin-top-left p-8"
+        className="absolute top-0 left-0 w-full origin-top-left px-4 pt-16 pb-12 sm:px-8"
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           transition: arrastando ? 'none' : 'transform 120ms ease-out',
@@ -587,13 +584,11 @@ export default function CultoOrganograma({
           cabe melhor em cada hospedeira — e roubava uma linha inteira de altura
           numa árvore que já não cabe na tela. O consolidado do campo continua a
           um clique, no botão Resumo da barra. */}
-      <div className="inline-flex flex-col items-center">
-        <Ramificacao
-          filhos={grupos.map((g) => ({
-            tom: tomDoSemaforo(g.cor === 'VERDE'),
-            conteudo: noGrupo(g),
-          }))}
-        />
+      {/* Na vertical: uma hospedeira por cartão, em grade que quebra linha
+          (1 coluna no celular, 2 no tablet, 3 no desktop). As filhas abrem
+          para baixo, dentro da coluna de cada uma. */}
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {grupos.map((g) => noGrupo(g))}
       </div>
       </div>
     </div>

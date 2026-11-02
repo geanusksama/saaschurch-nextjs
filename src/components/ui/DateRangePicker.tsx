@@ -106,12 +106,16 @@ export function DateRangePicker({ from, to, onChangeFrom, onChangeTo, className 
     setIsMobile(mobile);
 
     if (mobile) {
-      // Centralizado horizontalmente, abaixo do botão
+      // Celular: painel preso ao rodapé, com altura limitada à tela e rolagem
+      // interna. Antes ele abria abaixo do botão sem limite e o segundo
+      // calendário ficava escondido atrás das barras do rodapé (02/11/2026).
       setStyle({
         position: 'fixed',
-        top: rect.bottom + 6,
         left: 8,
         right: 8,
+        bottom: 'max(8px, env(safe-area-inset-bottom))',
+        maxHeight: 'calc(100dvh - 16px)',
+        overflowY: 'auto',
         zIndex: 9999,
       });
     } else {

@@ -23,7 +23,7 @@ import {
  * fica de fora de propósito — ela é só Notificações e Caixa de Entrada, não um
  * módulo. Se um módulo for adicionado ao menu, some aqui também.
  */
-const MODULOS = [
+export const MODULOS = [
   { nome: 'Secretaria', icon: Users },
   { nome: 'Gestão Pastoral', icon: HeartHandshake },
   { nome: 'Finanças', icon: Wallet },

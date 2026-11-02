@@ -41,8 +41,12 @@ export default function PublicEventosPage() {
       {({ isDark, accent }) => (
         <div id="lista-eventos" className="scroll-mt-6">
           <div className="pb-6">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.2em]" style={{ color: accent }}>Próximos eventos</p>
-            <div className="flex flex-wrap gap-2 mt-4">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] max-md:hidden" style={{ color: accent }}>Próximos eventos</p>
+            {/* Celular: chips numa linha só, com rolagem horizontal sem barra */}
+            <div className="flex flex-wrap gap-2 mt-4 max-md:mt-0 max-md:-mx-5 max-md:px-5 max-md:flex-nowrap max-md:overflow-x-auto max-md:[scrollbar-width:none] max-md:[&>*]:shrink-0 max-md:[&>*]:min-h-[40px]">
+              {!dep && departamentos.length > 0 && (
+                <span className="md:hidden rounded-full px-4 py-2 text-sm font-semibold text-black inline-flex items-center" style={{ background: accent }}>Todos</span>
+              )}
               {dep && <button onClick={() => setSp({})} className={cx('rounded-full px-4 py-2 text-sm font-semibold', isDark ? 'bg-white/10' : 'bg-black/5')}>Todos os eventos</button>}
               {!dep && departamentos.map((m) => (
                 <button key={m.id} onClick={() => setSp({ dep: m.nome.toLowerCase() })} className={cx('rounded-full px-4 py-2 text-sm font-semibold', isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10')}>{m.nome}</button>
@@ -63,7 +67,12 @@ export default function PublicEventosPage() {
                 <button key={e.id} onClick={() => setAberto(e)} className={cx('group text-left rounded-3xl overflow-hidden transition hover:-translate-y-0.5', isDark ? 'bg-white/5 ring-1 ring-white/10 hover:ring-white/20' : 'bg-white ring-1 ring-black/5 shadow-sm hover:shadow-md')}>
                   <div className="aspect-[16/9] relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${accent}33, transparent)` }}>
                     {e.imagemUrl && <img src={e.imagemUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />}
-                    <div className="absolute top-3 left-3 flex gap-2">
+                    {/* Celular: selo com mês e dia, como no guia */}
+                    <span className={cx('md:hidden absolute top-3 left-3 z-10 flex w-12 flex-col items-center rounded-xl py-1 leading-none shadow', isDark ? 'bg-[#0b0d12]/85 text-white' : 'bg-white text-slate-900')}>
+                      <span className="text-[10px] font-bold uppercase opacity-70">{new Date(e.inicio).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+                      <span className="text-[20px] font-extrabold">{String(new Date(e.inicio).getDate()).padStart(2, '0')}</span>
+                    </span>
+                    <div className="absolute top-3 left-3 flex gap-2 max-md:left-auto max-md:right-3">
                       {e.ministerio && <span className="rounded-full px-3 py-1 text-[11px] font-bold bg-black/60 text-white backdrop-blur">{e.ministerio.nome}</span>}
                       {e.destaque && <span className="rounded-full px-3 py-1 text-[11px] font-bold text-black" style={{ background: accent }}>Destaque</span>}
                     </div>
@@ -72,9 +81,14 @@ export default function PublicEventosPage() {
                     <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: accent }}><CalendarDays className="w-3.5 h-3.5" />{dataEvento(e.inicio, e.fim)}</p>
                     <p className="text-lg font-bold mt-1 leading-snug">{e.titulo}</p>
                     {e.local && <p className="text-sm opacity-60 mt-1 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 shrink-0" />{e.local}</p>}
+                    {e.opcoes.length > 0 && dados?.pagamento && (dados.pagamento.pix || dados.pagamento.cartao) && (
+                      <p className="md:hidden mt-2 text-[12px] font-semibold" style={{ color: accent }}>
+                        {dados.pagamento.pix && dados.pagamento.cartao ? 'Pix ou cartão' : dados.pagamento.pix ? 'Pix' : 'Cartão'} · QR na hora
+                      </p>
+                    )}
                     <div className="flex items-center justify-between mt-4">
                       <span className="text-sm opacity-70">{menor === null ? 'Divulgação' : menor === 0 ? 'Gratuito' : `A partir de ${brl(menor)}`}</span>
-                      {e.opcoes.length > 0 && <span className="rounded-full px-4 py-2 text-sm font-semibold text-black" style={{ background: accent }}>{e.ctaTexto || 'Comprar ingresso'}</span>}
+                      {e.opcoes.length > 0 && <span className="rounded-full px-4 py-2 text-sm font-semibold text-black max-md:min-h-[44px] max-md:inline-flex max-md:items-center max-md:rounded-[14px]" style={{ background: accent }}>{e.ctaTexto || 'Comprar ingresso'}</span>}
                     </div>
                   </div>
                 </button>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Search, X, Plus, CheckCircle, AlertCircle, User, Users, Briefcase, Camera, RotateCcw, RefreshCw, Repeat2, Pencil, Check, PanelRightOpen, PanelRightClose, Sparkles, FileSearch, Link2, Link2Off } from 'lucide-react';
+import { ArrowLeft, Search, X, Plus, CheckCircle, AlertCircle, User, Users, Briefcase, Camera, RotateCcw, RefreshCw, Repeat2, Pencil, Check, PanelRightOpen, PanelRightClose, Sparkles, FileSearch, Link2, Link2Off, ChevronRight, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, AlignLeft, FileText, Hash, CreditCard, Landmark, LayoutGrid, Calendar, Clock } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { supabase } from '../../lib/supabaseClient';
 import { apiBase } from '../../lib/apiBase';
@@ -156,6 +156,119 @@ function SearchableSelect({
         </div>
       )}
     </div>
+  );
+}
+
+
+// ─── Celular: linha tocável + bottom sheet ───────────────────────────────────
+// Guia adcampinas-mobile-first (seção 4 · Linha de campo / Bottom sheet).
+// SÓ apresentação: recebe o mesmo value/options/onChange do <select> (ou do
+// SearchableSelect) que continua valendo no desktop. A busca do sheet só filtra
+// a lista exibida; o valor escolhido vai pelo mesmo onChange.
+
+/** Cores do tipo do lançamento no celular (receita verde / despesa vermelho). */
+function corDoTipo(isReceita: boolean) {
+  return isReceita
+    ? { cor: '#0F7A5A', suave: '#ECFDF5', halo: 'rgba(15,122,90,.12)' }
+    : { cor: '#C81E1E', suave: '#FEF2F2', halo: 'rgba(200,30,30,.12)' };
+}
+
+/** Quadrado de ícone das linhas (cinza; na cor do tipo quando preenchido). */
+function IconeDaLinha({ Icone, preenchido, cor, suave }: { Icone: React.ElementType; preenchido: boolean; cor: string; suave: string }) {
+  return (
+    <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[12px]"
+      style={preenchido ? { background: suave, color: cor } : { background: '#F1F5F9', color: '#64748B' }}>
+      <Icone className="h-[18px] w-[18px]" strokeWidth={1.8} />
+    </span>
+  );
+}
+
+function LinhaComSheet({
+  icone, rotulo, value, options, placeholder, onChange, titulo, buscavel = false, buscaPlaceholder = 'Buscar…', isReceita,
+}: {
+  icone: React.ElementType;
+  rotulo: string;
+  value: string;
+  options: { id: string; label: string }[];
+  placeholder: string;
+  onChange: (val: string) => void;
+  titulo: string;
+  buscavel?: boolean;
+  buscaPlaceholder?: string;
+  isReceita: boolean;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState('');
+  const { cor, suave } = corDoTipo(isReceita);
+  const selecionado = options.find(o => o.id === value);
+  const preenchido = !!value && !!selecionado;
+  const filtradas = buscavel && busca.trim()
+    ? options.filter(o => normalizeText(o.label).includes(normalizeText(busca)))
+    : options;
+
+  useEffect(() => {
+    if (!aberto) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [aberto]);
+
+  return (
+    <>
+      <button type="button" onClick={() => { setBusca(''); setAberto(true); }}
+        className={`flex min-h-[62px] w-full items-center gap-3 px-4 py-2 text-left transition ${aberto ? 'ring-1 ring-inset ring-[#0F172A]/40' : ''}`}>
+        <IconeDaLinha Icone={icone} preenchido={preenchido} cor={cor} suave={suave} />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[12px] font-semibold text-[#475569] dark:text-slate-400">{rotulo}</span>
+          <span className={`block truncate text-[15px] ${preenchido ? 'font-bold text-[#0F172A] dark:text-white' : 'font-medium text-[#94A3B8]'}`}>
+            {selecionado ? selecionado.label : placeholder}
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-[#94A3B8]" />
+      </button>
+
+      {aberto && (
+        <div className="fixed inset-0 z-[70] sm:hidden" role="dialog" aria-label={titulo}>
+          <div className="absolute inset-0 bg-[rgba(11,18,32,.5)]" onClick={() => setAberto(false)} />
+          <div className="absolute inset-x-0 bottom-0 flex max-h-[86vh] flex-col rounded-t-[26px] bg-[#F4F6F9] dark:bg-slate-900"
+            style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+            <div className="mx-auto mt-2.5 h-[5px] w-10 rounded-full bg-[#CBD5E1]" />
+            <div className="flex items-center gap-3 px-5 pb-3 pt-4">
+              <p className="flex-1 text-[19px] font-extrabold text-[#0F172A] dark:text-white">{titulo}</p>
+              <button type="button" onClick={() => setAberto(false)} aria-label="Fechar"
+                className="grid h-10 w-10 place-items-center rounded-full bg-[#E5E9EF] text-[#475569] dark:bg-slate-700 dark:text-slate-300">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {buscavel && (
+              <div className="px-4 pb-3">
+                <label className="flex h-[52px] items-center gap-3 rounded-[16px] border border-[#E5E7EB] bg-white px-4 dark:border-slate-700 dark:bg-slate-800">
+                  <Search className="h-5 w-5 shrink-0 text-[#94A3B8]" />
+                  <input autoFocus value={busca} onChange={e => setBusca(e.target.value)} placeholder={buscaPlaceholder}
+                    aria-label={buscaPlaceholder}
+                    className="min-w-0 flex-1 bg-transparent text-[16px] text-[#0F172A] outline-none placeholder:text-[#94A3B8] dark:text-white"
+                    style={{ border: 0, boxShadow: 'none', minHeight: 0 }} />
+                </label>
+              </div>
+            )}
+            <div className="mx-4 overflow-y-auto rounded-[20px] border border-[#E5E7EB] bg-white dark:border-slate-700 dark:bg-slate-800">
+              {filtradas.length === 0 ? (
+                <p className="px-4 py-5 text-center text-[14px] text-[#64748B]">Nada encontrado.</p>
+              ) : filtradas.map(o => {
+                const ativo = o.id === value;
+                return (
+                  <button key={o.id || '__vazio'} type="button" onClick={() => { onChange(o.id); setAberto(false); }}
+                    className="flex min-h-[54px] w-full items-center gap-3 border-b border-[#EEF0F3] px-4 text-left last:border-b-0 dark:border-slate-700">
+                    <span className={`min-w-0 flex-1 text-[15px] ${ativo ? 'font-bold text-[#0F172A] dark:text-white' : 'font-medium text-[#334155] dark:text-slate-200'}`}>{o.label}</span>
+                    {ativo && <Check className="h-5 w-5 shrink-0" style={{ color: cor }} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -391,6 +504,9 @@ function SearchModal({
   }
 
   function handleKey(e: React.KeyboardEvent) {
+    // O modal fica dentro da <form> do lançamento: sem isto o Enter da busca
+    // enviava o formulário e o navegador cobrava o campo Valor.
+    if (e.key === 'Enter') e.preventDefault();
     if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, results.length - 1)); }
     if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx(i => Math.max(i - 1, 0)); }
     if (e.key === 'Enter' && results[activeIdx]) onSelect(results[activeIdx]);
@@ -404,7 +520,7 @@ function SearchModal({
         <div className="flex items-center gap-3 p-5 border-b border-slate-100 dark:border-slate-700">
           <ChurchIcon className="w-5 h-5 text-slate-500" />
           <h2 className="font-semibold text-slate-800 dark:text-slate-100 text-base">{title}</h2>
-          <button onClick={onClose} className="ml-auto p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><X className="w-4 h-4 text-slate-500 dark:text-slate-300" /></button>
+          <button type="button" onClick={onClose} className="ml-auto p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><X className="w-4 h-4 text-slate-500 dark:text-slate-300" /></button>
         </div>
         <div className="p-4">
           <div className="flex gap-2">
@@ -421,6 +537,7 @@ function SearchModal({
               />
             </div>
             <button
+              type="button"
               onClick={() => runSearch(query)}
               className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 flex items-center gap-1.5"
             >
@@ -444,6 +561,7 @@ function SearchModal({
           )}
           {results.map((r, i) => (
             <button
+              type="button"
               key={r.id}
               onClick={() => onSelect(r)}
               className={`w-full text-left px-5 py-3 text-sm border-b border-slate-50 dark:border-slate-700 last:border-0 transition-colors ${i === activeIdx ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}
@@ -1990,6 +2108,13 @@ export default function LancamentoNew() {
   const accentHover = isReceita ? 'hover:bg-[#047857]' : 'hover:bg-red-700';
   const accentRing = isReceita ? 'focus:ring-[#10b981]' : 'focus:ring-red-500';
   const accentBorder = isReceita ? 'border-[#10b981]' : 'border-red-500';
+  // Celular (guia adcampinas-mobile-first): verde #0F7A5A na receita, vermelho #C81E1E na despesa.
+  const mTipo = corDoTipo(isReceita);
+  const mAccentBg = isReceita ? 'max-sm:bg-[#0F7A5A]' : 'max-sm:bg-[#C81E1E]';
+  const mSecao = 'sm:hidden mb-2 mt-2 px-1 text-[12px] font-extrabold uppercase tracking-[1.2px] text-[#475569] dark:text-slate-400';
+  const mRotulo = 'max-sm:mb-0 max-sm:text-[12px] max-sm:font-semibold max-sm:text-[#475569]';
+  const mInputLinha = 'max-sm:border-0 max-sm:bg-transparent max-sm:px-0 max-sm:py-0.5 max-sm:text-[15px] max-sm:font-bold max-sm:text-[#0F172A] max-sm:placeholder:font-medium max-sm:placeholder:text-[#94A3B8] max-sm:focus:ring-0';
+  const mLinha = 'max-sm:flex max-sm:min-h-[62px] max-sm:items-center max-sm:gap-3 max-sm:px-4 max-sm:py-2';
   const accentBar = isReceita ? 'bg-[#10b981]' : 'bg-red-500';
 
   async function searchPJ(q: string) {
@@ -2056,9 +2181,35 @@ export default function LancamentoNew() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 pt-3 pb-3 flex flex-col gap-3 w-full bg-[#fefefe] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+    <form onSubmit={handleSubmit} className="p-4 pt-3 pb-3 flex flex-col gap-3 w-full bg-[#fefefe] dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:bg-[#F4F6F9] max-sm:pt-0 max-sm:pb-[104px] max-sm:gap-2">
+      {/* Celular: header (X · título · Limpar) e segmentado Receita | Despesa.
+          Mesmas ações do desktop: limpar() e setModo(). */}
+      <div className="sm:hidden -mx-4 flex h-14 items-center gap-2 border-b border-[#E5E7EB] bg-white px-2 dark:border-slate-700 dark:bg-slate-900">
+        <Link to="/app-ui/finance/cashbook" aria-label="Fechar"
+          className="grid h-11 w-11 place-items-center rounded-full text-[#0F172A] dark:text-white">
+          <X className="h-5 w-5" />
+        </Link>
+        <h1 className="flex-1 text-center text-[17px] font-extrabold text-[#0F172A] dark:text-white">
+          {isReceita ? 'Inserir receita' : 'Inserir despesa'}
+        </h1>
+        <button type="button" onClick={limpar}
+          className="h-11 px-3 text-[14px] font-semibold text-[#334155] dark:text-slate-300">
+          Limpar
+        </button>
+      </div>
+      <div className="sm:hidden mt-3 grid grid-cols-2 gap-1 rounded-[16px] bg-[#E5E9EF] p-1 dark:bg-slate-800">
+        <button type="button" onClick={() => setModo('RECEITA')} aria-pressed={isReceita}
+          className={`flex h-11 items-center justify-center gap-1.5 rounded-[12px] text-[14px] font-bold transition-colors ${isReceita ? 'bg-[#0F7A5A] text-white shadow-sm' : 'text-[#475569] dark:text-slate-400'}`}>
+          <ArrowUpRight className="h-4 w-4" /> Receita
+        </button>
+        <button type="button" onClick={() => setModo('DESPESA')} aria-pressed={!isReceita}
+          className={`flex h-11 items-center justify-center gap-1.5 rounded-[12px] text-[14px] font-bold transition-colors ${!isReceita ? 'bg-[#C81E1E] text-white shadow-sm' : 'text-[#475569] dark:text-slate-400'}`}>
+          <ArrowDownLeft className="h-4 w-4" /> Despesa
+        </button>
+      </div>
+
       {/* Header row */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 max-sm:hidden">
         <div className="flex items-center gap-3">
           <Link to="/app-ui/finance/cashbook" className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center hover:bg-slate-50 transition-colors flex-shrink-0">
             <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
@@ -2087,8 +2238,56 @@ export default function LancamentoNew() {
         </div>
       </div>
 
+      {/* Celular · 1 · Caixa de origem (mesmos estados/ações do bloco do desktop) */}
+      <p className={mSecao}>1 · Caixa de origem</p>
+      <div className="sm:hidden overflow-hidden rounded-[20px] border border-[#E5E7EB] bg-white dark:border-slate-700 dark:bg-slate-800">
+        {isChurchUser ? (
+          <div className="flex min-h-[62px] items-center gap-3 px-4 py-2">
+            <IconeDaLinha Icone={ChurchIcon} preenchido={!!caixaNome} cor={mTipo.cor} suave={mTipo.suave} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-semibold text-[#475569] dark:text-slate-400">Caixa de origem</span>
+              <span className={`block truncate text-[15px] ${caixaNome ? 'font-bold text-[#0F172A] dark:text-white' : 'font-medium text-[#94A3B8]'}`}>{caixaNome || 'Igreja não definida'}</span>
+            </span>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setShowCaixaModal(true)} className="flex min-h-[62px] w-full items-center gap-3 px-4 py-2 text-left">
+            <IconeDaLinha Icone={ChurchIcon} preenchido={!!caixaNome} cor={mTipo.cor} suave={mTipo.suave} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-semibold text-[#475569] dark:text-slate-400">Caixa de origem</span>
+              <span className={`block truncate text-[15px] ${caixaNome ? 'font-bold text-[#0F172A] dark:text-white' : 'font-medium text-[#94A3B8]'}`}>{caixaNome || 'Selecione uma igreja'}</span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-[#94A3B8]" />
+          </button>
+        )}
+        {!isChurchUser && (
+          <div className="flex min-h-[62px] items-center gap-3 border-t border-[#EEF0F3] px-4 py-2 dark:border-slate-700">
+            <IconeDaLinha Icone={ArrowLeftRight} preenchido={transferir} cor={mTipo.cor} suave={mTipo.suave} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold text-[#0F172A] dark:text-white">Outra igreja</span>
+              <span className="block text-[12px] text-[#64748B]">Lançar no caixa de outra congregação</span>
+            </span>
+            <button type="button" role="switch" aria-checked={transferir} aria-label="Outra igreja" onClick={() => setTransferir(v => !v)}
+              className="relative h-8 w-[52px] shrink-0 rounded-full transition-colors"
+              style={{ background: transferir ? mTipo.cor : '#CBD5E1' }}>
+              <span className={`absolute top-[3px] left-0 h-[26px] w-[26px] rounded-full bg-white shadow transition-transform ${transferir ? 'translate-x-[23px]' : 'translate-x-[3px]'}`} />
+            </button>
+          </div>
+        )}
+        {transferir && (
+          <button type="button" onClick={() => setShowCaixaModal(true)}
+            className="flex min-h-[62px] w-full items-center gap-3 border-t border-[#EEF0F3] px-4 py-2 text-left dark:border-slate-700">
+            <IconeDaLinha Icone={Search} preenchido={false} cor={mTipo.cor} suave={mTipo.suave} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-semibold text-[#475569] dark:text-slate-400">Outra igreja</span>
+              <span className="block truncate text-[15px] font-medium text-[#94A3B8]">{caixaNome ? `Alterar: ${caixaNome}` : 'Selecione a congregação'}</span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-[#94A3B8]" />
+          </button>
+        )}
+      </div>
+
       {/* Caixa de Origem row */}
-      <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-3 py-2 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+      <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-3 py-2 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm max-sm:hidden">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center flex-shrink-0">
             <ChurchIcon className="w-5 h-5 text-pink-600 dark:text-pink-400" />
@@ -2126,7 +2325,7 @@ export default function LancamentoNew() {
       </div>
 
       {transferir && (
-        <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-3 shadow-sm -mt-3">
+        <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-3 shadow-sm -mt-3 max-sm:hidden">
           <button type="button" onClick={() => setShowCaixaModal(true)}
             className="w-full flex items-center gap-2 px-3 py-2 border border-dashed border-indigo-300 rounded-[4px] text-sm text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-colors">
             <Search className="w-4 h-4" />
@@ -2139,14 +2338,15 @@ export default function LancamentoNew() {
           direita repetia, em outra fonte, o que os campos já mostram um palmo
           ao lado — e custava metade da tela para isso. */}
       <div className="grid grid-cols-1 gap-4 items-start">
-        <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-4 py-3 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-[4px] border border-slate-200 dark:border-slate-700 p-4 py-3 shadow-sm max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none max-sm:dark:bg-transparent">
+          <p className={mSecao}>2 · Favorecido / Contribuinte</p>
           {/* Favorecido Section */}
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white ${isReceita ? 'bg-[#059669]' : 'bg-red-600'}`}>
+          <div className="max-sm:rounded-[20px] max-sm:border max-sm:border-[#E5E7EB] max-sm:bg-white max-sm:p-3 max-sm:dark:border-slate-700 max-sm:dark:bg-slate-800">
+            <div className="flex items-center gap-3 mb-3 max-sm:mb-1 max-sm:justify-end">
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white max-sm:hidden ${isReceita ? 'bg-[#059669]' : 'bg-red-600'}`}>
                 {tipoPessoa === 'MEMBRO' ? <User className="w-4.5 h-4.5" /> : <Users className="w-4.5 h-4.5" />}
               </div>
-              <div>
+              <div className="max-sm:hidden">
                 <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Favorecido / Contribuinte</h2>
                 <p className="text-xs text-slate-400 dark:text-slate-500">Selecione o tipo de pessoa</p>
               </div>
@@ -2192,12 +2392,17 @@ export default function LancamentoNew() {
                     else if (key === 'IGREJA') setShowChurchModal(true);
                     else if (key === 'PJ') setShowPJSearchModal(true);
                   }}
-                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-[4px] border text-xs font-semibold transition-colors ${tipoPessoa === key ? `${accentBg} text-white border-transparent` : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-slate-400'}`}>
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-[4px] border text-xs font-semibold transition-colors max-sm:h-11 max-sm:rounded-[14px] max-sm:text-[14px] ${tipoPessoa === key ? `${accentBg} ${mAccentBg} text-white border-transparent` : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-slate-400 max-sm:border-[#E2E8F0]'}`}>
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />{label}
                 </button>
               ))}
             </div>
 
+            {/* Celular: rótulo da busca muda com o tipo escolhido */}
+            <p className="sm:hidden mb-1 flex items-center gap-1.5 px-1 text-[12px] font-semibold text-[#475569] dark:text-slate-400">
+              <Search className="h-3.5 w-3.5" />
+              {tipoPessoa === 'MEMBRO' ? 'Buscar membro' : tipoPessoa === 'IGREJA' ? 'Buscar igreja' : tipoPessoa === 'NAO_MEMBRO' ? 'Buscar não membro' : 'Buscar jurídica'}
+            </p>
             {/* Search / display field */}
             {(tipoPessoa === 'MEMBRO' || tipoPessoa === 'IGREJA') && (
               <div className="relative">
@@ -2207,7 +2412,7 @@ export default function LancamentoNew() {
                   onClick={() => tipoPessoa === 'MEMBRO' ? setShowMemberModal(true) : setShowChurchModal(true)}
                   value={favorecidoNome}
                   placeholder="Busque por nome, CPF ou código..."
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white placeholder:text-slate-400 cursor-pointer pr-10"
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white placeholder:text-slate-400 cursor-pointer pr-10 max-sm:h-12 max-sm:rounded-[14px] max-sm:text-base max-sm:font-semibold"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
                   {favorecidoNome ? (
@@ -2224,7 +2429,7 @@ export default function LancamentoNew() {
               <div className="relative">
                 <input type="text" value={naoMembroNome} onChange={e => setNaoMembroNome(e.target.value)}
                   placeholder="Busque por nome, CPF ou código..."
-                  className={`w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 pr-10`} />
+                  className={`w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 pr-10 max-sm:h-12 max-sm:rounded-[14px] max-sm:text-base`} />
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
             )}
@@ -2234,7 +2439,7 @@ export default function LancamentoNew() {
                 <div className="relative flex-1">
                   <input type="text" value={pjNome} onChange={e => setPjNome(e.target.value)}
                     placeholder="Busque por nome, CPF ou código..."
-                    className={`w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+                    className={`w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 max-sm:h-12 max-sm:rounded-[14px] max-sm:text-base`} />
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 </div>
                 <Permissao chave="tela_lancamento_recibo.lancamento_new.cadastrar_nova_pj" rotulo="Cadastrar nova PJ — Lancamento New" herda="tela_lancamento_recibo.view">
@@ -2279,10 +2484,17 @@ export default function LancamentoNew() {
           )}
 
           {/* Form inputs grid */}
-          <div className="space-y-3.5">
+          <div className="space-y-3.5 max-sm:space-y-0">
+            <p className={`${mSecao} max-sm:mt-4`}>3 · Dados do lançamento</p>
             {/* Plano de Contas */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Plano de Contas</label>
+            <div className="max-sm:overflow-hidden max-sm:rounded-t-[20px] max-sm:border max-sm:border-b-0 max-sm:border-[#E5E7EB] max-sm:bg-white max-sm:dark:border-slate-700 max-sm:dark:bg-slate-800">
+              <div className="sm:hidden">
+                <LinhaComSheet icone={AlignLeft} rotulo="Plano de contas" value={planoId} onChange={setPlanoId}
+                  options={planos.map(p => ({ id: p.id, label: rotuloComCodigo(p) }))}
+                  placeholder="Selecione a categoria..." titulo="Plano de Contas" buscavel buscaPlaceholder="Buscar categoria ou código…" isReceita={isReceita} />
+              </div>
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 max-sm:hidden">Plano de Contas</label>
+              <div className="max-sm:hidden">
               <SearchableSelect 
                 value={planoId} 
                 onChange={setPlanoId}
@@ -2290,20 +2502,28 @@ export default function LancamentoNew() {
                 placeholder="Selecione a categoria..."
                 className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}
               />
+              </div>
             </div>
 
             {/* Documento / Numero */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-sm:gap-0 max-sm:border-x max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-white max-sm:dark:border-slate-700 max-sm:dark:bg-slate-800">
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Documento</label>
+                <div className="sm:hidden">
+                  <LinhaComSheet icone={FileText} rotulo="Documento" value={tipoDocId} onChange={setTipoDocId}
+                    options={tiposDocs.map(t => ({ id: t.id, label: t.nome }))}
+                    placeholder="Selecione o tipo..." titulo="Documento" isReceita={isReceita} />
+                </div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 max-sm:hidden">Documento</label>
                 <select value={tipoDocId} onChange={e => setTipoDocId(e.target.value)}
-                  className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
+                  className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600 max-sm:hidden`}>
                   <option value="">Selecione o tipo...</option>
                   {tiposDocs.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
+              <div className={`${mLinha} max-sm:border-t max-sm:border-[#EEF0F3] max-sm:dark:border-slate-700`}>
+                <span className="sm:hidden"><IconeDaLinha Icone={Hash} preenchido={!!numDoc} cor={mTipo.cor} suave={mTipo.suave} /></span>
+                <div className="min-w-0 flex-1">
+                <label className={`block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 ${mRotulo}`}>
                   {numeroDizimoConferivel ? 'Nº do Recibo (bloco)' : 'Nº do Documento'}
                   {numeroDizimoObrigatorio && <span className="text-rose-600 ml-0.5">*</span>}
                 </label>
@@ -2314,7 +2534,7 @@ export default function LancamentoNew() {
                     // o número errado só no fim do preenchimento.
                     onBlur={() => { if (numeroDizimoConferivel && numDoc.trim()) void conferirNumeroDizimo(numDoc); }}
                     placeholder={numeroDizimoObrigatorio ? 'Número do talão' : 'Opcional'}
-                    className={`w-full pl-3 pr-10 py-2 border rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+                    className={`w-full pl-3 pr-10 py-2 border rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 ${mInputLinha} ${
                       numDocConferido !== null
                         ? 'border-emerald-400 dark:border-emerald-600'
                         : 'border-slate-200 dark:border-slate-600'
@@ -2355,14 +2575,20 @@ export default function LancamentoNew() {
                       : 'O número é opcional, mas se informado tem que existir no talão desta igreja.'}
                   </p>
                 )}
+                </div>
               </div>
             </div>
 
             {/* Forma de Pagamento */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Forma de Pagamento</label>
+            <div className="max-sm:border-x max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-white max-sm:dark:border-slate-700 max-sm:dark:bg-slate-800">
+              <div className="sm:hidden">
+                <LinhaComSheet icone={CreditCard} rotulo="Forma de pagamento" value={formaId} onChange={setFormaId}
+                  options={formas.map(f => ({ id: f.id, label: f.nome }))}
+                  placeholder="Selecione a forma..." titulo="Forma de Pagamento" isReceita={isReceita} />
+              </div>
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 max-sm:hidden">Forma de Pagamento</label>
               <select value={formaId} onChange={e => setFormaId(e.target.value)}
-                className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
+                className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600 max-sm:hidden`}>
                 <option value="">Selecione a forma...</option>
                 {formas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
@@ -2370,19 +2596,29 @@ export default function LancamentoNew() {
 
             {/* Banco e Departamento — de onde sai o dinheiro e para onde ele vai.
                 Cadastrados em Configurações › Bancos / Departamentos. */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-sm:gap-0 max-sm:border-x max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-white max-sm:dark:border-slate-700 max-sm:dark:bg-slate-800">
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Banco / Caixa</label>
+                <div className="sm:hidden">
+                  <LinhaComSheet icone={Landmark} rotulo="Banco / Caixa" value={bancoId} onChange={setBancoId}
+                    options={[{ id: '', label: 'Não informado' }, ...bancos.map(b => ({ id: b.id, label: rotuloComCodigo(b) }))]}
+                    placeholder="Não informado" titulo="Banco / Caixa" buscavel buscaPlaceholder="Buscar banco ou código…" isReceita={isReceita} />
+                </div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 max-sm:hidden">Banco / Caixa</label>
                 <select value={bancoId} onChange={e => setBancoId(e.target.value)}
-                  className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
+                  className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600 max-sm:hidden`}>
                   <option value="">Não informado</option>
                   {bancos.map(b => <option key={b.id} value={b.id}>{rotuloComCodigo(b)}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Departamento</label>
+              <div className="max-sm:border-t max-sm:border-[#EEF0F3] max-sm:dark:border-slate-700">
+                <div className="sm:hidden">
+                  <LinhaComSheet icone={LayoutGrid} rotulo="Departamento" value={departamentoId} onChange={setDepartamentoId}
+                    options={[{ id: '', label: 'Não informado' }, ...departamentos.map(d => ({ id: d.id, label: rotuloComCodigo(d) }))]}
+                    placeholder="Não informado" titulo="Departamento" buscavel buscaPlaceholder="Buscar departamento ou código…" isReceita={isReceita} />
+                </div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 max-sm:hidden">Departamento</label>
                 <select value={departamentoId} onChange={e => setDepartamentoId(e.target.value)}
-                  className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600`}>
+                  className={`w-full px-3 py-2 border border-slate-200 rounded-[4px] text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600 max-sm:hidden`}>
                   <option value="">Não informado</option>
                   {departamentos.map(d => <option key={d.id} value={d.id}>{rotuloComCodigo(d)}</option>)}
                 </select>
@@ -2390,36 +2626,50 @@ export default function LancamentoNew() {
             </div>
 
             {/* Datas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Data de Lançamento</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-sm:gap-0 max-sm:border-x max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-white max-sm:dark:border-slate-700 max-sm:dark:bg-slate-800 max-sm:overflow-hidden max-sm:rounded-b-[20px] max-sm:border-b">
+              <div className={mLinha}>
+                <span className="sm:hidden"><IconeDaLinha Icone={Calendar} preenchido={!!dataLancamento} cor={mTipo.cor} suave={mTipo.suave} /></span>
+                <div className="min-w-0 flex-1">
+                <label className={`block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 ${mRotulo}`}>Data de Lançamento</label>
                 <input type="date" value={dataLancamento} onChange={e => setDataLancamento(e.target.value)} required
-                  className={`w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+                  className={`w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 ${mInputLinha}`} />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Referência (Mês/Ano)</label>
+              <div className={`${mLinha} max-sm:border-t max-sm:border-[#EEF0F3] max-sm:dark:border-slate-700`}>
+                <span className="sm:hidden"><IconeDaLinha Icone={Clock} preenchido={!!referencia} cor={mTipo.cor} suave={mTipo.suave} /></span>
+                <div className="min-w-0 flex-1">
+                <label className={`block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 ${mRotulo}`}>Referência (Mês/Ano)</label>
                 <input type="text" value={referencia} onChange={e => setReferencia(e.target.value)} placeholder="MM/AAAA"
-                  className={`w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+                  className={`w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 ${mInputLinha}`} />
+                </div>
               </div>
             </div>
 
             {/* Obs + Valor */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-sm:gap-2">
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Observações (Opcional)</label>
+                <p className={`${mSecao} max-sm:mt-4`}>4 · Observações (Opcional)</p>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 max-sm:hidden">Observações (Opcional)</label>
                 <div className="relative">
                   <input type="text" value={obs} onChange={e => setObs(e.target.value.slice(0, 200))} placeholder="Detalhes adicionais sobre este lançamento..."
-                    className={`w-full pl-3 pr-12 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+                    className={`w-full pl-3 pr-12 py-2 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 max-sm:h-14 max-sm:rounded-[20px] max-sm:border-[#E5E7EB] max-sm:pl-4 max-sm:text-base max-sm:placeholder:text-[#94A3B8]`} />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">{obs.length}/200</span>
                 </div>
+                {/* Celular: o mesmo seletor de imagem do botão "Imagem" */}
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                  className="sm:hidden mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-[16px] border-[1.5px] border-dashed border-[#CBD5E1] bg-white text-[14px] font-semibold text-[#334155] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  <Camera className="h-5 w-5" /> Imagem
+                </button>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Valor (R$)</label>
-                <div className={`flex items-stretch border-2 ${accentBorder} rounded-[4px] overflow-hidden`}>
-                  <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold px-3 py-2 flex items-center text-sm border-r border-slate-200 dark:border-slate-600">R$</span>
+                <p className={`${mSecao} max-sm:mt-4`} style={{ color: mTipo.cor }}>5 · Valor (R$)</p>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1 max-sm:hidden">Valor (R$)</label>
+                <div className={`flex items-stretch border-2 ${accentBorder} rounded-[4px] overflow-hidden max-sm:h-[76px] max-sm:items-center max-sm:rounded-[18px] max-sm:border-[2.5px] ${isReceita ? 'max-sm:border-[#0F7A5A] max-sm:bg-[#ECFDF5] max-sm:shadow-[0_0_0_5px_rgba(15,122,90,.12)]' : 'max-sm:border-[#C81E1E] max-sm:bg-[#FEF2F2] max-sm:shadow-[0_0_0_5px_rgba(200,30,30,.12)]'}`}>
+                  <span className={`bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold px-3 py-2 flex items-center text-sm border-r border-slate-200 dark:border-slate-600 max-sm:border-0 max-sm:bg-transparent max-sm:pl-4 max-sm:text-[22px] max-sm:font-extrabold max-sm:dark:bg-transparent ${isReceita ? 'max-sm:text-[#0F7A5A]' : 'max-sm:text-[#C81E1E]'}`}>R$</span>
                   <input type="text" inputMode="numeric" value={valor} onChange={handleValorChange} placeholder="0,00" required
-                    className={`w-full px-3 py-2 text-sm font-bold text-right bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none`} />
+                    className={`w-full px-3 py-2 text-sm font-bold text-right bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none max-sm:bg-transparent max-sm:pr-4 max-sm:text-[34px] max-sm:font-extrabold max-sm:dark:bg-transparent`} />
                 </div>
+                <p className="sm:hidden mt-3 px-1 text-[12px] text-[#64748B]">Confira o valor antes de lançar.</p>
               </div>
             </div>
           </div>
@@ -2438,7 +2688,7 @@ export default function LancamentoNew() {
           )}
 
           {/* Actions Row: Limpar, Add Imagem, Salvar */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-700 max-sm:border-0 max-sm:pt-2">
             {/* Foto preview */}
             {fotoPreview && (
               <div className="flex items-center gap-1.5 mb-3 bg-slate-50 dark:bg-slate-700 px-2 py-1.5 rounded-[4px] border border-slate-200 dark:border-slate-600">
@@ -2456,37 +2706,21 @@ export default function LancamentoNew() {
 
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFoto} className="hidden" />
 
-            {/* Mobile: Salvar em cima (linha toda), Limpar+Imagem embaixo | Desktop: 3 colunas */}
-            <div className="flex flex-col gap-2 sm:hidden">
+            {/* Celular: barra de ação fixa colada no rodapé (a tab bar some nas
+                telas de formulário), mesmo submit. Limpar foi para o header e
+                Imagem para "4 · Observações". */}
+            <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 border-t border-[#E5E7EB] bg-white px-4 pt-3 dark:border-slate-700 dark:bg-slate-900"
+              style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
               <Permissao chave="tela_lancamento_recibo.lancamento_new.lancar_receita_lancar_despesa" rotulo="Lançar Receita Lançar Despesa — Lancamento New" herda="tela_lancamento_recibo.view">
                 <button
                   type="submit"
                   disabled={saving}
-                  className={`w-full flex items-center justify-center gap-2 px-3 py-3 ${accentBg} ${accentHover} text-white rounded-[4px] text-sm font-bold transition-colors disabled:opacity-60 shadow-sm`}
+                  className={`w-full flex h-14 items-center justify-center gap-2 px-3 ${accentBg} ${accentHover} ${mAccentBg} text-white rounded-[16px] text-[17px] font-extrabold transition-colors disabled:opacity-60 shadow-sm`}
                 >
                   <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                   <span>{saving ? 'Lançando...' : isReceita ? 'Lançar Receita' : vinculoCP.length ? `Lançar e baixar ${vinculoCP.length} parcela(s)` : 'Lançar Despesa'}</span>
                 </button>
               </Permissao>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={limpar}
-                  className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
-                >
-                  <RotateCcw className="w-4 h-4 flex-shrink-0" />
-                  <span>Limpar</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-[4px] text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
-                >
-                  <Camera className="w-4 h-4 flex-shrink-0" />
-                  <span>Imagem</span>
-                </button>
-              </div>
             </div>
 
             {/* Desktop: 4 colunas lado a lado */}

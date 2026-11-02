@@ -3,7 +3,7 @@ import {
   Search, Printer, Eye, AlertCircle, X, ChevronDown, ChevronLeft, ChevronRight,
   Pencil, Trash2, Filter, Save, Loader2, FileSpreadsheet, Share2,
   BarChart3, ArrowUp, ArrowDown, UserX, Wallet, ArrowDownLeft, ArrowUpRight,
-  Church, Percent, Pin, PinOff, Heart, Gift, Clock, Activity, MoreHorizontal, CalendarDays, Building2,
+  Church, Percent, Pin, PinOff, Heart, Gift, Clock, Activity, MoreHorizontal, CalendarDays, Building2, SlidersHorizontal,
 } from 'lucide-react';
 import { DateRangePicker } from '../../components/ui/DateRangePicker';
 import { Link, useNavigate } from 'react-router';
@@ -928,6 +928,8 @@ export default function Cashbook() {
 
   // Interface: menu Relatórios, painel de Totais (fixável) e ⋯ do lançamento no celular.
   const [relatoriosAberto, setRelatoriosAberto] = useState(false);
+  // Só visual: no celular, igreja/período/busca ficam numa gaveta "Filtros".
+  const [filtrosCelular, setFiltrosCelular] = useState(false);
   const [totaisAberto, setTotaisAberto] = useState(false);
   const [totaisFixos, setTotaisFixos] = useState(() => {
     // Sem escolha salva, os totais ficam à vista — como antes, quando os cards eram fixos.
@@ -1322,20 +1324,38 @@ export default function Cashbook() {
 
       {/* Cabeçalho */}
       <header className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-800 dark:text-slate-200">
+        <div className="flex min-w-0 items-center gap-3 max-sm:gap-1.5">
+          {/* Celular (guia adcampinas-mobile-first, AdminLivroCaixa): voltar */}
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="-ml-2 grid h-11 w-11 flex-none place-items-center rounded-full text-slate-700 sm:hidden dark:text-slate-200"
+          >
+            <ChevronLeft className="h-5 w-5" strokeWidth={2.2} />
+          </button>
+          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 max-sm:hidden md:h-10 md:w-10 dark:bg-slate-800 dark:text-slate-200">
             <Wallet className="h-5 w-5" strokeWidth={1.8} />
           </div>
           <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Financeiro</span>
+            <span className="hidden whitespace-nowrap text-xs text-slate-500 max-sm:block max-sm:text-[11px] md:block dark:text-slate-400">Financeiro</span>
             <span className="whitespace-nowrap text-[17px] font-bold">Livro Caixa</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Celular: atalho para o menu Relatórios (imprimir, compartilhar, exportar) */}
+          <button
+            type="button"
+            onClick={() => setRelatoriosAberto(aberto => !aberto)}
+            aria-label="Relatórios"
+            className="grid h-11 w-11 place-items-center rounded-full border border-[#e8ecf1] bg-white text-slate-700 sm:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          >
+            <Printer className="h-[18px] w-[18px]" strokeWidth={2} />
+          </button>
           <Link
             to="/app-ui/finance/expense/new"
             title="Nova despesa"
-            className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#fee2e2] px-[11px] text-sm font-bold text-[#b91c1c] hover:bg-[#fecaca] md:px-3.5"
+            className="max-sm:hidden flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#fee2e2] px-[11px] text-sm font-bold text-[#b91c1c] hover:bg-[#fecaca] md:px-3.5"
           >
             <ArrowDownLeft className="h-4 w-4" strokeWidth={2.4} />
             <span className="hidden md:inline">Nova despesa</span>
@@ -1343,7 +1363,7 @@ export default function Cashbook() {
           <Link
             to="/app-ui/finance/income/new"
             title="Nova receita"
-            className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#15803d] px-[11px] text-sm font-bold text-white hover:bg-[#166534] md:px-3.5"
+            className="max-sm:hidden flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#15803d] px-[11px] text-sm font-bold text-white hover:bg-[#166534] md:px-3.5"
           >
             <ArrowUpRight className="h-4 w-4" strokeWidth={2.4} />
             <span className="hidden md:inline">Nova receita</span>
@@ -1351,14 +1371,58 @@ export default function Cashbook() {
         </div>
       </header>
 
-      <div className="box-border flex w-full flex-1 flex-col gap-2.5 px-2.5 pb-8 pt-2.5 md:px-7 md:pt-3.5">
-        {/* Igreja, período e ações */}
-        <div className="relative flex flex-wrap items-stretch gap-2">
+      {/* Celular: ações principais fixas no rodapé, logo acima da tab bar do painel.
+          Mesmos destinos dos botões do cabeçalho no computador. */}
+      <div
+        className="fixed inset-x-0 z-30 grid grid-cols-2 gap-2.5 border-t border-[#e8ecf1] bg-white px-4 pt-2.5 pb-2.5 sm:hidden dark:border-slate-800 dark:bg-slate-900"
+        style={{ bottom: 'calc(64px + max(6px, env(safe-area-inset-bottom)))' }}
+      >
+        <Link
+          to="/app-ui/finance/expense/new"
+          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#fde8e8] text-[14px] font-bold text-[#C81E1E] dark:bg-[#C81E1E]/20 dark:text-[#fca5a5]"
+        >
+          <ArrowDownLeft className="h-4 w-4" strokeWidth={2.4} />
+          Nova despesa
+        </Link>
+        <Link
+          to="/app-ui/finance/income/new"
+          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#047857] text-[14px] font-bold text-white"
+        >
+          <ArrowUpRight className="h-4 w-4" strokeWidth={2.4} />
+          Nova receita
+        </Link>
+      </div>
+
+      <div className="box-border flex w-full flex-1 flex-col gap-2.5 px-2.5 pb-8 pt-2.5 max-sm:px-4 max-sm:pt-3 max-sm:pb-[96px] md:px-7 md:pt-3.5">
+        {/* Igreja, período e ações. No celular: botão Filtros + Consultar; a
+            igreja, o período e a busca abrem numa gaveta (os mesmos controles). */}
+        {filtrosCelular && (
+          <div className="fixed inset-0 z-[44] bg-[rgba(11,18,32,.5)] sm:hidden" onClick={() => setFiltrosCelular(false)} />
+        )}
+        <div className={`relative flex flex-wrap items-stretch gap-2 max-sm:rounded-[20px] max-sm:border max-sm:border-[#e8ecf1] max-sm:bg-white max-sm:p-3 dark:max-sm:border-slate-800 dark:max-sm:bg-slate-900 ${filtrosCelular ? 'max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[45] max-sm:max-h-[90dvh] max-sm:overflow-y-auto max-sm:gap-3 max-sm:rounded-b-none max-sm:rounded-t-[26px] max-sm:border-0 max-sm:p-5 max-sm:pb-[max(20px,env(safe-area-inset-bottom))]' : ''}`}>
+          {filtrosCelular ? (
+            <div className="flex basis-full items-center sm:hidden">
+              <p className="flex-1 text-[19px] font-extrabold text-slate-900 dark:text-white">Filtros</p>
+              <button type="button" onClick={() => setFiltrosCelular(false)} aria-label="Fechar"
+                className="grid h-10 w-10 place-items-center rounded-full bg-[#F3F4F6] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setFiltrosCelular(true)}
+              className="flex min-h-[52px] w-full min-w-0 basis-full items-center gap-2.5 rounded-2xl bg-slate-900 px-[15px] text-left text-sm font-bold text-white sm:hidden dark:bg-white dark:text-slate-900">
+              <SlidersHorizontal className="h-[19px] w-[19px] flex-none" strokeWidth={2} />
+              <span className="flex-none">Filtros</span>
+              <span className="min-w-0 flex-1 truncate text-right text-[12.5px] font-medium text-slate-300 dark:text-slate-600">
+                {selectedChurch ? selectedChurch.name : 'Todas as igrejas'} · {periodoLabel}
+              </span>
+            </button>
+          )}
           {canChooseChurch ? (
             <button
               type="button"
               onClick={() => setChurchPickerOpen(true)}
-              className="relative flex h-12 min-w-[220px] flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-3 text-left text-sm font-semibold hover:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-300"
+              className={`relative flex h-12 min-w-[220px] flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-3 text-left text-sm font-semibold max-sm:order-1 max-sm:w-full max-sm:min-w-0 max-sm:basis-full max-sm:border-0 max-sm:bg-[#F3F4F6] dark:max-sm:bg-slate-800 hover:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-300 ${filtrosCelular ? '' : 'max-sm:hidden'}`}
             >
               <Church className="h-[18px] w-[18px] flex-none text-slate-500" strokeWidth={1.8} />
               <span className={`flex-1 truncate ${selectedChurch ? '' : 'font-medium text-slate-500 dark:text-slate-400'}`}>
@@ -1388,18 +1452,18 @@ export default function Cashbook() {
           ) : null}
 
           {isChurchProfile && selectedChurch ? (
-            <div className="flex h-12 min-w-[220px] flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-3 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900">
+            <div className={`flex h-12 min-w-[220px] flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-3 text-sm font-semibold max-sm:order-1 max-sm:basis-full max-sm:min-w-0 dark:border-slate-700 dark:bg-slate-900 ${filtrosCelular ? '' : 'max-sm:hidden'}`}>
               <Church className="h-[18px] w-[18px] flex-none text-slate-500" strokeWidth={1.8} />
               <span className="truncate">{selectedChurch.name}</span>
             </div>
           ) : null}
 
-          <div className="flex w-full min-w-0 items-center gap-0.5 rounded-[14px] md:w-[340px] md:flex-none border-[1.5px] border-slate-200 bg-white p-[3px] dark:border-slate-700 dark:bg-slate-900">
+          <div className={`flex w-full min-w-0 items-center gap-0.5 rounded-[14px] md:w-[340px] md:flex-none border-[1.5px] border-slate-200 bg-white p-[3px] max-sm:order-2 max-sm:border-0 max-sm:p-0 dark:border-slate-700 dark:bg-slate-900 ${filtrosCelular ? '' : 'max-sm:hidden'}`}>
             <button
               type="button"
               onClick={() => deslocarMes(-1)}
               title="Mês anterior"
-              className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] max-sm:h-11 max-sm:w-11 max-sm:rounded-full max-sm:border max-sm:border-[#e8ecf1] dark:max-sm:border-slate-700 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <ChevronLeft className="h-[17px] w-[17px]" strokeWidth={2.2} />
             </button>
@@ -1409,45 +1473,45 @@ export default function Cashbook() {
               onChangeFrom={setDataInicio}
               onChangeTo={setDataFim}
               className="min-w-0 flex-1"
-              triggerClassName="flex h-[38px] w-full min-w-0 items-center justify-center gap-1.5 rounded-[11px] px-2 text-center text-[13px] font-bold text-slate-900 outline-none hover:bg-slate-50 dark:text-white dark:hover:bg-slate-800 [&>svg]:hidden"
+              triggerClassName="flex h-[38px] w-full min-w-0 items-center justify-center gap-1.5 rounded-[11px] px-2 text-center text-[13px] font-bold max-sm:h-11 max-sm:text-[15px] text-slate-900 outline-none hover:bg-slate-50 dark:text-white dark:hover:bg-slate-800 [&>svg]:hidden"
             />
             <button
               type="button"
               onClick={() => deslocarMes(1)}
               title="Próximo mês"
-              className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] max-sm:h-11 max-sm:w-11 max-sm:rounded-full max-sm:border max-sm:border-[#e8ecf1] dark:max-sm:border-slate-700 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <ChevronRight className="h-[17px] w-[17px]" strokeWidth={2.2} />
             </button>
           </div>
 
-          <div className="ml-auto flex flex-none gap-2">
+          <div className="ml-auto flex flex-none gap-2 max-sm:contents">
             {/* Ordem: Consultar, Relatórios, Buscar lançamento, Totais, Gráficos. */}
             <button
               type="button"
-              onClick={() => { void buscar(); }}
+              onClick={() => { setFiltrosCelular(false); void buscar(); }}
               disabled={loading}
               title="Consultar lançamentos por igreja e período"
-              className="flex h-12 items-center gap-2 rounded-[14px] bg-slate-900 px-3.5 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60 md:px-4 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              className="flex h-12 items-center gap-2 rounded-[14px] bg-slate-900 px-3.5 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60 max-sm:order-3 max-sm:w-full max-sm:justify-center max-sm:rounded-2xl md:px-4 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
               {loading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Search className="h-[18px] w-[18px]" strokeWidth={2.2} />}
-              <span className="hidden md:inline">{loading ? 'Consultando...' : 'Consultar'}</span>
+              <span className="hidden max-sm:inline md:inline">{loading ? 'Consultando...' : 'Consultar'}</span>
             </button>
-            <div className="relative">
+            <div className="relative max-sm:order-4">
               <button
                 type="button"
                 onClick={() => setRelatoriosAberto(aberto => !aberto)}
                 title="Relatórios"
-                className="flex h-12 items-center gap-2 whitespace-nowrap rounded-[14px] bg-slate-900 px-3.5 text-sm font-bold text-white hover:bg-slate-800 md:px-4 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                className="flex h-12 items-center gap-2 whitespace-nowrap max-sm:hidden rounded-[14px] bg-slate-900 px-3.5 text-sm font-bold text-white hover:bg-slate-800 max-sm:h-10 max-sm:rounded-full max-sm:border-[1.5px] max-sm:border-slate-200 max-sm:bg-white max-sm:px-3 max-sm:text-[13px] max-sm:font-semibold max-sm:text-slate-900 dark:max-sm:border-slate-700 dark:max-sm:bg-slate-900 dark:max-sm:text-white md:px-4 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
               >
                 <Printer className="h-4 w-4" strokeWidth={2} />
-                <span className="hidden md:inline">Relatórios</span>
+                <span className="hidden max-sm:inline md:inline">Relatórios</span>
                 <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.2} />
               </button>
               {relatoriosAberto && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setRelatoriosAberto(false)} />
-                  <div className="absolute right-0 top-[56px] z-40 flex w-[260px] animate-[lcPop_.18s_ease] flex-col gap-0.5 rounded-[18px] border border-[#e8ecf1] bg-white p-2 shadow-[0_20px_40px_-16px_rgba(15,23,42,.25)] dark:border-slate-700 dark:bg-slate-800">
+                  <div className="absolute right-0 top-[56px] z-40 flex w-[260px] max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:top-[128px] max-sm:z-[46] max-sm:w-auto animate-[lcPop_.18s_ease] flex-col gap-0.5 rounded-[18px] border border-[#e8ecf1] bg-white p-2 shadow-[0_20px_40px_-16px_rgba(15,23,42,.25)] dark:border-slate-700 dark:bg-slate-800">
                     <ItemMenu
                       icone={<Printer className="h-[18px] w-[18px]" strokeWidth={1.9} />}
                       rotulo="Imprimir"
@@ -1475,26 +1539,26 @@ export default function Cashbook() {
             </div>
             <button
               type="button"
-              onClick={() => setShowSearchModal(true)}
+              onClick={() => { setFiltrosCelular(false); setShowSearchModal(true); }}
               title="Consultar lançamento por categoria, nome, ROL ou igreja"
-              className="flex h-12 items-center gap-2 rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-sm font-semibold hover:border-slate-900 md:px-4 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-300"
+              className={`flex h-12 items-center gap-2 rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-sm font-semibold hover:border-slate-900 max-sm:order-4 max-sm:h-10 max-sm:rounded-full max-sm:px-3 max-sm:text-[13px] md:px-4 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-300 ${filtrosCelular ? 'max-sm:order-2 max-sm:h-12 max-sm:w-full max-sm:justify-center max-sm:rounded-[14px]' : 'max-sm:hidden'}`}
             >
               <Filter className="h-[18px] w-[18px]" strokeWidth={2} />
-              <span className="hidden min-[1800px]:inline">Buscar lançamento</span>
+              <span className="hidden max-sm:inline min-[1800px]:inline">Buscar lançamento</span>
             </button>
             <button
               type="button"
               onClick={() => setTotaisAberto(aberto => !aberto)}
               title="Totais"
               disabled={!searched}
-              className={`flex h-12 items-center gap-2 rounded-[14px] border-[1.5px] px-3.5 text-sm font-semibold disabled:opacity-50 md:px-4 ${
+              className={`flex h-12 items-center gap-2 rounded-[14px] border-[1.5px] px-3.5 text-sm font-semibold disabled:opacity-50 max-sm:order-4 max-sm:h-10 max-sm:rounded-full max-sm:px-3 max-sm:text-[13px] md:px-4 ${filtrosCelular ? 'max-sm:hidden' : ''} ${
                 totaisAberto || totaisFixos
                   ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
                   : 'border-slate-200 bg-white text-slate-900 hover:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white'
               }`}
             >
               <Percent className="h-[18px] w-[18px]" strokeWidth={2} />
-              <span className="hidden md:inline">Totais</span>
+              <span className="hidden max-sm:inline md:inline">Totais</span>
               {searched && (
                 <span
                   className={`hidden font-extrabold md:inline ${
@@ -1512,10 +1576,10 @@ export default function Cashbook() {
               onClick={() => setShowAnalyticsModal(true)}
               disabled={!searched || rows.length === 0}
               title="Visualizar gráficos analíticos"
-              className="flex h-12 items-center gap-2 rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-sm font-semibold hover:border-slate-900 disabled:opacity-50 md:px-4 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-300"
+              className={`flex h-12 items-center gap-2 rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-sm font-semibold hover:border-slate-900 disabled:opacity-50 max-sm:order-4 max-sm:h-10 max-sm:rounded-full max-sm:px-3 max-sm:text-[13px] md:px-4 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-300 ${filtrosCelular ? 'max-sm:hidden' : ''}`}
             >
               <BarChart3 className="h-[18px] w-[18px]" strokeWidth={2} />
-              <span className="hidden md:inline">Gráficos</span>
+              <span className="hidden max-sm:inline md:inline">Gráficos</span>
             </button>
           </div>
 
@@ -1716,12 +1780,12 @@ export default function Cashbook() {
         ) : null}
 
         {!searched && (
-          <section className="flex flex-1 flex-col items-center justify-center gap-3.5 rounded-2xl border border-[#e8ecf1] bg-white px-6 py-16 text-center md:rounded-[20px] dark:border-slate-800 dark:bg-slate-900">
-            <div className="grid h-20 w-20 place-items-center rounded-[26px] bg-slate-900 text-white shadow-[0_14px_30px_-14px_rgba(15,23,42,.6)] dark:bg-white dark:text-slate-900">
+          <section className="flex flex-1 flex-col items-center justify-center gap-3.5 rounded-2xl border border-[#e8ecf1] bg-white px-6 py-16 text-center max-sm:flex-none max-sm:rounded-[20px] max-sm:py-10 md:rounded-[20px] dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid h-20 w-20 place-items-center rounded-[26px] bg-slate-900 text-white shadow-[0_14px_30px_-14px_rgba(15,23,42,.6)] max-sm:h-16 max-sm:w-16 max-sm:rounded-[20px] dark:bg-white dark:text-slate-900">
               <Wallet className="h-9 w-9" strokeWidth={1.7} />
             </div>
-            <h2 className="m-0 mt-1.5 text-2xl font-extrabold tracking-[-.02em]">Escolha a igreja e o período</h2>
-            <p className="m-0 max-w-[440px] text-[15px] text-slate-500 dark:text-slate-400">
+            <h2 className="m-0 mt-1.5 text-2xl font-extrabold tracking-[-.02em] max-sm:text-[18px]">Escolha a igreja e o período</h2>
+            <p className="m-0 max-w-[440px] text-[15px] text-slate-500 max-sm:text-[13.5px] dark:text-slate-400">
               Depois toque em Consultar para carregar o caixa de {new Date(dataInicio + 'T12:00:00').toLocaleDateString('pt-BR')} até {new Date(dataFim + 'T12:00:00').toLocaleDateString('pt-BR')}.
             </p>
           </section>
@@ -1739,6 +1803,22 @@ export default function Cashbook() {
             <span className="text-base font-bold">Nenhum lançamento no período</span>
             <span className="text-sm text-slate-500 dark:text-slate-400">Mude a igreja ou o período, ou registre uma nova receita ou despesa.</span>
           </section>
+        )}
+
+        {/* Celular: Entradas, Saídas e Saldo do período (mesmos totais da tela) */}
+        {temDados && !totaisFixos && (
+          <div className="grid grid-cols-3 gap-2 sm:hidden">
+            {[
+              { rotulo: 'Entradas', valor: totalReceita, cor: 'text-[#047857] dark:text-[#34d399]' },
+              { rotulo: 'Saídas', valor: totalDespesa, cor: 'text-[#C81E1E] dark:text-[#f87171]' },
+              { rotulo: 'Saldo', valor: liquido, cor: liquido >= 0 ? 'text-slate-900 dark:text-white' : 'text-[#C81E1E] dark:text-[#f87171]' },
+            ].map(t => (
+              <div key={t.rotulo} className="flex min-w-0 flex-col gap-1 rounded-2xl border border-[#e8ecf1] bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900">
+                <span className="text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">{t.rotulo}</span>
+                <span className={`truncate text-[14px] font-extrabold tracking-[-.01em] ${t.cor}`}>R$ {fmt(t.valor)}</span>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* ── Lista ── */}

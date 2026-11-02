@@ -32,7 +32,7 @@ import {
   Award, Sparkles, Droplets, ExternalLink, Phone, Loader2, Baby, CalendarCheck,
   Ticket, ChevronRight, BookOpen, Church, PlayCircle, Flame, Mic,
   Calendar, ShoppingCart, Sunrise, HeartHandshake, Send, Clock, Hammer, HandCoins, Copy, Check,
-  GraduationCap, Library, Gamepad2,
+  GraduationCap, Library, Gamepad2, UserRound,
 } from 'lucide-react';
 import { useMembroSession } from '../MembroProvider';
 import { MEMBRO } from '../theme';
@@ -219,6 +219,54 @@ function Bandeja({ titulo, onClose, children }: { titulo: string; onClose: () =>
         {children}
       </motion.div>
     </div>
+  );
+}
+
+/**
+ * Celular (< sm): linha tocável de 56px do guia mobile-first — ícone em
+ * quadrado de 38px, rótulo e chevron. Só aparência: o onClick recebido é o
+ * mesmo handler que a grade do desktop usa.
+ */
+function LinhaMenu({ Icon, label, onClick, cor, fundo, total, perigo }: {
+  Icon: React.ElementType; label: string; onClick: () => void;
+  cor: string; fundo: string; total?: number; perigo?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full min-h-14 px-4 py-2 flex items-center gap-3.5 text-left transition-colors active:bg-slate-50"
+    >
+      <span className="w-[38px] h-[38px] rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: fundo }}>
+        <Icon size={19} color={cor} />
+      </span>
+      <span className="flex-1 min-w-0 text-[15px] font-medium leading-snug" style={{ color: perigo ? MEMBRO.DANGER : TEXT1 }}>
+        {label}
+      </span>
+      {total !== undefined && total > 0 && (
+        <span
+          className="min-w-[22px] h-[22px] px-1.5 rounded-full text-[12px] font-bold flex items-center justify-center flex-shrink-0"
+          style={{ background: fundo, color: cor }}
+        >
+          {total > 99 ? '99+' : total}
+        </span>
+      )}
+      {!perigo && <ChevronRight size={18} color={MEMBRO.TEXT3} className="flex-shrink-0" />}
+    </button>
+  );
+}
+
+/** Celular: grupo de linhas num cartão branco de raio 20, com título acima. */
+function GrupoMenu({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="mb-2 ml-1 text-[12px] font-bold uppercase tracking-[0.1em]" style={{ color: TEXT2 }}>{titulo}</h2>
+      <div
+        className="rounded-[20px] overflow-hidden divide-y divide-slate-100"
+        style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: SHADOW }}
+      >
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -412,10 +460,127 @@ export default function MembroPerfil() {
     else navigate(a.path);
   };
 
+  // Celular: os mesmos atalhos da grade, agrupados por assunto em listas.
+  // Só leitura do array acima — cada linha chama o mesmo tocarAtalho.
+  const rotuloLongo: Record<string, string> = { pastoral: 'Atendimento pastoral' };
+  const atalhosDe = (chaves: string[]) =>
+    chaves
+      .map(k => atalhos.find(a => a.key === k))
+      .filter((a): a is typeof atalhos[number] => !!a);
+  const linhaDeAtalho = (a: typeof atalhos[number]) => (
+    <LinhaMenu
+      key={a.key}
+      Icon={a.Icon}
+      label={rotuloLongo[a.key] || a.label}
+      onClick={() => tocarAtalho(a)}
+      cor={accent}
+      fundo={soft}
+      total={a.total}
+    />
+  );
+
   return (
     <>
+      {/* ── CELULAR (< sm) — estrutura do guia mobile-first: cabeçalho com
+          avatar e listas agrupadas. Mesmos dados e mesmas ações do layout de
+          desktop, que segue logo abaixo sem alteração. ── */}
       <div
-        className="fixed inset-0 flex flex-col"
+        className="sm:hidden fixed inset-0 overflow-y-auto"
+        style={{ background: BG, colorScheme: 'light', scrollbarWidth: 'none' }}
+      >
+        <div className="px-5 pb-12" style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate('/')}
+              aria-label="Voltar"
+              className="w-11 h-11 -ml-2 rounded-full flex items-center justify-center transition-all active:scale-90"
+            >
+              <ArrowLeft size={22} color={TEXT1} />
+            </button>
+            <button
+              onClick={() => setLiked(l => !l)}
+              aria-label="Curtidas"
+              className="h-11 px-3.5 rounded-full flex items-center gap-1.5 transition-all active:scale-90"
+              style={{ background: CARD, border: `1px solid ${BORDER}` }}
+            >
+              <Heart size={18} fill={liked ? '#f43f5e' : 'none'} color={liked ? '#f43f5e' : TEXT2} />
+              <span className="text-[13px] font-bold tabular-nums" style={{ color: TEXT1 }}>{likeCount}</span>
+            </button>
+          </div>
+
+          <header className="mt-3 flex items-center gap-3.5">
+            {member.photoUrl ? (
+              <div
+                role="img"
+                aria-label={displayName}
+                className="w-[60px] h-[60px] rounded-full flex-shrink-0 bg-cover bg-top"
+                style={{ backgroundImage: `url("${member.photoUrl}")`, border: `2px solid ${CARD}`, boxShadow: SHADOW }}
+              />
+            ) : (
+              <div
+                className="w-[60px] h-[60px] rounded-full flex-shrink-0 flex items-center justify-center text-[22px] font-bold"
+                style={{ background: soft, color: accent }}
+              >
+                {firstName.charAt(0)}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[20px] font-extrabold leading-tight tracking-tight" style={{ color: TEXT1 }}>{displayName}</h1>
+              <p className="text-[13px] mt-0.5" style={{ color: TEXT2 }}>
+                {member.ecclesiasticalTitle || 'Membro'} · {churchName}
+              </p>
+              {(member.rol || member.membershipStatus) && (
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  {member.rol && (
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold tabular-nums" style={{ background: soft, color: accent }}>
+                      ROL #{member.rol}
+                    </span>
+                  )}
+                  {member.membershipStatus && (
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold uppercase text-white" style={{ background: scolor }}>
+                      {member.membershipStatus}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </header>
+
+          <button
+            onClick={() => navigate('/membro/faceid')}
+            className="mt-5 w-full h-14 rounded-2xl flex items-center justify-center gap-2 text-base font-bold transition-all active:scale-[0.98]"
+            style={{ background: accent, color: '#fff', boxShadow: `0 6px 18px ${accent}40` }}
+          >
+            <ScanFace size={20} />
+            Cadastrar foto
+          </button>
+
+          <div className="mt-6 space-y-6">
+            <GrupoMenu titulo="Minha conta">
+              <LinhaMenu Icon={UserRound} label="Minha ficha completa" onClick={() => setShowDetails(true)} cor={accent} fundo={soft} />
+              <LinhaMenu Icon={HandCoins} label="Dízimos e ofertas" onClick={() => abrirAba('doacao')} cor={MEMBRO.OK} fundo={`${MEMBRO.OK}14`} />
+              {atalhosDe(['familia', 'presencas', 'inscricoes', 'compras', 'pastoral']).map(linhaDeAtalho)}
+            </GrupoMenu>
+
+            <GrupoMenu titulo="Igreja">
+              {atalhosDe(['igreja', 'ministerio', 'lideranca', 'membros', 'agenda', 'historia', 'ebd']).map(linhaDeAtalho)}
+            </GrupoMenu>
+
+            <GrupoMenu titulo="Conteúdo">
+              {atalhosDe(['biblia', 'pao', 'pregacoes', 'radio', 'feed']).map(linhaDeAtalho)}
+            </GrupoMenu>
+
+            <GrupoMenu titulo="Aplicativo">
+              <LinhaMenu Icon={Gamepad2} label="Mundo da Bíblia" onClick={() => setEmConstrucao('Mundo da Bíblia')} cor={accent} fundo={soft} />
+              <LinhaMenu Icon={LogOut} label="Sair" onClick={() => { logout(); navigate('/'); }} cor={MEMBRO.DANGER} fundo={`${MEMBRO.DANGER}14`} perigo />
+            </GrupoMenu>
+          </div>
+        </div>
+      </div>
+
+      {/* ── DESKTOP (sm+) — layout de sempre ── */}
+      <div
+        className="max-sm:hidden fixed inset-0 flex flex-col"
         style={{ maxWidth: 430, margin: '0 auto', background: BG, overflow: 'hidden', colorScheme: 'light' }}
       >
 

@@ -1,4 +1,5 @@
 import { Building2, Cake, Calendar, ChevronLeft, ChevronRight, Clock, ExternalLink, FilterX, Gift, Loader2, Mail, MessageSquare, Phone, Printer, Search, SlidersHorizontal, User, Users, X } from 'lucide-react';
+import { CartoesTotais } from './CartoesTotais';
 import { toast } from 'sonner';
 import { normalizarSituacaoMembro } from '@/lib/situacaoMembro';
 import { useEffect, useMemo, useState } from 'react';
@@ -529,7 +530,7 @@ export function Birthdays() {
           </div>
 
           {/* Indicadores compactos inline (mesma linha da busca) */}
-          <div className="flex min-w-0 flex-[1_1_auto] gap-2 overflow-x-auto">
+          <CartoesTotais>
             <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
               <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400">
                 <Cake className="h-[19px] w-[19px]" strokeWidth={1.8} />
@@ -569,7 +570,7 @@ export function Birthdays() {
                 <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Próx. Mês</span>
               </span>
             </div>
-          </div>
+          </CartoesTotais>
         </div>
 
       {/* Loading */}

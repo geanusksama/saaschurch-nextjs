@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { del, get, set } from 'idb-keyval';
 
 import { apiBase } from '../../lib/apiBase';
-import { ModulesShowcase } from './ModulesShowcase';
+import { ModulesShowcase, MODULOS } from './ModulesShowcase';
 import { CADASTRO_PUBLICO_HABILITADO } from './authFlags';
 
 export function Login() {
@@ -116,7 +116,7 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen flex bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900 max-lg:flex-col max-lg:bg-[#0B1220]">
       {/* Left Panel */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-slate-950 overflow-hidden">
         {/* Background Image */}
@@ -154,22 +154,40 @@ export function Login() {
         </div>
       </div>
 
-      {/* Right Panel */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16">
+      {/* Celular: topo escuro com a marca (guia adcampinas-mobile-first, AdminLogin) */}
+      <div className="lg:hidden px-6 pb-8" style={{ paddingTop: 'max(36px, env(safe-area-inset-top))' }}>
+        <div className="flex items-center gap-3">
+          <div className="grid h-9 w-9 place-items-center rounded-[10px] bg-[#10B981] text-lg font-extrabold text-[#0B1220]">M</div>
+          <span className="text-[13px] font-extrabold uppercase tracking-[.14em] text-white">MRM Gestão</span>
+        </div>
+        <h1 className="mt-6 text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-white">Sistema Administrativo</h1>
+        <p className="mt-2 text-[14px] leading-relaxed text-slate-300">Gerencie membros, congregações e financeiro de onde estiver.</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {MODULOS.slice(0, 4).map(({ nome }) => (
+            <span key={nome} className="rounded-[10px] border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[12px] font-semibold text-slate-200">{nome}</span>
+          ))}
+          {MODULOS.length > 4 && (
+            <span className="rounded-[10px] border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[12px] font-semibold text-slate-200">+ {MODULOS.length - 4} módulos</span>
+          )}
+        </div>
+      </div>
+
+      {/* Right Panel (no celular: painel claro que sobe de baixo) */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16 max-lg:flex-1 max-lg:items-start max-lg:rounded-t-[28px] max-lg:bg-[#F3F4F6] max-lg:px-6 max-lg:pt-7 max-lg:pb-10">
         <div className="w-full max-w-md">
           {/* Mobile Logo (visible only on small screens) */}
-          <div className="flex lg:hidden items-center gap-3 mb-10">
+          <div className="hidden items-center gap-3 mb-10">
             <div className="w-8 h-8 bg-emerald-500 rounded text-white flex items-center justify-center font-bold text-lg">
               M
             </div>
             <span className="text-slate-900 font-extrabold tracking-widest text-sm uppercase">MRM GESTÃO</span>
           </div>
 
-          <h2 className="text-3xl lg:text-4xl font-extrabold text-[#0f172a] mb-2 tracking-tight">Bem-vindo de volta</h2>
-          <p className="text-sm text-slate-500 mb-10">Entre com suas credenciais para acessar o painel.</p>
+          <h2 className="text-3xl lg:text-4xl font-extrabold text-[#0f172a] mb-2 tracking-tight max-lg:text-[22px] max-lg:mb-1">Bem-vindo de volta</h2>
+          <p className="text-sm text-slate-500 mb-10 max-lg:mb-6 max-lg:text-[13px]">Entre com suas credenciais para acessar o painel.</p>
 
           {/* Tabs — "Criar conta" some com o cadastro público desligado */}
-          <div className="flex gap-2 mb-10">
+          <div className="flex gap-2 mb-10 max-lg:hidden">
             <div className="px-5 py-2 bg-slate-950 text-white text-xs font-bold rounded-full cursor-default tracking-wide shadow-sm shadow-slate-950/20">
               ENTRAR
             </div>
@@ -180,9 +198,9 @@ export function Login() {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 max-lg:space-y-5">
             <div>
-              <label className="block text-[11px] font-bold text-slate-400 mb-2 tracking-widest uppercase">
+              <label className="block text-[11px] font-bold text-slate-400 mb-2 tracking-widest uppercase max-lg:normal-case max-lg:tracking-normal max-lg:text-[13px] max-lg:font-semibold max-lg:text-slate-800">
                 E-mail
               </label>
               <div className="relative group">
@@ -192,14 +210,14 @@ export function Login() {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm text-slate-900 placeholder:text-slate-300 transition-all bg-white"
+                  className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm text-slate-900 placeholder:text-slate-300 transition-all bg-white max-lg:h-14 max-lg:rounded-2xl max-lg:text-base"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-400 mb-2 tracking-widest uppercase">
+              <label className="block text-[11px] font-bold text-slate-400 mb-2 tracking-widest uppercase max-lg:normal-case max-lg:tracking-normal max-lg:text-[13px] max-lg:font-semibold max-lg:text-slate-800">
                 Senha
               </label>
               <div className="relative group">
@@ -209,13 +227,14 @@ export function Login() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm text-slate-900 placeholder:text-slate-300 transition-all font-medium tracking-wider bg-white"
+                  className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm text-slate-900 placeholder:text-slate-300 transition-all font-medium tracking-wider bg-white max-lg:h-14 max-lg:rounded-2xl max-lg:text-base"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors max-lg:grid max-lg:h-11 max-lg:w-11 max-lg:place-items-center max-lg:right-1"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -231,7 +250,7 @@ export function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 mt-2 bg-slate-950 text-white rounded-xl hover:bg-black transition-all font-bold text-sm tracking-widest uppercase flex items-center justify-center gap-2 shadow-lg shadow-slate-950/20 hover:shadow-slate-950/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
+              className="w-full py-4 mt-2 bg-slate-950 text-white rounded-xl hover:bg-black transition-all font-bold text-sm tracking-widest uppercase flex items-center justify-center gap-2 shadow-lg shadow-slate-950/20 hover:shadow-slate-950/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none max-lg:h-14 max-lg:py-0 max-lg:rounded-2xl max-lg:bg-[#111827]"
             >
               {loading ? (
                 <>
@@ -244,7 +263,7 @@ export function Login() {
             </button>
           </form>
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-12 max-lg:mt-6">
             <Link
               to="/public"
               className="text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors"

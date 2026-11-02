@@ -8,7 +8,7 @@
  * que abrem os dois para conferir (e aí precisam escolher a igreja).
  */
 import React, { useEffect, useState } from 'react';
-import { Wallet, Users, ShieldCheck, ArrowRight, Loader2, Info } from 'lucide-react';
+import { Wallet, Users, ShieldCheck, ArrowRight, ChevronRight, Loader2, Info } from 'lucide-react';
 import { cultoApi, type Bloco, type MeusPapeis } from './cultoApi';
 import CultoLancarModal from './CultoLancarModal';
 import CultoDirigenteModal from './CultoDirigenteModal';
@@ -23,6 +23,8 @@ interface CardBloco {
   legenda: string;
   icone: React.ElementType;
   gradiente: string;
+  /** Quadrado sólido do ícone no celular. */
+  solido: string;
 }
 
 const CARDS: CardBloco[] = [
@@ -32,6 +34,7 @@ const CARDS: CardBloco[] = [
     legenda: 'Dízimos e ofertas',
     icone: Wallet,
     gradiente: 'from-amber-500 to-orange-600',
+    solido: 'bg-[#c2410c]',
   },
   {
     bloco: 'PRESENCA',
@@ -39,6 +42,7 @@ const CARDS: CardBloco[] = [
     legenda: 'Contagem de presença',
     icone: Users,
     gradiente: 'from-rose-500 to-pink-600',
+    solido: 'bg-[#be185d]',
   },
   {
     bloco: 'DIRIGENTE',
@@ -46,6 +50,7 @@ const CARDS: CardBloco[] = [
     legenda: 'Conferir e aprovar',
     icone: ShieldCheck,
     gradiente: 'from-emerald-500 to-green-600',
+    solido: 'bg-[#047857]',
   },
 ];
 
@@ -89,9 +94,10 @@ export default function CultoLancar() {
     papeis && !habilitado('FINANCEIRO') && !habilitado('PRESENCA') && !habilitado('DIRIGENTE');
 
   return (
-    <div className="p-6 space-y-5 [&_button:not(:disabled)]:cursor-pointer">
+    <div className="p-6 space-y-5 [&_button:not(:disabled)]:cursor-pointer max-sm:min-h-full max-sm:bg-[#F4F6F9] max-sm:px-4 max-sm:pt-4 max-sm:pb-[calc(88px+env(safe-area-inset-bottom))] dark:max-sm:bg-[#0d1017]">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Lançar dados de culto</h1>
+        <p className="sm:hidden text-xs font-semibold text-slate-500 dark:text-slate-400">Gestão de Culto</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white max-sm:text-[22px] max-sm:font-extrabold">Lançar dados de culto</h1>
 
       </div>
 
@@ -119,6 +125,12 @@ export default function CultoLancar() {
         </div>
       )}
 
+      {!carregando && !erro && !nenhum && (
+        <p className="sm:hidden -mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          O que você vai lançar?
+        </p>
+      )}
+
       {!carregando && !erro && (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 max-w-3xl">
           {/* Só o card do papel de quem entrou. Um tesoureiro não precisa ver
@@ -136,14 +148,34 @@ export default function CultoLancar() {
                 key={card.bloco}
                 onClick={() => ativo && setAberto(card.bloco)}
                 disabled={!ativo}
-                className={`group text-left rounded-2xl overflow-hidden border transition-all ${
+                className={`group text-left rounded-2xl overflow-hidden border transition-all max-sm:rounded-[20px] max-sm:border-[#e5e7eb] dark:max-sm:border-slate-700 ${
                   ativo
                     ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer'
                     : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-800 opacity-60 cursor-not-allowed'
                 }`}
               >
-                <div className={`h-1 bg-gradient-to-r ${card.gradiente}`} />
-                <div className="p-4">
+                <div className={`h-1 bg-gradient-to-r ${card.gradiente} max-sm:hidden`} />
+                {/* Celular: uma linha — ícone, papel, igreja e a seta. */}
+                <div className="sm:hidden flex items-center gap-3 p-4">
+                  <span
+                    className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${card.solido}`}
+                  >
+                    <Icone className="w-6 h-6 text-white" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-base font-bold text-slate-900 dark:text-white">
+                      {card.titulo}
+                    </span>
+                    <span className="block text-sm text-slate-500 dark:text-slate-400">
+                      {card.legenda}
+                    </span>
+                    {ativo && igreja && (
+                      <span className="mt-0.5 block text-xs text-slate-400 truncate">{igreja}</span>
+                    )}
+                  </span>
+                  <ChevronRight className="w-5 h-5 shrink-0 text-slate-300" />
+                </div>
+                <div className="p-4 max-sm:hidden">
                   <div className="flex items-start justify-between gap-3">
                     <div
                       className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br ${card.gradiente}`}

@@ -574,21 +574,21 @@ export function GfPublicList() {
 
 
   return (
-    <div className="min-h-screen font-sans bg-white" style={{ colorScheme: 'light' }}>
+    <div className="min-h-screen font-sans bg-white max-md:bg-[#F5F4F0]" style={{ colorScheme: 'light' }}>
       {/* Header */}
-      <header className="flex items-center justify-between p-6 md:px-12">
-        <Link to="/" className="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-slate-200 hover:bg-slate-100 transition-colors">
+      <header className="flex items-center justify-between p-6 md:px-12 max-md:sticky max-md:top-0 max-md:z-40 max-md:px-4 max-md:pb-3 max-md:pt-[max(12px,env(safe-area-inset-top))] max-md:bg-[#F5F4F0]/95 max-md:backdrop-blur-xl max-md:border-b max-md:border-black/5">
+        <Link to="/" aria-label="Voltar" className="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-slate-200 hover:bg-slate-100 transition-colors">
           <ArrowLeft className="w-5 h-5 text-slate-500" />
         </Link>
-        <h1 className="text-lg md:text-xl font-bold text-amber-600">Grupos Familiares</h1>
+        <h1 className="text-lg md:text-xl font-bold text-amber-600 max-md:text-[17px] max-md:font-extrabold max-md:text-[#16181D]">Grupos Familiares</h1>
         <span className="w-10 h-10" />
       </header>
 
-      <main className="px-6 pb-16">
+      <main className="px-6 pb-16 max-md:px-4 max-md:pt-4">
         {/* Texto de intro fica num miolo mais estreito — os cards logo
             abaixo usam um container mais largo e "vazam" pra fora dele */}
         <div className="max-w-xl mx-auto">
-        <p className="text-sm mb-6 text-slate-500">
+        <p className="text-sm mb-6 text-slate-500 max-md:mb-4 max-md:text-[13px]">
           Encontre um GF perto de você — veja o líder, o endereço e o horário de cada grupo.
         </p>
 
@@ -597,17 +597,17 @@ export function GfPublicList() {
         {!searchOpen && !origin ? (
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-3 mb-8 group"
+            className="flex items-center gap-3 mb-8 group max-md:mb-5 max-md:w-full max-md:min-h-[56px] max-md:rounded-2xl max-md:border max-md:border-[#DAD6CC] max-md:bg-white max-md:px-3 max-md:text-left"
           >
-            <span className="w-14 h-14 rounded-full bg-white border-2 border-amber-300 shadow-sm flex items-center justify-center group-hover:scale-105 group-hover:border-amber-400 transition-transform">
+            <span className="w-14 h-14 rounded-full bg-white border-2 border-amber-300 shadow-sm flex items-center justify-center group-hover:scale-105 group-hover:border-amber-400 transition-transform max-md:w-9 max-md:h-9 max-md:shrink-0 max-md:border-0 max-md:shadow-none max-md:bg-amber-50">
               <Search size={24} className="text-amber-600" strokeWidth={2.5} />
             </span>
-            <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-800">
+            <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-800 max-md:font-medium max-md:text-slate-500">
               Investigar o GF mais perto de você
             </span>
           </button>
         ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-8 shadow-sm relative">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-8 shadow-sm relative max-md:mb-5 max-md:rounded-[20px] max-md:shadow-none">
           {!origin && (
             <button
               onClick={() => setSearchOpen(false)}
@@ -707,7 +707,7 @@ export function GfPublicList() {
         )}
 
         {!loading && !error && sortedGroups.length > 0 && (
-          <div ref={trailWrapRef} className="relative">
+          <div ref={trailWrapRef} className="relative max-md:hidden">
             {/* Fundo com jeito de mapa (decoração, não é mapa geográfico:
                 as posições aqui são o layout, não a localização real). */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" preserveAspectRatio="none">
@@ -861,15 +861,118 @@ export function GfPublicList() {
           </div>
         )}
 
+
+        {/* CELULAR: sede em cartão escuro + um cartão branco por GF. Usa os
+            mesmos dados (sortedGroups/sede) e as mesmas ações do quadro do
+            desktop: o mapa (setMapGroup/setMapSede) e o link do WhatsApp. */}
+        {!loading && !error && sortedGroups.length > 0 && (
+          <div className="md:hidden space-y-3 pb-6">
+            <div className="rounded-[20px] bg-[#16181D] p-4 text-white">
+              <div className="flex items-center gap-3">
+                <span
+                  className="h-12 w-12 shrink-0 rounded-2xl bg-white/10 bg-cover bg-center"
+                  style={marca.logoUrl ? { backgroundImage: `url("${marca.logoUrl}")` } : undefined}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#D4A72C]">Igreja sede</p>
+                  <p className="truncate text-[15px] font-extrabold leading-tight">{sede?.name ?? 'AD Campinas'}</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold">
+                  {sortedGroups.length} {sortedGroups.length === 1 ? 'grupo' : 'grupos'}
+                </span>
+              </div>
+              {sedeAddress && (
+                <button
+                  onClick={() => setMapSede(true)}
+                  className="mt-3 flex min-h-[44px] w-full items-center gap-2 rounded-[14px] bg-white/10 px-3 text-left text-[12px] font-semibold text-white/85"
+                >
+                  <MapPin size={15} className="shrink-0 text-[#D4A72C]" />
+                  <span className="line-clamp-2">{sedeAddress}</span>
+                </button>
+              )}
+            </div>
+
+            {sortedGroups.map((gf, index) => {
+              const pal = paletteFor(gf, index);
+              const address = formatAddress(gf);
+              const lider = gf.leaders?.length ? gf.leaders.map((l) => l.name).join(' e ') : gf.leaderName;
+              const quando = [gf.meetingDay, gf.meetingTime].filter(Boolean).join(' às ');
+              const sigla = gf.name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+              return (
+                <div key={gf.id} className="rounded-[20px] border border-black/5 bg-white p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <span
+                      className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-cover bg-center text-[15px] font-extrabold text-white"
+                      style={gf.photo ? { backgroundImage: `url("${gf.photo}")` } : { background: pal.accent }}
+                    >
+                      {!gf.photo && sigla}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[16px] font-extrabold leading-tight text-[#16181D]">{gf.name}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        {gf.cellType && (
+                          <span className="rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide" style={{ background: pal.soft, color: pal.accent }}>
+                            {gf.cellType}
+                          </span>
+                        )}
+                        {gf.distanceKm !== undefined && gf.distanceKm !== null && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                            {gf.distanceKm.toFixed(1).replace('.', ',')} km
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-1.5 text-[13px] text-slate-600">
+                    {lider && (
+                      <p className="flex items-start gap-2"><Users size={15} className="mt-0.5 shrink-0 text-slate-400" /><span><span className="text-slate-400">Líder: </span><span className="font-semibold text-[#16181D]">{lider}</span></span></p>
+                    )}
+                    {quando && (
+                      <p className="flex items-start gap-2"><Clock size={15} className="mt-0.5 shrink-0 text-slate-400" /><span>{quando}</span></p>
+                    )}
+                    {address && (
+                      <p className="flex items-start gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-slate-400" /><span>{address}</span></p>
+                    )}
+                  </div>
+
+                  {(address || gf.leaderPhone) && (
+                    <div className="mt-4 flex gap-2">
+                      {address && (
+                        <button
+                          onClick={() => setMapGroup(gf)}
+                          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-[#DAD6CC] bg-white px-3 text-[13px] font-bold text-[#16181D]"
+                        >
+                          <Navigation size={15} /> Como chegar
+                        </button>
+                      )}
+                      {gf.leaderPhone && (
+                        <a
+                          href={`https://wa.me/55${gf.leaderPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Vi o GF "${gf.name}" no site e tenho interesse em participar 🙂`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[14px] bg-[#0E8A5F] px-3 text-[13px] font-bold text-white"
+                        >
+                          <Users size={15} /> Quero participar
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         </div>
 
       </main>
 
       {/* Modal do mapa */}
       {mapGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 max-md:items-end max-md:p-0">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMapGroup(null)} />
-          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xl z-10">
+          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xl z-10 max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-[26px] max-md:pb-[env(safe-area-inset-bottom)]">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h3 className="font-bold text-sm text-slate-900">{mapGroup.name}</h3>
               <button onClick={() => setMapGroup(null)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
@@ -899,9 +1002,9 @@ export function GfPublicList() {
 
       {/* Modal do mapa da SEDE */}
       {mapSede && sede && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 max-md:items-end max-md:p-0">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMapSede(false)} />
-          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xl z-10">
+          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xl z-10 max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-[26px] max-md:pb-[env(safe-area-inset-bottom)]">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h3 className="font-bold text-sm text-slate-900">{sede.name}</h3>
               <button onClick={() => setMapSede(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-500">

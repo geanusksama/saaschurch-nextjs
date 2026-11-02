@@ -32,6 +32,9 @@ import {
   PanelRightOpen,
   Pencil,
   Trash2,
+  Church,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react';
 import {
   cultoApi,
@@ -103,6 +106,10 @@ interface Props {
   escopoHospedeira?: boolean;
 }
 
+/** Campo de filtro do topo: mesma altura e raio em todos (só visual). */
+const CAMPO_FILTRO =
+  'h-10 rounded-2xl border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] px-3 text-sm text-slate-800 dark:text-slate-100';
+
 /** Número da linha expandida da tabela: em negrito, para saltar do rótulo. */
 function Valor({ children }: { children: React.ReactNode }) {
   return <strong className="font-bold text-slate-900 dark:text-white">{children}</strong>;
@@ -146,6 +153,8 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
   const [resumo, setResumo] = useState<PassoResumo | null>(null);
   const [expandido, setExpandido] = useState<Record<string, boolean>>({});
   const [imprimindo, setImprimindo] = useState(false);
+  // Só visual: abre/fecha a gaveta com hora e tipo (os mesmos filtros de antes).
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   /**
    * Atualização automática.
    *
@@ -548,38 +557,48 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
 
   return (
     <div className="p-4 sm:p-6 space-y-5 [&_button:not(:disabled)]:cursor-pointer">
-      {/* Uma faixa só: voltar + título + seletor de visão + ações. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {!escopoHospedeira && (
-          <button
-            onClick={() => navigate('/app-ui/culto/gestao')}
-            title="Visão geral"
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-        )}
+      {/* Cabeçalho no padrão das telas convertidas: ícone em quadrado, rótulo
+          pequeno e o título. Os mesmos botões e filtros de antes, só
+          reorganizados em faixas. */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {!escopoHospedeira && (
+            <button
+              onClick={() => navigate('/app-ui/culto/gestao')}
+              title="Visão geral"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
 
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-          {escopoHospedeira ? 'Hospedeiro' : 'Gestão de Culto'}
-        </h1>
-
-        {papeis && papeis.posicoes.length > 0 && (
-          <span
-            className="hidden lg:inline text-xs text-slate-400 truncate max-w-[22rem]"
-            title={papeis.posicoes
-              .map((pp) => `${pp.rotulo}${pp.churchName ? ` (${pp.churchName})` : ''}`)
-              .join(' · ')}
-          >
-            {papeis.posicoes.map((pp) => pp.rotulo).join(' · ')}
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[var(--sl-primary-soft)] text-[var(--sl-primary)]">
+            <Church className="h-5 w-5" strokeWidth={1.8} />
           </span>
-        )}
+          <div className="min-w-0">
+            <p className="text-[12.5px] font-medium text-[var(--sl-text-3)]">Gestão de Culto</p>
+            <h1 className="text-[22px] font-bold leading-tight text-slate-900 dark:text-white">
+              {escopoHospedeira ? 'Hospedeiro' : 'Gestão'}
+            </h1>
+          </div>
 
-        {/* No celular a faixa vira três blocos empilhados — visões, ações e
-            período. Rolagem horizontal escondia o seletor de visão; espremer
-            tudo numa linha deixava os campos ilegíveis. */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto sm:flex-nowrap">
-          <div className="flex w-full sm:w-auto rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+          {papeis && papeis.posicoes.length > 0 && (
+            <span
+              className="hidden lg:inline ml-auto text-xs text-slate-400 truncate max-w-[22rem]"
+              title={papeis.posicoes
+                .map((pp) => `${pp.rotulo}${pp.churchName ? ` (${pp.churchName})` : ''}`)
+                .join(' · ')}
+            >
+              {papeis.posicoes.map((pp) => pp.rotulo).join(' · ')}
+            </span>
+          )}
+        </div>
+
+        {/* Uma faixa só: visões, período, Filtros (gaveta com hora e tipo),
+            ao vivo, atualizar, Resumo e Imprimir. Os mesmos controles de
+            antes, com os mesmos handlers; o filtro continua valendo na hora. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full sm:w-auto gap-1 rounded-full bg-[#f1f5f9] dark:bg-[var(--sl-chip)] p-1">
             {(
               [
                 ['kanban', LayoutGrid, 'Kanban'],
@@ -594,44 +613,17 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                   key={m}
                   onClick={() => setModo(m)}
                   title={label}
-                  className={`inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`inline-flex min-w-0 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-full px-2.5 sm:px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
                     modo === m
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
                   }`}
                 >
                   <Icone className="w-4 h-4 shrink-0" />
-                  <span className="truncate sm:hidden xl:inline">{label}</span>
+                  <span className="truncate">{label}</span>
                 </button>
               ))}
           </div>
-
-          {papeis?.visaoCampo && (
-            <button
-              onClick={() => setResumo({ nivel: 'CAMPO', id: null, rotulo: campoNome ?? 'Campo' })}
-              title="Resumo consolidado do campo inteiro"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            >
-              <Sigma className="w-4 h-4" />
-              <span className="hidden xl:inline">Resumo</span>
-            </button>
-          )}
-
-          {/* O que sai no papel é o que o filtro deixou na lista — por isso o
-              botão fica junto dos filtros, e não numa tela de relatórios. */}
-          <Permissao chave="culto_gestao.gestao_culto.imprimir" rotulo="Imprimir — Gestao Culto" herda="culto_gestao.view">
-            <button
-              onClick={() => setImprimindo(true)}
-              title="Imprimir relatório dos cultos filtrados"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            >
-              <Printer className="w-4 h-4" />
-              <span className="hidden xl:inline">Imprimir</span>
-            </button>
-          </Permissao>
-
-          {/* Período: lado a lado no desktop, um sobre o outro no celular —
-              dois campos de data na mesma linha de 360px não cabem legíveis. */}
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <label className="flex items-center gap-2">
               <span className="w-6 shrink-0 text-xs text-slate-400 sm:hidden">de</span>
@@ -640,7 +632,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                 value={de}
                 onChange={(e) => aplicarFiltro(setDe, e.target.value)}
                 title="Data inicial"
-                className="w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                className={`w-full sm:w-auto ${CAMPO_FILTRO}`}
               />
             </label>
             <span className="hidden sm:inline text-slate-400 text-sm">a</span>
@@ -651,32 +643,28 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                 value={ate}
                 onChange={(e) => aplicarFiltro(setAte, e.target.value)}
                 title="Data final"
-                className="w-full sm:w-auto border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                className={`w-full sm:w-auto ${CAMPO_FILTRO}`}
               />
             </label>
           </div>
-          <input
-            type="time"
-            value={horaDe}
-            onChange={(e) => aplicarFiltro(setHoraDe, e.target.value)}
-            title="Hora inicial — filtra a faixa de horário do culto"
-            className="hidden md:block border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-          />
-          <input
-            type="time"
-            value={horaAte}
-            onChange={(e) => aplicarFiltro(setHoraAte, e.target.value)}
-            title="Hora final"
-            className="hidden md:block border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-          />
-          <input
-            type="text"
-            value={tipoCulto}
-            onChange={(e) => aplicarFiltro(setTipoCulto, e.target.value.toUpperCase())}
-            placeholder="tipo"
-            title="Filtrar por tipo de culto"
-            className="hidden xl:block w-20 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-          />
+          <button
+            type="button"
+            onClick={() => setFiltrosAbertos(true)}
+            title="Filtros: hora e tipo de culto"
+            className={`inline-flex h-10 items-center gap-1.5 rounded-2xl border bg-white px-3.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 dark:bg-[var(--sl-solid)] dark:text-slate-200 dark:hover:bg-slate-700 ${
+              horaDe || horaAte || tipoCulto ? 'border-slate-900 dark:border-slate-300' : 'border-[#e8ecf1] dark:border-[var(--sl-border)]'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>Filtros</span>
+            {[horaDe, horaAte, tipoCulto].filter(Boolean).length > 0 && (
+              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1.5 text-[11px] font-bold text-white dark:bg-white dark:text-slate-900">
+                {[horaDe, horaAte, tipoCulto].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
           <button
             onClick={() => setAoVivo((v) => !v)}
             title={
@@ -686,10 +674,10 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                   }. Clique para congelar.`
                 : 'Atualização automática desligada. Clique para voltar a acompanhar ao vivo.'
             }
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+            className={`inline-flex h-10 items-center gap-1.5 px-3.5 rounded-2xl border text-sm font-medium transition-colors ${
               aoVivo
                 ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
-                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500'
+                : 'border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] text-slate-500'
             }`}
           >
             <span className="relative flex w-2 h-2">
@@ -702,7 +690,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                 }`}
               />
             </span>
-            <span className="hidden xl:inline">
+            <span className="hidden sm:inline">
               {aoVivo
                 ? atualizadoEm
                   ? atualizadoEm.toLocaleTimeString('pt-BR')
@@ -714,17 +702,112 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
           <button
             onClick={recarregar}
             title="Atualizar agora"
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+            className="grid h-10 w-10 place-items-center rounded-2xl border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"
           >
             <RefreshCw className={`w-4 h-4 ${carregando ? 'animate-spin' : ''}`} />
           </button>
+
+          {papeis?.visaoCampo && (
+            <button
+              onClick={() => setResumo({ nivel: 'CAMPO', id: null, rotulo: campoNome ?? 'Campo' })}
+              title="Resumo consolidado do campo inteiro"
+              className="inline-flex h-10 items-center gap-1.5 px-3.5 rounded-full border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+            >
+              <Sigma className="w-4 h-4" />
+              <span>Resumo</span>
+            </button>
+          )}
+
+          {/* O que sai no papel é o que o filtro deixou na lista — por isso o
+              botão fica junto dos filtros, e não numa tela de relatórios. */}
+          <Permissao chave="culto_gestao.gestao_culto.imprimir" rotulo="Imprimir — Gestao Culto" herda="culto_gestao.view">
+            <button
+              onClick={() => setImprimindo(true)}
+              title="Imprimir relatório dos cultos filtrados"
+              className="inline-flex h-10 items-center gap-1.5 px-3.5 rounded-full border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Imprimir</span>
+            </button>
+          </Permissao>
+          </div>
         </div>
       </div>
+
+      {/* Gaveta de filtros, no padrão de Batismo/Consagração. Os campos são os
+          mesmos de antes e continuam filtrando na hora (aplicarFiltro). */}
+      {filtrosAbertos && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <style>{'@keyframes nmDrawerIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}'}</style>
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setFiltrosAbertos(false)} />
+          <aside className="relative flex h-full w-[min(440px,100%)] animate-[nmDrawerIn_.25s_ease] flex-col bg-white shadow-[-20px_0_50px_-20px_rgba(15,23,42,.35)] dark:bg-slate-800">
+            <div className="flex items-center gap-3.5 border-b border-[#eef2f6] px-[22px] py-5 dark:border-slate-700">
+              <span className="grid h-11 w-11 flex-none place-items-center rounded-[14px] bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                <SlidersHorizontal className="h-[22px] w-[22px]" strokeWidth={2} />
+              </span>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-lg font-extrabold text-slate-900 dark:text-white">Filtros</span>
+                <span className="text-[13px] text-slate-500 dark:text-slate-400">Horário e tipo de culto</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos(false)}
+                aria-label="Fechar"
+                className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto p-[22px]">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[12px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Hora inicial</span>
+                    <input
+                      type="time"
+                      value={horaDe}
+                      onChange={(e) => aplicarFiltro(setHoraDe, e.target.value)}
+                      title="Hora inicial — filtra a faixa de horário do culto"
+                      className={`w-full ${CAMPO_FILTRO}`}
+                    />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[12px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Hora final</span>
+                    <input
+                      type="time"
+                      value={horaAte}
+                      onChange={(e) => aplicarFiltro(setHoraAte, e.target.value)}
+                      title="Hora final"
+                      className={`w-full ${CAMPO_FILTRO}`}
+                    />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[12px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tipo de culto</span>
+                    <input
+                      type="text"
+                      value={tipoCulto}
+                      onChange={(e) => aplicarFiltro(setTipoCulto, e.target.value.toUpperCase())}
+                      placeholder="tipo"
+                      title="Filtrar por tipo de culto"
+                      className={`w-full ${CAMPO_FILTRO}`}
+                    />
+                </label>
+            </div>
+            <div className="border-t border-[#eef2f6] px-[22px] py-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos(false)}
+                className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-slate-900 text-[15px] font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                Fechar
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* Quem entrou pelo card do tesoureiro ou do secretário já chega sabendo
           qual bloco é dele e onde estão os cultos que ainda dependem disso. */}
       {blocoAtalho && (
-        <div className="flex items-start gap-2 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300">
+        <div className="flex items-start gap-2 rounded-[14px] border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300">
           <Info className="w-4 h-4 mt-0.5 shrink-0" />
           <span>
             Você entrou pelo card <strong>{ROTULO_BLOCO[blocoAtalho]}</strong>. Abra um culto da
@@ -746,7 +829,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
       )}
 
       {erro && (
-        <div className="flex items-start gap-2 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
+        <div className="flex items-start gap-2 rounded-[14px] border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <span>{erro}</span>
         </div>
@@ -793,18 +876,18 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
             return (
               /* min-w só a partir do lg: no celular as colunas empilham e a
                  largura mínima de 18rem furava a tela de 360px. */
-              <div key={coluna.chave} className="flex-1 min-w-0 lg:min-w-[18rem]">
+              <div key={coluna.chave} className="flex-1 min-w-0 lg:min-w-[18rem] overflow-hidden rounded-[22px] border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
                 <div
-                  className={`flex items-center justify-between px-3 py-2 rounded-t-xl bg-white dark:bg-slate-800 border-t-4 ${COR_COLUNA[coluna.chave]} border-x border-slate-200 dark:border-slate-700`}
+                  className={`flex items-center justify-between px-4 py-3 bg-white dark:bg-[var(--sl-solid)] border-t-4 ${COR_COLUNA[coluna.chave]}`}
                 >
-                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
                     {coluna.titulo}
                   </span>
-                  <span className="text-xs font-bold text-slate-400">
+                  <span className="rounded-full bg-[#f1f5f9] dark:bg-[var(--sl-chip)] px-2 py-0.5 text-xs font-bold text-slate-500 dark:text-slate-300">
                     {termo ? `${itens.length + semLancamento.length} de ${total}` : total}
                   </span>
                 </div>
-                <div className="space-y-2 p-2 rounded-b-xl bg-slate-100/70 dark:bg-slate-900/50 border-x border-b border-slate-200 dark:border-slate-700 min-h-[8rem]">
+                <div className="space-y-2 p-2.5 bg-[#f8fafc] dark:bg-slate-900/40 border-t border-[#e8ecf1] dark:border-[var(--sl-border)] min-h-[8rem]">
                   {total > 0 && (
                     <CampoBusca
                       valor={termo}
@@ -823,9 +906,9 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                     <div key={r.id} className="relative">
                     <button
                       onClick={() => setAbertoId(r.id)}
-                      className={`w-full text-left rounded-lg bg-white dark:bg-slate-800 border-l-4 ${
+                      className={`w-full text-left rounded-[14px] bg-white dark:bg-[var(--sl-solid)] border-l-4 ${
                         BORDA[tomDoSemaforo(r.status === 'CONCLUIDO')]
-                      } border-y border-r border-slate-200 dark:border-slate-700 p-3 hover:shadow-md transition-shadow`}
+                      } border-y border-r border-y-[#e8ecf1] border-r-[#e8ecf1] dark:border-y-[var(--sl-border)] dark:border-r-[var(--sl-border)] p-3 hover:shadow-md transition-shadow`}
                     >
                       <div className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate pr-20">
                         {r.church.name}
@@ -872,7 +955,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
                       onClick={() =>
                         setResumo({ nivel: 'IGREJA', id: i.churchId, rotulo: i.nome })
                       }
-                      className="w-full text-left rounded-lg bg-white/60 dark:bg-slate-800/40 border-2 border-dashed border-slate-300 dark:border-slate-600 p-3 hover:shadow-md transition-shadow"
+                      className="w-full text-left rounded-[14px] bg-white/60 dark:bg-slate-800/40 border-2 border-dashed border-slate-300 dark:border-slate-600 p-3 hover:shadow-md transition-shadow"
                     >
                       <div className="font-semibold text-sm text-slate-600 dark:text-slate-300 truncate">
                         {i.nome}
@@ -908,7 +991,7 @@ export default function GestaoCulto({ escopoHospedeira = false }: Props) {
           o status escrever por cima do nome da igreja), ela rola na horizontal
           dentro do próprio cartão, com largura mínima que preserva o alinhamento. */}
       {!carregando && modo === 'tabela' && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto shadow-sm">
+        <div className="bg-white dark:bg-[var(--sl-solid)] rounded-[22px] border border-[#e8ecf1] dark:border-[var(--sl-border)] overflow-x-auto shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
           <div className="min-w-[44rem] sm:min-w-0">
           {/* Uma busca só: filtra cultos e igrejas já carregados pelo nome. */}
           <div className="p-3 border-b border-slate-100 dark:border-slate-700 max-w-sm">

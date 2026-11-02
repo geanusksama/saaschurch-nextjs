@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Heart, Users, Plus, TrendingUp, Pencil, Trash2, Building2, UserRound, Music2, Mic2, HandHeart, BookOpen, Camera, Radio, Baby, Sparkles, Shield, GraduationCap, LayoutGrid, List } from 'lucide-react';
+import { Heart, Users, Plus, TrendingUp, Pencil, Trash2, Building2, UserRound, ChevronDown, Music2, Mic2, HandHeart, BookOpen, Camera, Radio, Baby, Sparkles, Shield, GraduationCap, LayoutGrid, List } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 
@@ -447,16 +447,19 @@ export function Ministries() {
   const selectedChurch = churches.find((church) => church.id === selectedChurchId) || null;
   const selectedFormIcon = getMinistryIcon(formState.icon);
 
+  const campoFiltroClasse = 'h-full min-h-[52px] w-full appearance-none rounded-2xl border-[1.5px] border-[#e2e8f0] bg-white pl-3.5 pr-10 text-[15px] font-medium text-slate-900 outline-none focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-slate-300 dark:disabled:bg-slate-900';
+  const rotuloFiltroClasse = 'flex min-w-0 flex-[1_1_220px] flex-col gap-1.5 text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400';
+
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-            <Heart className="w-6 h-6 text-purple-600" />
+    <div className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
+      <header className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-700 dark:text-slate-200">
+            <Heart className="h-5 w-5" strokeWidth={1.8} />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ministérios</h1>
-            <p className="text-slate-600 dark:text-slate-400">Gerencie departamentos e equipes ministeriais</p>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Ministérios</span>
+            <h1 className="truncate whitespace-nowrap text-[17px] font-bold">Todos Ministérios</h1>
           </div>
         </div>
         {canCreate('ministries') ? (
@@ -467,19 +470,22 @@ export function Ministries() {
                 setFormState(initialFormState);
                 setFormOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium"
+              className="flex h-10 flex-none items-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 pl-3 pr-3.5 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <Plus className="w-5 h-5" />
-              Novo Ministério
+              <Plus className="h-4 w-4" strokeWidth={2.2} />
+              <span className="md:hidden">Novo</span>
+              <span className="hidden md:inline">Novo Ministério</span>
             </button>
           </Permissao>
         ) : null}
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="box-border flex w-full flex-1 flex-col gap-3 px-3 pb-10 pt-3 md:px-7 md:pt-4">
+      <div className="flex flex-wrap items-end gap-2 md:gap-3">
         {campoVisible && (
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Campo</label>
+        <label className={rotuloFiltroClasse}>
+          Campo
+          <span className="relative min-w-0">
           <select
             value={selectedFieldId}
             onChange={(event) => {
@@ -488,7 +494,7 @@ export function Ministries() {
               setSelectedChurchId('');
             }}
             disabled={!canChooseField || loadingFilters}
-            className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+            className={campoFiltroClasse}
           >
             <option value="">Todos os campos</option>
             {fields.map((field) => (
@@ -497,11 +503,14 @@ export function Ministries() {
               </option>
             ))}
           </select>
-        </div>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          </span>
+        </label>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Regional</label>
+        <label className={rotuloFiltroClasse}>
+          Regional
+          <span className="relative min-w-0">
           <select
             value={selectedRegionalId}
             onChange={(event) => {
@@ -509,7 +518,7 @@ export function Ministries() {
               setSelectedChurchId('');
             }}
             disabled={!canChooseRegional || loadingFilters}
-            className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+            className={campoFiltroClasse}
           >
             <option value="">Todas as regionais</option>
             {filteredRegionais.map((regional) => (
@@ -518,15 +527,18 @@ export function Ministries() {
               </option>
             ))}
           </select>
-        </div>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          </span>
+        </label>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Igreja</label>
+        <label className={rotuloFiltroClasse}>
+          Igreja
+          <span className="relative min-w-0">
           <select
             value={selectedChurchId}
             onChange={(event) => setSelectedChurchId(event.target.value)}
             disabled={!canChooseChurch || loadingFilters}
-            className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-slate-100 disabled:text-slate-500"
+            className={campoFiltroClasse}
           >
             <option value="">Selecione a igreja</option>
             {filteredChurches.map((church) => (
@@ -535,53 +547,55 @@ export function Ministries() {
               </option>
             ))}
           </select>
-        </div>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          </span>
+        </label>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs text-slate-600 dark:text-slate-400 truncate">Total Ministérios</p>
-            <p className="text-xl font-bold text-slate-900">{stats.totalMinistries}</p>
-          </div>
-          <div className="w-9 h-9 shrink-0 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Heart className="w-4 h-4 text-purple-600" />
-          </div>
+      <div className="flex min-w-0 gap-2 overflow-x-auto">
+        <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+          <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-[#ede9fe] text-[#5b21b6]">
+            <Heart className="h-[19px] w-[19px]" strokeWidth={1.8} />
+          </span>
+          <span className="flex flex-col">
+            <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] tabular-nums">{stats.totalMinistries}</span>
+            <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Total Ministérios</span>
+          </span>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs text-slate-600 dark:text-slate-400 truncate">Membros Ativos</p>
-            <p className="text-xl font-bold text-slate-900">{stats.activeMembers}</p>
-          </div>
-          <div className="w-9 h-9 shrink-0 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Users className="w-4 h-4 text-blue-600" />
-          </div>
+        <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+          <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-[#e0f2fe] text-[#075985]">
+            <Users className="h-[19px] w-[19px]" strokeWidth={1.8} />
+          </span>
+          <span className="flex flex-col">
+            <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] tabular-nums">{stats.activeMembers}</span>
+            <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Membros Ativos</span>
+          </span>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs text-slate-600 dark:text-slate-400 truncate">Com Líder Definido</p>
-            <p className="text-xl font-bold text-slate-900">{stats.ministriesWithLeader}</p>
-          </div>
-          <div className="w-9 h-9 shrink-0 bg-green-100 rounded-lg flex items-center justify-center">
-            <UserRound className="w-4 h-4 text-green-600" />
-          </div>
+        <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+          <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-[#dcfce7] text-[#166534]">
+            <UserRound className="h-[19px] w-[19px]" strokeWidth={1.8} />
+          </span>
+          <span className="flex flex-col">
+            <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] tabular-nums">{stats.ministriesWithLeader}</span>
+            <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Com Líder Definido</span>
+          </span>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs text-slate-600 dark:text-slate-400 truncate">Taxa de Ativação</p>
-            <p className="text-xl font-bold text-slate-900">{stats.activationRate}%</p>
-          </div>
-          <div className="w-9 h-9 shrink-0 bg-orange-100 rounded-lg flex items-center justify-center">
-            <TrendingUp className="w-4 h-4 text-orange-600" />
-          </div>
+        <div className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+          <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-xl bg-[#fef3c7] text-[#92400e]">
+            <TrendingUp className="h-[19px] w-[19px]" strokeWidth={1.8} />
+          </span>
+          <span className="flex flex-col">
+            <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] tabular-nums">{stats.activationRate}%</span>
+            <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Taxa de Ativação</span>
+          </span>
         </div>
       </div>
 
       {formOpen ? (
-        <form onSubmit={handleSubmit} className="mb-8 rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="rounded-[18px] border border-[#e8ecf1] bg-white p-4 space-y-4 md:rounded-[22px] md:p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-bold text-slate-900">{formState.id ? 'Editar Ministério' : 'Novo Ministério'}</h2>
@@ -733,26 +747,26 @@ export function Ministries() {
       ) : null}
 
       {error ? (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
           {error}
         </div>
       ) : null}
 
       {loadingMinistries ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <div className="rounded-[18px] border border-[#e8ecf1] bg-white px-4 py-3 text-sm text-slate-600 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
           Carregando ministérios...
         </div>
       ) : null}
 
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6 gap-3">
-          <h2 className="text-xl font-bold text-slate-900">Departamentos Ministeriais</h2>
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+      <div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-[17px] font-bold text-slate-900 dark:text-white">Departamentos Ministeriais</h2>
+          <div className="flex gap-1 rounded-full bg-[#f1f5f9] p-1 dark:bg-slate-700">
             <button
               type="button"
               onClick={() => setViewMode('cards')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                viewMode === 'cards' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors md:px-4 ${
+                viewMode === 'cards' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-600'
               }`}
             >
               <LayoutGrid className="w-4 h-4" />
@@ -761,8 +775,8 @@ export function Ministries() {
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                viewMode === 'table' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors md:px-4 ${
+                viewMode === 'table' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-600'
               }`}
             >
               <List className="w-4 h-4" />
@@ -772,38 +786,38 @@ export function Ministries() {
         </div>
 
         {viewMode === 'cards' ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
           {ministries.map((ministry) => {
             const engagement = ministry.totalMembers ? Math.round((ministry.activeMembers / ministry.totalMembers) * 100) : 0;
             const MinistryIcon = getMinistryIcon(ministry.icon);
 
             return (
-              <div key={ministry.id} className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-shadow">
+              <div key={ministry.id} className="rounded-[18px] border border-[#e8ecf1] bg-white p-5 transition-shadow hover:shadow-lg md:rounded-[22px] md:p-6 dark:border-slate-700 dark:bg-slate-800">
                 <div className="flex items-start justify-between mb-4">
                   <span className="relative flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden shadow-md" style={{ backgroundColor: ministry.color || '#8b5cf6' }}>
                     <span className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-black/10 pointer-events-none" />
                     <MinistryIcon className="w-6 h-6 text-white relative z-10 drop-shadow" />
                   </span>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                     {ministry.totalMembers}
                   </span>
                 </div>
 
-                <h3 className="font-bold text-slate-900 text-lg mb-2">{ministry.name}</h3>
-                <p className="text-sm text-slate-600 mb-1">Líder: {ministry.leader?.fullName || 'Não definido'}</p>
-                <p className="text-xs text-slate-500 min-h-[32px]">{ministry.description || 'Sem descrição cadastrada.'}</p>
+                <h3 className="font-bold text-slate-900 text-lg mb-2 dark:text-white">{ministry.name}</h3>
+                <p className="text-sm text-slate-600 mb-1 dark:text-slate-300">Líder: {ministry.leader?.fullName || 'Não definido'}</p>
+                <p className="text-xs text-slate-500 min-h-[32px] dark:text-slate-400">{ministry.description || 'Sem descrição cadastrada.'}</p>
 
                 <div className="space-y-2 mb-4 mt-4">
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Total de Membros</span>
-                    <span className="font-semibold text-slate-900">{ministry.totalMembers}</span>
+                    <span className="text-slate-600 dark:text-slate-400">Total de Membros</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{ministry.totalMembers}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Membros Ativos</span>
+                    <span className="text-slate-600 dark:text-slate-400">Membros Ativos</span>
                     <span className="font-semibold text-green-600">{ministry.activeMembers}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Status</span>
+                    <span className="text-slate-600 dark:text-slate-400">Status</span>
                     <span className={`font-semibold ${ministry.isActive ? 'text-green-600' : 'text-slate-500'}`}>
                       {ministry.isActive ? 'Ativo' : 'Inativo'}
                     </span>
@@ -811,17 +825,17 @@ export function Ministries() {
                 </div>
 
                 <div className="mb-4">
-                  <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div className="w-full bg-slate-100 rounded-full h-2 dark:bg-slate-700">
                     <div className="h-2 rounded-full" style={{ width: `${engagement}%`, backgroundColor: ministry.color || '#8b5cf6' }} />
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">{engagement}% engajamento</p>
+                  <p className="text-xs text-slate-500 mt-1 dark:text-slate-400">{engagement}% engajamento</p>
                 </div>
 
                 {canEdit('ministries') || canDelete('ministries') ? (
                   <div className="flex gap-2">
                     {canEdit('ministries') ? (
                       <Permissao chave="ministries.ministries.editar" rotulo="Editar — Ministries" herda="ministries.edit">
-                        <button type="button" onClick={() => handleEdit(ministry)} className="flex-1 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 font-medium flex items-center justify-center gap-2">
+                        <button type="button" onClick={() => handleEdit(ministry)} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">
                           <Pencil className="w-4 h-4" />
                           Editar
                         </button>
@@ -829,7 +843,7 @@ export function Ministries() {
                     ) : null}
                     {canDelete('ministries') ? (
                       <Permissao chave="ministries.ministries.confirmar_exclusao" rotulo="Confirmar exclusão — Ministries" herda="ministries.ministries.excluir">
-                        <button type="button" onClick={() => handleDelete(ministry.id)} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium">
+                        <button type="button" onClick={() => handleDelete(ministry.id)} className="grid h-10 w-10 place-items-center rounded-[10px] text-rose-600 hover:bg-[#fee2e2] dark:hover:bg-red-950/40">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </Permissao>
@@ -841,9 +855,9 @@ export function Ministries() {
           })}
         </div>
         ) : (
-          <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
+          <div className="overflow-x-auto rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-[#eef2f6] bg-[#f8fafc] text-left text-xs font-semibold uppercase tracking-[.06em] text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-3">Ministério</th>
                   <th className="px-4 py-3">Líder</th>
@@ -854,12 +868,12 @@ export function Ministries() {
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#f1f5f9] dark:divide-slate-700">
                 {ministries.map((ministry) => {
                   const engagement = ministry.totalMembers ? Math.round((ministry.activeMembers / ministry.totalMembers) * 100) : 0;
                   const MinistryIcon = getMinistryIcon(ministry.icon);
                   return (
-                    <tr key={ministry.id} className="hover:bg-slate-50">
+                    <tr key={ministry.id} className="transition-colors hover:bg-[#fafbfc] dark:hover:bg-slate-700/40">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <span className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-md" style={{ backgroundColor: ministry.color || '#8b5cf6' }}>
@@ -867,17 +881,17 @@ export function Ministries() {
                             <MinistryIcon className="w-4 h-4 text-white relative z-10 drop-shadow" />
                           </span>
                           <div className="min-w-0">
-                            <p className="font-semibold text-slate-900 truncate">{ministry.name}</p>
+                            <p className="font-semibold text-slate-900 truncate dark:text-white">{ministry.name}</p>
                             {ministry.description ? <p className="text-xs text-slate-500 truncate">{ministry.description}</p> : null}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-700">{ministry.leader?.fullName || <span className="text-slate-400">Não definido</span>}</td>
-                      <td className="px-4 py-3 text-center font-semibold text-slate-900">{ministry.totalMembers}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{ministry.leader?.fullName || <span className="text-slate-400">Não definido</span>}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-slate-900 dark:text-white">{ministry.totalMembers}</td>
                       <td className="px-4 py-3 text-center font-semibold text-green-600">{ministry.activeMembers}</td>
-                      <td className="px-4 py-3 text-center text-slate-700">{engagement}%</td>
+                      <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-300">{engagement}%</td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${ministry.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${ministry.isActive ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'}`}>
                           {ministry.isActive ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
@@ -886,14 +900,14 @@ export function Ministries() {
                           <div className="flex items-center justify-end gap-2">
                             {canEdit('ministries') ? (
                               <Permissao chave="ministries.ministries.editar" rotulo="Editar — Ministries" herda="ministries.edit">
-                                <button type="button" onClick={() => handleEdit(ministry)} className="rounded-lg border border-purple-200 p-2 text-purple-600 hover:bg-purple-50" title="Editar">
+                                <button type="button" onClick={() => handleEdit(ministry)} className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700" title="Editar">
                                   <Pencil className="w-4 h-4" />
                                 </button>
                               </Permissao>
                             ) : null}
                             {canDelete('ministries') ? (
                               <Permissao chave="ministries.ministries.excluir" rotulo="Excluir — Ministries" herda="ministries.delete">
-                                <button type="button" onClick={() => handleDelete(ministry.id)} className="rounded-lg bg-slate-900 p-2 text-white hover:bg-slate-800" title="Excluir">
+                                <button type="button" onClick={() => handleDelete(ministry.id)} className="grid h-9 w-9 place-items-center rounded-[10px] text-rose-600 transition-colors hover:bg-[#fee2e2] dark:hover:bg-red-950/40" title="Excluir">
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </Permissao>
@@ -910,10 +924,11 @@ export function Ministries() {
         )}
 
         {!loadingMinistries && !ministries.length ? (
-          <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
+          <div className="mt-3 rounded-[18px] border border-[#e8ecf1] bg-white p-10 text-center text-sm text-slate-500 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
             Nenhum ministério cadastrado para a igreja selecionada.
           </div>
         ) : null}
+      </div>
       </div>
 
       <ConfirmDialog

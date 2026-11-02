@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
-import { CalendarDays, Moon, ShoppingBag, Sun } from 'lucide-react';
+import { CalendarDays, Home, MessageSquare, Moon, ShoppingBag, Sun, User } from 'lucide-react';
 import { apiBase } from '../../../lib/apiBase';
 import { DEFAULT_HOME_PAYLOAD, mergeHomePayload, type HomeConfigPayload } from '../../../lib/homeConfig';
 
@@ -170,6 +170,45 @@ export function NavPublica({ isDark, accent, onPeniel, className }: { isDark: bo
   );
 }
 
+/**
+ * Tab bar pública do celular (< 768px), guia adcampinas-mobile-first:
+ * Início · Eventos · Atendimento (FAB verde) · Loja · Perfil. Só navegação.
+ * O atendimento mora na home, então o FAB leva para "/" (não recria o fluxo).
+ * Perfil → /auth/login, o mesmo destino do ícone de usuário do cabeçalho.
+ */
+export function TabBarPublica({ isDark, accent }: { isDark: boolean; accent: string }) {
+  const { pathname } = useLocation();
+  const inativo = isDark ? '#94a3b8' : '#64748b';
+  const itens = [
+    { rotulo: 'Início', Icone: Home, to: '/', ativo: pathname === '/' },
+    { rotulo: 'Eventos', Icone: CalendarDays, to: '/eventos', ativo: pathname === '/eventos' },
+    null,
+    { rotulo: 'Loja', Icone: ShoppingBag, to: '/loja', ativo: pathname === '/loja' },
+    { rotulo: 'Perfil', Icone: User, to: '/auth/login', ativo: false },
+  ];
+  return (
+    <nav aria-label="Navegação" className={cx('md:hidden fixed inset-x-0 bottom-0 z-40 flex items-end justify-around border-t px-2 pt-2 backdrop-blur-xl', isDark ? 'border-white/10 bg-[#0b0d12]/90' : 'border-black/5 bg-white/95')}
+      style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
+      {itens.map((i) => i === null ? (
+        <Link key="atendimento" to="/" aria-label="Atendimento" className="flex w-20 flex-col items-center gap-1 text-[11px] font-semibold text-[#10b981]">
+          <span className="-mt-[26px] grid h-14 w-14 place-items-center rounded-full text-white shadow-lg"
+            style={{ background: 'linear-gradient(135deg,#059669,#10b981)', border: `4px solid ${isDark ? '#0b0d12' : '#ffffff'}` }}>
+            <MessageSquare className="h-6 w-6" />
+          </span>
+          Atendimento
+        </Link>
+      ) : (
+        <Link key={i.rotulo} to={i.to} className="flex min-h-[52px] w-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+          <span className="grid h-[30px] w-[52px] place-items-center rounded-full" style={i.ativo ? { background: `${accent}2e`, color: accent } : { color: inativo }}>
+            <i.Icone className="h-5 w-5" strokeWidth={1.8} />
+          </span>
+          <span style={{ color: i.ativo ? accent : inativo }}>{i.rotulo}</span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 export interface Hero {
   selo: string;
   titulo: ReactNode;
@@ -221,8 +260,15 @@ export function PaginaPublica({ hero, children, direita }: {
       </header>
       <div className="md:hidden flex justify-center px-6 -mt-2 relative z-20"><NavPublica isDark={isDark} accent={accent} /></div>
 
+      {/* Celular: kicker + título, sem o hero grande (guia: Eventos / Loja) */}
       {h && (
-        <section className="max-w-7xl mx-auto px-6 py-12 md:py-20 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center relative z-10">
+        <section className="md:hidden px-5 pt-5 pb-1 relative z-10">
+          <p className="text-[12px] font-bold uppercase tracking-[1.2px]" style={{ color: accent }}>{h.selo}</p>
+          <h1 className="mt-1 text-[28px] font-extrabold leading-tight tracking-[-0.8px]">{h.titulo}</h1>
+        </section>
+      )}
+      {h && (
+        <section className="max-md:hidden max-w-7xl mx-auto px-6 py-12 md:py-20 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center relative z-10">
           <div className="lg:col-span-7 space-y-7">
             <span className={cx('inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-extrabold uppercase tracking-[0.2em]', isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white')} style={{ color: accent }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: accent }} />{h.selo}
@@ -261,8 +307,9 @@ export function PaginaPublica({ hero, children, direita }: {
           </div>
         </section>
       )}
-      {h && <div className={cx('max-w-7xl mx-auto border-t', isDark ? 'border-white/10' : 'border-black/10')} />}
-      <main className="max-w-7xl mx-auto px-6 pt-10 pb-20 relative z-10">{children(ctx)}</main>
+      {h && <div className={cx('max-md:hidden max-w-7xl mx-auto border-t', isDark ? 'border-white/10' : 'border-black/10')} />}
+      <main className="max-w-7xl mx-auto px-6 pt-10 pb-20 relative z-10 max-md:px-5 max-md:pt-4 max-md:pb-[140px]">{children(ctx)}</main>
+      <TabBarPublica isDark={isDark} accent={accent} />
     </div>
   );
 }

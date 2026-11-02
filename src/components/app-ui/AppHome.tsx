@@ -1,11 +1,12 @@
 import type { CSSProperties } from 'react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Search, Star, X, LayoutGrid, SearchX } from 'lucide-react';
+import { Search, Pin, X, LayoutGrid, SearchX, Plus, ChevronRight } from 'lucide-react';
 import { appNavigation } from './AppUI';
 import { usePermissions } from '../../lib/usePermissions';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { useFavoritePaths, toggleFavoritePath } from '../../lib/favorites';
+import { Permissao } from '../../lib/permissoes/Permissao';
 
 /**
  * Tela inicial do app (rota index de /app-ui).
@@ -96,11 +97,11 @@ function AppTile({ item, favorite, onToggleFavorite }: {
         aria-label={favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
         className={`absolute -top-1 right-1 z-10 rounded-full p-1 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 ${
           favorite
-            ? 'text-amber-500 opacity-100'
-            : 'text-slate-300 hover:text-amber-500 dark:text-slate-600'
+            ? 'text-[var(--sl-primary)] opacity-100'
+            : 'text-slate-300 hover:text-[var(--sl-primary)] dark:text-slate-600'
         }`}
       >
-        <Star className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
+        <Pin className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
       </button>
 
       <Link
@@ -149,7 +150,7 @@ export function AppHome() {
         .map((section) => ({
           section: section.section,
           items: section.items
-            .filter((item) => (!item.permKey || canView(item.permKey)) && isCampoAllowed(item.path))
+            .filter((item) => !item.hiddenFromMenu && (!item.permKey || canView(item.permKey)) && isCampoAllowed(item.path))
             .map((item, index): HomeItem => ({
               name: item.name,
               path: item.path,
@@ -181,11 +182,94 @@ export function AppHome() {
 
   const hasResults = filteredSections.length > 0 || favoriteItems.length > 0;
 
+  // ── Celular (< 640px): cabeçalho do guia adcampinas-mobile-first (AdminHome).
+  // Só apresentação: usa os mesmos dados (usuário salvo, favoritos, seções
+  // visíveis) e o mesmo campo de busca da tela.
+  const displayName: string = storedUser?.fullName || 'Usuário';
+  const firstName = displayName.split(' ')[0];
+  const displayRole: string = storedUser?.roleName || ({
+    master: 'Master', admin: 'Administrador', campo: 'Campo', church: 'Igreja',
+  } as Record<string, string>)[profileType] || profileType;
+  const lotacao: string = storedUser?.churchName || storedUser?.campoName || '';
+  const initials = displayName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
+  const sectionAnchor = (section: string) => `apps-${normalize(section).replace(/[^a-z0-9]+/g, '-')}`;
+  const rolarAte = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   return (
-    <div className="min-h-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8 dark:bg-slate-900">
+    <div className="min-h-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8 dark:bg-slate-900 max-sm:bg-[#F4F6F9]! max-sm:px-5 max-sm:pt-5 dark:max-sm:bg-[#0d1017]!">
       <div className="mx-auto max-w-7xl">
+        {/* ── Celular: saudação, busca, favoritos e módulos ─────────────────── */}
+        <div className="sm:hidden">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#0f172a] text-sm font-bold text-white">{initials}</span>
+            <div className="min-w-0">
+              <p className="truncate text-[17px] font-extrabold leading-tight text-[var(--sl-text)]">Olá, {firstName}</p>
+              <p className="truncate text-[12.5px] text-[var(--sl-text-3)]">{[displayRole, lotacao].filter(Boolean).join(' · ')}</p>
+            </div>
+          </div>
+
+          <div className="mb-6 flex h-[52px] items-center gap-2 rounded-[16px] border border-[var(--sl-border)] bg-[var(--sl-solid)] pl-4 pr-1.5">
+            <Search className="h-5 w-5 shrink-0 text-[var(--sl-text-3)]" />
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar aplicativo ou função"
+              aria-label="Buscar aplicativo ou função"
+              className="min-w-0 flex-1 bg-transparent text-[16px] text-[var(--sl-text)] outline-none placeholder:text-[var(--sl-text-4)]"
+              style={{ border: 0, boxShadow: 'none', minHeight: 0 }}
+            />
+            {query ? (
+              <button type="button" onClick={() => setQuery('')} aria-label="Limpar busca"
+                className="grid h-10 w-10 place-items-center rounded-[12px] text-[var(--sl-text-3)]">
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+
+          {!query && (
+            <>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-[16px] font-bold text-[var(--sl-text)]">Favoritos</h2>
+                <Permissao chave="tela_moldura.app_ui.inicio_editar_favoritos_celular" rotulo="Editar favoritos (Início no celular) — App UI" herda="tela_moldura.view">
+                <button type="button" onClick={() => rolarAte('apps-todos')} className="min-h-[44px] px-1 text-[13px] font-bold text-[#047857] dark:text-[#34d399]">
+                  Editar
+                </button>
+                </Permissao>
+              </div>
+              <div className="mb-7 grid grid-cols-4 gap-x-2 gap-y-4">
+                {favoriteItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link key={`m-fav-${item.path}`} to={item.path} className="flex flex-col items-center gap-1.5 text-center">
+                      <span className="grid h-14 w-14 place-items-center rounded-[16px] text-white" style={{ background: item.color }}>
+                        <Icon className="h-6 w-6" strokeWidth={1.8} />
+                      </span>
+                      <span className="line-clamp-2 text-[11.5px] font-semibold leading-tight text-[var(--sl-text)]">{item.name}</span>
+                    </Link>
+                  );
+                })}
+                <Permissao chave="tela_moldura.app_ui.inicio_adicionar_favorito_celular" rotulo="Adicionar favorito (Início no celular) — App UI" herda="tela_moldura.view">
+                <button type="button" onClick={() => rolarAte('apps-todos')} className="flex flex-col items-center gap-1.5 text-center">
+                  <span className="grid h-14 w-14 place-items-center rounded-[16px] border-[1.5px] border-dashed border-[var(--sl-border-2)] bg-[var(--sl-solid)] text-[var(--sl-text)]">
+                    <Plus className="h-6 w-6" strokeWidth={1.8} />
+                  </span>
+                  <span className="text-[11.5px] font-semibold leading-tight text-[var(--sl-text)]">Adicionar</span>
+                </button>
+                </Permissao>
+              </div>
+            </>
+          )}
+
+          <div id="apps-todos" className="mb-3 flex scroll-mt-4 items-center gap-2">
+            <h2 className="text-[16px] font-bold text-[var(--sl-text)]">{query ? 'Resultados' : 'Todos os aplicativos'}</h2>
+            <span className="text-[12px] text-[var(--sl-text-3)]">toque no pin para fixar</span>
+            <ChevronRight className="ml-auto h-4 w-4 text-[var(--sl-text-4)]" />
+          </div>
+        </div>
+
         {/* Busca */}
-        <div className="mb-8">
+        <div className="mb-8 max-sm:hidden">
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input
@@ -212,9 +296,9 @@ export function AppHome() {
 
         {/* Favoritos */}
         {favoriteItems.length > 0 && (
-          <section className="mb-10">
+          <section className="mb-10 max-sm:hidden">
             <div className="mb-4 flex items-center gap-2">
-              <Star className="h-4 w-4 fill-current text-amber-500" />
+              <Pin className="h-4 w-4 fill-current text-[var(--sl-primary)]" />
               <h2 className="text-base font-semibold text-slate-900 dark:text-white">Favoritos</h2>
             </div>
             <div className="grid grid-cols-3 gap-x-2 gap-y-5 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9 xl:grid-cols-11">
@@ -232,7 +316,7 @@ export function AppHome() {
 
         {/* Categorias */}
         {filteredSections.map((section) => (
-          <section key={section.section} className="mb-10">
+          <section key={section.section} id={sectionAnchor(section.section)} className="mb-10 scroll-mt-4 max-sm:mb-7">
             <div className="mb-4 flex items-center gap-2">
               <LayoutGrid className="h-4 w-4 text-slate-400" />
               <h2 className="text-base font-semibold text-slate-900 dark:text-white">{section.section}</h2>

@@ -16,7 +16,7 @@
   --popover: #ffffff;
   --popover-foreground: #0f172a;
 
-  --primary: #475569;
+  --primary: #6d4aff;
   --primary-foreground: #ffffff;
 
   --secondary: #f1f5f9;
@@ -33,18 +33,18 @@
 
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #475569;
+  --ring: #6d4aff;
 
-  --theme-primary: #475569;
-  --theme-primary-strong: #3b4757;
-  --theme-primary-hover: #414e60;
-  --theme-primary-soft: rgba(71, 85, 105, 0.1);
-  --theme-primary-soft-strong: rgba(71, 85, 105, 0.14);
-  --theme-primary-border: rgba(71, 85, 105, 0.18);
-  --theme-primary-ring: rgba(71, 85, 105, 0.14);
-  --theme-secondary: #94a3b8;
-  --theme-secondary-hover: #8494ab;
-  --theme-secondary-soft: rgba(148, 163, 184, 0.12);
+  --theme-primary: #6d4aff;
+  --theme-primary-strong: #5f3cf1;
+  --theme-primary-hover: #6542f7;
+  --theme-primary-soft: rgba(109, 74, 255, 0.1);
+  --theme-primary-soft-strong: rgba(109, 74, 255, 0.14);
+  --theme-primary-border: rgba(109, 74, 255, 0.18);
+  --theme-primary-ring: rgba(109, 74, 255, 0.14);
+  --theme-secondary: #14a3b8;
+  --theme-secondary-hover: #0c9bb0;
+  --theme-secondary-soft: rgba(20, 163, 184, 0.12);
 
   /* Contorno do campo em foco. Não sai do tema (--theme-primary-ring tem 14%
      de opacidade e some no escuro): é ele que diz em qual campo se está. */
@@ -63,7 +63,7 @@
   --popover: #1e293b;
   --popover-foreground: #f8fafc;
 
-  --primary: #475569;
+  --primary: #6d4aff;
   --primary-foreground: #ffffff;
 
   --secondary: #1e293b;
@@ -80,7 +80,7 @@
 
   --border: #334155;
   --input: #334155;
-  --ring: #475569;
+  --ring: #6d4aff;
 
   /* mais claro que no tema claro: precisa aparecer sobre o campo quase preto */
   --field-focus: #60a5fa;

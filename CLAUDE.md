@@ -1,5 +1,16 @@
 @AGENTS.md
 
+## PREMISSA — sistema em produção: nunca alterar a lógica de funcionamento
+
+Decidida pelo dono em 02/11/2026. Este sistema está em produção em várias
+igrejas. Em pedidos de visual, layout ou estilo, **nunca** altere regra de
+negócio, função, hook, estado, validação, cálculo, rota, API, chamada ao
+backend, banco, autenticação, permissão, nome de campo, id/name, prop, evento
+ou fluxo existente. Mude só a aparência (classes, CSS, markup de layout). Se
+uma mudança visual exigir mexer na lógica, não faça: mantenha como está e
+avise o dono. Guia visual em vigor:
+[docs/architecture/GUIA-ESTILO-SILAS.md](docs/architecture/GUIA-ESTILO-SILAS.md).
+
 ## REGRA ACIMA DE TODAS — fato, nunca suposição
 
 Vale para qualquer atividade neste repositório, antes de qualquer outra

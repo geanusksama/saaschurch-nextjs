@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { CartoesTotais } from './CartoesTotais';
 import { AlertTriangle, Building2, CheckCircle2, ChevronDown, Church, Download, FilterX, Mail, MapPin, MoreHorizontal, PauseCircle, Pencil, Phone, Plus, Printer, SlidersHorizontal, Trash2, UserPlus, UserRound, Users, Search, Loader2, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1401,7 +1402,7 @@ export function Members() {
               <span className="hidden md:inline">{membersQuery.isFetching ? 'Buscando...' : 'Buscar'}</span>
             </button>
           </div>
-          <div className="flex min-w-0 flex-[1_1_auto] gap-2 overflow-x-auto">
+          <CartoesTotais>
             {statCards.map((card) => {
               const Icon = card.icon;
               const ligado = card.status ? statusAtual === card.status : !selectedStatusFilters?.length;
@@ -1445,7 +1446,7 @@ export function Members() {
                 <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Igrejas</span>
               </span>
             </div>
-          </div>
+          </CartoesTotais>
         </div>
 
         {loadingFilters ? (

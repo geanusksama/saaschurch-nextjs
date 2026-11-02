@@ -1,51 +1,157 @@
 /* ════════════════════════════════════════════════════════════════════════════
-   Guia de estilo v2 (novastelas/guia-style.md) — SOMENTE APARÊNCIA.
+   Guia de estilo Silas CRM (guia-style/Redesign SLS CRM interface (5)/entrega)
+   — SOMENTE APARÊNCIA. Substitui o guia v2 em 02/11/2026.
 
    Premissas:
-   - Escopo: área logada do sistema (`.app-shell`) e camadas flutuantes que o
-     Radix renderiza no <body> quando o sistema está montado
-     (`body:has(.app-shell)`). Home pública e login não são afetados.
-   - Só tema claro (`html:not(.dark)`): o modo escuro continua como estava.
+   - Escopo: área logada (`.app-shell`) e camadas flutuantes que o Radix
+     renderiza no <body> quando o sistema está montado (`body:has(.app-shell)`).
+     Home pública e login não são afetados.
+   - Tema claro e escuro (o sistema usa a classe `.dark` no <html>).
+   - A cor primária da igreja (Configurações → Branding) continua mandando:
+     `--sl-primary` = `--theme-primary`. O padrão passou a ser o violeta #6d4aff
+     (src/lib/themeSettings.ts).
+   - As telas usam classes do Tailwind v4, que leem `var(--color-*)`. Em vez de
+     editar as 180+ telas, a paleta do Tailwind é remapeada aqui dentro do
+     escopo: slate → neutros do guia, purple/violet/indigo → primária.
    - Nenhuma altura, display, posição ou breakpoint é alterado em elementos
-     genéricos — a responsividade existente é preservada. Alturas do guia só
-     entram nos componentes shadcn identificados por `data-slot`.
-   - A cor primária da igreja (Configurações → Branding) continua mandando.
+     genéricos — a responsividade existente é preservada.
    ════════════════════════════════════════════════════════════════════════════ */
 
+/* ── Tokens — tema claro ────────────────────────────────────────────────── */
 .app-shell,
 body:has(.app-shell) {
   --font: 'Plus Jakarta Sans', system-ui, sans-serif;
 
-  --ink: #0f172a;
-  --ink-hover: #1e293b;
-  --text-2: #334155;
-  --text-3: #64748b;
-  --text-4: #94a3b8;
-  --ds-border: #e2e8f0;
-  --line: #e8ecf1;
-  --divider: #f1f5f9;
-  --surface: #ffffff;
-  --bg: #f4f6f8;
-  --hover: #f4f6f8;
+  --sl-grad: linear-gradient(135deg, #e1e7fb 0%, #eceffb 35%, #f3eefb 70%, #e9f3f3 100%);
+  --sl-surface: rgba(255, 255, 255, .78);
+  --sl-solid: #ffffff;
+  --sl-hover: rgba(255, 255, 255, .95);
+  --sl-chip: #eef2f8;
+  --sl-border: #e6e8ec;
+  --sl-border-2: #dcdfe5;
+  --sl-text: #151b28;
+  --sl-text-2: #3d4554;
+  --sl-text-3: #6b7280;
+  --sl-text-4: #9aa1ad;
+  --sl-primary: var(--theme-primary, #6d4aff);
+  --sl-primary-strong: var(--theme-primary-strong, #5f3cf1);
+  --sl-primary-soft: var(--theme-primary-soft, rgba(109, 74, 255, .1));
+  --sl-primary-border: var(--theme-primary-border, rgba(109, 74, 255, .18));
+  --sl-blue: #2563eb;   --sl-blue-soft: #eaf0fe;
+  --sl-teal: #14a3b8;   --sl-teal-soft: #e3f6f8;
+  --sl-yellow: #fcd535; --sl-yellow-soft: #fff7d1;
+  --sl-dark: #1b1630;
+  --sl-ok: #1f9254;     --sl-ok-soft: #e6f6ec;
+  --sl-bad: #d6403a;    --sl-bad-soft: #fdecec;
+  --sl-warn: #c2700a;   --sl-warn-soft: #fff1e0;
+  --sl-badge: #ef3b36;
+  --sl-side: rgba(255, 255, 255, .38);
+  --sl-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+  --sl-shadow-lg: 0 20px 50px -12px rgba(15, 23, 42, .25);
+  --sl-overlay: rgba(15, 23, 42, .45);
 
-  --ok-bg: #dcfce7; --ok: #166534; --receita: #15803d;
-  --err-bg: #fee2e2; --err: #b91c1c; --despesa: #dc2626;
-  --warn-bg: #fef3c7; --warn: #a16207;
-  --info-bg: #e0e7ff; --info: #3730a3;
-  --neutral-bg: #f1f5f9; --neutral: #334155;
+  /* Paleta do Tailwind remapeada para o guia (só dentro do sistema) */
+  --color-slate-50: #f5f7fb;
+  --color-slate-100: #eef2f8;
+  --color-slate-200: #e6e8ec;
+  --color-slate-300: #dcdfe5;
+  --color-slate-400: #9aa1ad;
+  --color-slate-500: #6b7280;
+  --color-slate-600: #4b5363;
+  --color-slate-700: #3d4554;
+  --color-slate-800: #262d3b;
+  --color-slate-900: #151b28;
+  --color-slate-950: #0f1420;
 
-  --fs-title: 18px; --fs-section: 15px; --fs-body: 14px;
-  --fs-small: 13px; --fs-caption: 12px;
+  --color-purple-50: color-mix(in srgb, var(--sl-primary) 6%, white);
+  --color-purple-100: color-mix(in srgb, var(--sl-primary) 12%, white);
+  --color-purple-200: color-mix(in srgb, var(--sl-primary) 24%, white);
+  --color-purple-300: color-mix(in srgb, var(--sl-primary) 45%, white);
+  --color-purple-400: color-mix(in srgb, var(--sl-primary) 72%, white);
+  --color-purple-500: var(--sl-primary);
+  --color-purple-600: var(--sl-primary);
+  --color-purple-700: var(--sl-primary-strong);
+  --color-purple-800: color-mix(in srgb, var(--sl-primary) 70%, black);
+  --color-purple-900: color-mix(in srgb, var(--sl-primary) 55%, black);
+  --color-purple-950: color-mix(in srgb, var(--sl-primary) 35%, black);
 
-  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px;
+  --color-violet-50: var(--color-purple-50);
+  --color-violet-100: var(--color-purple-100);
+  --color-violet-200: var(--color-purple-200);
+  --color-violet-300: var(--color-purple-300);
+  --color-violet-400: var(--color-purple-400);
+  --color-violet-500: var(--color-purple-500);
+  --color-violet-600: var(--color-purple-600);
+  --color-violet-700: var(--color-purple-700);
+  --color-violet-800: var(--color-purple-800);
+  --color-violet-900: var(--color-purple-900);
+  --color-violet-950: var(--color-purple-950);
 
-  --h-sm: 34px; --h-icon: 36px; --h-md: 40px; --h-field: 46px; --h-search: 52px;
+  --color-indigo-50: var(--color-purple-50);
+  --color-indigo-100: var(--color-purple-100);
+  --color-indigo-200: var(--color-purple-200);
+  --color-indigo-300: var(--color-purple-300);
+  --color-indigo-400: var(--color-purple-400);
+  --color-indigo-500: var(--color-purple-500);
+  --color-indigo-600: var(--color-purple-600);
+  --color-indigo-700: var(--color-purple-700);
+  --color-indigo-800: var(--color-purple-800);
+  --color-indigo-900: var(--color-purple-900);
+  --color-indigo-950: var(--color-purple-950);
 
-  --r-sm: 8px; --r-md: 10px; --r-lg: 12px; --r-xl: 16px; --r-2xl: 20px; --r-pill: 999px;
+  /* Nomes do guia v2 mantidos (ainda há referência a --ds-border) */
+  --ds-border: var(--sl-border);
+}
 
-  --shadow-pop: 0 20px 40px -16px rgba(15, 23, 42, .25);
-  --shadow-modal: 0 30px 70px -20px rgba(15, 23, 42, .45);
-  --overlay: rgba(15, 23, 42, .45);
+/* ── Tokens — tema escuro ───────────────────────────────────────────────── */
+html.dark .app-shell,
+html.dark body:has(.app-shell) {
+  --sl-grad: linear-gradient(135deg, #0e1226 0%, #0f1222 45%, #1a1230 75%, #0d1a1c 100%);
+  --sl-surface: rgba(22, 28, 40, .78);
+  --sl-solid: #161c28;
+  --sl-hover: rgba(34, 42, 58, .9);
+  --sl-chip: #1f2636;
+  --sl-border: #232936;
+  --sl-border-2: #2d3443;
+  --sl-text: #eef1f6;
+  --sl-text-2: #c3c9d4;
+  --sl-text-3: #8f97a6;
+  --sl-text-4: #646c7b;
+  --sl-primary-soft: color-mix(in srgb, var(--sl-primary) 22%, #161c28);
+  --sl-blue: #3b7bff;   --sl-blue-soft: #17254a;
+  --sl-teal: #22b8cc;   --sl-teal-soft: #0f3036;
+  --sl-yellow-soft: #3a3210;
+  --sl-dark: #0a0f1c;
+  --sl-ok: #5fd38f;     --sl-ok-soft: #13301f;
+  --sl-bad: #f07a74;    --sl-bad-soft: #3a1717;
+  --sl-warn: #f0a74a;   --sl-warn-soft: #3a2610;
+  --sl-side: rgba(20, 24, 38, .55);
+  --sl-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+  --sl-shadow-lg: 0 20px 50px -12px rgba(0, 0, 0, .6);
+  --sl-overlay: rgba(3, 6, 14, .6);
+
+  /* No escuro as telas usam slate 100–400 como texto e 600–950 como
+     superfície/borda (`dark:bg-slate-800`, `dark:border-slate-700`). */
+  --color-slate-50: #f4f6fa;
+  --color-slate-100: #eef1f6;
+  --color-slate-200: #dfe3ea;
+  --color-slate-300: #c3c9d4;
+  --color-slate-400: #8f97a6;
+  --color-slate-500: #646c7b;
+  --color-slate-600: #2d3443;
+  --color-slate-700: #232936;
+  --color-slate-800: #161c28;
+  --color-slate-900: #11151f;
+  --color-slate-950: #0d1017;
+
+  --color-purple-50: color-mix(in srgb, var(--sl-primary) 10%, #161c28);
+  --color-purple-100: color-mix(in srgb, var(--sl-primary) 18%, #161c28);
+  --color-purple-200: color-mix(in srgb, var(--sl-primary) 40%, white);
+  --color-purple-300: color-mix(in srgb, var(--sl-primary) 55%, white);
+  --color-purple-400: color-mix(in srgb, var(--sl-primary) 75%, white);
+  --color-purple-800: color-mix(in srgb, var(--sl-primary) 30%, #161c28);
+  --color-purple-900: color-mix(in srgb, var(--sl-primary) 22%, #161c28);
+  --color-purple-950: color-mix(in srgb, var(--sl-primary) 14%, #161c28);
 }
 
 /* ── Tipografia ─────────────────────────────────────────────────────────── */
@@ -60,12 +166,16 @@ body:has(.app-shell) [data-slot="popover-content"],
 body:has(.app-shell) [data-slot="tooltip-content"],
 body:has(.app-shell) [data-sonner-toaster] {
   font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
 }
 .app-shell input,
 .app-shell select,
 .app-shell textarea,
 .app-shell button {
   font-family: inherit;
+}
+.app-shell {
+  color: var(--sl-text);
 }
 
 /* Valores, datas e códigos alinhados */
@@ -76,89 +186,127 @@ body:has(.app-shell) [data-sonner-toaster] {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Fundo da página (tema claro) ───────────────────────────────────────── */
-html:not(.dark) .app-shell.bg-slate-50,
-html:not(.dark) .app-shell main.bg-slate-50 {
-  background-color: var(--bg) !important;
+/* ── Fundo: gradiente pastel; áreas de página ficam transparentes ───────── */
+.app-shell {
+  background: var(--sl-grad) !important;
+  background-attachment: fixed !important;
+}
+.app-shell main[class*="bg-slate-50"],
+.app-shell main[class*="bg-slate-100"],
+.app-shell main[class*="bg-white"],
+.app-shell main[class*="dark:bg-slate-9"] {
+  background: transparent !important;
 }
 
-/* ── Cartões: borda #e8ecf1, raio 20, sem sombra ────────────────────────── */
-html:not(.dark) .app-shell [data-slot="card"] {
-  border-color: var(--line);
-  border-radius: var(--r-2xl);
+/* ── Cartões: chapados, borda fina, raio 20, sem sombra colorida ────────── */
+.app-shell [data-slot="card"] {
+  background-color: var(--sl-solid);
+  border-color: var(--sl-border);
+  border-radius: 20px;
   box-shadow: none;
 }
-/* Telas antigas: cartão = div/section branco com borda e `shadow-sm`.
-   As telas de referência v2 (Membros, Livro Caixa, Novo Membro) não usam
-   `shadow-sm`, então não são tocadas por estas regras. */
-html:not(.dark) .app-shell main :is(div, section, article)[class*="bg-white"][class*="border"][class*="shadow-sm"] {
-  border-color: var(--line) !important;
-  border-radius: var(--r-2xl) !important;
+.app-shell main :is(div, section, article)[class*="bg-white"][class*="border"][class*="shadow-sm"] {
+  border-color: var(--sl-border) !important;
   box-shadow: none !important;
 }
-/* Cabeçalho de tabela das telas antigas */
-html:not(.dark) .app-shell main thead[class*="bg-slate-50"],
-html:not(.dark) .app-shell main thead tr[class*="bg-slate-50"] {
-  background-color: #f8fafc !important;
-  border-color: #eef2f6 !important;
-}
-/* Pílulas de status das telas antigas: texto 12/700 no raio pill */
-.app-shell main span[class*="rounded-full"][class*="px-2"][class*="text-xs"] {
-  font-weight: 700;
-}
 [data-slot="card-title"] {
-  font-size: var(--fs-section);
+  font-size: 17px;
   font-weight: 700;
 }
-
-/* ── Tabelas ────────────────────────────────────────────────────────────── */
-html:not(.dark) .app-shell table thead th {
-  font-size: var(--fs-caption);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--text-3);
-}
-html:not(.dark) .app-shell table tbody tr {
-  border-color: var(--divider);
-}
-html:not(.dark) .app-shell table tbody tr + tr,
-html:not(.dark) .app-shell table tbody td {
-  border-color: var(--divider);
+.app-shell [data-slot="card-description"] {
+  color: var(--sl-text-3);
 }
 
-/* ── Botões shadcn ──────────────────────────────────────────────────────── */
+/* ── Tabelas: cabeçalho em texto secundário 12/600, linhas finas ───────── */
+.app-shell table thead th {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--sl-text-3);
+}
+.app-shell main thead[class*="bg-slate-50"],
+.app-shell main thead tr[class*="bg-slate-50"] {
+  background-color: transparent !important;
+}
+.app-shell table tbody tr,
+.app-shell table tbody td {
+  border-color: var(--sl-border);
+}
+.app-shell table tbody tr:hover {
+  background-color: var(--sl-hover);
+}
+html.dark .app-shell table tbody tr:hover {
+  background-color: var(--sl-chip);
+}
+
+/* ── Botões shadcn: pílula ──────────────────────────────────────────────── */
 .app-shell [data-slot="button"],
 body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"],
 body:has(.app-shell) [data-slot="sheet-content"] [data-slot="button"],
 body:has(.app-shell) [data-slot="alert-dialog-content"] button {
-  border-radius: var(--r-md);
+  border-radius: 999px;
   font-weight: 600;
+  white-space: nowrap;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease, background-color .15s ease;
 }
-html:not(.dark) .app-shell [data-slot="button"].border.bg-background,
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"].border.bg-background {
-  border-color: var(--ds-border);
-  color: var(--text-2);
+/* Primário (fundo da cor primária) */
+.app-shell [data-slot="button"].bg-primary,
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"].bg-primary,
+body:has(.app-shell) [data-slot="alert-dialog-content"] [data-slot="alert-dialog-action"] {
+  box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--sl-primary) 80%, transparent);
 }
-html:not(.dark) .app-shell [data-slot="button"].border.bg-background:hover,
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"].border.bg-background:hover {
-  border-color: var(--ink);
-  background-color: var(--surface);
+.app-shell [data-slot="button"].bg-primary:hover {
+  filter: brightness(1.08);
+}
+/* Secundário/contorno: branco sólido, sombra leve */
+.app-shell [data-slot="button"].border.bg-background,
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"].border.bg-background {
+  background-color: var(--sl-solid);
+  border-color: var(--sl-border-2);
+  color: var(--sl-text);
+}
+.app-shell [data-slot="button"].border.bg-background:hover,
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"].border.bg-background:hover {
+  background-color: var(--sl-solid);
+  transform: translateY(-1px);
+  box-shadow: var(--sl-shadow);
 }
 
-/* ── Campos ─────────────────────────────────────────────────────────────── */
-/* Raio e cor de borda em todos os campos; altura só nos componentes shadcn. */
-html:not(.dark) .app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
-html:not(.dark) .app-shell select,
-html:not(.dark) .app-shell textarea,
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] select,
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] textarea {
-  border-color: var(--ds-border);
+/* Botões de ação das telas (classe Tailwind com fundo da primária) */
+.app-shell main button:is([class*="bg-purple-6"], [class*="bg-violet-6"], [class*="bg-indigo-6"]):not([class*="rounded-none"]) {
+  box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--sl-primary) 70%, transparent);
 }
-html:not(.dark) .app-shell input::placeholder,
-html:not(.dark) .app-shell textarea::placeholder {
-  color: var(--text-4);
+.app-shell main button:is([class*="bg-purple-6"], [class*="bg-violet-6"], [class*="bg-indigo-6"]):hover {
+  filter: brightness(1.08);
+}
+
+/* Hover: elevar levemente, sem troca brusca de cor */
+.app-shell main a[class*="rounded-2xl"][class*="bg-white"]:hover,
+.app-shell main button[class*="rounded-2xl"][class*="bg-white"]:hover {
+  transform: translateY(-2px);
+}
+
+/* Botões e chips nunca quebram linha */
+.app-shell [data-slot="badge"],
+.app-shell [data-slot="tabs-trigger"] {
+  white-space: nowrap;
+}
+
+/* ── Campos: raio 12, borda fina, foco na primária com halo suave ──────── */
+.app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+.app-shell select,
+.app-shell textarea,
+body:has(.app-shell) [data-slot="dialog-content"] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+body:has(.app-shell) [data-slot="dialog-content"] select,
+body:has(.app-shell) [data-slot="dialog-content"] textarea {
+  border-color: var(--sl-border);
+}
+.app-shell input::placeholder,
+.app-shell textarea::placeholder,
+body:has(.app-shell) [data-slot="dialog-content"] input::placeholder,
+body:has(.app-shell) [data-slot="dialog-content"] textarea::placeholder {
+  color: var(--sl-text-4);
 }
 .app-shell [data-slot="input"],
 .app-shell [data-slot="select-trigger"],
@@ -166,48 +314,112 @@ html:not(.dark) .app-shell textarea::placeholder {
 body:has(.app-shell) [data-slot="dialog-content"] [data-slot="input"],
 body:has(.app-shell) [data-slot="dialog-content"] [data-slot="select-trigger"],
 body:has(.app-shell) [data-slot="dialog-content"] [data-slot="textarea"] {
-  border-radius: var(--r-lg);
-  border-width: 1.5px;
+  border-radius: 12px;
+  background-color: var(--sl-solid);
 }
 .app-shell [data-slot="input"],
 .app-shell [data-slot="select-trigger"],
 body:has(.app-shell) [data-slot="dialog-content"] [data-slot="input"],
 body:has(.app-shell) [data-slot="dialog-content"] [data-slot="select-trigger"] {
-  min-height: var(--h-field);
+  min-height: 44px;
 }
-html:not(.dark) .app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):focus,
-html:not(.dark) .app-shell select:focus,
-html:not(.dark) .app-shell textarea:focus,
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] input:focus,
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] textarea:focus {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
-  border-color: var(--ink) !important;
+.app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):focus,
+.app-shell select:focus,
+.app-shell textarea:focus,
+body:has(.app-shell) [data-slot="dialog-content"] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):focus,
+body:has(.app-shell) [data-slot="dialog-content"] select:focus,
+body:has(.app-shell) [data-slot="dialog-content"] textarea:focus {
+  outline: none;
+  border-color: var(--sl-primary) !important;
+  box-shadow: 0 0 0 4px var(--sl-primary-soft) !important;
 }
 
 /* Rótulos de campo 13/600 */
-html:not(.dark) .app-shell [data-slot="label"],
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"] [data-slot="label"] {
-  font-size: var(--fs-small);
+.app-shell [data-slot="label"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="label"] {
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-2);
+  color: var(--sl-text-2);
+}
+
+/* Checkbox e switch na primária */
+.app-shell [data-slot="checkbox"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="checkbox"] {
+  border-radius: 6px;
+}
+.app-shell [data-slot="checkbox"][data-state="checked"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="checkbox"][data-state="checked"],
+.app-shell [data-slot="switch"][data-state="checked"],
+body:has(.app-shell) [data-slot="dialog-content"] [data-slot="switch"][data-state="checked"] {
+  background-color: var(--sl-primary);
+  border-color: var(--sl-primary);
 }
 
 /* ── Badges ─────────────────────────────────────────────────────────────── */
 .app-shell [data-slot="badge"] {
-  border-radius: var(--r-pill);
-  font-size: var(--fs-caption);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.app-shell main span[class*="rounded-full"][class*="px-2"][class*="text-xs"] {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── Abas (shadcn Tabs): pílula, ativa na primária ──────────────────────── */
+.app-shell [data-slot="tabs-list"] {
+  border-radius: 999px;
+  background-color: var(--sl-chip);
+  padding: 4px;
+}
+.app-shell [data-slot="tabs-trigger"] {
+  border-radius: 999px;
+  font-weight: 600;
+}
+.app-shell [data-slot="tabs-trigger"][data-state="active"] {
+  background-color: var(--sl-primary);
+  color: #fff;
+  box-shadow: none;
+}
+
+/* ── Sanfona ────────────────────────────────────────────────────────────── */
+.app-shell [data-slot="accordion-item"] {
+  border-color: var(--sl-border);
+}
+.app-shell [data-slot="accordion-trigger"] {
   font-weight: 700;
 }
 
+/* ── Paginação ──────────────────────────────────────────────────────────── */
+.app-shell [data-slot="pagination-link"] {
+  border-radius: 999px;
+}
+.app-shell [data-slot="pagination-link"][data-active="true"],
+.app-shell [data-slot="pagination-link"][aria-current="page"] {
+  background-color: var(--sl-primary);
+  border-color: var(--sl-primary);
+  color: #fff;
+}
+
+/* ── Progresso ──────────────────────────────────────────────────────────── */
+.app-shell [data-slot="progress"] {
+  background-color: var(--sl-chip);
+}
+.app-shell [data-slot="progress-indicator"] {
+  background-color: var(--sl-primary);
+}
+
 /* ── Camadas flutuantes ─────────────────────────────────────────────────── */
-html:not(.dark) body:has(.app-shell) [data-slot="dropdown-menu-content"],
-html:not(.dark) body:has(.app-shell) [data-slot="select-content"],
-html:not(.dark) body:has(.app-shell) [data-slot="popover-content"],
-html:not(.dark) body:has(.app-shell) [data-slot="context-menu-content"] {
-  border-color: var(--line);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-pop);
+body:has(.app-shell) [data-slot="dropdown-menu-content"],
+body:has(.app-shell) [data-slot="select-content"],
+body:has(.app-shell) [data-slot="popover-content"],
+body:has(.app-shell) [data-slot="context-menu-content"],
+body:has(.app-shell) [data-slot="hover-card-content"] {
+  background-color: var(--sl-solid);
+  color: var(--sl-text);
+  border-color: var(--sl-border);
+  border-radius: 16px;
+  box-shadow: var(--sl-shadow-lg);
 }
 body:has(.app-shell) [data-slot="dropdown-menu-content"],
 body:has(.app-shell) [data-slot="context-menu-content"] {
@@ -216,50 +428,201 @@ body:has(.app-shell) [data-slot="context-menu-content"] {
 body:has(.app-shell) [data-slot="dropdown-menu-item"],
 body:has(.app-shell) [data-slot="select-item"],
 body:has(.app-shell) [data-slot="context-menu-item"] {
-  border-radius: var(--r-md);
-  font-size: var(--fs-body);
+  border-radius: 10px;
+  font-size: 13.5px;
   font-weight: 500;
 }
-html:not(.dark) body:has(.app-shell) [data-slot="dropdown-menu-item"]:focus,
-html:not(.dark) body:has(.app-shell) [data-slot="select-item"]:focus,
-html:not(.dark) body:has(.app-shell) [data-slot="context-menu-item"]:focus {
-  background-color: var(--hover);
+body:has(.app-shell) [data-slot="dropdown-menu-item"]:focus,
+body:has(.app-shell) [data-slot="select-item"]:focus,
+body:has(.app-shell) [data-slot="context-menu-item"]:focus {
+  background-color: var(--sl-chip);
+  color: var(--sl-text);
 }
-html:not(.dark) body:has(.app-shell) [data-slot="dropdown-menu-separator"] {
-  background-color: var(--divider);
+body:has(.app-shell) [data-slot="dropdown-menu-separator"],
+body:has(.app-shell) [data-slot="context-menu-separator"] {
+  background-color: var(--sl-border);
 }
 
-/* Modal: raio 22, overlay do guia */
+/* Modal: raio 22, overlay escurecido com desfoque */
 body:has(.app-shell) [data-slot="dialog-overlay"],
 body:has(.app-shell) [data-slot="alert-dialog-overlay"],
 body:has(.app-shell) [data-slot="sheet-overlay"],
 body:has(.app-shell) [data-slot="drawer-overlay"] {
-  background-color: var(--overlay);
+  background-color: var(--sl-overlay);
+  backdrop-filter: blur(4px);
 }
 body:has(.app-shell) [data-slot="dialog-content"],
 body:has(.app-shell) [data-slot="alert-dialog-content"] {
   border-radius: 22px;
 }
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-content"],
-html:not(.dark) body:has(.app-shell) [data-slot="alert-dialog-content"],
-html:not(.dark) body:has(.app-shell) [data-slot="sheet-content"] {
-  border-color: var(--line);
-  box-shadow: var(--shadow-modal);
+body:has(.app-shell) [data-slot="dialog-content"],
+body:has(.app-shell) [data-slot="alert-dialog-content"],
+body:has(.app-shell) [data-slot="sheet-content"],
+body:has(.app-shell) [data-slot="drawer-content"] {
+  background-color: var(--sl-solid);
+  color: var(--sl-text);
+  border-color: var(--sl-border);
+  box-shadow: var(--sl-shadow-lg);
+}
+/* Bottom sheet (drawer de baixo): cantos superiores 28px */
+body:has(.app-shell) [data-slot="drawer-content"][data-vaul-drawer-direction="bottom"] {
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
 }
 body:has(.app-shell) [data-slot="dialog-title"],
 body:has(.app-shell) [data-slot="alert-dialog-title"],
-body:has(.app-shell) [data-slot="sheet-title"] {
-  font-size: var(--fs-title);
+body:has(.app-shell) [data-slot="sheet-title"],
+body:has(.app-shell) [data-slot="drawer-title"] {
+  font-size: 17px;
   font-weight: 700;
 }
-html:not(.dark) body:has(.app-shell) [data-slot="dialog-description"],
-html:not(.dark) body:has(.app-shell) [data-slot="sheet-description"] {
-  color: var(--text-3);
+body:has(.app-shell) [data-slot="dialog-description"],
+body:has(.app-shell) [data-slot="alert-dialog-description"],
+body:has(.app-shell) [data-slot="sheet-description"],
+body:has(.app-shell) [data-slot="drawer-description"] {
+  color: var(--sl-text-3);
 }
 
-/* Tooltip */
-html:not(.dark) body:has(.app-shell) [data-slot="tooltip-content"] {
-  background-color: var(--ink);
-  border-radius: var(--r-sm);
-  font-size: var(--fs-caption);
+/* Tooltip: escuro de destaque */
+body:has(.app-shell) [data-slot="tooltip-content"] {
+  background-color: var(--sl-dark);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Toast (sonner): card escuro, raio 16 */
+body:has(.app-shell) [data-sonner-toast] {
+  border-radius: 16px;
+  font-family: var(--font);
+}
+
+/* Alertas shadcn: raio 16 */
+.app-shell [data-slot="alert"] {
+  border-radius: 16px;
+}
+
+/* ── Rolagem fina ───────────────────────────────────────────────────────── */
+.app-shell * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sl-border-2) transparent;
+}
+
+/* ── Celular (< 768px): área de toque mínima de 44px nos botões shadcn ──── */
+@media (max-width: 767.98px) {
+  .app-shell [data-slot="button"]:not([data-size="sm"]),
+  body:has(.app-shell) [data-slot="dialog-content"] [data-slot="button"]:not([data-size="sm"]) {
+    min-height: 44px;
+  }
+  .app-shell [data-slot="input"],
+  .app-shell [data-slot="select-trigger"],
+  .app-shell [data-slot="textarea"] {
+    font-size: 16px; /* evita zoom automático do iOS ao focar */
+  }
+}
+
+/* ── Sidebar roxa no tema escuro (decisão do dono em 02/11/2026) ───────────
+   Só no escuro; no claro a sidebar segue o vidro claro do guia. Os tokens são
+   redefinidos só dentro da sidebar. */
+html.dark .app-shell .sl-sidebar {
+  --sl-side: #1e1730;
+  --sl-solid: rgba(255, 255, 255, .09);
+  --sl-hover: rgba(255, 255, 255, .06);
+  --sl-chip: rgba(255, 255, 255, .08);
+  --sl-border: rgba(255, 255, 255, .08);
+  --sl-border-2: rgba(255, 255, 255, .14);
+  --sl-text: #ffffff;
+  --sl-text-2: #ddd7f0;
+  --sl-text-3: #a79fc6;
+  --sl-text-4: #8b82ab;
+  --sl-ok: #5fd38f;
+  --sl-ok-soft: rgba(95, 211, 143, .16);
+  --sl-shadow: none;
+  background: #1e1730 !important;
+  backdrop-filter: none !important;
+  color: var(--sl-text);
+}
+html.dark .app-shell .sl-sidebar input {
+  color: #ffffff;
+  caret-color: #ffffff;
+  background-color: var(--sl-solid);
+}
+html.dark .app-shell .sl-sidebar .text-slate-400 {
+  color: var(--sl-text-3);
+}
+
+/* ── Tela de Apps: ícone em círculo de 52px com tom suave da cor do app ────
+   O globals.css pinta `.app-tile-icon` com a cor cheia (!important); aqui a
+   especificidade é maior para valer o guia. A cor de cada app continua. */
+html .app-shell .app-tile-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50% !important;
+  background-color: color-mix(in srgb, var(--tile-color) 14%, white) !important;
+  color: var(--tile-color) !important;
+  box-shadow: none !important;
+}
+html.dark .app-shell .app-tile-icon {
+  background-color: color-mix(in srgb, var(--tile-color) 24%, #161c28) !important;
+  color: color-mix(in srgb, var(--tile-color) 70%, white) !important;
+}
+html .app-shell .app-tile-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.8;
+}
+
+/* Telas cuja raiz pinta o fundo de cinza deixam o gradiente aparecer */
+.app-shell main > :is([class*="bg-slate-50"], [class*="bg-slate-100"]):not([class*="border"]) {
+  background-color: transparent !important;
+}
+html.dark .app-shell main > [class*="dark:bg-slate-9"]:not([class*="border"]) {
+  background-color: transparent !important;
+}
+
+/* ── Botões em "vidro" (pedido do dono, 02/11/2026) ────────────────────────
+   Padrão do botão ⋯ do header: primária sólida, brilho suave da própria cor
+   em volta e um reflexo claro no alto. Vale para:
+   - botões e links-botão de ação principal que as telas pintam de escuro
+     (bg-slate-900 + texto branco), que passam para a primária;
+   - os que já são da primária (shadcn bg-primary, purple/violet/indigo-600,
+     var(--sl-primary)).
+   Só aparência: a cor continua vindo do Branding da igreja. */
+.app-shell :is(button, a)[class*="bg-slate-900"][class*="text-white"]:not([disabled]),
+body:has(.app-shell) [data-slot="dialog-content"] :is(button, a)[class*="bg-slate-900"][class*="text-white"]:not([disabled]) {
+  background-color: var(--sl-primary) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+.app-shell :is(button, a):is([class*="bg-slate-900"][class*="text-white"], [class*="bg-purple-6"], [class*="bg-violet-6"], [class*="bg-indigo-6"], [class*="bg-[var(--sl-primary)]"], .bg-primary):not([disabled]),
+body:has(.app-shell) [data-slot="dialog-content"] :is(button, a):is([class*="bg-slate-900"][class*="text-white"], [class*="bg-purple-6"], [class*="bg-violet-6"], [class*="bg-indigo-6"], .bg-primary):not([disabled]) {
+  box-shadow:
+    0 8px 20px -6px color-mix(in srgb, var(--sl-primary) 70%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .28),
+    inset 0 -1px 0 rgba(0, 0, 0, .08) !important;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.app-shell :is(button, a):is([class*="bg-slate-900"][class*="text-white"], [class*="bg-purple-6"], [class*="bg-violet-6"], [class*="bg-indigo-6"], [class*="bg-[var(--sl-primary)]"], .bg-primary):not([disabled]):hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 26px -8px color-mix(in srgb, var(--sl-primary) 80%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .32),
+    inset 0 -1px 0 rgba(0, 0, 0, .08) !important;
+}
+
+/* ── Campo embutido numa caixa arredondada (02/11/2026) ──────────────────────
+   Busca de gaveta, valor do Lançamento etc.: o <input> não tem borda própria
+   (fundo transparente, border 0 ou focus:outline-none) e mora dentro de uma
+   caixa arredondada. O contorno de foco global desenhava um retângulo reto
+   dentro da caixa. Aqui o campo fica sem contorno e a caixa que o contém
+   ganha o anel, que segue o raio dela. Só aparência. */
+.app-shell.app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):is(.bg-transparent, [style*="border: 0"], [class*="focus:outline-none"]):focus,
+body:has(.app-shell) [data-slot="dialog-content"] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):is(.bg-transparent, [style*="border: 0"], [class*="focus:outline-none"]):focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.app-shell :is(label, div):has(> input:is(.bg-transparent, [style*="border: 0"], [class*="focus:outline-none"]):focus) {
+  box-shadow: 0 0 0 4px var(--sl-primary-soft);
 }

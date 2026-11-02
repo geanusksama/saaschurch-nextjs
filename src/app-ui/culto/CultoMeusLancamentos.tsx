@@ -44,6 +44,14 @@ const ICONE_BLOCO: Record<Bloco, React.ElementType> = {
   EXTRA: FileText,
 };
 
+/** Selo de data do cartão no celular: "DOM" e "02", lidos da data do culto. */
+const DIA_SEMANA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+function seloData(iso: string): { semana: string; dia: string } {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { semana: '', dia: '' };
+  return { semana: DIA_SEMANA[d.getUTCDay()], dia: String(d.getUTCDate()).padStart(2, '0') };
+}
+
 interface Props {
   papeis: MeusPapeis;
 }
@@ -120,7 +128,7 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
   const pendentes = registros.filter((r) => !meuEnvio(r).enviado);
 
   return (
-    <div className="p-6 space-y-5 max-w-4xl [&_button:not(:disabled)]:cursor-pointer">
+    <div className="p-6 space-y-5 max-w-4xl [&_button:not(:disabled)]:cursor-pointer max-sm:min-h-full max-sm:bg-[#F4F6F9] max-sm:px-4 max-sm:pt-4 max-sm:pb-[calc(88px+env(safe-area-inset-bottom))] dark:max-sm:bg-[#0d1017]">
       <div>
         <button
           onClick={() => navigate('/app-ui/culto')}
@@ -129,7 +137,7 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
           <ArrowLeft className="w-3.5 h-3.5" />
           Voltar para os cards
         </button>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Meus lançamentos</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white max-sm:text-[22px] max-sm:font-extrabold">Meus lançamentos</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {meusBlocos.map((b) => ROTULO_BLOCO[b]).join(' e ')}
           {minhaIgreja ? ` · ${minhaIgreja}` : ''}. Você lança o seu bloco; o dirigente confere e
@@ -137,7 +145,7 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className="flex flex-wrap items-end gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm max-sm:rounded-[20px] max-sm:border-[#e5e7eb] max-sm:shadow-none">
         <label className="block">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5" /> De
@@ -146,7 +154,7 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
             type="date"
             value={de}
             onChange={(e) => aplicarFiltro(setDe, e.target.value)}
-            className="mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+            className="mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:text-base"
           />
         </label>
         <label className="block">
@@ -155,7 +163,7 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
             type="date"
             value={ate}
             onChange={(e) => aplicarFiltro(setAte, e.target.value)}
-            className="mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+            className="mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:text-base"
           />
         </label>
         <button
@@ -175,7 +183,7 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
               type="date"
               value={novaData}
               onChange={(e) => setNovaData(e.target.value)}
-              className="mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+              className="mt-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 max-sm:rounded-xl max-sm:text-base"
             />
           </label>
           <button
@@ -235,12 +243,21 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
                 <button
                   key={r.id}
                   onClick={() => setAbertoId(r.id)}
-                  className={`w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border bg-white dark:bg-slate-800 text-left hover:shadow-md transition-shadow ${
+                  className={`w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border bg-white dark:bg-slate-800 text-left hover:shadow-md transition-shadow max-sm:rounded-[20px] max-sm:p-3.5 ${
                     devolvido ? BORDA.ambar : enviado ? BORDA.verde : BORDA.vermelho
                   }`}
                 >
+                  {/* Celular: selo com o dia da semana e o dia do mês. */}
+                  <span className="sm:hidden w-12 shrink-0 rounded-xl bg-[#151b28] py-1.5 text-center text-white">
+                    <span className="block text-[10px] font-bold tracking-wider opacity-80">
+                      {seloData(r.dataCulto).semana}
+                    </span>
+                    <span className="block text-lg font-extrabold leading-tight tabular-nums">
+                      {seloData(r.dataCulto).dia}
+                    </span>
+                  </span>
                   <span
-                    className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center ${
+                    className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center max-sm:hidden ${
                       enviado ? PASTILHA.verde : PASTILHA.vermelho
                     }`}
                   >
@@ -261,7 +278,7 @@ export default function CultoMeusLancamentos({ papeis }: Props) {
                     </span>
                   </span>
   
-                  <span className="shrink-0 flex items-center gap-2 text-xs font-semibold">
+                  <span className="shrink-0 flex items-center gap-2 text-xs font-semibold max-sm:w-full max-sm:justify-between max-sm:pl-[60px]">
                     {devolvido ? (
                       <span className={`inline-flex items-center gap-1 ${TEXTO.ambar}`}>
                         <Undo2 className="w-3.5 h-3.5" /> devolvido — corrigir

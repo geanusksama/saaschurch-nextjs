@@ -6,7 +6,6 @@ import {
   Calendar,
   LayoutGrid,
   List as ListIcon,
-  TrendingUp,
   MoreVertical,
   Ellipsis,
   Download,
@@ -37,6 +36,7 @@ import { useCampoVisible } from "../../lib/campoVisibility";
 import { PrintModal } from "../../components/app-ui/shared/PrintModal";
 import { printReport } from "../../lib/printReport";
 import { Permissao } from '../../lib/permissoes/Permissao';
+import { PipelinePastas, type ResumoPasta } from "./PipelinePastas";
 
 type Pipeline = { id: number; name: string; type: string | null };
 type Service = { id: number; sigla: string; description: string };
@@ -292,6 +292,10 @@ export default function SecretariatPipeline() {
   const [stages, setStages] = useState<Stage[]>([]);
   const pipelineId = SECRETARIA_PIPELINE_ID;
   const [stageId, setStageId] = useState<number | null>(null);
+  // Guia Silas CRM: a tela abre na grade de pastas; clicar numa pasta faz o
+  // mesmo setStageId das antigas abas e mostra o quadro com os filtros.
+  const [mostrarPastas, setMostrarPastas] = useState(true);
+  const [resumoPastas, setResumoPastas] = useState<Record<number, ResumoPasta>>({});
 
   const { start: defaultFrom, end: defaultTo } = getMonthDateRange();
   const [from, setFrom] = useState(defaultFrom);
@@ -626,68 +630,67 @@ export default function SecretariatPipeline() {
 
   const allCards = useMemo(() => board.flatMap((c) => c.cards), [board]);
 
+  // Resumo de cada pasta (total por etapa) — só leitura, pela mesma rota do
+  // quadro e com os mesmos filtros de período/campo/igreja da tela, então
+  // respeita o escopo do usuário. Recarrega toda vez que a grade é exibida.
+  useEffect(() => {
+    if (!mostrarPastas || stages.length === 0) return;
+    let cancelado = false;
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to + "T23:59:59");
+    if (filterChurchIds.length) params.set("churchIds", filterChurchIds.join(","));
+    if (filterCampoId) params.set("campoId", filterCampoId);
+    stages.forEach((stage) => {
+      authFetch(`${apiBase}/kan/stages/${stage.id}/board?${params}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { columns?: ColumnWithCards[]; totalCards?: number } | null) => {
+          if (cancelado || !data) return;
+          setResumoPastas((prev) => ({
+            ...prev,
+            [stage.id]: {
+              total: data.totalCards ?? 0,
+              etapas: (data.columns || []).map((c) => ({ id: c.id, nome: c.name, total: c.totalCards ?? 0 })),
+            },
+          }));
+        })
+        .catch(() => {});
+    });
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mostrarPastas, stages]);
+
+  if (mostrarPastas) {
+    return (
+      <PipelinePastas
+        stages={stages}
+        stageAtual={stageId}
+        resumo={resumoPastas}
+        periodo={{ from, to }}
+        onAbrir={(id) => { setStageId(id); setMostrarPastas(false); }}
+      />
+    );
+  }
+
   return (
     <div className="p-4 sm:px-6 sm:pt-3 sm:pb-6">
-      {/* Pastas de trabalho. Antes vinham abaixo de uma faixa de titulo
-          ("Pipeline – Secretaria" sobre "Gestao de processos eclesiasticos")
-          que repetia o nome do menu; a faixa saiu inteira e o kanban subiu.
-          O pt-2 preserva a "orelha" da pasta, que fica em -top-[8px]. */}
-      {stages.length > 0 && (
-        <div className="mb-2 -mx-6 px-6 overflow-x-auto pt-2">
-          <div className="flex gap-2 pb-1" style={{ minWidth: "max-content" }}>
-            {stages.map((stage, i) => {
-              const isActive = stageId === stage.id;
-              // Uma cor por pasta, so na abinha do topo — corpo e letras seguem
-              // o padrao neutro do sistema. Valores arbitrarios de proposito:
-              // globals.css normaliza toda cor nomeada dentro de .app-shell
-              // ([class*="bg-sky-200"] { ...!important }), e o seletor casa por
-              // trecho do nome da classe, entao "bg-sky-200" viraria cinza.
-              const palette = [
-                { tab: "bg-[#93c5fd]", tabActive: "bg-[#2563eb]" },
-                { tab: "bg-[#c4b5fd]", tabActive: "bg-[#7c3aed]" },
-                { tab: "bg-[#5eead4]", tabActive: "bg-[#0d9488]" },
-                { tab: "bg-[#fcd34d]", tabActive: "bg-[#d97706]" },
-                { tab: "bg-[#6ee7b7]", tabActive: "bg-[#059669]" },
-                { tab: "bg-[#fca5a5]", tabActive: "bg-[#dc2626]" },
-              ][i % 6];
-              const haystack = [stage.name, stage.description || "", stage.service?.sigla || "", stage.service?.description || ""].join(" ").toLowerCase();
-              const kind = haystack.includes("batis") ? "baptism" : haystack.includes("consagra") ? "consecration" : haystack.includes("transf") ? "transfer" : "default";
-              const ServiceIcon = kind === "baptism" ? Droplets : kind === "consecration" ? Shirt : kind === "transfer" ? ArrowRightLeft : TrendingUp;
-              return (
-                <button
-                  key={stage.id}
-                  onClick={() => setStageId(stage.id)}
-                  className={`group relative min-w-[140px] max-w-[200px] rounded-b-sm rounded-tr-sm text-left transition-all duration-150 overflow-visible
-                    ${isActive
-                      ? `bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm`
-                      : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                    }`}
-                  title={stage.description || stage.name}
-                >
-                  {/* folder ear tab */}
-                  <span
-                    className={`absolute -top-[8px] left-0 h-[8px] w-[44px] rounded-t-sm
-                      ${isActive ? palette.tabActive : palette.tab}`}
-                  />
-                  <div className="flex items-center gap-2.5 px-3 py-2.5">
-                    <span className={`inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-sm ${isActive ? "bg-white dark:bg-slate-800" : "bg-slate-100 dark:bg-slate-700"}`}>
-                      <ServiceIcon className={`h-3.5 w-3.5 text-slate-500 dark:text-slate-400`} />
-                    </span>
-                    <div className="min-w-0">
-                      <p className={`text-[10px] font-semibold uppercase tracking-wider leading-none mb-0.5 text-slate-400 dark:text-slate-500`}>
-                        Pasta de trabalho
-                      </p>
-                      <p className={`text-xs font-bold leading-tight truncate ${isActive ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-200"}`}>
-                        {stage.name}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Pastas de trabalho: as abas do topo deram lugar à grade de pastas
+          (PipelinePastas). Aqui fica só o caminho de volta e a pasta aberta. */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setMostrarPastas(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--sl-solid)] px-3.5 text-[13px] font-semibold text-[var(--sl-text-2)] shadow-[var(--sl-shadow)] transition hover:-translate-y-px"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Pastas
+        </button>
+        {stages.find((s) => s.id === stageId) && (
+          <span className="inline-flex h-9 items-center rounded-full bg-[var(--sl-dark)] px-4 text-[13px] font-semibold text-white whitespace-nowrap">
+            {stages.find((s) => s.id === stageId)?.name}
+          </span>
+        )}
+      </div>
 
       {/* Toolbar */}
       <div className="mb-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 sm:p-3">

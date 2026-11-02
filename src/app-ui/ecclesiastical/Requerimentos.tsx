@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CartoesTotais } from '../../components/app-ui/CartoesTotais';
 import {
   AlertTriangle,
   CheckCircle,
@@ -16,13 +17,14 @@ import {
   Plus,
   Printer,
   Search,
+  SlidersHorizontal,
   Trash2,
   Upload,
   User,
   X,
 } from "lucide-react";
 import { apiBase } from "../../lib/apiBase";
-import { AvisoDefinaFiltros, BotaoBuscar, type FiltrosConsulta } from "../../components/app-ui/BotaoBuscar";
+import { type FiltrosConsulta } from "../../components/app-ui/BotaoBuscar";
 import { useCampoVisible } from "../../lib/campoVisibility";
 import { PrintModal } from "../../components/app-ui/shared/PrintModal";
 import { printReport } from "../../lib/printReport";
@@ -285,6 +287,8 @@ export default function Requerimentos() {
   // cada tecla na busca disparava uma consulta).
   const [aplicados, setAplicados] = useState<FiltrosConsulta | null>(null);
   const [page, setPage] = useState(1);
+  // Só apresentação: abre/fecha a gaveta de filtros.
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   // Modal
   const [showNew, setShowNew] = useState(false);
@@ -490,8 +494,24 @@ export default function Requerimentos() {
   const aprovados = (statsMap["aprovado"] || 0) + (statsMap["finalizado"] || 0);
   const cancelados = (statsMap["cancelado"] || 0) + (statsMap["rejeitado"] || 0) + (statsMap["arquivado"] || 0);
 
+  // Só apresentação: quantos filtros da gaveta diferem do estado inicial da tela.
+  const filtrosAtivosCount = [
+    selectedFieldId !== activeFieldId,
+    selectedRegionalId !== defaultRegionalFilter,
+    selectedChurchId !== defaultChurchFilter,
+    filterStatus !== "",
+    from !== defaultFrom || to !== defaultTo,
+    activeServiceId != null,
+  ].filter(Boolean).length;
+  const campoFiltroClasse = "h-[50px] w-full appearance-none rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-10 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white";
+  const dataFiltroClasse = "h-[50px] w-full rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white";
+  const rotuloFiltroClasse = "flex flex-col gap-2.5 text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400";
+  const thClasse = "px-4 py-3 text-left text-xs font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400";
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
+      <style>{"@keyframes rqDrawerIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}"}</style>
+
       {/* Toast */}
       {toast && (
         <div
@@ -505,231 +525,141 @@ export default function Requerimentos() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap text-slate-900 dark:text-slate-100">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
-            <FileText className="w-6 h-6 text-indigo-600" />
+      {/* Cabeçalho */}
+      <header className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-700 dark:text-slate-200">
+            <FileText className="h-5 w-5" strokeWidth={1.8} />
           </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-[-.01em] text-slate-900 dark:text-white">Requerimentos</h1>
-            <p className="text-slate-500 text-sm">Processos administrativos eclesiásticos</p>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Secretaria</span>
+            <h1 className="whitespace-nowrap text-[17px] font-bold">Requerimentos</h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Permissao chave="requirements.requerimentos.exportar" rotulo="Exportar — Requerimentos" herda="requirements.view">
-            <button className="inline-flex h-10 items-center gap-1.5 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-              <Download size={15} />
-              Exportar
+            <button
+              title="Exportar"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              <Download className="h-4 w-4" strokeWidth={2} />
+              <span className="hidden md:inline">Exportar</span>
             </button>
           </Permissao>
           <Permissao chave="requirements.requerimentos.imprimir" rotulo="Imprimir — Requerimentos" herda="requirements.view">
             <button
               onClick={() => setPrintModalOpen(true)}
-              className="inline-flex h-10 items-center gap-1.5 rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              title="Imprimir"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
-              <Printer size={15} />
-              Imprimir
+              <Printer className="h-4 w-4" strokeWidth={2} />
+              <span className="hidden md:inline">Imprimir</span>
             </button>
           </Permissao>
           <Permissao chave="requirements.requerimentos.novo_requerimento" rotulo="Novo Requerimento — Requerimentos" herda="requirements.view">
             <button
               onClick={() => setShowNew(true)}
-              className="inline-flex h-10 items-center gap-1.5 rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 pl-3 pr-3.5 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <Plus size={15} />
-              Novo Requerimento
+              <Plus className="h-4 w-4" strokeWidth={2.2} />
+              <span className="md:hidden">Novo</span>
+              <span className="hidden md:inline">Novo Requerimento</span>
             </button>
           </Permissao>
         </div>
-      </div>
+      </header>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: "Total", value: allCards.length, icon: FileText, color: "indigo" },
-          { label: "Pendentes", value: pendentes, icon: Clock, color: "amber" },
-          { label: "Aprovados", value: aprovados, icon: CheckCircle, color: "emerald" },
-          { label: "Cancelados", value: cancelados, icon: AlertTriangle, color: "rose" },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div
-            key={label}
-            className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-4 flex items-center gap-3"
-          >
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center bg-${color}-100 flex-shrink-0`}>
-              <Icon size={18} className={`text-${color}-600`} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">{label}</p>
-              <p className="text-xl font-bold text-slate-800">{value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="rounded-[20px] border border-[#e8ecf1] dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-        {/* Botão Buscar na mesma linha: coluna própria no fim. */}
-        <div
-          className={`grid gap-3 md:grid-cols-2 xl:items-end ${
-            campoVisible
-              ? "xl:grid-cols-[minmax(170px,1.25fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(115px,0.68fr)_minmax(115px,0.68fr)_minmax(165px,0.95fr)_auto]"
-              : "xl:grid-cols-[minmax(170px,1.25fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(120px,0.72fr)_minmax(115px,0.68fr)_minmax(115px,0.68fr)_minmax(165px,0.95fr)_auto]"
-          }`}
-        >
-          <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Busca</label>
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div className="box-border flex w-full flex-1 flex-col gap-3 px-3 pb-10 pt-3 md:px-7 md:pt-4">
+        {/* Busca + números */}
+        <div className="flex flex-wrap items-stretch gap-3">
+          <div className="flex min-w-0 flex-[1_1_380px] gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
               <input
                 value={q}
                 onChange={(e) => { setQ(e.target.value); setPage(1); }}
                 onKeyDown={(e) => { if (e.key === "Enter") buscar(); }}
                 placeholder="Buscar por protocolo, membro, igreja..."
-                className="w-full border border-slate-200 rounded-lg pl-8 pr-8 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="h-full min-h-[52px] w-full rounded-2xl border-[1.5px] border-slate-200 bg-white pl-12 pr-10 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-slate-300"
               />
               {q && (
                 <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                   onClick={() => { setQ(""); setPage(1); }}
                 >
-                  <X size={13} />
+                  <X size={15} />
                 </button>
               )}
             </div>
-          </div>
-
-          {campoVisible && (
-          <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Campo</label>
-            <select
-              value={selectedFieldId}
-              onChange={(e) => { setSelectedFieldId(e.target.value); setSelectedRegionalId(""); setSelectedChurchId(""); }}
-              disabled={!canChooseField || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-100 disabled:text-slate-500"
+            <button
+              type="button"
+              onClick={() => setFiltrosAbertos(true)}
+              title="Filtros"
+              className={`flex min-h-[52px] flex-none items-center gap-2 rounded-2xl border-[1.5px] bg-white px-[15px] text-sm font-semibold text-slate-900 hover:border-slate-900 md:px-[18px] dark:bg-slate-800 dark:text-white ${
+                filtrosAtivosCount ? "border-slate-900 dark:border-slate-300" : "border-slate-200 dark:border-slate-600"
+              }`}
             >
-              <option value="">Todos os campos</option>
-              {fields.map((field) => (
-                <option key={field.id} value={field.id}>{field.code ? `${field.code} - ` : ""}{field.name}</option>
-              ))}
-            </select>
-          </div>
-          )}
-
-          <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Regional</label>
-            <select
-              value={selectedRegionalId}
-              onChange={(e) => { setSelectedRegionalId(e.target.value); setSelectedChurchId(""); }}
-              disabled={!canChooseRegional || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-100 disabled:text-slate-500"
+              <SlidersHorizontal className="h-[19px] w-[19px]" strokeWidth={2} />
+              <span className="hidden md:inline">Filtros</span>
+              {filtrosAtivosCount > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1.5 text-[11px] font-bold text-white dark:bg-white dark:text-slate-900">
+                  {filtrosAtivosCount}
+                </span>
+              )}
+            </button>
+            {/* Consulta explícita: nada é buscado até clicar aqui (ou Enter na busca). */}
+            <button
+              type="button"
+              onClick={buscar}
+              disabled={cardsLoading}
+              title="Buscar"
+              className="flex min-h-[52px] flex-none items-center gap-2 rounded-2xl bg-slate-900 px-[15px] text-sm font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 md:px-[18px] dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <option value="">Todas as regionais</option>
-              {filteredRegionais.map((regional) => (
-                <option key={regional.id} value={regional.id}>{regional.code ? `${regional.code} - ` : ""}{regional.name}</option>
-              ))}
-            </select>
+              {cardsLoading ? <Loader2 className="h-[19px] w-[19px] animate-spin" /> : <Search className="h-[19px] w-[19px]" strokeWidth={2.2} />}
+              <span className="hidden md:inline">{cardsLoading ? "Buscando..." : "Buscar"}</span>
+            </button>
           </div>
-
-          <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Igreja</label>
-            <select
-              value={selectedChurchId}
-              onChange={(e) => setSelectedChurchId(e.target.value)}
-              disabled={!canChooseChurch || loadingFilters}
-              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-100 disabled:text-slate-500"
-            >
-              <option value="">Todas as igrejas</option>
-              {filteredChurchOptions.map((church) => (
-                <option key={church.id} value={church.id}>{church.code ? `${church.code} - ` : ""}{church.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Status</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            >
-              <option value="">Todos os status</option>
-              {Object.entries(STATUS_LABELS).map(([val, { label }]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Data inicial</label>
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 [color-scheme:light]"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Data final</label>
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 [color-scheme:light]"
-            />
-          </div>
-
-          <div className="relative">
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Tipo</label>
-            {servicesLoading ? (
-              <div className="flex h-[34px] items-center px-3 text-slate-400">
-                <Loader2 size={14} className="animate-spin text-slate-400" />
+          <CartoesTotais>
+            {[
+              { label: "Total", value: allCards.length, icon: FileText, tone: "bg-[#e0e7ff] text-[#3730a3]" },
+              { label: "Pendentes", value: pendentes, icon: Clock, tone: "bg-[#fef3c7] text-[#92400e]" },
+              { label: "Aprovados", value: aprovados, icon: CheckCircle, tone: "bg-[#d1fae5] text-[#065f46]" },
+              { label: "Cancelados", value: cancelados, icon: AlertTriangle, tone: "bg-[#ffe4e6] text-[#9f1239]" },
+            ].map(({ label, value, icon: Icon, tone }) => (
+              <div
+                key={label}
+                className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800"
+              >
+                <span className={`grid h-[38px] w-[38px] flex-none place-items-center rounded-xl ${tone}`}>
+                  <Icon className="h-[19px] w-[19px]" strokeWidth={1.8} />
+                </span>
+                <span className="flex flex-col">
+                  <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] tabular-nums">{value}</span>
+                  <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</span>
+                </span>
               </div>
-            ) : (
-              <>
-                <select
-                  value={activeServiceId ?? ""}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setActiveServiceId(next ? Number(next) : null);
-                    setPage(1);
-                  }}
-                  className="w-full appearance-none border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-                >
-                  <option value="">Todos os tipos</option>
-                  {services.map((svc) => (
-                    <option key={svc.id} value={svc.id}>
-                      {svc.sigla} — {svc.description}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="pointer-events-none absolute right-2 top-[calc(50%+10px)] -translate-y-1/2 text-slate-400" />
-              </>
-            )}
-          </div>
-
-          {/* Consulta explícita: nada é buscado até clicar aqui. */}
-          <div className="flex items-end">
-            <BotaoBuscar onClick={buscar} buscando={cardsLoading} />
-          </div>
-
-          <div className="text-xs text-slate-400 xl:col-span-full xl:text-right">
-            {filteredCards.length} registro{filteredCards.length !== 1 ? "s" : ""}
-          </div>
+            ))}
+          </CartoesTotais>
         </div>
-      </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {/* Tabela */}
         {!aplicados ? (
-          <AvisoDefinaFiltros />
-        ) : cardsLoading ? (
+          <section className="overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex flex-col items-center gap-1.5 px-6 py-14 text-center">
+              <span className="mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-[#f1f5f9] text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                <Search className="h-6 w-6" strokeWidth={1.8} />
+              </span>
+              <span className="text-base font-bold">Defina os filtros e clique em Buscar.</span>
+            </div>
+          </section>
+        ) : (
+        <section className="relative overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+        {cardsLoading ? (
           <div className="flex justify-center py-14">
-            <Loader2 size={24} className="animate-spin text-indigo-500" />
+            <Loader2 size={24} className="animate-spin text-slate-500" />
           </div>
         ) : filteredCards.length === 0 ? (
-          <div className="py-14 text-center text-slate-400">
+          <div className="flex flex-col items-center gap-1.5 px-6 py-14 text-center text-slate-500 dark:text-slate-400">
             <FileText size={32} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">Nenhum requerimento encontrado para este período.</p>
           </div>
@@ -737,81 +667,81 @@ export default function Requerimentos() {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 whitespace-nowrap">Protocolo</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Membro / Candidato</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 whitespace-nowrap">Serviço</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Igreja</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 whitespace-nowrap">Etapa</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 whitespace-nowrap">Situação</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 whitespace-nowrap">Abertura</th>
-                    <th className="text-right px-4 py-3 font-medium text-slate-600">Ações</th>
+                <thead className="border-b border-[#eef2f6] bg-[#f8fafc] dark:border-slate-700 dark:bg-slate-800">
+                  <tr>
+                    <th className={`${thClasse} whitespace-nowrap`}>Protocolo</th>
+                    <th className={thClasse}>Membro / Candidato</th>
+                    <th className={`${thClasse} whitespace-nowrap`}>Serviço</th>
+                    <th className={thClasse}>Igreja</th>
+                    <th className={`${thClasse} whitespace-nowrap`}>Etapa</th>
+                    <th className={`${thClasse} whitespace-nowrap`}>Situação</th>
+                    <th className={`${thClasse} whitespace-nowrap`}>Abertura</th>
+                    <th className={`${thClasse} text-right`}>Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#f1f5f9] dark:divide-slate-700">
                   {pageCards.map((card) => (
-                    <tr key={card.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3">
+                    <tr key={card.id} className="transition-colors hover:bg-[#fafbfc] dark:hover:bg-slate-700/40">
+                      <td className="px-4 py-3.5">
                         <a
                           href={`/app-ui/secretariat/pipeline?q=${encodeURIComponent(card.protocol)}`}
-                          className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 font-mono text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                          className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 font-mono text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
                           title="Ver no pipeline"
                         >
                           {card.protocol}
                           <ExternalLink size={11} />
                         </a>
                       </td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-slate-800 truncate max-w-[180px]">
+                      <td className="px-4 py-3.5">
+                        <p className="max-w-[220px] truncate text-[15px] font-bold uppercase text-slate-900 dark:text-white">
                           {card.candidateName || card.member?.fullName || "—"}
                         </p>
                         {card.member?.rol != null && (
-                          <p className="text-xs text-slate-400">ROL {card.member.rol}</p>
+                          <p className="text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">ROL {card.member.rol}</p>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-600 dark:text-slate-300">
                         {card.service?.sigla ? (
-                          <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700">
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                             {card.service.sigla}
                           </span>
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-600 max-w-[160px] truncate">
+                      <td className="max-w-[200px] truncate px-4 py-3.5 text-slate-600 dark:text-slate-300">
                         {card.church?.name || "—"}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         {(card as any).columnName ? (
-                          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                             {(card as any).columnName}
                           </span>
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         <StatusBadge status={effectiveStatusKey(card)} label={card.statusLabel || card.status} />
                       </td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-600 dark:text-slate-300">
                         {fmtDate(card.openedAt || card.createdAt)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           <a
                             href={`/app-ui/secretariat/pipeline?q=${encodeURIComponent(card.protocol)}`}
-                            className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-indigo-600"
+                            className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
                             title="Ver no pipeline"
                           >
-                            <Eye size={14} />
+                            <Eye size={16} />
                           </a>
                           <button
                             onClick={() => setDetailCard(card)}
-                            className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                            className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
                             title="Ver detalhes"
                           >
-                            <MoreVertical size={14} />
+                            <MoreVertical size={16} />
                           </button>
                         </div>
                       </td>
@@ -821,33 +751,201 @@ export default function Requerimentos() {
               </table>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
-                <span className="text-xs text-slate-400">
-                  PÃ¡gina {page} de {totalPages}
-                </span>
-                <div className="flex items-center gap-1">
+            {/* Rodapé: total + paginação */}
+            <div className="flex flex-col gap-3 border-t border-[#eef2f6] px-4 py-4 md:flex-row md:items-center md:justify-between dark:border-slate-700">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {filteredCards.length} registro{filteredCards.length !== 1 ? "s" : ""}
+              </p>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                    className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
                   >
                     Anterior
                   </button>
+                  <span className="text-sm text-slate-600 dark:text-slate-300">
+                    Página {page} de {totalPages}
+                  </span>
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                    className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
                   >
-                    PrÃ³xima
+                    Próxima
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
+        </section>
+        )}
       </div>
+
+      {/* Painel de filtros — os mesmos campos de antes; só valem no Buscar. */}
+      {filtrosAbertos && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setFiltrosAbertos(false)} />
+          <aside className="relative flex h-full w-[min(440px,100%)] animate-[rqDrawerIn_.25s_ease] flex-col bg-white shadow-[-20px_0_50px_-20px_rgba(15,23,42,.35)] dark:bg-slate-800">
+            <div className="flex items-center gap-3.5 border-b border-[#eef2f6] px-[22px] py-5 dark:border-slate-700">
+              <span className="grid h-11 w-11 flex-none place-items-center rounded-[14px] bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                <SlidersHorizontal className="h-[22px] w-[22px]" strokeWidth={2} />
+              </span>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-lg font-extrabold">Filtros</span>
+                <span className="text-[13px] text-slate-500 dark:text-slate-400">Refine quem aparece na lista</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos(false)}
+                aria-label="Fechar"
+                className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden p-[22px]">
+              {campoVisible && (
+                <label className={rotuloFiltroClasse}>
+                  CAMPO
+                  <span className="relative min-w-0">
+                    <select
+                      value={selectedFieldId}
+                      onChange={(e) => { setSelectedFieldId(e.target.value); setSelectedRegionalId(""); setSelectedChurchId(""); }}
+                      disabled={!canChooseField || loadingFilters}
+                      className={campoFiltroClasse}
+                    >
+                      <option value="">Todos os campos</option>
+                      {fields.map((field) => (
+                        <option key={field.id} value={field.id}>{field.code ? `${field.code} - ` : ""}{field.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  </span>
+                </label>
+              )}
+
+              <label className={rotuloFiltroClasse}>
+                REGIONAL
+                <span className="relative min-w-0">
+                  <select
+                    value={selectedRegionalId}
+                    onChange={(e) => { setSelectedRegionalId(e.target.value); setSelectedChurchId(""); }}
+                    disabled={!canChooseRegional || loadingFilters}
+                    className={campoFiltroClasse}
+                  >
+                    <option value="">Todas as regionais</option>
+                    {filteredRegionais.map((regional) => (
+                      <option key={regional.id} value={regional.id}>{regional.code ? `${regional.code} - ` : ""}{regional.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <label className={rotuloFiltroClasse}>
+                IGREJA
+                <span className="relative min-w-0">
+                  <select
+                    value={selectedChurchId}
+                    onChange={(e) => setSelectedChurchId(e.target.value)}
+                    disabled={!canChooseChurch || loadingFilters}
+                    className={campoFiltroClasse}
+                  >
+                    <option value="">Todas as igrejas</option>
+                    {filteredChurchOptions.map((church) => (
+                      <option key={church.id} value={church.id}>{church.code ? `${church.code} - ` : ""}{church.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <label className={rotuloFiltroClasse}>
+                STATUS
+                <span className="relative min-w-0">
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                    className={campoFiltroClasse}
+                  >
+                    <option value="">Todos os status</option>
+                    {Object.entries(STATUS_LABELS).map(([val, { label }]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                </span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className={rotuloFiltroClasse}>
+                  DATA INICIAL
+                  <input
+                    type="date"
+                    value={from}
+                    onChange={(e) => setFrom(e.target.value)}
+                    className={dataFiltroClasse}
+                  />
+                </label>
+                <label className={rotuloFiltroClasse}>
+                  DATA FINAL
+                  <input
+                    type="date"
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                    className={dataFiltroClasse}
+                  />
+                </label>
+              </div>
+
+              <label className={rotuloFiltroClasse}>
+                TIPO
+                {servicesLoading ? (
+                  <span className="flex h-[50px] items-center px-3.5 text-slate-400">
+                    <Loader2 size={16} className="animate-spin text-slate-400" />
+                  </span>
+                ) : (
+                  <span className="relative min-w-0">
+                    <select
+                      value={activeServiceId ?? ""}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setActiveServiceId(next ? Number(next) : null);
+                        setPage(1);
+                      }}
+                      className={campoFiltroClasse}
+                    >
+                      <option value="">Todos os tipos</option>
+                      {services.map((svc) => (
+                        <option key={svc.id} value={svc.id}>
+                          {svc.sigla} — {svc.description}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  </span>
+                )}
+              </label>
+            </div>
+
+            <div className="flex gap-2.5 border-t border-[#eef2f6] px-[22px] py-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => { setFiltrosAbertos(false); buscar(); }}
+                disabled={cardsLoading}
+                className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-[15px] font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                <Search className="h-[18px] w-[18px]" strokeWidth={2.2} />
+                Buscar
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* New Requirement Modal */}
       {showNew && (

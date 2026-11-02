@@ -3942,6 +3942,54 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/mobile/MobileRecurso.tsx"
   },
   {
+    "chave": "tela_moldura.app_ui.criar_rapido_celular",
+    "rotulo": "Criar rápido (menu do celular) — App UI",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/MobileBottomNav.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.criar_rapido_concluir",
+    "rotulo": "Concluir personalização do Criar rápido (celular) — App UI",
+    "herda": "tela_moldura.app_ui.criar_rapido_personalizar",
+    "arquivo": "src/components/app-ui/MobileBottomNav.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.criar_rapido_padrao",
+    "rotulo": "Voltar aos atalhos padrão do Criar rápido (celular) — App UI",
+    "herda": "tela_moldura.app_ui.criar_rapido_personalizar",
+    "arquivo": "src/components/app-ui/MobileBottomNav.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.criar_rapido_personalizar",
+    "rotulo": "Personalizar atalhos do Criar rápido (celular) — App UI",
+    "herda": "tela_moldura.app_ui.criar_rapido_celular",
+    "arquivo": "src/components/app-ui/MobileBottomNav.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.criar_rapido_por",
+    "rotulo": "Pôr atalho no Criar rápido (celular) — App UI",
+    "herda": "tela_moldura.app_ui.criar_rapido_personalizar",
+    "arquivo": "src/components/app-ui/MobileBottomNav.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.criar_rapido_tirar",
+    "rotulo": "Tirar atalho do Criar rápido (celular) — App UI",
+    "herda": "tela_moldura.app_ui.criar_rapido_personalizar",
+    "arquivo": "src/components/app-ui/MobileBottomNav.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.inicio_adicionar_favorito_celular",
+    "rotulo": "Adicionar favorito (Início no celular) — App UI",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/AppHome.tsx"
+  },
+  {
+    "chave": "tela_moldura.app_ui.inicio_editar_favoritos_celular",
+    "rotulo": "Editar favoritos (Início no celular) — App UI",
+    "herda": "tela_moldura.view",
+    "arquivo": "src/components/app-ui/AppHome.tsx"
+  },
+  {
     "chave": "tela_moldura.app_ui.meu_perfil_ver_e_editar_dados",
     "rotulo": "Meu Perfil Ver e editar dados — App UI",
     "herda": "tela_moldura.view",

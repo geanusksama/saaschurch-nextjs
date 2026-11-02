@@ -3,6 +3,7 @@
   Search, Pencil, Trash2, X, Save, AlertCircle, RefreshCw, Check, Eye, EyeOff,
   Tag, Upload, Download, FileText, CheckCircle, XCircle, ChevronDown,
   Sun, Moon, BookOpen, Zap, Flame, Heart, Users, Star, Globe, Music2, Sparkles, Gift, Cross, CalendarDays,
+  CalendarRange, CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -394,69 +395,76 @@ export function Agenda() {
   const yearRange = Array.from({ length: 10 }, (_, i) => now.getFullYear() - 3 + i);
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-0">
+    <div className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
 
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-            <CalendarIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-700 dark:text-slate-200">
+            <CalendarIcon className="h-5 w-5" strokeWidth={1.8} />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Agenda</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Gerencie eventos e compromissos</p>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Eventos</span>
+            <h1 className="whitespace-nowrap text-[17px] font-bold">Agenda</h1>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex min-w-0 max-w-full items-center gap-2">
+          <div className="flex min-w-0 gap-1 overflow-x-auto rounded-full bg-[#f1f5f9] p-1 [scrollbar-width:none] dark:bg-slate-700 [&::-webkit-scrollbar]:hidden">
             {(['calendar', 'ano', 'list', 'dia'] as const).map(v => (
               <button key={v} onClick={() => setViewMode(v)}
-                className={`rounded px-4 py-1.5 text-sm font-medium transition-colors ${viewMode === v ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>
+                className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors md:px-4 ${viewMode === v ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-600'}`}>
                 {v === 'calendar' ? 'Mes' : v === 'ano' ? 'Ano' : v === 'list' ? 'Lista' : 'Dia'}
               </button>
             ))}
           </div>
           <Permissao chave="events.agenda.modelo_csv" rotulo="Modelo CSV — Agenda" herda="events.view">
-            <button onClick={downloadCSVTemplate}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              <Download className="h-4 w-4" /> Modelo CSV
+            <button onClick={downloadCSVTemplate} title="Modelo CSV"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+              <Download className="h-4 w-4" strokeWidth={2} /> <span className="hidden md:inline">Modelo CSV</span>
             </button>
           </Permissao>
           <Permissao chave="events.agenda.importar_csv" rotulo="Importar CSV — Agenda" herda="events.view">
-            <button onClick={openImport}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              <Upload className="h-4 w-4" /> Importar CSV
+            <button onClick={openImport} title="Importar CSV"
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 md:px-3.5 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+              <Upload className="h-4 w-4" strokeWidth={2} /> <span className="hidden md:inline">Importar CSV</span>
             </button>
           </Permissao>
           {canCreate('events') ? (
             <Permissao chave="events.agenda.novo_evento" rotulo="Novo Evento — Agenda" herda="events.create">
-              <button onClick={openCreate}
-                className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 active:scale-95 transition-all shadow-md">
-                <Plus className="h-4 w-4" /> Novo Evento
+              <button onClick={openCreate} title="Novo Evento"
+                className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 px-3 text-sm font-semibold text-white hover:bg-slate-800 md:pl-3 md:pr-3.5 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+                <Plus className="h-4 w-4" strokeWidth={2.2} /> <span className="hidden md:inline">Novo Evento</span>
               </button>
             </Permissao>
           ) : null}
         </div>
-      </div>
+      </header>
+
+      <div className="box-border flex w-full flex-1 flex-col gap-3 px-3 pb-10 pt-3 md:px-7 md:pt-4">
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[
-          { label: 'Este Ano',  value: events.length },
-          { label: 'Este Mes',  value: thisMonthCount },
-          { label: 'Proximos',  value: upcoming },
-          { label: 'Ocultos',   value: events.filter(e => !e.mostrar).length },
+          { label: 'Este Ano',  value: events.length, Icon: CalendarDays, tone: 'bg-[#ede9fe] text-[#5b21b6]' },
+          { label: 'Este Mes',  value: thisMonthCount, Icon: CalendarRange, tone: 'bg-[#e0f2fe] text-[#075985]' },
+          { label: 'Proximos',  value: upcoming, Icon: CalendarClock, tone: 'bg-[#dcfce7] text-[#166534]' },
+          { label: 'Ocultos',   value: events.filter(e => !e.mostrar).length, Icon: EyeOff, tone: 'bg-[#f1f5f9] text-[#334155]' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
-            <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{loading ? '—' : s.value}</p>
+          <div key={s.label} className="flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] border-[#e8ecf1] bg-white py-2 pl-2 pr-3.5 dark:border-slate-700 dark:bg-slate-800">
+            <span className={`grid h-[38px] w-[38px] flex-none place-items-center rounded-xl ${s.tone}`}>
+              <s.Icon className="h-[19px] w-[19px]" strokeWidth={1.8} />
+            </span>
+            <span className="flex flex-col">
+              <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] tabular-nums">{loading ? '—' : s.value}</span>
+              <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">{s.label}</span>
+            </span>
           </div>
         ))}
       </div>
 
       {/* Error */}
       {loadErr && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
           <AlertCircle className="h-4 w-4 flex-shrink-0" /> {loadErr}
           <button onClick={load} className="ml-auto flex items-center gap-1 text-xs underline"><RefreshCw className="h-3 w-3" />Tentar novamente</button>
         </div>
@@ -471,7 +479,7 @@ export function Agenda() {
         return (
         <div className={`flex gap-4 ${hasPanel ? 'items-start' : ''}`}>
           {/* Calendar column */}
-          <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+          <div className="min-w-0 flex-1 rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 p-3 md:p-5">
 
           {/* Calendar top bar */}
           <div className="mb-4 flex items-center justify-between">
@@ -479,14 +487,14 @@ export function Agenda() {
               {/* Month picker */}
               <div className="relative">
                 <button onClick={() => { setShowMonthPicker(p => !p); setShowYearPicker(false); }}
-                  className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-lg font-bold text-slate-900 hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800">
+                  className="flex items-center gap-1 rounded-[10px] px-2 py-1.5 text-base font-bold text-slate-900 hover:bg-slate-100 md:px-3 md:text-lg dark:text-white dark:hover:bg-slate-700">
                   {MONTHS_LABEL[calMonth]} <ChevronDown className="h-4 w-4 text-slate-400" />
                 </button>
                 {showMonthPicker && (
                   <div className="absolute top-10 left-0 z-30 w-44 rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
                     {MONTHS_LABEL.map((m, i) => (
                       <button key={m} onClick={() => { setCalMonth(i); setSelectedDay(null); setShowMonthPicker(false); }}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800 ${calMonth === i ? 'bg-purple-50 font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800 ${calMonth === i ? 'bg-slate-900 font-semibold text-white dark:bg-white dark:text-slate-900' : 'text-slate-700 dark:text-slate-300'}`}>
                         {m}
                       </button>
                     ))}
@@ -496,14 +504,14 @@ export function Agenda() {
               {/* Year picker */}
               <div className="relative">
                 <button onClick={() => { setShowYearPicker(p => !p); setShowMonthPicker(false); }}
-                  className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-lg font-bold text-slate-900 hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800">
+                  className="flex items-center gap-1 rounded-[10px] px-2 py-1.5 text-base font-bold text-slate-900 hover:bg-slate-100 md:px-3 md:text-lg dark:text-white dark:hover:bg-slate-700">
                   {calYear} <ChevronDown className="h-4 w-4 text-slate-400" />
                 </button>
                 {showYearPicker && (
                   <div className="absolute top-10 left-0 z-30 w-28 rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
                     {yearRange.map(y => (
                       <button key={y} onClick={() => { setCalYear(y); setSelectedDay(null); setShowYearPicker(false); }}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800 ${calYear === y ? 'bg-purple-50 font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800 ${calYear === y ? 'bg-slate-900 font-semibold text-white dark:bg-white dark:text-slate-900' : 'text-slate-700 dark:text-slate-300'}`}>
                         {y}
                       </button>
                     ))}
@@ -511,12 +519,12 @@ export function Agenda() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button onClick={load} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" title="Recarregar">
+            <div className="flex items-center gap-1.5">
+              <button onClick={load} className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700" title="Recarregar">
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
-              <button onClick={prevMonth} className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><ChevronLeft className="h-5 w-5" /></button>
-              <button onClick={nextMonth} className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><ChevronRight className="h-5 w-5" /></button>
+              <button onClick={prevMonth} className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"><ChevronLeft className="h-5 w-5" /></button>
+              <button onClick={nextMonth} className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"><ChevronRight className="h-5 w-5" /></button>
             </div>
           </div>
 
@@ -545,13 +553,13 @@ export function Agenda() {
                   }}
                   className={`group flex flex-col items-start rounded-lg px-1 py-1.5 transition-all min-h-[72px]
                     ${selectedDay === day
-                      ? 'bg-purple-600 text-white shadow-md'
+                      ? 'bg-slate-900 text-white shadow-md dark:bg-white dark:text-slate-900'
                       : isToday
-                        ? 'bg-purple-50 ring-1 ring-purple-300 dark:bg-purple-900/20 dark:ring-purple-700'
+                        ? 'bg-slate-100 ring-1 ring-slate-300 dark:bg-slate-700 dark:ring-slate-500'
                         : dayEvs.length > 0
                           ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 cursor-pointer'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-                  <span className={`self-center text-sm font-semibold leading-none mb-1 ${selectedDay === day ? 'text-white' : isToday ? 'text-purple-700 dark:text-purple-300' : 'text-slate-800 dark:text-slate-200'}`}>
+                  <span className={`self-center text-sm font-semibold leading-none mb-1 ${selectedDay === day ? 'text-white dark:text-slate-900' : isToday ? 'text-slate-900 dark:text-white' : 'text-slate-800 dark:text-slate-200'}`}>
                     {day}
                   </span>
                   {dayEvs.length > 0 && (
@@ -584,7 +592,7 @@ export function Agenda() {
 
           {/* Selected day strip */}
           {selectedDay && (
-            <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <div className="mt-5 border-t border-[#eef2f6] pt-4 dark:border-slate-700">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
                   {selectedDay} de {MONTHS_LABEL[calMonth]}
@@ -593,7 +601,7 @@ export function Agenda() {
                 {canCreate('events') ? (
                   <Permissao chave="events.agenda.novo" rotulo="Novo — Agenda" herda="events.create">
                     <button onClick={openCreate}
-                      className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700">
+                      className="flex h-8 items-center gap-1 rounded-[10px] bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
                       <Plus className="h-3 w-3" /> Novo
                     </button>
                   </Permissao>
@@ -604,7 +612,7 @@ export function Agenda() {
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {selectedEvents.map(ev => (
-                    <div key={ev.id} className="flex items-start gap-2.5 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+                    <div key={ev.id} className="flex items-start gap-2.5 rounded-2xl border border-[#e8ecf1] bg-[#f8fafc] p-3 dark:border-slate-700 dark:bg-slate-900/40">
                       <IconBadge name={ev.iconName} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className={`text-sm font-semibold text-slate-900 dark:text-white leading-tight ${!ev.mostrar ? 'opacity-50' : ''}`}>{ev.evento}</p>
@@ -630,12 +638,12 @@ export function Agenda() {
 
           {/* Right panel — events of the month, only when there are events */}
           {hasPanel && (
-            <div className="hidden lg:flex w-64 xl:w-72 flex-shrink-0 flex-col rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 overflow-hidden">
+            <div className="hidden lg:flex w-64 xl:w-72 flex-shrink-0 flex-col overflow-hidden rounded-[22px] border border-[#e8ecf1] bg-white dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
                 <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
                   {MONTHS_LABEL[calMonth]}
                 </p>
-                <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-white dark:bg-white dark:text-slate-900">
                   {monthEvs.length}
                 </span>
               </div>
@@ -682,13 +690,13 @@ export function Agenda() {
 
       {viewMode === 'ano' ? (
         /* ====== ANO VIEW ====== */
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+        <div className="rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 p-3 md:p-5">
           {/* Year nav */}
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button onClick={() => setCalYear(calYear - 1)} className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><ChevronLeft className="h-5 w-5" /></button>
+              <button onClick={() => setCalYear(calYear - 1)} className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"><ChevronLeft className="h-5 w-5" /></button>
               <span className="text-xl font-bold text-slate-900 dark:text-white">{calYear}</span>
-              <button onClick={() => setCalYear(calYear + 1)} className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><ChevronRight className="h-5 w-5" /></button>
+              <button onClick={() => setCalYear(calYear + 1)} className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"><ChevronRight className="h-5 w-5" /></button>
             </div>
             <button onClick={() => setCalYear(todayY)} className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400">
               Este ano
@@ -755,7 +763,7 @@ export function Agenda() {
 
       ) : viewMode === 'list' ? (
         /* ====== LIST VIEW ====== */
-        <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <div className="overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3 border-b border-slate-200 p-4 dark:border-slate-800">
             <Search className="h-4 w-4 text-slate-400" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar eventos..."
@@ -838,15 +846,15 @@ export function Agenda() {
           };
 
           return (
-            <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+            <div className="rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
               {/* Day nav */}
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <button onClick={prevDay} className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><ChevronLeft className="h-5 w-5" /></button>
+                  <button onClick={prevDay} className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"><ChevronLeft className="h-5 w-5" /></button>
                   <h3 className="font-semibold text-slate-900 dark:text-white">
                     {getWeekday(`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(calDay).padStart(2,'0')}`)}, {calDay} de {MONTHS_LABEL[calMonth]} {calYear}
                   </h3>
-                  <button onClick={nextDay} className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><ChevronRight className="h-5 w-5" /></button>
+                  <button onClick={nextDay} className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"><ChevronRight className="h-5 w-5" /></button>
                 </div>
                 <button onClick={() => { setCalYear(todayY); setCalMonth(todayM); setCalDay(todayD); }}
                   className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400">
@@ -911,6 +919,8 @@ export function Agenda() {
           );
         })()
       ) : null}
+
+      </div>
 
       {/* ====== DAY EVENTS MODAL ====== */}
       {dayModalDay !== null && (() => {

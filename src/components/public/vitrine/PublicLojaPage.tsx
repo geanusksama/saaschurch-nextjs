@@ -51,8 +51,9 @@ export default function PublicLojaPage() {
       {({ isDark, accent }) => (
         <div id="lista-produtos" className="scroll-mt-6">
           <div className="pb-6">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.2em]" style={{ color: accent }}>Produtos</p>
-            <div className="flex flex-wrap gap-2 mt-4">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] max-md:hidden" style={{ color: accent }}>Produtos</p>
+            {/* Celular: chips numa linha só, com rolagem horizontal sem barra */}
+            <div className="flex flex-wrap gap-2 mt-4 max-md:mt-0 max-md:-mx-5 max-md:px-5 max-md:flex-nowrap max-md:overflow-x-auto max-md:[scrollbar-width:none] max-md:[&>*]:shrink-0 max-md:[&>*]:min-h-[40px]">
               {dep && <button onClick={() => setSp({})} className={cx('rounded-full px-4 py-2 text-sm font-semibold', isDark ? 'bg-white/10' : 'bg-black/5')}>Toda a loja</button>}
               {categorias.length > 1 && ['', ...categorias].map((c) => (
                 <button key={c || 'todas'} onClick={() => setCategoria(c)} className={cx('rounded-full px-4 py-2 text-sm font-semibold', categoria === c ? 'text-black' : isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10')} style={categoria === c ? { background: accent } : undefined}>{c || 'Todos'}</button>
@@ -74,12 +75,32 @@ export default function PublicLojaPage() {
                 <div className="p-4">
                   {p.ministerio && <p className="text-[11px] font-bold uppercase tracking-wider opacity-60">{p.ministerio.nome}</p>}
                   <p className="font-semibold leading-snug">{p.nome}</p>
-                  <p className="font-bold mt-1" style={{ color: accent }}>{brl(p.preco)}</p>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="font-bold" style={{ color: accent }}>{brl(p.preco)}</p>
+                    {/* Celular: "+" do guia. Decorativo — tocar no cartão abre o produto, como antes. */}
+                    <span aria-hidden="true" className={cx('md:hidden grid h-9 w-9 shrink-0 place-items-center rounded-full', isDark ? 'bg-white text-[#0b0d12]' : 'bg-[#16181D] text-[#ffffff]')}>
+                      <Plus className="h-4 w-4" />
+                    </span>
+                  </div>
                 </div>
               </button>
             ))}
           </div>
 
+          {/* Celular: barra do carrinho flutuando acima da tab bar */}
+          {carrinho.qtd > 0 && !verCarrinho && !checkout && !produto && (
+            <div className="md:hidden fixed inset-x-4 z-40 flex items-center gap-3 rounded-[18px] bg-[#16181D] px-4 py-3 text-white shadow-2xl"
+              style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))' }}>
+              <ShoppingBag className="h-5 w-5 shrink-0" />
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block text-[12px] text-white/70">{carrinho.qtd} {carrinho.qtd === 1 ? 'item' : 'itens'}</span>
+                <span className="block text-[15px] font-extrabold">{brl(carrinho.total)}</span>
+              </span>
+              <button type="button" onClick={() => setVerCarrinho(true)} className="min-h-[44px] rounded-[14px] px-4 text-[14px] font-bold text-black" style={{ background: accent }}>
+                Ver carrinho
+              </button>
+            </div>
+          )}
           {produto && <ModalProduto produto={produto} isDark={isDark} accent={accent} onFechar={() => setProduto(null)} onAdicionar={(i) => { carrinho.adicionar(i); setProduto(null); setVerCarrinho(true); }} />}
           {verCarrinho && !checkout && (
             <Carrinho isDark={isDark} accent={accent} carrinho={carrinho} onFechar={() => setVerCarrinho(false)} onFinalizar={() => setCheckout(true)} />

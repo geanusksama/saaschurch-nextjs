@@ -5,7 +5,7 @@
  * medido em 27/08/2026, churches.lead_pastor_id estava NULL em 126 de 126
  * igrejas, ou seja, hoje o sistema não sabe quem é o dirigente de lugar nenhum.
  *
- * Layout em três colunas, na ordem em que a pergunta é feita:
+ * Navegação em pastas, na ordem em que a pergunta é feita:
  * hospedeira → igreja dela → quem responde por cada posição.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,6 +21,9 @@ import {
   Power,
   X,
   UserCheck,
+  ArrowLeft,
+  ArrowUpRight,
+  Users,
 } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
 import MembroBusca, { telefoneDoMembro, type MembroOpcao } from '../system/MembroBusca';
@@ -107,6 +110,8 @@ export default function PosicoesCulto() {
   // Titular sem acesso: o modal abre direto em "criar usuário" com ele.
   const [membroInicial, setMembroInicial] = useState<MembroOpcao | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  // Só visual: nível da navegação em pastas (não mexe na seleção).
+  const [nivel, setNivel] = useState<'hospedeiras' | 'hospedadas' | 'responsaveis'>('hospedeiras');
 
   useEffect(() => {
     fetch(`${apiBase}/churches?slim=1`, { headers: authHeaders() })
@@ -263,147 +268,254 @@ export default function PosicoesCulto() {
     (papel) => papel !== 'APROVADOR_HOSPEDEIRA' || igrejaAtual?.isHost,
   );
 
+  // Só visual: qual nível da navegação em pastas está na tela. A seleção
+  // (hostId/churchId) continua a mesma de antes — inclusive a automática ao
+  // carregar —; aqui só se escolhe o que mostrar.
+  function abrirHospedeira(id: string) {
+    selecionarHost(id);
+    setNivel('hospedadas');
+  }
+
+  function abrirIgreja(id: string) {
+    setChurchId(id);
+    setNivel('responsaveis');
+  }
+
+  function voltar() {
+    setNivel((n) => (n === 'responsaveis' && hostAtual ? 'hospedadas' : 'hospedeiras'));
+  }
+
+  const campoBusca =
+    'w-full rounded-[14px] border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] pl-9 pr-3 py-2.5 text-sm text-[var(--sl-text)] placeholder:text-[var(--sl-text-4)] focus:outline-none focus:ring-2 focus:ring-[var(--sl-primary-border)]';
+
   return (
-    <div className="p-6 flex flex-col gap-4 h-[calc(100vh-4rem)] min-h-0">
-      <div className="shrink-0">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Posições do Culto</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Escolha a hospedeira, depois a igreja, e anexe quem lança e quem aprova o culto dela. São
-          usuários do sistema — quem envia e quem aprova precisa conseguir entrar.
-        </p>
+    <div className="p-4 sm:px-6 sm:pt-4 sm:pb-6 flex flex-col gap-4">
+      {/* Cabeçalho */}
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[var(--sl-primary-soft)] text-[var(--sl-primary)]">
+          <Users className="h-5 w-5" strokeWidth={1.8} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[12.5px] font-medium text-[var(--sl-text-3)]">Gestão de Culto</p>
+          <h1 className="text-[22px] font-bold leading-tight text-[var(--sl-text)]">Posições do Culto</h1>
+          <p className="mt-0.5 text-[12.5px] text-[var(--sl-text-3)]">
+            Escolha a hospedeira, depois a igreja, e anexe quem lança e quem aprova o culto dela. São
+            usuários do sistema — quem envia e quem aprova precisa conseguir entrar.
+          </p>
+        </div>
+      </div>
+
+      {/* Caminho de volta */}
+      <div className="flex flex-wrap items-center gap-2">
+        {nivel !== 'hospedeiras' && (
+          <button
+            type="button"
+            onClick={voltar}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--sl-text-2)] hover:bg-[var(--sl-chip)]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Voltar
+          </button>
+        )}
+        <nav className="flex min-w-0 flex-wrap items-center gap-1 text-[13px]">
+          <button
+            type="button"
+            onClick={() => setNivel('hospedeiras')}
+            className={`cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-[var(--sl-chip)] ${
+              nivel === 'hospedeiras' ? 'font-bold text-[var(--sl-text)]' : 'font-medium text-[var(--sl-text-3)]'
+            }`}
+          >
+            Hospedeiras
+          </button>
+          {nivel !== 'hospedeiras' && hostAtual && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--sl-text-4)]" />
+              <button
+                type="button"
+                onClick={() => setNivel('hospedadas')}
+                className={`max-w-[16rem] cursor-pointer truncate rounded-md px-1.5 py-0.5 hover:bg-[var(--sl-chip)] ${
+                  nivel === 'hospedadas' ? 'font-bold text-[var(--sl-text)]' : 'font-medium text-[var(--sl-text-3)]'
+                }`}
+              >
+                {hostAtual.name}
+              </button>
+            </>
+          )}
+          {nivel === 'responsaveis' && igrejaAtual && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--sl-text-4)]" />
+              <span className="max-w-[16rem] truncate px-1.5 py-0.5 font-bold text-[var(--sl-text)]">
+                {igrejaAtual.name}
+              </span>
+            </>
+          )}
+        </nav>
+
+        {/* Busca do nível na mesma linha do caminho (antes era uma linha
+            separada). Mesmos campos e estados; só mudou de lugar. */}
+        {nivel === 'hospedeiras' && (
+          <div className="flex w-full flex-wrap items-center gap-3 sm:ml-auto sm:w-auto">
+            <span className="text-[12.5px] text-[var(--sl-text-3)]">
+              {hospedeiras.length} hospedeira(s)
+            </span>
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--sl-text-4)]" />
+              <input
+                value={buscaHost}
+                onChange={(e) => setBuscaHost(e.target.value)}
+                placeholder="Buscar hospedeira…"
+                className={campoBusca}
+              />
+            </div>
+          </div>
+        )}
+        {nivel === 'hospedadas' && (
+          <div className="flex w-full flex-wrap items-center gap-3 sm:ml-auto sm:w-auto">
+            <span className="text-[12.5px] text-[var(--sl-text-3)]">
+              {hospedadasFiltradas.length} hospedada(s) · {hostAtual?.name ?? '—'}
+            </span>
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--sl-text-4)]" />
+              <input
+                value={buscaIgreja}
+                onChange={(e) => setBuscaIgreja(e.target.value)}
+                placeholder="Buscar igreja…"
+                className={campoBusca}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {erro && (
-        <div className="shrink-0 flex items-start gap-2 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
+        <div className="flex items-start gap-2 rounded-[14px] border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <span>{erro}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[17rem_20rem_1fr] gap-4 flex-1 min-h-0">
-        {/* ── Coluna 1: hospedeiras ─────────────────────────────────────── */}
-        <section className="flex flex-col min-h-0 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-          <div className="shrink-0 px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-700">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                1. Hospedeiras
-              </h2>
-              <span className="text-[11px] text-slate-400">{hospedeiras.length}</span>
+      {/* ── Nível 1: hospedeiras ─────────────────────────────────────────── */}
+      {nivel === 'hospedeiras' && (
+        <section className="flex flex-col gap-3">
+          {hospedeirasFiltradas.length === 0 ? (
+            <div className="rounded-[22px] border border-dashed border-[var(--sl-border-2)] bg-[var(--sl-surface)] px-6 py-12 text-center text-sm text-[var(--sl-text-3)]">
+              Nenhuma hospedeira.
+              {hospedeiras.length === 0 && igrejaAtual && (
+                <button
+                  type="button"
+                  onClick={() => setNivel('responsaveis')}
+                  className="ml-2 cursor-pointer font-semibold text-[var(--sl-primary)] hover:underline"
+                >
+                  Abrir {igrejaAtual.name}
+                </button>
+              )}
             </div>
-            <div className="relative mt-2">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={buscaHost}
-                onChange={(e) => setBuscaHost(e.target.value)}
-                placeholder="Buscar hospedeira…"
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {hospedeirasFiltradas.map((c) => (
-              <ItemLista
-                key={c.id}
-                ativo={hostId === c.id}
-                onClick={() => selecionarHost(c.id)}
-                titulo={c.name}
-                subtitulo={`${contagemPorHost.get(c.id) ?? 0} igreja(s) hospedada(s)`}
-                icone={<Building2 className="w-4 h-4" />}
-              />
-            ))}
-            {hospedeirasFiltradas.length === 0 && (
-              <p className="px-4 py-6 text-sm text-slate-400 text-center">Nenhuma hospedeira.</p>
-            )}
-          </div>
-        </section>
-
-        {/* ── Coluna 2: igrejas da hospedeira ───────────────────────────── */}
-        <section className="flex flex-col min-h-0 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-          <div className="shrink-0 px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-700">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                2. Hospedadas
-              </h2>
-              <span className="text-[11px] text-slate-400">{hospedadasFiltradas.length}</span>
-            </div>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 truncate">
-              {hostAtual?.name ?? '—'}
-            </p>
-
-            <div className="relative mt-2">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={buscaIgreja}
-                onChange={(e) => setBuscaIgreja(e.target.value)}
-                placeholder="Buscar igreja…"
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {hospedadasFiltradas.map((c) => (
-              <ItemLista
-                key={c.id}
-                ativo={churchId === c.id}
-                onClick={() => setChurchId(c.id)}
-                titulo={c.name}
-                subtitulo={c.currentLeaderName || 'Dirigente não informado no cadastro'}
-                icone={<Church className="w-4 h-4" />}
-              />
-            ))}
-            {hospedadasFiltradas.length === 0 && (
-              <p className="px-4 py-6 text-sm text-slate-400 text-center">
-                Nenhuma igreja hospedada.
-              </p>
-            )}
-
-            {solteirasFiltradas.length > 0 && (
-              <>
-                <div className="mt-2 flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-4 py-1.5 border-y border-slate-200 dark:border-slate-700 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  <AlertTriangle className="w-3 h-3 text-amber-500" />
-                  Solteiras desta regional · {solteirasFiltradas.length}
-                </div>
-                {solteirasFiltradas.map((c) => (
-                  <ItemLista
+          ) : (
+            <div className="grid grid-cols-1 gap-x-5 gap-y-7 pt-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              {hospedeirasFiltradas.map((c, i) => {
+                const n = contagemPorHost.get(c.id) ?? 0;
+                return (
+                  <PastaIgreja
                     key={c.id}
-                    ativo={churchId === c.id}
-                    onClick={() => setChurchId(c.id)}
+                    indice={i}
+                    ativa={hostId === c.id}
+                    onClick={() => abrirHospedeira(c.id)}
                     titulo={c.name}
-                    subtitulo={c.currentLeaderName || 'Dirigente não informado no cadastro'}
-                    icone={<Church className="w-4 h-4" />}
+                    icone={Building2}
+                    numero={n}
+                    rotuloNumero={`igreja(s) hospedada(s)`}
+                    chips={[c.code ? c.code : null, 'hospedeira']}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Nível 2: igrejas da hospedeira ───────────────────────────────── */}
+      {nivel === 'hospedadas' && (
+        <section className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 gap-x-5 gap-y-7 pt-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {/* A própria hospedeira também tem culto para fechar. */}
+            {hostAtual && (
+              <PastaIgreja
+                indice={0}
+                ativa={churchId === hostAtual.id}
+                onClick={() => abrirIgreja(hostAtual.id)}
+                titulo={hostAtual.name}
+                icone={Building2}
+                linha={hostAtual.currentLeaderName || 'Dirigente não informado no cadastro'}
+                chips={['a própria hospedeira', hostAtual.code ?? null]}
+              />
+            )}
+            {hospedadasFiltradas.map((c, i) => (
+              <PastaIgreja
+                key={c.id}
+                indice={i + 1}
+                ativa={churchId === c.id}
+                onClick={() => abrirIgreja(c.id)}
+                titulo={c.name}
+                icone={Church}
+                linha={c.currentLeaderName || 'Dirigente não informado no cadastro'}
+                chips={[c.code ?? null, 'hospedada']}
+              />
+            ))}
+          </div>
+          {hospedadasFiltradas.length === 0 && (
+            <p className="px-1 text-sm text-[var(--sl-text-3)]">Nenhuma igreja hospedada.</p>
+          )}
+
+          {solteirasFiltradas.length > 0 && (
+            <>
+              <div className="mt-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--sl-text-3)]">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                Solteiras desta regional · {solteirasFiltradas.length}
+              </div>
+              <div className="grid grid-cols-1 gap-x-5 gap-y-7 pt-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {solteirasFiltradas.map((c, i) => (
+                  <PastaIgreja
+                    key={c.id}
+                    indice={i}
+                    ativa={churchId === c.id}
+                    onClick={() => abrirIgreja(c.id)}
+                    titulo={c.name}
+                    icone={Church}
+                    linha={c.currentLeaderName || 'Dirigente não informado no cadastro'}
+                    chips={[c.code ?? null]}
                     alerta
                   />
                 ))}
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </section>
+      )}
 
-        {/* ── Coluna 3: responsáveis da igreja ──────────────────────────── */}
-        <section className="flex flex-col min-h-0 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-          <div className="shrink-0 px-4 pt-3 pb-3 border-b border-slate-100 dark:border-slate-700">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              3. Responsáveis
+      {/* ── Nível 3: responsáveis da igreja ──────────────────────────────── */}
+      {nivel === 'responsaveis' && (
+        <section className="flex flex-col rounded-[22px] border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] shadow-[var(--sl-shadow)] overflow-hidden">
+          <div className="px-5 pt-4 pb-4 border-b border-[#e8ecf1] dark:border-[var(--sl-border)]">
+            <h2 className="text-[11px] font-bold uppercase tracking-wide text-[var(--sl-text-3)]">
+              Responsáveis
             </h2>
             {igrejaAtual ? (
-              <div className="mt-1 flex items-center gap-2 text-sm">
-                <strong className="text-slate-900 dark:text-white">{igrejaAtual.name}</strong>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <strong className="text-[17px] font-bold text-[var(--sl-text)]">{igrejaAtual.name}</strong>
                 {igrejaAtual.isHost && (
-                  <span className="rounded-full bg-sky-100 dark:bg-sky-900/40 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-700 dark:text-sky-300">
+                  <span className="rounded-full bg-[var(--sl-primary-soft)] px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--sl-primary)]">
                     hospedeira
                   </span>
                 )}
               </div>
             ) : (
-              <p className="mt-1 text-sm text-slate-400">Selecione uma igreja ao lado.</p>
+              <p className="mt-1 text-sm text-[var(--sl-text-3)]">Selecione uma igreja.</p>
             )}
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+          <div className="p-4 sm:p-5 space-y-3">
             {carregando && (
-              <div className="flex items-center gap-2 text-slate-400 py-10 justify-center">
+              <div className="flex items-center gap-2 text-[var(--sl-text-3)] py-10 justify-center">
                 <Loader2 className="w-5 h-5 animate-spin" /> Carregando…
               </div>
             )}
@@ -422,18 +534,18 @@ export default function PosicoesCulto() {
                 return (
                   <div
                     key={papel}
-                    className={`rounded-xl border overflow-hidden ${
+                    className={`rounded-[16px] border overflow-hidden ${
                       destaque
-                        ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+                        ? 'border-[var(--sl-primary-border)] bg-[var(--sl-primary-soft)]'
+                        : 'border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3 px-4 py-3">
                       <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        <h3 className="text-sm font-semibold text-[var(--sl-text)]">
                           {ROTULO_PAPEL[papel]}
                         </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-xs text-[var(--sl-text-3)] mt-0.5">
                           {AJUDA_PAPEL[papel]}
                         </p>
                       </div>
@@ -443,7 +555,7 @@ export default function PosicoesCulto() {
                             setMembroInicial(null);
                             setAnexandoPapel(papel);
                           }}
-                          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold"
+                          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--sl-primary)] hover:bg-[var(--sl-primary-strong)] text-white text-xs font-semibold cursor-pointer"
                         >
                           <UserPlus className="w-3.5 h-3.5" />
                           Anexar
@@ -451,9 +563,9 @@ export default function PosicoesCulto() {
                       </Permissao>
                     </div>
 
-                    <div className="divide-y divide-slate-100 dark:divide-slate-700 border-t border-slate-100 dark:border-slate-700">
+                    <div className="divide-y divide-[#e8ecf1] dark:divide-[var(--sl-border)] border-t border-[#e8ecf1] dark:border-[var(--sl-border)]">
                       {doPapel.length === 0 && daFuncao.length === 0 && (
-                        <p className="px-4 py-3 text-sm text-slate-400">Ninguém anexado.</p>
+                        <p className="px-4 py-3 text-sm text-[var(--sl-text-4)]">Ninguém anexado.</p>
                       )}
                       {daFuncao.map((f) => {
                         const chave = `${f.papel}:${f.membro.id}`;
@@ -463,19 +575,19 @@ export default function PosicoesCulto() {
                             className="flex items-center justify-between gap-3 px-4 py-2.5"
                           >
                             <div className="min-w-0">
-                              <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
+                              <div className="text-sm font-medium text-[var(--sl-text)] truncate">
                                 {f.membro.fullName}
-                                <span className="ml-2 rounded bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300">
+                                <span className="ml-2 rounded bg-[var(--sl-chip)] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[var(--sl-text-2)]">
                                   pela função
                                 </span>
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              <div className="text-xs text-[var(--sl-text-3)] truncate">
                                 {f.funcao}
                                 {f.membro.rol ? ` · ROL #${f.membro.rol}` : ''}
                               </div>
                               <div className="text-xs truncate">
                                 {f.usuario ? (
-                                  <span className="text-slate-500 dark:text-slate-400">
+                                  <span className="text-[var(--sl-text-3)]">
                                     Acesso: {f.usuario.email}
                                   </span>
                                 ) : (
@@ -491,7 +603,7 @@ export default function PosicoesCulto() {
                                   onClick={() => void confirmarDaFuncao(f)}
                                   disabled={confirmando !== null}
                                   title="Gravar como posição do culto"
-                                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
+                                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--sl-border-2)] text-xs font-semibold text-[var(--sl-text-2)] hover:bg-[var(--sl-chip)] disabled:opacity-50 cursor-pointer"
                                 >
                                   {confirmando === chave ? (
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -508,7 +620,7 @@ export default function PosicoesCulto() {
                                     setMembroInicial(f.membro);
                                     setAnexandoPapel(papel);
                                   }}
-                                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--sl-border-2)] text-xs font-semibold text-[var(--sl-text-2)] hover:bg-[var(--sl-chip)] cursor-pointer"
                                 >
                                   <UserPlus className="w-3.5 h-3.5" />
                                   Criar acesso
@@ -524,15 +636,15 @@ export default function PosicoesCulto() {
                           className="flex items-center justify-between gap-3 px-4 py-2.5"
                         >
                           <div className="min-w-0">
-                            <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
+                            <div className="text-sm font-medium text-[var(--sl-text)] truncate">
                               {p.user.fullName}
                               {!p.isActive && (
-                                <span className="ml-2 text-[10px] uppercase font-bold text-slate-400">
+                                <span className="ml-2 text-[10px] uppercase font-bold text-[var(--sl-text-4)]">
                                   inativo
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                            <div className="text-xs text-[var(--sl-text-3)] truncate">
                               {p.user.email}
                             </div>
                           </div>
@@ -540,7 +652,7 @@ export default function PosicoesCulto() {
                             <button
                               onClick={() => void alternar(p)}
                               title={p.isActive ? 'Desativar' : 'Reativar'}
-                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+                              className="p-1.5 rounded-lg border border-[#e8ecf1] dark:border-[var(--sl-border)] text-[var(--sl-text-3)] hover:bg-[var(--sl-chip)] cursor-pointer"
                             >
                               <Power className="w-3.5 h-3.5" />
                             </button>
@@ -548,7 +660,7 @@ export default function PosicoesCulto() {
                               <button
                                 onClick={() => void remover(p.id)}
                                 title="Remover"
-                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                                className="p-1.5 rounded-lg border border-[#e8ecf1] dark:border-[var(--sl-border)] text-[var(--sl-text-3)] hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -562,7 +674,7 @@ export default function PosicoesCulto() {
               })}
           </div>
         </section>
-      </div>
+      )}
 
       {anexandoPapel && (
         <ModalAnexarUsuario
@@ -584,68 +696,91 @@ export default function PosicoesCulto() {
   );
 }
 
-/**
- * Linha das colunas 1 e 2. O estado selecionado é uma faixa verde com barra à
- * esquerda — o cinza anterior se confundia com o hover e engolia o texto.
- */
-function ItemLista({
-  ativo,
+// Pastas chapadas, alternando como no Pipeline da Secretaria: escuro,
+// primária, branco, lilás.
+const VARIANTES = [
+  { card: 'bg-[var(--sl-dark)] text-white', ear: 'bg-[var(--sl-dark)]', sheet: 'bg-[color-mix(in_srgb,var(--sl-dark)_35%,white)]', sub: 'text-white/70', tile: 'bg-white/10 text-white', chip: 'bg-white/15 text-white', border: 'border-transparent' },
+  { card: 'bg-[var(--sl-primary)] text-white', ear: 'bg-[var(--sl-primary)]', sheet: 'bg-[color-mix(in_srgb,var(--sl-primary)_40%,white)]', sub: 'text-white/75', tile: 'bg-white/15 text-white', chip: 'bg-white/20 text-white', border: 'border-transparent' },
+  { card: 'bg-[var(--sl-solid)] text-[var(--sl-text)]', ear: 'bg-[var(--sl-solid)]', sheet: 'bg-[color-mix(in_srgb,var(--sl-primary)_22%,white)]', sub: 'text-[var(--sl-text-3)]', tile: 'bg-[var(--sl-primary-soft)] text-[var(--sl-primary)]', chip: 'bg-[var(--sl-chip)] text-[var(--sl-text-2)]', border: 'border-[var(--sl-border)]' },
+  { card: 'bg-[color-mix(in_srgb,var(--sl-primary)_16%,var(--sl-solid))] text-[var(--sl-text)]', ear: 'bg-[color-mix(in_srgb,var(--sl-primary)_16%,var(--sl-solid))]', sheet: 'bg-[color-mix(in_srgb,var(--sl-primary)_32%,white)]', sub: 'text-[var(--sl-text-3)]', tile: 'bg-[var(--sl-solid)] text-[var(--sl-primary)]', chip: 'bg-[var(--sl-solid)] text-[var(--sl-text-2)]', border: 'border-transparent' },
+];
+
+/** Pasta da grade (hospedeira ou igreja). Só apresentação: o clique é do pai. */
+function PastaIgreja({
+  indice,
+  ativa,
   onClick,
   titulo,
-  subtitulo,
-  icone,
-  etiqueta,
+  icone: Icone,
+  numero,
+  rotuloNumero,
+  linha,
+  chips,
   alerta,
 }: {
-  ativo: boolean;
+  indice: number;
+  ativa: boolean;
   onClick: () => void;
   titulo: string;
-  subtitulo?: string;
-  icone: React.ReactNode;
-  etiqueta?: string;
+  icone: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  numero?: number;
+  rotuloNumero?: string;
+  linha?: string;
+  chips?: Array<string | null>;
   alerta?: boolean;
 }) {
+  const v = VARIANTES[indice % VARIANTES.length];
   return (
     <button
+      type="button"
       onClick={onClick}
-      style={
-        ativo
-          ? {
-              backgroundColor: 'var(--theme-soft-bg)',
-              borderLeftColor: 'var(--theme-primary)',
-              color: 'var(--theme-primary)',
-            }
-          : undefined
-      }
-      className={`w-full text-left px-3 py-2.5 flex items-center gap-2.5 border-l-[3px] focus:outline-none transition ${
-        ativo ? '' : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-900/60'
-      }`}
+      title={titulo}
+      className="group relative block cursor-pointer text-left transition-transform duration-150 hover:-translate-y-0.5"
     >
-      <span className={`shrink-0 ${ativo ? '' : alerta ? 'text-amber-500' : 'text-slate-400'}`}>
-        {icone}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span
-          className={`block text-sm truncate ${
-            ativo ? 'font-semibold' : 'font-medium text-slate-700 dark:text-slate-200'
-          }`}
-        >
-          {titulo}
+      {/* folhas atrás da pasta */}
+      <span className={`absolute -top-3 left-[38%] right-5 h-6 rounded-t-[14px] ${v.sheet} opacity-80`} />
+      {/* orelha da pasta */}
+      <span className={`absolute -top-2.5 left-0 h-6 w-[44%] rounded-t-[18px] ${v.ear} ${v.border === 'border-transparent' ? '' : 'border border-b-0 ' + v.border}`} />
+      {/* corpo */}
+      <span
+        className={`relative flex min-h-[170px] flex-col rounded-[22px] rounded-tl-none border p-5 ${v.card} ${v.border} ${
+          ativa ? 'ring-2 ring-[var(--sl-primary)] ring-offset-2 ring-offset-transparent' : ''
+        }`}
+      >
+        <span className="flex items-center gap-3">
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-[12px] ${v.tile}`}>
+            <Icone className="h-[18px] w-[18px]" strokeWidth={1.8} />
+          </span>
+          <span className="min-w-0 flex-1 line-clamp-2 text-[17px] font-bold leading-tight">{titulo}</span>
         </span>
-        {subtitulo && (
-          <span className="block text-[11px] truncate text-slate-500 dark:text-slate-400">
-            {subtitulo}
+
+        {numero !== undefined && (
+          <span className="mt-4 flex flex-col">
+            <span className="text-[26px] font-extrabold leading-none tracking-tight">{numero}</span>
+            <span className={`mt-1 text-[12px] font-medium ${v.sub}`}>{rotuloNumero}</span>
           </span>
         )}
-      </span>
-      {etiqueta && (
-        <span className="shrink-0 text-[9px] font-bold uppercase text-sky-600 dark:text-sky-400">
-          {etiqueta}
+        {linha && <span className={`mt-3 line-clamp-2 block text-[13px] ${v.sub}`}>{linha}</span>}
+
+        <span className="mt-auto flex items-center justify-between gap-3 pt-4">
+          <span className="flex min-w-0 flex-wrap gap-1.5">
+            {alerta && (
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-400 px-2.5 py-1 text-[11px] font-bold text-amber-950">
+                <AlertTriangle className="h-3 w-3" />
+                solteira
+              </span>
+            )}
+            {(chips ?? []).filter(Boolean).map((t) => (
+              <span key={t} className={`max-w-[160px] truncate whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${v.chip}`}>
+                {t}
+              </span>
+            ))}
+          </span>
+          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${v.tile}`}>
+            <ArrowUpRight className="h-4 w-4" />
+          </span>
         </span>
-      )}
-      <ChevronRight
-        className={`w-4 h-4 shrink-0 ${ativo ? '' : 'text-slate-300 dark:text-slate-600'}`}
-      />
+      </span>
     </button>
   );
 }

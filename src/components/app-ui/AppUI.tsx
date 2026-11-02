@@ -51,7 +51,7 @@ import {
   ChevronRight,
   Lock,
   HelpCircle,
-  Star,
+  Pin,
   LayoutGrid,
   Snowflake,
   CloudRain,
@@ -118,11 +118,13 @@ import { supabase } from '../../lib/supabaseClient';
 import { SantanderIcon } from '../ui/SantanderIcon';
 import { MobileAppOverlay } from '../public/MobileAppPreview';
 import { ChatFAB } from './ChatFAB';
+import { MobileBottomNav, escondeTabBar } from './MobileBottomNav';
 import { logClientAudit } from '../../lib/auditClient';
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from '../../lib/recentSearches';
 import { resolverActionUrl } from '../../lib/notificationLinks';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { useFavoritePaths, toggleFavoritePath } from '../../lib/favorites';
+import { usePinnedSections, togglePinnedSection } from '../../lib/pinnedSections';
 import { Breadcrumbs } from './Breadcrumbs';
 import { buildBreadcrumbTrail } from '../../lib/breadcrumbTrail';
 import { settingsSections } from './SystemSettings';
@@ -150,6 +152,9 @@ export interface NavigationItem {
   /** permissionKey from permissionCatalog — if set, only profiles with view=true for that key can see this item */
   permKey?: string;
   exact?: boolean;
+  /** Some da sidebar e da tela de Apps, mas continua aqui para a checagem de
+   *  permissão da rota (isCurrentPathAllowed) seguir bloqueando quem não pode. */
+  hiddenFromMenu?: boolean;
 }
 
 type EcclesiasticalTitleOption = {
@@ -322,7 +327,7 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Contas a Pagar',   path: '/app-ui/finance/contas-a-pagar', icon: Receipt,         permKey: 'contas_pagar' },
       { name: 'Blocos de Numeração', path: '/app-ui/finance/blocos-numeracao', icon: Hash,       permKey: 'dizimo_blocos' },
       { name: 'Fluxo de Caixa',   path: '/app-ui/finance/cash-flow',      icon: Wallet,          permKey: 'cash_flow' },
-      { name: 'Banco / Santander',path: '/app-ui/finance/santander',      icon: SantanderIcon,   permKey: 'santander_view' },
+      { name: 'Banco / Santander',path: '/app-ui/finance/santander',      icon: SantanderIcon,   permKey: 'santander_view', hiddenFromMenu: true }, // fora do menu a pedido do dono (02/11/2026)
       { name: 'Planilhas',        path: '/app-ui/crm/spreadsheet',        icon: FileSpreadsheet, permKey: 'spreadsheets' },
       { name: 'Diretoria',        path: '/app-ui/finance/diretoria',       icon: BarChart3,       permKey: 'finance_executive' },
       { name: 'Rel. Financeiros', path: '/app-ui/financial-reports',      icon: BarChart3,       permKey: 'finance_reports' },
@@ -484,6 +489,13 @@ export const appNavigation: NavigationSection[] = [
     ]
   },
 ];
+
+// Ordem alfabética só na exibição da sidebar (pedido do dono, 02/11/2026).
+// As listas originais não são reordenadas: `firstAllowedPath` usa a ordem delas.
+const alfabetico = new Intl.Collator('pt-BR', { sensitivity: 'base' });
+function emOrdemAlfabetica<T>(lista: T[], rotulo: (item: T) => string): T[] {
+  return [...lista].sort((a, b) => alfabetico.compare(rotulo(a), rotulo(b)));
+}
 
 export function AppUI() {
   const location = useLocation();
@@ -700,6 +712,7 @@ export function AppUI() {
   const [memberTitles, setMemberTitles] = useState<EcclesiasticalTitleOption[]>([]);
   const topSearchInputRef = useRef<HTMLInputElement>(null);
   const favoritePaths = useFavoritePaths();
+  const pinnedSections = usePinnedSections();
 
   const activeContext = switcherItems.find(
     (item) => item.id === selectedContext.id && item.level === selectedContext.level,
@@ -1221,7 +1234,7 @@ export function AppUI() {
     .map((section) => ({
       ...section,
       items: section.items.filter(
-        (item) => canViewItem(profileType, item.permKey) && isCampoMenuAllowed(item.path),
+        (item) => !item.hiddenFromMenu && canViewItem(profileType, item.permKey) && isCampoMenuAllowed(item.path),
       ),
     }))
     .filter((section) => section.items.length > 0);
@@ -1264,7 +1277,7 @@ export function AppUI() {
 
   const quickAccessItems = appNavigation.flatMap((section) =>
     section.items
-      .filter((item) => canViewItem(profileType, item.permKey) && isCampoMenuAllowed(item.path))
+      .filter((item) => !item.hiddenFromMenu && canViewItem(profileType, item.permKey) && isCampoMenuAllowed(item.path))
       .map((item) => ({
         ...item,
         section: section.section,
@@ -1382,32 +1395,32 @@ export function AppUI() {
     return (
       <div
         key={item.path}
-        className={`group flex items-center gap-2 rounded-2xl text-sm transition-all ${
-          isActive ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'
+        className={`group flex items-center gap-2 rounded-full text-sm transition-all ${
+          isActive ? 'bg-[var(--sl-primary-soft)]' : 'hover:bg-[var(--sl-chip)]'
         }`}
       >
         <Link
           to={item.path}
           onClick={closeSectionPanel}
-          className={`flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-2 py-1.5 text-sm transition-all ${
+          className={`flex min-w-0 flex-1 items-center gap-3 rounded-full px-1.5 py-1.5 text-sm transition-all ${
             isActive
-              ? 'font-bold text-slate-900 dark:text-white'
-              : 'font-medium text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+              ? 'font-bold text-[var(--sl-text)]'
+              : 'font-medium text-[var(--sl-text-2)] hover:text-[var(--sl-text)]'
           }`}
         >
-          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl transition-colors ${
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors ${
             isActive
-              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-              : 'bg-[#eef1f5] text-slate-600 group-hover:bg-[#e6eaf0] dark:bg-slate-700 dark:text-slate-300'
+              ? 'bg-[var(--sl-primary)] text-white'
+              : 'bg-[var(--sl-chip)] text-[var(--sl-text-2)] group-hover:bg-[var(--sl-solid)]'
           }`}>
             <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
           </span>
           <span className="flex-1 truncate">{item.name}</span>
           {badge && (
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
               isActive
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                ? 'bg-[var(--sl-primary)] text-white'
+                : 'bg-[var(--sl-chip)] text-[var(--sl-text-2)]'
             }`}>
               {badge}
             </span>
@@ -1420,14 +1433,14 @@ export function AppUI() {
             event.stopPropagation();
             toggleFavorite(item.path);
           }}
-          className={`mr-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors ${
+          className={`mr-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors ${
             isFavorite
-              ? 'text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-500/10'
-              : 'text-slate-300 hover:bg-slate-200/70 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-600/50 dark:hover:text-slate-300'
+              ? 'text-[var(--sl-primary)] hover:bg-[var(--sl-primary-soft)]'
+              : 'text-[var(--sl-text-4)] hover:bg-[var(--sl-solid)] hover:text-[var(--sl-text-2)]'
           }`}
-          title={isFavorite ? 'Remover dos favoritos' : 'Favoritar atalho'}
+          title={isFavorite ? 'Desafixar atalho' : 'Fixar atalho'}
         >
-          <Star className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+          <Pin className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
         </button>
       </div>
     );
@@ -1512,10 +1525,10 @@ export function AppUI() {
             animate={{ x: 0 }}
             exit={{ x: -288 }}
             transition={{ type: 'tween', duration: 0.22 }}
-            className={`w-72 bg-[#f7f8fa] dark:bg-slate-900 border-r border-[#e8ecf1] dark:border-slate-700 flex flex-col transition-colors duration-200${isMobile ? ' fixed inset-y-0 left-0 z-50 shadow-2xl' : ''}`}
+            className={`sl-sidebar w-72 border-r border-[var(--sl-border)] flex flex-col transition-colors duration-200${isMobile ? ' fixed inset-y-0 left-0 z-50 bg-[var(--sl-solid)] shadow-[var(--sl-shadow-lg)]' : ' bg-[var(--sl-side)] backdrop-blur-[20px]'}`}
           >
             {/* Logo */}
-            <div className="px-5 py-5 border-b border-[#e8ecf1] dark:border-slate-700">
+            <div className="px-5 py-5 border-b border-[var(--sl-border)]">
               <div className="flex items-center gap-3">
                 <Link to="/" onClick={() => isMobile && setSidebarOpen(false)} className="flex items-center gap-3 group">
                   <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-[14px] bg-black shadow-[0_10px_24px_-12px_rgba(15,23,42,.6)] ring-1 ring-white/10 group-hover:ring-white/30 transition-all">
@@ -1525,36 +1538,36 @@ export function AppUI() {
                     {branding.logoUrl ? (
                       <img src={branding.logoUrl} alt="Logo" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-lg font-bold text-white/80">MRM</span>
+                      <span className="text-[11px] font-extrabold tracking-[.02em] text-white/85">MRM</span>
                     )}
                   </div>
                   <div>
-                    <h1 className="text-[15px] font-extrabold tracking-[-.01em] text-slate-900 dark:text-white">MRM</h1>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Gestão Ministerial</p>
+                    <h1 className="text-[15px] font-extrabold tracking-[-.01em] text-[var(--sl-text)]">MRM</h1>
+                    <p className="text-xs text-[var(--sl-text-3)]">Gestão Ministerial</p>
                   </div>
                 </Link>
                 {isMobile && (
                   <button
                     onClick={() => setSidebarOpen(false)}
-                    className="ml-auto p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    className="ml-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--sl-solid)] shadow-[var(--sl-shadow)] transition hover:-translate-y-px"
                     aria-label="Fechar menu"
                   >
-                    <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                    <X className="w-5 h-5 text-[var(--sl-text-2)]" />
                   </button>
                 )}
               </div>
             </div>
 
             {/* Church Switcher — só existe com a visão de campo destravada */}
-            {switcherVisible && <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+            {switcherVisible && <div className="p-4 border-b border-[var(--sl-border)]">
               <button
                 onClick={() => setChurchSwitcherOpen(!churchSwitcherOpen)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2.5 bg-[var(--sl-solid)] shadow-[var(--sl-shadow)] hover:-translate-y-px rounded-full transition"
               >
-                <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <Building2 className="w-5 h-5 text-[var(--sl-primary)]" />
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{activeFieldContext.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Campo</p>
+                  <p className="text-sm font-semibold text-[var(--sl-text)]">{activeFieldContext.name}</p>
+                  <p className="text-xs text-[var(--sl-text-3)]">Campo</p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-slate-400" />
               </button>
@@ -1562,14 +1575,14 @@ export function AppUI() {
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto px-3 py-4">
-              <div className="sticky top-0 z-10 mb-3 bg-[#f7f8fa] pb-2 dark:bg-slate-900">
+              <div className="sticky top-0 z-10 mb-3 pb-2">
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sl-text-4)]" />
                   <input
                     value={sidebarSearchQuery}
                     onChange={(event) => setSidebarSearchQuery(event.target.value)}
                     placeholder="Buscar atalho ou módulo"
-                    className="h-11 w-full rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-9 pr-9 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-slate-300"
+                    className="h-11 w-full rounded-full border border-[var(--sl-border)] bg-[var(--sl-solid)] pl-10 pr-9 text-sm text-[var(--sl-text)] outline-none transition placeholder:text-[var(--sl-text-4)] focus:border-[var(--sl-primary)] focus:shadow-[0_0_0_4px_var(--sl-primary-soft)]"
                   />
                   {sidebarSearchQuery && (
                     <button
@@ -1577,7 +1590,7 @@ export function AppUI() {
                       onClick={() => setSidebarSearchQuery('')}
                       title="Limpar busca"
                       aria-label="Limpar busca"
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--sl-text-4)] transition hover:bg-[var(--sl-chip)] hover:text-[var(--sl-text)]"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -1589,22 +1602,22 @@ export function AppUI() {
               <Link
                 to="/app-ui"
                 onClick={() => isMobile && setSidebarOpen(false)}
-                className={`group mb-1 flex items-center gap-2.5 rounded-2xl px-2 py-1.5 md:gap-3 md:px-2.5 transition-all ${
+                className={`group mb-1 flex items-center gap-2.5 rounded-full px-2 py-1.5 md:gap-3 md:px-2 transition-all ${
                   location.pathname === '/app-ui'
-                    ? 'bg-white shadow-[0_1px_2px_rgba(15,23,42,.06),0_8px_24px_-12px_rgba(15,23,42,.18)] dark:bg-slate-800'
-                    : 'hover:bg-white dark:hover:bg-slate-800'
+                    ? 'bg-[var(--sl-solid)] shadow-[var(--sl-shadow)]'
+                    : 'hover:bg-[var(--sl-hover)]'
                 }`}
               >
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-[11px] md:h-9 md:w-9 md:rounded-xl transition-colors ${
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full md:h-10 md:w-10 transition-colors ${
                   location.pathname === '/app-ui'
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                    : 'bg-[#e9edf2] text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                    ? 'bg-[var(--sl-primary)] text-white'
+                    : 'bg-[var(--sl-chip)] text-[var(--sl-text-2)]'
                 }`}>
                   <LayoutGrid className="h-4 w-4 md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
                 </span>
                 <span className="flex min-w-0 flex-col">
-                  <span className="text-[13px] font-bold text-slate-900 md:text-sm dark:text-white">Apps</span>
-                  <span className="text-[11px] font-medium text-slate-400 md:text-xs">Todos os módulos</span>
+                  <span className="text-[14px] font-bold text-[var(--sl-text)] md:text-[15px]">Apps</span>
+                  <span className="text-[11.5px] font-medium text-[var(--sl-text-3)] md:text-[12.5px]">Todos os módulos</span>
                 </span>
               </Link>
 
@@ -1616,37 +1629,37 @@ export function AppUI() {
                 data-section-trigger
                 aria-expanded={openSection === FAVORITES_SECTION}
                 onClick={(event) => openSectionPanel(FAVORITES_SECTION, event.currentTarget)}
-                className={`group mb-1 flex w-full cursor-pointer items-center gap-2.5 rounded-2xl px-2 py-1.5 md:gap-3 md:px-2.5 text-left transition-all ${
+                className={`group mb-1 flex w-full cursor-pointer items-center gap-2.5 rounded-full px-2 py-1.5 md:gap-3 md:px-2 text-left transition-all ${
                   openSection === FAVORITES_SECTION
-                    ? 'bg-white shadow-[0_1px_2px_rgba(15,23,42,.06),0_8px_24px_-12px_rgba(15,23,42,.18)] dark:bg-slate-800'
-                    : 'hover:bg-white dark:hover:bg-slate-800'
+                    ? 'bg-[var(--sl-solid)] shadow-[var(--sl-shadow)]'
+                    : 'hover:bg-[var(--sl-hover)]'
                 }`}
               >
                 {/* Âmbar em hex: as classes amber são repintadas pelo tema (globals.css). */}
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[11px] md:h-9 md:w-9 md:rounded-xl bg-[#fef3c7] text-[#b45309] dark:bg-[#451a03]/50 dark:text-[#fcd34d]">
-                  <Star className="h-4 w-4 fill-current md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full md:h-10 md:w-10 bg-[var(--sl-yellow-soft)] text-[var(--sl-warn)]">
+                  <Pin className="h-4 w-4 fill-current md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-[13px] font-bold text-slate-900 md:text-sm dark:text-white">Favoritos</span>
-                  <span className="text-[11px] font-medium text-slate-400 md:text-xs">
+                  <span className="truncate text-[14px] font-bold text-[var(--sl-text)] md:text-[15px]">Favoritos</span>
+                  <span className="text-[11.5px] font-medium text-[var(--sl-text-3)] md:text-[12.5px]">
                     {favoriteQuickAccessItems.length} {favoriteQuickAccessItems.length === 1 ? 'atalho' : 'atalhos'}
                   </span>
                 </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-[var(--sl-text-4)]" />
               </button>
               )}
 
               {sidebarSearchQuery.trim() ? (
                 /* Busca ativa: lista achatada dos resultados, sem precisar abrir categoria */
                 <div className="space-y-4">
-                  {filteredNavigation.map((section) => (
+                  {emOrdemAlfabetica(filteredNavigation, (s) => s.section).map((section) => (
                     <div key={section.section}>
-                      <p className="mb-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{section.section}</p>
-                      {section.items.map((item) => renderNavItem(item))}
+                      <p className="mb-1 px-3 text-[11px] font-bold uppercase tracking-[.08em] text-[var(--sl-text-4)]">{section.section}</p>
+                      {emOrdemAlfabetica(section.items, (i) => i.name).map((item) => renderNavItem(item))}
                     </div>
                   ))}
                   {!filteredNavigation.length ? (
-                    <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    <div className="rounded-[16px] border border-dashed border-[var(--sl-border-2)] px-4 py-5 text-sm text-[var(--sl-text-3)]">
                       Nenhum menu encontrado para "{sidebarSearchQuery}".
                     </div>
                   ) : null}
@@ -1654,8 +1667,14 @@ export function AppUI() {
               ) : (
                 /* Menu principal: so as categorias — os itens abrem no painel lateral */
                 <div className="space-y-1">
-                  <p className="px-3 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[.08em] text-slate-400">Módulos</p>
-                  {visibleNavigation.map((section) => {
+                  {[
+                    { titulo: 'Fixados', secoes: visibleNavigation.filter((s) => pinnedSections.includes(s.section)) },
+                    { titulo: 'Módulos', secoes: visibleNavigation.filter((s) => !pinnedSections.includes(s.section)) },
+                  ].filter((grupo) => grupo.secoes.length > 0).map((grupo) => (
+                  <div key={grupo.titulo} className="space-y-1">
+                  <p className="px-3 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[.08em] text-[var(--sl-text-4)]">{grupo.titulo}</p>
+                  {emOrdemAlfabetica(grupo.secoes, (s) => s.section).map((section) => {
+                    const isPinned = pinnedSections.includes(section.section);
                     const SectionIcon = SECTION_ICONS[section.section] ?? LayoutGrid;
                     const hasActiveItem = section.items.some((item) =>
                       item.exact
@@ -1665,68 +1684,85 @@ export function AppUI() {
                     const isOpen = openSection === section.section;
 
                     return (
+                      <div key={section.section} className="group/sec relative">
                       <button
-                        key={section.section}
                         type="button"
                         data-section-trigger
                         aria-expanded={isOpen}
                         onClick={(event) => openSectionPanel(section.section, event.currentTarget)}
-                        className={`group flex w-full cursor-pointer items-center gap-2.5 rounded-2xl px-2 py-1.5 md:gap-3 md:px-2.5 text-left transition-all ${
+                        className={`group flex w-full cursor-pointer items-center gap-2.5 rounded-full px-2 py-1.5 md:gap-3 md:px-2 text-left transition-all ${
                           hasActiveItem || isOpen
-                            ? 'bg-white shadow-[0_1px_2px_rgba(15,23,42,.06),0_8px_24px_-12px_rgba(15,23,42,.18)] dark:bg-slate-800'
-                            : 'hover:bg-white dark:hover:bg-slate-800'
+                            ? 'bg-[var(--sl-solid)] shadow-[var(--sl-shadow)]'
+                            : 'hover:bg-[var(--sl-hover)]'
                         }`}
                       >
-                        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-[11px] md:h-9 md:w-9 md:rounded-xl transition-colors ${
+                        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full md:h-10 md:w-10 transition-colors ${
                           hasActiveItem || isOpen
-                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                            ? 'bg-[var(--sl-primary)] text-white'
                             : section.section === 'Finanças'
                               // Verde leve em hex: as classes emerald/green são
                               // repintadas pelo tema (globals.css) e sairiam escuras.
-                              ? 'bg-[#dcfce7] text-[#15803d] dark:bg-[#052e16]/60 dark:text-[#86efac]'
-                              : 'bg-[#e9edf2] text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                              ? 'bg-[var(--sl-ok-soft)] text-[var(--sl-ok)]'
+                              : 'bg-[var(--sl-chip)] text-[var(--sl-text-2)]'
                         }`}>
                           <SectionIcon className="h-4 w-4 md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
                         </span>
-                        <span className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-[13px] font-bold text-slate-900 md:text-sm dark:text-white">{section.section}</span>
-                          <span className="text-[11px] font-medium text-slate-400 md:text-xs">
+                        <span className="flex min-w-0 flex-1 flex-col pr-7">
+                          <span className="truncate text-[14px] font-bold text-[var(--sl-text)] md:text-[15px]">{section.section}</span>
+                          <span className="text-[11.5px] font-medium text-[var(--sl-text-3)] md:text-[12.5px]">
                             {hasActiveItem ? 'Você está aqui' : `${section.items.length} ${section.items.length === 1 ? 'tela' : 'telas'}`}
                           </span>
                         </span>
-                        <ChevronRight className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isOpen ? 'translate-x-0.5' : ''}`} />
+                        <ChevronRight className={`h-4 w-4 shrink-0 text-[var(--sl-text-4)] transition-transform ${isOpen ? 'translate-x-0.5' : ''}`} />
                       </button>
+                      {/* Fixar/desafixar o módulo no topo (botão irmão: não cabe botão dentro de botão) */}
+                      <button
+                        type="button"
+                        onClick={() => togglePinnedSection(section.section)}
+                        title={isPinned ? 'Desafixar módulo' : 'Fixar no topo'}
+                        aria-label={isPinned ? `Desafixar ${section.section}` : `Fixar ${section.section}`}
+                        className={`absolute right-8 top-1/2 grid h-7 w-7 -translate-y-1/2 cursor-pointer place-items-center rounded-full transition ${
+                          isPinned
+                            ? 'text-[var(--sl-primary)] hover:bg-[var(--sl-chip)]'
+                            : 'text-[var(--sl-text-4)] opacity-100 hover:bg-[var(--sl-chip)] hover:text-[var(--sl-text-2)] md:opacity-0 md:group-hover/sec:opacity-100 md:focus-visible:opacity-100'
+                        }`}
+                      >
+                        {isPinned ? <Pin className="h-3.5 w-3.5 fill-current" /> : <Pin className="h-3.5 w-3.5" />}
+                      </button>
+                      </div>
                     );
                   })}
+                  </div>
+                  ))}
                 </div>
               )}
             </nav>
 
             {/* User Profile */}
-            <div className="p-3 border-t border-[#e8ecf1] dark:border-slate-700">
-              <div className="flex items-center gap-3 rounded-2xl bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(15,23,42,.06)] dark:bg-slate-800">
-                <div className="grid h-8 w-8 place-items-center rounded-[11px] bg-slate-900 md:h-9 md:w-9 md:rounded-xl dark:bg-white">
-                  <span className="text-sm font-bold text-white dark:text-slate-900">{initials}</span>
+            <div className="p-3 border-t border-[var(--sl-border)]">
+              <div className="flex items-center gap-3 rounded-full bg-[var(--sl-solid)] px-2 py-2 shadow-[var(--sl-shadow)]">
+                <div className="grid h-9 w-9 place-items-center rounded-full bg-[var(--sl-primary)] md:h-10 md:w-10">
+                  <span className="text-sm font-bold text-white">{initials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{displayName}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{displayRole}</p>
+                  <p className="text-sm font-bold text-[var(--sl-text)] truncate">{displayName}</p>
+                  <p className="text-xs text-[var(--sl-text-3)]">{displayRole}</p>
                 </div>
                 {podeVerConfiguracoes && (
                   <Link
                     to="/app-ui/system-settings"
                     title="Configurações"
-                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    className="grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-[var(--sl-chip)]"
                   >
-                    <Settings className="w-4 h-4 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" />
+                    <Settings className="w-4 h-4 text-[var(--sl-text-3)] hover:text-[var(--sl-text)]" />
                   </Link>
                 )}
                 <button
                   onClick={handleLogout}
                   title="Sair"
-                  className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                  className="mr-1 grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-[var(--sl-bad-soft)]"
                 >
-                  <LogOut className="w-4 h-4 text-slate-400 hover:text-red-500" />
+                  <LogOut className="w-4 h-4 text-[var(--sl-text-3)] hover:text-[var(--sl-bad)]" />
                 </button>
               </div>
             </div>
@@ -1930,9 +1966,9 @@ export function AppUI() {
                 <div className="max-h-[60vh] overflow-y-auto p-4">
                   {favoriteQuickAccessItems.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-slate-300 px-5 py-10 text-center dark:border-slate-600">
-                      <Star className="mx-auto mb-3 h-8 w-8 text-slate-300 dark:text-slate-500" />
+                      <Pin className="mx-auto mb-3 h-8 w-8 text-slate-300 dark:text-slate-500" />
                       <p className="font-medium text-slate-700 dark:text-slate-200">Nenhum atalho favoritado ainda.</p>
-                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Clique na estrela ao lado de um item do menu para ele aparecer aqui.</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Clique no pin ao lado de um item do menu para ele aparecer aqui.</p>
                     </div>
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -1960,7 +1996,7 @@ export function AppUI() {
                                   className="rounded-lg p-1.5 text-sky-400 transition-colors hover:bg-sky-50 dark:hover:bg-sky-500/10"
                                   title="Remover dos favoritos"
                                 >
-                                  <Star className="h-4 w-4 fill-current" />
+                                  <Pin className="h-4 w-4 fill-current" />
                                 </button>
                               </Permissao>
                             </div>
@@ -1993,26 +2029,26 @@ export function AppUI() {
             width: isMobile ? 'calc(100vw - 32px)' : 288,
             maxHeight: 'calc(100vh - 32px)',
           }}
-          className="fixed z-[60] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+          className="fixed z-[60] flex flex-col overflow-hidden rounded-[20px] border border-[var(--sl-border)] bg-[var(--sl-solid)] shadow-[var(--sl-shadow-lg)]"
         >
-          <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{activeSection.section}</p>
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--sl-border)] px-4 py-3">
+            <p className="truncate text-[15px] font-bold text-[var(--sl-text)]">{activeSection.section}</p>
             <button
               type="button"
               onClick={() => setOpenSection(null)}
               title="Fechar"
               aria-label="Fechar"
-              className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+              className="grid h-8 w-8 place-items-center rounded-full bg-[var(--sl-solid)] text-[var(--sl-text-3)] shadow-[var(--sl-shadow)] transition hover:-translate-y-px hover:text-[var(--sl-text)]"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
             {activeSection.items.length ? (
-              activeSection.items.map((item) => renderNavItem(item))
+              (activeSection.section === 'Favoritos' ? activeSection.items : emOrdemAlfabetica(activeSection.items, (i) => i.name)).map((item) => renderNavItem(item))
             ) : (
-              <div className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                Marque a estrela nos menus para montar seus atalhos aqui.
+              <div className="rounded-[16px] border border-dashed border-[var(--sl-border-2)] px-3 py-4 text-sm text-[var(--sl-text-3)]">
+                Fixe telas com o pin para montar seus atalhos aqui.
               </div>
             )}
           </div>
@@ -2023,12 +2059,12 @@ export function AppUI() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
         {/* Celular: os ícones se distribuem pela barra inteira (justify-between, grupos viram "contents"). */}
-        <header className="relative bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-16 flex items-center px-3 sm:px-6 gap-2 sm:gap-4 max-md:justify-between transition-colors duration-200">
+        <header className="relative z-20 bg-[var(--sl-surface)] backdrop-blur-[20px] border-b border-[var(--sl-border)] h-16 flex items-center px-3 sm:px-6 gap-2 sm:gap-4 max-md:justify-between transition-colors duration-200">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            className="grid h-10 w-10 place-items-center rounded-full bg-[var(--sl-solid)] shadow-[var(--sl-shadow)] transition hover:-translate-y-px"
           >
-            <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            <Menu className="w-5 h-5 text-[var(--sl-text-2)]" />
           </button>
 
           {/* Início da barra: busca, chat e Novo Membro */}
@@ -2038,7 +2074,7 @@ export function AppUI() {
             <div
               className={
                 searchExpanded
-                  ? 'absolute inset-x-0 top-0 z-30 flex h-16 items-center gap-2 bg-white px-3 dark:bg-slate-800 sm:static sm:h-auto sm:bg-transparent sm:px-0 sm:dark:bg-transparent'
+                  ? 'absolute inset-x-0 top-0 z-30 flex h-16 items-center gap-2 bg-[var(--sl-solid)] px-3 sm:static sm:h-auto sm:bg-transparent sm:px-0'
                   : 'relative flex items-center'
               }
             >
@@ -2051,13 +2087,13 @@ export function AppUI() {
                   }}
                   title="Buscar membro (Ctrl K)"
                   aria-label="Buscar membro"
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors sm:hidden"
+                  className="grid h-10 w-10 place-items-center rounded-full bg-[var(--sl-solid)] shadow-[var(--sl-shadow)] transition hover:-translate-y-px sm:hidden"
                 >
-                  <Search className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                  <Search className="w-5 h-5 text-[var(--sl-text-2)]" />
                 </button>
               )}
               <div className={searchExpanded ? 'relative flex-1 sm:w-64 sm:flex-none lg:w-80' : 'absolute h-0 w-0 overflow-hidden opacity-0 sm:relative sm:h-auto sm:w-64 sm:overflow-visible sm:opacity-100 lg:w-80'}>
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--sl-text-4)]" />
                   <input
                     ref={topSearchInputRef}
                     type="text"
@@ -2096,19 +2132,19 @@ export function AppUI() {
                       }
                     }}
                     placeholder="Buscar membro por nome ou rol..."
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-16 text-sm text-slate-700 transition-colors hover:bg-white hover:border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+                    className="h-10 w-full rounded-full border border-[var(--sl-border)] bg-[var(--sl-solid)] py-2 pl-10 pr-16 text-sm text-[var(--sl-text)] placeholder:text-[var(--sl-text-4)] transition focus:outline-none focus:border-[var(--sl-primary)] focus:shadow-[0_0_0_4px_var(--sl-primary-soft)]"
                   />
-                  <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-400">Ctrl K</span>
+                  <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 sm:inline-flex items-center gap-1 rounded-full bg-[var(--sl-chip)] px-2 py-1 text-[11px] font-semibold text-[var(--sl-text-3)]">Ctrl K</span>
 
                   {recentSearchesOpen && recentSearches.length > 0 ? (
-                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-600 dark:bg-slate-800">
-                      <div className="flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-[16px] border border-[var(--sl-border)] bg-[var(--sl-solid)] p-1.5 shadow-[var(--sl-shadow-lg)]">
+                      <div className="flex items-center justify-between px-2.5 py-2 text-[11px] font-bold uppercase tracking-[.08em] text-[var(--sl-text-4)]">
                         <span>Buscas recentes</span>
                         <button
                           type="button"
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => setRecentSearches(clearRecentSearches())}
-                          className="font-semibold normal-case tracking-normal text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                          className="font-semibold normal-case tracking-normal text-[var(--sl-text-3)] hover:text-[var(--sl-text)]"
                         >
                           Limpar
                         </button>
@@ -2124,9 +2160,9 @@ export function AppUI() {
                             setRecentSearchesOpen(false);
                             setSearchOpen(true);
                           }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
+                          className="flex h-[38px] w-full items-center gap-2.5 rounded-[10px] px-2.5 text-left text-[13.5px] font-medium text-[var(--sl-text-2)] hover:bg-[var(--sl-chip)] hover:text-[var(--sl-text)]"
                         >
-                          <Search className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                          <Search className="h-3.5 w-3.5 flex-shrink-0 text-[var(--sl-text-4)]" />
                           <span className="truncate">{term}</span>
                         </button>
                       ))}
@@ -2138,7 +2174,7 @@ export function AppUI() {
                   type="button"
                   onClick={() => { setTopSearchQuery(''); setSearchExpanded(false); }}
                   aria-label="Fechar busca"
-                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 sm:hidden dark:hover:bg-slate-700"
+                  className="grid h-10 w-10 place-items-center rounded-full text-[var(--sl-text-3)] hover:bg-[var(--sl-chip)] sm:hidden"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -2154,9 +2190,9 @@ export function AppUI() {
                 to="/app-ui/members/new"
                 title="Novo Membro"
                 aria-label="Novo Membro"
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                className="grid h-10 w-10 place-items-center rounded-full bg-[var(--sl-solid)] shadow-[var(--sl-shadow)] transition hover:-translate-y-px"
               >
-                <UserPlus className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                <UserPlus className="w-5 h-5 text-[var(--sl-text-2)]" />
               </Link>
             )}
           </div>
@@ -2173,15 +2209,15 @@ export function AppUI() {
             <div className="relative" ref={notificationRef}>
               <button 
                 onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
-                className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                className="relative grid h-10 w-10 place-items-center rounded-full bg-[var(--sl-solid)] shadow-[var(--sl-shadow)] transition hover:-translate-y-px"
               >
-                <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                <Bell className="w-5 h-5 text-[var(--sl-text-2)]" />
                 {notificationCount > 0 ? (
-                  <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-slate-800">
+                  <span className="absolute -top-1 -right-1 box-border flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-[var(--sl-solid)] bg-[var(--sl-badge)] px-1 text-[10.5px] font-bold leading-none text-white">
                     {notificationCount > 99 ? '99+' : notificationCount}
                   </span>
                 ) : (
-                  <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-800"></span>
+                  <span className="absolute top-0.5 right-0.5 h-2.5 w-2.5 rounded-full bg-[var(--sl-ok)] ring-2 ring-[var(--sl-solid)]"></span>
                 )}
               </button>
 
@@ -2193,12 +2229,12 @@ export function AppUI() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 flex flex-col overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[var(--sl-solid)] rounded-[20px] shadow-[var(--sl-shadow-lg)] border border-[var(--sl-border)] z-50 flex flex-col overflow-hidden"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 py-3 bg-slate-50 dark:bg-slate-800/80">
-                      <h3 className="font-semibold text-slate-900 dark:text-white">Notificações</h3>
+                    <div className="flex items-center justify-between border-b border-[var(--sl-border)] px-4 py-3">
+                      <h3 className="text-[15px] font-bold text-[var(--sl-text)]">Notificações</h3>
                       {notificationCount > 0 && (
-                        <span className="rounded-full bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-300">
+                        <span className="rounded-full bg-[var(--sl-primary-soft)] px-2.5 py-0.5 text-xs font-bold text-[var(--sl-primary)]">
                           {notificationCount} não lidas
                         </span>
                       )}
@@ -2206,30 +2242,30 @@ export function AppUI() {
 
                     <div className="flex-1 overflow-y-auto max-h-96">
                       {notificationsList.length > 0 ? (
-                        <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                        <div className="divide-y divide-[var(--sl-border)]">
                           {notificationsList.slice(0, 5).map((notification) => (
                             <Link
                               key={notification.id}
                               to={resolverActionUrl(notification.actionUrl)}
                               onClick={() => setNotificationDropdownOpen(false)}
-                              className={`block px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${
-                                !notification.read ? 'bg-purple-50/50 dark:bg-purple-900/10' : ''
+                              className={`block px-4 py-3 hover:bg-[var(--sl-chip)] transition-colors ${
+                                !notification.read ? 'bg-[var(--sl-primary-soft)]/50' : ''
                               }`}
                             >
                               <div className="flex gap-3">
                                 <div className="mt-1 shrink-0">
-                                  <div className={`h-2 w-2 rounded-full mt-1.5 ${!notification.read ? 'bg-purple-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                                  <div className={`h-2 w-2 rounded-full mt-1.5 ${!notification.read ? 'bg-[var(--sl-primary)]' : 'bg-[var(--sl-border-2)]'}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-sm ${!notification.read ? 'font-semibold text-slate-900 dark:text-white' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
+                                  <p className={`text-sm ${!notification.read ? 'font-bold text-[var(--sl-text)]' : 'font-medium text-[var(--sl-text-2)]'}`}>
                                     {notification.title}
                                   </p>
                                   {notification.message && (
-                                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                                    <p className="mt-0.5 text-xs text-[var(--sl-text-3)] line-clamp-2">
                                       {notification.message}
                                     </p>
                                   )}
-                                  <p className="mt-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                  <p className="mt-1.5 text-[11px] font-semibold text-[var(--sl-text-4)] uppercase tracking-wider">
                                     {new Date(notification.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                   </p>
                                 </div>
@@ -2239,18 +2275,18 @@ export function AppUI() {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-8 text-center px-4">
-                          <Bell className="mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">Nenhuma notificação</p>
-                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Você está em dia com tudo!</p>
+                          <Bell className="mb-2 h-8 w-8 text-[var(--sl-text-4)]" />
+                          <p className="text-sm font-bold text-[var(--sl-text)]">Nenhuma notificação</p>
+                          <p className="mt-1 text-xs text-[var(--sl-text-3)]">Você está em dia com tudo!</p>
                         </div>
                       )}
                     </div>
 
-                    <div className="border-t border-slate-200 dark:border-slate-700 p-2 bg-slate-50 dark:bg-slate-800">
+                    <div className="border-t border-[var(--sl-border)] p-2">
                       <Link
                         to="/app-ui/notifications"
                         onClick={() => setNotificationDropdownOpen(false)}
-                        className="block w-full rounded-lg px-4 py-2 text-center text-sm font-medium text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                        className="block w-full rounded-full px-4 py-2 text-center text-sm font-semibold text-[var(--sl-primary)] hover:bg-[var(--sl-primary-soft)] transition-colors"
                       >
                         Ver todas as notificações
                       </Link>
@@ -2266,11 +2302,11 @@ export function AppUI() {
                 onClick={() => setProfileOpen(!profileOpen)}
                 title="Perfil e opções"
                 aria-label="Perfil e opções"
-                className={`p-2 rounded-lg transition-colors ${
-                  profileOpen ? 'bg-slate-100 dark:bg-slate-700' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+                className={`grid h-10 w-10 place-items-center rounded-full bg-[var(--sl-primary)] text-white shadow-[0_6px_14px_-6px_var(--sl-primary)] transition ${
+                  profileOpen ? 'brightness-110 ring-4 ring-[var(--sl-primary-soft)]' : 'hover:-translate-y-px hover:brightness-110'
                 }`}
               >
-                <MoreHorizontal className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                <MoreHorizontal className="w-5 h-5 text-white" />
               </button>
 
               {/* Profile dropdown */}
@@ -2281,34 +2317,34 @@ export function AppUI() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-80 bg-[var(--sl-solid)] rounded-[20px] shadow-[var(--sl-shadow-lg)] border border-[var(--sl-border)] z-50 overflow-hidden"
                   >
                     {/* Header */}
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                    <div className="p-4 border-b border-[var(--sl-border)]">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center overflow-hidden">
+                        <div className="w-12 h-12 bg-[var(--sl-primary-soft)] rounded-full flex items-center justify-center overflow-hidden">
                           {userFoto
                             ? <img src={userFoto} alt={displayName} className="w-12 h-12 rounded-full object-cover" />
-                            : <span className="text-purple-700 dark:text-purple-300 font-bold text-lg">{initials}</span>
+                            : <span className="text-[var(--sl-primary)] font-bold text-lg">{initials}</span>
                           }
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-900 dark:text-white">{displayName}</p>
-                          <p className="text-slate-500 dark:text-slate-400 text-sm">{storedUser.email}</p>
-                          <span className="inline-block mt-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs rounded-full">{displayRole}</span>
+                          <p className="font-bold text-[var(--sl-text)]">{displayName}</p>
+                          <p className="text-[var(--sl-text-3)] text-[12.5px]">{storedUser.email}</p>
+                          <span className="inline-block mt-1 px-2.5 py-0.5 bg-[var(--sl-primary-soft)] text-[var(--sl-primary)] text-xs font-bold rounded-full">{displayRole}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Menu items */}
-                    <div className="max-h-[calc(100vh-14rem)] overflow-y-auto p-2 dark:bg-slate-800">
+                    <div className="max-h-[calc(100vh-14rem)] overflow-y-auto p-1.5">
                       <Link
                         to="/app-ui"
                         onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                        className="flex items-center gap-3 px-2.5 py-2 rounded-[10px] hover:bg-[var(--sl-chip)] transition-colors group"
                       >
-                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                          <LayoutGrid className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                        <div className="w-9 h-9 bg-[var(--sl-chip)] rounded-full flex items-center justify-center">
+                          <LayoutGrid className="w-4 h-4 text-[var(--sl-text-2)]" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium text-slate-900 dark:text-white">Todos os aplicativos</p>
@@ -2320,9 +2356,9 @@ export function AppUI() {
                         type="button"
                         onClick={() => { setProfileOpen(false); setQuickAddOpen(true); }}
                         title={weather.label}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                        className="w-full flex items-center gap-3 px-2.5 py-2 rounded-[10px] hover:bg-[var(--sl-chip)] transition-colors group"
                       >
-                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300">
+                        <div className="w-9 h-9 bg-[var(--sl-chip)] rounded-full flex items-center justify-center text-[var(--sl-text-2)]">
                           {renderWeatherIcon()}
                         </div>
                         <div className="flex-1 text-left">
@@ -2335,10 +2371,10 @@ export function AppUI() {
                       <button
                         type="button"
                         onClick={() => { setProfileOpen(false); setMobileDrawerOpen(true); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group sm:hidden"
+                        className="w-full flex items-center gap-3 px-2.5 py-2 rounded-[10px] hover:bg-[var(--sl-chip)] transition-colors group sm:hidden"
                       >
-                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                          <Star className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                        <div className="w-9 h-9 bg-[var(--sl-chip)] rounded-full flex items-center justify-center">
+                          <Pin className="w-4 h-4 text-[var(--sl-text-2)]" />
                         </div>
                         <div className="flex-1 text-left">
                           <p className="text-sm font-medium text-slate-900 dark:text-white">Atalhos favoritos</p>
@@ -2351,10 +2387,10 @@ export function AppUI() {
                       <Link
                         to="/app-ui/help"
                         onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                        className="flex items-center gap-3 px-2.5 py-2 rounded-[10px] hover:bg-[var(--sl-chip)] transition-colors group"
                       >
-                        <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                          <HelpCircle className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                        <div className="w-9 h-9 bg-[var(--sl-chip)] rounded-full flex items-center justify-center">
+                          <HelpCircle className="w-4 h-4 text-[var(--sl-text-2)]" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium text-slate-900 dark:text-white">Central de Ajuda</p>
@@ -2363,16 +2399,16 @@ export function AppUI() {
                         <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </Link>
 
-                      <div className="mx-3 my-1 border-t border-slate-100 dark:border-slate-700" />
+                      <div className="mx-2.5 my-1 border-t border-[var(--sl-border)]" />
 
                       <Permissao chave="tela_moldura.app_ui.meu_perfil_ver_e_editar_dados" rotulo="Meu Perfil Ver e editar dados — App UI" herda="tela_moldura.view">
                         <button
                           type="button"
                           onClick={() => { setProfileOpen(false); setMyProfileOpen(true); }}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                          className="w-full flex items-center gap-3 px-2.5 py-2 rounded-[10px] hover:bg-[var(--sl-chip)] transition-colors group"
                         >
-                          <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center">
-                            <User className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                          <div className="w-9 h-9 bg-[var(--sl-primary-soft)] rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-[var(--sl-primary)]" />
                           </div>
                           <div className="flex-1 text-left">
                             <p className="text-sm font-medium text-slate-900 dark:text-white">Meu Perfil</p>
@@ -2386,10 +2422,10 @@ export function AppUI() {
                         <Link
                           to="/app-ui/system/users"
                           onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                          className="flex items-center gap-3 px-2.5 py-2 rounded-[10px] hover:bg-[var(--sl-chip)] transition-colors group"
                         >
-                          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
-                            <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          <div className="w-9 h-9 bg-[var(--sl-blue-soft)] rounded-full flex items-center justify-center">
+                            <Shield className="w-4 h-4 text-[var(--sl-blue)]" />
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-slate-900 dark:text-white">Usuários e Permissões</p>
@@ -2403,10 +2439,10 @@ export function AppUI() {
                         <Link
                           to="/app-ui/system-settings"
                           onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                          className="flex items-center gap-3 px-2.5 py-2 rounded-[10px] hover:bg-[var(--sl-chip)] transition-colors group"
                         >
-                          <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                            <Settings className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                          <div className="w-9 h-9 bg-[var(--sl-chip)] rounded-full flex items-center justify-center">
+                            <Settings className="w-4 h-4 text-[var(--sl-text-2)]" />
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-slate-900 dark:text-white">Configurações</p>
@@ -2419,10 +2455,10 @@ export function AppUI() {
                       <button
                         type="button"
                         onClick={() => { setProfileOpen(false); setThemeEditorOpen(true); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors group"
+                        className="w-full flex items-center gap-3 px-2.5 py-2 rounded-[10px] hover:bg-[var(--sl-chip)] transition-colors group"
                       >
-                        <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900/40 rounded-lg flex items-center justify-center">
-                          <Palette className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                        <div className="w-9 h-9 bg-[var(--sl-primary-soft)] rounded-full flex items-center justify-center">
+                          <Palette className="w-4 h-4 text-[var(--sl-primary)]" />
                         </div>
                         <div className="flex-1 text-left">
                           <p className="text-sm font-medium text-slate-900 dark:text-white">Tema Global</p>
@@ -2432,9 +2468,9 @@ export function AppUI() {
                       </button>
 
                       {/* Dark mode row */}
-                      <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg">
-                        <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-center">
-                          {darkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                      <div className="flex items-center gap-3 px-2.5 py-2 rounded-[10px]">
+                        <div className="w-9 h-9 bg-[var(--sl-yellow-soft)] rounded-full flex items-center justify-center">
+                          {darkMode ? <Sun className="w-4 h-4 text-[var(--sl-warn)]" /> : <Moon className="w-4 h-4 text-[var(--sl-warn)]" />}
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium text-slate-900 dark:text-white">{darkMode ? 'Modo Claro' : 'Modo Escuro'}</p>
@@ -2442,8 +2478,8 @@ export function AppUI() {
                         </div>
                         <button
                           onClick={() => setDarkMode(!darkMode)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            darkMode ? 'bg-purple-600' : 'bg-slate-200'
+                          className={`relative inline-flex h-6 w-[42px] items-center rounded-full transition-colors ${
+                            darkMode ? 'bg-[var(--sl-primary)]' : 'bg-[var(--sl-border-2)]'
                           }`}
                         >
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
@@ -2452,17 +2488,17 @@ export function AppUI() {
                         </button>
                       </div>
 
-                      <div className="mx-3 my-1 border-t border-slate-100 dark:border-slate-700" />
+                      <div className="mx-2.5 my-1 border-t border-[var(--sl-border)]" />
 
                       <button
                         onClick={() => { setProfileOpen(false); handleLogout(); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors group"
+                        className="w-full flex items-center gap-3 px-2.5 py-2 rounded-[10px] hover:bg-[var(--sl-bad-soft)] transition-colors group"
                       >
-                        <div className="w-8 h-8 bg-red-100 dark:bg-red-900/40 rounded-lg flex items-center justify-center">
-                          <LogOut className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        <div className="w-9 h-9 bg-[var(--sl-bad-soft)] rounded-full flex items-center justify-center">
+                          <LogOut className="w-4 h-4 text-[var(--sl-bad)]" />
                         </div>
                         <div className="flex-1 text-left">
-                          <p className="text-sm font-medium text-red-600 dark:text-red-400">Sair</p>
+                          <p className="text-sm font-semibold text-[var(--sl-bad)]">Sair</p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">Encerrar sessão</p>
                         </div>
                       </button>
@@ -2550,9 +2586,9 @@ export function AppUI() {
                     </div>
                   ) : (
                     <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 px-4 py-4 text-center">
-                      <Star className="mx-auto mb-2 h-6 w-6 text-slate-300" />
+                      <Pin className="mx-auto mb-2 h-6 w-6 text-slate-300" />
                       <p className="text-sm text-slate-500">Nenhum atalho favoritado.</p>
-                      <p className="mt-0.5 text-xs text-slate-400">Abra o menu lateral e clique na ★</p>
+                      <p className="mt-0.5 text-xs text-slate-400">Abra o menu lateral e clique no pin</p>
                     </div>
                   )}
                 </div>
@@ -2680,8 +2716,19 @@ export function AppUI() {
       </AnimatePresence>
 
         <Toaster position="top-right" richColors closeButton />
+        {/* Tab bar do celular (< 640px): Início · Membros · Criar · Avisos · Módulos */}
+        <MobileBottomNav
+          sections={visibleNavigation}
+          sectionIcons={SECTION_ICONS}
+          podeCriarMembro={podeCriarMembro}
+          notificationCount={notificationCount}
+          displayName={displayName}
+          displayRole={displayRole}
+          initials={initials}
+          onOpenProfile={() => setMobileDrawerOpen(true)}
+        />
         {/* Content */}
-        <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+        <main className={`flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 transition-colors duration-200 ${escondeTabBar(location.pathname) ? '' : 'max-sm:pb-[calc(72px+env(safe-area-inset-bottom))]'}`}>
           {isCurrentPathAllowed ? (
             <>
               <Outlet />

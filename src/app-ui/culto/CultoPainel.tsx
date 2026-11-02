@@ -10,7 +10,7 @@ import React, { useMemo, useState } from 'react';
 import { Building2, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ROTULO_STATUS, type GrupoDoPainel, type StatusCulto } from './cultoApi';
 import type { PassoResumo } from './CultoResumoModal';
-import { BORDA, PASTILHA, TEXTO } from './cultoCores';
+import { PASTILHA, PONTO, TEXTO } from './cultoCores';
 import { CampoBusca, CarregarMais, INICIAL, PASSO, casaBusca } from './listaLeve';
 
 interface Props {
@@ -68,7 +68,7 @@ export default function CultoPainel({ grupos, onAbrirResumo }: Props) {
     {filtrados.length === 0 && (
       <p className="text-center py-12 text-sm text-slate-400">Nenhuma igreja com esse nome.</p>
     )}
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {/* Os números do cartão (x/y) continuam os do grupo inteiro; a busca só
           escolhe quais igrejas aparecem na lista. */}
       {filtrados.slice(0, limite).map(({ g, concluidas, pendentes }) => {
@@ -77,32 +77,39 @@ export default function CultoPainel({ grupos, onAbrirResumo }: Props) {
         return (
           <div
             key={`${g.tipo}-${g.id}`}
-            className={`rounded-xl border-2 bg-white dark:bg-slate-800 overflow-hidden shadow-sm ${
-              verde ? BORDA.verde : BORDA.vermelho
-            }`}
+            className="relative flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border border-[#e8ecf1] dark:border-[var(--sl-border)] bg-white dark:bg-[var(--sl-solid)] shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
           >
+            {/* O semáforo do grupo, numa faixa no topo (antes era a borda inteira). */}
+            <span
+              aria-hidden
+              className={`absolute inset-x-0 top-0 h-1 ${verde ? PONTO.verde : PONTO.vermelho}`}
+            />
             <div
               onClick={() =>
                 onAbrirResumo({ nivel: 'GRUPO', id: g.id, tipoGrupo: g.tipo, rotulo: g.nome })
               }
               title="Ver o resumo consolidado deste grupo"
-              className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/40"
+              className="px-4 pt-4 pb-3 border-b border-[#e8ecf1] dark:border-[var(--sl-border)] cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/40"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Icone
-                      className={`w-4 h-4 shrink-0 ${verde ? TEXTO.verde : TEXTO.vermelho}`}
-                    />
-                    <h3 className="font-bold text-slate-900 dark:text-white truncate">{g.nome}</h3>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-[12px] ${
+                    verde ? PASTILHA.verde : PASTILHA.vermelho
+                  }`}
+                >
+                  <Icone className="w-5 h-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[15px] font-bold leading-snug text-slate-900 dark:text-white truncate">
+                    {g.nome}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                     {g.tipo === 'HOSPEDEIRA' ? 'Hospedeira' : 'Regional'}
                     {g.dirigente ? ` · dirigente ${g.dirigente}` : ''}
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${
+                  className={`shrink-0 text-xs font-bold tabular-nums px-2.5 py-1 rounded-full ${
                     verde ? PASTILHA.verde : PASTILHA.vermelho
                   }`}
                 >
@@ -111,28 +118,40 @@ export default function CultoPainel({ grupos, onAbrirResumo }: Props) {
               </div>
             </div>
 
-            <div className="p-4 space-y-3 text-sm">
+            <div className="flex flex-1 flex-col gap-4 p-4 text-sm">
               <div>
-                <div className={`flex items-center gap-1.5 font-semibold text-xs uppercase tracking-wide ${TEXTO.verde}`}>
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Concluídas {g.concluidas.length}
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`flex items-center gap-1.5 text-[12px] font-bold ${TEXTO.verde}`}>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Concluídas
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${PASTILHA.verde}`}>
+                    {g.concluidas.length}
+                  </span>
                 </div>
                 {concluidas.length === 0 ? (
-                  <p className="text-slate-400 text-xs mt-1">nenhuma ainda</p>
+                  <p className="text-slate-400 text-xs mt-2">nenhuma ainda</p>
                 ) : (
-                  <ul className="mt-1 space-y-0.5">
+                  <ul className="mt-2 divide-y divide-[#eef1f5] dark:divide-[var(--sl-border)] rounded-[14px] border border-[#eef1f5] dark:border-[var(--sl-border)]">
                     {concluidas.map((i) => (
                       <li
                         key={i.churchId}
                         onClick={() =>
                           onAbrirResumo({ nivel: 'IGREJA', id: i.churchId, rotulo: i.nome })
                         }
-                        className="text-slate-700 dark:text-slate-200 text-xs cursor-pointer hover:text-emerald-600"
+                        className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/40 first:rounded-t-[14px] last:rounded-b-[14px]"
                       >
-                        {i.nome}
-                        {i.dirigente ? (
-                          <span className="text-slate-400"> — {i.dirigente}</span>
-                        ) : null}
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${PONTO.verde}`} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+                            {i.nome}
+                          </span>
+                          {i.dirigente ? (
+                            <span className="block truncate text-[11.5px] text-slate-500 dark:text-slate-400">
+                              {i.dirigente}
+                            </span>
+                          ) : null}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -140,33 +159,43 @@ export default function CultoPainel({ grupos, onAbrirResumo }: Props) {
               </div>
 
               <div>
-                <div className={`flex items-center gap-1.5 font-semibold text-xs uppercase tracking-wide ${TEXTO.vermelho}`}>
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  Falta {g.pendentes.length}
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`flex items-center gap-1.5 text-[12px] font-bold ${TEXTO.vermelho}`}>
+                    <AlertCircle className="w-4 h-4" />
+                    Falta
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${PASTILHA.vermelho}`}>
+                    {g.pendentes.length}
+                  </span>
                 </div>
                 {pendentes.length === 0 ? (
-                  <p className="text-slate-400 text-xs mt-1">todas fecharam</p>
+                  <p className="text-slate-400 text-xs mt-2">todas fecharam</p>
                 ) : (
-                  <ul className="mt-1 space-y-0.5">
+                  <ul className="mt-2 divide-y divide-[#eef1f5] dark:divide-[var(--sl-border)] rounded-[14px] border border-[#eef1f5] dark:border-[var(--sl-border)]">
                     {pendentes.map((i) => (
                       <li
                         key={i.churchId}
                         onClick={() =>
                           onAbrirResumo({ nivel: 'IGREJA', id: i.churchId, rotulo: i.nome })
                         }
-                        className="text-xs cursor-pointer hover:text-rose-600 text-slate-700 dark:text-slate-200"
+                        className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/40 first:rounded-t-[14px] last:rounded-b-[14px]"
                       >
-                        {i.nome}
-                        {i.dirigente ? (
-                          <span className="text-slate-400"> — {i.dirigente}</span>
-                        ) : null}
-                        <span className="text-slate-400"> · {rotuloSituacao(i.status)}</span>
-                        {i.totalCultos > 1 && (
-                          <span className="text-slate-400">
-                            {' '}
-                            ({i.cultosConcluidos}/{i.totalCultos} cultos)
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${PONTO.vermelho}`} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+                            {i.nome}
                           </span>
-                        )}
+                          <span className="block truncate text-[11.5px] text-slate-500 dark:text-slate-400">
+                            {i.dirigente ? `${i.dirigente} · ` : ''}
+                            {rotuloSituacao(i.status)}
+                            {i.totalCultos > 1 && (
+                              <>
+                                {' '}
+                                ({i.cultosConcluidos}/{i.totalCultos} cultos)
+                              </>
+                            )}
+                          </span>
+                        </span>
                       </li>
                     ))}
                   </ul>
