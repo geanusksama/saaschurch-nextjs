@@ -2059,7 +2059,10 @@ export function AppUI() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
         {/* Celular: os ícones se distribuem pela barra inteira (justify-between, grupos viram "contents"). */}
-        <header className="relative z-20 bg-[var(--sl-surface)] backdrop-blur-[20px] border-b border-[var(--sl-border)] h-16 flex items-center px-3 sm:px-6 gap-2 sm:gap-4 max-md:justify-between transition-colors duration-200">
+        {/* Com o menu do perfil ou de notificações aberto, o header sobe acima
+            de telas com camadas altas (ex.: cabeçalho fixo da Planilha, z-50),
+            que antes cortavam o menu. Fechado, volta ao z-20. */}
+        <header className={`relative ${profileOpen || notificationDropdownOpen ? 'z-[60]' : 'z-20'} bg-[var(--sl-surface)] backdrop-blur-[20px] border-b border-[var(--sl-border)] h-16 flex items-center px-3 sm:px-6 gap-2 sm:gap-4 max-md:justify-between transition-colors duration-200`}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="grid h-10 w-10 place-items-center rounded-full bg-[var(--sl-solid)] shadow-[var(--sl-shadow)] transition hover:-translate-y-px"
