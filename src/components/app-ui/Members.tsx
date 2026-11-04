@@ -677,9 +677,9 @@ export function Members() {
     { value: EMPTY_MARITAL_STATUS_FILTER, label: 'Não informado' },
   ], []);
 
-  const visibleMembers = useMemo(() => {
-    // All filtering is handled server-side; client only sorts the current page
-    return [...members].sort((left, right) => {
+  // Mesma ordenação para a página da API e para a busca inteira (filtro de coluna).
+  const ordenarMembros = useCallback((lista: MemberRecord[]) => {
+    return [...lista].sort((left, right) => {
       const leftValue = (() => {
         if (sortKey === 'memberType') {
           return normalizeMemberType(left.memberType);
@@ -727,7 +727,10 @@ export function Members() {
       const comparison = String(leftValue).localeCompare(String(rightValue), 'pt-BR');
       return sortDirection === 'asc' ? comparison : comparison * -1;
     });
-  }, [members, sortDirection, sortKey]);
+  }, [sortDirection, sortKey]);
+
+  // All filtering is handled server-side; client only sorts the current page
+  const visibleMembers = useMemo(() => ordenarMembros(members), [members, ordenarMembros]);
 
   // API already paginates; visibleMembers is the sorted current page
   const paginatedMembers = visibleMembers;
@@ -739,17 +742,17 @@ export function Members() {
       id: 'nome', rotulo: selectedTypeFilter === 'MEMBRO' ? 'Membro' : 'Nome', fixa: true,
       larguras: ['minmax(200px,2fr)', 'minmax(220px,2.2fr)'],
       campos: [
-        { id: 'nome', rotulo: 'Nome', valor: (m) => m.fullName, listarValores: false },
-        { id: 'rol', rotulo: 'ROL', valor: (m) => m.rol, tipo: 'numero', listarValores: false },
-        { id: 'documento', rotulo: 'CPF/CNPJ', valor: (m) => (normalizeMemberType(m.memberType) === 'PJ' ? m.cnpj : m.cpf), listarValores: false },
+        { id: 'nome', rotulo: 'Nome', valor: (m) => m.fullName },
+        { id: 'rol', rotulo: 'ROL', valor: (m) => m.rol, tipo: 'numero' },
+        { id: 'documento', rotulo: 'CPF/CNPJ', valor: (m) => (normalizeMemberType(m.memberType) === 'PJ' ? m.cnpj : m.cpf) },
       ],
     },
     {
       id: 'contato', rotulo: 'Contato',
       larguras: ['minmax(170px,1.5fr)', 'minmax(180px,1.6fr)'],
       campos: [
-        { id: 'telefone', rotulo: 'Telefone', valor: (m) => formatPhone(m.mobile || m.phone), listarValores: false },
-        { id: 'email', rotulo: 'E-mail', valor: (m) => m.email, listarValores: false },
+        { id: 'telefone', rotulo: 'Telefone', valor: (m) => formatPhone(m.mobile || m.phone) },
+        { id: 'email', rotulo: 'E-mail', valor: (m) => m.email },
       ],
     },
     {
@@ -786,9 +789,98 @@ export function Members() {
     { id: 'acoes', rotulo: 'Ações', fixa: true, larguras: ['84px', '84px'] },
   ], [selectedTypeFilter]);
 
-  const tabela = useTabelaColunas({ chave: 'secretaria.membros', colunas: colunasTabela, linhas: paginatedMembers });
-  const linhasTabela = tabela.linhas;
+  // page/pageSize ficam de fora do snapshot: paginar e navegar no resultado ja
+  // buscado, entao muda a consulta na hora, sem passar pelo botao.
+  const memberQueryFilters = useMemo(() => ({
+    ...(appliedFilters ?? {}),
+    page,
+    pageSize,
+  }), [appliedFilters, page, pageSize]);
+
+  // Busca TODOS os membros que batem com os filtros atuais (ignora a paginação
+  // da tela), paginando a API. Usado por Exportar Excel e Imprimir — que devem
+  // sempre trazer o total retornado pela query, não só a página exibida.
+  const fetchAllMembers = useCallback(async (): Promise<MemberRecord[]> => {
+    if (!token) throw new Error('Sessão expirada.');
+    const FETCH_PAGE_SIZE = 5000;
+    const baseParams = new URLSearchParams();
+    Object.entries(memberQueryFilters).forEach(([k, v]) => {
+      if (k === 'page' || k === 'pageSize') return;
+      if (v !== undefined && v !== null && v !== '') baseParams.set(k, String(v));
+    });
+    baseParams.set('pageSize', String(FETCH_PAGE_SIZE));
+    const all: MemberRecord[] = [];
+    let pageNum = 1;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const params = new URLSearchParams(baseParams);
+      params.set('page', String(pageNum));
+      const res = await fetch(`${apiBase}/members?${params.toString()}`, { headers: buildAuthHeaders(token) });
+      if (!res.ok) throw new Error('Falha ao carregar membros.');
+      const data = await res.json();
+      const pageRows: MemberRecord[] = (Array.isArray(data) ? data : (data.data ?? [])).map((member: MemberRecord) => ({
+        ...member,
+        ecclesiasticalTitleId: member.ecclesiasticalTitleRef?.id || member.ecclesiasticalTitleId || '',
+        churchName: member.church?.name || '',
+        churchCode: member.church?.code || '',
+        regionalName: member.church?.regional?.name || member.regional?.name || '',
+        fieldName: member.church?.regional?.campo?.name || '',
+      }));
+      all.push(...pageRows);
+      const total = typeof data.total === 'number' ? data.total : all.length;
+      if (pageRows.length < FETCH_PAGE_SIZE || all.length >= total) break;
+      pageNum++;
+    }
+    return all;
+  }, [token, memberQueryFilters]);
+
+  // Filtro de coluna vale para a busca inteira, não só para a página: na
+  // primeira vez que alguém abre o menu de uma coluna, a tela carrega o resto
+  // da MESMA busca (uma vez) e daí em diante filtra, conta e pagina aqui.
+  // A busca inteira (sem página), só quando há filtro de coluna em uso.
+  // Mesmo prefixo de chave: editar/excluir membro invalida esta também.
+  const [abriuFiltroColuna, setAbriuFiltroColuna] = useState(false);
+  const todosQuery = useQuery<MemberRecord[]>({
+    queryKey: qk.members({ ...(appliedFilters ?? {}), buscaInteira: true }),
+    queryFn: fetchAllMembers,
+    enabled: abriuFiltroColuna && !!token && !loadingFilters && appliedFilters !== null,
+    staleTime: 5 * 60 * 1000,
+  });
+  const todosDaBusca = abriuFiltroColuna && appliedFilters !== null ? todosQuery.data ?? null : null;
+  const carregandoBuscaInteira = abriuFiltroColuna && appliedFilters !== null && !todosQuery.data && todosQuery.isFetching;
+  const todosOrdenados = useMemo(() => (todosDaBusca ? ordenarMembros(todosDaBusca) : null), [todosDaBusca, ordenarMembros]);
+  const modoBuscaToda = todosOrdenados !== null;
+
+  const tabela = useTabelaColunas({ chave: 'secretaria.membros', colunas: colunasTabela, linhas: todosOrdenados ?? paginatedMembers });
   const aplicarFiltrosColuna = tabela.aplicarFiltros;
+
+  // Página local: mudou o filtro, a ordem, a busca ou o tamanho da página,
+  // volta para a primeira (a página guardada vale só para a mesma base).
+  const basePaginaLocal = [tabela.filtros, tabela.ordenacao, todosDaBusca, pageSize] as const;
+  const [paginaLocalSalva, setPaginaLocalSalva] = useState<{ n: number; base: readonly unknown[] }>({ n: 1, base: [] });
+  const mesmaBasePagina = paginaLocalSalva.base.length === basePaginaLocal.length && paginaLocalSalva.base.every((valor, i) => valor === basePaginaLocal[i]);
+  const setPaginaLocal = (n: number) => setPaginaLocalSalva({ n, base: basePaginaLocal });
+  const totalFiltrado = tabela.linhas.length;
+  const totalPaginasLocal = Math.max(1, Math.ceil(totalFiltrado / pageSize));
+  const paginaLocalAtual = Math.min(mesmaBasePagina ? paginaLocalSalva.n : 1, totalPaginasLocal);
+  const linhasTabela = modoBuscaToda
+    ? tabela.linhas.slice((paginaLocalAtual - 1) * pageSize, paginaLocalAtual * pageSize)
+    : tabela.linhas;
+
+  // Cards contando o que sobrou do filtro (mesma regra da API em /api/members).
+  const statsFiltradas = useMemo(() => {
+    if (!modoBuscaToda) return null;
+    let ativos = 0;
+    let desligados = 0;
+    const igrejas = new Set<string | null>();
+    tabela.linhas.forEach((m) => {
+      const situacao = (m.membershipStatus || '').toLowerCase();
+      if (situacao.includes('inativ') || situacao.includes('deslig')) desligados += 1;
+      if (situacao && !/aguard|inativ|deslig|visit/.test(situacao)) ativos += 1;
+      igrejas.add(m.churchId || null);
+    });
+    return { total: tabela.linhas.length, ativos, desligados, igrejas: igrejas.size };
+  }, [modoBuscaToda, tabela.linhas]);
   const ver = tabela.visivel;
   const gradeColunas = {
     '--cols-meio': colunasTabela.filter((c) => !c.esconderMeio && ver(c.id)).map((c) => c.larguras[0]).join(' '),
@@ -799,10 +891,10 @@ export function Members() {
   const totalPages = useMemo(() => Math.max(1, Math.ceil(serverTotal / pageSize)), [pageSize, serverTotal]);
 
   const stats = useMemo(() => ({
-    activeMembers: serverActiveCount,
-    inactiveMembers: serverInactiveCount,
-    uniqueChurches: serverChurchCount,
-  }), [serverActiveCount, serverInactiveCount, serverChurchCount]);
+    activeMembers: statsFiltradas?.ativos ?? serverActiveCount,
+    inactiveMembers: statsFiltradas?.desligados ?? serverInactiveCount,
+    uniqueChurches: statsFiltradas?.igrejas ?? serverChurchCount,
+  }), [statsFiltradas, serverActiveCount, serverInactiveCount, serverChurchCount]);
 
   // Mexer num filtro nao mexe mais na pagina: os resultados na tela ainda sao
   // os da busca anterior. Quem zera a pagina e handleSearchMembers.
@@ -918,18 +1010,13 @@ export function Members() {
 
   const handleSearchMembers = useCallback(() => {
     setPage(1);
+    // Filtro de coluna que continua marcado segue valendo para a busca nova.
+    setAbriuFiltroColuna(tabela.totalFiltros > 0);
     setAppliedFilters(buildFiltersFromForm());
-  }, [buildFiltersFromForm]);
+  }, [buildFiltersFromForm, tabela.totalFiltros]);
+
 
   // ── TanStack Query — members ─────────────────────────────────────────────
-  // page/pageSize ficam de fora do snapshot: paginar e navegar no resultado ja
-  // buscado, entao muda a consulta na hora, sem passar pelo botao.
-  const memberQueryFilters = useMemo(() => ({
-    ...(appliedFilters ?? {}),
-    page,
-    pageSize,
-  }), [appliedFilters, page, pageSize]);
-
   const membersQuery = useQuery<MembersQueryData>({
     queryKey: qk.members(memberQueryFilters),
     queryFn: async () => {
@@ -993,42 +1080,6 @@ export function Members() {
 
   // ── Legacy loadMembers useEffect (removed — replaced by TanStack Query above) ─
 
-  // Busca TODOS os membros que batem com os filtros atuais (ignora a paginação
-  // da tela), paginando a API. Usado por Exportar Excel e Imprimir — que devem
-  // sempre trazer o total retornado pela query, não só a página exibida.
-  const fetchAllMembers = useCallback(async (): Promise<MemberRecord[]> => {
-    if (!token) throw new Error('Sessão expirada.');
-    const FETCH_PAGE_SIZE = 5000;
-    const baseParams = new URLSearchParams();
-    Object.entries(memberQueryFilters).forEach(([k, v]) => {
-      if (k === 'page' || k === 'pageSize') return;
-      if (v !== undefined && v !== null && v !== '') baseParams.set(k, String(v));
-    });
-    baseParams.set('pageSize', String(FETCH_PAGE_SIZE));
-    const all: MemberRecord[] = [];
-    let pageNum = 1;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const params = new URLSearchParams(baseParams);
-      params.set('page', String(pageNum));
-      const res = await fetch(`${apiBase}/members?${params.toString()}`, { headers: buildAuthHeaders(token) });
-      if (!res.ok) throw new Error('Falha ao carregar membros.');
-      const data = await res.json();
-      const pageRows: MemberRecord[] = (Array.isArray(data) ? data : (data.data ?? [])).map((member: MemberRecord) => ({
-        ...member,
-        ecclesiasticalTitleId: member.ecclesiasticalTitleRef?.id || member.ecclesiasticalTitleId || '',
-        churchName: member.church?.name || '',
-        churchCode: member.church?.code || '',
-        regionalName: member.church?.regional?.name || member.regional?.name || '',
-        fieldName: member.church?.regional?.campo?.name || '',
-      }));
-      all.push(...pageRows);
-      const total = typeof data.total === 'number' ? data.total : all.length;
-      if (pageRows.length < FETCH_PAGE_SIZE || all.length >= total) break;
-      pageNum++;
-    }
-    return all;
-  }, [token, memberQueryFilters]);
 
   const handleExportExcel = useCallback(async () => {
     try {
@@ -1036,7 +1087,7 @@ export function Members() {
       setError('');
       logClientAudit('read', 'Exportou lista de membros para planilha Excel', 'Lista de Membros');
       // Mesmos filtros de coluna da tabela, aplicados a todos os membros da busca.
-      const allMembers = aplicarFiltrosColuna(await fetchAllMembers());
+      const allMembers = aplicarFiltrosColuna(todosDaBusca ?? (await fetchAllMembers()));
       const XLSX = await import('xlsx');
       const rows = allMembers.map((m) => ({
         'Nome': m.fullName,
@@ -1070,7 +1121,7 @@ export function Members() {
     } finally {
       setExportingExcel(false);
     }
-  }, [fetchAllMembers, aplicarFiltrosColuna]);
+  }, [fetchAllMembers, aplicarFiltrosColuna, todosDaBusca]);
 
   const qc = useQueryClient();
 
@@ -1257,7 +1308,7 @@ export function Members() {
   const podeNovo = pode('members.members.novo_membro') || pode('members.members.novo_pf') || pode('members.members.novo_pj');
 
   const statCards = [
-    { label: 'Total', value: serverTotal, icon: Users, bg: 'bg-[#f1f5f9]', fg: 'text-[#334155]', status: '' },
+    { label: 'Total', value: statsFiltradas?.total ?? serverTotal, icon: Users, bg: 'bg-[#f1f5f9]', fg: 'text-[#334155]', status: '' },
     { label: 'Ativos', value: stats.activeMembers, icon: CheckCircle2, bg: 'bg-[#dcfce7]', fg: 'text-[#15803d]', status: 'ativo' },
     { label: 'Desligados', value: stats.inactiveMembers, icon: PauseCircle, bg: 'bg-[#fee2e2]', fg: 'text-[#b91c1c]', status: 'inativo' },
   ];
@@ -1492,7 +1543,20 @@ export function Members() {
           </div>
         ) : null}
 
-        {hasSearched && <AvisoFiltrosColuna tabela={tabela} total={paginatedMembers.length} filtradas={linhasTabela.length} nota="nesta página; Imprimir e Exportar aplicam em todos" />}
+        {hasSearched && carregandoBuscaInteira && (
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Carregando os {serverTotal} membros da busca para o filtro de coluna...
+          </div>
+        )}
+        {hasSearched && (
+          <AvisoFiltrosColuna
+            tabela={tabela}
+            total={todosOrdenados ? todosOrdenados.length : paginatedMembers.length}
+            filtradas={tabela.linhas.length}
+            nota={modoBuscaToda ? 'da busca · cards, Imprimir e Exportar mostram o mesmo resultado' : 'nesta página (carregando a busca inteira)'}
+          />
+        )}
 
         {!hasSearched ? (
           <section className="flex flex-col items-center gap-1.5 rounded-[18px] border border-[#e8ecf1] bg-white px-6 py-14 text-center md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
@@ -1527,7 +1591,12 @@ export function Members() {
                       tabela={tabela}
                       colunaId={c.id}
                       className="uppercase tracking-[.04em]"
-                      aviso="Na tela, vale para os membros desta página. Imprimir e Exportar Excel aplicam este filtro em todos os membros da busca."
+                      onAbrir={() => setAbriuFiltroColuna(true)}
+                      aviso={
+                        modoBuscaToda
+                          ? `Filtra os ${todosOrdenados?.length ?? 0} membros da busca. Cards, Imprimir e Exportar Excel saem com o mesmo resultado.`
+                          : `Carregando os ${serverTotal} membros da busca... os valores completam sozinhos.`
+                      }
                     />
                   </span>
                 ),
@@ -1676,7 +1745,14 @@ export function Members() {
             {/* Rodapé: contagem, linhas por página e páginas */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eef2f6] px-5 py-3.5 text-[13px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
               <span>
-                Exibindo {paginatedMembers.length ? (page - 1) * pageSize + 1 : 0} a {(page - 1) * pageSize + paginatedMembers.length} de {serverTotal} membros
+                {modoBuscaToda ? (
+                  <>
+                    Exibindo {linhasTabela.length ? (paginaLocalAtual - 1) * pageSize + 1 : 0} a {(paginaLocalAtual - 1) * pageSize + linhasTabela.length} de {totalFiltrado} membros
+                    {tabela.totalFiltros > 0 && todosOrdenados && totalFiltrado !== todosOrdenados.length ? ` (filtrados de ${todosOrdenados.length})` : ''}
+                  </>
+                ) : (
+                  <>Exibindo {paginatedMembers.length ? (page - 1) * pageSize + 1 : 0} a {(page - 1) * pageSize + paginatedMembers.length} de {serverTotal} membros</>
+                )}
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="flex items-center gap-2">
@@ -1698,20 +1774,20 @@ export function Members() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                  disabled={page === 1}
+                  onClick={() => (modoBuscaToda ? setPaginaLocal(Math.max(1, paginaLocalAtual - 1)) : setPage((current) => Math.max(1, current - 1)))}
+                  disabled={(modoBuscaToda ? paginaLocalAtual : page) === 1}
                   className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 hover:border-slate-900 disabled:pointer-events-none disabled:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
                 >
                   Anterior
                 </button>
                 <span className="flex h-[34px] min-w-[34px] items-center justify-center rounded-[10px] bg-slate-900 px-2.5 text-[13px] font-bold text-white dark:bg-white dark:text-slate-900">
-                  {page}
+                  {modoBuscaToda ? paginaLocalAtual : page}
                 </span>
-                <span className="text-[13px]">de {totalPages}</span>
+                <span className="text-[13px]">de {modoBuscaToda ? totalPaginasLocal : totalPages}</span>
                 <button
                   type="button"
-                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                  disabled={page === totalPages}
+                  onClick={() => (modoBuscaToda ? setPaginaLocal(Math.min(totalPaginasLocal, paginaLocalAtual + 1)) : setPage((current) => Math.min(totalPages, current + 1)))}
+                  disabled={modoBuscaToda ? paginaLocalAtual === totalPaginasLocal : page === totalPages}
                   className="h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 hover:border-slate-900 disabled:pointer-events-none disabled:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
                 >
                   Próxima
@@ -2050,7 +2126,7 @@ export function Members() {
           setPreparingPrint(true);
           try {
             // Mesmos filtros de coluna da tabela, aplicados a todos os membros da busca.
-            allMembers = tabela.aplicarFiltros(await fetchAllMembers());
+            allMembers = tabela.aplicarFiltros(todosDaBusca ?? (await fetchAllMembers()));
           } catch (err) {
             console.error(err);
             setError('Erro ao preparar a impressão de todos os membros.');

@@ -25,6 +25,8 @@ import { ArrowDownWideNarrow, ArrowUpNarrowWide, Check, ChevronDown, ListFilter,
 const COR_MARCADO = 'var(--sl-primary, #0f172a)';
 const FONTE = 'var(--font, inherit)';
 export const VAZIO = '__vazio__';
+/** Quantos valores a lista desenha de uma vez (nomes podem ser milhares). */
+const LIMITE_LISTA = 300;
 
 /* ───────────────────────── caixa de marcar ───────────────────────── */
 
@@ -154,12 +156,50 @@ export type ColunaTabela<T> = {
   ocultaPadrao?: boolean;
 };
 
+export type OperadorFiltro = 'igual' | 'diferente' | 'contem' | 'nao_contem' | 'comeca' | 'termina' | 'maior' | 'maior_igual' | 'menor' | 'menor_igual';
+
+/** Uma condição do "Filtro personalizado" (como o Personalizar AutoFiltro do Excel). */
+export type CondicaoFiltro = { operador: OperadorFiltro; valor: string };
+
 export type FiltroCampo = {
   vazio: 'todos' | 'com' | 'sem';
   /** Valores desmarcados na lista (chaves). */
   excluidos: string[];
   de?: string;
   ate?: string;
+  /** Até duas condições; vazias são ignoradas. */
+  condicoes?: CondicaoFiltro[];
+  /** Como juntar as condições. Padrão: 'e'. */
+  juncao?: 'e' | 'ou';
+};
+
+type TipoCampo = 'texto' | 'numero' | 'data';
+
+const OPERADORES: Record<TipoCampo, Array<[OperadorFiltro, string]>> = {
+  texto: [
+    ['igual', 'é igual a'],
+    ['diferente', 'é diferente de'],
+    ['contem', 'contém'],
+    ['nao_contem', 'não contém'],
+    ['comeca', 'começa com'],
+    ['termina', 'termina com'],
+  ],
+  numero: [
+    ['igual', 'é igual a'],
+    ['diferente', 'é diferente de'],
+    ['maior', 'é maior que'],
+    ['maior_igual', 'é maior ou igual a'],
+    ['menor', 'é menor que'],
+    ['menor_igual', 'é menor ou igual a'],
+  ],
+  data: [
+    ['igual', 'é igual a'],
+    ['diferente', 'é diferente de'],
+    ['maior', 'é depois de'],
+    ['maior_igual', 'é a partir de'],
+    ['menor', 'é antes de'],
+    ['menor_igual', 'é até'],
+  ],
 };
 
 export type Ordenacao = { campo: string; direcao: 'asc' | 'desc' } | null;
@@ -195,8 +235,71 @@ function rotuloPadrao<T>(campo: CampoColuna<T>, valor: ValorBruto): string {
   return valor === null || valor === undefined ? '' : String(valor);
 }
 
+function condicoesValidas(filtro?: FiltroCampo) {
+  return (filtro?.condicoes ?? []).filter((condicao) => condicao.valor.trim() !== '');
+}
+
 function filtroAtivo(filtro?: FiltroCampo) {
-  return !!filtro && (filtro.vazio !== 'todos' || filtro.excluidos.length > 0 || !!filtro.de || !!filtro.ate);
+  return !!filtro && (filtro.vazio !== 'todos' || filtro.excluidos.length > 0 || !!filtro.de || !!filtro.ate || condicoesValidas(filtro).length > 0);
+}
+
+/** Sem acento e sem diferença de maiúscula: "joão" acha "JOAO". */
+function normalizarTexto(texto: string) {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+}
+
+/** Número digitado pela pessoa: aceita "2000", "2000,5", "2.000,50" e "2000.5". */
+function numeroDigitado(texto: string): number | null {
+  const limpo = texto.trim();
+  if (!limpo) return null;
+  const n = Number(limpo.includes(',') ? limpo.replace(/\./g, '').replace(',', '.') : limpo);
+  return Number.isFinite(n) ? n : null;
+}
+
+function passaCondicao<T>(campo: CampoColuna<T>, bruto: ValorBruto, condicao: CondicaoFiltro): boolean {
+  const alvo = condicao.valor.trim();
+  if (!alvo) return true;
+  const { operador } = condicao;
+  const tipo: TipoCampo = campo.tipo ?? 'texto';
+
+  if (tipo === 'texto') {
+    const texto = normalizarTexto(rotuloPadrao(campo, bruto));
+    // ? = um caractere, * = uma série de caracteres (igual ao Excel)
+    const corpo = normalizarTexto(alvo).replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.');
+    const casa = (padrao: string) => new RegExp(padrao, 's').test(texto);
+    switch (operador) {
+      case 'igual': return casa(`^${corpo}$`);
+      case 'diferente': return !casa(`^${corpo}$`);
+      case 'contem': return casa(corpo);
+      case 'nao_contem': return !casa(corpo);
+      case 'comeca': return casa(`^${corpo}`);
+      case 'termina': return casa(`${corpo}$`);
+      default: return true;
+    }
+  }
+
+  let a: number | string | null;
+  let b: number | string | null;
+  if (tipo === 'data') {
+    const data = paraData(bruto);
+    a = data ? data.toISOString().slice(0, 10) : null;
+    b = alvo;
+  } else {
+    a = paraNumero(bruto);
+    b = numeroDigitado(alvo);
+  }
+  if (b === null) return true;
+  if (a === null) return operador === 'diferente';
+  const cmp = a < b ? -1 : a > b ? 1 : 0;
+  switch (operador) {
+    case 'igual': return cmp === 0;
+    case 'diferente': return cmp !== 0;
+    case 'maior': return cmp > 0;
+    case 'maior_igual': return cmp >= 0;
+    case 'menor': return cmp < 0;
+    case 'menor_igual': return cmp <= 0;
+    default: return true;
+  }
 }
 
 function passa<T>(linha: T, campo: CampoColuna<T>, filtro: FiltroCampo): boolean {
@@ -222,6 +325,12 @@ function passa<T>(linha: T, campo: CampoColuna<T>, filtro: FiltroCampo): boolean
       if (de !== null && n < de) return false;
       if (ate !== null && n > ate) return false;
     }
+  }
+  const condicoes = condicoesValidas(filtro);
+  if (condicoes.length) {
+    const resultados = condicoes.map((condicao) => passaCondicao(campo, bruto, condicao));
+    const passou = filtro.juncao === 'ou' ? resultados.some(Boolean) : resultados.every(Boolean);
+    if (!passou) return false;
   }
   return true;
 }
@@ -459,9 +568,20 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
   const atual = tabela.filtros[campo.id];
   const [vazio, setVazio] = useState<FiltroCampo['vazio']>(atual?.vazio ?? 'todos');
   const [excluidos, setExcluidos] = useState<string[]>(atual?.excluidos ?? []);
-  const [de, setDe] = useState(atual?.de ?? '');
-  const [ate, setAte] = useState(atual?.ate ?? '');
+  const tipoCampo: TipoCampo = campo.tipo ?? 'texto';
+  const padrao: [OperadorFiltro, OperadorFiltro] = tipoCampo === 'texto' ? ['contem', 'contem'] : ['maior_igual', 'menor_igual'];
+  const [condicoes, setCondicoes] = useState<[CondicaoFiltro, CondicaoFiltro]>(() => [
+    atual?.condicoes?.[0] ?? { operador: padrao[0], valor: '' },
+    atual?.condicoes?.[1] ?? { operador: padrao[1], valor: '' },
+  ]);
+  const [juncao, setJuncao] = useState<'e' | 'ou'>(atual?.juncao ?? 'e');
   const [busca, setBusca] = useState('');
+  const mudarCondicao = (indice: 0 | 1, parte: Partial<CondicaoFiltro>) =>
+    setCondicoes((lista) => {
+      const proxima: [CondicaoFiltro, CondicaoFiltro] = [lista[0], lista[1]];
+      proxima[indice] = { ...lista[indice], ...parte };
+      return proxima;
+    });
 
   const listar = campo.listarValores !== false;
   const valores = useMemo(() => (listar ? tabela.valoresDe(campo.id) : []), [campo.id, listar, tabela]);
@@ -478,7 +598,15 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
   const aplicar = () => {
     // Com busca digitada, igual ao Excel: aplica só o que aparece na busca.
     const excl = termo ? Array.from(new Set([...excluidos, ...valores.filter((v) => !visiveis.includes(v)).map((v) => v.chave)])) : excluidos;
-    tabela.definirFiltro(campo.id, { vazio, excluidos: excl, de: de || undefined, ate: ate || undefined });
+    const validas = condicoes.filter((condicao) => condicao.valor.trim() !== '');
+    tabela.definirFiltro(campo.id, {
+      vazio,
+      excluidos: excl,
+      de: atual?.de,
+      ate: atual?.ate,
+      condicoes: validas.length ? validas : undefined,
+      juncao: validas.length > 1 ? juncao : undefined,
+    });
     onFechar();
   };
 
@@ -490,7 +618,36 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
   const ordenadoAqui = tabela.ordenacao?.campo === campo.id ? tabela.ordenacao.direcao : null;
   const rotulosOrdem =
     campo.tipo === 'numero' ? ['Menor → maior', 'Maior → menor'] : campo.tipo === 'data' ? ['Mais antigo → recente', 'Mais recente → antigo'] : ['A → Z', 'Z → A'];
-  const tipoFaixa = campo.tipo === 'data' ? 'date' : campo.tipo === 'numero' ? 'number' : null;
+  const classeCampo =
+    'h-9 w-full min-w-0 rounded-[10px] border border-slate-200 bg-white px-2 text-[13px] text-slate-900 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white';
+  const linhaCondicao = (indice: 0 | 1) => (
+    <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-1.5">
+      <select
+        aria-label={`Condição ${indice + 1}`}
+        value={condicoes[indice].operador}
+        onChange={(evento) => mudarCondicao(indice, { operador: evento.target.value as OperadorFiltro })}
+        className={classeCampo}
+      >
+        {OPERADORES[tipoCampo].map(([valor, rotulo]) => (
+          <option key={valor} value={valor}>
+            {rotulo}
+          </option>
+        ))}
+      </select>
+      <input
+        type={tipoCampo === 'data' ? 'date' : 'text'}
+        inputMode={tipoCampo === 'numero' ? 'decimal' : undefined}
+        aria-label={`Valor da condição ${indice + 1}`}
+        value={condicoes[indice].valor}
+        placeholder={tipoCampo === 'numero' ? 'Número' : tipoCampo === 'texto' ? 'Texto' : undefined}
+        onChange={(evento) => mudarCondicao(indice, { valor: evento.target.value })}
+        onKeyDown={(evento) => {
+          if (evento.key === 'Enter') aplicar();
+        }}
+        className={classeCampo}
+      />
+    </div>
+  );
 
   const botaoOrdem = (direcao: 'asc' | 'desc', rotulo: string) => (
     <button
@@ -540,33 +697,32 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
           </div>
         </div>
 
-        {tipoFaixa && (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">
-              {campo.tipo === 'data' ? 'Período' : 'Faixa'}
-            </span>
-            <div className="grid grid-cols-2 gap-1.5">
-              <label className="flex flex-col gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                {campo.tipo === 'data' ? 'A partir de' : 'Maior ou igual a'}
-                <input
-                  type={tipoFaixa}
-                  value={de}
-                  onChange={(evento) => setDe(evento.target.value)}
-                  className="h-9 w-full rounded-[10px] border border-slate-200 bg-white px-2 text-[13px] text-slate-900 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                {campo.tipo === 'data' ? 'Até' : 'Menor ou igual a'}
-                <input
-                  type={tipoFaixa}
-                  value={ate}
-                  onChange={(evento) => setAte(evento.target.value)}
-                  className="h-9 w-full rounded-[10px] border border-slate-200 bg-white px-2 text-[13px] text-slate-900 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                />
-              </label>
-            </div>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">Filtro personalizado</span>
+          <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">Mostrar linhas onde {campo.rotulo.toLowerCase()}:</span>
+          {linhaCondicao(0)}
+          <div role="radiogroup" aria-label="Juntar condições" className="flex items-center gap-4 px-1">
+            {([['e', 'E'], ['ou', 'Ou']] as const).map(([valor, rotulo]) => (
+              <button
+                key={valor}
+                type="button"
+                role="radio"
+                aria-checked={juncao === valor}
+                onClick={() => setJuncao(valor)}
+                className="flex items-center gap-1.5 text-[13px] font-semibold"
+              >
+                <CaixaMarcar marcado={juncao === valor} redondo />
+                {rotulo}
+              </button>
+            ))}
           </div>
-        )}
+          {linhaCondicao(1)}
+          {tipoCampo === 'texto' && (
+            <p className="text-[11.5px] leading-snug text-slate-500 dark:text-slate-400">
+              Use <b>?</b> para um único caractere e <b>*</b> para uma série de caracteres. Não diferencia acento nem maiúscula.
+            </p>
+          )}
+        </div>
 
         {listar && (
           <div className="flex min-h-0 flex-col gap-1.5">
@@ -594,7 +750,7 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
                     <CaixaMarcar marcado={todosMarcados} parcial={marcadosVisiveis > 0} />
                     (Selecionar tudo)
                   </button>
-                  {visiveis.map((item) => {
+                  {visiveis.slice(0, LIMITE_LISTA).map((item) => {
                     const marcado = !excluidos.includes(item.chave);
                     return (
                       <button
@@ -609,6 +765,11 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
                       </button>
                     );
                   })}
+                  {visiveis.length > LIMITE_LISTA && (
+                    <p className="px-2 py-2 text-[12px] text-slate-500">
+                      Mais {visiveis.length - LIMITE_LISTA} valores. Use a pesquisa para achar o que quer marcar.
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -646,12 +807,14 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
  * Cabeçalho de coluna com menu de filtro/ordenação. Coloque dentro do `<th>`
  * (ou da célula do cabeçalho em grade). Sem `campos`, mostra só o rótulo.
  */
-export function CabecalhoFiltro<T>({ tabela, colunaId, className = '', aviso, alinhar = 'esquerda' }: {
+export function CabecalhoFiltro<T>({ tabela, colunaId, className = '', aviso, alinhar = 'esquerda', onAbrir }: {
   tabela: TabelaColunas<T>;
   colunaId: string;
   className?: string;
   aviso?: string;
   alinhar?: 'esquerda' | 'direita' | 'centro';
+  /** Chamado quando o menu abre (ex.: a tela carregar a busca inteira). */
+  onAbrir?: () => void;
 }) {
   const coluna = tabela.colunas.find((item) => item.id === colunaId);
   const [aberto, setAberto] = useState(false);
@@ -673,7 +836,10 @@ export function CabecalhoFiltro<T>({ tabela, colunaId, className = '', aviso, al
       <button
         ref={setAncora}
         type="button"
-        onClick={() => setAberto((valor) => !valor)}
+        onClick={() => {
+          if (!aberto) onAbrir?.();
+          setAberto((valor) => !valor);
+        }}
         title={`Filtrar e ordenar: ${coluna.rotulo}`}
         aria-haspopup="dialog"
         aria-expanded={aberto}
