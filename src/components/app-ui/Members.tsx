@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef, type CSSProperties } from 'react';
 import { CartoesTotais } from './CartoesTotais';
 import { AlertTriangle, Building2, CheckCircle2, ChevronDown, Church, Download, FilterX, Mail, MapPin, MoreHorizontal, PauseCircle, Pencil, Phone, Plus, Printer, SlidersHorizontal, Trash2, UserPlus, UserRound, Users, Search, Loader2, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MemberEditDrawer } from './MemberEditDrawer';
 import { MemberQuickCreateModal } from './MemberQuickCreateModal';
 import { PrintModal } from './shared/PrintModal';
+import { AvisoFiltrosColuna, CabecalhoFiltro, EngrenagemColunas, OpcaoUnica, OpcoesMarcaveis, useTabelaColunas, type ColunaTabela } from './shared/FiltroColunas';
 import { printReport } from '../../lib/printReport';
 import { TableSkeleton, StatsSkeleton } from './shared/Skeleton';
 import { useDebounce } from '../../lib/secretariaHooks';
@@ -573,8 +574,9 @@ export function Members() {
   const [quickCreateType, setQuickCreateType] = useState<'PF' | 'PJ' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MemberRecord | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>('fullName');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  // Ordem inicial da página; quem troca a ordem agora é o menu de cada coluna.
+  const [sortKey] = useState<SortKey>('fullName');
+  const [sortDirection] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   // 100 por pagina e o padrao das listas. Nas telas de fluxo a fila ja chega
   // recortada por data, entao paginar e so exibicao — trocar o limite nao
@@ -729,6 +731,70 @@ export function Members() {
 
   // API already paginates; visibleMembers is the sorted current page
   const paginatedMembers = visibleMembers;
+
+  // Colunas da tabela: filtro estilo Excel em cada uma (nas linhas carregadas)
+  // e engrenagem para esconder/mostrar. Larguras: [tela média, tela larga].
+  const colunasTabela = useMemo<Array<ColunaTabela<MemberRecord> & { larguras: [string, string]; esconderMeio?: boolean }>>(() => [
+    {
+      id: 'nome', rotulo: selectedTypeFilter === 'MEMBRO' ? 'Membro' : 'Nome', fixa: true,
+      larguras: ['minmax(200px,2fr)', 'minmax(220px,2.2fr)'],
+      campos: [
+        { id: 'nome', rotulo: 'Nome', valor: (m) => m.fullName, listarValores: false },
+        { id: 'rol', rotulo: 'ROL', valor: (m) => m.rol, tipo: 'numero', listarValores: false },
+        { id: 'documento', rotulo: 'CPF/CNPJ', valor: (m) => (normalizeMemberType(m.memberType) === 'PJ' ? m.cnpj : m.cpf), listarValores: false },
+      ],
+    },
+    {
+      id: 'contato', rotulo: 'Contato',
+      larguras: ['minmax(170px,1.5fr)', 'minmax(180px,1.6fr)'],
+      campos: [
+        { id: 'telefone', rotulo: 'Telefone', valor: (m) => formatPhone(m.mobile || m.phone), listarValores: false },
+        { id: 'email', rotulo: 'E-mail', valor: (m) => m.email, listarValores: false },
+      ],
+    },
+    {
+      id: 'tipo', rotulo: 'Tipo', esconderMeio: true,
+      larguras: ['80px', '80px'],
+      campos: [{ id: 'tipo', rotulo: 'Tipo', valor: (m) => getMemberTypeLabel(m.memberType) }],
+    },
+    {
+      id: 'titulo', rotulo: 'Título', esconderMeio: true,
+      larguras: ['minmax(100px,.9fr)', 'minmax(100px,.9fr)'],
+      campos: [
+        { id: 'titulo', rotulo: 'Título', valor: (m) => (getTitleLabel(m) === '-' ? '' : getTitleLabel(m)) },
+        { id: 'funcao', rotulo: 'Função', valor: (m) => (m.churchFunctions ?? []).map((f) => f.function?.name).filter(Boolean).join(', ') },
+      ],
+    },
+    {
+      id: 'igreja', rotulo: 'Igreja',
+      larguras: ['minmax(150px,1.3fr)', 'minmax(160px,1.4fr)'],
+      campos: [
+        { id: 'igreja', rotulo: 'Igreja', valor: (m) => m.churchName },
+        { id: 'regional', rotulo: 'Regional', valor: (m) => m.regionalName },
+      ],
+    },
+    {
+      id: 'status', rotulo: 'Status',
+      larguras: ['150px', '150px'],
+      campos: [{ id: 'status', rotulo: 'Status', valor: (m) => rotuloStatus(m.membershipStatus) }],
+    },
+    {
+      id: 'desde', rotulo: 'Desde', esconderMeio: true,
+      larguras: ['96px', '96px'],
+      campos: [{ id: 'desde', rotulo: 'Data', valor: (m) => m.membershipDate, tipo: 'data' }],
+    },
+    { id: 'acoes', rotulo: 'Ações', fixa: true, larguras: ['84px', '84px'] },
+  ], [selectedTypeFilter]);
+
+  const tabela = useTabelaColunas({ chave: 'secretaria.membros', colunas: colunasTabela, linhas: paginatedMembers });
+  const linhasTabela = tabela.linhas;
+  const aplicarFiltrosColuna = tabela.aplicarFiltros;
+  const ver = tabela.visivel;
+  const gradeColunas = {
+    '--cols-meio': colunasTabela.filter((c) => !c.esconderMeio && ver(c.id)).map((c) => c.larguras[0]).join(' '),
+    '--cols-full': colunasTabela.filter((c) => ver(c.id)).map((c) => c.larguras[1]).join(' '),
+  } as CSSProperties;
+  const classeGrade = '@3xl:grid-cols-(--cols-meio) @6xl:grid-cols-(--cols-full)';
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(serverTotal / pageSize)), [pageSize, serverTotal]);
 
@@ -969,7 +1035,8 @@ export function Members() {
       setExportingExcel(true);
       setError('');
       logClientAudit('read', 'Exportou lista de membros para planilha Excel', 'Lista de Membros');
-      const allMembers = await fetchAllMembers();
+      // Mesmos filtros de coluna da tabela, aplicados a todos os membros da busca.
+      const allMembers = aplicarFiltrosColuna(await fetchAllMembers());
       const XLSX = await import('xlsx');
       const rows = allMembers.map((m) => ({
         'Nome': m.fullName,
@@ -1003,7 +1070,7 @@ export function Members() {
     } finally {
       setExportingExcel(false);
     }
-  }, [fetchAllMembers]);
+  }, [fetchAllMembers, aplicarFiltrosColuna]);
 
   const qc = useQueryClient();
 
@@ -1018,16 +1085,6 @@ export function Members() {
   const invalidateMembers = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['secretaria', 'members'] });
   }, [qc]);
-
-  const handleSort = (nextSortKey: SortKey) => {
-    if (sortKey === nextSortKey) {
-      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-
-    setSortKey(nextSortKey);
-    setSortDirection('asc');
-  };
 
   const openEditor = (memberId: string) => {
     setEditorMemberId(memberId);
@@ -1197,13 +1254,6 @@ export function Members() {
   // botão de limpar quando há algo que ele limpa de fato.
   const temFiltroLimpavel = filtrosAtivos.some((filtro) => filtro.limpar);
 
-  // Chip de vários valores: "Todos" = null (sem filtro), como no seletor de antes.
-  const alternarFiltro = (atual: string[] | null, valor: string) => {
-    const base = atual ?? [];
-    const proximo = base.includes(valor) ? base.filter((item) => item !== valor) : [...base, valor];
-    return proximo.length ? proximo : null;
-  };
-
   const podeNovo = pode('members.members.novo_membro') || pode('members.members.novo_pf') || pode('members.members.novo_pj');
 
   const statCards = [
@@ -1212,23 +1262,6 @@ export function Members() {
     { label: 'Desligados', value: stats.inactiveMembers, icon: PauseCircle, bg: 'bg-[#fee2e2]', fg: 'text-[#b91c1c]', status: 'inativo' },
   ];
 
-  const cabecalhos: Array<{ label: string; key?: SortKey; esconderMeio?: boolean; direita?: boolean }> = [
-    { label: selectedTypeFilter === 'MEMBRO' ? 'Membro' : 'Nome', key: 'fullName' },
-    { label: 'Contato', key: 'contact' },
-    { label: 'Tipo', key: 'memberType', esconderMeio: true },
-    { label: 'Título', key: 'ecclesiasticalTitle', esconderMeio: true },
-    { label: 'Igreja', key: 'churchName' },
-    { label: 'Status', key: 'membershipStatus' },
-    { label: 'Desde', key: 'membershipDate', esconderMeio: true },
-    { label: 'Ações', direita: true },
-  ];
-
-  const chipClasse = (ligado: boolean) =>
-    `h-10 rounded-full border-[1.5px] px-4 text-sm font-semibold transition-all ${
-      ligado
-        ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
-        : 'border-slate-200 bg-white text-slate-900 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-white'
-    }`;
 
   return (
     <div
@@ -1459,6 +1492,8 @@ export function Members() {
           </div>
         ) : null}
 
+        {hasSearched && <AvisoFiltrosColuna tabela={tabela} total={paginatedMembers.length} filtradas={linhasTabela.length} nota="nesta página; Imprimir e Exportar aplicam em todos" />}
+
         {!hasSearched ? (
           <section className="flex flex-col items-center gap-1.5 rounded-[18px] border border-[#e8ecf1] bg-white px-6 py-14 text-center md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
             <span className="mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-[#f1f5f9] text-slate-500 dark:bg-slate-700 dark:text-slate-300">
@@ -1479,20 +1514,24 @@ export function Members() {
             )}
 
             {/* Cabeçalho da tabela (some no celular, onde cada linha vira um cartão) */}
-            <div className="hidden items-center gap-4 border-b border-[#eef2f6] bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-[.04em] text-slate-500 @3xl:grid @3xl:grid-cols-[minmax(200px,2fr)_minmax(170px,1.5fr)_minmax(150px,1.3fr)_150px_84px] @6xl:grid-cols-[minmax(220px,2.2fr)_minmax(180px,1.6fr)_80px_minmax(100px,.9fr)_minmax(160px,1.4fr)_150px_96px_84px] dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
-              {cabecalhos.map((cab) => (
-                <button
-                  key={cab.label}
-                  type="button"
-                  onClick={() => cab.key && handleSort(cab.key)}
-                  className={`items-center gap-1 text-left uppercase tracking-[.04em] ${cab.esconderMeio ? 'hidden @6xl:flex' : 'flex'} ${cab.direita ? 'justify-end' : ''} ${
-                    cab.key ? 'cursor-pointer' : 'cursor-default'
-                  } ${cab.key && cab.key === sortKey ? 'text-slate-900 dark:text-white' : ''}`}
-                >
-                  {cab.label}
-                  {cab.key && cab.key === sortKey ? <span className="text-[11px]">{sortDirection === 'asc' ? '↑' : '↓'}</span> : null}
-                </button>
-              ))}
+            <div style={gradeColunas} className={`hidden items-center gap-4 border-b border-[#eef2f6] bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-[.04em] text-slate-500 @3xl:grid ${classeGrade} dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400`}>
+              {colunasTabela.filter((c) => ver(c.id)).map((c) =>
+                c.id === 'acoes' ? (
+                  <span key={c.id} className="flex items-center justify-end gap-1">
+                    <span className="hidden @6xl:inline">Ações</span>
+                    <EngrenagemColunas tabela={tabela} />
+                  </span>
+                ) : (
+                  <span key={c.id} className={`min-w-0 ${c.esconderMeio ? 'hidden @6xl:flex' : 'flex'}`}>
+                    <CabecalhoFiltro
+                      tabela={tabela}
+                      colunaId={c.id}
+                      className="uppercase tracking-[.04em]"
+                      aviso="Na tela, vale para os membros desta página. Imprimir e Exportar Excel aplicam este filtro em todos os membros da busca."
+                    />
+                  </span>
+                ),
+              )}
             </div>
 
             {isLoadingScreen ? (
@@ -1508,13 +1547,13 @@ export function Members() {
                   </div>
                 ))}
               </div>
-            ) : paginatedMembers.length === 0 ? (
+            ) : linhasTabela.length === 0 ? (
               <div className="flex flex-col items-center gap-1.5 px-6 py-14 text-center">
                 <span className="text-base font-bold">Ninguém encontrado</span>
                 <span className="text-sm text-slate-500 dark:text-slate-400">Tente outro nome ou remova algum filtro.</span>
               </div>
             ) : (
-              paginatedMembers.map((member, index) => {
+              linhasTabela.map((member, index) => {
                 const normalizedStatus = normalizeMembershipStatus(member.membershipStatus);
                 const normalizedType = normalizeMemberType(member.memberType);
                 const statusTom = STATUS_TOM[normalizedStatus] ?? STATUS_TOM.visitante;
@@ -1524,8 +1563,8 @@ export function Members() {
                 return (
                   <div
                     key={member.id}
-                    className="flex items-center gap-3 border-t border-[#f1f5f9] px-3.5 py-3 transition-colors first:border-t-0 hover:bg-slate-50 @3xl:grid @3xl:grid-cols-[minmax(200px,2fr)_minmax(170px,1.5fr)_minmax(150px,1.3fr)_150px_84px] @3xl:gap-4 @3xl:px-5 @6xl:grid-cols-[minmax(220px,2.2fr)_minmax(180px,1.6fr)_80px_minmax(100px,.9fr)_minmax(160px,1.4fr)_150px_96px_84px] dark:border-slate-700 dark:hover:bg-slate-700/40"
-                    style={{ animation: `nmRowIn .3s ease ${Math.min(index, 12) * 18}ms both` }}
+                    className={`flex items-center gap-3 border-t border-[#f1f5f9] px-3.5 py-3 transition-colors first:border-t-0 hover:bg-slate-50 @3xl:grid @3xl:gap-4 @3xl:px-5 ${classeGrade} dark:border-slate-700 dark:hover:bg-slate-700/40`}
+                    style={{ ...gradeColunas, animation: `nmRowIn .3s ease ${Math.min(index, 12) * 18}ms both` }}
                   >
                     <Link
                       to={`/app-ui/members/${member.id}`}
@@ -1544,7 +1583,7 @@ export function Members() {
                       </span>
                     </Link>
 
-                    <span className="hidden min-w-0 flex-col gap-1 text-[13px] text-slate-700 @3xl:flex dark:text-slate-300">
+                    {ver('contato') && <span className="hidden min-w-0 flex-col gap-1 text-[13px] text-slate-700 @3xl:flex dark:text-slate-300">
                       <span className="flex items-center gap-2 whitespace-nowrap">
                         <Phone className="h-3.5 w-3.5 flex-none text-slate-400" strokeWidth={2} />
                         {telefone || '—'}
@@ -1553,13 +1592,13 @@ export function Members() {
                         <Mail className="h-3.5 w-3.5 flex-none text-slate-400" strokeWidth={2} />
                         <span className="truncate">{member.email || '—'}</span>
                       </span>
-                    </span>
+                    </span>}
 
-                    <span className="hidden @6xl:flex">
+                    {ver('tipo') && <span className="hidden @6xl:flex">
                       <span className={`flex h-6 items-center rounded-lg px-[9px] text-xs font-bold ${tipoTom}`}>{getMemberTypeLabel(member.memberType)}</span>
-                    </span>
+                    </span>}
 
-                    <span className="hidden min-w-0 flex-col gap-1 @6xl:flex">
+                    {ver('titulo') && <span className="hidden min-w-0 flex-col gap-1 @6xl:flex">
                       <span className="truncate text-[13px] text-slate-700 dark:text-slate-300">{getTitleLabel(member)}</span>
                       {member.churchFunctions && member.churchFunctions.length > 0 && (
                         <span className="flex flex-wrap gap-1">
@@ -1574,9 +1613,9 @@ export function Members() {
                           ))}
                         </span>
                       )}
-                    </span>
+                    </span>}
 
-                    <span className="hidden min-w-0 flex-col gap-0.5 @3xl:flex">
+                    {ver('igreja') && <span className="hidden min-w-0 flex-col gap-0.5 @3xl:flex">
                       <span className="flex items-center gap-1.5 truncate text-[13px] font-semibold">
                         <MapPin className="h-3.5 w-3.5 flex-none text-slate-400" strokeWidth={2} />
                         <span className="truncate">{member.churchName || '—'}</span>
@@ -1584,14 +1623,14 @@ export function Members() {
                       <span className="truncate pl-5 text-xs text-slate-500 dark:text-slate-400">
                         {[member.regionalName, member.fieldName].filter(Boolean).join(' · ') || '—'}
                       </span>
-                    </span>
+                    </span>}
 
-                    <span className="hidden flex-none @3xl:flex">
+                    {ver('status') && <span className="hidden flex-none @3xl:flex">
                       <span className={`flex h-[26px] items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-bold ${statusTom}`}>
                         <span className="h-1.5 w-1.5 rounded-full bg-current" />
                         {rotuloStatus(member.membershipStatus)}
                       </span>
-                    </span>
+                    </span>}
 
                     {/* Celular: situação e ações ficam no ⋯ (a linha ganha espaço). */}
                     <button
@@ -1603,9 +1642,9 @@ export function Members() {
                       <MoreHorizontal className="h-5 w-5" strokeWidth={2} />
                     </button>
 
-                    <span className="hidden text-[13px] text-slate-700 @6xl:block dark:text-slate-300">
+                    {ver('desde') && <span className="hidden text-[13px] text-slate-700 @6xl:block dark:text-slate-300">
                       {member.membershipDate ? new Date(member.membershipDate).toLocaleDateString('pt-BR') : '—'}
-                    </span>
+                    </span>}
 
                     <span className="hidden justify-end gap-1 @3xl:flex">
                       <Permissao chave="members.members.editar" rotulo="Editar — Members" herda="members.view">
@@ -1709,32 +1748,21 @@ export function Members() {
             <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden p-[22px]">
               <div className="flex flex-col gap-2.5">
                 <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">TIPO DE CADASTRO</span>
-                <div className="flex flex-wrap gap-2">
-                  {([['ALL', 'Todos'], ['MEMBRO', 'Membros'], ['PF', 'Pessoa física'], ['PJ', 'Pessoa jurídica']] as Array<[MemberTypeFilter, string]>).map(([valor, rotulo]) => (
-                    <button key={valor} type="button" onClick={() => setSelectedTypeFilter(valor)} className={chipClasse(selectedTypeFilter === valor)}>
-                      {rotulo}
-                    </button>
-                  ))}
-                </div>
+                <OpcaoUnica<MemberTypeFilter>
+                  valor={selectedTypeFilter}
+                  onChange={setSelectedTypeFilter}
+                  opcoes={[{ valor: 'ALL', rotulo: 'Todos' }, { valor: 'MEMBRO', rotulo: 'Membros' }, { valor: 'PF', rotulo: 'Pessoa física' }, { valor: 'PJ', rotulo: 'Pessoa jurídica' }]}
+                />
               </div>
 
               <div className="flex flex-col gap-2.5">
                 <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">SITUAÇÃO</span>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setSelectedStatusFilters(null)} className={chipClasse(!selectedStatusFilters?.length)}>
-                    Todas
-                  </button>
-                  {(['ativo', 'inativo', 'aguardando', 'visitante'] as const).map((valor) => (
-                    <button
-                      key={valor}
-                      type="button"
-                      onClick={() => setSelectedStatusFilters((atual) => alternarFiltro(atual, valor))}
-                      className={chipClasse(!!selectedStatusFilters?.includes(valor))}
-                    >
-                      {getMembershipStatusLabel(valor)}
-                    </button>
-                  ))}
-                </div>
+                <OpcoesMarcaveis
+                  rotuloTodos="Todas"
+                  selecionados={selectedStatusFilters}
+                  onChange={setSelectedStatusFilters}
+                  opcoes={(['ativo', 'inativo', 'aguardando', 'visitante'] as const).map((valor) => ({ valor, rotulo: getMembershipStatusLabel(valor) }))}
+                />
               </div>
 
               {campoVisible && (
@@ -1802,40 +1830,20 @@ export function Members() {
 
               <div className="flex flex-col gap-2.5">
                 <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">TÍTULO ECLESIÁSTICO</span>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setSelectedTitleFilters(null)} className={chipClasse(!selectedTitleFilters?.length)}>
-                    Todos
-                  </button>
-                  {titleFilterOptions.filter((option) => option.value !== 'ALL').map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedTitleFilters((atual) => alternarFiltro(atual, option.value))}
-                      className={chipClasse(!!selectedTitleFilters?.includes(option.value))}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
+                <OpcoesMarcaveis
+                  selecionados={selectedTitleFilters}
+                  onChange={setSelectedTitleFilters}
+                  opcoes={titleFilterOptions.filter((option) => option.value !== 'ALL').map((option) => ({ valor: option.value, rotulo: option.label }))}
+                />
               </div>
 
               <div className="flex flex-col gap-2.5">
                 <span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">ESTADO CIVIL</span>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setSelectedMaritalStatusFilters(null)} className={chipClasse(!selectedMaritalStatusFilters?.length)}>
-                    Todos
-                  </button>
-                  {maritalStatusFilterOptions.filter((option) => option.value !== 'ALL').map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedMaritalStatusFilters((atual) => alternarFiltro(atual, option.value))}
-                      className={chipClasse(!!selectedMaritalStatusFilters?.includes(option.value))}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
+                <OpcoesMarcaveis
+                  selecionados={selectedMaritalStatusFilters}
+                  onChange={setSelectedMaritalStatusFilters}
+                  opcoes={maritalStatusFilterOptions.filter((option) => option.value !== 'ALL').map((option) => ({ valor: option.value, rotulo: option.label }))}
+                />
               </div>
             </div>
 
@@ -2041,7 +2049,8 @@ export function Members() {
           let allMembers: MemberRecord[];
           setPreparingPrint(true);
           try {
-            allMembers = await fetchAllMembers();
+            // Mesmos filtros de coluna da tabela, aplicados a todos os membros da busca.
+            allMembers = tabela.aplicarFiltros(await fetchAllMembers());
           } catch (err) {
             console.error(err);
             setError('Erro ao preparar a impressão de todos os membros.');
