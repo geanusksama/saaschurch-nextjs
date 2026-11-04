@@ -666,7 +666,9 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
 
   return (
     <>
-      <div className="flex flex-col gap-3 overflow-y-auto p-3.5">
+      {/* Duas colunas: à esquerda ordenar/mostrar/personalizado, à direita os valores. No celular, empilha. */}
+      <div className="grid grid-cols-1 gap-x-4 gap-y-3 overflow-y-auto p-3.5 sm:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-col gap-1.5">
           <span className="text-[11px] font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">Ordenar</span>
           <div className="flex gap-1.5">
@@ -723,7 +725,9 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
             </p>
           )}
         </div>
+        </div>
 
+        <div className="flex min-w-0 flex-col gap-3 sm:border-l sm:border-slate-100 sm:pl-4 sm:dark:border-slate-700">
         {listar && (
           <div className="flex min-h-0 flex-col gap-1.5">
             <span className="text-[11px] font-bold uppercase tracking-[.06em] text-slate-500 dark:text-slate-400">Valores</span>
@@ -737,7 +741,7 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
                 className="h-9 w-full rounded-[10px] border border-slate-200 bg-white pl-8 pr-2 text-[13px] text-slate-900 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
               />
             </div>
-            <div className="max-h-[220px] overflow-y-auto rounded-[10px] border border-slate-200 p-1 dark:border-slate-600">
+            <div className="max-h-[300px] overflow-y-auto rounded-[10px] border border-slate-200 p-1 dark:border-slate-600">
               {visiveis.length === 0 ? (
                 <p className="px-2 py-3 text-center text-[13px] text-slate-500">Nenhum valor</p>
               ) : (
@@ -777,6 +781,7 @@ function MenuCampo<T>({ tabela, campo, aviso, onFechar }: {
         )}
 
         {aviso && <p className="text-[11.5px] leading-snug text-slate-500 dark:text-slate-400">{aviso}</p>}
+        </div>
       </div>
 
       <div className="flex gap-2 border-t border-slate-100 p-3 dark:border-slate-700">
@@ -855,7 +860,7 @@ export function CabecalhoFiltro<T>({ tabela, colunaId, className = '', aviso, al
           <ChevronDown className="h-3.5 w-3.5 flex-none opacity-50 transition-opacity group-hover/cab:opacity-100" strokeWidth={2.4} />
         )}
       </button>
-      <Flutuante ancora={ancora} aberto={aberto} onFechar={fechar} largura={340}>
+      <Flutuante ancora={ancora} aberto={aberto} onFechar={fechar} largura={680}>
         <div className="flex items-center gap-2 border-b border-slate-100 px-3.5 py-3 dark:border-slate-700">
           <ListFilter className="h-4 w-4 text-slate-500" />
           <span className="flex-1 truncate text-sm font-bold">{coluna.rotulo}</span>
