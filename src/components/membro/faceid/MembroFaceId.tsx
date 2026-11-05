@@ -353,6 +353,15 @@ export default function MembroFaceId() {
 
   const firstName = (session.member.preferredName || session.member.fullName).split(' ')[0];
 
+  // Só exibição: o rosto já entrou em algum leitor e os demais apenas não
+  // responderam ainda (seguem na fila e recebem sozinhos). Não é falha.
+  const leitoresOk = status?.devices.filter((d) => d.status === 'done').length ?? 0;
+  const parcialAguardando =
+    !!status &&
+    (status.state === 'failed' || status.state === 'partial') &&
+    leitoresOk > 0 &&
+    !status.devices.some((d) => d.status === 'failed' || d.status === 'rejected');
+
   return (
     <div
       className="fixed inset-0 overflow-y-auto"
@@ -581,6 +590,18 @@ export default function MembroFaceId() {
 
                 {(status.state === 'failed' || status.state === 'partial') && (
                   <div>
+                    {parcialAguardando ? (
+                      <div className="rounded-2xl p-5 mb-4 text-center"
+                           style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                        <p className="text-[15px] font-bold mb-1.5" style={{ color: TEXT1 }}>Rosto cadastrado!</p>
+                        <p className="text-[12px] leading-relaxed" style={{ color: TEXT2 }}>
+                          Sua presença já pode ser marcada{' '}
+                          {leitoresOk === 1 ? 'no leitor indicado abaixo' : `nos ${leitoresOk} leitores indicados abaixo`}.
+                          Os demais recebem seu cadastro automaticamente assim que ficarem
+                          disponíveis — você não precisa fazer mais nada.
+                        </p>
+                      </div>
+                    ) : (
                     <div className="rounded-2xl p-5 mb-4"
                          style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
                       <p className="text-[14px] font-bold mb-1.5" style={{ color: MEMBRO.DANGER }}>
@@ -590,6 +611,7 @@ export default function MembroFaceId() {
                         {status.message || 'Não foi possível concluir o cadastro.'}
                       </p>
                     </div>
+                    )}
 
                     {/* Detalhe por leitor — importante quando a igreja tem
                         mais de uma entrada e só uma falhou */}
@@ -601,8 +623,14 @@ export default function MembroFaceId() {
                                className="flex items-center justify-between px-4 py-2.5 text-[12px]"
                                style={{ background: CARD, borderBottom: `1px solid ${BORDER}` }}>
                             <span style={{ color: TEXT2 }}>{d.device}</span>
-                            <span style={{ color: d.status === 'done' ? MEMBRO.OK : MEMBRO.DANGER }}>
-                              {d.status === 'done' ? 'OK' : 'Falhou'}
+                            <span style={{
+                              color: d.status === 'done' ? MEMBRO.OK
+                                : d.status === 'failed' || d.status === 'rejected' ? MEMBRO.DANGER
+                                : TEXT2,
+                            }}>
+                              {d.status === 'done' ? 'OK'
+                                : d.status === 'failed' || d.status === 'rejected' ? 'Falhou'
+                                : 'Aguardando'}
                             </span>
                           </div>
                         ))}
@@ -610,7 +638,7 @@ export default function MembroFaceId() {
                     )}
 
                     <div className="flex gap-3">
-                      {status.canRetry && (
+                      {status.canRetry && !parcialAguardando && (
                         <button
                           onClick={restart}
                           className="flex-1 py-3.5 rounded-xl font-bold text-[14px] text-white"
@@ -630,7 +658,7 @@ export default function MembroFaceId() {
                       )}
                     </div>
 
-                    {!status.canRetry && !status.canUpdate && (
+                    {!status.canRetry && !status.canUpdate && !parcialAguardando && (
                       <p className="text-[11px] text-center mt-4 leading-relaxed" style={{ color: TEXT2 }}>
                         Procure a secretaria da igreja para concluir seu cadastro.
                       </p>
@@ -641,17 +669,17 @@ export default function MembroFaceId() {
                     <button
                       onClick={() => navigate('/membro/perfil')}
                       className={
-                        status.state === 'partial'
+                        status.state === 'partial' || parcialAguardando
                           ? 'w-full mt-3 py-3.5 rounded-xl font-bold text-[14px] text-white transition-transform active:scale-[0.98]'
                           : 'w-full mt-3 py-3.5 rounded-xl font-semibold text-[13px]'
                       }
                       style={
-                        status.state === 'partial'
+                        status.state === 'partial' || parcialAguardando
                           ? { background: ACCENT }
                           : { background: CARD, border: `1px solid ${BORDER}`, color: TEXT2 }
                       }
                     >
-                      {status.state === 'partial' ? 'Concluir' : 'Sair'}
+                      {status.state === 'partial' || parcialAguardando ? 'Concluir' : 'Sair'}
                     </button>
                   </div>
                 )}
