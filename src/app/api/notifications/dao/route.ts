@@ -53,12 +53,26 @@ export async function POST(req: NextRequest) {
     });
 
     // 2. Look up member in members table by ROL or CPF
+    // O leitor devolve como user_id o código cadastrado nele: ROL ou, em
+    // cadastros antigos, o CPF (sem os zeros à esquerda). `rol` é Int de
+    // 32 bits — um CPF passa do limite e derrubava a consulta inteira com
+    // erro 500, perdendo a presença. Código acima do limite só pode ser CPF.
+    const INT32_MAX = 2147483647;
+    const cabeNoRol = Number.isInteger(userId) && userId > 0 && userId <= INT32_MAX;
+    const cpfDigitos = String(values.user_id).replace(/\D/g, "").padStart(11, "0");
+    const cpfFormatado = cpfDigitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+
     const member = await prisma.member.findFirst({
       where: {
-        OR: [
-          { rol: userId },
-          { cpf: String(userId) }
-        ]
+        OR: cabeNoRol
+          ? [
+              { rol: userId },
+              { cpf: String(userId) }
+            ]
+          : [
+              { cpf: cpfDigitos },
+              { cpf: cpfFormatado }
+            ]
       },
       include: {
         church: true,
