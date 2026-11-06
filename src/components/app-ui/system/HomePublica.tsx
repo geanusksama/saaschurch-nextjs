@@ -833,6 +833,30 @@ export function HomePublica() {
           </div>
 
           <div className={cardCls}>
+            <h3 className="mb-1 font-bold text-slate-900 dark:text-white">Atalhos da home</h3>
+            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+              Deixe em branco para não mostrar o atalho.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className={labelCls}>WhatsApp do &quot;Sou Visitante&quot;</label>
+                <input className={inputCls} inputMode="tel" placeholder="5519999999999"
+                  value={cfg.services.visitorWhatsapp}
+                  onChange={e => trocarConfig({ services: { ...cfg.services, visitorWhatsapp: e.target.value.replace(/\D/g, '') } })} />
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  Com DDI e DDD, só números. Abre o WhatsApp com a mensagem da recepção; o cadastro passa para o atalho &quot;Quero ser Membro&quot;.
+                </p>
+              </div>
+              <div>
+                <label className={labelCls}>Chave PIX de &quot;Ofertas e Dízimos&quot;</label>
+                <input className={inputCls} placeholder="e-mail, CPF/CNPJ, telefone ou chave aleatória"
+                  value={cfg.services.pixKey}
+                  onChange={e => trocarConfig({ services: { ...cfg.services, pixKey: e.target.value } })} />
+              </div>
+            </div>
+          </div>
+
+          <div className={cardCls}>
             <h3 className="mb-1 font-bold text-slate-900 dark:text-white">Opções oferecidas</h3>
             <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
               Desmarque o que a igreja não atende. O formulário e o destino do pedido continuam os mesmos.

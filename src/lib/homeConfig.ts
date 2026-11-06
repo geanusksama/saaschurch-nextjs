@@ -147,6 +147,14 @@ export interface HomeServicesConfig {
   hidden: string[];
   /** renomes pontuais: { [id]: 'novo rótulo' }. */
   labels: Record<string, string>;
+  /**
+   * WhatsApp do ícone "Sou Visitante" (só dígitos, com DDI). Preenchido, o
+   * ícone abre esse WhatsApp com a mensagem da recepção e o cadastro passa
+   * para um ícone próprio, "Quero ser Membro". Vazio = comportamento antigo.
+   */
+  visitorWhatsapp: string;
+  /** Chave PIX do ícone "Ofertas e Dízimos". Vazio = o ícone não aparece. */
+  pixKey: string;
 }
 
 export interface HomeConfig {
@@ -365,6 +373,8 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
     title: '',
     hidden: [],
     labels: {},
+    visitorWhatsapp: '',
+    pixKey: '',
   },
 };
 
@@ -533,6 +543,8 @@ function mergeServices(raw: unknown): HomeServicesConfig {
     title: str(s.title, d.title),
     hidden: Array.isArray(s.hidden) ? s.hidden.filter((h): h is string => typeof h === 'string') : [],
     labels,
+    visitorWhatsapp: str(s.visitorWhatsapp, '').replace(/\D/g, '').slice(0, 15),
+    pixKey: str(s.pixKey, '').trim().slice(0, 140),
   };
 }
 

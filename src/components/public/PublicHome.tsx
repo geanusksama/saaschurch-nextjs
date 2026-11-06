@@ -1,7 +1,7 @@
 import { NavPublica } from './vitrine/comum';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { Download, Gamepad2, History, User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby, Clock, Home as HomeIcon, UserPlus, ShoppingBag, CalendarDays, ArrowRight, Church } from 'lucide-react';
+import { Download, Gamepad2, History, User, Play, Radio, Camera, Users, MapPin, Sun, Moon, MessageSquare, Info, HeartHandshake, Calendar, Check, AlertCircle, Sparkles, BookOpen, X, Loader2, LogIn, DollarSign, Briefcase, Laptop, Heart, Baby, Clock, Home as HomeIcon, UserPlus, ShoppingBag, CalendarDays, ArrowRight, Church, HandCoins, MessageCircle, Copy } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MembroLogin } from '../membro/MembroLogin';
 import { MembroProvider } from '../membro/MembroProvider';
@@ -23,6 +23,7 @@ import {
   type HomeCard, type HomeConfigPayload, type HomeSede,
 } from '../../lib/homeConfig';
 import { SERVICOS_HOME, type ServicoHomeId } from '@/lib/servicosHome';
+import { linkWhatsRecepcao, RECEPCAO_PADRAO } from '@/lib/recepcaoWhatsapp';
 
 interface FloatingItem {
   id: number;
@@ -256,8 +257,28 @@ export function PublicHome() {
   // Peniel agora fica no menu do topo (NavPublica); o card sai do meio da home.
   const cardsVisiveis = home.cards.filter(card => card.visible && card.action !== 'peniel');
 
+  /** "Sou Visitante" → WhatsApp da recepção, com a mesma mensagem do QR code. */
+  const whatsVisitante = cfg.services.visitorWhatsapp;
+  const pixChave = cfg.services.pixKey;
+  const abrirWhatsVisitante = () =>
+    window.open(linkWhatsRecepcao(whatsVisitante, RECEPCAO_PADRAO.mensagem), '_blank', 'noopener');
+  const abrirPix = () => { setPixCopiado(false); setShowPix(true); };
+  const copiarPix = async () => {
+    try {
+      await navigator.clipboard.writeText(pixChave);
+      setPixCopiado(true);
+      toast.success('Chave PIX copiada');
+    } catch {
+      toast.error('Não foi possível copiar — selecione a chave e copie manualmente.');
+    }
+  };
+
   const [showMembroLogin, setShowMembroLogin] = useState(false);
   const [showPenielModal, setShowPenielModal] = useState(false);
+  // Atalhos configurados em Sistema → Home Pública → Serviços (vazio = não aparece)
+  const [showPix, setShowPix] = useState(false);
+  const [pixCopiado, setPixCopiado] = useState(false);
+  const [eventosMenu, setEventosMenu] = useState(false);
   /** App aberto na grade da home (expande num cartão com a descrição e a ação). */
   const [appAberto, setAppAberto] = useState<{ card: HomeCard | 'ciclo'; instalar?: () => void } | null>(null);
   const [showVerseModal, setShowVerseModal] = useState(false);
@@ -887,9 +908,32 @@ export function PublicHome() {
           : tileApp(card.key, Icone, card.iconColor, tituloCurto, () => setAppAberto({ card }), vivo);
         if (i !== 0) return [tile];
         const extras = [tile, tileApp('__ciclo', Gamepad2, accent, 'Ciclo da fé', () => setAppAberto({ card: 'ciclo' }))];
+        const cadastroDisponivel = cfg.services.enabled && !cfg.services.hidden.includes('membership');
+        if (whatsVisitante) {
+          // Ordem pedida pelo dono: Sou Membro · Sou Visitante (WhatsApp) ·
+          // Quero ser Membro (o cadastro) · Ofertas e Dízimos · Ciclo da fé
+          const novos = [tileApp('__sou_visitante', MessageCircle, '#8b5cf6', 'Sou Visitante', abrirWhatsVisitante)];
+          if (cadastroDisponivel) novos.push(
+            <button key="__quero_ser_membro" type="button" onClick={() => escolherServico('membership')} className="group flex flex-col items-center gap-2 text-center focus:outline-none" data-card-acao>
+              <span
+                className="relative w-[68px] h-[68px] md:w-[76px] md:h-[76px] rounded-[22px] flex items-center justify-center transition-transform group-hover:scale-105 group-active:scale-95"
+                style={{ background: 'linear-gradient(145deg, #3b82f633, #3b82f614)', boxShadow: 'inset 0 0 0 1px #3b82f655, 0 10px 30px -14px #3b82f6' }}
+              >
+                <UserPlus className="w-7 h-7 md:w-8 md:h-8" style={{ color: '#3b82f6' }} />
+              </span>
+              <span className={`text-[11px] md:text-xs font-semibold leading-tight line-clamp-2 max-w-[84px] ${textPrimary}`}>
+                Quero ser Membro
+              </span>
+            </button>
+          );
+          if (pixChave) novos.push(tileApp('__ofertas', HandCoins, '#f59e0b', 'Ofertas e Dízimos', abrirPix));
+          extras.splice(1, 0, ...novos);
+          return extras;
+        }
+        if (pixChave) extras.splice(1, 0, tileApp('__ofertas', HandCoins, '#f59e0b', 'Ofertas e Dízimos', abrirPix));
         // "Sou Visitante": o mesmo cadastro da opção "Quero ser Membro" do atendimento. Some se
         // a igreja ocultou esse serviço em Sistema → Home Pública.
-        if (cfg.services.enabled && !cfg.services.hidden.includes('membership')) {
+        if (cadastroDisponivel) {
           // Logo depois de "Sou Membro", antes do Ciclo da fé (pedido do dono).
           extras.splice(1, 0,
             <button key="__sou_visitante" type="button" onClick={() => escolherServico('membership')} className="group flex flex-col items-center gap-2 text-center focus:outline-none" data-card-acao>
@@ -1064,8 +1108,43 @@ export function PublicHome() {
 
   const homeCelular = (
     <div className="md:hidden relative z-10 flex flex-col px-5 pb-[132px]">
-      {/* Cartão da missão */}
-      <section className={`mt-2 rounded-[24px] p-5 ${isDark ? 'bg-white/[0.05] ring-1 ring-white/10' : 'bg-[#1c1d22] text-white'}`}>
+      {/* Acesso rápido */}
+      <h2 className={`mt-2 mb-3 text-[16px] font-bold ${textPrimary}`}>Acesso rápido</h2>
+      <div className={`grid grid-cols-2 gap-3 transition-opacity duration-500 ${homeCarregada ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        {cardMembro && cartaoDestaque('__membro', resolveHomeIcon(cardMembro.icon), cardMembro.title.split('\n')[0], 'Acesse sua área', cardMembro.iconColor || '#0E8A5F', () => setShowMembroLogin(true))}
+        {whatsVisitante
+          ? cartaoDestaque('__sou_visitante', MessageCircle, 'Sou Visitante', 'Fale com a recepção', '#4A3AA0', abrirWhatsVisitante)
+          : visitanteDisponivel && (
+          <button type="button" onClick={abrirCadastroVisitante} data-card-acao
+            className="flex min-h-[112px] flex-col items-start justify-between gap-3 rounded-[22px] p-4 text-left text-white transition active:scale-[.98]"
+            style={{ background: 'linear-gradient(145deg, #4A3AA0, #4A3AA0cc)', boxShadow: '0 14px 30px -14px #4A3AA0' }}>
+            <span className="grid h-[42px] w-[42px] place-items-center rounded-[14px]" style={{ background: 'rgba(255,255,255,.18)' }}>
+              <UserPlus className="h-5 w-5" strokeWidth={1.8} />
+            </span>
+            <span>
+              <span className="block text-[16px] font-extrabold leading-tight">Sou Visitante</span>
+              <span className="mt-0.5 block text-[12px] text-white/80">{rotuloVisitante === 'Sou Visitante' ? 'Faça seu cadastro' : rotuloVisitante}</span>
+            </span>
+          </button>
+        )}
+        {whatsVisitante && visitanteDisponivel && (
+          <button type="button" onClick={abrirCadastroVisitante} data-card-acao
+            className="flex min-h-[112px] flex-col items-start justify-between gap-3 rounded-[22px] p-4 text-left text-white transition active:scale-[.98]"
+            style={{ background: 'linear-gradient(145deg, #1D6FD8, #1D6FD8cc)', boxShadow: '0 14px 30px -14px #1D6FD8' }}>
+            <span className="grid h-[42px] w-[42px] place-items-center rounded-[14px]" style={{ background: 'rgba(255,255,255,.18)' }}>
+              <UserPlus className="h-5 w-5" strokeWidth={1.8} />
+            </span>
+            <span>
+              <span className="block text-[16px] font-extrabold leading-tight">Quero ser Membro</span>
+              <span className="mt-0.5 block text-[12px] text-white/80">Faça seu cadastro</span>
+            </span>
+          </button>
+        )}
+        {pixChave && cartaoDestaque('__ofertas', HandCoins, 'Ofertas e Dízimos', 'Contribua via PIX', '#B7791F', abrirPix)}
+      </div>
+
+      {/* Cartão da missão: abaixo dos botões de acesso rápido, acima da rádio (pedido do dono) */}
+      <section className={`mt-3 rounded-[24px] p-5 ${isDark ? 'bg-white/[0.05] ring-1 ring-white/10' : 'bg-[#1c1d22] text-white'}`}>
         {cfg.heroEyebrow && <p className={`text-[13px] ${isDark ? textMuted : 'text-white/60'}`}>{cfg.heroEyebrow}</p>}
         <h1 className={`mt-1 text-[44px] font-extrabold leading-none tracking-[-0.03em] ${isDark ? textPrimary : 'text-white'}`}>
           {cfg.heroTitle || cfg.siteTitle || '—'}
@@ -1081,24 +1160,7 @@ export function PublicHome() {
         )}
       </section>
 
-      {/* Acesso rápido */}
-      <h2 className={`mt-6 mb-3 text-[16px] font-bold ${textPrimary}`}>Acesso rápido</h2>
-      <div className={`grid grid-cols-2 gap-3 transition-opacity duration-500 ${homeCarregada ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        {cardMembro && cartaoDestaque('__membro', resolveHomeIcon(cardMembro.icon), cardMembro.title.split('\n')[0], 'Acesse sua área', cardMembro.iconColor || '#0E8A5F', () => setShowMembroLogin(true))}
-        {visitanteDisponivel && (
-          <button type="button" onClick={abrirCadastroVisitante} data-card-acao
-            className="flex min-h-[112px] flex-col items-start justify-between gap-3 rounded-[22px] p-4 text-left text-white transition active:scale-[.98]"
-            style={{ background: 'linear-gradient(145deg, #4A3AA0, #4A3AA0cc)', boxShadow: '0 14px 30px -14px #4A3AA0' }}>
-            <span className="grid h-[42px] w-[42px] place-items-center rounded-[14px]" style={{ background: 'rgba(255,255,255,.18)' }}>
-              <UserPlus className="h-5 w-5" strokeWidth={1.8} />
-            </span>
-            <span>
-              <span className="block text-[16px] font-extrabold leading-tight">Sou Visitante</span>
-              <span className="mt-0.5 block text-[12px] text-white/80">{rotuloVisitante === 'Sou Visitante' ? 'Faça seu cadastro' : rotuloVisitante}</span>
-            </span>
-          </button>
-        )}
-
+      <div className={`mt-3 grid grid-cols-2 gap-3 transition-opacity duration-500 ${homeCarregada ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         {/* Rádio: largura total, com o mesmo destino do cartão da rádio */}
         {cardRadio && (
           <div className={`col-span-2 flex items-center gap-3 rounded-[22px] p-4 ${superficie}`}>
@@ -1190,17 +1252,40 @@ export function PublicHome() {
   const tabBarCelular = (
     <nav aria-label="Navegação" className={`md:hidden fixed inset-x-0 bottom-0 z-40 flex items-end justify-around border-t px-2 pt-2 backdrop-blur-xl ${isDark ? 'border-white/10 bg-[#0b0d12]/90' : 'border-black/5 bg-white/95'}`}
       style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
-      {[
-        { rotulo: 'Início', Icone: HomeIcon, to: '/', ativo: pathname === '/' },
-        { rotulo: 'Eventos', Icone: CalendarDays, to: '/eventos', ativo: false },
-      ].map(({ rotulo, Icone, to, ativo }) => (
-        <Link key={rotulo} to={to} className="flex min-h-[52px] w-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold">
-          <span className="grid h-[30px] w-[52px] place-items-center rounded-full" style={ativo ? { background: `${accent}2e`, color: accent } : { color: isDark ? '#94a3b8' : '#64748b' }}>
-            <Icone className="h-5 w-5" strokeWidth={1.8} />
+      <Link to="/" className="flex min-h-[52px] w-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+        <span className="grid h-[30px] w-[52px] place-items-center rounded-full" style={pathname === '/' ? { background: `${accent}2e`, color: accent } : { color: isDark ? '#94a3b8' : '#64748b' }}>
+          <HomeIcon className="h-5 w-5" strokeWidth={1.8} />
+        </span>
+        <span style={{ color: pathname === '/' ? accent : (isDark ? '#94a3b8' : '#64748b') }}>Início</span>
+      </Link>
+      {/* Eventos abre um menu: agenda, Peniel e CIBE (antes numa linha própria no topo) */}
+      <div className="relative">
+        {eventosMenu && (
+          <>
+            <button type="button" aria-label="Fechar menu de eventos" className="fixed inset-0 z-0 cursor-default" onClick={() => setEventosMenu(false)} />
+            <div role="menu" className={`absolute bottom-[64px] left-0 z-10 w-52 overflow-hidden rounded-2xl p-1.5 shadow-2xl ${isDark ? 'bg-[#16181f] ring-1 ring-white/10' : 'bg-white ring-1 ring-black/5'}`}>
+              {[
+                { rotulo: 'Agenda de eventos', Icone: CalendarDays, acao: () => navigate('/eventos') },
+                { rotulo: 'Peniel', Icone: Sparkles, acao: () => setShowPenielModal(true) },
+                { rotulo: 'CIBE', Icone: BookOpen, acao: () => navigate('/eventos?dep=cibe') },
+              ].map(({ rotulo, Icone, acao }) => (
+                <button key={rotulo} type="button" role="menuitem" onClick={() => { setEventosMenu(false); acao(); }}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[14px] font-semibold ${isDark ? 'text-white/90 hover:bg-white/[0.06]' : 'text-slate-800 hover:bg-black/[0.04]'}`}>
+                  <Icone className="h-[18px] w-[18px]" strokeWidth={1.8} style={{ color: accent }} />
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        <button type="button" onClick={() => setEventosMenu(o => !o)} aria-expanded={eventosMenu} aria-haspopup="menu"
+          className="flex min-h-[52px] w-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+          <span className="grid h-[30px] w-[52px] place-items-center rounded-full" style={eventosMenu ? { background: `${accent}2e`, color: accent } : { color: isDark ? '#94a3b8' : '#64748b' }}>
+            <CalendarDays className="h-5 w-5" strokeWidth={1.8} />
           </span>
-          <span style={{ color: ativo ? accent : (isDark ? '#94a3b8' : '#64748b') }}>{rotulo}</span>
-        </Link>
-      ))}
+          <span style={{ color: eventosMenu ? accent : (isDark ? '#94a3b8' : '#64748b') }}>Eventos</span>
+        </button>
+      </div>
       {cfg.services.enabled ? (
         <button type="button" onClick={() => setFabOpen(o => !o)} aria-label="Atendimento" className="flex w-20 flex-col items-center gap-1 text-[11px] font-semibold text-[#10b981]">
           <span className="-mt-[26px] grid h-14 w-14 place-items-center rounded-full text-white shadow-lg"
@@ -1429,18 +1514,9 @@ export function PublicHome() {
           <NavPublica isDark={isDark} accent={accent} onPeniel={() => setShowPenielModal(true)} />
         </div>
       ) : (
-        // Modo clássico no celular: Eventos e Compras já estão na tab bar de
-        // baixo; aqui ficam só Peniel e CIBE, que não têm outro acesso.
-        <div className="md:hidden relative z-30 mt-3 mb-1 flex justify-center gap-2 px-5">
-          <button type="button" onClick={() => setShowPenielModal(true)}
-            className={`h-9 rounded-full px-4 text-[13px] font-semibold ${isDark ? 'bg-white/[0.06] text-white/80 ring-1 ring-white/10' : 'bg-black/[0.04] text-slate-700 ring-1 ring-black/5'}`}>
-            Peniel
-          </button>
-          <Link to="/eventos?dep=cibe"
-            className={`inline-flex h-9 items-center rounded-full px-4 text-[13px] font-semibold ${isDark ? 'bg-white/[0.06] text-white/80 ring-1 ring-white/10' : 'bg-black/[0.04] text-slate-700 ring-1 ring-black/5'}`}>
-            CIBE
-          </Link>
-        </div>
+        // Modo clássico no celular: Peniel e CIBE ficam no menu de Eventos da
+        // tab bar (pedido do dono, para ganhar a linha). Só um respiro aqui.
+        <div className="md:hidden mt-3" />
       )}
 
       {modoAnimado ? (
@@ -1553,6 +1629,34 @@ export function PublicHome() {
       {/* Botão flutuante de atendimento da secretaria. A igreja pode desligá-lo
           inteiro em Sistema → Home Pública. */}
       {!modoAnimado && tabBarCelular}
+      <AnimatePresence>
+        {showPix && pixChave && (
+          <motion.div key="pix" role="dialog" aria-label="Ofertas e Dízimos" className="fixed inset-0 z-[70] flex items-center justify-center p-5"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowPix(false)} />
+            <motion.div initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }}
+              className={`relative w-full max-w-sm rounded-[28px] p-6 ${isDark ? 'bg-[#141414] ring-1 ring-white/10' : 'bg-white ring-1 ring-black/5'}`}>
+              <button type="button" onClick={() => setShowPix(false)} aria-label="Fechar"
+                className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center ${isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-slate-700'}`}><X className="w-4 h-4" /></button>
+              <span className="mb-4 grid h-14 w-14 place-items-center rounded-[18px]" style={{ background: 'linear-gradient(145deg, #f59e0b40, #f59e0b14)', boxShadow: 'inset 0 0 0 1px #f59e0b66' }}>
+                <HandCoins className="h-7 w-7" style={{ color: '#f59e0b' }} />
+              </span>
+              <h3 className={`text-2xl font-extrabold tracking-tight ${textPrimary}`}>Ofertas e Dízimos</h3>
+              <p className={`mt-1 text-sm ${textSub}`}>Copie a chave abaixo e faça o PIX pelo app do seu banco.</p>
+              <div className={`mt-5 rounded-2xl px-4 py-3 ${isDark ? 'bg-white/[0.06] ring-1 ring-white/10' : 'bg-black/[0.04] ring-1 ring-black/5'}`}>
+                <p className={`text-[11px] font-bold uppercase tracking-[.12em] ${textMuted}`}>Chave PIX</p>
+                <p className={`mt-1 break-all select-all text-[15px] font-bold ${textPrimary}`}>{pixChave}</p>
+              </div>
+              <button type="button" onClick={copiarPix}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold text-black transition hover:brightness-110"
+                style={{ background: pixCopiado ? '#22c55e' : '#f59e0b' }}>
+                {pixCopiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {pixCopiado ? 'Chave copiada' : 'Copiar chave PIX'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Atendimento no celular: tela cheia acima da tab bar */}
       <AnimatePresence>
         {!modoAnimado && fabOpen && cfg.services.enabled && (
