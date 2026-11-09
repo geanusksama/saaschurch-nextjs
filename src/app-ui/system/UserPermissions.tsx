@@ -231,7 +231,7 @@ export default function UserPermissions() {
           marcar aqui <strong>sobrescreve</strong> o padrão do perfil só para este usuário.{' '}
           {user?.roleId
             ? 'Clique para inverter o padrão; clique de novo para voltar a ele'
-            : 'Clique para alternar: padrão → permitido → bloqueado → padrão'}
+            : 'Clique para alternar: padrão → liberado → bloqueado → padrão'}
           ; na raiz, vale para a tela inteira. Use <strong>Redefinir</strong> para limpar todas as
           sobrescritas. {contarSobrescritas(perms, user?.profileType ?? 'church', user?.roleId)} item(ns) diferente(s)
           do padrão.

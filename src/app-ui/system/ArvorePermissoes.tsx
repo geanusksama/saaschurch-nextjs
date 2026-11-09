@@ -196,7 +196,7 @@ export function ArvorePermissoes(props: Props) {
   /**
    * Ponto de partida de uma alteração no modo usuário. Quem tem categoria e
    * ainda não tem sobrescrita está no padrão do perfil; a primeira sobrescrita
-   * liga a lista fechada e o resto SUMIRIA ("permitir tudo" numa seção
+   * liga a lista fechada e o resto SUMIRIA ("liberar tudo" numa seção
    * apagava as outras). Então, antes da primeira, grava o estado atual de
    * todas as chaves — a alteração só acrescenta ou tira o que foi clicado.
    */
@@ -216,7 +216,7 @@ export function ArvorePermissoes(props: Props) {
     onChange(n);
   }
 
-  /** Usuário: padrão → permitido → bloqueado → padrão. Na raiz, vale a tela inteira. */
+  /** Usuário: padrão → liberado → bloqueado → padrão. Na raiz, vale a tela inteira. */
   function cicloUsuario(no: No, raizOcultas: string[]) {
     const alvo = no.tipo === 'tela' ? [...chavesDaSubarvore(no), ...raizOcultas] : [no.chave];
     if (porEfeito) {
@@ -272,7 +272,7 @@ export function ArvorePermissoes(props: Props) {
     const misto = val && sub.some((k) => !efetivo(k));
     const pai = PAIS.get(no.chave);
     const paiNegado = Boolean(pai) && !efetivo(pai!);
-    // Com categoria: igual ao padrão do perfil = "padrão"; diferente = permitido/bloqueado.
+    // Com categoria: igual ao padrão do perfil = "padrão"; diferente = liberado/bloqueado.
     const explicito = porEfeito ? (val === padrao(no.chave) ? undefined : val) : valores[no.chave];
 
     return (
@@ -316,7 +316,7 @@ export function ArvorePermissoes(props: Props) {
               title={
                 porEfeito
                   ? 'Clique: inverte o padrão do perfil; clique de novo volta ao padrão'
-                  : 'Clique: padrão → permitido → bloqueado → padrão'
+                  : 'Clique: padrão → liberado → bloqueado → padrão'
               }
               className={`shrink-0 w-[5.5rem] rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${
                 explicito === true
@@ -326,7 +326,7 @@ export function ArvorePermissoes(props: Props) {
                     : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900'
               }`}
             >
-              {explicito === true ? 'permitido' : explicito === false ? 'bloqueado' : `padrão: ${val ? 'sim' : 'não'}`}
+              {explicito === true ? 'liberado' : explicito === false ? 'bloqueado' : `padrão ${val ? 'sim' : 'não'}`}
             </button>
           )}
 
@@ -364,7 +364,7 @@ export function ArvorePermissoes(props: Props) {
       {roleIdUsuario && (
         <p className="shrink-0 px-4 py-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
           Usuário com a categoria <strong>{roleNameUsuario ?? 'definida'}</strong>. &quot;Padrão&quot; é o que o
-          perfil já dá. Um clique inverte (permitido ou bloqueado); outro clique volta ao padrão. Só muda o
+          perfil já dá. Um clique inverte (liberado ou bloqueado); outro clique volta ao padrão. Só muda o
           que você clicar — as outras telas ficam como estão.
         </p>
       )}
@@ -411,7 +411,7 @@ export function ArvorePermissoes(props: Props) {
                   </>
                 ) : (
                   <>
-                    <button type="button" onClick={() => marcarSecao(raizes, true)} className="hover:underline">permitir tudo</button>
+                    <button type="button" onClick={() => marcarSecao(raizes, true)} className="hover:underline">liberar tudo</button>
                     <button type="button" onClick={() => marcarSecao(raizes, false)} className="hover:underline">bloquear tudo</button>
                     <button type="button" onClick={() => marcarSecao(raizes, undefined)} className="hover:underline">voltar ao padrão</button>
                   </>

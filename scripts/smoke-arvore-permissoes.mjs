@@ -74,7 +74,7 @@ ok('controle: chave comum ausente na whitelist é negada', rp('app_orders', { pr
   const { podeChave } = await import(pathToFileURL(path.join(OUT, 'src/lib/permissoes/resolver.mjs')).href);
   const ctx = (ov) => ({ profileType: 'church', modules: DEFAULT_PERMISSION_MODULES, userOverrides: ov, userRoleId: 'categoria' });
   const todas = RAIZES.flatMap((r) => [r.no.chave, ...r.no.filhos.flatMap(function f(x) { return [x.chave, ...x.filhos.flatMap(f)]; }), ...r.ocultas]);
-  ok('igreja: Gestão de Culto é "padrão: não" (igual ao menu)', podeChave('culto_gestao.view', ctx({})) === false);
+  ok('igreja: Gestão de Culto é "padrão não" (igual ao menu)', podeChave('culto_gestao.view', ctx({})) === false);
   ok('igreja: Livro Caixa liberado sem sobrescrita', podeChave('cashbook.view', ctx({})) === true);
   const semente = Object.fromEntries(todas.map((k) => [k, podeChave(k, ctx({}))]));
   const pastoral = RAIZES.filter((r) => r.grupo === 'Gestão Pastoral').flatMap((r) => [r.no.chave, ...r.no.filhos.map((x) => x.chave), ...r.ocultas]);
@@ -118,30 +118,30 @@ ok('controle: chave comum ausente na whitelist é negada', rp('app_orders', { pr
     b.onClick();
     return novo;
   }
-  const etiqueta = (valores, chave) => botoes({ ...CAT, valores, onChange() {} }).find((b) => b.linha === chave && /^(padrão|permitido|bloqueado)/.test(b.texto))?.texto;
+  const etiqueta = (valores, chave) => botoes({ ...CAT, valores, onChange() {} }).find((b) => b.linha === chave && /^(padrão|liberado|bloqueado)/.test(b.texto))?.texto;
   const ctx = (ov) => ({ profileType: 'church', modules: DEFAULT_PERMISSION_MODULES, userOverrides: ov, userRoleId: 'categoria' });
-  const raiz = (chave) => (b) => b.linha === chave && /^(padrão|permitido|bloqueado)/.test(b.texto);
+  const raiz = (chave) => (b) => b.linha === chave && /^(padrão|liberado|bloqueado)/.test(b.texto);
 
   // Tesoureiro sem nada gravado: libera "Lançar dados de culto".
   const v1 = clicar({}, raiz('culto_lancar.view'));
   ok('categoria: 1 clique em Lançar dados de culto libera a tela', podeChave('culto_lancar.view', ctx(v1)) === true);
   ok('…e o Livro Caixa continua liberado (nada some)', podeChave('cashbook.view', ctx(v1)) === true);
   ok('…só a tela clicada fica diferente do padrão', contarSobrescritas(v1, 'church', 'categoria') === 8, String(contarSobrescritas(v1, 'church', 'categoria')));
-  const rotulos = botoes({ ...CAT, valores: v1, onChange() {} }).filter((b) => b.linha && /^(padrão|permitido|bloqueado)/.test(b.texto));
+  const rotulos = botoes({ ...CAT, valores: v1, onChange() {} }).filter((b) => b.linha && /^(padrão|liberado|bloqueado)/.test(b.texto));
   const mudaram = rotulos.filter((b) => !b.texto.startsWith('padrão'));
-  ok('o bug relatado: as outras telas continuam "padrão" (não viram todas "permitido")', mudaram.length === 1 && mudaram[0].linha === 'culto_lancar.view', JSON.stringify(mudaram.map((b) => `${b.linha}=${b.texto}`).slice(0, 5)));
-  ok('etiquetas: culto "permitido", Livro Caixa "padrão: sim", Gestão de Culto "padrão: não"',
-    etiqueta(v1, 'culto_lancar.view') === 'permitido' && etiqueta(v1, 'cashbook.view') === 'padrão: sim' && etiqueta(v1, 'culto_gestao.view') === 'padrão: não',
+  ok('o bug relatado: as outras telas continuam "padrão" (não viram todas "liberado")', mudaram.length === 1 && mudaram[0].linha === 'culto_lancar.view', JSON.stringify(mudaram.map((b) => `${b.linha}=${b.texto}`).slice(0, 5)));
+  ok('etiquetas: culto "liberado", Livro Caixa "padrão sim", Gestão de Culto "padrão não"',
+    etiqueta(v1, 'culto_lancar.view') === 'liberado' && etiqueta(v1, 'cashbook.view') === 'padrão sim' && etiqueta(v1, 'culto_gestao.view') === 'padrão não',
     `${etiqueta(v1, 'culto_lancar.view')} / ${etiqueta(v1, 'cashbook.view')} / ${etiqueta(v1, 'culto_gestao.view')}`);
 
   // Segundo clique volta ao padrão; padrão continua escolhível.
   const v2 = clicar(v1, raiz('culto_lancar.view'));
-  ok('2º clique volta ao padrão (tela fechada, 0 diferenças)', podeChave('culto_lancar.view', ctx(v2)) === false && contarSobrescritas(v2, 'church', 'categoria') === 0 && etiqueta(v2, 'culto_lancar.view') === 'padrão: não');
+  ok('2º clique volta ao padrão (tela fechada, 0 diferenças)', podeChave('culto_lancar.view', ctx(v2)) === false && contarSobrescritas(v2, 'church', 'categoria') === 0 && etiqueta(v2, 'culto_lancar.view') === 'padrão não');
   ok('…e ainda vê o Livro Caixa', podeChave('cashbook.view', ctx(v2)) === true);
 
   // Bloquear uma tela que o padrão libera.
   const v3 = clicar(v1, raiz('cashbook.view'));
-  ok('clique em tela "padrão: sim" bloqueia a tela', podeChave('cashbook.view', ctx(v3)) === false && etiqueta(v3, 'cashbook.view') === 'bloqueado');
+  ok('clique em tela "padrão sim" bloqueia a tela', podeChave('cashbook.view', ctx(v3)) === false && etiqueta(v3, 'cashbook.view') === 'bloqueado');
   ok('…sem mexer no culto já liberado', podeChave('culto_lancar.view', ctx(v3)) === true);
 
   // "voltar ao padrão" da seção Gestão de Culto não apaga o resto (lista fechada).
@@ -149,7 +149,7 @@ ok('controle: chave comum ausente na whitelist é negada', rp('app_orders', { pr
   ok('"voltar ao padrão" da seção: culto volta a "não", Livro Caixa segue bloqueado, resto intacto',
     podeChave('culto_lancar.view', ctx(v4)) === false && podeChave('cashbook.view', ctx(v4)) === false && podeChave('dashboard.view', ctx(v4)) === true);
 
-  // Sem categoria continua o ciclo antigo (padrão → permitido → bloqueado → padrão).
+  // Sem categoria continua o ciclo antigo (padrão → liberado → bloqueado → padrão).
   let semCat = null;
   botoes({ modo: 'usuario', profileType: 'church', valores: {}, onChange: (n) => { semCat = n; } }).find(raiz('culto_lancar.view')).onClick();
   ok('sem categoria: ciclo antigo, grava só a tela clicada', semCat['culto_lancar.view'] === true && Object.keys(semCat).every((k) => k.startsWith('culto_lancar.')));
@@ -178,7 +178,7 @@ ok('contador de liberados aparece', /\d+ de \d+ telas e botões liberados/.test(
 // Árvore em modo usuário.
 const h2 = renderToString(React.createElement(ArvorePermissoes, { modo: 'usuario', profileType: 'church', valores: { 'members.view': false }, onChange() {} }));
 const t2 = texto(h2);
-ok('árvore (usuário) renderiza com estados', t2.includes('bloqueado') && t2.includes('padrão:'), t2.slice(0, 200));
+ok('árvore (usuário) renderiza com estados', t2.includes('bloqueado') && t2.includes('padrão '), t2.slice(0, 200));
 
 // Telas inteiras.
 // O botão "Novo grupo" está marcado (herda o Ver da tela, só master por padrão).
