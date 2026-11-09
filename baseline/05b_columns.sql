@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.625Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.421Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 25d8ef5ff8c5cde0
+-- Baseline cc48b63995f7c79e
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -1471,6 +1471,49 @@ alter table "public"."communication_templates" add column if not exists "status"
 alter table "public"."communication_templates" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."communication_templates" add column if not exists "updated_at" timestamp(3) without time zone;
 alter table "public"."communication_templates" add column if not exists "deleted_at" timestamp(3) without time zone;
+alter table "public"."conamad_anuidades" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."conamad_anuidades" add column if not exists "campo_id" uuid;
+alter table "public"."conamad_anuidades" add column if not exists "conamad_id" uuid;
+alter table "public"."conamad_anuidades" add column if not exists "ministro_id" uuid;
+alter table "public"."conamad_anuidades" add column if not exists "matricula" integer;
+alter table "public"."conamad_anuidades" add column if not exists "nome" character varying(255);
+alter table "public"."conamad_anuidades" add column if not exists "titulo" character varying(30);
+alter table "public"."conamad_anuidades" add column if not exists "situacao_ministro" character varying(20);
+alter table "public"."conamad_anuidades" add column if not exists "igreja" character varying(255);
+alter table "public"."conamad_anuidades" add column if not exists "ano_referencia" integer;
+alter table "public"."conamad_anuidades" add column if not exists "valor" numeric(12,2);
+alter table "public"."conamad_anuidades" add column if not exists "situacao" character varying(20);
+alter table "public"."conamad_anuidades" add column if not exists "motivo_isencao" character varying(120);
+alter table "public"."conamad_anuidades" add column if not exists "parcelado" boolean default false not null;
+alter table "public"."conamad_anuidades" add column if not exists "observacao" text;
+alter table "public"."conamad_anuidades" add column if not exists "data_vencimento" timestamp(3) without time zone;
+alter table "public"."conamad_anuidades" add column if not exists "criado_no_conamad_em" timestamp(3) without time zone;
+alter table "public"."conamad_anuidades" add column if not exists "alterado_no_conamad_em" timestamp(3) without time zone;
+alter table "public"."conamad_anuidades" add column if not exists "sincronizado_em" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."conamad_ministros" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."conamad_ministros" add column if not exists "campo_id" uuid;
+alter table "public"."conamad_ministros" add column if not exists "conamad_id" uuid;
+alter table "public"."conamad_ministros" add column if not exists "matricula" integer;
+alter table "public"."conamad_ministros" add column if not exists "member_id" uuid;
+alter table "public"."conamad_ministros" add column if not exists "casamento" character varying(60);
+alter table "public"."conamad_ministros" add column if not exists "nome" character varying(255);
+alter table "public"."conamad_ministros" add column if not exists "documento" character varying(20);
+alter table "public"."conamad_ministros" add column if not exists "titulo" character varying(30);
+alter table "public"."conamad_ministros" add column if not exists "situacao" character varying(20);
+alter table "public"."conamad_ministros" add column if not exists "igreja" character varying(255);
+alter table "public"."conamad_ministros" add column if not exists "data_nascimento" date;
+alter table "public"."conamad_ministros" add column if not exists "foto_url" character varying(500);
+alter table "public"."conamad_ministros" add column if not exists "sincronizado_em" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."conamad_ministros" add column if not exists "jubilado" boolean default false not null;
+alter table "public"."conamad_ministros" add column if not exists "jubilado_estado" character varying(2);
+alter table "public"."conamad_ministros" add column if not exists "jubilado_anuidade" character varying(40);
+alter table "public"."conamad_sincronizacoes" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."conamad_sincronizacoes" add column if not exists "campo_id" uuid;
+alter table "public"."conamad_sincronizacoes" add column if not exists "usuario_id" uuid;
+alter table "public"."conamad_sincronizacoes" add column if not exists "origem" character varying(40);
+alter table "public"."conamad_sincronizacoes" add column if not exists "arquivo" character varying(255);
+alter table "public"."conamad_sincronizacoes" add column if not exists "resumo" jsonb;
+alter table "public"."conamad_sincronizacoes" add column if not exists "criado_em" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
 alter table "public"."consecration_schedules" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."consecration_schedules" add column if not exists "church_id" uuid;
 alter table "public"."consecration_schedules" add column if not exists "scheduled_date" date;
@@ -3077,6 +3120,7 @@ alter table "public"."members" add column if not exists "campo_id" uuid;
 alter table "public"."members" add column if not exists "fantasy_name" character varying(255);
 alter table "public"."members" add column if not exists "longitude" numeric(11,8);
 alter table "public"."members" add column if not exists "latitude" numeric(10,8);
+alter table "public"."members" add column if not exists "matricula_conamad" integer;
 alter table "public"."messages" add column if not exists "id" uuid;
 alter table "public"."messages" add column if not exists "church_id" uuid;
 alter table "public"."messages" add column if not exists "campaign_id" uuid;

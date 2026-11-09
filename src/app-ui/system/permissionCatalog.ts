@@ -220,6 +220,8 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Gestão EBD', name: 'Negociações / Acordos',   key: 'ebd_negociacoes',  permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
   { group: 'Gestão EBD', name: 'Histórico EBD',           key: 'ebd_historico',    permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
   { group: 'Gestão EBD', name: 'Relatórios EBD',          key: 'ebd_relatorios',   permissions: mkPerms(mngr(), mngr(), mngr(), admin()) },
+  // Bloqueado por padrão (decisão do dono, 09/11/2026): libera-se pela matriz de permissões.
+  { group: 'Conamad', name: 'Conamad', key: 'conamad', permissions: mkPerms(master(), none(), none(), none()) },
 
   // ── Pagamentos / Stripe ───────────────────────────────────────────────────
   { group: 'Pagamentos', name: 'Dashboard Pagamentos',    key: 'stripe_dashboard',      permissions: mkPerms(mngr(), mngr(), none(), none()) },

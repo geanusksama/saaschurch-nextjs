@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.623Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.419Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 25d8ef5ff8c5cde0
+-- Baseline cc48b63995f7c79e
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -1828,6 +1828,58 @@ create table if not exists "public"."communication_templates" (
   "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
   "updated_at" timestamp(3) without time zone not null,
   "deleted_at" timestamp(3) without time zone
+);
+
+create table if not exists "public"."conamad_anuidades" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "conamad_id" uuid not null,
+  "ministro_id" uuid,
+  "matricula" integer not null,
+  "nome" character varying(255) not null,
+  "titulo" character varying(30),
+  "situacao_ministro" character varying(20),
+  "igreja" character varying(255),
+  "ano_referencia" integer not null,
+  "valor" numeric(12,2) not null,
+  "situacao" character varying(20) not null,
+  "motivo_isencao" character varying(120),
+  "parcelado" boolean default false not null,
+  "observacao" text,
+  "data_vencimento" timestamp(3) without time zone,
+  "criado_no_conamad_em" timestamp(3) without time zone,
+  "alterado_no_conamad_em" timestamp(3) without time zone,
+  "sincronizado_em" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
+);
+
+create table if not exists "public"."conamad_ministros" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "conamad_id" uuid not null,
+  "matricula" integer not null,
+  "member_id" uuid,
+  "casamento" character varying(60),
+  "nome" character varying(255) not null,
+  "documento" character varying(20),
+  "titulo" character varying(30),
+  "situacao" character varying(20),
+  "igreja" character varying(255),
+  "data_nascimento" date,
+  "foto_url" character varying(500),
+  "sincronizado_em" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
+  "jubilado" boolean default false not null,
+  "jubilado_estado" character varying(2),
+  "jubilado_anuidade" character varying(40)
+);
+
+create table if not exists "public"."conamad_sincronizacoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "usuario_id" uuid,
+  "origem" character varying(40) not null,
+  "arquivo" character varying(255),
+  "resumo" jsonb,
+  "criado_em" timestamp(3) without time zone default CURRENT_TIMESTAMP not null
 );
 
 create table if not exists "public"."consecration_schedules" (
@@ -3793,7 +3845,8 @@ create table if not exists "public"."members" (
   "campo_id" uuid,
   "fantasy_name" character varying(255),
   "longitude" numeric(11,8),
-  "latitude" numeric(10,8)
+  "latitude" numeric(10,8),
+  "matricula_conamad" integer
 );
 
 create table if not exists "public"."messages" (

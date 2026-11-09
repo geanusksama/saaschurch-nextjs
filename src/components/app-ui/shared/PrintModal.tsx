@@ -33,10 +33,12 @@ interface PrintModalProps {
   showGroupBy?: boolean;
   /** Agrupamentos livres (credor, plano de contas, status…). Tem precedência sobre `showGroupBy`. */
   groupOptions?: GroupOption[];
+  /** Orientação já marcada ao abrir. Padrão: retrato. */
+  defaultOrientation?: PrintOrientation;
 }
 
-export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions, defaultSort, showGroupBy, groupOptions }: PrintModalProps) {
-  const [orientation, setOrientation] = useState<PrintOrientation>('portrait');
+export function PrintModal({ open, onClose, onPrint, sortOptions, columnOptions, defaultSort, showGroupBy, groupOptions, defaultOrientation }: PrintModalProps) {
+  const [orientation, setOrientation] = useState<PrintOrientation>(defaultOrientation ?? 'portrait');
   const [sortBy, setSortBy] = useState(defaultSort || sortOptions[0]?.value || '');
   const [selectedCols, setSelectedCols] = useState<Set<string>>(
     () => new Set(columnOptions.filter((c) => c.defaultChecked !== false).map((c) => c.value))

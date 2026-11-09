@@ -41,3 +41,5 @@ elas no mesmo `git push`.
 - Correção de títulos eclesiásticos e da matriz de Campinas (01/11/2026) e
   a regra "a matriz nunca rebaixa obreiro":
   [docs/database/CORRECAO-TITULOS-CAMPINAS-2026-11.md](docs/database/CORRECAO-TITULOS-CAMPINAS-2026-11.md).
+- Módulo Conamad (anuidades e inadimplência dos ministros, 09/11/2026):
+  [docs/modules/conamad.md](docs/modules/conamad.md).

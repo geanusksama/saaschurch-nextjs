@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.628Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.424Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 25d8ef5ff8c5cde0
+-- Baseline cc48b63995f7c79e
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -555,6 +555,14 @@ alter table "public"."communication_campaigns" alter column "failed_count" set d
 alter table "public"."communication_campaigns" alter column "created_at" set default CURRENT_TIMESTAMP;
 alter table "public"."communication_templates" alter column "status" set default 'active'::character varying;
 alter table "public"."communication_templates" alter column "created_at" set default CURRENT_TIMESTAMP;
+alter table "public"."conamad_anuidades" alter column "id" set default gen_random_uuid();
+alter table "public"."conamad_anuidades" alter column "parcelado" set default false;
+alter table "public"."conamad_anuidades" alter column "sincronizado_em" set default CURRENT_TIMESTAMP;
+alter table "public"."conamad_ministros" alter column "id" set default gen_random_uuid();
+alter table "public"."conamad_ministros" alter column "sincronizado_em" set default CURRENT_TIMESTAMP;
+alter table "public"."conamad_ministros" alter column "jubilado" set default false;
+alter table "public"."conamad_sincronizacoes" alter column "id" set default gen_random_uuid();
+alter table "public"."conamad_sincronizacoes" alter column "criado_em" set default CURRENT_TIMESTAMP;
 alter table "public"."consecration_schedules" alter column "id" set default gen_random_uuid();
 alter table "public"."consecration_schedules" alter column "is_active" set default true;
 alter table "public"."consecration_schedules" alter column "created_at" set default now();

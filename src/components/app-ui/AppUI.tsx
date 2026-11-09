@@ -81,6 +81,7 @@ import {
   Repeat as RepeatIcon,
   Link2 as Link2Icon,
   ListChecks as ListChecksIcon,
+  Landmark,
 } from 'lucide-react';
 import { House, HeartHandshake, Boxes, CalendarDays, Settings2, BookOpenText, UsersRound, Activity, Images, ScanFace } from 'lucide-react';
 import { PixIcon } from '../icons/PixIcon';
@@ -250,6 +251,7 @@ function getFriendlyScreenName(path: string): string {
   if (p === "/app-ui/finance/assistentes") return "Smart Report";
   if (p === "/app-ui/crm/spreadsheet") return "Planilhas Financeiras";
   if (p === "/app-ui/financial-reports") return "Relatórios Financeiros";
+  if (p.startsWith("/app-ui/conamad")) return "Conamad";
   if (p === "/app-ui/peniel/checkin") return "Check-in Peniel";
   if (p === "/app-ui/peniel") return "Gestão Peniel";
   if (p === "/app-ui/ebd") return "Dashboard EBD";
@@ -293,6 +295,7 @@ const FAVORITES_SECTION = '__favoritos__';
 
 /** Icone representativo de cada categoria do menu lateral colapsado. */
 const SECTION_ICONS: Record<string, any> = {
+  'Conamad': Landmark,
   'Principal': House,
   'Secretaria': ClipboardList,
   'Engajamento': Activity,
@@ -450,6 +453,18 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Eventos e loja',         path: '/app-ui/pagamentos/eventos',       icon: Calendar,       permKey: 'mobile_eventos' },
       { name: 'Links e campanhas',      path: '/app-ui/pagamentos/links',         icon: Link2Icon,      permKey: 'asaas_links' },
       { name: 'Financeiro',             path: '/app-ui/pagamentos/financeiro',    icon: Wallet,         permKey: 'asaas_financeiro' },
+    ]
+  },
+  {
+    section: 'Conamad',
+    items: [
+      { name: 'Visão geral',       path: '/app-ui/conamad',               icon: Landmark,        permKey: 'conamad', exact: true },
+      { name: 'Inadimplentes',     path: '/app-ui/conamad/inadimplentes', icon: Receipt,         permKey: 'conamad' },
+      { name: 'Anuidades',         path: '/app-ui/conamad/anuidades',     icon: Wallet,          permKey: 'conamad' },
+      { name: 'Lista geral',       path: '/app-ui/conamad/lista-geral',   icon: FileSpreadsheet, permKey: 'conamad' },
+      { name: 'Por igreja',        path: '/app-ui/conamad/por-igreja',    icon: Building,        permKey: 'conamad' },
+      { name: 'Jubilados',         path: '/app-ui/conamad/jubilados',     icon: List,            permKey: 'conamad' },
+      { name: 'Atualizar dados',   path: '/app-ui/conamad/atualizar',     icon: RepeatIcon,      permKey: 'conamad' },
     ]
   },
   {

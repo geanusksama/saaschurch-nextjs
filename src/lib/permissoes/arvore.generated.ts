@@ -474,6 +474,30 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/churches/LeaderReportModal.tsx"
   },
   {
+    "chave": "conamad.atualizar.aplicar",
+    "rotulo": "Confirmar atualização — Conamad",
+    "herda": "conamad.atualizar.importar",
+    "arquivo": "src/app-ui/conamad/Conamad.tsx"
+  },
+  {
+    "chave": "conamad.atualizar.importar",
+    "rotulo": "Importar planilha — Conamad",
+    "herda": "conamad.view",
+    "arquivo": "src/app-ui/conamad/Conamad.tsx"
+  },
+  {
+    "chave": "conamad.relatorios.exportar",
+    "rotulo": "Exportar Excel — Conamad",
+    "herda": "conamad.view",
+    "arquivo": "src/app-ui/conamad/Conamad.tsx"
+  },
+  {
+    "chave": "conamad.relatorios.imprimir",
+    "rotulo": "Imprimir — Conamad",
+    "herda": "conamad.view",
+    "arquivo": "src/app-ui/conamad/Conamad.tsx"
+  },
+  {
     "chave": "consecration.consecration_new.salvar_consagracao",
     "rotulo": "Salvar Consagração — Consecration New",
     "herda": "consecration.view",

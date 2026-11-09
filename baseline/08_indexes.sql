@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.632Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.426Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 25d8ef5ff8c5cde0
+-- Baseline cc48b63995f7c79e
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -120,6 +120,15 @@ CREATE INDEX IF NOT EXISTS churches_headquarters_id_idx ON public.churches USING
 CREATE INDEX IF NOT EXISTS churches_host_church_id_idx ON public.churches USING btree (host_church_id);
 CREATE INDEX IF NOT EXISTS churches_regional_id_code_idx ON public.churches USING btree (regional_id, code);
 CREATE INDEX IF NOT EXISTS churches_zone_idx ON public.churches USING btree (zone);
+CREATE INDEX IF NOT EXISTS conamad_anuidades_campo_id_ano_referencia_situacao_idx ON public.conamad_anuidades USING btree (campo_id, ano_referencia, situacao);
+CREATE UNIQUE INDEX IF NOT EXISTS conamad_anuidades_campo_id_conamad_id_key ON public.conamad_anuidades USING btree (campo_id, conamad_id);
+CREATE INDEX IF NOT EXISTS conamad_anuidades_matricula_idx ON public.conamad_anuidades USING btree (matricula);
+CREATE INDEX IF NOT EXISTS conamad_anuidades_ministro_id_idx ON public.conamad_anuidades USING btree (ministro_id);
+CREATE UNIQUE INDEX IF NOT EXISTS conamad_ministros_campo_id_conamad_id_key ON public.conamad_ministros USING btree (campo_id, conamad_id);
+CREATE UNIQUE INDEX IF NOT EXISTS conamad_ministros_campo_id_matricula_key ON public.conamad_ministros USING btree (campo_id, matricula);
+CREATE INDEX IF NOT EXISTS conamad_ministros_campo_id_situacao_idx ON public.conamad_ministros USING btree (campo_id, situacao);
+CREATE INDEX IF NOT EXISTS conamad_ministros_member_id_idx ON public.conamad_ministros USING btree (member_id);
+CREATE INDEX IF NOT EXISTS conamad_sincronizacoes_campo_id_criado_em_idx ON public.conamad_sincronizacoes USING btree (campo_id, criado_em);
 CREATE UNIQUE INDEX IF NOT EXISTS consecration_schedules_church_date_key ON public.consecration_schedules USING btree (church_id, scheduled_date);
 CREATE INDEX IF NOT EXISTS contabilidade_acessos_campo_idx ON public.contabilidade_acessos USING btree (campo);
 CREATE UNIQUE INDEX IF NOT EXISTS contabilidade_acessos_telefone_key ON public.contabilidade_acessos USING btree (telefone);
@@ -590,6 +599,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS members_cpf_key ON public.members USING btree 
 CREATE INDEX IF NOT EXISTS members_ecclesiastical_title_id_idx ON public.members USING btree (ecclesiastical_title_id);
 CREATE INDEX IF NOT EXISTS members_fantasy_name_trgm_idx ON public.members USING gin (fantasy_name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS members_full_name_trgm_idx ON public.members USING gin (full_name gin_trgm_ops);
+CREATE UNIQUE INDEX IF NOT EXISTS members_matricula_conamad_key ON public.members USING btree (matricula_conamad);
 CREATE INDEX IF NOT EXISTS members_member_type_idx ON public.members USING btree (member_type);
 CREATE INDEX IF NOT EXISTS members_membership_status_idx ON public.members USING btree (membership_status);
 CREATE INDEX IF NOT EXISTS members_regional_id_idx ON public.members USING btree (regional_id);

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.634Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.428Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 25d8ef5ff8c5cde0
+-- Baseline cc48b63995f7c79e
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -344,6 +344,15 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."communication_templates" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."communication_templates" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."communication_templates" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."conamad_anuidades" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."conamad_anuidades" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."conamad_anuidades" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."conamad_ministros" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."conamad_ministros" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."conamad_ministros" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."conamad_sincronizacoes" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."conamad_sincronizacoes" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."conamad_sincronizacoes" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."consecration_schedules" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."consecration_schedules" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."consecration_schedules" to "service_role";

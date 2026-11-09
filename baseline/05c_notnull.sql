@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.628Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.424Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 25d8ef5ff8c5cde0
+-- Baseline cc48b63995f7c79e
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -387,6 +387,19 @@ alter table "public"."communication_templates" alter column "name" set not null;
 alter table "public"."communication_templates" alter column "template_type" set not null;
 alter table "public"."communication_templates" alter column "body" set not null;
 alter table "public"."communication_templates" alter column "updated_at" set not null;
+alter table "public"."conamad_anuidades" alter column "campo_id" set not null;
+alter table "public"."conamad_anuidades" alter column "conamad_id" set not null;
+alter table "public"."conamad_anuidades" alter column "matricula" set not null;
+alter table "public"."conamad_anuidades" alter column "nome" set not null;
+alter table "public"."conamad_anuidades" alter column "ano_referencia" set not null;
+alter table "public"."conamad_anuidades" alter column "valor" set not null;
+alter table "public"."conamad_anuidades" alter column "situacao" set not null;
+alter table "public"."conamad_ministros" alter column "campo_id" set not null;
+alter table "public"."conamad_ministros" alter column "conamad_id" set not null;
+alter table "public"."conamad_ministros" alter column "matricula" set not null;
+alter table "public"."conamad_ministros" alter column "nome" set not null;
+alter table "public"."conamad_sincronizacoes" alter column "campo_id" set not null;
+alter table "public"."conamad_sincronizacoes" alter column "origem" set not null;
 alter table "public"."consecration_schedules" alter column "church_id" set not null;
 alter table "public"."consecration_schedules" alter column "scheduled_date" set not null;
 alter table "public"."contabilidade_acessos" alter column "nome" set not null;

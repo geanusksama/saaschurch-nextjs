@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-10-26T23:38:44.633Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.427Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 25d8ef5ff8c5cde0
+-- Baseline cc48b63995f7c79e
 
 -- Row Level Security
 alter table "public"."_prisma_migrations" enable row level security;
@@ -122,6 +122,9 @@ alter table "public"."church_schedule" enable row level security;
 alter table "public"."churches" enable row level security;
 alter table "public"."communication_campaigns" enable row level security;
 alter table "public"."communication_templates" enable row level security;
+alter table "public"."conamad_anuidades" enable row level security;
+alter table "public"."conamad_ministros" enable row level security;
+alter table "public"."conamad_sincronizacoes" enable row level security;
 alter table "public"."consecration_schedules" enable row level security;
 alter table "public"."contabilidade_acessos" enable row level security;
 alter table "public"."contabilidade_agendamentos" enable row level security;

@@ -199,6 +199,7 @@ import EbdEntrega from "../app-ui/ebd/EbdEntrega";
 import EbdFinanceiro from "../app-ui/ebd/EbdFinanceiro";
 import EbdHistorico from "../app-ui/ebd/EbdHistorico";
 import EbdRelatorios from "../app-ui/ebd/EbdRelatorios";
+import Conamad from "../app-ui/conamad/Conamad";
 // Stripe / Pagamentos
 import StripeAdmin from "../app-ui/stripe/StripeAdmin";
 import AsaasPagamentos, { AsaasConfiguracao } from "../app-ui/asaas/AsaasPagamentos";
@@ -809,6 +810,8 @@ export const router = createBrowserRouter([
       { path: "ebd/financeiro",  Component: EbdFinanceiro },
       { path: "ebd/historico",   Component: EbdHistorico },
       { path: "ebd/relatorios",  Component: EbdRelatorios },
+      { path: "conamad",         Component: Conamad },
+      { path: "conamad/:aba",    Component: Conamad },
 
       { path: "stripe",              Component: StripeAdmin },
       { path: "stripe/transacoes",   Component: StripeAdmin },
