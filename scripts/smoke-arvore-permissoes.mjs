@@ -144,9 +144,9 @@ ok('controle: chave comum ausente na whitelist é negada', rp('app_orders', { pr
   ok('clique em tela "padrão sim" bloqueia a tela', podeChave('cashbook.view', ctx(v3)) === false && etiqueta(v3, 'cashbook.view') === 'bloqueado');
   ok('…sem mexer no culto já liberado', podeChave('culto_lancar.view', ctx(v3)) === true);
 
-  // "voltar ao padrão" da seção Gestão de Culto não apaga o resto (lista fechada).
-  const v4 = clicar(v3, (b) => b.secao === 'Gestão de Culto' && b.texto === 'voltar ao padrão');
-  ok('"voltar ao padrão" da seção: culto volta a "não", Livro Caixa segue bloqueado, resto intacto',
+  // Botão "padrão" do topo da seção Gestão de Culto não apaga o resto (lista fechada).
+  const v4 = clicar(v3, (b) => b.secao === 'Gestão de Culto' && b.linha === null && b.texto === 'padrão');
+  ok('"padrão" no topo da seção: culto volta a "não", Livro Caixa segue bloqueado, resto intacto',
     podeChave('culto_lancar.view', ctx(v4)) === false && podeChave('cashbook.view', ctx(v4)) === false && podeChave('dashboard.view', ctx(v4)) === true);
 
   // Sem categoria continua o ciclo antigo (padrão → liberado → bloqueado → padrão).

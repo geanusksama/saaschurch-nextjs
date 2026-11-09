@@ -156,6 +156,14 @@ type Props =
       roleName?: string | null;
     };
 
+/** Etiqueta única: a da linha e a do topo do módulo têm o mesmo formato. */
+const ETIQUETA = 'shrink-0 w-[5.5rem] rounded-md border px-1.5 py-0.5 text-[11px] font-semibold';
+const ETIQUETA_LIBERADO =
+  'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
+const ETIQUETA_BLOQUEADO =
+  'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300';
+const ETIQUETA_PADRAO = 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900';
+
 export function ArvorePermissoes(props: Props) {
   const { modo, valores, onChange } = props;
   const [filtroGrupo, setFiltroGrupo] = useState('');
@@ -196,7 +204,7 @@ export function ArvorePermissoes(props: Props) {
   /**
    * Ponto de partida de uma alteração no modo usuário. Quem tem categoria e
    * ainda não tem sobrescrita está no padrão do perfil; a primeira sobrescrita
-   * liga a lista fechada e o resto SUMIRIA ("liberar tudo" numa seção
+   * liga a lista fechada e o resto SUMIRIA ("liberado" numa seção
    * apagava as outras). Então, antes da primeira, grava o estado atual de
    * todas as chaves — a alteração só acrescenta ou tira o que foi clicado.
    */
@@ -318,12 +326,8 @@ export function ArvorePermissoes(props: Props) {
                   ? 'Clique: inverte o padrão do perfil; clique de novo volta ao padrão'
                   : 'Clique: padrão → liberado → bloqueado → padrão'
               }
-              className={`shrink-0 w-[5.5rem] rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${
-                explicito === true
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                  : explicito === false
-                    ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
-                    : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900'
+              className={`${ETIQUETA} ${
+                explicito === true ? ETIQUETA_LIBERADO : explicito === false ? ETIQUETA_BLOQUEADO : ETIQUETA_PADRAO
               }`}
             >
               {explicito === true ? 'liberado' : explicito === false ? 'bloqueado' : `padrão ${val ? 'sim' : 'não'}`}
@@ -411,9 +415,9 @@ export function ArvorePermissoes(props: Props) {
                   </>
                 ) : (
                   <>
-                    <button type="button" onClick={() => marcarSecao(raizes, true)} className="hover:underline">liberar tudo</button>
-                    <button type="button" onClick={() => marcarSecao(raizes, false)} className="hover:underline">bloquear tudo</button>
-                    <button type="button" onClick={() => marcarSecao(raizes, undefined)} className="hover:underline">voltar ao padrão</button>
+                    <button type="button" title="Libera todas as telas e botões deste módulo" onClick={() => marcarSecao(raizes, true)} className={`${ETIQUETA} ${ETIQUETA_LIBERADO}`}>liberado</button>
+                    <button type="button" title="Bloqueia todas as telas e botões deste módulo" onClick={() => marcarSecao(raizes, false)} className={`${ETIQUETA} ${ETIQUETA_BLOQUEADO}`}>bloqueado</button>
+                    <button type="button" title="Volta todas as telas e botões deste módulo ao padrão do perfil" onClick={() => marcarSecao(raizes, undefined)} className={`${ETIQUETA} ${ETIQUETA_PADRAO}`}>padrão</button>
                   </>
                 )}
               </span>
