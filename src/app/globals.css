@@ -753,3 +753,14 @@ select:-webkit-autofill {
   background: #15803d !important;
   box-shadow: none !important;
 }
+
+/* ── Etiquetas da árvore de permissões ─────────────────────────────────────
+   Mesmo motivo dos selos do financeiro: o tema repinta verde e vermelho com a
+   cor da igreja e o estado sumia. Forte = alterado só para este usuário;
+   claro = o padrão do perfil. Verde acessa, vermelho não acessa. */
+.app-shell button.perm-etiqueta--liberado { background-color: #16a34a !important; border-color: #16a34a !important; color: #ffffff !important; }
+.app-shell button.perm-etiqueta--bloqueado { background-color: #dc2626 !important; border-color: #dc2626 !important; color: #ffffff !important; }
+.app-shell button.perm-etiqueta--padrao-sim { background-color: #ecfdf5 !important; border-color: #a7f3d0 !important; color: #047857 !important; }
+.app-shell button.perm-etiqueta--padrao-nao { background-color: #fef2f2 !important; border-color: #fecaca !important; color: #b91c1c !important; }
+.dark .app-shell button.perm-etiqueta--padrao-sim { background-color: rgba(16, 185, 129, .12) !important; border-color: rgba(16, 185, 129, .4) !important; color: #6ee7b7 !important; }
+.dark .app-shell button.perm-etiqueta--padrao-nao { background-color: rgba(239, 68, 68, .12) !important; border-color: rgba(239, 68, 68, .4) !important; color: #fca5a5 !important; }

@@ -158,10 +158,11 @@ type Props =
 
 /** Etiqueta única: a da linha e a do topo do módulo têm o mesmo formato. */
 const ETIQUETA = 'shrink-0 w-[5.5rem] rounded-md border px-1.5 py-0.5 text-[11px] font-semibold';
-const ETIQUETA_LIBERADO =
-  'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
-const ETIQUETA_BLOQUEADO =
-  'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300';
+// Cores em globals.css: as classes verde/vermelho do Tailwind seriam repintadas pelo tema.
+const ETIQUETA_LIBERADO = 'perm-etiqueta--liberado';
+const ETIQUETA_BLOQUEADO = 'perm-etiqueta--bloqueado';
+const ETIQUETA_PADRAO_SIM = 'perm-etiqueta--padrao-sim';
+const ETIQUETA_PADRAO_NAO = 'perm-etiqueta--padrao-nao';
 const ETIQUETA_PADRAO = 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900';
 
 export function ArvorePermissoes(props: Props) {
@@ -327,7 +328,13 @@ export function ArvorePermissoes(props: Props) {
                   : 'Clique: padrão → liberado → bloqueado → padrão'
               }
               className={`${ETIQUETA} ${
-                explicito === true ? ETIQUETA_LIBERADO : explicito === false ? ETIQUETA_BLOQUEADO : ETIQUETA_PADRAO
+                explicito === true
+                  ? ETIQUETA_LIBERADO
+                  : explicito === false
+                    ? ETIQUETA_BLOQUEADO
+                    : val
+                      ? ETIQUETA_PADRAO_SIM
+                      : ETIQUETA_PADRAO_NAO
               }`}
             >
               {explicito === true ? 'liberado' : explicito === false ? 'bloqueado' : `padrão ${val ? 'sim' : 'não'}`}
