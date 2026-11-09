@@ -1,6 +1,6 @@
 {
-  "version": "cc48b63995f7c79e",
-  "generatedAt": "2026-11-09T19:10:10.429Z",
+  "version": "fb00b126c845ebf4",
+  "generatedAt": "2026-11-09T19:53:49.007Z",
   "schemas": [
     "public",
     "app"
@@ -24,11 +24,11 @@
     },
     {
       "file": "05_tables.sql",
-      "bytes": 199351
+      "bytes": 199677
     },
     {
       "file": "05b_columns.sql",
-      "bytes": 450330
+      "bytes": 451296
     },
     {
       "file": "05c_notnull.sql",

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.424Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:49.003Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline cc48b63995f7c79e
+-- Baseline fb00b126c845ebf4
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um

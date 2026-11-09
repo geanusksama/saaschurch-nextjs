@@ -39,3 +39,10 @@ Gravações no cadastro, todas em `audit_logs`:
 - A carga inicial foi feita uma vez, fora do repositório: outras igrejas abrem
   com as telas vazias.
 - Relatórios nacionais (por Estado) ficaram de fora por decisão do dono.
+- As colunas de Secretaria (sexo, estado civil, celular, endereço, credencial,
+  hierarquia, documento) só têm dados da carga de Campinas, feita fora do
+  repositório; "Atualizar dados" não as preenche.
+
+## Catálogo dos relatórios de lá
+
+`docs/modules/conamad-catalogo-relatorios.json`: todos os relatórios de Secretaria, Tesouraria e Eventos, com os filtros de cada um.

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.426Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:49.005Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline cc48b63995f7c79e
+-- Baseline fb00b126c845ebf4
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);

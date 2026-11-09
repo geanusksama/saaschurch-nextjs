@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.424Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:49.002Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline cc48b63995f7c79e
+-- Baseline fb00b126c845ebf4
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:

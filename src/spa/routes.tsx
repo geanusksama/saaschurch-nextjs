@@ -812,6 +812,7 @@ export const router = createBrowserRouter([
       { path: "ebd/relatorios",  Component: EbdRelatorios },
       { path: "conamad",         Component: Conamad },
       { path: "conamad/:aba",    Component: Conamad },
+      { path: "conamad/relatorios/:modulo", Component: Conamad },
 
       { path: "stripe",              Component: StripeAdmin },
       { path: "stripe/transacoes",   Component: StripeAdmin },

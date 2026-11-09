@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.425Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:49.004Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline cc48b63995f7c79e
+-- Baseline fb00b126c845ebf4
 
 -- Primary keys, unique e check
 do $$ begin alter table "public"."_prisma_migrations" add constraint "_prisma_migrations_pkey" PRIMARY KEY (id);
@@ -941,17 +941,17 @@ do $$ begin alter table "public"."pastoral_attendances" add constraint "pastoral
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_attendances" add constraint "pastoral_attendances_status_check" CHECK ((status = ANY (ARRAY['open'::text, 'doing'::text, 'done'::text, 'cancelled'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."pastoral_counseling_sessions" add constraint "pastoral_counseling_sessions_progress_level_check" CHECK (((progress_level >= 0) AND (progress_level <= 100)));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_counseling_sessions" add constraint "pastoral_counseling_sessions_emotional_state_check" CHECK ((emotional_state = ANY (ARRAY['stable'::text, 'anxious'::text, 'sad'::text, 'improving'::text, 'critical'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_counseling_sessions" add constraint "pastoral_counseling_sessions_spiritual_state_check" CHECK ((spiritual_state = ANY (ARRAY['strong'::text, 'weak'::text, 'growing'::text, 'confused'::text, 'restored'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."pastoral_counselings" add constraint "pastoral_counselings_status_check" CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'paused'::text, 'cancelled'::text])));
+do $$ begin alter table "public"."pastoral_counseling_sessions" add constraint "pastoral_counseling_sessions_progress_level_check" CHECK (((progress_level >= 0) AND (progress_level <= 100)));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."pastoral_counselings" add constraint "pastoral_counselings_priority_check" CHECK ((priority = ANY (ARRAY['low'::text, 'normal'::text, 'high'::text, 'urgent'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_counselings" add constraint "pastoral_counselings_counseling_type_check" CHECK ((counseling_type = ANY (ARRAY['conjugal'::text, 'familiar'::text, 'espiritual'::text, 'emocional'::text, 'libertacao'::text, 'ministerial'::text, 'financeiro'::text, 'outro'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."pastoral_counselings" add constraint "pastoral_counselings_priority_check" CHECK ((priority = ANY (ARRAY['low'::text, 'normal'::text, 'high'::text, 'urgent'::text])));
+do $$ begin alter table "public"."pastoral_counselings" add constraint "pastoral_counselings_status_check" CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'paused'::text, 'cancelled'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."pastoral_visit_participants" add constraint "pastoral_visit_participants_role_check" CHECK ((role = ANY (ARRAY['pastor'::text, 'lider'::text, 'obreiro'::text, 'visitante'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
@@ -963,23 +963,23 @@ do $$ begin alter table "public"."pastoral_visits" add constraint "pastoral_visi
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."prayer_request_interactions" add constraint "prayer_request_interactions_interaction_type_check" CHECK ((interaction_type = ANY (ARRAY['prayed'::text, 'amen'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_visibility_check" CHECK ((visibility = ANY (ARRAY['public'::text, 'leadership'::text, 'private'::text])));
+do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_priority_check" CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_status_check" CHECK ((status = ANY (ARRAY['active'::text, 'answered'::text, 'archived'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_priority_check" CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text])));
+do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_visibility_check" CHECK ((visibility = ANY (ARRAY['public'::text, 'leadership'::text, 'private'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."prayer_requests" add constraint "prayer_requests_category_check" CHECK ((category = ANY (ARRAY['saude'::text, 'familia'::text, 'trabalho'::text, 'financas'::text, 'vida_espiritual'::text, 'decisoes'::text, 'libertacao'::text, 'gratidao'::text, 'outro'::text])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."santander_conciliacoes" add constraint "santander_conciliacoes_score_match_check" CHECK (((score_match >= 0) AND (score_match <= 100)));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."santander_credentials" add constraint "santander_credentials_ambiente_check" CHECK (((ambiente)::text = ANY ((ARRAY['sandbox'::character varying, 'producao'::character varying])::text[])));
-exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."santander_credentials" add constraint "santander_credentials_tolerance_days_check" CHECK (((tolerance_days >= 0) AND (tolerance_days <= 7)));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
-do $$ begin alter table "public"."santander_movimentos" add constraint "santander_movimentos_credit_debit_type_check" CHECK (((credit_debit_type)::text = ANY ((ARRAY['C'::character varying, 'D'::character varying])::text[])));
+do $$ begin alter table "public"."santander_credentials" add constraint "santander_credentials_ambiente_check" CHECK (((ambiente)::text = ANY ((ARRAY['sandbox'::character varying, 'producao'::character varying])::text[])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."santander_movimentos" add constraint "santander_movimentos_amount_check" CHECK ((amount > (0)::numeric));
+exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
+do $$ begin alter table "public"."santander_movimentos" add constraint "santander_movimentos_credit_debit_type_check" CHECK (((credit_debit_type)::text = ANY ((ARRAY['C'::character varying, 'D'::character varying])::text[])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;
 do $$ begin alter table "public"."santander_sync_logs" add constraint "santander_sync_logs_status_check" CHECK (((status)::text = ANY ((ARRAY['sucesso'::character varying, 'erro'::character varying, 'parcial'::character varying])::text[])));
 exception when duplicate_object or duplicate_table or invalid_table_definition then null; end $$;

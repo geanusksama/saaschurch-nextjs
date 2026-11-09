@@ -458,13 +458,12 @@ export const appNavigation: NavigationSection[] = [
   {
     section: 'Conamad',
     items: [
-      { name: 'Visão geral',       path: '/app-ui/conamad',               icon: Landmark,        permKey: 'conamad', exact: true },
-      { name: 'Inadimplentes',     path: '/app-ui/conamad/inadimplentes', icon: Receipt,         permKey: 'conamad' },
-      { name: 'Anuidades',         path: '/app-ui/conamad/anuidades',     icon: Wallet,          permKey: 'conamad' },
-      { name: 'Lista geral',       path: '/app-ui/conamad/lista-geral',   icon: FileSpreadsheet, permKey: 'conamad' },
-      { name: 'Por igreja',        path: '/app-ui/conamad/por-igreja',    icon: Building,        permKey: 'conamad' },
-      { name: 'Jubilados',         path: '/app-ui/conamad/jubilados',     icon: List,            permKey: 'conamad' },
-      { name: 'Atualizar dados',   path: '/app-ui/conamad/atualizar',     icon: RepeatIcon,      permKey: 'conamad' },
+      // Estrutura igual à do sistema da convenção: não misturar com o financeiro da igreja.
+      { name: 'Visão geral',             path: '/app-ui/conamad',                       icon: Landmark,   permKey: 'conamad', exact: true },
+      { name: 'Anuidades',               path: '/app-ui/conamad/anuidades',             icon: Wallet,     permKey: 'conamad' },
+      { name: 'Relatórios de Secretaria', path: '/app-ui/conamad/relatorios/secretaria', icon: ClipboardList, permKey: 'conamad' },
+      { name: 'Relatórios de Tesouraria', path: '/app-ui/conamad/relatorios/tesouraria', icon: Receipt,   permKey: 'conamad' },
+      { name: 'Atualizar dados',         path: '/app-ui/conamad/atualizar',             icon: RepeatIcon, permKey: 'conamad' },
     ]
   },
   {

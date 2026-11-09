@@ -34,10 +34,10 @@ async function campo(nome) {
   return c
 }
 async function ministro(campoId, matricula, nome, situacao = 'ATIVO') {
-  return prisma.conamadMinistro.create({ data: { campoId, conamadId: randomUUID(), matricula, nome, situacao, titulo: 'Ev', igreja: '[E2E] Igreja' } })
+  return prisma.conamadMinistro.create({ data: { campoId, conamadId: randomUUID(), matricula, nome, situacao, titulo: 'EVANGELISTA', igreja: '[E2E] Igreja' } })
 }
 async function anuidade(m, anoReferencia, situacao, valor = 405) {
-  return prisma.conamadAnuidade.create({ data: { campoId: m.campoId, conamadId: randomUUID(), ministroId: m.id, matricula: m.matricula, nome: m.nome, titulo: 'Ev', situacaoMinistro: m.situacao, igreja: '[E2E] Igreja', anoReferencia, valor, situacao } })
+  return prisma.conamadAnuidade.create({ data: { campoId: m.campoId, conamadId: randomUUID(), ministroId: m.id, matricula: m.matricula, nome: m.nome, titulo: 'EVANGELISTA', situacaoMinistro: m.situacao, igreja: '[E2E] Igreja', anoReferencia, valor, situacao } })
 }
 
 try {
@@ -57,10 +57,10 @@ try {
   ok(Number(ina[0].total) === 810 && ina[0].anos.join() === '2025,2026', 'soma e anos em aberto corretos')
   const so2026 = await svc.listarInadimplentes(a.id, { anoDe: 2026, anoAte: 2026 })
   ok(Number(so2026[0].total) === 405, 'filtro de ano respeitado')
-  ok((await svc.listarInadimplentes(a.id, { situacoesMinistro: ['INAT'] })).length === 0, 'filtro de situação respeitado')
+  ok((await svc.listarInadimplentes(a.id, { situacoesMinistro: ['DESLIGADO'] })).length === 0, 'filtro de situação respeitado')
   ok(ina[0].titulo === 'EVANGELISTA' && ina[0].situacao === 'ATIVO', 'título e situação na escrita do sistema')
-  ok((await svc.listarInadimplentes(a.id, { anos: [2025], titulos: ['Ev'], situacoesMinistro: ['ATIVO', 'INAT'] })).length === 1, 'filtros de múltipla escolha')
-  ok((await svc.listarInadimplentes(a.id, { titulos: ['Pr'] })).length === 0, 'múltipla escolha exclui o resto')
+  ok((await svc.listarInadimplentes(a.id, { anos: [2025], titulos: ['EVANGELISTA'], situacoesMinistro: ['ATIVO', 'DESLIGADO'] })).length === 1, 'filtros de múltipla escolha')
+  ok((await svc.listarInadimplentes(a.id, { titulos: ['PASTOR'] })).length === 0, 'múltipla escolha exclui o resto')
   ok((await svc.listarInadimplentes(a.id, { busca: 'joao da' })).length === 1, 'busca por nome')
   ok((await svc.listarInadimplentes(a.id, { busca: String(m1.matricula) })).length === 1, 'busca por matrícula')
 
@@ -112,13 +112,27 @@ try {
   const pVazia = await svc.previaPlanilha(a.id, planilha([{ Igreja: 'X', Matricula: m1.matricula, NomeCompleto: 'JOAO DA SILVA', Situacao: '' }]))
   ok(pVazia.mudancasMinistros.length === 0 && pVazia.duvidas.length === 1, 'situação em branco não grava')
   ok(rMin.ministros === 1, 'situação do espelho atualizada')
-  ok((await prisma.conamadMinistro.findUnique({ where: { id: m1.id } })).situacao === 'INAT', 'espelho gravado')
+  ok((await prisma.conamadMinistro.findUnique({ where: { id: m1.id } })).situacao === 'DESLIGADO', 'espelho gravado')
   await prisma.conamadMinistro.update({ where: { id: m1.id }, data: { jubilado: true, jubiladoEstado: 'SP', jubiladoAnuidade: 'Isento' } })
   const jub = await svc.listarJubilados(a.id, {})
   ok(jub.length === 1 && jub[0].estado === 'SP' && jub[0].anuidade === 'Isento', 'jubilados do campo')
   ok((await svc.listarJubilados(b.id, {})).length === 0, 'jubilados não vazam para outro campo')
   ok((await svc.previaPlanilha(a.id, []).catch((e) => e)) instanceof svc.ErroPlanilha, 'planilha vazia é recusada')
   ok((await svc.listarJubilados(a.id, { busca: String(m1.matricula) })).length === 1, 'jubilados busca por matrícula')
+  await prisma.conamadMinistro.update({ where: { id: m1.id }, data: { sexo: 'Masculino', estadoCivil: 'Casado(a)', credencialStatus: 'VIGENTE' } })
+  ok((await svc.listarMinistros(a.id, { sexos: ['Masculino'], estadosCivis: ['Casado(a)'], credenciais: ['VIGENTE'] })).length === 1, 'filtros de Secretaria')
+  ok((await svc.listarMinistros(a.id, { sexos: ['Feminino'] })).length === 0, 'filtro de sexo exclui')
+  ok((await svc.listarMinistros(b.id, {})).every((x) => x.matricula !== m1.matricula), 'Secretaria não mistura campos')
+  await prisma.conamadMinistro.update({ where: { id: m1.id }, data: { credencialValidade: new Date('2020-01-31') } })
+  ok((await svc.listarMinistros(a.id, { credenciais: ['VENCIDA'] })).some((x) => x.matricula === m1.matricula && x.credencialStatus === 'VENCIDA'), 'credencial com validade passada é VENCIDA')
+  ok((await svc.listarMinistros(a.id, { credenciais: ['VIGENTE'] })).every((x) => x.matricula !== m1.matricula), 'credencial vencida não conta como VIGENTE')
+  const perm = await import('../src/lib/conamad/permissoes.ts')
+  const linha = { nome: 'X', documento: '1', celular: '2', endereco: 'R', nascimento: '01/01/2000' }
+  const soCargo = perm.semDadosRestritos(linha, perm.relatorioSecretaria('sec-cargo'))
+  ok(soCargo.nome === 'X' && !('documento' in soCargo) && !('celular' in soCargo) && !('endereco' in soCargo), 'relatório sem CPF não recebe dados pessoais')
+  const comCpf = perm.semDadosRestritos(linha, perm.relatorioSecretaria('sec-cpf'))
+  ok(comCpf.documento === '1' && !('celular' in comCpf), 'relatório de CPF recebe só o CPF')
+  ok(perm.relatorioSecretaria('constructor') === null && perm.relatorioSecretaria(null) === null, 'relatório inválido é recusado')
   let erro = false
   try { await svc.previaPlanilha(a.id, planilha([{ Coluna: 1 }])) } catch { erro = true }
   ok(erro, 'planilha desconhecida é recusada')

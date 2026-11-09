@@ -3,8 +3,9 @@ import { withAuth } from '@/lib/auth';
 import { campoAtivoId } from '@/lib/campoAtivo';
 import { exigirPermissao } from '@/lib/permissoes/servidor';
 import {
-  anosDisponiveis, inadimplentesPorIgreja, listaGeral, listarAnuidades, listarInadimplentes, listarJubilados, resumoPorAno, type FiltrosConamad,
+  anosDisponiveis, inadimplentesPorIgreja, listaGeral, listarAnuidades, listarInadimplentes, listarJubilados, listarMinistros, regionaisDisponiveis, resumoPorAno, type FiltrosConamad,
 } from '@/lib/conamad/service';
+import { relatorioSecretaria, semDadosRestritos } from '@/lib/conamad/permissoes';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,11 @@ function filtros(p: URLSearchParams): FiltrosConamad {
     situacoes: lista(p, 'situacoes'),
     situacoesMinistro: lista(p, 'situacoesMinistro'),
     titulos: lista(p, 'titulos'),
+    sexos: lista(p, 'sexos'),
+    estadosCivis: lista(p, 'estadosCivis'),
+    // Vem do cadastro e pode ter vírgula no nome: um parâmetro por regional.
+    regionais: p.getAll('regionais').map((v) => v.trim()).filter(Boolean),
+    credenciais: lista(p, 'credenciais'),
     busca: p.get('busca')?.trim() || undefined,
   };
 }
@@ -36,6 +42,14 @@ export async function GET(req: NextRequest) {
     const headers = { 'Cache-Control': 'no-store' };
     switch (p.get('tipo')) {
       case 'jubilados': return NextResponse.json(await listarJubilados(campoId, f), { headers });
+      case 'ministros': {
+        const rel = relatorioSecretaria(p.get('rel'));
+        if (!rel) return NextResponse.json({ error: 'Relatório inválido.' }, { status: 400 });
+        const negadoRel = await exigirPermissao(user, rel.chave);
+        if (negadoRel) return negadoRel;
+        return NextResponse.json((await listarMinistros(campoId, f)).map((l) => semDadosRestritos(l, rel)), { headers });
+      }
+      case 'regionais': return NextResponse.json(await regionaisDisponiveis(campoId), { headers });
       case 'anos': return NextResponse.json(await anosDisponiveis(campoId), { headers });
       case 'por-ano': return NextResponse.json(await resumoPorAno(campoId, f), { headers });
       case 'inadimplentes': return NextResponse.json(await listarInadimplentes(campoId, f), { headers });

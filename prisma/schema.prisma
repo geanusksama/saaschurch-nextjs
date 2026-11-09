@@ -5777,6 +5777,16 @@ model ConamadMinistro {
   jubilado          Boolean   @default(false)
   jubiladoEstado    String?   @map("jubilado_estado") @db.VarChar(2)
   jubiladoAnuidade  String?   @map("jubilado_anuidade") @db.VarChar(40)
+  sexo              String?   @db.VarChar(20)
+  estadoCivil       String?   @map("estado_civil") @db.VarChar(20)
+  celular           String?   @db.VarChar(30)
+  endereco          String?   @db.Text
+  enderecoCidade    String?   @map("endereco_cidade") @db.Text
+  credencialStatus  String?   @map("credencial_status") @db.VarChar(30)
+  credencialLiberacao DateTime? @map("credencial_liberacao") @db.Date
+  credencialValidade  DateTime? @map("credencial_validade") @db.Date
+  hierarquia        String?   @db.VarChar(60)
+  possuiDocumento   Boolean?  @map("possui_documento")
   sincronizadoEm    DateTime  @default(now()) @map("sincronizado_em")
 
   campo      Campo             @relation(fields: [campoId], references: [id], onDelete: Cascade)

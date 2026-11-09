@@ -1,0 +1,1668 @@
+[
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Contatos por Funções",
+  "params": [
+   {
+    "l": "Região",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "erro page.waitForResponse: Timeout 20000ms exceeded while waiting for event \"response\""
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Controle de Processo do Arquivo Digital",
+  "params": [
+   {
+    "l": "Igreja/Campo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Apenas Nível Selecionado:",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Status do Processo Digital",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Situação do Ministro:",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "ok 33324"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Credencial Emitida por Membro",
+  "params": [
+   {
+    "l": "Ano da Credencial",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Situação",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Título Eclesiástico",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Somente Obreiros",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Status da Credencial",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Regional",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupar lista pelo nível",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "ok 52535"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Ficha cadastral",
+  "params": [
+   {
+    "l": "Pessoa",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Dados principais?",
+    "t": "SimNao",
+    "o": 1,
+    "d": "true"
+   },
+   {
+    "l": "Mostrar contatos?",
+    "t": "SimNao",
+    "o": 1,
+    "d": "true"
+   },
+   {
+    "l": "Mostrar endereços?",
+    "t": "SimNao",
+    "o": 1,
+    "d": "true"
+   },
+   {
+    "l": "Mostrar ocorrências?",
+    "t": "SimNao",
+    "o": 1,
+    "d": "true"
+   },
+   {
+    "l": "Mostrar títulos eclesiásticos?",
+    "t": "SimNao",
+    "o": 1,
+    "d": "true"
+   },
+   {
+    "l": "Mostrar transferencias?",
+    "t": "SimNao",
+    "o": 1,
+    "d": "true"
+   },
+   {
+    "l": "Mostrar funções?",
+    "t": "SimNao",
+    "o": 1,
+    "d": "true"
+   }
+  ],
+  "excel": "erro page.waitForResponse: Timeout 15000ms exceeded while waiting for event \"response\""
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Ficha Cadastral Resumida",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Títutos Eclesiásticos",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Somente Ministros",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Hierarquias",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estao civil",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Mês aniversário",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Período data nascimento",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "País",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Cidade",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ocorrência",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupar lista pelo nível",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "ok 131759"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Lista de membros com funções",
+  "params": [
+   {
+    "l": "Funções",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Igrejas",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "erro page.waitForResponse: Timeout 20000ms exceeded while waiting for event \"response\""
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Lista de protocolo",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Quebrar página por igreja?",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Títutos Eclesiásticos",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Somente Ministros",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Estao civil",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Mês aniversário",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Hierarquias",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Período data nascimento",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "País",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Cidade",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ocorrência",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupar lista pelo nível",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "ok 46258"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Lista Geral - Por Cargo / Igreja",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Títuto Eclesiástico",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estao civil",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Mês aniversário",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Período data nascimento",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "País",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Cidade",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ocorrência",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupar lista pelo nível",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Regional",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "ok 35807"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Lista Geral Consagração de Ministros",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "False"
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Títuto Eclesiástico",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Tipo de Ocorrência",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Pais",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "CIdade",
+    "t": "Texto",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "erro page.waitForResponse: Timeout 20000ms exceeded while waiting for event \"response\""
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Lista Geral CPF - Por Cargo / Igreja",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Títuto Eclesiástico",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estao civil",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Mês aniversário",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Período data nascimento",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "País",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Cidade",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ocorrência",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupar lista pelo nível",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Regional",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "ok 49401"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Lista Geral Simplificada",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": "a8d1e586-f102-43f7-b9fd-5c5bb8736b62"
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Regiões",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": "00000000-0000-0000-0000-000000000001"
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Títutos Eclesiásticos",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Somente Ministros",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Hierarquias",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estao civil",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Mês aniversário",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Período data nascimento",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "País",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Cidade",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ocorrência",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupar lista pelo nível",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Profissão",
+    "t": "Texto",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ordem",
+    "t": "Combo",
+    "o": 0,
+    "d": "ASC_Nome"
+   }
+  ],
+  "excel": "ok 25458"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Lista Geral Simplificada /c Endereço",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": "a8d1e586-f102-43f7-b9fd-5c5bb8736b62"
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": "00000000-0000-0000-0000-000000000001"
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Títutos Eclesiásticos",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estao civil",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Mês aniversário",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Período data nascimento",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "País",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Cidade",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Considerar Somente Última Ocorrencia",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Ocorrência",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupar lista pelo nível",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Profissão",
+    "t": "Texto",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ordem",
+    "t": "Combo",
+    "o": 0,
+    "d": "ASC_Nome"
+   }
+  ],
+  "excel": "ok 45291"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Lista Geral Simplificada Conamad",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Situação",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Título Eclesiástico",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Somente Obreiros",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Estado civil",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Mês aniversário",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Período data nascimento",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "País",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Cidade",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ocorrência",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupar lista pelo nível",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Regional",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "sem botao/obrigatorio"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Ministros Inativos por Tipo de Ocorrência",
+  "params": [
+   {
+    "l": "Data da Ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ocorrências",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "erro page.waitForResponse: Timeout 20000ms exceeded while waiting for event \"response\""
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Quantitativo Geral Simplificado",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Regiões",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": "00000000-0000-0000-0000-000000000001"
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Títulos Eclesiásticos",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Somente Ministros",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Hierarquias",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupara no Nível Selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "False"
+   },
+   {
+    "l": "Estao civil",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Mês aniversário",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Período data nascimento",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "País",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Cidade",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Considerar Somente Última Ocorrencia",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Ocorrências",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ordem",
+    "t": "Combo",
+    "o": 0,
+    "d": "DESC_QTD"
+   }
+  ],
+  "excel": "ok 2823"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Relação de Ministros e Documentos",
+  "params": [
+   {
+    "l": "Período de Criação",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Situação do Membro",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Tipo de Documento",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Usuário que Anexou",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "ok 44986"
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Relação de Ocorrências",
+  "params": [
+   {
+    "l": "Ocorrências",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Regiões",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": "00000000-0000-0000-0000-000000000001"
+   }
+  ],
+  "excel": "erro page.waitForResponse: Timeout 15000ms exceeded while waiting for event \"response\""
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Relação estatística de membros por títulos",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Somente nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "true"
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ordernar por",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   }
+  ],
+  "excel": "erro page.waitForResponse: Timeout 15000ms exceeded while waiting for event \"response\""
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Relatório - Criação de Meta",
+  "params": [
+   {
+    "l": "Meta em Percentual ou Quantidade",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Informe a Meta",
+    "t": "Texto",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Regiões",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": "00000000-0000-0000-0000-000000000001"
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Títulos Eclesiásticos",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Somente Ministros",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Hierarquias",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Agrupara no Nível Selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "False"
+   },
+   {
+    "l": "Estao civil",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Mês aniversário",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Período data nascimento",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "País",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Cidade",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Considerar Somente Última Ocorrencia",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Ocorrências",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Data ocorrência",
+    "t": "DataPeriodo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Função",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Ordem",
+    "t": "Combo",
+    "o": 0,
+    "d": "DESC_QTD"
+   }
+  ],
+  "excel": "erro page.waitForResponse: Timeout 15000ms exceeded while waiting for event \"response\""
+ },
+ {
+  "mod": "secretaria",
+  "grupo": "Ministros",
+  "rel": "Relatório Sintético Ministros Ativos",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Apenas no nível selecionado",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Situação",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Sexo",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Título Eclesiástico",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Somente Ministros",
+    "t": "SimNao",
+    "o": 0,
+    "d": "false"
+   },
+   {
+    "l": "Ordenação",
+    "t": "Combo",
+    "o": 0,
+    "d": "ASC_Nome"
+   }
+  ],
+  "excel": "ok 56381"
+ },
+ {
+  "mod": "tesouraria",
+  "grupo": "Anuidades",
+  "rel": "Anuidades",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Ano base",
+    "t": "Texto",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Uma igreja por página?",
+    "t": "SimNao",
+    "o": 1,
+    "d": "true"
+   },
+   {
+    "l": "Exibir apenas ministro em aberto (pendentes)?",
+    "t": "SimNao",
+    "o": 1,
+    "d": "false"
+   },
+   {
+    "l": "Ordenação",
+    "t": "Combo",
+    "o": 1,
+    "d": "NomeCompleto"
+   }
+  ],
+  "excel": "ok 24195"
+ },
+ {
+  "mod": "tesouraria",
+  "grupo": "Anuidades",
+  "rel": "Anuidades (Lista geral)",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Ano base",
+    "t": "Texto",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Ordenação",
+    "t": "Combo",
+    "o": 1,
+    "d": "NomeCompleto"
+   }
+  ],
+  "excel": "ok 24195"
+ },
+ {
+  "mod": "tesouraria",
+  "grupo": "Anuidades",
+  "rel": "Anuidades por Estado",
+  "params": [
+   {
+    "l": "Ano de Referência",
+    "t": "Texto",
+    "o": 0,
+    "d": "2025"
+   },
+   {
+    "l": "Valor da Anuidade",
+    "t": "Texto",
+    "o": 0,
+    "d": "405.00"
+   }
+  ],
+  "excel": "ok 4045"
+ },
+ {
+  "mod": "tesouraria",
+  "grupo": "Anuidades",
+  "rel": "Inadimplentes por igreja",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Ano base",
+    "t": "Texto",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "ok 2957"
+ },
+ {
+  "mod": "tesouraria",
+  "grupo": "Anuidades",
+  "rel": "Status de Ministro Jubilados",
+  "params": [
+   {
+    "l": "Igreja",
+    "t": "Combo",
+    "o": 1,
+    "d": null
+   },
+   {
+    "l": "Estado",
+    "t": "Combo",
+    "o": 0,
+    "d": null
+   },
+   {
+    "l": "Situação da Anuidade",
+    "t": "MultipleCombo",
+    "o": 0,
+    "d": null
+   }
+  ],
+  "excel": "ok 3428"
+ },
+ {
+  "mod": "tesouraria",
+  "grupo": "Anuidades",
+  "rel": "Valor a Receber por Estado (2025)",
+  "params": [
+   {
+    "l": "Ano de Referência",
+    "t": "Texto",
+    "o": 0,
+    "d": "2025"
+   },
+   {
+    "l": "Valor da Anuidade",
+    "t": "Texto",
+    "o": 0,
+    "d": "405.00"
+   }
+  ],
+  "excel": "erro page.waitForResponse: Timeout 20000ms exceeded while waiting for event \"response\""
+ }
+]

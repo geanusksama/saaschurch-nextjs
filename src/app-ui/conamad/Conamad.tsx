@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import {
   AlertTriangle, Building2, CheckCircle2, ChevronDown, CircleDollarSign, Download, Eye, FilterX, Landmark, Loader2, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Upload, Users, X,
 } from "lucide-react";
@@ -11,7 +11,8 @@ import { fotoDisponivel } from "../../lib/fotoMembro";
 import { FONTE_MODELO_FAMILIA, useFonteModelo } from "../../lib/fonteModelo";
 import type { PrintOrientation } from "../../lib/printReport";
 import { imprimirConamad, type ColunaImpressao } from "../../lib/conamad/impressao";
-import { Permissao } from "../../lib/permissoes/Permissao";
+import { Permissao, usePode } from "../../lib/permissoes/Permissao";
+import { PERM_SECRETARIA } from "../../lib/conamad/permissoes";
 import { AvisoDefinaFiltros } from "../../components/app-ui/BotaoBuscar";
 import { CartoesTotais } from "../../components/app-ui/CartoesTotais";
 import { PrintModal } from "../../components/app-ui/shared/PrintModal";
@@ -19,25 +20,28 @@ import {
   AvisoFiltrosColuna, CabecalhoFiltro, EngrenagemColunas, OpcoesMarcaveis, useTabelaColunas, type ColunaTabela, type TabelaColunas,
 } from "../../components/app-ui/shared/FiltroColunas";
 
-type Aba = "visao" | "inadimplentes" | "anuidades" | "lista-geral" | "por-igreja" | "jubilados" | "atualizar";
+type AbaSecretaria = "sec-cargo" | "sec-cpf" | "sec-protocolo" | "sec-ficha" | "sec-credencial" | "sec-arquivo";
+type Aba = "visao" | "inadimplentes" | "anuidades" | "lista-geral" | "por-igreja" | "jubilados" | "atualizar" | AbaSecretaria;
 type AbaConsulta = Exclude<Aba, "atualizar">;
 
 const TITULOS: Record<Aba, string> = {
   visao: "Visão geral", inadimplentes: "Ministros inadimplentes", anuidades: "Anuidades",
-  "lista-geral": "Anuidades (lista geral)", "por-igreja": "Inadimplentes por igreja", jubilados: "Status de ministro jubilados", atualizar: "Atualizar dados",
+  "lista-geral": "Anuidades (Lista geral)", "por-igreja": "Inadimplentes por igreja", jubilados: "Status de Ministro Jubilados", atualizar: "Atualizar dados",
+  "sec-cargo": "Lista Geral - Por Cargo / Igreja", "sec-cpf": "Lista Geral CPF - Por Cargo / Igreja", "sec-protocolo": "Lista de protocolo", "sec-ficha": "Ficha Cadastral Resumida", "sec-credencial": "Credencial Emitida por Membro", "sec-arquivo": "Controle de Processo do Arquivo Digital",
 };
-const TIPO_API: Record<AbaConsulta, string> = { visao: "por-ano", inadimplentes: "inadimplentes", anuidades: "anuidades", "lista-geral": "lista-geral", "por-igreja": "por-igreja", jubilados: "jubilados" };
+const TIPO_API: Record<AbaConsulta, string> = { visao: "por-ano", inadimplentes: "inadimplentes", anuidades: "anuidades", "lista-geral": "lista-geral", "por-igreja": "por-igreja", jubilados: "jubilados", "sec-cargo": "ministros", "sec-cpf": "ministros", "sec-protocolo": "ministros", "sec-ficha": "ministros", "sec-credencial": "ministros", "sec-arquivo": "ministros" };
 
 const OPCOES_ANUIDADE = ["Pago", "Não Pago", "Isento", "Cancelado"].map((s) => ({ valor: s, rotulo: s }));
-const OPCOES_MINISTRO = [{ valor: "ATIVO", rotulo: "ATIVO" }, { valor: "INAT", rotulo: "DESLIGADO" }, { valor: "AGUAR", rotulo: "AGUARDANDO ATIVACAO" }];
-const OPCOES_TITULO = [
-  { valor: "Pr", rotulo: "PASTOR" }, { valor: "Prª", rotulo: "PASTORA" }, { valor: "Ev", rotulo: "EVANGELISTA" },
-  { valor: "Missª", rotulo: "MISSIONARIA" }, { valor: "Pr. P", rotulo: "PASTOR PRESIDENTE" }, { valor: "PrJ", rotulo: "PASTOR JUBILADO" }, { valor: "PraJ", rotulo: "PASTORA JUBILADA" },
-];
-const rotuloMinistro = (s: string | null | undefined) => OPCOES_MINISTRO.find((o) => o.valor === s)?.rotulo ?? s ?? "";
+const OPCOES_MINISTRO = ["ATIVO", "DESLIGADO", "AGUARDANDO ATIVACAO"].map((s) => ({ valor: s, rotulo: s }));
+const OPCOES_SEXO = ["Masculino", "Feminino"].map((s) => ({ valor: s, rotulo: s }));
+const OPCOES_ESTADO_CIVIL = ["Casado(a)", "Solteiro(a)", "Viúvo(a)", "Divorciado(a)", "Não informado"].map((s) => ({ valor: s, rotulo: s }));
+const OPCOES_CREDENCIAL = ["VIGENTE", "VENCIDA", "SEM CREDENCIAL"].map((s) => ({ valor: s, rotulo: s }));
+const OPCOES_TITULO = ["PASTOR", "PASTORA", "EVANGELISTA", "MISSIONARIA", "PASTOR PRESIDENTE", "PASTOR JUBILADO", "PASTORA JUBILADA"].map((s) => ({ valor: s, rotulo: s }));
+const rotuloMinistro = (s: string | null | undefined) => s ?? "";
 
 const brl = (v: unknown) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const COR_SITUACAO: Record<string, string> = {
+  VIGENTE: "bg-emerald-100 text-emerald-700", VENCIDA: "bg-rose-100 text-rose-700", "SEM CREDENCIAL": "bg-slate-200 text-slate-600",
   Pago: "bg-emerald-100 text-emerald-700", "Não Pago": "bg-rose-100 text-rose-700", Isento: "bg-sky-100 text-sky-700", "Isento por idade": "bg-sky-100 text-sky-700", Cancelado: "bg-slate-200 text-slate-600",
   ATIVO: "bg-emerald-100 text-emerald-700", DESLIGADO: "bg-rose-100 text-rose-700", "AGUARDANDO ATIVACAO": "bg-amber-100 text-amber-700",
 };
@@ -84,6 +88,9 @@ function coluna(id: string, rotulo: string, larg: string, render: (l: Linha) => 
 }
 const textoCol = (id: string, rotulo: string, larg = "minmax(130px,1fr)") => coluna(id, rotulo, larg, (l) => <span className="truncate text-[13px]">{campo(l, id) || "—"}</span>);
 const numCol = (id: string, rotulo: string, larg = "minmax(90px,.6fr)") => coluna(id, rotulo, larg, (l) => <span className="text-[13px] font-semibold">{String(l[id] ?? 0)}</span>, "numero", (l) => Number(l[id] ?? 0));
+/** Data DD/MM/AAAA na tela; o filtro e a ordenação da coluna recebem AAAA-MM-DD. */
+const dataIso = (t: string) => { const [d, m, a] = t.split("/"); return a ? `${a}-${m}-${d}` : null; };
+const dataCol = (id: string, rotulo: string, larg = "110px"): Coluna => ({ ...textoCol(id, rotulo, larg), campos: [{ id, rotulo, valor: (l) => dataIso(campo(l, id)), tipo: "data", formatar: (v) => (v ? String(v).split("-").reverse().join("/") : "") }] });
 const seloCol = (id: string, rotulo: string, larg = "minmax(170px,1fr)") => coluna(id, rotulo, larg, (l) => <Selo texto={l[id]} />);
 const valorCol = (id: string, rotulo: string, cor = true) => coluna(id, rotulo, "minmax(130px,.8fr)", (l) => <span className={`whitespace-nowrap text-[13px] font-bold ${cor ? "text-rose-600" : ""}`}>{brl(l[id])}</span>, "numero", (l) => Number(l[id] ?? 0));
 const colMinistro: Coluna = {
@@ -100,6 +107,15 @@ function colunasDe(aba: AbaConsulta, linhas: Linha[]): Coluna[] {
     { ...numCol("ano", "Ano", "minmax(90px,.6fr)"), fixa: true }, numCol("pagas", "Pagas"), numCol("naoPagas", "Não pagas"), numCol("isentas", "Isentas"), numCol("canceladas", "Canceladas"),
     valorCol("recebido", "Pago", false), valorCol("aberto", "Em aberto"),
   ];
+  if (aba.startsWith("sec-")) {
+    const titulo = textoCol("titulo", "Cargo", "minmax(160px,1fr)"), igreja = textoCol("igreja", "Igreja", "minmax(170px,1.2fr)"), regional = textoCol("regional", "Regional", "minmax(120px,.8fr)"), situacao = seloCol("situacao", "Situação"), sexo = textoCol("sexo", "Sexo", "100px"), cpf = textoCol("documento", "CPF", "140px");
+    if (aba === "sec-cargo") return [colMinistro, titulo, sexo, igreja, regional, situacao];
+    if (aba === "sec-cpf") return [colMinistro, cpf, titulo, sexo, igreja, regional, situacao];
+    if (aba === "sec-protocolo") return [colMinistro, titulo, cpf, igreja, regional, situacao];
+    if (aba === "sec-credencial") return [colMinistro, titulo, sexo, situacao, igreja, regional, dataCol("credencialLiberacao", "Liberação"), dataCol("credencialValidade", "Validade"), seloCol("credencialStatus", "Credencial", "minmax(140px,.9fr)")];
+    if (aba === "sec-arquivo") return [colMinistro, igreja, textoCol("hierarquia", "Hierarquia", "120px"), situacao, textoCol("possuiDocumento", "Possui documento", "140px")];
+    return [colMinistro, titulo, situacao, dataCol("nascimento", "Nascimento"), coluna("idade", "Idade", "70px", (l) => <span className="text-[13px] font-semibold">{l.idade == null ? "—" : String(l.idade)}</span>, "numero", (l) => (l.idade == null ? "" : Number(l.idade))), textoCol("celular", "Celular", "140px"), textoCol("estadoCivil", "Estado civil", "120px"), igreja, regional, textoCol("endereco", "Endereço", "minmax(240px,1.8fr)"), textoCol("enderecoCidade", "Cidade", "minmax(200px,1.2fr)")];
+  }
   if (aba === "jubilados") return [colMinistro, textoCol("titulo", "Título", "minmax(170px,1fr)"), seloCol("situacao", "Situação"), seloCol("situacaoCadastro", "Cadastro"), textoCol("igreja", "Igreja", "minmax(170px,1.2fr)"), textoCol("estado", "Estado", "80px"), seloCol("anuidade", "Anuidade", "minmax(130px,.8fr)")];
   if (aba === "inadimplentes") return [
     colMinistro, textoCol("titulo", "Título"), seloCol("situacao", "Situação"), seloCol("situacaoCadastro", "Cadastro"), textoCol("igreja", "Igreja", "minmax(170px,1.2fr)"),
@@ -130,7 +146,7 @@ function colunasDe(aba: AbaConsulta, linhas: Linha[]): Coluna[] {
 const TAMANHOS = [25, 50, 100, 200];
 
 /** Tabela igual à de Membros: filtro e ordenação por coluna, colunas e paginação. */
-function TabelaPadrao({ tabela, colunas, carregou, nomeItens }: { tabela: TabelaColunas<Linha>; colunas: Coluna[]; carregou: boolean; nomeItens: string }) {
+function TabelaPadrao({ tabela, colunas, carregou, nomeItens, painelBusca }: { tabela: TabelaColunas<Linha>; colunas: Coluna[]; carregou: boolean; nomeItens: string; painelBusca?: ReactNode }) {
   const [tamanho, setTamanho] = useState(25);
   const [pagina, setPagina] = useState(1);
   const visiveis = colunas.filter((c) => tabela.visivel(c.id));
@@ -141,8 +157,9 @@ function TabelaPadrao({ tabela, colunas, carregou, nomeItens }: { tabela: Tabela
   const itens = tabela.linhas.slice((atual - 1) * tamanho, atual * tamanho);
   const botao = "h-[34px] rounded-[10px] border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 hover:border-slate-900 disabled:pointer-events-none disabled:text-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
   return (
-    <section className="relative overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
-      {!carregou ? <AvisoDefinaFiltros /> : (
+    <section className={`relative overflow-hidden rounded-[18px] border border-[#e8ecf1] bg-white md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 ${painelBusca ? "min-h-[360px]" : ""}`}>
+      {painelBusca && <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/75 p-4 backdrop-blur-[1px] dark:bg-slate-900/70">{painelBusca}</div>}
+      {!carregou ? (painelBusca ? null : <AvisoDefinaFiltros />) : (
         <>
           <div className="overflow-x-auto">
             <div className="min-w-fit">
@@ -202,6 +219,11 @@ const AZUL = { bg: "bg-sky-100", fg: "text-sky-700" };
 const soma = (ls: Linha[], c: string) => ls.reduce((s, l) => s + Number(l[c] || 0), 0);
 
 function cartoesDe(aba: AbaConsulta, ls: Linha[]): CartaoDef[] {
+  if (aba.startsWith("sec-")) {
+    const conta = (c: string, v: string) => ls.filter((l) => l[c] === v).length;
+    if (aba === "sec-credencial") return [{ rotulo: "Ministros", valor: ls.length, icone: Users, ...CINZA }, { rotulo: "Vigentes", valor: conta("credencialStatus", "VIGENTE"), icone: CheckCircle2, ...VERDE }, { rotulo: "Vencidas", valor: conta("credencialStatus", "VENCIDA"), icone: AlertTriangle, ...VERMELHO }, { rotulo: "Sem credencial", valor: conta("credencialStatus", "SEM CREDENCIAL"), icone: Receipt, ...CINZA }];
+    return [{ rotulo: "Ministros", valor: ls.length, icone: Users, ...CINZA }, { rotulo: "Ativos", valor: conta("situacao", "ATIVO"), icone: CheckCircle2, ...VERDE }, { rotulo: "Desligados", valor: conta("situacao", "DESLIGADO"), icone: AlertTriangle, ...VERMELHO }];
+  }
   if (aba === "jubilados") return [{ rotulo: "Ministros", valor: ls.length, icone: Users, ...CINZA }, { rotulo: "Isentos", valor: ls.filter((l) => l.anuidade === "Isento").length, icone: ShieldCheck, ...AZUL }, { rotulo: "Sem anuidade", valor: ls.filter((l) => l.anuidade === "Sem anuidade").length, icone: Receipt, ...CINZA }];
   if (aba === "visao") return [
     { rotulo: "Pagas", valor: soma(ls, "pagas"), icone: CheckCircle2, ...VERDE }, { rotulo: "Não pagas", valor: soma(ls, "naoPagas"), icone: AlertTriangle, ...VERMELHO },
@@ -225,8 +247,28 @@ function cartoesDe(aba: AbaConsulta, ls: Linha[]): CartaoDef[] {
   ];
 }
 
-interface Filtros { anos: string[] | null; situacoes: string[] | null; situacoesMinistro: string[] | null; titulos: string[] | null }
-const FILTROS_VAZIOS: Filtros = { anos: null, situacoes: null, situacoesMinistro: null, titulos: null };
+interface Filtros { anos: string[] | null; situacoes: string[] | null; situacoesMinistro: string[] | null; titulos: string[] | null; sexos: string[] | null; estadosCivis: string[] | null; regionais: string[] | null; credenciais: string[] | null }
+const FILTROS_VAZIOS: Filtros = { anos: null, situacoes: null, situacoesMinistro: null, titulos: null, sexos: null, estadosCivis: null, regionais: null, credenciais: null };
+
+/** Mostra, no lugar dos dados, o que foi pedido enquanto a consulta roda. */
+function PainelBusca({ itens }: { itens: Array<[string, string]> }) {
+  return (
+    <div role="status" className="w-[min(420px,100%)] rounded-[18px] border border-[#e8ecf1] bg-white p-5 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex items-center gap-3 border-b border-[#eef2f6] pb-3.5 dark:border-slate-700">
+        <Loader2 className="h-5 w-5 flex-none animate-spin text-slate-700 dark:text-slate-200" />
+        <span className="text-[15px] font-extrabold">Buscando os dados...</span>
+      </div>
+      <dl className="mt-3.5 flex flex-col gap-2.5 text-sm">
+        {itens.map(([rotulo, valor]) => (
+          <div key={rotulo} className="flex items-start justify-between gap-4">
+            <dt className="flex-none text-slate-500 dark:text-slate-400">{rotulo}</dt>
+            <dd className="min-w-0 text-right font-semibold">{valor}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
 
 function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
   return <div className="flex flex-col gap-2.5"><span className="text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">{titulo}</span>{children}</div>;
@@ -265,14 +307,14 @@ function DropdownMarcavel({ opcoes, valor, onChange, rotuloTodos }: { opcoes: st
   );
 }
 
-function Pagina({ aba, acoes, children }: { aba: Aba; acoes?: ReactNode; children: ReactNode }) {
+function Pagina({ aba, acoes, titulo, secao, children }: { aba: Aba; acoes?: ReactNode; titulo?: string; secao?: string; children: ReactNode }) {
   useFonteModelo();
   return (
     <div className="flex min-h-full flex-col bg-[#f4f6f8] text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100" style={{ fontFamily: FONTE_MODELO_FAMILIA }}>
       <header className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 md:py-3.5 dark:border-slate-700 dark:bg-slate-800">
         <div className="flex min-w-0 items-center gap-3">
           <div className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-slate-100 text-slate-700 md:h-10 md:w-10 dark:bg-slate-700 dark:text-slate-200"><Landmark className="h-5 w-5" strokeWidth={1.8} /></div>
-          <div className="flex min-w-0 flex-col gap-0.5"><span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">Conamad</span><span className="whitespace-nowrap text-[17px] font-bold">{TITULOS[aba]}</span></div>
+          <div className="flex min-w-0 flex-col gap-0.5"><span className="hidden whitespace-nowrap text-xs text-slate-500 md:block dark:text-slate-400">{secao ?? "Conamad"}</span><span className="whitespace-nowrap text-[17px] font-bold">{titulo ?? TITULOS[aba]}</span></div>
         </div>
         <div className="flex items-center gap-2">{acoes}</div>
       </header>
@@ -283,7 +325,7 @@ function Pagina({ aba, acoes, children }: { aba: Aba; acoes?: ReactNode; childre
 
 const btnTopo = "flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
 
-function Consulta({ aba }: { aba: AbaConsulta }) {
+function Consulta({ aba, topo, titulo, secao }: { aba: AbaConsulta; topo?: ReactNode; titulo?: string; secao?: string }) {
   const [f, setF] = useState<Filtros>(FILTROS_VAZIOS);
   const [busca, setBusca] = useState("");
   const [drawer, setDrawer] = useState(false);
@@ -294,7 +336,12 @@ function Consulta({ aba }: { aba: AbaConsulta }) {
   const [anos, setAnos] = useState<string[]>([]);
   const ultimoPedido = useRef(0);
 
-  useEffect(() => { authFetch<number[]>(`${apiBase}/conamad?tipo=anos`).then((a) => setAnos(a.map(String))).catch(() => undefined); }, []);
+  const [regionais, setRegionais] = useState<string[]>([]);
+  const ehSecretaria = aba.startsWith("sec-");
+  useEffect(() => {
+    if (ehSecretaria) authFetch<string[]>(`${apiBase}/conamad?tipo=regionais`).then(setRegionais).catch(() => undefined);
+    else authFetch<number[]>(`${apiBase}/conamad?tipo=anos`).then((a) => setAnos(a.map(String))).catch(() => undefined);
+  }, [ehSecretaria]);
 
   const colunas = useMemo(() => colunasDe(aba, linhas ?? []), [aba, linhas]);
   const tabela = useTabelaColunas<Linha>({ chave: `conamad.${aba}`, colunas, linhas: linhas ?? [] });
@@ -310,7 +357,12 @@ function Consulta({ aba }: { aba: AbaConsulta }) {
     setBuscando(true); setErro(""); setDrawer(false);
     const p = new URLSearchParams({ tipo: TIPO_API[aba] });
     if (busca.trim()) p.set("busca", busca.trim());
-    Object.entries(f).forEach(([k, v]) => { if (v && v.length) p.set(k, v.join(",")); });
+    if (ehSecretaria) p.set("rel", aba);
+    Object.entries(f).forEach(([k, v]) => {
+      if (!v || !v.length) return;
+      if (k === "regionais") v.forEach((x: string) => p.append(k, x));
+      else p.set(k, v.join(","));
+    });
     try {
       const r = await authFetch<Linha[]>(`${apiBase}/conamad?${p}`);
       if (pedido === ultimoPedido.current) setLinhas(r);
@@ -322,6 +374,16 @@ function Consulta({ aba }: { aba: AbaConsulta }) {
   };
 
   const limpar = () => { setF(FILTROS_VAZIOS); setBusca(""); };
+  const escolhidos = (v: string[] | null, opcoes?: Array<{ valor: string; rotulo: string }>) => (v === null ? "Todos" : v.length ? v.map((x) => opcoes?.find((o) => o.valor === x)?.rotulo ?? x).join(", ") : "Nenhum");
+  const itensBusca: Array<[string, string]> = [
+    ["Relatório", TITULOS[aba]],
+    ...(busca.trim() ? [["Busca", busca.trim()] as [string, string]] : []),
+    ...(aba !== "jubilados" && !ehSecretaria ? [["Ano", escolhidos(f.anos)] as [string, string]] : []),
+    ...(ehSecretaria ? [["Sexo", escolhidos(f.sexos)] as [string, string], ["Regional", escolhidos(f.regionais)] as [string, string]] : []),
+    ...(aba === "anuidades" ? [["Anuidade", escolhidos(f.situacoes)] as [string, string]] : []),
+    ["Situação do ministro", escolhidos(f.situacoesMinistro, OPCOES_MINISTRO)],
+    ["Título", escolhidos(f.titulos, OPCOES_TITULO)],
+  ];
   const colsSaida = colunas.filter((c) => tabela.visivel(c.id));
   const extras = temPessoa ? [{ id: "rol", rotulo: "ROL", texto: (l: Linha) => (l.rol == null ? "" : Number(l.rol)) }, { id: "matricula", rotulo: "Matrícula", texto: (l: Linha) => Number(l.matricula) }] : [];
   const saida = [...extras, ...colsSaida.map((c) => ({ id: c.id, rotulo: c.rotulo, texto: c.texto }))];
@@ -345,7 +407,7 @@ function Consulta({ aba }: { aba: AbaConsulta }) {
   const gerarImpressao = (orientation: PrintOrientation, ordem: string, cols: string[], grupo?: boolean | string) => {
     setImprimir(false);
     const def = saida.find((c) => c.id === ordem);
-    const ordenadas = def ? [...filtradas].sort((a, b) => { const x = def.texto(a), y = def.texto(b); return typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "pt-BR"); }) : filtradas;
+    const ordenadas = def ? [...filtradas].sort((a, b) => { const x = def.texto(a), y = def.texto(b); if (typeof x === "number" && typeof y === "number") return x - y; const dx = dataIso(String(x)), dy = dataIso(String(y)); return dx && dy ? dx.localeCompare(dy) : String(x).localeCompare(String(y), "pt-BR"); }) : filtradas;
     const colunasImp: ColunaImpressao[] = saidaImpressa.filter((c) => cols.includes(c.id)).map((c) => ({
       chave: c.id, rotulo: c.rotulo, alinhar: direita.has(c.id) ? "direita" : /^ano\d/.test(c.id) ? "centro" : undefined,
     }));
@@ -362,7 +424,7 @@ function Consulta({ aba }: { aba: AbaConsulta }) {
       subtitulo: igrejas.length === 1 ? igrejas[0] : undefined,
     });
   };
-  const grupos = saida.filter((c) => ["titulo", "situacao", "situacaoMinistro", "situacaoCadastro", "igreja", "ano", "anuidade", "estado"].includes(c.id)).map((c) => ({ value: c.id, label: c.rotulo }));
+  const grupos = saida.filter((c) => ["titulo", "situacao", "situacaoMinistro", "situacaoCadastro", "igreja", "ano", "anuidade", "estado", "regional", "sexo", "estadoCivil", "credencialStatus", "hierarquia"].includes(c.id)).map((c) => ({ value: c.id, label: c.rotulo }));
 
   const acoes = (
     <>
@@ -376,7 +438,8 @@ function Consulta({ aba }: { aba: AbaConsulta }) {
   );
 
   return (
-    <Pagina aba={aba} acoes={acoes}>
+    <Pagina aba={aba} acoes={acoes} titulo={titulo} secao={secao}>
+      {topo}
       <div className="flex flex-wrap items-stretch gap-3">
         <div className="flex min-w-0 flex-[1_1_380px] gap-2">
           <div className="relative min-w-0 flex-1">
@@ -399,7 +462,7 @@ function Consulta({ aba }: { aba: AbaConsulta }) {
       {carregou && linhas.length >= 10000 && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">Limite de 10000 linhas atingido: os totais estão parciais. Filtre por ano para ver tudo.</div>}
       {carregou && <AvisoFiltrosColuna tabela={tabela} total={linhas.length} filtradas={filtradas.length} />}
 
-      <TabelaPadrao tabela={tabela} colunas={colunas} carregou={carregou} nomeItens="registros" />
+      <TabelaPadrao tabela={tabela} colunas={colunas} carregou={carregou} nomeItens="registros" painelBusca={buscando ? <PainelBusca itens={itensBusca} /> : undefined} />
 
       {imprimir && (
         <PrintModal open onClose={() => setImprimir(false)} onPrint={gerarImpressao}
@@ -421,10 +484,18 @@ function Consulta({ aba }: { aba: AbaConsulta }) {
               <button type="button" onClick={() => setDrawer(false)} aria-label="Fechar" className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"><X className="h-5 w-5" strokeWidth={2} /></button>
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto p-[22px]">
-              {aba !== "jubilados" && <Secao titulo="ANO"><DropdownMarcavel opcoes={anos} valor={f.anos} onChange={(v) => setF({ ...f, anos: v })} rotuloTodos="Todos os anos" /></Secao>}
+              {aba !== "jubilados" && !ehSecretaria && <Secao titulo="ANO"><DropdownMarcavel opcoes={anos} valor={f.anos} onChange={(v) => setF({ ...f, anos: v })} rotuloTodos="Todos os anos" /></Secao>}
               {aba === "anuidades" && <Secao titulo="ANUIDADE"><OpcoesMarcaveis opcoes={OPCOES_ANUIDADE} selecionados={f.situacoes} onChange={(v) => setF({ ...f, situacoes: v })} /></Secao>}
               <Secao titulo="SITUAÇÃO DO MINISTRO"><OpcoesMarcaveis opcoes={OPCOES_MINISTRO} selecionados={f.situacoesMinistro} onChange={(v) => setF({ ...f, situacoesMinistro: v })} /></Secao>
               <Secao titulo="TÍTULO"><OpcoesMarcaveis opcoes={OPCOES_TITULO} selecionados={f.titulos} onChange={(v) => setF({ ...f, titulos: v })} /></Secao>
+              {ehSecretaria && (
+                <>
+                  <Secao titulo="REGIONAL"><DropdownMarcavel opcoes={regionais} valor={f.regionais} onChange={(v) => setF({ ...f, regionais: v })} rotuloTodos="Todas as regionais" /></Secao>
+                  <Secao titulo="SEXO"><OpcoesMarcaveis opcoes={OPCOES_SEXO} selecionados={f.sexos} onChange={(v) => setF({ ...f, sexos: v })} /></Secao>
+                  <Secao titulo="ESTADO CIVIL"><OpcoesMarcaveis opcoes={OPCOES_ESTADO_CIVIL} selecionados={f.estadosCivis} onChange={(v) => setF({ ...f, estadosCivis: v })} /></Secao>
+                  {aba === "sec-credencial" && <Secao titulo="CREDENCIAL"><OpcoesMarcaveis opcoes={OPCOES_CREDENCIAL} selecionados={f.credenciais} onChange={(v) => setF({ ...f, credenciais: v })} /></Secao>}
+                </>
+              )}
             </div>
             <div className="flex gap-2 border-t border-[#eef2f6] p-4 dark:border-slate-700">
               <button type="button" onClick={() => setF(FILTROS_VAZIOS)} className="h-11 flex-1 rounded-xl border border-slate-200 text-sm font-semibold dark:border-slate-600">Limpar</button>
@@ -527,12 +598,65 @@ function Atualizar() {
   );
 }
 
+const RELATORIOS_TESOURARIA: Array<{ aba: AbaConsulta; nome: string }> = [
+  { aba: "lista-geral", nome: "Anuidades (Lista geral)" },
+  { aba: "por-igreja", nome: "Inadimplentes por igreja" },
+  { aba: "inadimplentes", nome: "Ministros inadimplentes" },
+  { aba: "jubilados", nome: "Status de Ministro Jubilados" },
+];
+
+const RELATORIOS_SECRETARIA: Array<{ aba: AbaConsulta; nome: string }> = [
+  { aba: "sec-arquivo", nome: "Controle de Processo do Arquivo Digital" },
+  { aba: "sec-credencial", nome: "Credencial Emitida por Membro" },
+  { aba: "sec-ficha", nome: "Ficha Cadastral Resumida" },
+  { aba: "sec-protocolo", nome: "Lista de protocolo" },
+  { aba: "sec-cargo", nome: "Lista Geral - Por Cargo / Igreja" },
+  { aba: "sec-cpf", nome: "Lista Geral CPF - Por Cargo / Igreja" },
+];
+
+function SeletorRelatorio({ grupo, lista, valor, onChange, bloqueado }: { grupo: string; lista: Array<{ aba: AbaConsulta; nome: string }>; valor: string; onChange: (v: string) => void; bloqueado: (aba: AbaConsulta) => boolean }) {
+  const campo = "h-[50px] w-full rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3.5 text-[15px] font-medium text-slate-900 outline-none focus:border-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100";
+  return (
+    <div className="grid grid-cols-1 gap-3 rounded-[18px] border border-[#e8ecf1] bg-white p-4 md:grid-cols-[minmax(200px,1fr)_minmax(280px,2fr)] md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+      <label className="flex flex-col gap-1.5 text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">GRUPO
+        <select className={campo} value={grupo} disabled><option value={grupo}>{grupo}</option></select>
+      </label>
+      <label className="flex flex-col gap-1.5 text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">RELATÓRIO
+        <select className={campo} value={valor} onChange={(e) => onChange(e.target.value)}>
+          <option value="">Selecione...</option>
+          {lista.map((r) => <option key={r.aba} value={r.aba}>{bloqueado(r.aba) ? `🔒 ${r.nome}` : r.nome}</option>)}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function Relatorios({ modulo }: { modulo: "secretaria" | "tesouraria" }) {
+  const [params, setParams] = useSearchParams();
+  const rel = params.get("rel") ?? "";
+  const lista = modulo === "secretaria" ? RELATORIOS_SECRETARIA : RELATORIOS_TESOURARIA;
+  const titulo = modulo === "secretaria" ? "Relatórios de Secretaria" : "Relatórios de Tesouraria";
+  const atual = lista.find((r) => r.aba === rel);
+  const pode = usePode();
+  const bloqueado = (aba: AbaConsulta) => Object.hasOwn(PERM_SECRETARIA, aba) && !pode(PERM_SECRETARIA[aba].chave);
+  const seletor = <SeletorRelatorio grupo={modulo === "secretaria" ? "Ministros" : "Anuidades"} lista={lista} valor={atual?.aba ?? ""} onChange={(v) => setParams(v ? { rel: v } : {})} bloqueado={bloqueado} />;
+  if (atual && !bloqueado(atual.aba)) return <Consulta key={atual.aba} aba={atual.aba} topo={seletor} titulo={titulo} secao="Conamad · Relatórios" />;
+  return (
+    <Pagina aba="visao" titulo={titulo} secao="Conamad · Relatórios">
+      {seletor}
+      <div className="rounded-[18px] border border-[#e8ecf1] bg-white px-6 py-10 text-center text-sm text-slate-500 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">{atual ? "Você não tem permissão para este relatório. Peça a liberação ao administrador." : "Selecione um relatório."}</div>
+    </Pagina>
+  );
+}
+
 function abaDoCaminho(caminho: string): Aba {
   const fim = caminho.replace(/\/+$/, "").split("/").pop();
   return fim === "inadimplentes" || fim === "anuidades" || fim === "lista-geral" || fim === "por-igreja" || fim === "jubilados" || fim === "atualizar" ? fim : "visao";
 }
 
 export default function Conamad() {
-  const aba = abaDoCaminho(useLocation().pathname);
+  const caminho = useLocation().pathname;
+  const aba = abaDoCaminho(caminho);
+  if (caminho.includes("/conamad/relatorios/")) return <Relatorios key={caminho} modulo={caminho.endsWith("secretaria") ? "secretaria" : "tesouraria"} />;
   return aba === "atualizar" ? <Atualizar /> : <Consulta key={aba} aba={aba} />;
 }

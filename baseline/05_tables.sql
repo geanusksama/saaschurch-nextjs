@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.419Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:48.999Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline cc48b63995f7c79e
+-- Baseline fb00b126c845ebf4
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -1869,7 +1869,17 @@ create table if not exists "public"."conamad_ministros" (
   "sincronizado_em" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
   "jubilado" boolean default false not null,
   "jubilado_estado" character varying(2),
-  "jubilado_anuidade" character varying(40)
+  "jubilado_anuidade" character varying(40),
+  "sexo" character varying(20),
+  "estado_civil" character varying(20),
+  "celular" character varying(30),
+  "endereco" text,
+  "endereco_cidade" text,
+  "credencial_status" character varying(30),
+  "credencial_liberacao" date,
+  "credencial_validade" date,
+  "hierarquia" character varying(60),
+  "possui_documento" boolean
 );
 
 create table if not exists "public"."conamad_sincronizacoes" (

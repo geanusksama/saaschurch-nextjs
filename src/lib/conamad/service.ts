@@ -26,6 +26,10 @@ export interface FiltrosConamad {
   situacoes?: string[];
   situacoesMinistro?: string[];
   titulos?: string[];
+  sexos?: string[];
+  estadosCivis?: string[];
+  regionais?: string[];
+  credenciais?: string[];
   busca?: string;
 }
 
@@ -44,6 +48,9 @@ function naNossaEscrita<T extends { titulo: string | null; situacao?: string | n
     ...('situacaoMinistro' in l && l.situacaoMinistro ? { situacaoMinistro: SITUACAO_ESCRITA[l.situacaoMinistro] ?? l.situacaoMinistro } : {}),
   }));
 }
+
+/** A validade decide: o texto gravado na carga envelhece quando a data passa. */
+const CREDENCIAL_STATUS = Prisma.sql`CASE WHEN m.credencial_validade IS NULL THEN m.credencial_status WHEN m.credencial_validade < current_date THEN 'VENCIDA' ELSE 'VIGENTE' END`;
 
 function condicoes(campoId: string, f: FiltrosConamad, extras: Prisma.Sql[] = []) {
   const partes: Prisma.Sql[] = [Prisma.sql`a.campo_id = ${campoId}::uuid`, ...extras];
@@ -79,6 +86,42 @@ export async function listarJubilados(campoId: string, f: FiltrosConamad) {
     LEFT JOIN members mb ON mb.id = m.member_id AND mb.deleted_at IS NULL
     WHERE ${Prisma.join(partes, ' AND ')}
     ORDER BY m.nome LIMIT ${TETO_LINHAS}`));
+}
+
+/** Base dos relatórios de Secretaria: um ministro por linha, no nosso formato. */
+export function listarMinistros(campoId: string, f: FiltrosConamad) {
+  const partes = [Prisma.sql`m.campo_id = ${campoId}::uuid`];
+  if (f.situacoesMinistro?.length) partes.push(Prisma.sql`m.situacao = ANY(${f.situacoesMinistro}::text[])`);
+  if (f.titulos?.length) partes.push(Prisma.sql`m.titulo = ANY(${f.titulos}::text[])`);
+  if (f.sexos?.length) partes.push(Prisma.sql`m.sexo = ANY(${f.sexos}::text[])`);
+  if (f.estadosCivis?.length) partes.push(Prisma.sql`m.estado_civil = ANY(${f.estadosCivis}::text[])`);
+  if (f.credenciais?.length) partes.push(Prisma.sql`${CREDENCIAL_STATUS} = ANY(${f.credenciais}::text[])`);
+  if (f.regionais?.length) partes.push(Prisma.sql`rg.name = ANY(${f.regionais}::text[])`);
+  if (f.busca) {
+    const digitos = f.busca.replace(/\D/g, '');
+    const ouNumero = digitos ? Prisma.sql`OR m.matricula::text = ${digitos} OR regexp_replace(coalesce(m.documento,''), '\\D', '', 'g') = ${digitos}` : Prisma.empty;
+    partes.push(Prisma.sql`(m.nome ILIKE ${'%' + f.busca.trim() + '%'} ${ouNumero})`);
+  }
+  return prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+    SELECT m.id, m.matricula, m.nome, m.titulo, m.situacao, m.igreja, m.documento, m.sexo, m.estado_civil AS "estadoCivil", m.celular,
+           m.endereco, m.endereco_cidade AS "enderecoCidade", m.hierarquia, ${CREDENCIAL_STATUS} AS "credencialStatus",
+           to_char(m.data_nascimento, 'DD/MM/YYYY') AS nascimento, extract(year FROM age(m.data_nascimento))::int AS idade,
+           to_char(m.credencial_liberacao, 'DD/MM/YYYY') AS "credencialLiberacao", to_char(m.credencial_validade, 'DD/MM/YYYY') AS "credencialValidade",
+           CASE WHEN m.possui_documento THEN 'Sim' WHEN m.possui_documento = false THEN 'Não' END AS "possuiDocumento",
+           rg.name AS regional, mb.rol, mb.id AS "memberId", mb.photo_url AS "fotoUrl", mb.membership_status AS "situacaoCadastro"
+    FROM conamad_ministros m
+    LEFT JOIN members mb ON mb.id = m.member_id AND mb.deleted_at IS NULL
+    LEFT JOIN churches ch ON ch.id = mb.church_id
+    LEFT JOIN regionais rg ON rg.id = ch.regional_id
+    WHERE ${Prisma.join(partes, ' AND ')}
+    ORDER BY m.nome LIMIT ${TETO_LINHAS}`);
+}
+
+export function regionaisDisponiveis(campoId: string) {
+  return prisma.$queryRaw<Array<{ nome: string }>>(Prisma.sql`
+    SELECT DISTINCT rg.name AS nome FROM conamad_ministros m
+    JOIN members mb ON mb.id = m.member_id AND mb.deleted_at IS NULL JOIN churches ch ON ch.id = mb.church_id JOIN regionais rg ON rg.id = ch.regional_id
+    WHERE m.campo_id = ${campoId}::uuid ORDER BY 1`).then((r) => r.map((x) => x.nome));
 }
 
 export function anosDisponiveis(campoId: string) {
@@ -213,7 +256,7 @@ export interface Previa {
   assinatura: string;
 }
 
-const SITUACOES_MINISTRO = new Set(['ATIVO', 'INAT', 'AGUAR']);
+const SITUACAO_PLANILHA: Record<string, string> = { ATIVO: 'ATIVO', INAT: 'DESLIGADO', INATIVO: 'DESLIGADO', DESLIGADO: 'DESLIGADO', AGUAR: 'AGUARDANDO ATIVACAO', 'AGUARDANDO ATIVAÇÃO': 'AGUARDANDO ATIVACAO', 'AGUARDANDO ATIVACAO': 'AGUARDANDO ATIVACAO' };
 
 function assinar(p: Pick<Previa, 'mudancasAnuidades' | 'mudancasMinistros'>) {
   return createHash('sha256').update(JSON.stringify([p.mudancasAnuidades, p.mudancasMinistros])).digest('hex');
@@ -256,12 +299,13 @@ export async function previaPlanilha(campoId: string, linhas: LinhaPlanilha[]): 
     for (const l of linhas) {
       const m = conferir(l);
       if (!m) continue;
-      const para = String(l.Situacao).trim().toUpperCase();
-      if (!SITUACOES_MINISTRO.has(para)) { previa.duvidas.push({ matricula: String(m.matricula), nome: m.nome, motivo: `Situação desconhecida "${para}"` }); continue; }
+      const lida = String(l.Situacao).trim().toUpperCase();
+      const para = SITUACAO_PLANILHA[lida];
+      if (!para) { previa.duvidas.push({ matricula: String(m.matricula), nome: m.nome, motivo: `Situação desconhecida "${lida}"` }); continue; }
       if (m.situacao === para) previa.iguais++;
       else previa.mudancasMinistros.push({ id: m.id, matricula: m.matricula, nome: m.nome, de: m.situacao, para });
       const aqui = normalizarSituacaoMembro(m.member?.membershipStatus);
-      const bate = SITUACAO_ESCRITA[para] === aqui;
+      const bate = para === aqui;
       if (m.member && !bate) previa.divergenciasCadastro.push({ matricula: m.matricula, nome: m.nome, rol: m.member.rol ?? null, conamad: para, aqui });
     }
     previa.assinatura = assinar(previa);

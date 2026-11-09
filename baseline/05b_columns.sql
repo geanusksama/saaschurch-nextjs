@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:10:10.421Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:49.001Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline cc48b63995f7c79e
+-- Baseline fb00b126c845ebf4
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -1507,6 +1507,16 @@ alter table "public"."conamad_ministros" add column if not exists "sincronizado_
 alter table "public"."conamad_ministros" add column if not exists "jubilado" boolean default false not null;
 alter table "public"."conamad_ministros" add column if not exists "jubilado_estado" character varying(2);
 alter table "public"."conamad_ministros" add column if not exists "jubilado_anuidade" character varying(40);
+alter table "public"."conamad_ministros" add column if not exists "sexo" character varying(20);
+alter table "public"."conamad_ministros" add column if not exists "estado_civil" character varying(20);
+alter table "public"."conamad_ministros" add column if not exists "celular" character varying(30);
+alter table "public"."conamad_ministros" add column if not exists "endereco" text;
+alter table "public"."conamad_ministros" add column if not exists "endereco_cidade" text;
+alter table "public"."conamad_ministros" add column if not exists "credencial_status" character varying(30);
+alter table "public"."conamad_ministros" add column if not exists "credencial_liberacao" date;
+alter table "public"."conamad_ministros" add column if not exists "credencial_validade" date;
+alter table "public"."conamad_ministros" add column if not exists "hierarquia" character varying(60);
+alter table "public"."conamad_ministros" add column if not exists "possui_documento" boolean;
 alter table "public"."conamad_sincronizacoes" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."conamad_sincronizacoes" add column if not exists "campo_id" uuid;
 alter table "public"."conamad_sincronizacoes" add column if not exists "usuario_id" uuid;

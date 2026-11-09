@@ -498,6 +498,42 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/conamad/Conamad.tsx"
   },
   {
+    "chave": "conamad.relatorios.sec_arquivo",
+    "rotulo": "Controle de Processo do Arquivo Digital — Conamad",
+    "herda": "conamad.view",
+    "arquivo": "src/lib/conamad/permissoes.ts"
+  },
+  {
+    "chave": "conamad.relatorios.sec_cargo",
+    "rotulo": "Lista Geral - Por Cargo / Igreja — Conamad",
+    "herda": "conamad.view",
+    "arquivo": "src/lib/conamad/permissoes.ts"
+  },
+  {
+    "chave": "conamad.relatorios.sec_cpf",
+    "rotulo": "Lista Geral CPF - Por Cargo / Igreja — Conamad",
+    "herda": "conamad.view",
+    "arquivo": "src/lib/conamad/permissoes.ts"
+  },
+  {
+    "chave": "conamad.relatorios.sec_credencial",
+    "rotulo": "Credencial Emitida por Membro — Conamad",
+    "herda": "conamad.view",
+    "arquivo": "src/lib/conamad/permissoes.ts"
+  },
+  {
+    "chave": "conamad.relatorios.sec_ficha",
+    "rotulo": "Ficha Cadastral Resumida — Conamad",
+    "herda": "conamad.view",
+    "arquivo": "src/lib/conamad/permissoes.ts"
+  },
+  {
+    "chave": "conamad.relatorios.sec_protocolo",
+    "rotulo": "Lista de protocolo — Conamad",
+    "herda": "conamad.view",
+    "arquivo": "src/lib/conamad/permissoes.ts"
+  },
+  {
     "chave": "consecration.consecration_new.salvar_consagracao",
     "rotulo": "Salvar Consagração — Consecration New",
     "herda": "consecration.view",
