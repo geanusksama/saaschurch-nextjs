@@ -1,3 +1,4 @@
+import { nomeSecao } from './nomeSecao';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router';
 import { Toaster, toast } from 'sonner';
 import { del } from 'idb-keyval';
@@ -463,6 +464,7 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Anuidades',               path: '/app-ui/conamad/anuidades',             icon: Wallet,     permKey: 'conamad' },
       { name: 'Relatórios de Secretaria', path: '/app-ui/conamad/relatorios/secretaria', icon: ClipboardList, permKey: 'conamad' },
       { name: 'Relatórios de Tesouraria', path: '/app-ui/conamad/relatorios/tesouraria', icon: Receipt,   permKey: 'conamad' },
+      { name: 'Modelos de documentos',   path: '/app-ui/conamad/documentos',            icon: FileText, permKey: 'conamad' },
       { name: 'Atualizar dados',         path: '/app-ui/conamad/atualizar',             icon: RepeatIcon, permKey: 'conamad' },
     ]
   },
@@ -1668,7 +1670,7 @@ export function AppUI() {
                 <div className="space-y-4">
                   {emOrdemAlfabetica(filteredNavigation, (s) => s.section).map((section) => (
                     <div key={section.section}>
-                      <p className="mb-1 px-3 text-[11px] font-bold uppercase tracking-[.08em] text-[var(--sl-text-4)]">{section.section}</p>
+                      <p className="mb-1 px-3 text-[11px] font-bold uppercase tracking-[.08em] text-[var(--sl-text-4)]">{nomeSecao(section.section)}</p>
                       {emOrdemAlfabetica(section.items, (i) => i.name).map((item) => renderNavItem(item))}
                     </div>
                   ))}
@@ -1722,7 +1724,7 @@ export function AppUI() {
                           <SectionIcon className="h-4 w-4 md:h-[18px] md:w-[18px]" strokeWidth={1.8} />
                         </span>
                         <span className="flex min-w-0 flex-1 flex-col pr-7">
-                          <span className="truncate text-[14px] font-bold text-[var(--sl-text)] md:text-[15px]">{section.section}</span>
+                          <span className="truncate text-[14px] font-bold text-[var(--sl-text)] md:text-[15px]">{nomeSecao(section.section)}</span>
                           <span className="text-[11.5px] font-medium text-[var(--sl-text-3)] md:text-[12.5px]">
                             {hasActiveItem ? 'Você está aqui' : `${section.items.length} ${section.items.length === 1 ? 'tela' : 'telas'}`}
                           </span>
@@ -2015,7 +2017,7 @@ export function AppUI() {
                               </Permissao>
                             </div>
                             <p className="font-semibold text-slate-900 group-hover:text-purple-700 dark:text-white dark:group-hover:text-purple-300">{item.name}</p>
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.section}</p>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{nomeSecao(item.section)}</p>
                           </Link>
                         );
                       })}
@@ -2046,7 +2048,7 @@ export function AppUI() {
           className="fixed z-[60] flex flex-col overflow-hidden rounded-[20px] border border-[var(--sl-border)] bg-[var(--sl-solid)] shadow-[var(--sl-shadow-lg)]"
         >
           <div className="flex items-center justify-between gap-2 border-b border-[var(--sl-border)] px-4 py-3">
-            <p className="truncate text-[15px] font-bold text-[var(--sl-text)]">{activeSection.section}</p>
+            <p className="truncate text-[15px] font-bold text-[var(--sl-text)]">{nomeSecao(activeSection.section)}</p>
             <button
               type="button"
               onClick={() => setOpenSection(null)}
@@ -2595,7 +2597,7 @@ export function AppUI() {
                             </div>
                             <div>
                               <p className="text-sm font-medium">{item.name}</p>
-                              <p className="text-xs text-slate-400">{item.section}</p>
+                              <p className="text-xs text-slate-400">{nomeSecao(item.section)}</p>
                             </div>
                           </Link>
                         );

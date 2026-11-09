@@ -1,3 +1,4 @@
+import { nomeSecao } from './nomeSecao';
 import type { CSSProperties } from 'react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
@@ -319,7 +320,7 @@ export function AppHome() {
           <section key={section.section} id={sectionAnchor(section.section)} className="mb-10 scroll-mt-4 max-sm:mb-7">
             <div className="mb-4 flex items-center gap-2">
               <LayoutGrid className="h-4 w-4 text-slate-400" />
-              <h2 className="text-base font-semibold text-slate-900 dark:text-white">{section.section}</h2>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">{nomeSecao(section.section)}</h2>
               <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 {section.items.length}
               </span>

@@ -1,3 +1,4 @@
+import { nomeSecao } from './nomeSecao';
 import { useState, type ComponentType } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
@@ -248,7 +249,7 @@ export function MobileBottomNav({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[15px] font-bold text-[var(--sl-text)]">{item.name}</span>
-            {item.section && <span className="block truncate text-[12.5px] text-[var(--sl-text-3)]">{item.section}</span>}
+            {item.section && <span className="block truncate text-[12.5px] text-[var(--sl-text-3)]">{nomeSecao(item.section)}</span>}
           </span>
         </Link>
         <button type="button" onClick={() => toggleFavoritePath(item.path)}
@@ -301,7 +302,7 @@ export function MobileBottomNav({
                       );
                     })()}
                     <div className="min-w-0">
-                      <h1 className="truncate text-[26px] font-extrabold leading-tight tracking-[-0.8px] text-[var(--sl-text)]">{moduloAberto.section}</h1>
+                      <h1 className="truncate text-[26px] font-extrabold leading-tight tracking-[-0.8px] text-[var(--sl-text)]">{nomeSecao(moduloAberto.section)}</h1>
                       <p className="text-[13px] text-[var(--sl-text-3)]">
                         {moduloAberto.items.length} {moduloAberto.items.length === 1 ? 'tela' : 'telas'} · toque no pin para fixar
                       </p>
@@ -357,7 +358,7 @@ export function MobileBottomNav({
                               <Icon className="h-5 w-5" strokeWidth={1.8} />
                             </span>
                             <span className="min-w-0">
-                              <span className="block truncate text-[15px] font-bold text-[var(--sl-text)]">{s.section}</span>
+                              <span className="block truncate text-[15px] font-bold text-[var(--sl-text)]">{nomeSecao(s.section)}</span>
                               <span className="block text-[12.5px] text-[var(--sl-text-3)]">{s.items.length} {s.items.length === 1 ? 'tela' : 'telas'}</span>
                             </span>
                           </button>

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 import {
-  AlertTriangle, Building2, CheckCircle2, ChevronDown, CircleDollarSign, Download, Eye, FilterX, Landmark, Loader2, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Upload, Users, X,
+  AlertTriangle, Building2, CheckCircle2, ChevronDown, CircleDollarSign, Download, Eye, FileText, FilterX, Landmark, Loader2, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Upload, Users, X,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { apiBase } from "../../lib/apiBase";
@@ -21,12 +21,12 @@ import {
 } from "../../components/app-ui/shared/FiltroColunas";
 
 type AbaSecretaria = "sec-cargo" | "sec-cpf" | "sec-protocolo" | "sec-ficha" | "sec-credencial" | "sec-arquivo";
-type Aba = "visao" | "inadimplentes" | "anuidades" | "lista-geral" | "por-igreja" | "jubilados" | "atualizar" | AbaSecretaria;
-type AbaConsulta = Exclude<Aba, "atualizar">;
+type Aba = "visao" | "inadimplentes" | "anuidades" | "lista-geral" | "por-igreja" | "jubilados" | "atualizar" | "documentos" | AbaSecretaria;
+type AbaConsulta = Exclude<Aba, "atualizar" | "documentos">;
 
 const TITULOS: Record<Aba, string> = {
   visao: "Visão geral", inadimplentes: "Ministros inadimplentes", anuidades: "Anuidades",
-  "lista-geral": "Anuidades (Lista geral)", "por-igreja": "Inadimplentes por igreja", jubilados: "Status de Ministro Jubilados", atualizar: "Atualizar dados",
+  "lista-geral": "Anuidades (Lista geral)", "por-igreja": "Inadimplentes por igreja", jubilados: "Status de Ministro Jubilados", atualizar: "Atualizar dados", documentos: "Modelos de documentos",
   "sec-cargo": "Lista Geral - Por Cargo / Igreja", "sec-cpf": "Lista Geral CPF - Por Cargo / Igreja", "sec-protocolo": "Lista de protocolo", "sec-ficha": "Ficha Cadastral Resumida", "sec-credencial": "Credencial Emitida por Membro", "sec-arquivo": "Controle de Processo do Arquivo Digital",
 };
 const TIPO_API: Record<AbaConsulta, string> = { visao: "por-ano", inadimplentes: "inadimplentes", anuidades: "anuidades", "lista-geral": "lista-geral", "por-igreja": "por-igreja", jubilados: "jubilados", "sec-cargo": "ministros", "sec-cpf": "ministros", "sec-protocolo": "ministros", "sec-ficha": "ministros", "sec-credencial": "ministros", "sec-arquivo": "ministros" };
@@ -43,6 +43,7 @@ const brl = (v: unknown) => Number(v || 0).toLocaleString("pt-BR", { style: "cur
 const COR_SITUACAO: Record<string, string> = {
   VIGENTE: "bg-emerald-100 text-emerald-700", VENCIDA: "bg-rose-100 text-rose-700", "SEM CREDENCIAL": "bg-slate-200 text-slate-600",
   Pago: "bg-emerald-100 text-emerald-700", "Não Pago": "bg-rose-100 text-rose-700", Isento: "bg-sky-100 text-sky-700", "Isento por idade": "bg-sky-100 text-sky-700", Cancelado: "bg-slate-200 text-slate-600",
+  Sim: "bg-emerald-100 text-emerald-700", Não: "bg-slate-200 text-slate-600",
   ATIVO: "bg-emerald-100 text-emerald-700", DESLIGADO: "bg-rose-100 text-rose-700", "AGUARDANDO ATIVACAO": "bg-amber-100 text-amber-700",
 };
 const SIGLA: Record<string, string> = { Pago: "PAGO", "Não Pago": "NPAG", Isento: "ISN", "Isento por idade": "ISN/ID", Cancelado: "CANC" };
@@ -598,6 +599,31 @@ function Atualizar() {
   );
 }
 
+/** Todos os modelos listados no sistema da convenção (ativos e não), com os mesmos nomes. */
+const MODELOS_DOCUMENTOS: Linha[] = ([
+  ["Igreja", "ATA REUNIAO", true], ["Execucao", "Comprovante", true], ["InscricaoEvento", "Comprovante de inscrição", true], ["Membro", "Ficha Cadastral", true], ["Receita", "Recibo", true], ["Receita", "Recibo", false], ["Debito", "Recibo de anuidade", true], ["Despesa", "Recibo de Despesa", true], ["ProcessoBatismo", "Senha", true], ["ProcessoConsagracao", "Senha Consagração", true], ["ProcessoConsagracao", "Senha QR Code v1", true], ["ProcessoConsagracao", "Senha QR Code v2", false], ["ProcessoConsagracao", "Senha QR Code2", false],
+] as Array<[string, string, boolean]>).map(([contexto, modelo, ativo]) => ({ contexto, modelo, ativo: ativo ? "Sim" : "Não" }));
+const COLS_MODELOS: Coluna[] = [textoCol("contexto", "Contexto", "minmax(180px,1fr)"), { ...textoCol("modelo", "Modelo", "minmax(260px,2fr)"), fixa: true }, seloCol("ativo", "Ativo", "120px")];
+const semAcento = (s: unknown) => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+function ModelosDocumentos() {
+  const [busca, setBusca] = useState("");
+  const linhas = useMemo(() => MODELOS_DOCUMENTOS.filter((l) => semAcento(l.modelo).includes(semAcento(busca.trim()))), [busca]);
+  const tabela = useTabelaColunas<Linha>({ chave: "conamad.documentos", colunas: COLS_MODELOS, linhas });
+  return (
+    <Pagina aba="documentos" secao="Conamad · Documento">
+      <div className="flex flex-wrap items-stretch gap-3">
+        <div className="relative min-w-0 flex-[1_1_380px]">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
+          <input type="text" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtre pelo nome" className="h-full min-h-[52px] w-full rounded-2xl border-[1.5px] border-slate-200 bg-white pl-12 pr-3.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
+        </div>
+        <Cartoes carregou itens={[{ rotulo: "Modelos", valor: tabela.linhas.length, icone: FileText, ...CINZA }, { rotulo: "Ativos", valor: tabela.linhas.filter((l) => l.ativo === "Sim").length, icone: CheckCircle2, ...VERDE }]} />
+      </div>
+      <TabelaPadrao tabela={tabela} colunas={COLS_MODELOS} carregou nomeItens="modelos" />
+    </Pagina>
+  );
+}
+
 const RELATORIOS_TESOURARIA: Array<{ aba: AbaConsulta; nome: string }> = [
   { aba: "lista-geral", nome: "Anuidades (Lista geral)" },
   { aba: "por-igreja", nome: "Inadimplentes por igreja" },
@@ -651,12 +677,13 @@ function Relatorios({ modulo }: { modulo: "secretaria" | "tesouraria" }) {
 
 function abaDoCaminho(caminho: string): Aba {
   const fim = caminho.replace(/\/+$/, "").split("/").pop();
-  return fim === "inadimplentes" || fim === "anuidades" || fim === "lista-geral" || fim === "por-igreja" || fim === "jubilados" || fim === "atualizar" ? fim : "visao";
+  return fim === "inadimplentes" || fim === "anuidades" || fim === "lista-geral" || fim === "por-igreja" || fim === "jubilados" || fim === "atualizar" || fim === "documentos" ? fim : "visao";
 }
 
 export default function Conamad() {
   const caminho = useLocation().pathname;
   const aba = abaDoCaminho(caminho);
   if (caminho.includes("/conamad/relatorios/")) return <Relatorios key={caminho} modulo={caminho.endsWith("secretaria") ? "secretaria" : "tesouraria"} />;
+  if (aba === "documentos") return <ModelosDocumentos />;
   return aba === "atualizar" ? <Atualizar /> : <Consulta key={aba} aba={aba} />;
 }
