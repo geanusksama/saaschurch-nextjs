@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
+import { RastreadorSite } from "@/components/pwa/RastreadorSite";
 import { loadHomeConfigForMetadata } from "@/lib/homeMetadata";
 import { NOME_PLATAFORMA, NOME_PLATAFORMA_CURTO } from "@/lib/homeConfig";
 
@@ -76,6 +77,8 @@ export default function RootLayout({
       <body suppressHydrationWarning className="min-h-full bg-background text-foreground">
         {children}
         <ServiceWorkerRegister />
+        {/* páginas vistas e cliques do site público (painel: Sistema → Rastreador do site) */}
+        <RastreadorSite />
       </body>
     </html>
   );

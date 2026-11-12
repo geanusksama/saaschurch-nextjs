@@ -161,6 +161,7 @@ import { Birthdays } from "../components/app-ui/Birthdays";
 import { ConfigurationCenter } from "../components/app-ui/ConfigurationCenter";
 import AiSettings from "../components/app-ui/AiSettings";
 import ElevenLabsConfig from "../components/app-ui/system/ElevenLabsConfig";
+import RastreadorSitePainel from "../components/app-ui/system/RastreadorSitePainel";
 import AiAssistants from "../app-ui/finance/AiAssistants";
 import LookupCrud from "../app-ui/system/LookupCrud";
 import { FinanceCashFlow } from "../components/app-ui/FinanceCashFlow";
@@ -631,6 +632,7 @@ export const router = createBrowserRouter([
       { path: "system/integrations", Component: Integrations },
       { path: "system/webhooks", Component: Webhooks },
       { path: "system/elevenlabs", Component: ElevenLabsConfig },
+      { path: "system/rastreador-site", Component: RastreadorSitePainel },
       { path: "system/api", Component: Api },
       { path: "system/import", Component: Import },
       { path: "system/export", Component: Export },

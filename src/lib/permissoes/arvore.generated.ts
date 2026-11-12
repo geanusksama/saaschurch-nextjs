@@ -2868,6 +2868,18 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/system/Webhooks.tsx"
   },
   {
+    "chave": "site_rastreio.rastreador_site.exportar",
+    "rotulo": "Exportar Excel — Rastreador do site",
+    "herda": "site_rastreio.view",
+    "arquivo": "src/components/app-ui/system/RastreadorSitePainel.tsx"
+  },
+  {
+    "chave": "site_rastreio.rastreador_site.imprimir",
+    "rotulo": "Imprimir — Rastreador do site",
+    "herda": "site_rastreio.view",
+    "arquivo": "src/components/app-ui/system/RastreadorSitePainel.tsx"
+  },
+  {
     "chave": "spreadsheets.spreadsheet.excluir",
     "rotulo": "Excluir — Spreadsheet",
     "herda": "spreadsheets.view",

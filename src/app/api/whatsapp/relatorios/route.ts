@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/auth'
 import { exigirPermissao } from '@/lib/permissoes/servidor'
 import { getAccessibleInstanceIds } from '@/lib/whatsappSendService'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { analisarPeriodo, montarRelatorio, resumirConversa } from '@/lib/relatorioAtendimento'
+import { analisarPeriodo, lerFiltros, montarRelatorio, resumirConversa } from '@/lib/relatorioAtendimento'
 
 /**
  * Relatórios do atendimento do agente de IA (Caixa do WhatsApp → Relatórios).
@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
     const rel = await montarRelatorio({
       ...p,
       departamento: sp.get('departamento') || null,
+      filtros: lerFiltros(sp.get('filtros')),
       campoId: user.campoId || null,
       instancias: await getAccessibleInstanceIds(String(user.id), user.profileType),
     })
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
         const p = periodo(body.de, body.ate)
         if (!p) return json({ error: 'Período inválido.' }, 400)
         const departamento = typeof body.departamento === 'string' && body.departamento ? body.departamento : null
-        const rel = await montarRelatorio({ ...p, departamento, campoId, instancias })
+        const rel = await montarRelatorio({ ...p, departamento, campoId, instancias, filtros: lerFiltros(body.filtros) })
         if (!rel.conversas.length) return json({ analise: 'Nenhum atendimento no período escolhido.' })
         return json({ analise: await analisarPeriodo(rel, departamento, campoId) })
       }

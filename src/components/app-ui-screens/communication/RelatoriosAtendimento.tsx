@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   BarChart3, Bot, ChevronDown, ChevronRight, Copy, Download, Loader2, Lock, MessageCircle, Mic, Printer, Sparkles,
-  Users, Church, HeartHandshake, Home, CalendarCheck, UserPlus, HandHelping, X,
+  Users, Church, HeartHandshake, Home, CalendarCheck, UserPlus, HandHelping, X, SlidersHorizontal,
 } from 'lucide-react'
 import {
   Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend,
@@ -21,6 +21,10 @@ import { toast } from 'sonner'
 import { apiBase } from '../../../lib/apiBase'
 import { Permissao } from '../../../lib/permissoes/Permissao'
 import { BotaoBuscar, AvisoDefinaFiltros } from '../../app-ui/BotaoBuscar'
+import { imprimirSecoes, type Secao } from '../../app-ui/relatorios/TabelaRelatorio'
+import { useSaidaRelatorio, type ColunaSaida } from '../../app-ui/relatorios/SaidaRelatorio'
+import { OpcoesMarcaveis } from '../../app-ui/shared/FiltroColunas'
+import type { FiltrosConversa } from '@/lib/relatorioAtendimento'
 import type { Relatorio, ConversaRelatorio, Contagem } from '@/lib/relatorioAtendimento'
 
 function cabecalhos(): Record<string, string> {
@@ -41,6 +45,23 @@ const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 // paleta categórica (mesma ordem em todos os gráficos)
 const CORES = ['#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#0ea5e9', '#ec4899', '#84cc16', '#64748b', '#14b8a6', '#a855f7']
 const COR_SEXO: Record<string, string> = { Homens: '#0ea5e9', Mulheres: '#ec4899', 'Não informado': '#94a3b8' }
+
+// filtros pelo que a análise das conversas encontrou (sim/nao/nd = sim, não, não informado)
+const SIM_NAO = [{ valor: 'sim', rotulo: 'Sim' }, { valor: 'nao', rotulo: 'Não' }, { valor: 'nd', rotulo: 'Não informado' }]
+const opc = (xs: string[]) => xs.map(x => ({ valor: x, rotulo: x }))
+const ROTULO_FILTRO: Record<keyof FiltrosConversa, string> = {
+  sexo: 'Sexo', faixaEtaria: 'Faixa etária', tempo: 'Tempo na Sede', jaAbordado: 'Já foi abordado', conheceGF: 'Conhece GF',
+  outraIgreja: 'Veio de outra igreja', categoria: 'Tipo de atendimento', origem: 'Origem', querVisita: 'Quer visita',
+  oracao: 'Pedido de oração', audio: 'Falou por áudio', gf: 'GF de interesse',
+}
+const ROTULO_SN: Record<string, string> = { sim: 'Sim', nao: 'Não', nd: 'Não informado' }
+
+type Aba = 'geral' | 'perfil' | 'departamentos' | 'teor' | 'conversas' | 'ia'
+const ABAS: Array<[Aba, string]> = [
+  ['geral', 'Visão geral'], ['perfil', 'Perfil das pessoas'], ['departamentos', 'Departamentos e GF'],
+  ['teor', 'Teor e tipo'], ['conversas', 'Conversas'], ['ia', 'Relatório da IA'],
+]
+const tabela = (titulo: string, rotuloCol: string, itens: Contagem[]): Secao => ({ titulo, colunas: [rotuloCol, 'Pessoas'], linhas: itens.map(i => [i.rotulo, i.total]) })
 
 /** O que está aberto na janela de detalhe: título + quais conversas entram. */
 interface Detalhe { titulo: string; filtro: (c: ConversaRelatorio) => boolean }
@@ -128,37 +149,19 @@ const COLUNAS: Array<[string, (c: ConversaRelatorio) => string]> = [
   ['Tempo na Sede', c => c.tempoNaSede],
   ['Já abordado', c => simNao(c.jaFoiAbordado)],
   ['Departamentos', c => c.interesses.join(', ')],
+  ['Responsáveis', c => c.responsaveis.map(r => `${r.area}: ${r.nomes.join(', ') || 'sem responsável cadastrado'}`).join(' | ')],
   ['GF', c => c.gfs.join(', ')],
   ['Quer visita', c => simNao(c.querVisita)],
   ['Bairro', c => c.bairro],
 ]
 
-function exportarCsv(titulo: string, lista: ConversaRelatorio[]) {
-  const esc = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`
-  const linhas = [COLUNAS.map(([h]) => esc(h)).join(';'), ...lista.map(c => COLUNAS.map(([, f]) => esc(f(c))).join(';'))]
-  // BOM: o Excel abre com acentos corretos
-  const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `relatorio-whatsapp-${norm(titulo).replace(/[^a-z0-9]+/g, '-')}.csv`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-}
-
-function imprimir(titulo: string, periodo: string, lista: ConversaRelatorio[]) {
-  const esc = (v: string) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const w = window.open('', '_blank')
-  if (!w) { toast.error('O navegador bloqueou a janela de impressão.'); return }
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(titulo)}</title>
-<style>body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:24px}h1{font-size:16px;margin:0}p{color:#555;margin:4px 0 12px}
-table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}th{background:#f1f5f9}
-@page{size:landscape;margin:12mm}</style></head><body>
-<h1>${esc(titulo)}</h1><p>Atendimento pelo WhatsApp — ${esc(periodo)} — ${lista.length} conversa(s)</p>
-<table><thead><tr>${COLUNAS.map(([h]) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
-<tbody>${lista.map(c => `<tr>${COLUNAS.map(([, f]) => `<td>${esc(f(c))}</td>`).join('')}</tr>`).join('')}</tbody></table>
-<script>window.onload=()=>{window.print()}</script></body></html>`)
-  w.document.close()
-}
+/** Colunas no modelo do sistema (PrintModal escolhe quais imprimir). */
+const OCULTAS = new Set(['Telefone', 'Faixa etária', 'Bairro', 'Quer visita'])
+const COLUNAS_SAIDA: ColunaSaida<ConversaRelatorio>[] = COLUNAS.map(([rotulo, f]) => ({
+  id: rotulo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+  rotulo, texto: f, oculta: OCULTAS.has(rotulo),
+}))
+const GRUPOS_SAIDA = ['origem', 'tipo', 'sexo', 'tempo_na_sede', 'ja_abordado', 'departamentos', 'faixa_etaria']
 
 // ── Tela ─────────────────────────────────────────────────────────────────────
 
@@ -176,6 +179,12 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
   const [analise, setAnalise] = useState('')
   const [analisando, setAnalisando] = useState(false)
   const [detalhe, setDetalhe] = useState<Detalhe | null>(null)
+  const [depBuscado, setDepBuscado] = useState('')
+  const [filtros, setFiltros] = useState<FiltrosConversa>({})
+  const [painelFiltros, setPainelFiltros] = useState(false)
+  const qtdFiltros = Object.values(filtros).filter(v => v?.length).length
+  const marcar = (k: keyof FiltrosConversa) => (v: string[] | null) => setFiltros(f => ({ ...f, [k]: v ?? undefined }))
+  const [aba, setAba] = useState<Aba>('geral')
   // a IA analisa as conversas aos poucos: enquanto houver pendentes, busca de novo
   const repeticoes = useRef(0)
 
@@ -189,11 +198,12 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
     if (!continuacao) repeticoes.current = 0
     setBuscando(true); if (!continuacao) setAnalise('')
     try {
-      const sp = new URLSearchParams({ de, ate, ...(departamento ? { departamento } : {}) })
+      const sp = new URLSearchParams({ de, ate, ...(departamento ? { departamento } : {}), ...(qtdFiltros ? { filtros: JSON.stringify(filtros) } : {}) })
       const r = await fetch(`${apiBase}/whatsapp/relatorios?${sp}`, { headers: cabecalhos(), cache: 'no-store' })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Falha ao buscar')
       setRel(d)
+      setDepBuscado(departamento)
       setDepartamentos(d.departamentos ?? [])
       if (!continuacao) setAbertas(new Set())
     } catch (e) {
@@ -217,7 +227,7 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
     try {
       const r = await fetch(`${apiBase}/whatsapp/relatorios`, {
         method: 'POST', headers: cabecalhos(), cache: 'no-store',
-        body: JSON.stringify({ acao: 'analise', de, ate, departamento }),
+        body: JSON.stringify({ acao: 'analise', de, ate, departamento, filtros }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Falha ao gerar')
@@ -260,8 +270,54 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
 
   const porDia = useMemo(() => (rel?.porDia ?? []).map(d => ({ dia: d.rotulo, rotulo: dataBr(d.rotulo).slice(0, 5), total: d.total })), [rel])
   const listaDetalhe = useMemo(() => (detalhe && rel ? rel.conversas.filter(detalhe.filtro) : []), [detalhe, rel])
-  const periodoTxt = `${dataBr(de)} a ${dataBr(ate)}${departamento ? ` — ${departamento}` : ''}`
+  // período da ÚLTIMA busca (não o que está digitado no filtro agora)
+  const periodoBuscado = rel ? `${dataBr(rel.periodo.de)} a ${dataBr(rel.periodo.ate)}${depBuscado ? ` — ${depBuscado}` : ''}` : ''
+  const saidaDetalhe = useSaidaRelatorio({
+    titulo: detalhe ? `WhatsApp — ${detalhe.titulo}` : 'WhatsApp', subtitulo: periodoBuscado,
+    colunas: COLUNAS_SAIDA, linhas: listaDetalhe, grupos: GRUPOS_SAIDA, ordemPadrao: 'inicio',
+  })
+  const saidaConversas = useSaidaRelatorio({
+    titulo: 'WhatsApp — Conversas do período', subtitulo: periodoBuscado,
+    colunas: COLUNAS_SAIDA, linhas: rel?.conversas ?? [], grupos: GRUPOS_SAIDA, ordemPadrao: 'inicio',
+  })
   const t = rel?.totais
+
+  /** O que cada aba imprime. */
+  const secoes = useMemo((): Record<Aba, Secao[]> | null => {
+    if (!rel) return null
+    const k = rel.totais
+    return {
+      geral: [
+        { titulo: 'Resumo', colunas: ['Indicador', 'Quantidade'], linhas: [
+          ['Atendimentos', k.conversas], ['Pelo QR / site', k.viaQr], ['Com agente de IA', k.comAgente],
+          ['De outra igreja', k.deOutraIgreja], ['Sem igreja anterior', k.semIgrejaAnterior], ['Já abordados', k.jaAbordados],
+          ['Ninguém abordou', k.naoAbordados], ['Interesse em GF', k.encaminhadosGF], ['Não conheciam GF', k.naoConhecemGF],
+          ['Querem visita', k.querVisita], ['Quero ser Membro', k.queroSerMembro], ['Pedidos de oração', k.pedidosOracao],
+          ['Pediram atendimento humano', k.pediuHumano], ['Falaram por áudio', k.comAudio], ['Assuntos reservados', k.reservados],
+        ] },
+        { titulo: 'Atendimentos por dia', colunas: ['Dia', 'Atendimentos'], linhas: rel.porDia.map(d => [dataBr(d.rotulo), d.total]) },
+      ],
+      perfil: [
+        tabela('Homens e mulheres', 'Sexo', rel.porSexo), tabela('Faixa etária', 'Faixa', rel.porFaixaEtaria),
+        tabela('Tempo na Sede', 'Tempo', rel.porTempoNaSede),
+      ],
+      departamentos: [tabela('Interesse por departamento', 'Departamento', rel.porDepartamento), tabela('Grupos Familiares', 'GF', rel.porGf)],
+      teor: [tabela('Tipo de atendimento', 'Tipo', rel.porCategoria), tabela('Teor das conversas', 'Assunto', rel.porAssunto)],
+      conversas: [{ titulo: 'Conversas do período', colunas: COLUNAS.map(([h]) => h), linhas: rel.conversas.map(c => COLUNAS.map(([, f]) => f(c))) }],
+      ia: [],
+    }
+  }, [rel])
+
+  const imprimirAba = () => {
+    if (!secoes) return
+    const nome = ABAS.find(([k]) => k === aba)?.[1] ?? ''
+    imprimirSecoes(`Relatório do WhatsApp — ${nome}`, periodoBuscado, secoes[aba], aba === 'ia' ? analise || 'Gere o relatório da IA antes de imprimir.' : undefined)
+  }
+  const imprimirTudo = () => {
+    if (!secoes) return
+    imprimirSecoes('Relatório do WhatsApp — completo', periodoBuscado, ABAS.flatMap(([k]) => secoes[k]), analise || undefined)
+  }
+
   const inputCls = 'rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm'
 
   return (
@@ -281,8 +337,65 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
           <button type="button" onClick={() => atalho('mes')} className="px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Este mês</button>
           <button type="button" onClick={() => atalho(30)} className="px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">30 dias</button>
         </div>
-        <div className="ml-auto"><BotaoBuscar onClick={() => buscar()} buscando={buscando} /></div>
+        <div className="ml-auto flex gap-2">
+          <button type="button" onClick={() => setPainelFiltros(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-600 px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700">
+            <SlidersHorizontal className="h-4 w-4" /> Filtros{qtdFiltros ? ` (${qtdFiltros})` : ''}
+          </button>
+          <BotaoBuscar onClick={() => { setPainelFiltros(false); void buscar() }} buscando={buscando} />
+        </div>
+        {qtdFiltros > 0 && (
+          <div className="w-full flex flex-wrap items-center gap-1.5 pt-1">
+            {(Object.keys(filtros) as Array<keyof FiltrosConversa>).filter(k => filtros[k]?.length).map(k => (
+              <span key={k} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900">
+                <strong>{ROTULO_FILTRO[k]}:</strong> {filtros[k]!.map(v => ROTULO_SN[v] ?? v).join(', ')}
+                <button type="button" title="Tirar este filtro" onClick={() => marcar(k)(null)} className="ml-0.5 hover:text-purple-900"><X className="h-3 w-3" /></button>
+              </span>
+            ))}
+            <button type="button" onClick={() => setFiltros({})} className="text-xs text-slate-500 underline">Limpar filtros</button>
+            <span className="text-xs text-slate-400">— clique em Buscar para aplicar</span>
+          </div>
+        )}
       </div>
+
+      {/* Painel de filtros (mesmo padrão do Conamad) */}
+      {painelFiltros && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setPainelFiltros(false)} />
+          <aside className="relative flex h-full w-[min(460px,100%)] flex-col bg-white shadow-2xl dark:bg-slate-800">
+            <div className="flex items-center gap-3.5 border-b border-slate-100 px-5 py-5 dark:border-slate-700">
+              <span className="grid h-11 w-11 flex-none place-items-center rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-900"><SlidersHorizontal className="h-5 w-5" /></span>
+              <div className="flex flex-1 flex-col"><span className="text-lg font-extrabold">Filtros</span><span className="text-[13px] text-slate-500">Tudo o que foi visto nas conversas</span></div>
+              <button type="button" onClick={() => setPainelFiltros(false)} aria-label="Fechar" className="grid h-10 w-10 place-items-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5 text-sm">
+              {([
+                ['sexo', opc(['Homens', 'Mulheres', 'Não informado'])],
+                ['faixaEtaria', opc(rel?.opcoes.faixaEtaria.length ? rel.opcoes.faixaEtaria : ['adolescente', 'jovem', 'adulto', 'idoso', 'Não informado'])],
+                ['jaAbordado', SIM_NAO],
+                ['tempo', opc(['Primeira vez', 'Menos de 1 mês', '1 a 11 meses', '1 ano ou mais', 'Não informado'])],
+                ['outraIgreja', SIM_NAO],
+                ['conheceGF', SIM_NAO],
+                ['querVisita', SIM_NAO],
+                ['oracao', SIM_NAO.slice(0, 2)],
+                ['audio', SIM_NAO.slice(0, 2)],
+                ['categoria', opc(rel?.opcoes.categoria.length ? rel.opcoes.categoria : ['Visita', 'Quero ser Membro', 'Pedido de oração', 'Informação', 'Departamento / GF', 'Aconselhamento', 'Outro'])],
+                ['origem', opc(rel?.opcoes.origem.length ? rel.opcoes.origem : ['QR / site', 'Agente de IA', 'Equipe'])],
+                ...(rel?.opcoes.gf.length ? [['gf', opc(rel.opcoes.gf)] as const] : []),
+              ] as Array<readonly [keyof FiltrosConversa, Array<{ valor: string; rotulo: string }>]>).map(([k, opcoes]) => (
+                <section key={k}>
+                  <h5 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">{ROTULO_FILTRO[k]}</h5>
+                  <OpcoesMarcaveis opcoes={opcoes} selecionados={filtros[k] ?? null} onChange={marcar(k)} />
+                </section>
+              ))}
+            </div>
+            <div className="flex gap-2 border-t border-slate-100 p-4 dark:border-slate-700">
+              <button type="button" onClick={() => setFiltros({})} className="h-11 flex-1 rounded-xl border border-slate-200 text-sm font-semibold dark:border-slate-600">Limpar</button>
+              <button type="button" onClick={() => { setPainelFiltros(false); void buscar() }} className="h-11 flex-1 rounded-xl bg-slate-900 text-sm font-semibold text-white dark:bg-white dark:text-slate-900">Buscar</button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {!rel ? (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700"><AvisoDefinaFiltros /></div>
@@ -296,8 +409,28 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
           {rel.aviso && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">{rel.aviso}</div>
           )}
-          <p className="text-xs text-slate-500">Clique em um indicador ou em qualquer parte dos gráficos para ver a lista, exportar ou imprimir.</p>
+          {/* Abas do relatório — cada uma imprime o seu conteúdo */}
+          <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 dark:border-slate-700">
+            {ABAS.map(([k, rotulo]) => (
+              <button key={k} type="button" onClick={() => setAba(k)}
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 ${aba === k ? 'border-purple-600 text-purple-700 dark:text-purple-300' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                {rotulo}
+              </button>
+            ))}
+            <div className="ml-auto flex gap-2 pb-1">
+              <Permissao chave="whatsapp_inbox.whats_app_inbox.relatorios_imprimir" rotulo="Imprimir relatório — Whats App Inbox" herda="whatsapp_inbox.whats_app_inbox.relatorios">
+                <button type="button" onClick={imprimirAba} className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 flex items-center gap-1"><Printer className="w-3.5 h-3.5" /> Imprimir esta aba</button>
+              </Permissao>
+              <Permissao chave="whatsapp_inbox.whats_app_inbox.relatorios_imprimir" rotulo="Imprimir relatório — Whats App Inbox" herda="whatsapp_inbox.whats_app_inbox.relatorios">
+                <button type="button" onClick={imprimirTudo} className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 flex items-center gap-1"><Printer className="w-3.5 h-3.5" /> Imprimir tudo</button>
+              </Permissao>
+            </div>
+          </div>
+          {aba !== 'conversas' && aba !== 'ia' && (
+            <p className="text-xs text-slate-500">Clique em um indicador ou em qualquer parte dos gráficos para ver a lista, exportar ou imprimir.</p>
+          )}
 
+          {aba === 'geral' && (<>
           {/* Indicadores (clicáveis) */}
           <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3">
             <Kpi icone={MessageCircle} rotulo="Atendimentos" valor={t!.conversas} detalhe={`${t!.viaQr} pelo QR / site · ${t!.comAgente} com agente`} onClick={() => abrir('Todos os atendimentos', () => true)} />
@@ -314,9 +447,8 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
             <Kpi icone={Lock} rotulo="Assuntos reservados" valor={t!.reservados} detalhe="só a contagem" />
           </div>
 
-          {/* Gráficos */}
           <div className="grid lg:grid-cols-3 gap-3">
-            <Cartao titulo="Atendimentos por dia" icone={BarChart3} className="lg:col-span-2">
+            <Cartao titulo="Atendimentos por dia" icone={BarChart3} className="lg:col-span-3">
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={porDia} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}
@@ -333,11 +465,13 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
                 </ResponsiveContainer>
               </div>
             </Cartao>
+          </div>
+          </>)}
+
+          {aba === 'perfil' && (
+          <div className="grid lg:grid-cols-3 gap-3">
             <Cartao titulo="Homens e mulheres">
               <Pizza itens={rel.porSexo} cores={COR_SEXO} onClick={r => abrir(r, c => !c.reservado && rotuloSexo(c.sexo) === r)} />
-            </Cartao>
-            <Cartao titulo="Tipo de atendimento">
-              <Pizza itens={rel.porCategoria} onClick={r => abrir(`Tipo: ${r}`, c => (c.categoria || 'Aguardando análise') === r)} />
             </Cartao>
             <Cartao titulo="Tempo na Sede">
               <Barras itens={rel.porTempoNaSede} cor="#10b981" onClick={r => abrir(`Tempo na Sede: ${r}`, c => !c.reservado && c.faixaTempo === r)} />
@@ -345,18 +479,33 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
             <Cartao titulo="Faixa etária">
               <Pizza itens={rel.porFaixaEtaria} onClick={r => abrir(`Faixa etária: ${r}`, c => !c.reservado && (c.faixaEtaria || 'Não informado') === r)} />
             </Cartao>
+          </div>
+          )}
+
+          {aba === 'departamentos' && (
+          <div className="grid lg:grid-cols-3 gap-3">
             <Cartao titulo="Interesse por departamento" className="lg:col-span-2">
               <Barras itens={rel.porDepartamento} onClick={r => abrir(`Departamento: ${r}`, c => !c.reservado && temArea(c, r))} />
             </Cartao>
             <Cartao titulo="Grupos Familiares">
               <Barras itens={rel.porGf} cor="#f59e0b" onClick={r => abrir(`GF ${r}`, c => c.gfs.includes(r))} />
             </Cartao>
-            <Cartao titulo="Teor das conversas" className="lg:col-span-3">
+          </div>
+          )}
+
+          {aba === 'teor' && (
+          <div className="grid lg:grid-cols-3 gap-3">
+            <Cartao titulo="Tipo de atendimento">
+              <Pizza itens={rel.porCategoria} onClick={r => abrir(`Tipo: ${r}`, c => (c.categoria || 'Aguardando análise') === r)} />
+            </Cartao>
+            <Cartao titulo="Teor das conversas" className="lg:col-span-2">
               <Barras itens={rel.porAssunto} cor="#0ea5e9" onClick={r => abrir(`Assunto: ${r}`, c => !c.reservado && (c.assunto || 'Não identificado') === r)} />
             </Cartao>
           </div>
+          )}
 
           {/* Relatório da IA */}
+          {aba === 'ia' && (
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -380,11 +529,23 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
               ? <pre className="mt-3 whitespace-pre-wrap font-sans text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{analise}</pre>
               : <p className="mt-2 text-xs text-slate-500">A IA analisa os atendimentos do período (sem nomes e sem assuntos reservados) e escreve o relatório para a liderança.</p>}
           </div>
+          )}
 
           {/* Conversas */}
+          {aba === 'conversas' && (
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
             <div className="p-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-700">
               <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Conversas do período ({rel.conversas.length})</h4>
+              <div className="ml-auto mr-2 flex gap-2">
+                <Permissao chave="whatsapp_inbox.whats_app_inbox.relatorios_imprimir" rotulo="Imprimir relatório — Whats App Inbox" herda="whatsapp_inbox.whats_app_inbox.relatorios">
+                  <button type="button" onClick={saidaConversas.abrirImpressao} disabled={!rel.conversas.length} title="Escolha colunas, ordem e agrupamento"
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 flex items-center gap-1 disabled:opacity-50"><Printer className="w-3.5 h-3.5" /> Imprimir (escolher colunas)</button>
+                </Permissao>
+                <Permissao chave="whatsapp_inbox.whats_app_inbox.relatorios_exportar" rotulo="Exportar relatório — Whats App Inbox" herda="whatsapp_inbox.whats_app_inbox.relatorios">
+                  <button type="button" onClick={saidaConversas.exportarExcel} disabled={!rel.conversas.length}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 flex items-center gap-1 disabled:opacity-50"><Download className="w-3.5 h-3.5" /> Exportar Excel</button>
+                </Permissao>
+              </div>
               <div className="flex text-xs rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden">
                 <button type="button" onClick={() => setExpandidas(false)} className={`px-3 py-1.5 ${!expandidas ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : ''}`}>Resumidas</button>
                 <button type="button" onClick={() => setExpandidas(true)} className={`px-3 py-1.5 ${expandidas ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : ''}`}>Expandidas</button>
@@ -405,8 +566,17 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
                           {c.audios > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 flex items-center gap-0.5"><Mic className="w-3 h-3" />{c.audios}</span>}
                         </div>
                         <div className="text-xs text-slate-500 truncate">
-                          {c.reservado ? 'Visível só para o pastor responsável' : [c.categoria, c.assunto, ...c.interesses, ...c.gfs.map(g => `GF ${g}`)].filter(Boolean).join(' · ') || (c.analisada ? 'Sem informações' : 'Aguardando análise da IA')}
+                          {c.reservado ? 'Visível só para o pastor responsável' : [c.categoria, c.assunto].filter(Boolean).join(' · ') || (c.analisada ? 'Sem informações' : 'Aguardando análise da IA')}
                         </div>
+                        {!c.reservado && c.responsaveis.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {c.responsaveis.map(r => (
+                              <span key={r.area} className="text-[11px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-100 dark:border-purple-900">
+                                <strong className="font-semibold">{r.area}</strong>{' — '}{r.nomes.length ? r.nomes.join(', ') : 'sem responsável cadastrado'}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <span className="text-[11px] text-slate-400 shrink-0">{c.origem}</span>
                     </button>
@@ -422,6 +592,7 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
                           <Campo rotulo="GF" valor={c.gfs.join(', ')} />
                           <Campo rotulo="Departamentos" valor={c.interesses.join(', ')} />
                           <Campo rotulo="Encaminhado a" valor={c.encaminhados.join(', ')} />
+                          <Campo rotulo="Responsáveis" valor={c.responsaveis.map(r => `${r.area}: ${r.nomes.join(', ') || '—'}`).join(' · ')} />
                           <Campo rotulo="Faixa etária" valor={c.faixaEtaria} />
                           <Campo rotulo="Perfil" valor={c.perfil} />
                           <Campo rotulo="Bairro" valor={c.bairro} />
@@ -452,6 +623,7 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
               })}
             </ul>
           </div>
+          )}
         </>
       )}
 
@@ -462,16 +634,16 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex flex-wrap items-center gap-2">
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">{detalhe.titulo}</h3>
-                <p className="text-xs text-slate-500">{periodoTxt} · {listaDetalhe.length} conversa(s)</p>
+                <p className="text-xs text-slate-500">{periodoBuscado} · {listaDetalhe.length} conversa(s)</p>
               </div>
               <Permissao chave="whatsapp_inbox.whats_app_inbox.relatorios_exportar" rotulo="Exportar relatório — Whats App Inbox" herda="whatsapp_inbox.whats_app_inbox.relatorios">
-                <button type="button" onClick={() => exportarCsv(detalhe.titulo, listaDetalhe)} disabled={!listaDetalhe.length}
+                <button type="button" onClick={saidaDetalhe.exportarExcel} disabled={!listaDetalhe.length}
                   className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 flex items-center gap-1 disabled:opacity-50">
                   <Download className="w-3.5 h-3.5" /> Exportar Excel
                 </button>
               </Permissao>
               <Permissao chave="whatsapp_inbox.whats_app_inbox.relatorios_imprimir" rotulo="Imprimir relatório — Whats App Inbox" herda="whatsapp_inbox.whats_app_inbox.relatorios">
-                <button type="button" onClick={() => imprimir(detalhe.titulo, periodoTxt, listaDetalhe)} disabled={!listaDetalhe.length}
+                <button type="button" onClick={saidaDetalhe.abrirImpressao} disabled={!listaDetalhe.length}
                   className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 flex items-center gap-1 disabled:opacity-50">
                   <Printer className="w-3.5 h-3.5" /> Imprimir
                 </button>
@@ -498,6 +670,8 @@ export default function RelatoriosAtendimento({ onAbrirConversa }: { onAbrirConv
           </div>
         </div>
       )}
+      {saidaDetalhe.modal}
+      {saidaConversas.modal}
     </div>
   )
 }

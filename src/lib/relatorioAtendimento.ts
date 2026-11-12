@@ -39,6 +39,60 @@ export interface FiltroRelatorio {
   instancias: Set<string> | null
   /** false = só lê o que já foi analisado (relatório da IA, testes) */
   analisar?: boolean
+  /** filtros do painel (valores marcados; vazio = todos) */
+  filtros?: FiltrosConversa
+}
+
+/**
+ * Filtros pelo que a análise das conversas encontrou. sim/nao/nd = sim, não,
+ * não informado. Aplicados ANTES de contar: indicadores, gráficos, lista e
+ * impressão saem todos filtrados.
+ */
+export interface FiltrosConversa {
+  sexo?: string[]
+  faixaEtaria?: string[]
+  tempo?: string[]
+  jaAbordado?: string[]
+  conheceGF?: string[]
+  outraIgreja?: string[]
+  categoria?: string[]
+  origem?: string[]
+  querVisita?: string[]
+  oracao?: string[]
+  audio?: string[]
+  gf?: string[]
+}
+
+export const CHAVES_FILTRO: Array<keyof FiltrosConversa> = ['sexo', 'faixaEtaria', 'tempo', 'jaAbordado', 'conheceGF', 'outraIgreja', 'categoria', 'origem', 'querVisita', 'oracao', 'audio', 'gf']
+
+/** Lê os filtros vindos da tela (JSON), só com chaves e textos conhecidos. */
+export function lerFiltros(v: unknown): FiltrosConversa {
+  let o: Record<string, unknown> = {}
+  try { o = (typeof v === 'string' ? JSON.parse(v) : v) as Record<string, unknown> ?? {} } catch { o = {} }
+  const f: FiltrosConversa = {}
+  for (const k of CHAVES_FILTRO) {
+    const lista = Array.isArray(o?.[k]) ? (o[k] as unknown[]).map(x => String(x).slice(0, 80)).filter(Boolean).slice(0, 30) : []
+    if (lista.length) f[k] = lista
+  }
+  return f
+}
+
+const sn = (b: boolean | null | undefined) => (b === true ? 'sim' : b === false ? 'nao' : 'nd')
+
+export function passaNosFiltros(l: ConversaRelatorio, fl: FiltrosConversa): boolean {
+  const casa = (lista: string[] | undefined, v: string) => !lista?.length || lista.includes(v)
+  return casa(fl.sexo, rotuloSexo(l.sexo)) &&
+    casa(fl.faixaEtaria, l.faixaEtaria || 'Não informado') &&
+    casa(fl.tempo, l.faixaTempo) &&
+    casa(fl.jaAbordado, sn(l.jaFoiAbordado)) &&
+    casa(fl.conheceGF, sn(l.conheceGF)) &&
+    casa(fl.outraIgreja, sn(veioDeOutraIgreja(l.igrejaAnterior))) &&
+    casa(fl.categoria, l.categoria || 'Aguardando análise') &&
+    casa(fl.origem, l.origem) &&
+    casa(fl.querVisita, sn(l.querVisita)) &&
+    casa(fl.oracao, l.pedidoOracao ? 'sim' : 'nao') &&
+    casa(fl.audio, l.audios > 0 ? 'sim' : 'nao') &&
+    (!fl.gf?.length || l.gfs.some(g => fl.gf!.includes(g)))
 }
 
 export interface ConversaRelatorio {
@@ -56,6 +110,8 @@ export interface ConversaRelatorio {
   interesses: string[]
   encaminhados: string[]
   gfs: string[]
+  /** departamento (ou GF) → nomes dos responsáveis cadastrados */
+  responsaveis: Array<{ area: string; nomes: string[] }>
   igrejaAnterior: string
   tempoNaSede: string
   faixaTempo: string
@@ -113,6 +169,8 @@ export interface Relatorio {
   pendentesAnalise: number
   /** explicação quando não há o que mostrar (ex.: nenhum WhatsApp neste campo) */
   aviso: string | null
+  /** valores que existem no período, para montar os filtros da tela */
+  opcoes: { faixaEtaria: string[]; categoria: string[]; origem: string[]; gf: string[] }
 }
 
 const DIA_MS = 86_400_000
@@ -289,6 +347,7 @@ export async function montarRelatorio(f: FiltroRelatorio): Promise<Relatorio> {
     },
     porDia: [], porDepartamento: [], porTempoNaSede: [], porAssunto: [], porCategoria: [], porGf: [], porFaixaEtaria: [], porSexo: [],
     departamentos: [...DEPARTAMENTOS_BASE], conversas: [], pendentesAnalise: 0, aviso: null,
+    opcoes: { faixaEtaria: [], categoria: [], origem: [], gf: [] },
   }
   if (!f.campoId) {
     r.aviso = 'Seu usuário está sem campo ativo.'
@@ -308,15 +367,30 @@ export async function montarRelatorio(f: FiltroRelatorio): Promise<Relatorio> {
   const rotuloArea = new Map<string, string>()
   for (const d of DEPARTAMENTOS_BASE) rotuloArea.set(normalizarTexto(d), d)
   const internos = new Set<string>()
+  // responsáveis por área (encaminhamentos da recepção); "Atendimento geral" = líderes padrão
+  const lideresArea = new Map<string, Set<string>>()
+  const anotarLider = (area: string, nome: string) => {
+    if (!nome) return
+    const k = normalizarTexto(area)
+    if (!lideresArea.has(k)) lideresArea.set(k, new Set())
+    lideresArea.get(k)!.add(nome)
+  }
   for (const i of instancias) {
     const cfg = lerRecepcao(i.metadata)
-    for (const e of cfg.encaminhamentos) { rotuloArea.set(normalizarTexto(e.interesse), e.interesse); internos.add(ult8(e.telefone)) }
+    for (const e of cfg.encaminhamentos) {
+      rotuloArea.set(normalizarTexto(e.interesse), e.interesse); internos.add(ult8(e.telefone))
+      anotarLider(e.interesse, e.nome)
+      if (e.padrao) anotarLider(AREA_PADRAO_ROTULO, e.nome)
+    }
     for (const a of cfg.avisoQueroSerMembro) internos.add(ult8(a.telefone))
     if (cfg.contatoReservado) internos.add(ult8(cfg.contatoReservado.telefone))
   }
   rotuloArea.set(normalizarTexto(AREA_PADRAO_ROTULO), AREA_PADRAO_ROTULO)
   const gfs = await gfsDoCampo(f.campoId).catch(() => [])
-  for (const g of gfs) for (const l of g.leaders) if (l.phone) internos.add(ult8(l.phone))
+  for (const g of gfs) for (const l of g.leaders) {
+    if (l.phone) internos.add(ult8(l.phone))
+    anotarLider(`GF ${g.name}`, l.name)
+  }
   const listaDepartamentos = [...new Set([...rotuloArea.values()].filter(a => normalizarTexto(a) !== normalizarTexto(AREA_PADRAO_ROTULO)))]
   r.departamentos = [...listaDepartamentos].sort((a, b) => a.localeCompare(b))
   const nomesGf = gfs.map(g => g.name)
@@ -426,6 +500,10 @@ export async function montarRelatorio(f: FiltroRelatorio): Promise<Relatorio> {
       interesses,
       encaminhados,
       gfs: gfsConv,
+      // uma entrada por área (chave normalizada: "jovens" e "Jovens" são a mesma)
+      responsaveis: [...new Map([...unicas([...interesses, ...encaminhados]), ...gfsConv.map(g => `GF ${g}`)]
+        .map(area => [normalizarTexto(area), area] as const)).values()]
+        .map(area => ({ area, nomes: [...(lideresArea.get(normalizarTexto(area)) ?? [])] })),
       igrejaAnterior: pega(a?.igrejaAnterior, e.igrejaAnterior),
       tempoNaSede: tempo,
       faixaTempo: faixaTempoNaSede(tempo),
@@ -448,16 +526,32 @@ export async function montarRelatorio(f: FiltroRelatorio): Promise<Relatorio> {
     return reservado
       ? {
           ...base, nome: 'Assunto reservado', telefone: '', assunto: 'assunto reservado', categoria: 'Reclamação ou denúncia',
-          perfil: '', bairro: '', igrejaAnterior: '', pedidoOracao: false, resumoIa: '', interesses: [], encaminhados: [], gfs: [],
+          perfil: '', bairro: '', igrejaAnterior: '', pedidoOracao: false, resumoIa: '', interesses: [], encaminhados: [], gfs: [], responsaveis: [],
+          // nada do perfil de quem fez a denúncia: só a contagem
+          sexo: '', faixaEtaria: '', tempoNaSede: '', faixaTempo: 'Não informado', jaFoiAbordado: null, conheceGF: null,
+          querVisita: null, dataVisita: '', pediuHumano: false, queroSerMembro: false,
         }
       : base
   })
 
+  // opções dos filtros: o que existe no período (antes de filtrar)
+  const distintos = (xs: string[]) => [...new Set(xs.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const abertas = linhas.filter(l => !l.reservado)
+  r.opcoes = {
+    faixaEtaria: distintos([...abertas.map(l => l.faixaEtaria || 'Não informado')]),
+    categoria: distintos(linhas.map(l => l.categoria || 'Aguardando análise')),
+    origem: distintos(linhas.map(l => l.origem)),
+    gf: distintos(abertas.flatMap(l => l.gfs)),
+  }
+
   const alvo = f.departamento ? normalizarTexto(f.departamento) : ''
+  const fl = f.filtros ?? {}
+  const temFiltro = CHAVES_FILTRO.some(k => fl[k]?.length)
+  const base = temFiltro ? linhas.filter(l => passaNosFiltros(l, fl)) : linhas
   const filtradas = alvo
-    ? linhas.filter(l => [...l.interesses, ...l.encaminhados, ...l.gfs.map(g => `GF ${g}`)].some(i => normalizarTexto(i) === alvo) ||
+    ? base.filter(l => [...l.interesses, ...l.encaminhados, ...l.gfs.map(g => `GF ${g}`)].some(i => normalizarTexto(i) === alvo) ||
         (alvo.startsWith('grupo familiar') && l.gfs.length > 0))
-    : linhas
+    : base
 
   r.conversas = filtradas
   const t = r.totais
@@ -489,7 +583,9 @@ export async function montarRelatorio(f: FiltroRelatorio): Promise<Relatorio> {
   r.porGf = contar(visiveis.flatMap(l => l.gfs))
   r.porFaixaEtaria = contar(visiveis.map(l => l.faixaEtaria || 'Não informado'))
   r.porSexo = contar(visiveis.map(l => rotuloSexo(l.sexo)))
-  if (!filtradas.length) r.aviso = 'Nenhuma conversa com mensagem recebida neste período.'
+  if (!filtradas.length) {
+    r.aviso = temFiltro || alvo ? 'Nenhuma conversa com esses filtros no período.' : 'Nenhuma conversa com mensagem recebida neste período.'
+  }
   return r
 }
 

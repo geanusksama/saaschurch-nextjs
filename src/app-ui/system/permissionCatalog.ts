@@ -244,6 +244,8 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Configurações', name: 'Pagamentos Asaas (chave e webhook)', key: 'asaas_config', permissions: mkPerms(admin(), admin(), admin(), admin()) },
   // ElevenLabs (src/components/app-ui/system/ElevenLabsConfig.tsx) — voz do agente de IA no WhatsApp
   { group: 'Configurações', name: 'ElevenLabs (voz do agente)', key: 'elevenlabs_config', permissions: mkPerms(admin(), admin(), admin(), admin()) },
+  // Rastreador do site público (src/components/app-ui/system/RastreadorSitePainel.tsx)
+  { group: 'Configurações', name: 'Rastreador do site', key: 'site_rastreio', permissions: mkPerms(admin(), none(), none(), none()) },
 
   // ── Comunicação — WhatsApp (sub-permissões) ──────────────────────────────
   {

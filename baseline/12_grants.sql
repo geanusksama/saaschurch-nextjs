@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:49.006Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-12T20:45:40.889Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fb00b126c845ebf4
+-- Baseline d6eb3855ae70e116
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -883,6 +883,9 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."settings" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."settings" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."settings" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."site_eventos" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."site_eventos" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."site_eventos" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."site_style_presets" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."site_style_presets" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."site_style_presets" to "service_role";

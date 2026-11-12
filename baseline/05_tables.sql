@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:48.999Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-12T20:45:40.877Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fb00b126c845ebf4
+-- Baseline d6eb3855ae70e116
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -4874,6 +4874,26 @@ create table if not exists "public"."settings" (
   "updated_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null,
   "updated_by" uuid,
   "campo_id" uuid
+);
+
+create table if not exists "public"."site_eventos" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid,
+  "visitante_id" character varying(64) not null,
+  "sessao_id" character varying(64) not null,
+  "tipo" character varying(20) not null,
+  "caminho" character varying(500) not null,
+  "titulo" character varying(255),
+  "alvo" character varying(255),
+  "alvo_url" character varying(500),
+  "origem" character varying(40) default 'direto'::character varying not null,
+  "referrer" character varying(500),
+  "utm_source" character varying(100),
+  "utm_medium" character varying(100),
+  "utm_campaign" character varying(100),
+  "dispositivo" character varying(20),
+  "navegador" character varying(40),
+  "created_at" timestamp(6) with time zone default now() not null
 );
 
 create table if not exists "public"."site_style_presets" (

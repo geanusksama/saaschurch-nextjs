@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:49.002Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-12T20:45:40.883Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fb00b126c845ebf4
+-- Baseline d6eb3855ae70e116
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -925,6 +925,10 @@ alter table "public"."sermons" alter column "title" set not null;
 alter table "public"."sermons" alter column "updated_at" set not null;
 alter table "public"."settings" alter column "id" set not null;
 alter table "public"."settings" alter column "setting_key" set not null;
+alter table "public"."site_eventos" alter column "visitante_id" set not null;
+alter table "public"."site_eventos" alter column "sessao_id" set not null;
+alter table "public"."site_eventos" alter column "tipo" set not null;
+alter table "public"."site_eventos" alter column "caminho" set not null;
 alter table "public"."site_style_presets" alter column "id" set not null;
 alter table "public"."site_style_presets" alter column "nome" set not null;
 alter table "public"."site_style_presets" alter column "tokens" set not null;

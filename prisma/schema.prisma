@@ -5847,3 +5847,30 @@ model ConamadSincronizacao {
   @@index([campoId, criadoEm])
   @@map("conamad_sincronizacoes")
 }
+
+/// Rastreador do site público: uma linha por página vista ou clique.
+/// Sem IP e sem dado pessoal (visitante_id é aleatório, gerado no navegador).
+model SiteEvento {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId     String?  @map("campo_id") @db.Uuid
+  visitanteId String   @map("visitante_id") @db.VarChar(64)
+  sessaoId    String   @map("sessao_id") @db.VarChar(64)
+  /// 'pagina' | 'clique'
+  tipo        String   @db.VarChar(20)
+  caminho     String   @db.VarChar(500)
+  titulo      String?  @db.VarChar(255)
+  alvo        String?  @db.VarChar(255)
+  alvoUrl     String?  @map("alvo_url") @db.VarChar(500)
+  origem      String   @default("direto") @db.VarChar(40)
+  referrer    String?  @db.VarChar(500)
+  utmSource   String?  @map("utm_source") @db.VarChar(100)
+  utmMedium   String?  @map("utm_medium") @db.VarChar(100)
+  utmCampaign String?  @map("utm_campaign") @db.VarChar(100)
+  dispositivo String?  @db.VarChar(20)
+  navegador   String?  @db.VarChar(40)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@index([campoId, createdAt])
+  @@map("site_eventos")
+}

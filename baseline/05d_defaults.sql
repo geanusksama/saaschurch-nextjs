@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:49.003Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-12T20:45:40.884Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fb00b126c845ebf4
+-- Baseline d6eb3855ae70e116
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -1384,6 +1384,9 @@ alter table "public"."sermons" alter column "status" set default 'published'::ch
 alter table "public"."sermons" alter column "created_at" set default CURRENT_TIMESTAMP;
 alter table "public"."settings" alter column "setting_type" set default 'string'::character varying;
 alter table "public"."settings" alter column "updated_at" set default CURRENT_TIMESTAMP;
+alter table "public"."site_eventos" alter column "id" set default gen_random_uuid();
+alter table "public"."site_eventos" alter column "origem" set default 'direto'::character varying;
+alter table "public"."site_eventos" alter column "created_at" set default now();
 alter table "public"."site_style_presets" alter column "descricao" set default ''::text;
 alter table "public"."site_style_presets" alter column "tema" set default 'dark'::text;
 alter table "public"."site_style_presets" alter column "ordem" set default 0;

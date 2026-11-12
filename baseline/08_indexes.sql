@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-09T19:53:49.005Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-12T20:45:40.887Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fb00b126c845ebf4
+-- Baseline d6eb3855ae70e116
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -625,6 +625,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS regionais_campo_id_code_key ON public.regionai
 CREATE UNIQUE INDEX IF NOT EXISTS roles_church_id_name_key ON public.roles USING btree (church_id, name);
 CREATE UNIQUE INDEX IF NOT EXISTS settings_campo_id_setting_key_key ON public.settings USING btree (campo_id, setting_key);
 CREATE UNIQUE INDEX IF NOT EXISTS settings_church_id_setting_key_key ON public.settings USING btree (church_id, setting_key);
+CREATE INDEX IF NOT EXISTS site_eventos_campo_id_created_at_idx ON public.site_eventos USING btree (campo_id, created_at);
+CREATE INDEX IF NOT EXISTS site_eventos_created_at_idx ON public.site_eventos USING btree (created_at);
 CREATE INDEX IF NOT EXISTS stripe_payments_campo_id_idx ON public.stripe_payments USING btree (campo_id);
 CREATE INDEX IF NOT EXISTS stripe_payments_church_id_idx ON public.stripe_payments USING btree (church_id);
 CREATE INDEX IF NOT EXISTS stripe_payments_stripe_payment_intent_id_idx ON public.stripe_payments USING btree (stripe_payment_intent_id);
