@@ -143,6 +143,7 @@ export const settingsSections: SettingsSection[] = [
     color: 'bg-emerald-500',
     items: [
       { id: 'ai-settings', name: 'Configurações de IA', description: 'Chaves de API OpenAI/Claude e modelo', path: '/app-ui/config/ai-settings', permKey: 'settings_branding' },
+      { id: 'ai-agents', name: 'Agentes de IA', description: 'Lista de agentes e criação com prompt próprio (ex.: recepção por QR)', path: '/app-ui/config/ai-agents', permKey: 'tela_assistentes_ia' },
     ]
   },
   {

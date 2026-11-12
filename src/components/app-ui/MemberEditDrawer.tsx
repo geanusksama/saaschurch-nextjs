@@ -830,7 +830,7 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                     <select value={form.membershipStatus} onChange={(e) => update('membershipStatus', e.target.value)} className={inputClass}>
                       <option value="AGUARDANDO ATIVACAO">Aguardando ativação</option>
                       <option value="ATIVO">Ativo</option>
-                      <option value="INATIVO">Inativo</option>
+                      <option value="DESLIGADO">Desligado</option>
                     </select>
                   </div>
                   <div>

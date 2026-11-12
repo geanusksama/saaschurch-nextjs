@@ -199,7 +199,7 @@ function normalizeMaritalStatus(status?: string | null) {
 
 function getMembershipStatusLabel(status: Exclude<MembershipStatusFilter, 'ALL'>) {
   if (status === 'ativo') return 'Ativo';
-  if (status === 'inativo') return 'Inativo';
+  if (status === 'inativo') return 'Desligado';
   if (status === 'aguardando') return 'Aguardando ativação';
   return 'Visitante';
 }
@@ -1208,7 +1208,7 @@ export function Members() {
   const statCards = [
     { label: 'Total', value: serverTotal, icon: Users, bg: 'bg-[#f1f5f9]', fg: 'text-[#334155]', status: '' },
     { label: 'Ativos', value: stats.activeMembers, icon: CheckCircle2, bg: 'bg-[#dcfce7]', fg: 'text-[#15803d]', status: 'ativo' },
-    { label: 'Inativos', value: stats.inactiveMembers, icon: PauseCircle, bg: 'bg-[#fee2e2]', fg: 'text-[#b91c1c]', status: 'inativo' },
+    { label: 'Desligados', value: stats.inactiveMembers, icon: PauseCircle, bg: 'bg-[#fee2e2]', fg: 'text-[#b91c1c]', status: 'inativo' },
   ];
 
   const cabecalhos: Array<{ label: string; key?: SortKey; esconderMeio?: boolean; direita?: boolean }> = [

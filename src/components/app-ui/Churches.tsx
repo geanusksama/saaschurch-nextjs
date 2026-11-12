@@ -11,7 +11,6 @@ import {
   Eye,
   ExternalLink,
   FileSpreadsheet,
-  Filter,
   Network,
   Image as ImageIcon,
   Link2,
@@ -23,6 +22,11 @@ import {
   RotateCw,
   Search,
   Settings,
+  SlidersHorizontal,
+  FilterX,
+  ChevronDown,
+  CheckCircle2,
+  PauseCircle,
   Trash2,
   Upload,
   UserRound,
@@ -70,6 +74,7 @@ import { LeaderReportModal } from './churches/LeaderReportModal';
 import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { buildAddressLabel, buildRouteEmbedUrl, buildRouteLink, formatKm, hasCoords, haversineKm } from '../../lib/geo';
+import { MultiSelectDropdown } from './shared/MultiSelectDropdown';
 import { Permissao } from '../../lib/permissoes/Permissao';
 
 const getImageUrl = (photoUrl?: string) => {
@@ -84,15 +89,32 @@ const getImageUrl = (photoUrl?: string) => {
   return photoUrl;
 };
 
-const initialFilters = {
+/** null = todos (sem filtro); lista = só os marcados. Lista vazia vale como todos. */
+type ListaFiltro = string[] | null;
+
+const UFS_BRASIL = ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'];
+
+const initialFilters: {
+  search: string;
+  campoId: string;
+  regionalIds: ListaFiltro;
+  states: ListaFiltro;
+  zones: ListaFiltro;
+  /** 'host' (hospedeiras) | 'hosted' (anexas) | 'unlinked' (sem vinculo) */
+  hosting: ListaFiltro;
+  /** 'active' | 'inactive' — churches.status */
+  status: ListaFiltro;
+} = {
   search: '',
   campoId: '',
-  regionalId: '',
-  state: '',
-  zone: '',
-  /** '' | 'host' (hospedeiras) | 'hosted' (anexas) | 'unlinked' (sem vinculo) */
-  hosting: '',
+  regionalIds: null,
+  states: null,
+  zones: null,
+  hosting: null,
+  status: null,
 };
+
+const temFiltro = (lista: ListaFiltro): lista is string[] => Array.isArray(lista) && lista.length > 0;
 
 const initialChurchForm = {
   id: '',
@@ -467,6 +489,11 @@ export function Churches() {
   });
   const [rentRecords, setRentRecords] = useState<any[]>([]);
   const [filters, setFilters] = useState(() => ({ ...initialFilters, campoId: selectedFieldId }));
+  /**
+   * Retrato dos filtros no clique em Buscar — é o que a lista usa. Mexer num
+   * filtro (painel, chips, números) não muda o resultado até a próxima busca.
+   */
+  const [filtrosAplicados, setFiltrosAplicados] = useState(() => ({ ...initialFilters, campoId: selectedFieldId }));
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [visibleColumns, setVisibleColumns] = useState(defaultVisibleColumns);
   /** Hospedeira cujas anexas estão sendo listadas no diálogo. */
@@ -480,6 +507,7 @@ export function Churches() {
    * consulta sai quando ela mandar.
    */
   const [hasSearched, setHasSearched] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [viewMode, setViewMode] = useState('list');
@@ -624,6 +652,7 @@ export function Churches() {
   };
 
   const runSearch = () => {
+    setFiltrosAplicados(filters);
     setHasSearched(true);
     setPage(1);
     loadChurches();
@@ -936,17 +965,15 @@ export function Churches() {
       return;
     }
 
-    setFilters((current) => {
-      if (current.campoId === selectedFieldId) {
-        return current;
-      }
-
-      return {
-        ...current,
-        campoId: selectedFieldId,
-        regionalId: '',
-      };
-    });
+    const comCampoAtivo = (current: typeof initialFilters) => (
+      current.campoId === selectedFieldId
+        ? current
+        : { ...current, campoId: selectedFieldId, regionalIds: null }
+    );
+    setFilters(comCampoAtivo);
+    // O retrato também: a troca de campo refaz a consulta (loadBaseData acima)
+    // e a lista não pode continuar filtrando pelo campo anterior.
+    setFiltrosAplicados(comCampoAtivo);
   }, [selectedFieldId]);
 
   useEffect(() => {
@@ -1039,30 +1066,31 @@ export function Churches() {
     });
   }, [anexasPorHospedeira, campoById, churches, regionalById]);
 
-  const filteredChurches = useMemo(() => {
-    const query = normalizeText(filters.search);
+  // Tudo menos a situação: é a base dos números Total / Ativas / Inativas, que
+  // também servem de atalho para o filtro de situação (como na Lista de Membros).
+  const churchesSemSituacao = useMemo(() => {
+    const query = normalizeText(filtrosAplicados.search);
 
     return enrichedChurches.filter((church) => {
-      if (filters.campoId && church.campoId !== filters.campoId) {
+      if (filtrosAplicados.campoId && church.campoId !== filtrosAplicados.campoId) {
         return false;
       }
-      if (filters.regionalId && church.regionalId !== filters.regionalId) {
+      const f = filtrosAplicados;
+      if (temFiltro(f.regionalIds) && !f.regionalIds.includes(church.regionalId)) {
         return false;
       }
-      if (filters.state && normalizeText(church.state) !== normalizeText(filters.state)) {
+      if (temFiltro(f.states) && !f.states.some((uf) => normalizeText(uf) === normalizeText(church.state))) {
         return false;
       }
-      if (filters.zone && normalizeText(church.zone) !== normalizeText(filters.zone)) {
+      if (temFiltro(f.zones) && !f.zones.some((zona) => normalizeText(zona) === normalizeText(church.zone))) {
         return false;
       }
-      if (filters.hosting === 'host' && !church.isHost) {
-        return false;
-      }
-      if (filters.hosting === 'hosted' && !church.hostChurchId) {
-        return false;
-      }
-      if (filters.hosting === 'unlinked' && (church.isHost || church.hostChurchId)) {
-        return false;
+      if (temFiltro(f.hosting)) {
+        const bate =
+          (f.hosting.includes('host') && church.isHost) ||
+          (f.hosting.includes('hosted') && Boolean(church.hostChurchId)) ||
+          (f.hosting.includes('unlinked') && !church.isHost && !church.hostChurchId);
+        if (!bate) return false;
       }
       if (!query) {
         return true;
@@ -1073,7 +1101,19 @@ export function Churches() {
         .join(' ')
         .includes(query);
     });
-  }, [enrichedChurches, filters]);
+  }, [enrichedChurches, filtrosAplicados]);
+
+  const filteredChurches = useMemo(() => {
+    const situacao = filtrosAplicados.status;
+    if (!temFiltro(situacao)) return churchesSemSituacao;
+    return churchesSemSituacao.filter((church) =>
+      church.status === 'inactive' ? situacao.includes('inactive') : situacao.includes('active'));
+  }, [churchesSemSituacao, filtrosAplicados.status]);
+
+  const contagemSituacao = useMemo(() => {
+    const inativas = churchesSemSituacao.filter((church) => church.status === 'inactive').length;
+    return { total: churchesSemSituacao.length, ativas: churchesSemSituacao.length - inativas, inativas };
+  }, [churchesSemSituacao]);
 
   const sortedChurches = useMemo(() => sortRows(filteredChurches, sortConfig), [filteredChurches, sortConfig]);
   const totalPages = Math.max(1, Math.ceil(sortedChurches.length / pageSize));
@@ -1084,7 +1124,7 @@ export function Churches() {
 
   useEffect(() => {
     setPage(1);
-  }, [filters, pageSize, sortConfig]);
+  }, [filtrosAplicados, pageSize, sortConfig]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -2059,8 +2099,160 @@ export function Churches() {
   const listTo = sortedChurches.length ? Math.min(page * pageSize, sortedChurches.length) : 0;
   const resetFilters = () => setFilters({ ...initialFilters, campoId: selectedFieldId });
 
+  // Filtros ligados (chips abaixo da barra e contador do botão Filtros).
+  // Campo travado pelo campo ativo não conta: não dá para tirar.
+  const nomeRegional = (id: string) => regionalById.get(id)?.name || id;
+  const nomeCampo = (id: string) => campoById.get(id)?.name || id;
+  const rotuloHospedagem: Record<string, string> = { host: 'Somente hospedeiras', hosted: 'Somente anexas', unlinked: 'Sem vínculo' };
+  const filtrosAtivos: Array<{ key: string; label: string; limpar?: () => void }> = [];
+  const resumo = (lista: string[], nome: (v: string) => string, plural: string) =>
+    lista.length === 1 ? nome(lista[0]) : `${lista.length} ${plural}`;
+  const rotuloSituacao = (v: string) => (v === 'inactive' ? 'Inativas' : 'Ativas');
+  if (temFiltro(filters.status)) filtrosAtivos.push({ key: 'Situação', label: resumo(filters.status, rotuloSituacao, 'situações'), limpar: () => setFilters((c) => ({ ...c, status: null })) });
+  if (campoVisible && filters.campoId && !selectedFieldId) filtrosAtivos.push({ key: 'Campo', label: nomeCampo(filters.campoId), limpar: () => setFilters((c) => ({ ...c, campoId: '', regionalIds: null })) });
+  if (temFiltro(filters.regionalIds)) filtrosAtivos.push({ key: 'Regional', label: resumo(filters.regionalIds, nomeRegional, 'regionais'), limpar: () => setFilters((c) => ({ ...c, regionalIds: null })) });
+  if (temFiltro(filters.states)) filtrosAtivos.push({ key: 'UF', label: resumo(filters.states, (v) => v, 'UFs'), limpar: () => setFilters((c) => ({ ...c, states: null })) });
+  if (temFiltro(filters.zones)) filtrosAtivos.push({ key: 'Zona', label: resumo(filters.zones, (v) => v, 'zonas'), limpar: () => setFilters((c) => ({ ...c, zones: null })) });
+  if (temFiltro(filters.hosting)) filtrosAtivos.push({ key: 'Hospedagem', label: resumo(filters.hosting, (v) => rotuloHospedagem[v] || v, 'tipos'), limpar: () => setFilters((c) => ({ ...c, hosting: null })) });
+
+  // Chip de várias escolhas: marcar/desmarcar; sem nenhum marcado = todos (null)
+  const alternar = (atual: ListaFiltro, valor: string): ListaFiltro => {
+    const base = atual ?? [];
+    const proximo = base.includes(valor) ? base.filter((v) => v !== valor) : [...base, valor];
+    return proximo.length ? proximo : null;
+  };
+  // UF: as 27, mais alguma diferente que esteja cadastrada nas igrejas
+  const opcoesUf = Array.from(new Set([...UFS_BRASIL, ...uniqueStates.map((uf) => String(uf).toUpperCase())])).sort();
+
+  const chipClasse = (ligado: boolean) =>
+    `h-10 rounded-full border-[1.5px] px-4 text-sm font-semibold transition-all ${
+      ligado
+        ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
+        : 'border-slate-200 bg-white text-slate-900 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-white'
+    }`;
+  const selectClasse = 'h-[50px] w-full appearance-none rounded-[14px] border-[1.5px] border-slate-200 bg-white pl-3.5 pr-10 text-[15px] font-medium tracking-normal text-slate-900 outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white';
+  const tituloFiltro = 'text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400';
+
+  const renderFiltrosDrawer = () => (
+    <div
+      className="fixed inset-0 z-50 flex justify-end"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Filtros"
+      onKeyDown={(event) => { if (event.key === 'Escape') setFiltrosAbertos(false); }}
+    >
+      <div className="absolute inset-0 bg-slate-900/40" onClick={() => setFiltrosAbertos(false)} />
+      <aside className="relative flex h-full w-[min(440px,100%)] flex-col bg-white shadow-[-20px_0_50px_-20px_rgba(15,23,42,.35)] dark:bg-slate-800">
+        <div className="flex items-center gap-3.5 border-b border-[#eef2f6] px-[22px] py-5 dark:border-slate-700">
+          <span className="grid h-11 w-11 flex-none place-items-center rounded-[14px] bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+            <SlidersHorizontal className="h-[22px] w-[22px]" strokeWidth={2} />
+          </span>
+          <div className="flex flex-1 flex-col gap-0.5">
+            <span className="text-lg font-extrabold">Filtros</span>
+            <span className="text-[13px] text-slate-500 dark:text-slate-400">Refine quais igrejas aparecem na lista</span>
+          </div>
+          <button type="button" onClick={() => setFiltrosAbertos(false)} aria-label="Fechar" className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700">
+            <X className="h-5 w-5" strokeWidth={2} />
+          </button>
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden p-[22px]">
+          <div className="flex flex-col gap-2.5">
+            <span className={tituloFiltro}>SITUAÇÃO</span>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setFilters((c) => ({ ...c, status: null }))} className={chipClasse(!temFiltro(filters.status))}>
+                Todas
+              </button>
+              {([['active', 'Ativas'], ['inactive', 'Inativas']] as const).map(([valor, rotulo]) => (
+                <button key={valor} type="button" onClick={() => setFilters((c) => ({ ...c, status: alternar(c.status, valor) }))} className={chipClasse(!!filters.status?.includes(valor))}>
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {campoVisible && (
+            <label className={`flex flex-col gap-2.5 ${tituloFiltro}`}>
+              CAMPO
+              <span className="relative min-w-0">
+                <select
+                  value={filters.campoId}
+                  onChange={(event) => setFilters((c) => ({ ...c, campoId: event.target.value, regionalIds: null }))}
+                  disabled={Boolean(selectedFieldId)}
+                  className={selectClasse}
+                >
+                  <option value="">Todos os campos</option>
+                  {campos.map((campo) => <option key={campo.id} value={campo.id}>{campo.name}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              </span>
+            </label>
+          )}
+
+          <div className="flex flex-col gap-2.5">
+            <span className={tituloFiltro}>REGIONAL</span>
+            <MultiSelectDropdown
+              searchable
+              options={filteredRegionais.map((regional) => ({ value: regional.id, label: regional.name }))}
+              value={filters.regionalIds}
+              onChange={(next) => setFilters((c) => ({ ...c, regionalIds: next }))}
+              allLabel="Todas as regionais"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex min-w-0 flex-col gap-2.5">
+              <span className={tituloFiltro}>UF</span>
+              <MultiSelectDropdown
+                searchable
+                options={opcoesUf.map((uf) => ({ value: uf, label: uf }))}
+                value={filters.states}
+                onChange={(next) => setFilters((c) => ({ ...c, states: next }))}
+                allLabel="Todas"
+              />
+            </div>
+            <div className="flex min-w-0 flex-col gap-2.5">
+              <span className={tituloFiltro}>ZONA</span>
+              <MultiSelectDropdown
+                options={zoneOptions.map((zona) => ({ value: zona, label: zona }))}
+                value={filters.zones}
+                onChange={(next) => setFilters((c) => ({ ...c, zones: next }))}
+                allLabel="Todas"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            <span className={tituloFiltro}>HOSPEDAGEM</span>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setFilters((c) => ({ ...c, hosting: null }))} className={chipClasse(!temFiltro(filters.hosting))}>
+                Todas
+              </button>
+              {([['host', 'Hospedeiras'], ['hosted', 'Anexas'], ['unlinked', 'Sem vínculo']] as const).map(([valor, rotulo]) => (
+                <button key={valor} type="button" onClick={() => setFilters((c) => ({ ...c, hosting: alternar(c.hosting, valor) }))} className={chipClasse(!!filters.hosting?.includes(valor))}>
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2.5 border-t border-[#eef2f6] px-[22px] py-4 dark:border-slate-700">
+          <button type="button" onClick={resetFilters} className="h-[52px] rounded-[14px] border border-slate-200 bg-white px-[18px] text-[15px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+            Limpar
+          </button>
+          <button type="button" onClick={() => { setFiltrosAbertos(false); runSearch(); }} disabled={loading} className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-[15px] font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+            <Search className="h-[18px] w-[18px]" strokeWidth={2.2} />
+            Buscar
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+
   const renderListView = () => (
     <div className="space-y-4">
+      {filtrosAbertos && renderFiltrosDrawer()}
       <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
@@ -2095,155 +2287,69 @@ export function Churches() {
           </div>
         </div>
 
-        {/* Uma linha só de filtros. Flex em vez de grid: cada filtro tem largura
-            mínima e cresce com o espaço que sobra, então cabem todos lado a lado
-            no desktop e quebram por conta própria quando a tela estreita — sem
-            número fixo de colunas, que era o que espremia tudo antes. */}
+        {/* Modelo da Lista de Membros: busca + Filtros (painel lateral) + limpar +
+            Buscar numa linha só, e os números logo abaixo. Os filtros só valem
+            no Buscar, como antes. */}
         <div className="flex flex-wrap items-stretch gap-3">
-          {/* A busca ocupa a linha toda no celular e o dobro das demais a partir
-              do desktop: é o filtro mais usado e se perdia entre os selects. O
-              destaque vem do foco, não de uma borda pesada permanente. */}
-          <label className="group flex min-w-[240px] flex-[2.5] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm transition-all focus-within:border-purple-400 focus-within:shadow-md focus-within:ring-4 focus-within:ring-purple-100 dark:border-slate-800 dark:bg-slate-950 dark:focus-within:ring-purple-900/30">
-            <Search className="h-5 w-5 shrink-0 text-slate-400 transition-colors group-focus-within:text-purple-500" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-                Busca Geral
-              </span>
+          <div className="flex min-w-0 flex-[1_1_380px] gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
               <input
+                type="text"
                 value={filters.search}
                 onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
                 onKeyDown={(event) => { if (event.key === 'Enter') runSearch(); }}
-                placeholder="Nome, codigo, dirigente..."
-                className="w-full border-none bg-transparent p-0 text-base text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100"
+                placeholder="Nome, código, dirigente, cidade..."
+                className="h-full min-h-[52px] w-full rounded-2xl border-[1.5px] border-slate-200 bg-white pl-12 pr-10 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-slate-300"
               />
-            </span>
-            {filters.search ? (
+              {filters.search ? (
+                <button
+                  type="button"
+                  onClick={() => setFilters((current) => ({ ...current, search: '' }))}
+                  title="Limpar busca"
+                  aria-label="Limpar busca"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFiltrosAbertos(true)}
+              title="Filtros"
+              className={`flex min-h-[52px] flex-none items-center gap-2 rounded-2xl border-[1.5px] bg-white px-[15px] text-sm font-semibold text-slate-900 hover:border-slate-900 md:px-[18px] dark:bg-slate-800 dark:text-white ${
+                filtrosAtivos.length ? 'border-slate-900 dark:border-slate-300' : 'border-slate-200 dark:border-slate-600'
+              }`}
+            >
+              <SlidersHorizontal className="h-[19px] w-[19px]" strokeWidth={2} />
+              <span className="hidden md:inline">Filtros</span>
+              {filtrosAtivos.length > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1.5 text-[11px] font-bold text-white dark:bg-white dark:text-slate-900">
+                  {filtrosAtivos.length}
+                </span>
+              )}
+            </button>
+            {filtrosAtivos.length > 0 && (
               <button
                 type="button"
-                onClick={() => setFilters((current) => ({ ...current, search: '' }))}
-                title="Limpar busca"
-                className="shrink-0 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+                onClick={resetFilters}
+                title="Limpar filtros"
+                aria-label="Limpar filtros"
+                className="grid min-h-[52px] w-[52px] flex-none place-items-center rounded-2xl border-[1.5px] border-slate-200 bg-white text-slate-600 hover:border-slate-900 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white"
               >
-                <X className="h-4 w-4" />
+                <FilterX className="h-[19px] w-[19px]" strokeWidth={2} />
               </button>
-            ) : null}
-          </label>
-
-          {campoVisible && (
-          <label className="w-[170px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
-            <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-              <Filter className="h-3.5 w-3.5" />
-              Campo
-            </span>
-            <select
-              value={filters.campoId}
-              onChange={(event) => setFilters((current) => ({ ...current, campoId: event.target.value, regionalId: '' }))}
-              disabled={Boolean(selectedFieldId)}
-              className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100"
-            >
-              <option value="">Todos os campos</option>
-              {campos.map((campo) => (
-                <option key={campo.id} value={campo.id}>
-                  {campo.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          )}
-
-          <label className="w-[170px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
-            <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-              <Filter className="h-3.5 w-3.5" />
-              Regional
-            </span>
-            <select
-              value={filters.regionalId}
-              onChange={(event) => setFilters((current) => ({ ...current, regionalId: event.target.value }))}
-              className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100"
-            >
-              <option value="">Todas as regionais</option>
-              {filteredRegionais.map((regional) => (
-                <option key={regional.id} value={regional.id}>
-                  {regional.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* UF guarda duas letras: não cresce junto com os outros. */}
-          <label className="w-[110px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
-            <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-              <Filter className="h-3.5 w-3.5" />
-              UF
-            </span>
-            <select
-              value={filters.state}
-              onChange={(event) => setFilters((current) => ({ ...current, state: event.target.value }))}
-              className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100"
-            >
-              <option value="">Todas as UFs</option>
-              {uniqueStates.map((state) => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="w-[150px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
-            <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-              <Filter className="h-3.5 w-3.5" />
-              Zona
-            </span>
-            <select
-              value={filters.zone}
-              onChange={(event) => setFilters((current) => ({ ...current, zone: event.target.value }))}
-              className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100"
-            >
-              <option value="">Todas as zonas</option>
-              {uniqueZones.map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="w-[165px] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950">
-            <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-              <Link2 className="h-3.5 w-3.5" />
-              Hospedagem
-            </span>
-            <select
-              value={filters.hosting}
-              onChange={(event) => setFilters((current) => ({ ...current, hosting: event.target.value }))}
-              className="w-full border-none bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-100"
-            >
-              <option value="">Todas as igrejas</option>
-              <option value="host">Somente hospedeiras</option>
-              <option value="hosted">Somente anexas</option>
-              <option value="unlinked">Sem vinculo</option>
-            </select>
-          </label>
-
-          {/* Ações na mesma linha dos filtros. Só o Exportar virou menu: dois
-              botões lado a lado gastavam a largura que os filtros precisavam. */}
-          <div className="flex flex-wrap items-center gap-2">
+            )}
             <button
               type="button"
               onClick={runSearch}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-60"
+              title="Buscar"
+              className="flex min-h-[52px] flex-none items-center gap-2 rounded-2xl bg-slate-900 px-[15px] text-sm font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 md:px-[18px] dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
-              <Search className="h-4 w-4" />
-              {loading ? 'Buscando...' : 'Buscar'}
-            </button>
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
-            >
-              Limpar
+              <Search className="h-[19px] w-[19px]" strokeWidth={2.2} />
+              <span className="hidden md:inline">{loading ? 'Buscando...' : 'Buscar'}</span>
             </button>
             <Permissao chave="churches.churches.menu_exportar" rotulo="Exportar (menu) — Churches" herda="churches.view">
               <DropdownMenu>
@@ -2252,10 +2358,10 @@ export function Churches() {
                     type="button"
                     disabled={!hasSearched || !sortedChurches.length || Boolean(exporting)}
                     title={!hasSearched ? 'Busque antes de exportar.' : 'Exportar as igrejas dos filtros atuais'}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300"
+                    className="flex min-h-[52px] flex-none items-center gap-2 rounded-2xl border-[1.5px] border-slate-200 bg-white px-[15px] text-sm font-semibold text-slate-900 hover:border-slate-900 disabled:opacity-50 md:px-[18px] dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                   >
-                    <Download className="h-4 w-4" />
-                    {exporting ? 'Exportando...' : 'Exportar'}
+                    <Download className="h-[19px] w-[19px]" strokeWidth={2} />
+                    <span className="hidden md:inline">{exporting ? 'Exportando...' : 'Exportar'}</span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
@@ -2273,7 +2379,55 @@ export function Churches() {
               </DropdownMenu>
             </Permissao>
           </div>
+
+          {/* Números: clicar troca só o filtro de situação (vale no Buscar). */}
+          <div className="flex min-w-0 flex-[1_1_auto] gap-2 overflow-x-auto">
+            {([
+              { label: 'Total', valor: contagemSituacao.total, status: '', Icone: Building2, bg: 'bg-[#f1f5f9]', fg: 'text-[#334155]' },
+              { label: 'Ativas', valor: contagemSituacao.ativas, status: 'active', Icone: CheckCircle2, bg: 'bg-[#dcfce7]', fg: 'text-[#15803d]' },
+              { label: 'Inativas', valor: contagemSituacao.inativas, status: 'inactive', Icone: PauseCircle, bg: 'bg-[#fee2e2]', fg: 'text-[#b91c1c]' },
+            ] as const).map((card) => {
+              const ligado = card.status
+                ? filters.status?.length === 1 && filters.status[0] === card.status
+                : !temFiltro(filters.status);
+              return (
+                <button
+                  key={card.label}
+                  type="button"
+                  title={card.status ? `Filtrar só ${card.label.toLowerCase()} (aplica no Buscar)` : 'Todas as situações (aplica no Buscar)'}
+                  onClick={() => setFilters((current) => ({ ...current, status: card.status ? [card.status] : null }))}
+                  className={`flex flex-[1_0_auto] items-center gap-2.5 rounded-2xl border-[1.5px] bg-white py-2 pl-2 pr-3.5 text-left transition-colors hover:border-slate-900 dark:bg-slate-800 ${
+                    ligado && hasSearched ? 'border-slate-900 dark:border-slate-300' : 'border-[#e8ecf1] dark:border-slate-700'
+                  }`}
+                >
+                  <span className={`grid h-[38px] w-[38px] flex-none place-items-center rounded-xl ${card.bg} ${card.fg}`}>
+                    <card.Icone className="h-[19px] w-[19px]" strokeWidth={1.8} />
+                  </span>
+                  <span className="flex flex-col">
+                    <span className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em]">{hasSearched ? card.valor : '—'}</span>
+                    <span className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">{card.label}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Filtros ligados, cada um com o seu X — como na Lista de Membros. */}
+        {filtrosAtivos.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {filtrosAtivos.map((filtro) => (
+              <span key={filtro.key} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white py-1 pl-3 pr-1.5 text-xs font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">
+                <span className="text-slate-400">{filtro.key}:</span> {filtro.label}
+                {filtro.limpar && (
+                  <button type="button" onClick={filtro.limpar} aria-label={`Remover ${filtro.key}`} className="grid h-5 w-5 place-items-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
@@ -4505,7 +4659,7 @@ export function Churches() {
           ];
           printReport({
             title: 'Tabela de Igrejas',
-            subtitle: filters.campoId ? `Campo: ${sorted[0]?.campoName || ''}` : undefined,
+            subtitle: filtrosAplicados.campoId ? `Campo: ${sorted[0]?.campoName || ''}` : undefined,
             orientation,
             columns: allCols.filter((c) => selectedColumns.includes(c.key)),
             rows: sorted.map((c) => ({

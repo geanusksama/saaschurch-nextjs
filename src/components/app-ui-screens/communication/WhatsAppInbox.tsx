@@ -10,14 +10,17 @@ import {
   Image as ImageIcon, Video, FileText, Mic, StopCircle,
   ChevronDown, Loader2, Volume2, Download, Trash2, Smartphone,
   ImageOff, Smile, Reply, Forward, Star, Tag, Archive,
-  BellOff, ChevronRight, CheckSquare, Square, AlertTriangle,
+  BellOff, ChevronRight, CheckSquare, Square, AlertTriangle, Bot, UserCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWhatsAppConversations } from '@/hooks/useWhatsAppConversations'
 import { useWhatsAppMessages } from '@/hooks/useWhatsAppMessages'
 import { useWhatsAppInstances } from '@/hooks/useWhatsAppInstances'
 import type { WhatsAppConversation, WhatsAppMessage } from '@/types/whatsapp'
-import { Permissao } from '../../../lib/permissoes/Permissao';
+import { Permissao, usePode } from '../../../lib/permissoes/Permissao';
+import { definirPermissao } from '../../../lib/permissoes/definir';
+
+const PERM_PASSAR_AGENTE = definirPermissao({ chave: 'whatsapp_inbox.whats_app_inbox.passar_para_agente', rotulo: 'Passar conversa para agente de IA — Whats App Inbox', herda: 'whatsapp_inbox.view' })
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -329,7 +332,10 @@ function ConversationItem({ conv, active, onClick, onAction, selectionMode, chec
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-0.5">
-            <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">{name}</p>
+            <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate flex items-center gap-1">
+              {conv.ai_enabled && conv.ai_agent_id && <span title="Atendida por agente de IA"><Bot className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" /></span>}
+              <span className="truncate">{name}</span>
+            </p>
             <span className="text-[11px] text-slate-400 flex-shrink-0 ml-1">{formatTime(conv.last_message_at)}</span>
           </div>
           <div className="flex items-center justify-between gap-1">
@@ -420,7 +426,7 @@ function useAudioRecorder() {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-type StatusFilter = 'open' | 'closed' | 'all'
+type StatusFilter = 'open' | 'closed' | 'all' | 'ia'
 type AttachType   = 'image' | 'video' | 'document' | 'audio'
 
 export default function WhatsAppInbox() {
@@ -429,7 +435,17 @@ export default function WhatsAppInbox() {
 
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null)
   const selectedConv = conversations.find(c => c.id === selectedConvId) ?? null
-  const { messages, isLoading: msgLoading, hasMore, loadMore, sendMessage } = useWhatsAppMessages(selectedConvId)
+  const { messages, isLoading: msgLoading, hasMore, loadMore, sendMessage, removeMessages } = useWhatsAppMessages(selectedConvId)
+
+  // Seleção de mensagens para apagar (várias ou todas) — exclusão definitiva no sistema
+  const [selecionandoMsgs, setSelecionandoMsgs] = useState(false)
+  const [msgsMarcadas, setMsgsMarcadas] = useState<Set<string>>(new Set())
+  const [confirmarApagar, setConfirmarApagar] = useState<null | 'selecionadas' | 'todas'>(null)
+  const [apagandoMsgs, setApagandoMsgs] = useState(false)
+  const sairSelecaoMsgs = () => { setSelecionandoMsgs(false); setMsgsMarcadas(new Set()) }
+  const alternarMsg = (id: string) => setMsgsMarcadas(prev => {
+    const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n
+  })
 
   const [text, setText]                   = useState('')
   const [sending, setSending]             = useState(false)
@@ -452,6 +468,11 @@ export default function WhatsAppInbox() {
   const [forwardMsg, setForwardMsg]       = useState<WhatsAppMessage | null>(null)
   const [showForwardModal, setShowForwardModal] = useState(false)
 
+  // Agentes de IA — para mostrar quem atende e permitir assumir/devolver
+  const [agentes, setAgentes] = useState<{ id: string; name: string }[]>([])
+  const [trocandoAgente, setTrocandoAgente] = useState(false)
+  const pode = usePode()
+
   const imgRef = useRef<HTMLInputElement>(null)
   const vidRef = useRef<HTMLInputElement>(null)
   const docRef = useRef<HTMLInputElement>(null)
@@ -465,12 +486,37 @@ export default function WhatsAppInbox() {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   useEffect(() => {
+    if (!token) return
+    fetch('/api/ai/agents', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setAgentes(Array.isArray(d) ? d.filter((a: { isActive?: boolean }) => a.isActive !== false).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name })) : []))
+      .catch(() => setAgentes([]))
+  }, [token])
+
+  // agentId null = a equipe assume (IA para de responder); id = agente atende
+  const trocarAgente = async (convId: string, agentId: string | null) => {
+    setTrocandoAgente(true)
+    try {
+      const res = await fetch('/api/whatsapp/conversations/assign-ai', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationIds: [convId], agentId }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error ?? 'Falha ao alterar o atendimento')
+      toast.success(agentId ? 'Conversa entregue ao agente.' : 'Você assumiu a conversa. O agente parou de responder.')
+      refetch()
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao alterar o atendimento') }
+    finally { setTrocandoAgente(false) }
+  }
+
+  useEffect(() => {
     const el = textareaRef.current; if (!el) return
     el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'
   }, [text])
 
   const handleSelectConv = (conv: WhatsAppConversation) => {
-    setSelectedConvId(conv.id); setShowConvMenu(false); setReplyTo(null)
+    setSelectedConvId(conv.id); setShowConvMenu(false); setReplyTo(null); sairSelecaoMsgs()
     if ((conv.unread_count ?? 0) > 0) markAsRead(conv.id)
   }
 
@@ -578,11 +624,28 @@ export default function WhatsAppInbox() {
   const pickFile = (ref: React.RefObject<HTMLInputElement | null>) => { setShowAttach(false); setTimeout(() => ref.current?.click(), 10) }
   const handleStopRecording = async () => { const file = await stopRec(); if (file) await uploadAndSend(file, 'audio') }
 
-  const handleDeleteMessage = async (msgId: string) => {
-    const res = await fetch(`/api/whatsapp/messages/${msgId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) { toast.error('Não foi possível excluir.'); return }
-    toast.success('Mensagem excluída.')
+  const apagarMensagens = async (alvo: string[] | 'todas') => {
+    if (!selectedConvId) return
+    setApagandoMsgs(true)
+    try {
+      const res = await fetch('/api/whatsapp/messages/bulk-delete', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(alvo === 'todas' ? { conversationId: selectedConvId, todas: true } : { conversationId: selectedConvId, ids: alvo }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { toast.error(data.error || 'Não foi possível excluir.'); return }
+      removeMessages(alvo === 'todas' ? 'all' : alvo)
+      toast.success(`${data.deleted} mensage${data.deleted === 1 ? 'm excluída' : 'ns excluídas'}.`)
+      sairSelecaoMsgs(); setConfirmarApagar(null); refetch()
+    } catch {
+      toast.error('Falha de conexão. Tente novamente.')
+    } finally {
+      setApagandoMsgs(false)
+    }
   }
+
+  const handleDeleteMessage = async (msgId: string) => { await apagarMensagens([msgId]) }
 
   const handleReact = async (msgId: string, emoji: string) => {
     await fetch(`/api/whatsapp/messages/${msgId}`, {
@@ -615,6 +678,7 @@ export default function WhatsAppInbox() {
 
   const filtered = conversations.filter(c => {
     if (c.status === 'archived' && statusFilter !== 'all') return false
+    if (statusFilter === 'ia' && !(c.ai_enabled && c.ai_agent_id)) return false
     if (statusFilter === 'open'   && c.status !== 'open')   return false
     if (statusFilter === 'closed' && c.status !== 'closed') return false
     if (!search) return true
@@ -626,6 +690,7 @@ export default function WhatsAppInbox() {
     open:   conversations.filter(c => c.status === 'open').length,
     closed: conversations.filter(c => c.status === 'closed').length,
     all:    conversations.filter(c => c.status !== 'archived').length,
+    ia:     conversations.filter(c => (c.status as string) !== 'archived' && c.ai_enabled && c.ai_agent_id).length,
   }
   const unread   = conversations.filter(c => (c.unread_count ?? 0) > 0).length
   const isClosed = selectedConv?.status === 'closed'
@@ -701,6 +766,39 @@ export default function WhatsAppInbox() {
                 {creatingConv && <Loader2 className="w-4 h-4 animate-spin" />}
                 {creatingConv ? 'Criando...' : 'Iniciar conversa'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmação de apagar mensagens (selecionadas ou todas) — sem volta */}
+      {confirmarApagar && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4" onClick={() => { if (!apagandoMsgs) setConfirmarApagar(null) }}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <p className="font-bold text-slate-900 dark:text-slate-100">
+                {confirmarApagar === 'todas' ? 'Apagar todas as mensagens desta conversa?' : `Apagar ${msgsMarcadas.size} mensage${msgsMarcadas.size === 1 ? 'm' : 'ns'}?`}
+              </p>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5">
+              Some só do sistema — no WhatsApp da pessoa continua.
+              {confirmarApagar === 'todas' && ' A memória do agente nesta conversa também é zerada.'}
+              <strong className="text-slate-700 dark:text-slate-200"> Não tem como desfazer.</strong>
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmarApagar(null)} disabled={apagandoMsgs}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 disabled:opacity-50">
+                Cancelar
+              </button>
+              <Permissao chave="whatsapp_inbox.whats_app_inbox.excluir" rotulo="Excluir — Whats App Inbox" herda="whatsapp_inbox.view">
+                <button onClick={() => apagarMensagens(confirmarApagar === 'todas' ? 'todas' : [...msgsMarcadas])} disabled={apagandoMsgs}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                  {apagandoMsgs ? <><Loader2 className="w-4 h-4 animate-spin" /> Apagando…</> : 'Apagar'}
+                </button>
+              </Permissao>
             </div>
           </div>
         </div>
@@ -809,6 +907,7 @@ export default function WhatsAppInbox() {
               { key: 'open', label: 'Abertas', count: counts.open },
               { key: 'closed', label: 'Encerradas', count: counts.closed },
               { key: 'all', label: 'Todas', count: counts.all },
+              { key: 'ia', label: 'Com IA', count: counts.ia },
             ] as { key: StatusFilter; label: string; count: number }[]).map(({ key, label, count }) => (
               <button key={key} onClick={() => setStatusFilter(key)}
                 className={`flex-1 py-2 text-xs font-medium relative transition-colors ${statusFilter === key ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
@@ -855,6 +954,27 @@ export default function WhatsAppInbox() {
               </div>
 
               <div className="flex items-center gap-2">
+                {selectedConv.ai_enabled && selectedConv.ai_agent_id ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 rounded-lg">
+                      <Bot className="w-3.5 h-3.5" />
+                      {agentes.find(a => a.id === selectedConv.ai_agent_id)?.name ?? 'Agente de IA'}
+                    </span>
+                    <Permissao chave="whatsapp_inbox.whats_app_inbox.assumir_atendimento" rotulo="Assumir atendimento da IA — Whats App Inbox" herda="whatsapp_inbox.view">
+                      <button onClick={() => trocarAgente(selectedConv.id, null)} disabled={trocandoAgente}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+                        <UserCheck className="w-3.5 h-3.5" /> Assumir
+                      </button>
+                    </Permissao>
+                  </div>
+                ) : agentes.length > 0 && pode(PERM_PASSAR_AGENTE) && (
+                  <select value="" disabled={trocandoAgente}
+                      onChange={e => { if (e.target.value) trocarAgente(selectedConv.id, e.target.value) }}
+                      className="px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg">
+                      <option value="">Passar para agente…</option>
+                      {agentes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                )}
                 {convInstance && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
                     <Smartphone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -874,7 +994,19 @@ export default function WhatsAppInbox() {
                     <MoreVertical className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
                   {showConvMenu && (
-                    <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 z-30 min-w-[180px]" onClick={e => e.stopPropagation()}>
+                    <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 z-30 min-w-[220px]" onClick={e => e.stopPropagation()}>
+                      <Permissao chave="whatsapp_inbox.whats_app_inbox.excluir" rotulo="Excluir — Whats App Inbox" herda="whatsapp_inbox.view">
+                        <button onClick={() => { setSelecionandoMsgs(true); setMsgsMarcadas(new Set()); setShowConvMenu(false) }}
+                          className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">
+                          <CheckSquare className="w-4 h-4" /> Selecionar mensagens
+                        </button>
+                      </Permissao>
+                      <Permissao chave="whatsapp_inbox.whats_app_inbox.excluir" rotulo="Excluir — Whats App Inbox" herda="whatsapp_inbox.view">
+                        <button onClick={() => { setConfirmarApagar('todas'); setShowConvMenu(false) }}
+                          className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                          <Trash2 className="w-4 h-4" /> Apagar todas as mensagens
+                        </button>
+                      </Permissao>
                       <Permissao chave="whatsapp_inbox.whats_app_inbox.excluir_conversa" rotulo="Excluir conversa — Whats App Inbox" herda="whatsapp_inbox.view">
                         <button onClick={() => { handleConvAction('delete', selectedConv.id); setShowConvMenu(false) }}
                           className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
@@ -895,13 +1027,44 @@ export default function WhatsAppInbox() {
               </div>
             )}
 
+            {/* Barra da seleção de mensagens */}
+            {selecionandoMsgs && (
+              <div className="px-4 py-2 border-b border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/15 flex items-center justify-between gap-2 flex-shrink-0">
+                <button onClick={() => setMsgsMarcadas(messages.length && messages.every(m => msgsMarcadas.has(m.id)) ? new Set() : new Set(messages.map(m => m.id)))}
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900">
+                  {messages.length > 0 && messages.every(m => msgsMarcadas.has(m.id)) ? <CheckSquare className="w-4 h-4 text-red-600" /> : <Square className="w-4 h-4 text-slate-400" />}
+                  Todas as carregadas ({messages.length})
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-500">{msgsMarcadas.size} sel.</span>
+                  <Permissao chave="whatsapp_inbox.whats_app_inbox.excluir" rotulo="Excluir — Whats App Inbox" herda="whatsapp_inbox.view">
+                    <button onClick={() => setConfirmarApagar('selecionadas')} disabled={msgsMarcadas.size === 0}
+                      className="px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-40 flex items-center gap-1">
+                      <Trash2 className="w-3.5 h-3.5" /> Excluir
+                    </button>
+                  </Permissao>
+                  <button onClick={sairSelecaoMsgs} className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs text-slate-600 hover:bg-slate-50">Cancelar</button>
+                </div>
+              </div>
+            )}
+
             {/* Messages */}
             <div className="flex-1 overflow-y-auto py-4 bg-slate-100 dark:bg-slate-900 min-h-0">
               {msgLoading && messages.length === 0 ? (
                 <div className="text-center text-slate-500 text-sm py-8 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>
               ) : messages.length === 0 ? (
                 <div className="text-center text-slate-400 text-sm py-8">Nenhuma mensagem ainda.</div>
-              ) : messages.map(msg => (
+              ) : messages.map(msg => selecionandoMsgs ? (
+                <div key={msg.id} onClick={() => alternarMsg(msg.id)}
+                  className={`flex items-center gap-1 cursor-pointer ${msgsMarcadas.has(msg.id) ? 'bg-red-50/80 dark:bg-red-900/20' : ''}`}>
+                  <span className="pl-3 flex-shrink-0">
+                    {msgsMarcadas.has(msg.id) ? <CheckSquare className="w-5 h-5 text-red-600" /> : <Square className="w-5 h-5 text-slate-300" />}
+                  </span>
+                  <div className="flex-1 min-w-0 pointer-events-none">
+                    <MessageBubble msg={msg} onDelete={() => {}} onReply={() => {}} onForward={() => {}} onReact={() => {}} />
+                  </div>
+                </div>
+              ) : (
                 <MessageBubble key={msg.id} msg={msg}
                   onDelete={handleDeleteMessage}
                   onReply={m => { setReplyTo(m); textareaRef.current?.focus() }}

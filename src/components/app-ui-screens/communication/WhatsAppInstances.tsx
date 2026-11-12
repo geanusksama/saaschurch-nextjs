@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { useWhatsAppInstances } from '@/hooks/useWhatsAppInstances'
 import type { WhatsAppInstance } from '@/types/whatsapp'
 import { Permissao } from '../../../lib/permissoes/Permissao';
+import RecepcaoQrModal from './RecepcaoQrModal'
 
 // ── tipos ────────────────────────────────────────────────────────────────────
 
@@ -402,8 +403,10 @@ function RowMenu({
   onDelete,
   onManageUsers,
   onEdit,
+  onRecepcao,
 }: {
   instance: WhatsAppInstance
+  onRecepcao: () => void
   onGetQr: () => void
   onRefreshStatus: () => void
   onDisconnect: () => void
@@ -477,6 +480,7 @@ function RowMenu({
         >
           {item(onEdit, 'Editar instância', Pencil)}
           {item(onManageUsers, 'Gerenciar usuários', Users)}
+          {item(onRecepcao, 'Recepção (QR) e webhook', QrCode)}
           {item(onRefreshStatus, 'Verificar status', RefreshCw)}
           {instance.status !== 'connected' && item(onGetQr, 'Obter QR Code', QrCode)}
           {instance.status === 'connected' && item(onDisconnect, 'Desconectar', PowerOff, 'text-yellow-600')}
@@ -502,6 +506,7 @@ export default function WhatsAppInstances() {
   const [pollingId, setPollingId] = useState<string | null>(null)
   const [usersInst, setUsersInst] = useState<WhatsAppInstance | null>(null)
   const [editInst, setEditInst]   = useState<WhatsAppInstance | null>(null)
+  const [recepcaoInst, setRecepcaoInst] = useState<WhatsAppInstance | null>(null)
   const pollingRef                = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // stats
@@ -567,6 +572,10 @@ export default function WhatsAppInstances() {
     <div className="p-6 space-y-6">
       {qrCode && <QrCodeModal qrCode={qrCode} onClose={() => { setQrCode(null); setPollingId(null) }} />}
       {usersInst && <UsersModal instance={usersInst} onClose={() => setUsersInst(null)} />}
+      {recepcaoInst && (
+        <RecepcaoQrModal instance={recepcaoInst} onClose={() => setRecepcaoInst(null)} />
+      )}
+
       {editInst && (
         <EditInstanceModal
           instance={editInst}
@@ -766,6 +775,7 @@ export default function WhatsAppInstances() {
                         onDelete={() => handleDelete(inst.id, inst.name)}
                         onManageUsers={() => setUsersInst(inst)}
                         onEdit={() => setEditInst(inst)}
+                        onRecepcao={() => setRecepcaoInst(inst)}
                       />
                     </div>
                   </td>

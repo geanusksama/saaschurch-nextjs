@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { exigirPermissao } from '@/lib/permissoes/servidor'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
@@ -6,6 +7,11 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 // Atualiza status, ai_enabled, assigned_to, zera unread_count, etc.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
+    // Conversas e números do WhatsApp: só master ou quem tem "Caixa de Entrada
+    // WhatsApp" liberada no perfil (Grupos/Permissões). Vale para toda tela que
+    // lê conversas por aqui — é o bloqueio pedido pelo dono, não só esconder.
+    const negadoWhats = await exigirPermissao(user, 'whatsapp_inbox.view')
+    if (negadoWhats) return negadoWhats
     const { id } = await params
     const body = await req.json().catch(() => ({}))
 
@@ -36,6 +42,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 // DELETE /api/whatsapp/conversations/[id]
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
+    // Conversas e números do WhatsApp: só master ou quem tem "Caixa de Entrada
+    // WhatsApp" liberada no perfil (Grupos/Permissões). Vale para toda tela que
+    // lê conversas por aqui — é o bloqueio pedido pelo dono, não só esconder.
+    const negadoWhats = await exigirPermissao(user, 'whatsapp_inbox.view')
+    if (negadoWhats) return negadoWhats
     const { id } = await params
 
     const { error } = await supabaseAdmin

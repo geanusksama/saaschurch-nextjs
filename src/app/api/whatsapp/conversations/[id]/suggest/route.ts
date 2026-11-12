@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { exigirPermissao } from '@/lib/permissoes/servidor'
 import { withAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { supabaseAdmin } from '@/lib/supabase-admin'
@@ -22,6 +23,11 @@ import { getAccessibleInstanceIds } from '@/lib/whatsappSendService'
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   return withAuth(req, async (user) => {
+    // Conversas e números do WhatsApp: só master ou quem tem "Caixa de Entrada
+    // WhatsApp" liberada no perfil (Grupos/Permissões). Vale para toda tela que
+    // lê conversas por aqui — é o bloqueio pedido pelo dono, não só esconder.
+    const negadoWhats = await exigirPermissao(user, 'whatsapp_inbox.view')
+    if (negadoWhats) return negadoWhats
     const { id: conversationId } = await ctx.params
     const body = await req.json().catch(() => ({}))
     const lastMessages = Math.min(Math.max(1, Number(body.lastMessages) || 5), 20)

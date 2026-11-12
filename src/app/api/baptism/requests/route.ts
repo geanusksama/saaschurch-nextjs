@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizarSituacaoMembro } from "@/lib/situacaoMembro";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 import { serializeBigInts, assertChurchAccess, buildProtocol } from "@/lib/helpers";
@@ -28,7 +29,7 @@ async function applyMatrixRule({
 
     if (card.memberId && (rule.changeStatus || rule.changeTitle)) {
       const memberData: Record<string, unknown> = {};
-      if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = rule.newStatus.toUpperCase();
+      if (rule.changeStatus && rule.newStatus) memberData.membershipStatus = normalizarSituacaoMembro(rule.newStatus) ?? undefined;
       if (rule.changeTitle && rule.newTitle) {
         memberData.ecclesiasticalTitle = rule.newTitle;
         const titleRecord = await prisma.ecclesiasticalTitle.findFirst({
