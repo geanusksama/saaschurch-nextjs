@@ -29,8 +29,9 @@ loadEnv({ path: '.env.local', override: true })
 import { randomUUID } from 'node:crypto'
 import { PrismaClient } from '@prisma/client'
 import { createClient } from '@supabase/supabase-js'
-import { encaminharParaLideres } from '../src/lib/encaminharLider.ts'
-import { sintetizarFala, transcreverAudio, lerConfigElevenLabs, ELEVENLABS_PADRAO } from '../src/lib/elevenlabs.ts'
+// libs do sistema importadas DEPOIS do .env (o import estático roda antes do loadEnv)
+const { encaminharParaLideres } = await import('../src/lib/encaminharLider.ts')
+const { sintetizarFala, transcreverAudio, lerConfigElevenLabs, ELEVENLABS_PADRAO } = await import('../src/lib/elevenlabs.ts')
 
 const prisma = new PrismaClient()
 const BASE = (process.argv.find((a) => a.startsWith('--base=')) || '--base=http://localhost:3000').slice(7)
@@ -177,6 +178,17 @@ async function main() {
   ]).select('id, phone')
   if (eConv) throw new Error(`conversas: ${eConv.message}`)
   const reservada = convs.find((c) => c.phone === '5500000000012')
+  // o relatório conta conversa com mensagem da PESSOA no período
+  const { error: eMsg } = await admin.from('whatsapp_messages').insert(convs.map((c) => ({
+    conversation_id: c.id, content: '[E2E] olá', type: 'text', direction: 'inbound', status: 'delivered', metadata: { zapi_message_id: `e2e-${c.id}` },
+  })))
+  if (eMsg) throw new Error(`mensagens: ${eMsg.message}`)
+  // uma conversa só com mensagem NOSSA não é atendimento
+  const { data: soNossa } = await admin.from('whatsapp_conversations').insert(conv('5500000000013', '[E2E] Só saída', {})).select('id').single()
+  await admin.from('whatsapp_messages').insert({ conversation_id: soNossa.id, content: '[E2E] aviso', type: 'text', direction: 'outbound', status: 'sent', metadata: {} })
+  // número de líder (interno) com mensagem recebida também não é atendimento
+  const { data: lider } = await admin.from('whatsapp_conversations').insert(conv('5500000000001', '[E2E] Líder', {})).select('id').single()
+  await admin.from('whatsapp_messages').insert({ conversation_id: lider.id, content: '[E2E] ok', type: 'text', direction: 'inbound', status: 'delivered', metadata: {} })
 
   const env = await encaminharParaLideres({
     instanceId: inst.id, conversationId: reservada.id, telefoneContato: reservada.phone,
@@ -189,7 +201,7 @@ async function main() {
   ok('áreas marcadas como tratadas (não repetem depois)', !!depois.metadata.encaminhados?.jovens && !!depois.metadata.encaminhados?.['atendimento geral'])
   const { count: msgsLider } = await admin.from('whatsapp_conversations').select('id', { count: 'exact', head: true })
     .eq('instance_id', inst.id).in('phone', ['5500000000001', '5500000000002'])
-  ok('nenhuma conversa criada com os líderes', (msgsLider ?? 0) === 0)
+  ok('encaminhamento não criou conversa com os líderes (só a do teste)', (msgsLider ?? 0) === 1)
 
   console.log('\n4. Relatórios da Caixa (rota)')
   r = await api(`/api/whatsapp/relatorios?de=${hoje}&ate=${hoje}`, token)
@@ -201,7 +213,7 @@ async function main() {
   r = await api(`/api/whatsapp/relatorios?de=${hoje}&ate=${hoje}`, token)
   ok('GET do período → 200', r.status === 200, `status ${r.status} ${r.json?.error ?? ''}`)
   const t = r.json?.totais ?? {}
-  ok('3 atendimentos, 3 pelo QR', t.conversas === 3 && t.viaQr === 3, JSON.stringify(t))
+  ok('3 atendimentos (sem a conversa só de saída e sem o líder), 3 pelo QR', t.conversas === 3 && t.viaQr === 3, JSON.stringify(t))
   ok('1 de outra igreja e 1 sem igreja anterior', t.deOutraIgreja === 1 && t.semIgrejaAnterior === 1)
   ok('1 já abordado e 1 não abordado', t.jaAbordados === 1 && t.naoAbordados === 1)
   ok('1 reservado, contado só como número', t.reservados === 1)
@@ -218,6 +230,13 @@ async function main() {
   ok('período invertido → 400', r.status === 400)
   r = await api(`/api/whatsapp/relatorios?de=2026-11-01&ate=2026-11-12`, token)
   ok('não vê conversas de Campinas (outro campo)', r.status === 200 && r.json?.totais?.conversas === 3, JSON.stringify(r.json?.totais?.conversas))
+
+  console.log('\n5. Caixa (lista de conversas) respeita o campo ativo, master inclusive')
+  r = await api('/api/whatsapp/conversations', token)
+  const instanciasVistas = new Set((r.json ?? []).map((c) => c.instance_id))
+  ok('lista de conversas → 200', r.status === 200, `status ${r.status}`)
+  ok('vê as conversas da instância do próprio campo', instanciasVistas.has(inst.id))
+  ok('não vê a instância de Campinas (geral)', !instanciasVistas.has('23243f6d-cf5a-46dc-b167-f78bd3551cbe'))
 }
 
 main()

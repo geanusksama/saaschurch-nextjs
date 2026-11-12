@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
+import { podeVerAlertaDaIgreja } from "@/lib/alertasIgreja";
 import { serializeBigInts, isRestrictedToOwnChurch, roleClassOf, isAtHeadquartersChurch, isFieldAdmin } from "@/lib/helpers";
 
 function normalizeNotificationData(data: Record<string, unknown> = {}) {
@@ -138,7 +139,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(deduped.map((n) => serializeNotification(n as unknown as Record<string, unknown>, user)));
+    // Alerta ligado a uma IGREJA (data.churchId — ex.: card da Secretaria
+    // movido, kan_action) só aparece para quem é daquela igreja ou para quem
+    // enxerga o campo inteiro. Antes ia como aviso do campo para todo mundo, e
+    // cada igreja via os cards das outras. Aviso manual do campo (sem
+    // churchId) continua para todos do campo.
+    const visiveis = deduped.filter((n) => podeVerAlertaDaIgreja(user, n as unknown as Record<string, unknown>, userId));
+
+    return NextResponse.json(visiveis.map((n) => serializeNotification(n as unknown as Record<string, unknown>, user)));
   });
 }
 

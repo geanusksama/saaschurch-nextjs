@@ -6,8 +6,12 @@ import {
   ELEVENLABS_SETTING_KEY,
   lerConfigElevenLabs,
   listarVozes,
+  sintetizarFala,
   type ElevenLabsConfig,
 } from '@/lib/elevenlabs'
+
+/** Frase de exemplo do botão "Ouvir": como o agente fala de verdade. */
+const FRASE_AMOSTRA = 'A paz do Senhor! Seja muito bem-vindo à nossa igreja. Eu faço parte da equipe pastoral. Como posso te ajudar hoje?'
 
 /**
  * Configuração da ElevenLabs (voz do agente no WhatsApp) — por campo, em
@@ -49,7 +53,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (user) => {
-    const teste = new URL(req.url).searchParams.get('test') === 'true'
+    const sp = new URL(req.url).searchParams
+    const teste = sp.get('test') === 'true' || sp.get('amostra') === 'true'
     // mesmas chaves dos botões da tela (ElevenLabsConfig.tsx)
     const negado = await exigirPermissao(user, teste ? 'elevenlabs_config.eleven_labs.testar' : 'elevenlabs_config.eleven_labs.salvar')
     if (negado) return negado
@@ -61,6 +66,16 @@ export async function POST(req: NextRequest) {
     const apiKey = typeof body.apiKey === 'string' && body.apiKey.trim() && !mascarada(body.apiKey)
       ? body.apiKey.trim()
       : atual.apiKey
+
+    // ?amostra=true: toca a frase de exemplo com a voz escolhida (não grava nada)
+    if (sp.get('amostra') === 'true') {
+      const voz = typeof (body as { voiceId?: unknown }).voiceId === 'string' ? (body as { voiceId: string }).voiceId : ''
+      if (!apiKey) return json({ error: 'Informe a chave da ElevenLabs.' }, 400)
+      if (!voz) return json({ error: 'Escolha uma voz.' }, 400)
+      const mp3 = await sintetizarFala({ ...atual, apiKey, vozFeminina: voz, vozMasculina: voz }, FRASE_AMOSTRA, 'F')
+      if (!mp3) return json({ error: 'A ElevenLabs não gerou a amostra (confira a chave e a voz).' }, 400)
+      return new NextResponse(new Uint8Array(mp3), { headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' } })
+    }
 
     if (teste) {
       if (!apiKey) return json({ error: 'Informe a chave da ElevenLabs.' }, 400)

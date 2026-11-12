@@ -497,7 +497,7 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Configurar Pipelines',  path: '/app-ui/secretariat/pipelines', icon: GitBranch, permKey: 'pipeline_config' },
       { name: 'Importação de Membros', path: '/app-ui/members/import',        icon: UserPlus, permKey: 'member_import' },
       { name: 'Contatos / Leads',      path: '/app-ui/contacts',              icon: Contact,  permKey: 'crm_leads' },
-      { name: 'WhatsApp (Caixa)',      path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp_inbox' },
+      { name: 'WhatsApp Geral',        path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp_inbox' },
       { name: 'WhatsApp Instâncias',   path: '/app-ui/system/whatsapp',       icon: Smartphone, permKey: 'whatsapp_instances' },
       { name: 'Senha dos Campos',      path: '/app-ui/system/campo-senhas', icon: Lock,     permKey: 'campo_passwords' },
       { name: 'Log de Auditoria',      path: '/app-ui/system/audit-log',    icon: FileText, permKey: 'audit_log' },

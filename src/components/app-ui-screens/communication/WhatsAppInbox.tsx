@@ -435,8 +435,8 @@ export default function WhatsAppInbox() {
   const { instances } = useWhatsAppInstances()
 
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null)
-  // aba da Caixa: Relatórios (painel do atendimento) ou Conversas
-  const [aba, setAba] = useState<'relatorios' | 'conversas'>('conversas')
+  // aba da Caixa: abre em Relatórios (pedido do dono); sem a permissão, Conversas
+  const [aba, setAba] = useState<'relatorios' | 'conversas'>('relatorios')
   const selectedConv = conversations.find(c => c.id === selectedConvId) ?? null
   const { messages, isLoading: msgLoading, hasMore, loadMore, sendMessage, removeMessages } = useWhatsAppMessages(selectedConvId)
 
@@ -475,6 +475,7 @@ export default function WhatsAppInbox() {
   const [agentes, setAgentes] = useState<{ id: string; name: string }[]>([])
   const [trocandoAgente, setTrocandoAgente] = useState(false)
   const pode = usePode()
+  const abaAtiva = aba === 'relatorios' && pode('whatsapp_inbox.whats_app_inbox.relatorios') ? 'relatorios' : 'conversas'
 
   const imgRef = useRef<HTMLInputElement>(null)
   const vidRef = useRef<HTMLInputElement>(null)
@@ -845,17 +846,17 @@ export default function WhatsAppInbox() {
       <div className="flex gap-1 mb-3 flex-shrink-0">
         <Permissao chave="whatsapp_inbox.whats_app_inbox.relatorios" rotulo="Relatórios do atendimento — Whats App Inbox" herda="whatsapp_inbox.view">
           <button type="button" onClick={() => setAba('relatorios')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${aba === 'relatorios' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${abaAtiva === 'relatorios' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
             Relatórios
           </button>
         </Permissao>
         <button type="button" onClick={() => setAba('conversas')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium ${aba === 'conversas' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${abaAtiva === 'conversas' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
           Conversas
         </button>
       </div>
 
-      {aba === 'relatorios' ? (
+      {abaAtiva === 'relatorios' ? (
         <RelatoriosAtendimento onAbrirConversa={(id) => { setSelectedConvId(id); setAba('conversas') }} />
       ) : (
       <div className="flex flex-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden min-h-0"

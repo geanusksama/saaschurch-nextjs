@@ -4368,6 +4368,18 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
   },
   {
+    "chave": "whatsapp_inbox.whats_app_inbox.relatorios_exportar",
+    "rotulo": "Exportar relatório — Whats App Inbox",
+    "herda": "whatsapp_inbox.whats_app_inbox.relatorios",
+    "arquivo": "src/components/app-ui-screens/communication/RelatoriosAtendimento.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.relatorios_imprimir",
+    "rotulo": "Imprimir relatório — Whats App Inbox",
+    "herda": "whatsapp_inbox.whats_app_inbox.relatorios",
+    "arquivo": "src/components/app-ui-screens/communication/RelatoriosAtendimento.tsx"
+  },
+  {
     "chave": "word_docs.word_editor.excluir",
     "rotulo": "Excluir — Word Editor",
     "herda": "word_docs.view",

@@ -230,3 +230,23 @@ ficha (completa ou básica) → resumo → registro.
 - **Não verificado**: conversa real ponta a ponta pela Z-API (depende do
   deploy); o prompt do agente gravado no banco só deve ser atualizado junto
   com o deploy (o código antigo não conhece o bloco reservado).
+
+## Relatórios pela análise das conversas + isolamento por campo + sininho (12/11/2026, noite)
+
+- Relatórios leem TODAS as conversas com mensagem da pessoa no período (não só
+  as do agente). Cada uma é analisada pela IA (`relatorio_analise` no
+  metadata; refeita só quando chega mensagem nova; 12 por pedido, a tela repete
+  sozinha). Números internos (líderes, reservado, avisos, líderes de GF) ficam
+  de fora. Gráficos: linha por dia, pizza de sexo, tipo e faixa etária, barras
+  de tempo na Sede, departamento, GF e teor. Clique em indicador ou gráfico abre
+  a lista com Exportar Excel (CSV) e Imprimir.
+- Campo da instância = campo do agente de recepção dela (`src/lib/whatsappCampo.ts`).
+  A Caixa (lista de conversas) e os Relatórios filtram pelo campo ativo,
+  master inclusive. Instância sem agente segue visível (sem campo definido).
+  Antes, o master em Aguaí via as conversas de Campinas.
+- Sininho (`src/lib/alertasIgreja.ts`): alerta de card da Secretaria
+  (kan_action) só para a igreja do card e para quem vê o campo inteiro
+  (master, perfil campo, admin do campo). Testado com os 195 alertas reais.
+- Menu "WhatsApp (Caixa)" → "WhatsApp Geral"; a Caixa abre em Relatórios.
+- ElevenLabs: botão Ouvir em cada voz (frase de exemplo em português).
+- E2E `scripts/e2e-voz-relatorios.mjs`: 33/33.

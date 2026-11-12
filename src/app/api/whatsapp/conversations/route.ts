@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { exigirPermissao } from '@/lib/permissoes/servidor'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { instanciasVisiveisNoCampo } from '@/lib/whatsappCampo'
 
 // GET /api/whatsapp/conversations?instanceId=&status=open&search=
 export async function GET(req: NextRequest) {
@@ -29,6 +30,10 @@ export async function GET(req: NextRequest) {
 
     // master vê todas; outros filtram pelo próprio owner_user_id
     if (user.profileType !== 'master') query = query.eq('owner_user_id', user.id)
+    // campo ativo filtra tudo, master inclusive: só instâncias do campo (o do
+    // agente de recepção delas) e as que ainda não têm campo definido
+    const visiveis = await instanciasVisiveisNoCampo(user.campoId || null, null)
+    query = query.in('instance_id', visiveis.length ? visiveis : ['00000000-0000-0000-0000-000000000000'])
 
     if (instanceId) query = query.eq('instance_id', instanceId)
     if (status) query = query.eq('status', status)

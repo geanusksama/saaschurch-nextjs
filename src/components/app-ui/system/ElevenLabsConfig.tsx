@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, AudioLines, Eye, EyeOff, Check, AlertCircle, RefreshCw, Save, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, AudioLines, Eye, EyeOff, Check, AlertCircle, RefreshCw, Save, ToggleLeft, ToggleRight, Play, Square } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { apiBase } from '../../../lib/apiBase';
 import { Permissao } from '../../../lib/permissoes/Permissao';
@@ -35,6 +35,9 @@ export default function ElevenLabsConfig() {
   const [vozFeminina, setVozFeminina] = useState('');
   const [responderComAudio, setResponderComAudio] = useState(true);
   const [vozes, setVozes] = useState<Voz[]>([]);
+  // amostra tocando: id da voz (gerando ou tocando)
+  const [tocando, setTocando] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -95,6 +98,38 @@ export default function ElevenLabsConfig() {
       setTestando(false);
     }
   };
+
+  const ouvir = async (voiceId: string) => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    if (tocando === voiceId) { setTocando(null); return; }
+    if (!voiceId) return;
+    setTocando(voiceId); setErro('');
+    try {
+      const r = await fetch(`${URL_API}?amostra=true`, { method: 'POST', headers: cabecalhos(), cache: 'no-store', body: JSON.stringify({ apiKey, voiceId }) });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || 'Falha ao gerar a amostra');
+      }
+      const url = URL.createObjectURL(await r.blob());
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => { setTocando(null); URL.revokeObjectURL(url); };
+      await audio.play();
+    } catch (e) {
+      setTocando(null);
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar a amostra');
+    }
+  };
+
+  const botaoOuvir = (voiceId: string) => (
+    <Permissao chave="elevenlabs_config.eleven_labs.testar" rotulo="Testar conexão — ElevenLabs" herda="elevenlabs_config.view">
+      <button type="button" onClick={() => ouvir(voiceId)} disabled={!voiceId} title="Ouvir esta voz"
+        className="shrink-0 px-3 rounded-xl border border-slate-200 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 flex items-center gap-1.5">
+        {tocando === voiceId ? <Square className="w-4 h-4 text-pink-600" /> : <Play className="w-4 h-4 text-pink-600" />}
+        {tocando === voiceId ? 'Parar' : 'Ouvir'}
+      </button>
+    </Permissao>
+  );
 
   const inputCls = 'w-full rounded-xl border border-slate-200 p-2.5 text-sm bg-white focus:outline-none focus:border-pink-500';
 
@@ -175,11 +210,11 @@ export default function ElevenLabsConfig() {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Voz para homens</label>
-                {seletorVoz(vozMasculina, setVozMasculina)}
+                <div className="flex gap-2">{seletorVoz(vozMasculina, setVozMasculina)}{botaoOuvir(vozMasculina)}</div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Voz para mulheres</label>
-                {seletorVoz(vozFeminina, setVozFeminina)}
+                <div className="flex gap-2">{seletorVoz(vozFeminina, setVozFeminina)}{botaoOuvir(vozFeminina)}</div>
               </div>
             </div>
             <p className="text-xs text-slate-500">
