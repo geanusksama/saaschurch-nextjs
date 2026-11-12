@@ -18,6 +18,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { PedidoDoContato } from '@/lib/pedidosDoContato'
 import type { Encaminhamento } from '@/lib/recepcaoWhatsapp'
 import { MARCA_ENCAMINHAR_FIM, MARCA_ENCAMINHAR_INICIO } from '@/lib/encaminharLider'
+import { MARCA_GF_FIM, MARCA_GF_INICIO, textoGfsParaAgente } from '@/lib/encaminharGf'
 import { AREA_PADRAO_ROTULO, normalizarTexto } from '@/lib/recepcaoWhatsapp'
 import { MARCA_REAGIR_FIM, MARCA_REAGIR_INICIO, REACOES_PERMITIDAS } from '@/lib/reacaoAgente'
 import { MARCA_OPCOES_FIM, MARCA_OPCOES_INICIO } from '@/lib/opcoesAgente'
@@ -44,6 +45,12 @@ export async function montarContextoRecepcao(params: {
   encaminhamentos: Encaminhamento[]
   /** áreas já encaminhadas nesta conversa (chaves normalizadas) */
   jaEncaminhados: string[]
+  /** há contato para assunto reservado (recepcao.contatoReservado)? */
+  temContatoReservado?: boolean
+  /** a conversa já foi marcada como reservada */
+  jaReservado?: boolean
+  /** nomes dos GFs já avisados nesta conversa */
+  gfsJaAvisados?: string[]
 }): Promise<string> {
   const areas = [...new Set(params.encaminhamentos.map(e => e.interesse))]
   const padrao = params.encaminhamentos.some(e => e.padrao) ? AREA_PADRAO_ROTULO : null
@@ -95,7 +102,8 @@ export async function montarContextoRecepcao(params: {
     'Confie nela: não pergunte de novo o que já está aqui. Se a pessoa corrigir algo, atualize.',
     'Se "atendente" já estiver preenchido, apresente-se e continue SEMPRE com esse mesmo nome.',
     `Ao FINAL de TODA resposta, acrescente em uma linha o bloco ${MARCA_ESTADO_INICIO}{json}${MARCA_ESTADO_FIM} com a memória`,
-    'atualizada: {"etapa":"nome|igreja|pedido|departamentos|visita|cadastro|resumo|registrado|encerrado","atendente":"nome com que você se apresentou","nome":"","sexo":"","modoCadastro":"","interesses":[],"pediuHumano":false,"igrejaAnterior":"",',
+    'atualizada: {"etapa":"nome|igreja|pedido|departamentos|visita|cadastro|resumo|registrado|encerrado","atendente":"nome com que você se apresentou","nome":"","sexo":"","modoCadastro":"","interesses":[],"pediuHumano":false,"assuntoReservado":false,"igrejaAnterior":"",',
+    '"tempoNaSede":"","jaFoiAbordado":null,"conheceGF":null,"gfInteresse":"","faixaEtaria":"","perfil":"","bairro":"","assunto":"",',
     '"pedidoEspecial":"","opcaoEscolhida":"","querVisita":null,"dataVisita":"","estadoCivil":"","modoFicha":"basico|completo",',
     '"ficha":{...campos já informados}}. Só o que a pessoa disse; campo desconhecido fica vazio. A pessoa não vê esse bloco.',
     '',
@@ -166,6 +174,43 @@ export async function montarContextoRecepcao(params: {
           'Se a pessoa sumir sem se despedir, o sistema manda o resumo sozinho depois de 2 horas — você não precisa se preocupar.',
         ].join('\n')
       : '',
+    '',
+    '=== PERFIL DA PESSOA, TEMPO NA SEDE E GRUPO FAMILIAR (GF) ===',
+    'Logo depois da pergunta sobre igreja anterior, com naturalidade e uma pergunta por mensagem:',
+    '- há quanto tempo ela frequenta a Sede (anote em "tempoNaSede", ex.: "primeira vez", "3 meses", "2 anos");',
+    '- se alguém da igreja já conversou com ela ou já a abordou para acolher (anote true/false em "jaFoiAbordado").',
+    'Monte o PERFIL na MEMÓRIA a cada resposta, sem perguntar o que dá para perceber pela conversa: "faixaEtaria"',
+    '(adolescente, jovem, adulto, idoso — só se ficar claro), "perfil" (ex.: "casado, com filhos", "jovem solteiro"),',
+    '"bairro" e cidade quando ela disser. Use o perfil para sugerir o que combina com ela.',
+    'Depois dos departamentos, pergunte se ela já conhece os Grupos Familiares (anote em "conheceGF"):',
+    '- se não conhece, explique em uma frase que o GF é um encontro semanal nas casas, perto de onde ela mora, mande o',
+    '  link da página dos GFs (está abaixo) para ela ver a lista e o mapa, e SUGIRA 1 a 3 GFs da lista pelo perfil:',
+    '  bairro/cidade mais próximos; GF de Mulheres para mulher; para jovem, os GFs de adultos e também o departamento',
+    '  de Jovens. Apresente os líderes pelo nome e pergunte se ela quer que algum deles fale com ela;',
+    '- se ela já participa de um GF, anote e siga.',
+    `Quando ela aceitar ou escolher um GF, anote em "gfInteresse" e, NA MESMA MENSAGEM, acrescente numa linha`,
+    `${MARCA_GF_INICIO}{"gf":"nome do GF EXATAMENTE como na lista","resumo":"quem é, perfil, bairro, o que conversaram"}${MARCA_GF_FIM}`,
+    'O sistema avisa na hora os líderes desse GF. Diga que o líder vai entrar em contato. Um bloco por GF.',
+    'Em "assunto", mantenha em poucas palavras o teor principal da conversa (ex.: "visita e Quero ser Membro",',
+    '"pedido de oração", "informação de culto"). Em assunto reservado, use só "assunto reservado".',
+    '',
+    '=== ASSUNTO RESERVADO: DENÚNCIA, RECLAMAÇÃO, CONFLITO OU SITUAÇÃO DELICADA ===',
+    'Se a pessoa fizer uma denúncia, uma reclamação (de pessoa, líder, obreiro, pastor, departamento ou da igreja), contar',
+    'um conflito, abuso, assédio, problema moral, financeiro ou disciplinar, ou qualquer assunto que não deva circular:',
+    '- acolha com seriedade e calma, sem julgar, sem defender nem acusar ninguém e sem pedir detalhes além do que ela quiser contar;',
+    '- diga que o assunto será tratado com SIGILO por um pastor responsável, que vai procurá-la pessoalmente. Não diga o nome',
+    '  dele, não cite outros líderes, departamentos ou pessoas, e nunca diga que vai "passar para a equipe" ou "para o líder";',
+    '- marque "assuntoReservado": true na MEMÓRIA e, NA MESMA MENSAGEM, acrescente numa linha',
+    `  ${MARCA_ENCAMINHAR_INICIO}{"interesses":["Assunto reservado"],"reservado":true,"sexo":"M|F","resumo":"o que a pessoa relatou, factual"}${MARCA_ENCAMINHAR_FIM}`,
+    '- esse assunto NUNCA vai para as áreas da lista nem para o atendimento geral: o sistema entrega só ao pastor responsável.',
+    '- depois disso, se ela quiser, siga o atendimento normalmente, mas não volte a comentar o assunto reservado e não o',
+    '  inclua em nenhum outro resumo.',
+    '- se houver risco imediato (violência, ameaça, abuso em curso), oriente também a buscar ajuda: Polícia 190, SAMU 192, CVV 188.',
+    params.jaReservado ? 'ESTA CONVERSA JÁ ESTÁ MARCADA COMO ASSUNTO RESERVADO: não mande outro bloco reservado, não repita o assunto.' : '',
+    params.temContatoReservado === false
+      ? '(Ainda não há pastor responsável configurado: diga apenas que a equipe pastoral vai tratar com sigilo.)'
+      : '',
+    await textoGfsParaAgente(params.campoId, site, params.gfsJaAvisados ?? []),
     '',
     '=== OPÇÕES CLICÁVEIS (botões e lista do WhatsApp) ===',
     'Sempre que a pergunta tiver respostas fechadas, a pessoa responde tocando, não digitando. Use para: sim/não (ex.: se já',

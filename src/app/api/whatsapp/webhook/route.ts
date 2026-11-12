@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { enqueueReply, drenarQuandoVencer } from '@/lib/aiReplyQueue'
 import type { ZApiWebhookPayload } from '@/types/whatsapp'
 import { parseInbound } from '@/lib/zapiInbound'
+import { prisma } from '@/lib/prisma'
+import { elevenLabsPronta, getElevenLabsConfig } from '@/lib/elevenlabs'
 import { lerRecepcao, mensagemEhDaRecepcao, RECEPCAO_JANELA_HORAS } from '@/lib/recepcaoWhatsapp'
 
 // a resposta do agente roda em after(): precisa de tempo além do 200
@@ -192,9 +194,11 @@ export async function POST(req: NextRequest) {
     // de quem ainda está escrevendo.
     // Resposta de botão e de lista também são a pessoa falando: a IA responde
     // igual, e é o que faz um fluxo com botões continuar sozinho.
+    // Mensagem de voz também: o agente entende pela transcrição (ElevenLabs,
+    // feita na fila) e responde com áudio — ver src/lib/respostaEmAudio.ts.
     const pedeResposta =
-      (msgType === 'text' || msgType === 'button_reply' || msgType === 'list_reply') &&
-      !!parsed.content
+      ((msgType === 'text' || msgType === 'button_reply' || msgType === 'list_reply') && !!parsed.content) ||
+      (msgType === 'audio' && !!parsed.mediaUrl)
 
     if (pedeResposta) {
       try {
@@ -204,7 +208,15 @@ export async function POST(req: NextRequest) {
           .eq('id', conversationId)
           .single()
 
-        if (conv?.ai_enabled && conv.ai_agent_id) {
+        // áudio só chama a IA onde a ElevenLabs está ligada para o campo do
+        // agente — sem ela, o comportamento de antes (áudio não responde)
+        let podeResponder = !!(conv?.ai_enabled && conv.ai_agent_id)
+        if (podeResponder && msgType === 'audio') {
+          const agente = await prisma.aiAgent.findFirst({ where: { id: conv!.ai_agent_id! }, select: { campoId: true } })
+          podeResponder = elevenLabsPronta(await getElevenLabsConfig(agente?.campoId ?? null))
+        }
+
+        if (podeResponder) {
           await enqueueReply({
             conversationId,
             instanceId: instance.id,

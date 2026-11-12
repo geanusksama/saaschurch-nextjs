@@ -1,0 +1,18 @@
+{
+  "_comoUsar": "Lista exibida na telinha 'Nova versão disponível' (src/components/pwa/ServiceWorkerRegister.tsx). A cada versão, acrescente uma entrada NO TOPO com a data e o que mudou, em linguagem simples para quem usa o sistema. A telinha mostra só a primeira entrada.",
+  "versoes": [
+    {
+      "data": "2026-11-12",
+      "titulo": "Atendimento por voz e relatórios do WhatsApp",
+      "itens": [
+        "O agente de atendimento agora entende mensagens de voz e responde com áudio: voz masculina para homens e feminina para mulheres. Antes de enviar, aparece \"Gravando áudio...\".",
+        "Nova integração ElevenLabs em Configurações → Integrações, para ligar a voz e escolher as vozes.",
+        "Denúncias e reclamações vão somente para o pastor responsável pelos assuntos reservados, com sigilo, e nunca para os outros líderes.",
+        "O agente pergunta há quanto tempo a pessoa frequenta a Sede e se alguém já falou com ela.",
+        "O agente apresenta os Grupos Familiares, manda o link da lista, sugere o GF pelo perfil da pessoa e avisa o líder do GF quando ela aceita.",
+        "Nova aba Relatórios na Caixa do WhatsApp: atendimentos por período e por departamento, quem veio de outra igreja, tempo na Sede, interesse em GF, conversas resumidas ou expandidas e relatório escrito pela IA.",
+        "O agente aprende com as conversas e melhora um pouco a cada dia."
+      ]
+    }
+  ]
+}

@@ -323,6 +323,39 @@ export async function sendImageViaZApi(
   return parseZApiSend(res)
 }
 
+// ── Chama Z-API para enviar áudio (mensagem de voz) ───────────────────────────
+/**
+ * POST /send-audio (developer.z-api.io, "Enviar áudio", conferido 12/11/2026):
+ * `audio` = link público ou data URI base64; `delayTyping` (1..15 s) mostra
+ * "Gravando áudio..." antes de enviar; `waveform` manda com a onda sonora.
+ */
+export async function sendAudioViaZApi(
+  instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
+  to: string,
+  audio: string,
+  options?: { gravandoSegundos?: number }
+): Promise<SendMessageResult> {
+  await enforceRateLimit(instance.instance_id)
+
+  const gravando = options?.gravandoSegundos
+  const url = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}/send-audio`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Client-Token': instance.client_token,
+    },
+    body: JSON.stringify({
+      phone: to,
+      audio,
+      waveform: true,
+      ...(gravando ? { delayTyping: Math.max(1, Math.min(15, Math.round(gravando))) } : {}),
+    }),
+  })
+
+  return parseZApiSend(res)
+}
+
 // ── Função de alto nível: enviar mensagem de qualquer módulo ──────────────────
 export interface QuickSendOptions {
   ownerUserId: string

@@ -21,8 +21,10 @@ import { generateAgentTurn } from '@/lib/aiReplyService'
 import { registrarQueroSerMembro } from '@/lib/agenteQueroSerMembro'
 import { publicBaseUrl } from '@/lib/publicUrl'
 import { encaminharParaLideres } from '@/lib/encaminharLider'
+import { encaminharParaGf } from '@/lib/encaminharGf'
 import { enviarReacao } from '@/lib/reacaoAgente'
 import { enviarComOpcoes, textoComOpcoes } from '@/lib/opcoesAgente'
+import { enviarRespostaEmAudio } from '@/lib/respostaEmAudio'
 import { markMessageAsRead, persistOutboundMessage, sendTextViaZApi } from '@/lib/whatsappSendService'
 import {
   MAX_WAIT_MS,
@@ -314,19 +316,40 @@ async function replyToConversation(row: QueueRow): Promise<void> {
     await enviarReacao(instance, row.phone, row.last_message_id, turn.reacao)
   }
 
-  // pergunta com respostas fechadas: botões (até 3) ou lista; senão, texto
-  const result = turn.opcoes
-    ? await enviarComOpcoes(instance, row.phone, reply, turn.opcoes, typingSecondsForAgent(reply))
-    : await sendTextViaZApi(instance, row.phone, reply, {
-        delayTyping: typingSecondsForAgent(reply),
+  // a pessoa falou por áudio: responde com voz ("Gravando áudio..." antes).
+  // Se a voz falhar por qualquer motivo, segue para o texto, como sempre.
+  let enviado = turn.audio
+    ? await enviarRespostaEmAudio({
+        instance,
+        conversationId: row.conversation_id,
+        phone: row.phone,
+        texto: reply,
+        opcoes: turn.opcoes,
+        campoId: turn.agentCampoId,
+        sexo: turn.audio.sexo,
+        reservado: turn.reservado,
+        aindaPode: async () => !(await foiInterrompida(row.conversation_id, lockedAt)),
       })
+    : false
 
-  if (result.status === 'sent') {
-    await persistOutboundMessage(
-      row.conversation_id,
-      turn.opcoes ? textoComOpcoes(reply, turn.opcoes) : reply,
-      result.messageId || undefined,
-    )
+  if (!enviado) {
+    // pergunta com respostas fechadas: botões (até 3) ou lista; senão, texto
+    const result = turn.opcoes
+      ? await enviarComOpcoes(instance, row.phone, reply, turn.opcoes, typingSecondsForAgent(reply))
+      : await sendTextViaZApi(instance, row.phone, reply, {
+          delayTyping: typingSecondsForAgent(reply),
+        })
+    if (result.status === 'sent') {
+      await persistOutboundMessage(
+        row.conversation_id,
+        turn.opcoes ? textoComOpcoes(reply, turn.opcoes) : reply,
+        result.messageId || undefined,
+      )
+      enviado = true
+    }
+  }
+
+  if (enviado) {
     await supabaseAdmin
       .from('whatsapp_conversations')
       .update({ unread_count: 0 })
@@ -358,6 +381,18 @@ async function replyToConversation(row: QueueRow): Promise<void> {
       } catch (err) {
         console.error('[aiReplyQueue] encaminhamento falhou', err)
       }
+    }
+
+    // 5b. a pessoa aceitou GF(s): avisa os líderes de cada um na hora
+    for (const dadosGf of turn.gfs) {
+      const g = await encaminharParaGf({
+        instanceId: instance.id,
+        conversationId: row.conversation_id,
+        telefoneContato: row.phone,
+        campoId: turn.agentCampoId,
+        dados: dadosGf,
+      })
+      if (!g.gf) console.warn('[aiReplyQueue] GF do bloco não encontrado', dadosGf.gf)
     }
 
     // 6. agente de recepção pediu o registro "Quero ser Membro" — DEPOIS da

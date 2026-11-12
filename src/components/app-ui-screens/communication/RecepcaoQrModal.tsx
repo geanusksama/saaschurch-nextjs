@@ -336,6 +336,19 @@ export default function RecepcaoQrModal({ instance, onClose }: { instance: Whats
                 <Permissao chave="tela_comunicacao.whats_app_instances.qr_recepcao" rotulo="Salvar QR da recepção — Whats App Instances" herda="tela_comunicacao.view">
                   <button type="button" onClick={() => setCfg(c => ({ ...c, avisoQueroSerMembro: [...c.avisoQueroSerMembro, { nome: '', telefone: '' }] }))} className="mt-2 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg hover:bg-slate-100 flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Adicionar contato</button>
                 </Permissao>
+
+                <h5 className="font-semibold text-slate-900 text-sm mt-4">Assunto reservado (denúncias, reclamações, situações delicadas)</h5>
+                <p className="text-xs text-slate-500 mb-2">
+                  Só esta pessoa recebe. Conversa reservada nunca vai para os líderes das áreas nem para o padrão. Sem contato aqui, não vai para ninguém.
+                </p>
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <input value={cfg.contatoReservado?.nome ?? ''} placeholder="Nome (ex.: Pr. Crimério)"
+                    onChange={ev => setCfg(c => ({ ...c, contatoReservado: { nome: ev.target.value, telefone: c.contatoReservado?.telefone ?? '' } }))}
+                    className={`${inputCls} col-span-7`} />
+                  <input value={cfg.contatoReservado?.telefone ?? ''} placeholder="55DDDnúmero"
+                    onChange={ev => setCfg(c => ({ ...c, contatoReservado: { nome: c.contatoReservado?.nome ?? '', telefone: ev.target.value } }))}
+                    className={`${inputCls} col-span-5 font-mono`} />
+                </div>
               </div>
 
               <div className="mt-4 flex justify-end">

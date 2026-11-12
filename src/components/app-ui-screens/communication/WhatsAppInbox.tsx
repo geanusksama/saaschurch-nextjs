@@ -19,6 +19,7 @@ import { useWhatsAppInstances } from '@/hooks/useWhatsAppInstances'
 import type { WhatsAppConversation, WhatsAppMessage } from '@/types/whatsapp'
 import { Permissao, usePode } from '../../../lib/permissoes/Permissao';
 import { definirPermissao } from '../../../lib/permissoes/definir';
+import RelatoriosAtendimento from './RelatoriosAtendimento';
 
 const PERM_PASSAR_AGENTE = definirPermissao({ chave: 'whatsapp_inbox.whats_app_inbox.passar_para_agente', rotulo: 'Passar conversa para agente de IA — Whats App Inbox', herda: 'whatsapp_inbox.view' })
 
@@ -434,6 +435,8 @@ export default function WhatsAppInbox() {
   const { instances } = useWhatsAppInstances()
 
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null)
+  // aba da Caixa: Relatórios (painel do atendimento) ou Conversas
+  const [aba, setAba] = useState<'relatorios' | 'conversas'>('conversas')
   const selectedConv = conversations.find(c => c.id === selectedConvId) ?? null
   const { messages, isLoading: msgLoading, hasMore, loadMore, sendMessage, removeMessages } = useWhatsAppMessages(selectedConvId)
 
@@ -838,6 +841,23 @@ export default function WhatsAppInbox() {
         </div>
       )}
 
+      {/* Abas: Relatórios (primeira) e Conversas */}
+      <div className="flex gap-1 mb-3 flex-shrink-0">
+        <Permissao chave="whatsapp_inbox.whats_app_inbox.relatorios" rotulo="Relatórios do atendimento — Whats App Inbox" herda="whatsapp_inbox.view">
+          <button type="button" onClick={() => setAba('relatorios')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${aba === 'relatorios' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
+            Relatórios
+          </button>
+        </Permissao>
+        <button type="button" onClick={() => setAba('conversas')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${aba === 'conversas' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
+          Conversas
+        </button>
+      </div>
+
+      {aba === 'relatorios' ? (
+        <RelatoriosAtendimento onAbrirConversa={(id) => { setSelectedConvId(id); setAba('conversas') }} />
+      ) : (
       <div className="flex flex-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden min-h-0"
         onClick={() => setShowAttach(false)}>
 
@@ -1177,6 +1197,7 @@ export default function WhatsAppInbox() {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

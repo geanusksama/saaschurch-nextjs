@@ -15,9 +15,12 @@ import { montarContextoRecepcao } from '@/lib/contextoRecepcao'
 import { extrairAcao, extrairEstado, type DadosQueroSerMembro } from '@/lib/agenteQueroSerMembro'
 import { pedidosDoContato, temQueroSerMembroAberto } from '@/lib/pedidosDoContato'
 import { extrairEncaminhar, type DadosEncaminhar } from '@/lib/encaminharLider'
+import { extrairGfs, type DadosGf } from '@/lib/encaminharGf'
 import { lerRecepcao } from '@/lib/recepcaoWhatsapp'
 import { extrairReacao, semEmoji } from '@/lib/reacaoAgente'
 import { extrairOpcoes, type OpcoesMensagem } from '@/lib/opcoesAgente'
+import { elevenLabsPronta, getElevenLabsConfig, transcreverAudio } from '@/lib/elevenlabs'
+import { lerAprendizado } from '@/lib/aprendizadoAgente'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -87,25 +90,91 @@ export async function loadConversationHistory(
   conversationId: string,
   limit = 30,
   /** só mensagens a partir deste instante (início do atendimento da recepção) */
-  desde?: string | null
+  desde?: string | null,
+  /** campo cuja ElevenLabs transcreve os áudios ainda não transcritos */
+  campoId?: string | null
 ): Promise<ChatTurn[]> {
+  return (await carregarTurnos(conversationId, limit, desde, campoId)).map(({ role, content }) => ({ role, content }))
+}
+
+/** Turno com a marca de áudio (o ChatTurn vai cru para o provider; este não). */
+interface TurnoConversa extends ChatTurn {
+  audio: boolean
+}
+
+/**
+ * Histórico com os áudios entendidos. Áudio recebido sem transcrição é
+ * transcrito agora (ElevenLabs do campo) e o texto fica SÓ em
+ * metadata.transcricao — a conversa continua mostrando o áudio, não o texto.
+ * Áudio que o agente mandou entra pelo metadata.texto_falado.
+ */
+async function carregarTurnos(
+  conversationId: string,
+  limit: number,
+  desde?: string | null,
+  campoId?: string | null,
+): Promise<TurnoConversa[]> {
   let q = supabaseAdmin
     .from('whatsapp_messages')
-    .select('content, type, direction, created_at')
+    .select('id, content, type, direction, created_at, media_url, media_mime_type, metadata')
     .eq('conversation_id', conversationId)
   if (desde) q = q.gte('created_at', desde)
-  const { data: messages } = await q
+  const { data } = await q
     .order('created_at', { ascending: false })
     .limit(limit)
+  const messages = (data ?? []).reverse()
 
-  return (messages ?? [])
-    .reverse()
-    .map(m => ({
-      role: (m.direction === 'inbound' ? 'user' : 'assistant') as ChatTurn['role'],
-      content: m.content || `[${m.type}]`,
-    }))
+  // transcreve só o que falta, e só quando há quem transcreva
+  // áudio que já falhou 2 vezes (link vencido, formato recusado) não é tentado de novo
+  const pendentes = messages.filter(m => {
+    const mm = (m.metadata ?? {}) as Record<string, unknown>
+    return m.type === 'audio' && m.direction === 'inbound' && m.media_url &&
+      !mm.transcricao && Number(mm.transcricao_falhas ?? 0) < 2
+  })
+  if (pendentes.length && campoId !== undefined) {
+    const voz = await getElevenLabsConfig(campoId ?? null)
+    if (elevenLabsPronta(voz)) {
+      // no máximo os 2 mais recentes por resposta: cabe no tempo da fila
+      await Promise.all(pendentes.slice(-2).map(async m => {
+        const texto = await transcreverAudio(voz.apiKey, m.media_url as string, m.media_mime_type)
+        const anterior = (m.metadata ?? {}) as Record<string, unknown>
+        const metadata = texto
+          ? { ...anterior, transcricao: texto }
+          : { ...anterior, transcricao_falhas: Number(anterior.transcricao_falhas ?? 0) + 1 }
+        m.metadata = metadata
+        await supabaseAdmin.from('whatsapp_messages').update({ metadata }).eq('id', m.id)
+      }))
+    }
+  }
+
+  return messages
+    .map(m => {
+      const meta = (m.metadata ?? {}) as Record<string, unknown>
+      const audio = m.type === 'audio'
+      let content = m.content || `[${m.type}]`
+      if (audio && m.direction === 'inbound') {
+        content = typeof meta.transcricao === 'string' && meta.transcricao
+          ? `[mensagem de voz] ${meta.transcricao}`
+          : '[mensagem de voz que não foi possível ouvir]'
+      } else if (audio && typeof meta.texto_falado === 'string' && meta.texto_falado) {
+        content = meta.texto_falado
+      }
+      return {
+        role: (m.direction === 'inbound' ? 'user' : 'assistant') as ChatTurn['role'],
+        content,
+        audio: audio && m.direction === 'inbound',
+      }
+    })
     // Anthropic exige alternância iniciando em user; provider tolera repetição
     .filter(m => m.content.trim().length > 0)
+}
+
+/** As mensagens da pessoa desde a última resposta têm algum áudio? */
+function pessoaFalouPorAudio(turnos: TurnoConversa[]): boolean {
+  for (let i = turnos.length - 1; i >= 0 && turnos[i].role === 'user'; i--) {
+    if (turnos[i].audio) return true
+  }
+  return false
 }
 
 // ── Resposta automática do agente designado ──────────────────────────────────
@@ -119,10 +188,19 @@ export interface AgentTurn {
   estado: Record<string, unknown> | null
   /** áreas de interesse para avisar os líderes (encaminharLider) */
   encaminhar: DadosEncaminhar | null
+  /** GFs que a pessoa aceitou: o sistema avisa os líderes de cada um (encaminharGf) */
+  gfs: DadosGf[]
   /** emoji de reação à última mensagem da pessoa (reacaoAgente) */
   reacao: string | null
   /** opções clicáveis (botões/lista) da pergunta — opcoesAgente */
   opcoes: OpcoesMensagem | null
+  /**
+   * A pessoa falou por áudio e a ElevenLabs está ligada: responder com voz.
+   * sexo 'M' = voz masculina; qualquer outro = feminina.
+   */
+  audio: { sexo: string } | null
+  /** conversa com assunto reservado (marca gravada ou memória deste turno) */
+  reservado: boolean
   agentCampoId: string | null
   telefone: string
 }
@@ -151,10 +229,15 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
 
   // recepção conduz um cadastro longo: 30 mensagens não cobrem a conversa toda
   const inicioRecepcao = (conv.metadata as Record<string, unknown> | null)?.recepcao_inicio
-  const history = agent.role === 'recepcao'
-    ? await loadConversationHistory(conversationId, 80, typeof inicioRecepcao === 'string' ? inicioRecepcao : null)
-    : await loadConversationHistory(conversationId, 30)
-  if (!history.length || history[history.length - 1].role !== 'user') return null
+  // áudios entram transcritos (ElevenLabs do campo do agente)
+  const turnos = agent.role === 'recepcao'
+    ? await carregarTurnos(conversationId, 80, typeof inicioRecepcao === 'string' ? inicioRecepcao : null, agent.campoId)
+    : await carregarTurnos(conversationId, 30, null, agent.campoId)
+  if (!turnos.length || turnos[turnos.length - 1].role !== 'user') return null
+  const history: ChatTurn[] = turnos.map(({ role, content }) => ({ role, content }))
+  const falouPorAudio = pessoaFalouPorAudio(turnos)
+  const voz = falouPorAudio ? await getElevenLabsConfig(agent.campoId) : null
+  const responderEmAudio = !!voz && elevenLabsPronta(voz) && voz.responderComAudio
 
   // A IA não tem noção de data: sem dizer que dia é hoje ela erra "hoje/amanhã"
   // e convida para culto no dia errado. Cultos da igreja: domingo e quarta.
@@ -166,6 +249,7 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
   // pedidos que o número já fez (home, agente, secretaria): o agente manda os
   // links de acompanhamento e não abre um Quero ser Membro repetido
   const pedidos = ehRecepcao ? await pedidosDoContato(conv.phone) : []
+  const recepcaoCfg = ehRecepcao ? await recepcaoDaInstancia(conv.instance_id) : null
   const pedidoJaRegistrado =
     !!(meta.quero_ser_membro as { attendanceId?: string } | undefined)?.attendanceId ||
     temQueroSerMembroAberto(pedidos)
@@ -177,8 +261,11 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
         estado: (meta.recepcao_estado as Record<string, unknown> | undefined) ?? null,
         origem: typeof meta.origem === 'string' ? meta.origem : null,
         pedidos,
-        encaminhamentos: await encaminhamentosDaInstancia(conv.instance_id),
+        encaminhamentos: recepcaoCfg?.encaminhamentos ?? [],
         jaEncaminhados: Object.keys((meta.encaminhados ?? {}) as Record<string, string>),
+        temContatoReservado: !!recepcaoCfg?.contatoReservado,
+        jaReservado: meta.assunto_reservado === true,
+        gfsJaAvisados: Object.values((meta.gf_encaminhados_nomes ?? {}) as Record<string, string>),
       })
     : ''
 
@@ -210,14 +297,22 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
     ehRecepcao
       ? 'listas numeradas (exceto as perguntas do cadastro, quando a pessoa pedir todas de uma vez) e sem assinatura no fim. Não se identifique como IA a menos que perguntem.'
       : 'listas numeradas e sem assinatura no fim. Não se identifique como IA a menos que perguntem.',
+    falouPorAudio
+      ? (responderEmAudio
+          ? AUDIO_RESPOSTA_GUIDANCE
+          : 'A pessoa mandou mensagem de voz (o texto dela aparece depois de "[mensagem de voz]"). Responda por escrito ' +
+            'normalmente. Se aparecer "[mensagem de voz que não foi possível ouvir]", peça com gentileza que ela escreva ou mande o áudio de novo.')
+      : '',
     contextoRecepcao,
+    await lerAprendizado(agent.id),
   ].filter(Boolean).join('\n')
 
   const reply = (await generateAiText(agent.campoId, systemPrompt, history)).trim()
   // só o agente de recepção pode registrar; de qualquer outro o bloco é só removido
   const semEstado = extrairEstado(reply)
   const semEncaminhar = extrairEncaminhar(semEstado.texto)
-  const semReacao = extrairReacao(semEncaminhar.texto)
+  const semGf = extrairGfs(semEncaminhar.texto)
+  const semReacao = extrairReacao(semGf.texto)
   const semOpcoes = extrairOpcoes(semReacao.texto)
   const extraido = extrairAcao(semOpcoes.texto)
   const dados = extraido.dados
@@ -231,8 +326,16 @@ export async function generateAgentTurn(conversationId: string): Promise<AgentTu
     queroSerMembro: ehRecepcao && !pedidoJaRegistrado ? dados : null,
     estado: ehRecepcao ? semEstado.estado : null,
     encaminhar: ehRecepcao ? semEncaminhar.dados : null,
+    gfs: ehRecepcao ? semGf.dados : [],
     reacao: ehRecepcao ? semReacao.reacao : null,
     opcoes: ehRecepcao ? semOpcoes.opcoes : null,
+    audio: responderEmAudio
+      ? { sexo: sexoDaPessoa(semEstado.estado, meta.recepcao_estado) }
+      : null,
+    reservado: meta.assunto_reservado === true ||
+      (meta.recepcao_estado as Record<string, unknown> | undefined)?.assuntoReservado === true ||
+      semEstado.estado?.assuntoReservado === true ||
+      semEncaminhar.dados?.reservado === true,
     agentCampoId: agent.campoId,
     telefone: conv.phone,
   }
@@ -295,12 +398,34 @@ export async function generateSmartSummary(
   }
 }
 
-/** Encaminhamentos configurados na instância da conversa (recepcao.encaminhamentos). */
-async function encaminhamentosDaInstancia(instanceId: string | null) {
-  if (!instanceId) return []
+/** Config da recepção da instância da conversa (encaminhamentos, contato reservado). */
+async function recepcaoDaInstancia(instanceId: string | null) {
+  if (!instanceId) return null
   const { data } = await supabaseAdmin.from('whatsapp_instances').select('metadata').eq('id', instanceId).maybeSingle()
-  return lerRecepcao(data?.metadata).encaminhamentos
+  return lerRecepcao(data?.metadata)
 }
+
+/** Sexo da pessoa: o da memória que o agente acabou de devolver, senão o já gravado. */
+function sexoDaPessoa(novo: Record<string, unknown> | null, anterior: unknown): string {
+  const de = (e: unknown) => {
+    const v = String((e as Record<string, unknown> | null | undefined)?.sexo ?? '').trim().toUpperCase()
+    return v.startsWith('M') ? 'M' : v.startsWith('F') ? 'F' : ''
+  }
+  return de(novo) || de(anterior)
+}
+
+/** Regras para a resposta que vai virar áudio (ElevenLabs). */
+const AUDIO_RESPOSTA_GUIDANCE = [
+  'A pessoa falou com você por MENSAGEM DE VOZ (o que ela disse aparece depois de "[mensagem de voz]"; ela não vê esse texto).',
+  'Sua resposta será convertida em ÁUDIO com voz do mesmo sexo do seu nome de atendente. Escreva como quem FALA:',
+  '- frases curtas e naturais, sem listas, sem símbolos e sem abreviações (escreva "Pastor", não "Pr.");',
+  '- no máximo uns 40 segundos de fala;',
+  '- não diga "segue o link" nem leia endereços de site: se precisar mandar link, coloque-o normalmente no texto e diga',
+  '  apenas "vou te mandar o link por escrito" — o sistema envia o link por escrito logo depois do áudio;',
+  '- nunca mencione que é um áudio gerado, nem a palavra "transcrição".',
+  'Se a pessoa disser só pelo áudio se é homem ou mulher (ou pelo nome), preencha "sexo" na MEMÓRIA: é ele que escolhe a voz.',
+  'Se aparecer "[mensagem de voz que não foi possível ouvir]", peça com gentileza que ela repita.',
+].join('\n')
 
 const LIMITE_RECEPCAO = 550
 

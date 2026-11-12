@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { processDueReplies } from '@/lib/aiReplyQueue'
 import { processarAvisosQueroSerMembro } from '@/lib/avisoQueroSerMembro'
 import { processarConversasParadas } from '@/lib/resumoConversaParada'
+import { processarAprendizadoDiario } from '@/lib/aprendizadoAgente'
 
 /**
  * GET /api/cron/whatsapp-ai
@@ -28,5 +29,7 @@ export async function GET(req: NextRequest) {
   const avisosQsm = await processarAvisosQueroSerMembro()
   // conversa da recepção parada há 2 h sem despedida: resumo vai para o líder
   const resumosParados = await processarConversasParadas()
-  return NextResponse.json({ ok: true, respondidas, avisosQsm, resumosParados })
+  // uma vez por dia por agente: lições gerais tiradas das conversas (aprendizadoAgente)
+  const agentesAprenderam = await processarAprendizadoDiario()
+  return NextResponse.json({ ok: true, respondidas, avisosQsm, resumosParados, agentesAprenderam })
 }

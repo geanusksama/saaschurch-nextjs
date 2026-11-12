@@ -187,3 +187,46 @@ ficha (completa ou básica) → resumo → registro.
   o texto nunca leva emoji (removido no código).
 - Trava contra resposta em dobro: o envio confere se a linha da fila ainda é
   do worker (status e locked_at).
+
+## Voz (ElevenLabs), assunto reservado, GF, aprendizado e Relatórios (12/11/2026)
+
+- **Voz** (`src/lib/elevenlabs.ts`, `src/lib/respostaEmAudio.ts`): áudio recebido
+  é transcrito (scribe_v1) só para o agente — fica em
+  `whatsapp_messages.metadata.transcricao`, a conversa continua mostrando o
+  áudio. Se a pessoa falou por áudio, a resposta sai em áudio (voz masculina
+  para homem, feminina para mulher/desconhecido), com "Gravando áudio..."
+  (`delayTyping` do `send-audio`). Link, questionário e opções vão também por
+  escrito. Falha na voz = resposta por escrito, como antes. Áudio só aciona a
+  IA onde a ElevenLabs está ligada para o campo do agente (outras igrejas: igual
+  a antes). Configuração em `settings.elevenlabs_configuration` (por campo), tela
+  Configurações → Integrações → ElevenLabs (`/app-ui/system/elevenlabs`,
+  permissão `elevenlabs_config`). Em Campinas: ligada, Lucas (M) / Keren (F).
+- **Assunto reservado** (denúncia, reclamação, situação delicada): bloco
+  `[[ENCAMINHAR]]` com `"reservado":true`; vai SÓ para `recepcao.contatoReservado`
+  (modal da recepção). Depois disso todo resumo da conversa vai só para ele.
+  Sem contato: ninguém recebe. Falha no envio: não marca como entregue (o
+  resumo automático tenta de novo). Áudio de resposta em conversa reservada
+  não vai para o storage público. Em Campinas: Pr. Crimério (556384672640).
+- **Perfil e GF** (`src/lib/encaminharGf.ts`): o agente pergunta tempo na Sede
+  e se alguém já a abordou; monta perfil (faixa etária, perfil, bairro);
+  apresenta os GFs (mesma lista da página pública `/gf`, só para o campo da
+  sede), sugere pelo perfil e, quando a pessoa aceita, `[[GF]]{"gf","resumo"}`
+  avisa na hora os líderes daquele GF (uma vez por GF por conversa).
+- **Aprendizado diário** (`src/lib/aprendizadoAgente.ts`, cron whatsapp-ai):
+  uma vez por dia por agente, lições gerais tiradas das conversas entram no
+  prompt (`settings.ai_agente_aprendizado:<agentId>`). Nunca lê conversa
+  reservada; lição com telefone/link é descartada.
+- **Relatórios** (Caixa → aba Relatórios, `RelatoriosAtendimento.tsx`,
+  `/api/whatsapp/relatorios`, `src/lib/relatorioAtendimento.ts`): período e
+  departamento, indicadores, gráficos, conversas resumidas/expandidas, resumo
+  de conversa e relatório da IA. Reservado só como número. Permissões
+  `whatsapp_inbox.whats_app_inbox.relatorios` e `...relatorio_ia` (a Caixa é
+  exclusiva do master).
+- **Novidades na telinha de atualização**: `public/novidades.json` — a cada
+  versão, nova entrada no topo.
+- Verificado: typecheck sem erro novo, lint, `permissoes:check`,
+  `scripts/e2e-voz-relatorios.mjs` 30/30 (rotas reais, dados [E2E] apagados),
+  `scripts/e2e-zapi-inbound.mjs` 53/53, voz e transcrição reais na ElevenLabs.
+- **Não verificado**: conversa real ponta a ponta pela Z-API (depende do
+  deploy); o prompt do agente gravado no banco só deve ser atualizado junto
+  com o deploy (o código antigo não conhece o bloco reservado).

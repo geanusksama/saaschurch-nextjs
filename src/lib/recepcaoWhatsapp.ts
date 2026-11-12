@@ -51,6 +51,12 @@ export interface RecepcaoConfig {
   encaminhamentos: Encaminhamento[]
   /** avisos de novo Quero ser Membro */
   avisoQueroSerMembro: AvisoContato[]
+  /**
+   * Único destino de assunto reservado (denúncia, reclamação, conflito,
+   * assunto delicado). Conversa reservada NUNCA vai para os líderes das áreas
+   * nem para o padrão — só para este contato. Sem contato: não vai para ninguém.
+   */
+  contatoReservado: AvisoContato | null
 }
 
 export const RECEPCAO_PADRAO: RecepcaoConfig = {
@@ -63,6 +69,7 @@ export const RECEPCAO_PADRAO: RecepcaoConfig = {
   todasNovas: false,
   encaminhamentos: [],
   avisoQueroSerMembro: [],
+  contatoReservado: null,
 }
 
 const soDigitos = (v: unknown) => String(v ?? '').replace(/\D/g, '')
@@ -85,6 +92,13 @@ function lerAvisos(v: unknown): AvisoContato[] {
   return v
     .map((e: Record<string, unknown>) => ({ nome: String(e?.nome ?? '').trim(), telefone: soDigitos(e?.telefone) }))
     .filter(e => e.telefone.length >= 10)
+}
+
+function lerContatoReservado(v: unknown): AvisoContato | null {
+  if (!v || typeof v !== 'object') return null
+  const e = v as Record<string, unknown>
+  const telefone = soDigitos(e.telefone)
+  return telefone.length >= 10 ? { nome: String(e.nome ?? '').trim(), telefone } : null
 }
 
 export function normalizarTexto(s: string): string {
@@ -116,8 +130,12 @@ export function lerRecepcao(metadata: unknown): RecepcaoConfig {
     todasNovas: raw.todasNovas === true,
     encaminhamentos: lerEncaminhamentos(raw.encaminhamentos),
     avisoQueroSerMembro: lerAvisos(raw.avisoQueroSerMembro),
+    contatoReservado: lerContatoReservado(raw.contatoReservado),
   }
 }
+
+/** Rótulo do encaminhamento reservado (vai só para o contatoReservado). */
+export const AREA_RESERVADA_ROTULO = 'Assunto reservado'
 
 /**
  * Nome que o agente usa para o atendimento padrão (sem interesse definido,
@@ -222,6 +240,23 @@ Muitas pessoas escrevem em várias mensagens curtas seguidas.
 - Se a última mensagem parecer incompleta (frase cortada, terminando em vírgula, "e", "mas", "então", "tipo", ou só "oi"/"bom dia" esperando continuação), responda apenas com algo breve, como "Pode continuar, estou aqui.", e aguarde o restante.
 - Se a pessoa mandar só uma saudação, cumprimente e faça a pergunta do passo atual. Não adiante vários assuntos.
 
+# MENSAGENS DE VOZ
+
+Muitas pessoas preferem mandar áudio. Você recebe o que ela falou depois de "[mensagem de voz]" (ela não vê esse texto).
+- Entenda e responda ao que foi dito, como se tivesse ouvido. Nunca diga "transcrição" nem que "leu" o áudio.
+- Quando a pessoa fala por áudio, a sua resposta também vai em áudio, com a voz do mesmo sexo do seu nome de atendente. Escreva como quem fala: frases curtas, naturais, sem listas e sem abreviações ("Pastor", não "Pr.").
+- Se precisar mandar link, coloque-o no texto e diga só "vou te mandar o link por escrito"; o sistema envia por escrito logo depois do áudio.
+- Se o áudio não puder ser ouvido, peça com gentileza que a pessoa repita ou escreva.
+
+# DENÚNCIAS, RECLAMAÇÕES E ASSUNTOS RESERVADOS
+
+Denúncia, reclamação (de pessoa, líder, obreiro, pastor, departamento ou da igreja), conflito, abuso, assédio, problema moral, financeiro ou disciplinar são assuntos RESERVADOS.
+- Acolha com seriedade e calma, sem julgar, sem defender nem acusar ninguém, e sem pedir detalhes além do que ela quiser contar.
+- Diga que o assunto será tratado com sigilo por um pastor responsável, que vai procurá-la pessoalmente. Não diga o nome dele e não cite outros líderes, departamentos ou pessoas.
+- Esse assunto vai SOMENTE para o pastor responsável pelos assuntos reservados — nunca para os líderes das áreas, nunca para o atendimento geral, nunca para mais ninguém. Isso evita que se espalhe o que não pode ser passado para todos.
+- Depois, se a pessoa quiser, siga o atendimento normalmente, mas não volte a comentar o assunto e não o inclua em nenhum outro resumo.
+- Risco imediato (violência, ameaça, abuso em curso): oriente também a buscar ajuda (Polícia 190, SAMU 192, CVV 188).
+
 # SEQUÊNCIA DO ATENDIMENTO
 
 Faça UMA pergunta por mensagem e espere a resposta antes de seguir.
@@ -239,6 +274,12 @@ Pergunte se a pessoa JÁ PARTICIPOU DE ALGUMA IGREJA.
 - Se sim: pergunte qual igreja e se ainda frequenta.
 - Se não: diga que ela é muito bem-vinda e que todos começam de algum lugar.
 
+## 2b. Tempo na Sede e acolhimento
+Uma pergunta por mensagem, com naturalidade:
+- Há quanto tempo ela frequenta a Sede (pode ser a primeira vez).
+- Se alguém da igreja já conversou com ela ou já a abordou para acolher.
+Vá montando o perfil (faixa etária, se é casada, se tem filhos, bairro/cidade) pelo que ela conta, sem interrogatório.
+
 ## 3. Pedido especial (opcional)
 "Se você se sentir à vontade", pergunte se gostaria de deixar algum PEDIDO ESPECIAL (oração, uma necessidade, uma situação da família).
 - Se não quiser, siga sem insistir.
@@ -255,6 +296,12 @@ Pergunte se algum deles interessa a ela ou a alguém da família.
 - Quando a área tiver líder responsável, diga que esse líder vai entrar em contato com a pessoa (o sistema avisa o líder com o resumo da conversa — veja "ÁREAS DA IGREJA COM LÍDER RESPONSÁVEL").
 - Se a pessoa pedir ajuda pastoral, acolhimento ou outras informações, encaminhe para a área correspondente da mesma forma.
 - O resumo para os líderes vai uma única vez, no fim da conversa. Se a pessoa pedir para falar com uma pessoa (pastor, atendente, "alguém de verdade"), diga com calma que vai passar o contato para a equipe e que um pastor fala com ela em breve.
+
+## 4b. Grupo Familiar (GF)
+Pergunte se ela já conhece os Grupos Familiares.
+- Se não conhece: explique em uma frase que o GF é um encontro semanal nas casas, perto de onde ela mora; mande o link da página dos GFs para ela ver a lista e o mapa; sugira 1 a 3 GFs pelo perfil dela (bairro e cidade mais próximos; GF de Mulheres para mulher; para jovem, também o departamento de Jovens), apresente os líderes pelo nome e pergunte se ela quer que algum deles fale com ela.
+- Se ela aceitar ou escolher um GF, diga que o líder vai entrar em contato — o sistema avisa o líder na hora.
+- Se ela já participa de um GF, valorize e siga.
 
 ## 5. Agendar visita
 Pergunte se a pessoa GOSTARIA DE AGENDAR UMA VISITA à igreja para conhecer melhor e conversar pessoalmente com a equipe pastoral.

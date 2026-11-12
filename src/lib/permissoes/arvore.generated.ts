@@ -1182,6 +1182,18 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/ebd/EbdRelatorios.tsx"
   },
   {
+    "chave": "elevenlabs_config.eleven_labs.salvar",
+    "rotulo": "Salvar — ElevenLabs",
+    "herda": "elevenlabs_config.view",
+    "arquivo": "src/components/app-ui/system/ElevenLabsConfig.tsx"
+  },
+  {
+    "chave": "elevenlabs_config.eleven_labs.testar",
+    "rotulo": "Testar conexão — ElevenLabs",
+    "herda": "elevenlabs_config.view",
+    "arquivo": "src/components/app-ui/system/ElevenLabsConfig.tsx"
+  },
+  {
     "chave": "engajamento_fotos.fotos.desmarcar",
     "rotulo": "Desmarcar pessoa",
     "herda": "engajamento_fotos.view",
@@ -4340,6 +4352,18 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
   {
     "chave": "whatsapp_inbox.whats_app_inbox.passar_para_agente",
     "rotulo": "Passar conversa para agente de IA — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.relatorio_ia",
+    "rotulo": "Relatório com IA — Whats App Inbox",
+    "herda": "whatsapp_inbox.view",
+    "arquivo": "src/components/app-ui-screens/communication/RelatoriosAtendimento.tsx"
+  },
+  {
+    "chave": "whatsapp_inbox.whats_app_inbox.relatorios",
+    "rotulo": "Relatórios do atendimento — Whats App Inbox",
     "herda": "whatsapp_inbox.view",
     "arquivo": "src/components/app-ui-screens/communication/WhatsAppInbox.tsx"
   },

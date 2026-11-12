@@ -14,8 +14,8 @@
 import { prisma } from '@/lib/prisma'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { generateAiText, loadConversationHistory } from '@/lib/aiReplyService'
-import { encaminharParaLideres } from '@/lib/encaminharLider'
-import { areaPadrao, lerRecepcao, normalizarTexto } from '@/lib/recepcaoWhatsapp'
+import { conversaReservada, encaminharParaLideres } from '@/lib/encaminharLider'
+import { AREA_RESERVADA_ROTULO, areaPadrao, lerRecepcao, normalizarTexto } from '@/lib/recepcaoWhatsapp'
 
 const PARADA_MS = 2 * 3_600_000
 const JANELA_MS = 48 * 3_600_000
@@ -69,6 +69,10 @@ export async function processarConversasParadas(): Promise<number> {
           .map(x => areas.get(normalizarTexto(String(x))))
           .filter((x): x is string => !!x)
         const interesses = [...new Set([...anotadas, ...(estado.pediuHumano && padrao ? [padrao] : [])])]
+        // assunto reservado (denúncia, reclamação...): o resumo vai só para o
+        // contato reservado — encaminharParaLideres decide isso pela marca
+        const reservado = conversaReservada(null, meta)
+        if (reservado) interesses.unshift(AREA_RESERVADA_ROTULO)
         // sem área anotada: vai para os líderes padrão do sexo da pessoa
         if (!interesses.length && padrao) interesses.push(padrao)
         if (!interesses.length) continue
@@ -96,7 +100,7 @@ export async function processarConversasParadas(): Promise<number> {
           instanceId: inst.id,
           conversationId: c.id,
           telefoneContato: c.phone,
-          dados: { interesses, sexo: String(estado.sexo ?? ''), resumo },
+          dados: { interesses, sexo: String(estado.sexo ?? ''), resumo, ...(reservado ? { reservado: true } : {}) },
         })
         if (r.enviados) resumidas++
       }

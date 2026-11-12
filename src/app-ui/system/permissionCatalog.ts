@@ -242,6 +242,8 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   // saldo e extrato da conta inteira
   { group: 'Pagamentos', name: 'Asaas · Financeiro da conta',     key: 'asaas_financeiro',   permissions: mkPerms(admin(), none(), none(), none()) },
   { group: 'Configurações', name: 'Pagamentos Asaas (chave e webhook)', key: 'asaas_config', permissions: mkPerms(admin(), admin(), admin(), admin()) },
+  // ElevenLabs (src/components/app-ui/system/ElevenLabsConfig.tsx) — voz do agente de IA no WhatsApp
+  { group: 'Configurações', name: 'ElevenLabs (voz do agente)', key: 'elevenlabs_config', permissions: mkPerms(admin(), admin(), admin(), admin()) },
 
   // ── Comunicação — WhatsApp (sub-permissões) ──────────────────────────────
   {

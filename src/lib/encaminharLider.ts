@@ -14,7 +14,7 @@
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { ensureConversation, persistOutboundMessage, sendTextViaZApi } from '@/lib/whatsappSendService'
-import { AREA_PADRAO_ROTULO, lerRecepcao, lideresPadrao, normalizarTexto, type Encaminhamento } from '@/lib/recepcaoWhatsapp'
+import { AREA_PADRAO_ROTULO, AREA_RESERVADA_ROTULO, lerRecepcao, lideresPadrao, normalizarTexto, type Encaminhamento } from '@/lib/recepcaoWhatsapp'
 import { pedidosDoContato } from '@/lib/pedidosDoContato'
 
 export const MARCA_ENCAMINHAR_INICIO = '[[ENCAMINHAR]]'
@@ -26,6 +26,8 @@ export interface DadosEncaminhar {
   interesses: string[]
   sexo?: string
   resumo?: string
+  /** denúncia, reclamação, conflito ou assunto delicado: só o contatoReservado recebe */
+  reservado?: boolean
 }
 
 /** Tira o bloco de encaminhamento do texto. Bloco quebrado some e volta null. */
@@ -37,9 +39,17 @@ export function extrairEncaminhar(texto: string): { texto: string; dados: DadosE
   const limpo = (texto.slice(0, i) + (f < 0 ? '' : texto.slice(f + MARCA_ENCAMINHAR_FIM.length))).trim()
   try {
     const j = JSON.parse(bruto.replace(/^[\s`]*(json)?/i, '').replace(/[\s`]*$/, ''))
+    const reservado = j?.reservado === true
     const interesses = Array.isArray(j?.interesses) ? j.interesses.map((x: unknown) => String(x).trim()).filter(Boolean) : []
+    if (reservado && !interesses.length) interesses.push(AREA_RESERVADA_ROTULO)
     if (!interesses.length) return { texto: limpo, dados: null }
-    return { texto: limpo, dados: { interesses, sexo: String(j.sexo ?? ''), resumo: String(j.resumo ?? '').trim() } }
+    return {
+      texto: limpo,
+      dados: {
+        interesses, sexo: String(j.sexo ?? ''), resumo: String(j.resumo ?? '').trim(),
+        ...(reservado ? { reservado: true } : {}),
+      },
+    }
   } catch {
     console.error('[encaminharLider] bloco inválido', bruto.slice(0, 300))
     return { texto: limpo, dados: null }
@@ -86,6 +96,38 @@ export function montarMensagemLider(p: {
   ].join('\n')
 }
 
+/** Mensagem do assunto reservado: só para quem cuida, com pedido de sigilo. */
+export function montarMensagemReservada(p: {
+  lider: string
+  nome: string
+  telefone: string
+  resumo: string
+  interesses: string[]
+}): string {
+  const outros = p.interesses.filter(i => normalizarTexto(i) !== normalizarTexto(AREA_RESERVADA_ROTULO))
+  return [
+    `*${ASSINATURA_SECRETARIA} — ASSUNTO RESERVADO*`,
+    '',
+    `A paz do Senhor${p.lider ? `, ${p.lider}` : ''}. Esta mensagem é só para você e não foi enviada a mais ninguém.`,
+    'No atendimento pelo WhatsApp, a pessoa abaixo trouxe um assunto reservado (denúncia, reclamação ou situação delicada).',
+    '',
+    `Nome: ${p.nome || 'não informado'}`,
+    `WhatsApp: ${formatarTelefone(p.telefone)} — https://wa.me/${p.telefone.replace(/\D/g, '')}`,
+    ...(outros.length ? [`Também demonstrou interesse em: ${outros.join(', ')}`] : []),
+    '',
+    'Resumo:',
+    p.resumo || '(sem resumo)',
+    '',
+    'Por favor, trate com sigilo e não repasse. Deus abençoe.',
+  ].join('\n')
+}
+
+/** A conversa tem assunto reservado (pelo bloco agora, pela marca já gravada ou pela memória)? */
+export function conversaReservada(dados: Pick<DadosEncaminhar, 'reservado'> | null, meta: Record<string, unknown>): boolean {
+  const estado = (meta.recepcao_estado ?? {}) as Record<string, unknown>
+  return dados?.reservado === true || meta.assunto_reservado === true || estado.assuntoReservado === true
+}
+
 type Instancia = { id: string; instance_id: string; token: string; client_token: string; owner_user_id?: string | null }
 
 export async function encaminharParaLideres(params: {
@@ -112,6 +154,52 @@ export async function encaminharParaLideres(params: {
   const estado = (meta.recepcao_estado ?? {}) as Record<string, unknown>
   const ja = { ...((meta.encaminhados ?? {}) as Record<string, string>) }
   const nome = String(estado.nome || conv?.contact_name || '').trim()
+
+  // ── Assunto reservado: um único destino, ninguém mais ──────────────────────
+  // Depois que a conversa vira reservada, TODO resumo dela (inclusive o de
+  // interesse numa área e o automático da conversa parada) vai só para o
+  // contato reservado: o resumo carrega a conversa inteira.
+  if (conversaReservada(params.dados, meta)) {
+    const chave = normalizarTexto(AREA_RESERVADA_ROTULO)
+    const destino = cfg.contatoReservado
+    let enviados = 0
+    if (!ja[chave] && destino) {
+      const texto = montarMensagemReservada({
+        lider: destino.nome, nome, telefone: params.telefoneContato,
+        resumo: params.dados.resumo ?? '', interesses: params.dados.interesses,
+      })
+      try {
+        const r = await sendTextViaZApi(inst as Instancia, destino.telefone, texto)
+        if (r.status === 'sent') {
+          enviados++
+          // na Caixa de Entrada fica só o registro do envio, sem o conteúdo
+          if (inst.owner_user_id) {
+            const cid = await ensureConversation(inst.id, inst.owner_user_id, destino.telefone, destino.nome)
+            await persistOutboundMessage(cid, '[Assunto reservado encaminhado — conteúdo visível só para o destinatário]', r.messageId || undefined)
+          }
+        }
+      } catch (err) {
+        console.error('[encaminharLider] envio reservado falhou', destino.telefone, err)
+      }
+    }
+    if (!destino) console.warn('[encaminharLider] assunto reservado sem contato configurado — nada enviado', params.conversationId)
+    // Envio ao responsável FALHOU (Z-API fora, erro): não marca como tratado —
+    // a conversa fica reservada (ninguém mais recebe) e o resumo da conversa
+    // parada (resumoConversaParada) tenta de novo para o mesmo responsável.
+    const falhou = !!destino && !ja[chave] && enviados === 0
+    if (falhou) console.error('[encaminharLider] assunto reservado NÃO entregue — nova tentativa no resumo automático', params.conversationId)
+    // marca tudo como tratado: nenhuma área recebe esta conversa depois
+    const agora = new Date().toISOString()
+    if (!falhou) {
+      for (const i of params.dados.interesses) ja[normalizarTexto(i)] = ja[normalizarTexto(i)] ?? agora
+      ja[chave] = ja[chave] ?? agora
+    }
+    await supabaseAdmin
+      .from('whatsapp_conversations')
+      .update({ metadata: { ...meta, assunto_reservado: true, encaminhados: ja } })
+      .eq('id', params.conversationId)
+    return { enviados, semLider: destino ? [] : [AREA_RESERVADA_ROTULO] }
+  }
 
   const pedidos = await pedidosDoContato(params.telefoneContato)
   const links = pedidos
