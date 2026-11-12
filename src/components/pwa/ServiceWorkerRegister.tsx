@@ -29,6 +29,15 @@ const INTERVALO_CHECAGEM = 30 * 60 * 1000;
 
 type Novidades = { data: string; titulo: string; itens: string[] };
 
+/** Sessão do painel aberta neste navegador (mesmo token que o app usa nas APIs). */
+function estaLogado(): boolean {
+  try {
+    return !!localStorage.getItem("mrm_token");
+  } catch {
+    return false;
+  }
+}
+
 /** Primeira entrada de /novidades.json (a versão mais recente). Falha = null. */
 async function carregarNovidades(): Promise<Novidades | null> {
   try {
@@ -124,7 +133,9 @@ export function ServiceWorkerRegister() {
     }, 4000);
   }, [aguardando]);
 
-  if (!aguardando) return null;
+  // Só para quem está logado (equipe). O visitante do site público não vê o
+  // aviso: recebe a versão nova sozinho na próxima vez que abrir o site.
+  if (!aguardando || !estaLogado()) return null;
 
   return (
     <div
