@@ -1,6 +1,6 @@
 # WhatsApp Oficial (Meta Cloud API) — módulo
 
-Situação em 23/11/2026: **Etapa 1 (base) e Etapa 2 (modelos) prontas no código**. Ainda não estão liberadas para as igrejas (ver "Pendências").
+Situação em 23/11/2026: **Etapa 1 (base), Etapa 2 (modelos) e Etapa 3 (envio em massa) prontas no código**. Ainda não estão liberadas para as igrejas (ver "Pendências").
 Spec: `docs/superpowers/specs/2026-11-23-whatsapp-oficial-meta-design.md` (com o "Adendo aprovado pelo dono").
 Plano: `docs/superpowers/plans/2026-11-23-whatsapp-oficial-etapa1-base.md`.
 
@@ -159,10 +159,121 @@ Só no sistema base, só para master. Permissão de edição: `meta_app.config.e
 - **Webhook**: pendente conferir o desafio de verificação e a assinatura no domínio de Campinas (o Embedded Signup só funciona em HTTPS no domínio liberado).
 - **Alertas das igrejas para o master**: Etapa seguinte.
 
-## 8. Próximas etapas
+## 8. Etapa 3: envio em massa
+
+Situação: código pronto (23/11/2026). A fila só anda em uma igreja depois da Scheduled Task da seção 8.7. Não liberado para as igrejas (ver seção 7.5).
+
+### 8.1 Tabelas e status
+
+Migration `20261124040000_meta_whatsapp_envio` (`prisma/migrations/`). Está no `baseline/` (`05_tables.sql`, tabelas `meta_whatsapp_disparos`, `meta_whatsapp_envios` e `meta_whatsapp_exclusoes`; manifest `fa5cd82742e71000`), então o `migrate-self` cria as tabelas nas igrejas no deploy.
+
+- `meta_whatsapp_disparos`: um disparo por envio em massa. Guarda modelo (nome, idioma, categoria), `filtros` e `valores` (JSON), `status`, `motivo`, `agendado_para`, `total`, `criado_por`. Em `valores` fica também a chave de idempotência (`valores.chave`, ver 8.6).
+- `meta_whatsapp_envios`: uma linha por pessoa do disparo (`origem` membro ou interessado, `ref_id`, `nome`, `telefone` com 13 dígitos E.164, `parametros` JSON, `wamid`, `status`, `erro_codigo`, `erro`, `enviado_em`).
+- `meta_whatsapp_exclusoes`: lista de exclusão do campo (telefone e motivo).
+
+Status do disparo (CHECK no banco): `agendado`, `enviando`, `aguardando_limite`, `pausado`, `concluido`, `cancelado`.
+
+Status do envio (CHECK no banco): `pendente`, `enviado`, `entregue`, `lido`, `falhou`, `ignorado`. Nunca regride: a ordem é `pendente` < `enviado` < `entregue` < `lido`; `falhou` só sobrescreve `pendente` ou `enviado`; `ignorado` não muda (`podeAvancarStatus` em `src/lib/meta/servicoEnvio.ts`).
+
+**Marca de reserva (sem coluna nova):** envio `pendente` com `erro_codigo = -1` está reservado por uma rodada da fila ("em envio"). `atualizado_em` guarda quando foi reservado. A rota de detalhe não devolve o -1: a tela mostra "enviando" e `erroCodigo` sai nulo (`statusDoEnvio` e `MARCA_EM_ENVIO` em `src/lib/meta/envio.ts`; `RESERVADO` em `src/lib/meta/envioRepo.ts`). Pendente livre é `erro_codigo IS NULL`.
+
+Observação: o comentário da migration ainda diz que a rodada põe `now() + 2 min` na reserva. O código usa a marca -1 com `atualizado_em` (cabeçalho de `envioRepo.ts`). Vale o código.
+
+### 8.2 Público
+
+Montado no servidor (`montarPublico`, `listarContatos` e `contarPublico` em `envioRepo.ts`). Pelo menos um dos dois grupos precisa estar escolhido.
+
+- **Membros**: só cadastros sem `deleted_at`, de igrejas do campo. Filtros: igreja, situação (`membership_status`), título eclesiástico (casa pelo texto ou pela FK) e mês de aniversário.
+- **Interessados** (leads): só leads sem `deleted_at`, com telefone, de igrejas do campo. Filtros: igreja, origem (`source`) e período de cadastro (data inicial e final, dia inteiro no fuso -03:00).
+- **Celular válido só**: `normalizarTelefoneBR` aceita 55 + DDD + celular de 9 dígitos começando com 9. Fixo não entra (conta como "sem celular"). Membro usa o celular e, se não houver, o telefone; interessado usa o telefone.
+- **Sem repetir telefone**: `deduplicarPorTelefone`. Membro vence interessado.
+- **Lista de exclusão**: quem está em `meta_whatsapp_exclusoes` do campo fica de fora (contado à parte).
+- **Teto**: 20.000 pessoas por grupo (`LIMITE_PUBLICO`). Acima disso, o disparo é recusado com a orientação de dividir com filtros.
+- O nome da mensagem é o nome preferido ou o primeiro nome do cadastro (`primeiroNome`). Parâmetros são saneados: a Meta recusa quebra de linha, tab ou mais de 4 espaços seguidos (`sanearParametro`).
+
+Na criação, o público é gravado de uma vez (`criarDisparoComEnvios`), com uma linha `pendente` por pessoa.
+
+### 8.3 Fila (cron)
+
+- Rota `GET /api/cron/meta-envio`. Agendada em `vercel.json` como `* * * * *` (todo minuto). Proteção: `CRON_SECRET` em `Authorization: Bearer` ou em `x-cron-secret`; sem ele, 401.
+- Sem disparo ativo no campo, a rota responde na hora, sem ler a configuração (`camposComDisparoAtivo`).
+- Uma rodada por campo, 3 campos por vez, prazo total de 45 s. Erro de um campo não para os outros. Tabela ausente (`P2021`) responde 200 com `tabela ausente`.
+- **Ordem da rodada** (`processarFila`): varre reservas vencidas; lê os disparos ativos (`enviando`, `aguardando_limite` e `agendado` com data já chegada; mais antigos primeiro); pega o token; lê o status do número; aplica as regras de parada; envia.
+- **Lote**: no máximo 60 envios por rodada (`MAX_LOTE`), nunca acima do limite restante.
+- **Simultâneos**: 5 POSTs ao mesmo tempo (`CONCORRENCIA_ENVIO`). Cada item grava logo após o próprio POST. A cada 10 envios (`CHECAR_STATUS_A_CADA`) a rodada confere se o disparo continua `enviando`; se foi pausado ou cancelado, para.
+- **Limite diário restante**: limite do nível do número (`limiteDiario`, ex.: `TIER_250`, `TIER_2K`; nível desconhecido vale 250; `TIER_UNLIMITED` não tem teto) menos os envios do campo com `enviado_em` nas últimas 24 h. É uma aproximação: a Meta conta do jeito dela. Quando zera, os disparos viram `aguardando_limite` (com motivo) e voltam sozinhos quando o limite liberar.
+- **Reserva**: a rodada reserva o lote antes de enviar. Quem não chegou a ter o POST começado volta a pendente livre no fim da rodada (`liberarReserva`).
+
+### 8.4 Regras de parada e erros
+
+Antes do envio, ao ler o status do número:
+
+| Situação | O que acontece |
+|---|---|
+| Qualidade `RED` | Todos os disparos ativos do campo ficam `pausado` com o motivo de qualidade vermelha, e há alerta em `meta_alertas`. |
+| Token recusado (código 190 na leitura do status, ou cifra que não abre) | Conexão marcada com erro; disparos ativos pausados; alerta. |
+| Falha ao ler o status (rede, etc.) | A rodada termina sem enviar; tenta no minuto seguinte. |
+
+Durante o envio, pela resposta da Meta (`CODIGOS_PARAR_DISPARO` em `src/lib/meta/envio.ts`):
+
+| Código | Efeito |
+|---|---|
+| 131031 (conta bloqueada ou restringida), 131042 (problema de pagamento), 368 (restrição temporária por violação de política), 190 (token) | Recusa explícita: a pessoa volta à fila (nada saiu) e **todos os disparos ativos do campo pausam** com a mensagem do código, com alerta. Com 190 a conexão também é marcada com erro. |
+| 130429 (limite de vazão) | Recusa explícita: a pessoa volta à fila e a **rodada termina**; os disparos não pausam. |
+| Outro código da Meta por pessoa (ex.: 131026) | Só aquela pessoa vira `falhou`, com o código e a mensagem da Meta. A rodada segue. |
+| Tempo esgotado, erro de rede, erro sem código, ou resposta sem id da mensagem | Ambíguo: aquela pessoa vira `falhou` ("A Meta não respondeu a tempo. Não reenviamos para não cobrar duas vezes." ou "A Meta respondeu sem o id da mensagem."), conta no limite do dia e a rodada termina. |
+
+**Nada que pode ter saído é reenviado.** Depois que o POST começa, o envio só termina como `enviado` ou `falhou`. A única exceção é a recusa explícita da Meta, que volta à fila porque nada saiu. Isso evita cobrar duas vezes.
+
+**Varredura de reservas (10 min):** no início de cada rodada, reservas `pendente` com `erro_codigo = -1` e `atualizado_em` mais antigo que 10 minutos viram `falhou` com a mensagem "Envio não confirmado — não reenviado para evitar cobrança dupla." (`varrerReservasVencidas`). Os contadores do disparo são recalculados.
+
+Quando a rodada pausa um disparo, o motivo fica gravado no próprio disparo e aparece na tela. Retomar volta o disparo para `enviando` (ou `agendado`, se a data ainda não chegou).
+
+### 8.5 Webhook: status e pedidos de SAIR
+
+Rota `POST /api/meta/whatsapp/webhook` (mesma da seção 4). A assinatura é validada sobre o corpo bruto. Assinatura inválida responde **401**. Com assinatura válida responde **200** na hora e processa depois (`after`). Erro interno de processamento também responde 200 e vai ao log.
+
+- **Statuses** (`sent`, `delivered`, `read`, `failed`): localizam o envio pelo `wamid`, no campo dono do `phone_number_id`, e avançam o status sem regredir (8.1). Falha da Meta grava o código e a mensagem. Até três tentativas em caso de disputa.
+- **Pedido de SAIR**: mensagem de texto recebida cujo conteúdo, depois de tirar acentos, pôr em minúsculas e aparar espaços, é exatamente `sair`, `parar`, `stop`, `cancelar` ou `descadastrar` (`ehPedidoDeSair`). A palavra precisa vir sozinha: "quero sair" não conta. Efeito: o telefone entra na lista de exclusão do campo (motivo "Pediu para sair pelo WhatsApp") e os envios `pendente` livres desse telefone viram `ignorado`. O telefone de quem escreveu é normalizado (`telefoneDoWaId`), inclusive no caso de celular sem o 9.
+- Cada evento é independente: o erro de um não impede os outros.
+
+### 8.6 Rotas e permissões
+
+Pasta `src/app/api/meta/whatsapp/envio/`. Todas exigem usuário autenticado e campo ativo.
+
+| Método e rota | Permissão | O que faz |
+|---|---|---|
+| `GET /api/meta/whatsapp/envio` | `whatsapp_oficial.envio.view` | Lista os disparos do campo. |
+| `POST /api/meta/whatsapp/envio` | `whatsapp_oficial.envio.criar` | Cria o disparo (201). |
+| `POST /api/meta/whatsapp/envio/publico` | `whatsapp_oficial.envio.view` | Conta o público ao vivo (membros e interessados), sem gravar. |
+| `GET /api/meta/whatsapp/envio/opcoes` | `whatsapp_oficial.envio.view` | Modelos aprovados, igrejas, situações, títulos e origens para os filtros. |
+| `GET /api/meta/whatsapp/envio/[id]` | `whatsapp_oficial.envio.view` | Detalhe do disparo com as pessoas paginadas (`?pagina=` e `?porPagina=`, máximo 100). Telefone mascarado (ex.: `+55 19 9****-6683`). Id fora do formato UUID responde 404. |
+| `PATCH /api/meta/whatsapp/envio/[id]` | `whatsapp_oficial.envio.controlar` | Corpo `{ "acao": "pausar" }`, `"retomar"` ou `"cancelar"`. Outra ação responde 400. |
+
+- **Idempotência do POST**: o corpo pode trazer `chave` (UUID). A chave fica guardada em `valores.chave` do disparo. Repetir a mesma chave no mesmo campo devolve o disparo que já existe (`repetido: true`), sem criar outro. A tela gera a chave ao avançar para a Revisão.
+- **Pausar** só vale para disparo em andamento (`enviando`, `aguardando_limite`, `agendado`). **Retomar** só vale para `pausado`. **Cancelar** vale para os em andamento e os pausados: os envios que ainda não saíram viram `ignorado` e o disparo fica `cancelado`. Cancelar não pode ser desfeito.
+- Chaves do catálogo (`src/app-ui/system/MetaOficial.tsx`, `definirPermissao`): `whatsapp_oficial.envio.view` (herda `whatsapp_oficial.view`), `whatsapp_oficial.envio.criar` e `whatsapp_oficial.envio.controlar` (herdam `whatsapp_oficial.envio.view`).
+
+### 8.7 Tela e Coolify
+
+- Central **Meta Oficial**, aba **Envio** (`?aba=envio`; componentes em `src/app-ui/system/metaOficial/Envio.tsx`):
+  - Lista de disparos com progresso e selo de status, e o botão **Novo disparo**.
+  - **Novo disparo** em 3 passos: 1 Público (contagem ao vivo), 2 Modelo (só aprovados; preenche as variáveis de data e texto livre), 3 Revisão (quantidade e confirmação).
+  - Detalhe (`DetalheDisparo.tsx`): contadores, lista de pessoas paginada e os botões **Pausar**, **Retomar** e **Cancelar**, cada um com confirmação no próprio painel.
+- **Coolify**: criar, em **cada igreja**, a Scheduled Task do app com nome `cron-meta-envio` e frequência `* * * * *` (todo minuto), comando:
+  `curl -fsS -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/meta-envio`
+  Mesmo padrão das outras tarefas da seção 4. Cuidado para não rodar em dobro se a mesma igreja estiver nos dois lugares. Na Vercel o agendamento já está em `vercel.json`.
+
+### 8.8 Teste
+
+- **Regra do dono: só com o número de teste da Meta** (seção 7.6). Nada de envio para número real nem de cobrança no cartão.
+- Teste de banco real feito em 23/11/2026, com a Graph falsa (simulada): **9 cenários OK**, segundo o registro do dono. O roteiro desse teste não está no repositório; não foi reexecutado para este documento.
+- Testes unitários das regras puras (telefone, SAIR, parâmetros, lote, mascaramento, paginação): `node --test scripts/teste-meta-whatsapp.mjs`.
+
+## 9. Próximas etapas
 
 1. **Base** (feita): configuração do app, conectar número, tela de status.
 2. **Modelos** (feita no código; ver seção 7): listar modelos da conta com status e categoria; criar modelo e enviar à aprovação da Meta; status atualizado por cron.
-3. **Envio em massa**: fila por cron, em lotes, com modelo aprovado, limite diário, qualidade do número e lista de exclusão ("SAIR"); acompanhamento enviado/entregue/lido/falhou.
+3. **Envio em massa** (feita no código; ver seção 8): fila por cron, em lotes, com modelo aprovado, limite diário, qualidade do número e lista de exclusão ("SAIR"); acompanhamento enviado/entregue/lido/falhou.
 4. **Respostas**: webhook de mensagens recebidas e caixa de conversas própria, com janela de 24 h.
 5. **Leads de anúncio**: conectar Página do Facebook/Instagram e trazer leads dos formulários para o pipeline pastoral, com origem "Anúncio".
