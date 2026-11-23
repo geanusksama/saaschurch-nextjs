@@ -247,3 +247,23 @@ dias) e o app em modo de desenvolvimento; o App Review é pedido ao fim da 3.
   qualidade de número baixa; registra alertas na tela do master e avisa o
   dono pelo WhatsApp. **Não muda a configuração sozinho**: propõe a mudança
   e espera o "aprovar" do master na tela.
+
+## Adendo aprovado pelo dono (23/11/2026): Etapa 2 — Modelos e central "Meta Oficial"
+
+Pedido do dono: "crie um ambiente nas configurações, um ícone Meta Oficial pra ver tudo que posso fazer e ver por lá", "a melhor maneira, seguindo os padrões de mercado mais modernos".
+
+**Central Meta Oficial** (`/app-ui/system/meta-oficial`): cartão "Meta Oficial" em Configurações → Comunicação e um único item de menu no lugar dos dois atuais. Uma tela com abas (`?aba=`), no padrão de painéis como Meta Business Suite e Stripe:
+- **Visão geral**: situação da conexão (número, qualidade, limite), contagem de modelos por situação, se a conexão está liberada, lista de próximos passos (conectar número → criar o 1º modelo → aguardar aprovação → envio em massa) e atalhos para o painel da Meta.
+- **Conexão**: o conteúdo da tela WhatsApp Oficial de hoje.
+- **Modelos**: a Etapa 2 (abaixo).
+- **Envio em massa**, **Conversas**, **Leads de anúncios**: abas visíveis com "Em breve — Etapa 3/4/5" e uma linha do que vão fazer.
+- **App oficial** (só master): o conteúdo da tela Meta – App oficial de hoje.
+As rotas antigas `system/whatsapp-oficial` e `system/meta-app` abrem a central na aba correspondente.
+
+**Modelos (Etapa 2)**, decididos no detalhe por mim (dono delegou):
+- Lista do campo: nome, categoria (Marketing/Utilidade), idioma, situação (Aprovado, Em análise, Recusado com motivo, Pausado, Desativado), última atualização. Filtro por situação e busca por nome.
+- Criar: nome (gerado do título, minúsculas/números/_), categoria, cabeçalho de texto opcional, corpo, rodapé opcional, até 3 botões de resposta rápida. Variáveis por botões "Nome da pessoa", "Nome da igreja", "Data", "Texto livre", que viram `{{1}}`, `{{2}}`… com exemplo obrigatório. Prévia ao vivo no balão do WhatsApp. Validação das regras da Meta antes de enviar.
+- Duplicar (em vez de editar) e Excluir. Modelos criados direto no painel da Meta também aparecem (sincronização).
+- Situação atualizada pelo botão "Atualizar" e por cron de hora em hora (só campos conectados).
+- Fora do escopo: cabeçalho com mídia, botões de link/telefone, modelos de autenticação, outros idiomas além de pt_BR.
+- Permissões: `whatsapp_oficial.modelos.view`, `.criar`, `.excluir`.
