@@ -89,6 +89,7 @@ model Campo {
   conamadAnuidades      ConamadAnuidade[]
   conamadSincronizacoes ConamadSincronizacao[]
   metaWhatsappConexao   MetaWhatsappConexao?
+  metaWhatsappModelos   MetaWhatsappModelo[]
   @@map("campos")
 }
 
@@ -517,6 +518,7 @@ model User {
   gruposUsuariosCriados GrupoUsuarios[]         @relation("GrupoUsuariosCriadoPor")
   gruposUsuariosAdicoes GrupoUsuariosUser[]     @relation("GrupoUsuariosUserCriadoPor")
   metaWhatsappConexoesConectadas MetaWhatsappConexao[] @relation("MetaWhatsappConexaoConectadoPor")
+  metaWhatsappModelosCriados     MetaWhatsappModelo[]  @relation("MetaWhatsappModeloCriadoPor")
 
   @@map("users")
 }
@@ -5929,4 +5931,30 @@ model MetaAlerta {
 
   @@index([resolvidoEm, criadoEm])
   @@map("meta_alertas")
+}
+
+/// WhatsApp Oficial (Meta): espelho dos modelos de mensagem por campo. `variaveis` = variaveis do corpo (+ item posicao 0 se o cabecalho tiver variavel).
+model MetaWhatsappModelo {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId        String    @map("campo_id") @db.Uuid
+  wabaId         String    @map("waba_id")
+  metaTemplateId String    @map("meta_template_id")
+  nome           String
+  idioma         String    @default("pt_BR")
+  categoria      String
+  status         String
+  motivoRecusa   String?   @map("motivo_recusa")
+  componentes    Json      @default("[]")
+  variaveis      Json      @default("[]")
+  criadoPor      String?   @map("criado_por") @db.Uuid
+  criadoEm       DateTime? @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm   DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  sincronizadoEm DateTime? @map("sincronizado_em") @db.Timestamptz(6)
+
+  campo            Campo @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  criadoPorUsuario User? @relation("MetaWhatsappModeloCriadoPor", fields: [criadoPor], references: [id])
+
+  @@unique([campoId, metaTemplateId])
+  @@index([campoId, nome])
+  @@map("meta_whatsapp_modelos")
 }

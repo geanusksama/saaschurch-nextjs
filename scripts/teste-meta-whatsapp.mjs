@@ -637,3 +637,120 @@ test('modelos: variável do cabeçalho exige {{1}} e exemplo próprio', () => {
   const g = montarCorpoGraph({ ...rascunhoOk(), cabecalho: 'Aviso {{1}}', exemploCabecalho: 'Maria' })
   assert.deepEqual(g.components[0].example, { header_text: ['Maria'] })
 })
+
+// ---- Etapa 2, Task 2: serviço de modelos ----
+import { listarModelos, sincronizarModelos, criarModelo, excluirModelo, MSG_SEM_CONEXAO } from '../src/lib/meta/servicoModelos.ts'
+import { MSG_TOKEN_RECUSADO as MSG_TOK, MSG_TIMEOUT as MSG_TMO } from '../src/lib/meta/servicoConexao.ts'
+
+function depsModelos({ conexao = 'conectado', noBanco = [], daMeta = [], graphErro = null } = {}) {
+  const chamadas = { graph: [], inserir: [], substituir: null, remover: [], marcarErro: [] }
+  const quebra = async () => { if (graphErro) throw graphErro }
+  const deps = {
+    repo: {
+      listar: async () => noBanco,
+      substituirDoCampo: async (_c, linhas) => { chamadas.substituir = linhas },
+      inserir: async (l) => { chamadas.inserir.push(l); return { id: 'novo', ...l } },
+      buscar: async (campoId, id) => noBanco.find((m) => m.id === id && m.campoId === campoId) ?? null,
+      remover: async (id) => { chamadas.remover.push(id) },
+    },
+    conexoes: {
+      buscarConexaoDoCampo: async () => (conexao ? { campoId: 'c1', wabaId: 'W1', tokenCifrado: 'cif', status: conexao } : null),
+      marcarErro: async (c, m) => { chamadas.marcarErro.push([c, m]) },
+    },
+    graph: {
+      get: async (...a) => { chamadas.graph.push(['get', ...a]); await quebra(); return { data: daMeta } },
+      post: async (...a) => { chamadas.graph.push(['post', ...a]); await quebra(); return { id: 'T9', status: '', category: 'UTILITY' } },
+      delete: async (...a) => { chamadas.graph.push(['delete', ...a]); await quebra() },
+    },
+    chave: 'k', cifra: { decifrar: () => 'TOKEN' },
+  }
+  return { deps, chamadas }
+}
+const erroGraph = (codigo, msg = 'x') => new ErroGraph(msg, 400, codigo)
+const rej = async (p, status, msg) => assert.rejects(p, (e) => e instanceof ErroServico && e.status === status && (!msg || e.message === msg || msg.test?.(e.message)))
+
+test('modelos serviço: sem conexão ou desconectado -> 409 sem chamar a Meta', async () => {
+  for (const conexao of [null, 'desconectado']) {
+    const { deps, chamadas } = depsModelos({ conexao })
+    await rej(sincronizarModelos(deps, 'c1'), 409, MSG_SEM_CONEXAO)
+    await rej(criarModelo(deps, 'c1', 'u1', rascunhoOk()), 409, MSG_SEM_CONEXAO)
+    await rej(excluirModelo(deps, 'c1', 'm1'), 409, MSG_SEM_CONEXAO)
+    assert.equal(chamadas.graph.length, 0)
+  }
+})
+
+test('modelos serviço: sincronizar preserva variaveis e criado_por, remove os que sumiram', async () => {
+  const noBanco = [
+    { id: 'b', campoId: 'c1', metaTemplateId: 'B', variaveis: [{ posicao: 1, tipo: 'nome', exemplo: 'M' }], criadoPor: 'u7' },
+    { id: 'c', campoId: 'c1', metaTemplateId: 'C', variaveis: [], criadoPor: null },
+  ]
+  const daMeta = [
+    { id: 'A', name: 'a', language: 'pt_BR', category: 'UTILITY', status: 'APPROVED', components: [] },
+    { id: 'B', name: 'b', language: 'pt_BR', category: 'MARKETING', status: 'PENDING', components: [] },
+  ]
+  const { deps, chamadas } = depsModelos({ noBanco, daMeta })
+  const r = await sincronizarModelos(deps, 'c1')
+  assert.deepEqual(r, { total: 2 })
+  assert.deepEqual(chamadas.substituir.map((l) => l.metaTemplateId), ['A', 'B'])
+  const b = chamadas.substituir.find((l) => l.metaTemplateId === 'B')
+  assert.deepEqual(b.variaveis, noBanco[0].variaveis)
+  assert.equal(b.criadoPor, 'u7')
+  assert.equal(b.wabaId, 'W1')
+  assert.deepEqual(chamadas.substituir.find((l) => l.metaTemplateId === 'A').variaveis, [])
+  assert.equal(chamadas.graph[0][1], 'W1/message_templates')
+})
+
+test('modelos serviço: criar inválido -> 400 sem chamar a Meta', async () => {
+  const { deps, chamadas } = depsModelos()
+  await rej(criarModelo(deps, 'c1', 'u1', { ...rascunhoOk(), nome: 'Nome Inválido' }), 400)
+  assert.equal(chamadas.graph.length, 0)
+})
+
+test('modelos serviço: criar válido faz POST e grava PENDING', async () => {
+  const { deps, chamadas } = depsModelos()
+  await criarModelo(deps, 'c1', 'u1', rascunhoOk())
+  assert.equal(chamadas.graph[0][0], 'post')
+  assert.equal(chamadas.graph[0][1], 'W1/message_templates')
+  assert.equal(chamadas.graph[0][3], 'TOKEN')
+  const l = chamadas.inserir[0]
+  assert.equal(l.status, 'PENDING')
+  assert.equal(l.metaTemplateId, 'T9')
+  assert.equal(l.campoId, 'c1')
+  assert.equal(l.criadoPor, 'u1')
+  assert.deepEqual(l.variaveis, rascunhoOk().variaveis)
+})
+
+test('modelos serviço: erros da Graph viram 401, 504 e 502', async () => {
+  let t = depsModelos({ graphErro: erroGraph(190) })
+  await rej(sincronizarModelos(t.deps, 'c1'), 401, MSG_TOK)
+  assert.equal(t.chamadas.marcarErro.length, 1)
+  t = depsModelos({ graphErro: Object.assign(new Error('t'), { name: 'TimeoutError' }) })
+  await rej(criarModelo(t.deps, 'c1', 'u1', rascunhoOk()), 504, MSG_TMO)
+  t = depsModelos({ graphErro: erroGraph(100, 'nome repetido') })
+  await rej(criarModelo(t.deps, 'c1', 'u1', rascunhoOk()), 502, /^A Meta recusou: nome repetido/)
+})
+
+test('modelos serviço: excluir de outro campo -> 404 sem chamar a Meta', async () => {
+  const { deps, chamadas } = depsModelos({ noBanco: [{ id: 'm1', campoId: 'outro', metaTemplateId: 'T', nome: 'n' }] })
+  await rej(excluirModelo(deps, 'c1', 'm1'), 404)
+  assert.equal(chamadas.graph.length, 0)
+})
+
+test('modelos serviço: excluir chama DELETE com hsm_id e name e remove; inexistente na Meta remove igual', async () => {
+  const m = { id: 'm1', campoId: 'c1', metaTemplateId: 'T1', nome: 'meu_modelo' }
+  let t = depsModelos({ noBanco: [m] })
+  await excluirModelo(t.deps, 'c1', 'm1')
+  assert.equal(t.chamadas.graph[0][1], 'W1/message_templates?hsm_id=T1&name=meu_modelo')
+  assert.deepEqual(t.chamadas.remover, ['m1'])
+  t = depsModelos({ noBanco: [m], graphErro: erroGraph(100, 'Template does not exist') })
+  await excluirModelo(t.deps, 'c1', 'm1')
+  assert.deepEqual(t.chamadas.remover, ['m1'])
+  t = depsModelos({ noBanco: [m], graphErro: erroGraph(100, 'permissão negada') })
+  await rej(excluirModelo(t.deps, 'c1', 'm1'), 502)
+  assert.deepEqual(t.chamadas.remover, [])
+})
+
+test('modelos serviço: listar devolve o espelho do campo', async () => {
+  const { deps } = depsModelos({ noBanco: [{ id: 'a' }] })
+  assert.deepEqual(await listarModelos(deps, 'c1'), [{ id: 'a' }])
+})
