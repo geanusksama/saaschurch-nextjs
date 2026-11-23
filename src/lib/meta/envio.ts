@@ -80,3 +80,40 @@ export function montarMensagemTemplate(
 export function tamanhoDoLote(limiteRestante: number, pendentes: number, maxLote = 60): number {
   return Math.max(0, Math.min(limiteRestante, pendentes, maxLote))
 }
+
+// ---------- rotas: apresentação e entrada ----------
+
+/** Marca interna da fila: envio `pendente` com este erro_codigo está reservado ("em envio"). */
+export const MARCA_EM_ENVIO = -1
+
+/** Telefone para a tela: +55 19 9****-6683 (nunca o número completo). */
+export function mascararTelefone(tel: string | null): string {
+  const d = (tel ?? '').replace(/\D/g, '')
+  if (d.length === 13 && d.startsWith('55')) return `+55 ${d.slice(2, 4)} ${d[4]}****-${d.slice(9)}`
+  if (d.length < 6) return '****'
+  return `+${d.slice(0, 2)} ****${d.slice(-4)}`
+}
+
+/** Status que a tela mostra: pendente reservado (erro_codigo = -1) é "enviando", não erro. */
+export function statusDoEnvio(status: string, erroCodigo: number | null): string {
+  return status === 'pendente' && erroCodigo === MARCA_EM_ENVIO ? 'enviando' : status
+}
+
+export const ACOES_CONTROLE = ['pausar', 'retomar', 'cancelar'] as const
+export type AcaoControle = (typeof ACOES_CONTROLE)[number]
+
+export function lerAcaoControle(corpo: unknown): { ok: true; acao: AcaoControle } | { ok: false; erros: string[] } {
+  const a = corpo && typeof corpo === 'object' ? (corpo as Record<string, unknown>).acao : undefined
+  if (typeof a === 'string' && (ACOES_CONTROLE as readonly string[]).includes(a)) return { ok: true, acao: a as AcaoControle }
+  return { ok: false, erros: ['Ação inválida. Use pausar, retomar ou cancelar.'] }
+}
+
+/** Paginação do detalhe: página ≥ 1 (padrão 1) e porPagina 1..100 (padrão 50); inválido ⇒ padrão. */
+export function lerPaginacao(pagina: string | null, porPagina: string | null): { pagina: number; porPagina: number } {
+  const p = Number(pagina)
+  const q = Number(porPagina)
+  return {
+    pagina: Number.isInteger(p) && p >= 1 && p <= 10_000 ? p : 1,
+    porPagina: Number.isInteger(q) && q >= 1 ? Math.min(q, 100) : 50,
+  }
+}

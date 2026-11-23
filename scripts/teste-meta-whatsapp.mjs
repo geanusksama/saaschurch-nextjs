@@ -5,7 +5,7 @@ import { cifrar, decifrar } from '../src/lib/meta/cifra.ts'
 import { assinaturaValida, respostaDesafio } from '../src/lib/meta/webhookSeguranca.ts'
 import { criarGraph, ErroGraph } from '../src/lib/meta/graph.ts'
 import { trocarCodigo, registrarNumero, assinarWebhookDaConta, lerStatusNumero, gerarPin } from '../src/lib/meta/conexaoMeta.ts'
-import { normalizarTelefoneBR, ehPedidoDeSair, primeiroNome, deduplicarPorTelefone, montarParametros, montarMensagemTemplate, tamanhoDoLote, CODIGOS_PARAR_DISPARO } from '../src/lib/meta/envio.ts'
+import { normalizarTelefoneBR, ehPedidoDeSair, primeiroNome, deduplicarPorTelefone, montarParametros, montarMensagemTemplate, tamanhoDoLote, CODIGOS_PARAR_DISPARO, mascararTelefone, statusDoEnvio, lerAcaoControle, lerPaginacao } from '../src/lib/meta/envio.ts'
 
 const CHAVE = 'a'.repeat(64)
 
@@ -1354,4 +1354,25 @@ test('envio fila: no máximo 5 POSTs ao mesmo tempo; cada um grava logo após o 
   assert.ok(p.st.posts.length < 20)
   assert.equal(p.st.envios.filter((e) => e.reservado).length, 0)
   assert.equal(p.st.envios.filter((e) => e.status === 'pendente').length, 20 - p.st.posts.length)
+})
+
+test('telefone mascarado nunca sai completo', () => {
+  assert.equal(mascararTelefone('5519991236683'), '+55 19 9****-6683')
+  assert.equal(mascararTelefone('123'), '****')
+  assert.equal(mascararTelefone(null), '****')
+  assert.ok(!mascararTelefone('5511987654321').includes('987654'))
+})
+test('pendente reservado (-1) aparece como enviando; outros ficam', () => {
+  assert.equal(statusDoEnvio('pendente', -1), 'enviando')
+  assert.equal(statusDoEnvio('pendente', null), 'pendente')
+  assert.equal(statusDoEnvio('falhou', -1), 'falhou')
+  assert.equal(statusDoEnvio('falhou', 131026), 'falhou')
+})
+test('ação de controle e paginação do detalhe', () => {
+  assert.deepEqual(lerAcaoControle({ acao: 'pausar' }), { ok: true, acao: 'pausar' })
+  for (const ruim of [null, {}, { acao: 'apagar' }, { acao: 1 }, 'pausar']) assert.equal(lerAcaoControle(ruim).ok, false)
+  assert.deepEqual(lerPaginacao(null, null), { pagina: 1, porPagina: 50 })
+  assert.deepEqual(lerPaginacao('3', '500'), { pagina: 3, porPagina: 100 })
+  assert.deepEqual(lerPaginacao('-1', '0'), { pagina: 1, porPagina: 50 })
+  assert.deepEqual(lerPaginacao('abc', '1.5'), { pagina: 1, porPagina: 50 })
 })

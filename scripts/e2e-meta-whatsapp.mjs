@@ -52,6 +52,11 @@ async function semAutenticacao() {
   console.log('\nSem token')
   r = await fetch(`${API}/conexao`)
   check('GET /conexao sem Authorization ⇒ 401', r.status === 401, `status ${r.status}`)
+  for (const [m, rota] of [['GET', 'envio'], ['POST', 'envio'], ['POST', 'envio/publico'], ['GET', 'envio/opcoes'],
+    ['GET', `envio/${UUID0}`], ['PATCH', `envio/${UUID0}`]]) {
+    r = await fetch(`${API}/${rota}`, { method: m, headers: { 'Content-Type': 'application/json' }, ...(m === 'GET' ? {} : { body: '{}' }) })
+    check(`${m} /${rota} sem Authorization ⇒ 401`, r.status === 401, `status ${r.status}`)
+  }
   r = await fetch(`${BASE}/api/meta/app-config`)
   check('GET /app-config sem token ⇒ 401', r.status === 401, `status ${r.status}`)
   r = await fetch(`${BASE}/api/meta/app-config`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{"conexaoLiberada":true}' })
@@ -82,6 +87,46 @@ async function autenticado() {
   const me = await (await fetch(`${BASE}/api/auth/me`, { headers: auth(TOKEN) })).json()
   const campoId = me.campoId ?? me.user?.campoId
   if (!campoId) { check('usuário MRM_TOKEN tem campo ativo', false); return }
+  console.log('\nEnvio em massa')
+  {
+    const UUID0 = '00000000-0000-4000-8000-000000000000'
+    const outroCampo = await prisma.campo.findFirst({ where: { id: { not: campoId } }, select: { id: true } })
+    let alheioId = null
+    try {
+      if (!outroCampo) check('existe outro campo para o teste de disparo alheio', false)
+      else {
+        const d = await prisma.metaWhatsappDisparo.create({ data: {
+          campoId: outroCampo.id, modeloNome: 'e2e', idioma: 'pt_BR', categoria: 'UTILITY', nome: 'e2e alheio', status: 'pausado' } })
+        alheioId = d.id
+      }
+      let r = await fetch(`${API}/envio/${UUID0}`, { headers: auth(TOKEN) })
+      check('GET disparo inexistente ⇒ 404', r.status === 404, `status ${r.status}`)
+      r = await fetch(`${API}/envio/nao-e-uuid`, { headers: auth(TOKEN) })
+      check('GET id inválido ⇒ 404', r.status === 404, `status ${r.status}`)
+      if (alheioId) {
+        r = await fetch(`${API}/envio/${alheioId}`, { headers: auth(TOKEN) })
+        check('GET disparo de outro campo ⇒ 404', r.status === 404, `status ${r.status}`)
+        r = await fetch(`${API}/envio/${alheioId}`, { method: 'PATCH', headers: auth(TOKEN), body: JSON.stringify({ acao: 'cancelar' }) })
+        check('PATCH disparo de outro campo ⇒ 404', r.status === 404, `status ${r.status}`)
+        check('disparo de outro campo intacto', (await prisma.metaWhatsappDisparo.findUnique({ where: { id: alheioId } }))?.status === 'pausado')
+      }
+      r = await fetch(`${API}/envio/${UUID0}`, { method: 'PATCH', headers: auth(TOKEN), body: JSON.stringify({ acao: 'apagar' }) })
+      let j = await r.json()
+      check('PATCH ação inválida ⇒ 400 com erros[]', r.status === 400 && Array.isArray(j.erros) && j.erros.length > 0, `status ${r.status}`)
+      r = await fetch(`${API}/envio/publico`, { method: 'POST', headers: auth(TOKEN), body: JSON.stringify({ filtros: {} }) })
+      j = await r.json()
+      check('POST /publico sem público ⇒ 400 com erros[]', r.status === 400 && Array.isArray(j.erros) && j.erros.length > 0, `status ${r.status}`)
+      r = await fetch(`${API}/envio/publico`, { method: 'POST', headers: auth(TOKEN), body: 'isto não é json' })
+      check('POST /publico corpo não-JSON ⇒ 400', r.status === 400, `status ${r.status}`)
+      r = await fetch(`${API}/envio`, { method: 'POST', headers: auth(TOKEN), body: JSON.stringify({ nome: '', modeloId: 'x', filtros: {} }) })
+      j = await r.json()
+      check('POST /envio corpo inválido ⇒ 400 com erros[]', r.status === 400 && Array.isArray(j.erros) && j.erros.length > 0, `status ${r.status}`)
+      r = await fetch(`${API}/envio`, { method: 'POST', headers: auth(TOKEN), body: '[]' })
+      check('POST /envio corpo que não é objeto ⇒ 400', r.status === 400, `status ${r.status}`)
+    } finally {
+      if (alheioId) await prisma.metaWhatsappDisparo.deleteMany({ where: { id: alheioId } })
+    }
+  }
   const criados = []
   const salvas = [] // conexões reais apagadas pelo teste; recriadas iguais no finally
   const guardar = async (cid) => {
