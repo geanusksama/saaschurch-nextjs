@@ -4380,6 +4380,24 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/system/WhatsAppOficial.tsx"
   },
   {
+    "chave": "whatsapp_oficial.modelos.criar",
+    "rotulo": "Criar modelo de mensagem",
+    "herda": "whatsapp_oficial.modelos.view",
+    "arquivo": "src/app-ui/system/MetaOficial.tsx"
+  },
+  {
+    "chave": "whatsapp_oficial.modelos.excluir",
+    "rotulo": "Excluir modelo de mensagem",
+    "herda": "whatsapp_oficial.modelos.view",
+    "arquivo": "src/app-ui/system/MetaOficial.tsx"
+  },
+  {
+    "chave": "whatsapp_oficial.modelos.view",
+    "rotulo": "Modelos de mensagem (WhatsApp Oficial)",
+    "herda": "whatsapp_oficial.view",
+    "arquivo": "src/app-ui/system/MetaOficial.tsx"
+  },
+  {
     "chave": "word_docs.word_editor.excluir",
     "rotulo": "Excluir — Word Editor",
     "herda": "word_docs.view",

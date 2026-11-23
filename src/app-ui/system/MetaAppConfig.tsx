@@ -37,7 +37,8 @@ const LINK_APP = 'https://developers.facebook.com/apps/3371798666355530/';
 const campoClasse =
   'w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100';
 
-export default function MetaAppConfig() {
+/** `embutido`: só esconde o cabeçalho de página (usado dentro da central Meta Oficial). */
+export default function MetaAppConfig({ embutido = false }: { embutido?: boolean } = {}) {
   const [visao, setVisao] = useState<Visao | null>(null);
   const [form, setForm] = useState({ appId: '', configId: '', graphVersion: '', verifyToken: '', appSecret: '' });
   const [carregando, setCarregando] = useState(true);
@@ -183,12 +184,14 @@ export default function MetaAppConfig() {
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
-      <header>
-        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Meta – App oficial</h1>
-        <p className="text-sm text-slate-500">
-          Configuração central do app da Meta (WhatsApp Cloud API), usada por todas as igrejas.
-        </p>
-      </header>
+      {!embutido && (
+        <header>
+          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Meta – App oficial</h1>
+          <p className="text-sm text-slate-500">
+            Configuração central do app da Meta (WhatsApp Cloud API), usada por todas as igrejas.
+          </p>
+        </header>
+      )}
 
       {erro && (
         <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">

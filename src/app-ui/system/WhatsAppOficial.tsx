@@ -10,7 +10,7 @@ import { cabecalhos, lerErro } from '../../lib/meta/clienteHttp';
 import { Permissao } from '../../lib/permissoes/Permissao';
 import { abrirEmbeddedSignup, carregarSdkMeta } from '../../lib/meta/embeddedSignup';
 
-type Qualidade = 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN';
+export type Qualidade = 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN';
 
 type Conexao =
   | { conectado: false }
@@ -24,7 +24,7 @@ type Conexao =
       ultimoErro: string | null;
     };
 
-const LIMITES: Record<string, string> = {
+export const LIMITES: Record<string, string> = {
   TIER_250: '250 pessoas/dia',
   TIER_2K: '2.000/dia',
   TIER_10K: '10.000/dia',
@@ -32,7 +32,7 @@ const LIMITES: Record<string, string> = {
   TIER_UNLIMITED: 'Ilimitado',
 };
 
-const QUALIDADES: Record<Qualidade, { texto: string; classe: string }> = {
+export const QUALIDADES: Record<Qualidade, { texto: string; classe: string }> = {
   GREEN: { texto: 'Alta', classe: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900' },
   YELLOW: { texto: 'Média', classe: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900' },
   RED: { texto: 'Baixa', classe: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900' },
@@ -43,7 +43,8 @@ const ROTULOS_STATUS: Record<string, string> = { conectado: 'Conectado', erro: '
 
 const BASE = `${apiBase}/meta/whatsapp`;
 
-export default function WhatsAppOficial() {
+/** `embutido`: só esconde o cabeçalho de página (usado dentro da central Meta Oficial). */
+export default function WhatsAppOficial({ embutido = false }: { embutido?: boolean } = {}) {
   const [conexao, setConexao] = useState<Conexao | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [ocupado, setOcupado] = useState(false);
@@ -145,10 +146,12 @@ export default function WhatsAppOficial() {
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
-      <header>
-        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">WhatsApp Oficial</h1>
-        <p className="text-sm text-slate-500">Número oficial da igreja pela API da Meta (WhatsApp Cloud API).</p>
-      </header>
+      {!embutido && (
+        <header>
+          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">WhatsApp Oficial</h1>
+          <p className="text-sm text-slate-500">Número oficial da igreja pela API da Meta (WhatsApp Cloud API).</p>
+        </header>
+      )}
 
       {erro && (
         <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">

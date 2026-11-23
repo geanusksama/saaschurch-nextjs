@@ -126,6 +126,7 @@ export const settingsSections: SettingsSection[] = [
     items: [
       { id: 'email',     name: 'Configurações de Email', description: 'SMTP e remetentes',  path: '/app-ui/system/email',     permKey: 'settings_email_config' },
       { id: 'whatsapp',  name: 'WhatsApp Business',      description: 'API e integração',   path: '/app-ui/system/whatsapp',  permKey: 'settings_whatsapp_config' },
+      { id: 'meta-oficial', name: 'Meta Oficial',       description: 'WhatsApp oficial, modelos e conexão', path: '/app-ui/system/meta-oficial', permKey: 'whatsapp_oficial' },
       { id: 'sms',       name: 'SMS',                    description: 'Provedor e créditos', path: '/app-ui/system/sms',      permKey: 'settings_sms_config' },
     ]
   },
