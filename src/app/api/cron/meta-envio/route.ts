@@ -37,8 +37,8 @@ export async function GET(req: NextRequest) {
     }
     const r = await lerComOrcamento(campos, async (campoId) => {
       try {
-        // Cada campo para de enviar antes do fim do prazo total.
-        const restante = Math.max(0, PRAZO_MS - (Date.now() - inicio) - 2_000)
+        // Último POST começa até ~37 s: com o timeout de 15 s da Graph e as gravações, cabe em maxDuration.
+        const restante = Math.max(0, PRAZO_MS - (Date.now() - inicio) - 8_000)
         const s = await processarFila(deps, campoId, agora, { prazoMs: restante })
         return { ok: true as const, enviados: s.enviados, falhas: s.falhas, pausado: !!s.pausado }
       } catch (e) {

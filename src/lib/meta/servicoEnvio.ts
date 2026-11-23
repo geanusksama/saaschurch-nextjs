@@ -7,6 +7,8 @@
  * ⇒ todos os disparos ativos do campo ficam `pausado` com motivo e um alerta em meta_alertas.
  * Erro por pessoa (ex.: 131026) ⇒ só aquele envio falha. Tempo esgotado ⇒ aquele envio
  * falha (não reenviamos para não cobrar duas vezes) e a rodada termina.
+ * Nunca reenvia automaticamente o que pode ter saído: depois que o POST começa, o envio
+ * só termina como enviado ou falhou.
  */
 import type { Graph } from './graph.ts'
 import type { VariavelModelo } from './modelos.ts'
@@ -91,14 +93,18 @@ export type DepsEnvio = {
     buscarDisparo(campoId: string, id: string): Promise<DisparoLinha | null>
     /** Troca condicionada: só muda se o status atual está em `de`. Devolve se mudou. */
     mudarStatus(id: string, de: string[], para: StatusDisparo, motivo: string | null): Promise<boolean>
-    /** Status cancelado + envios pendentes viram ignorado (um comando atômico). */
+    /** Status cancelado + pendentes livres (não reservados) viram ignorado (um comando atômico). */
     cancelar(id: string, de: string[]): Promise<boolean>
     enviadosDesde(campoId: string, desde: Date): Promise<number>
-    /** Reserva até `n` pendentes (outra execução simultânea não pega os mesmos). */
+    /** Reserva até `n` pendentes livres (outra execução simultânea não pega os mesmos). A reserva não vence sozinha. */
     reservarPendentes(disparoId: string, n: number): Promise<Array<{ id: string; telefone: string; parametros: unknown }>>
+    /** Devolve à fila itens reservados cujo POST não começou (ignorado se o disparo foi cancelado ou o telefone saiu). */
     liberarReserva(ids: string[]): Promise<void>
+    /** Reservas com mais de 10 min viram falhou "não confirmado"; devolve os disparos afetados. */
+    varrerReservasVencidas(campoId: string): Promise<string[]>
     marcarEnviado(id: string, wamid: string, quando: Date): Promise<void>
-    marcarFalha(id: string, codigo: number | null, erro: string): Promise<void>
+    /** `talvezEnviado`: a Meta pode ter entregue (conta no limite de 24 h). */
+    marcarFalha(id: string, codigo: number | null, erro: string, talvezEnviado: boolean): Promise<void>
     /** Contadores por agregação do próprio disparo; `enviando` sem pendentes vira `concluido`. */
     recalcular(disparoId: string): Promise<void>
     buscarEnvioPorWamid(campoId: string, wamid: string): Promise<{ id: string; status: string; disparoId: string } | null>
@@ -498,6 +504,7 @@ export async function processarFila(
   const agoraMs = deps.agoraMs ?? Date.now
   const fim = agoraMs() + (opts.prazoMs ?? 40_000)
   const res: ResultadoFila = { enviados: 0, falhas: 0 }
+  for (const id of await deps.repo.varrerReservasVencidas(campoId)) await deps.repo.recalcular(id)
   const ativos = await deps.repo.disparosAtivos(campoId, agora)
   if (!ativos.length) return res
 
@@ -537,52 +544,64 @@ export async function processarFila(
     const lote = await deps.repo.reservarPendentes(d.id, n)
     if (!lote.length) { await deps.repo.recalcular(d.id); continue }
 
-    let i = 0
+    // Reserva irrevogável: só os itens cujo POST ainda não começou voltam à fila (liberarReserva).
+    // Depois que o POST começa, o item vira enviado ou falhou; se a gravação falhar ou o processo
+    // morrer, a varredura o converte em falhou "não confirmado" (nunca reenvia).
+    let proximo = 0
     let parar: { motivo: string; codigo: number } | null = null
     let encerrar = false
-    for (; i < lote.length; i++) {
-      if (agoraMs() >= fim) { encerrar = true; break }
-      if (i > 0 && i % CHECAR_STATUS_A_CADA === 0) {
-        const atual = await deps.repo.buscarDisparo(campoId, d.id)
-        if (atual?.status !== 'enviando') { encerrar = true; break }
-      }
-      const env = lote[i]
-      const corpo = montarMensagemTemplate(env.telefone, d.modeloNome, d.idioma, env.parametros as Parametros)
-      try {
-        const r = await deps.graph.post(`${con.phoneNumberId}/messages`, corpo, con.token)
+    try {
+      for (let i = 0; i < lote.length; i++) {
+        if (agoraMs() >= fim) { encerrar = true; break }
+        if (i > 0 && i % CHECAR_STATUS_A_CADA === 0) {
+          const atual = await deps.repo.buscarDisparo(campoId, d.id)
+          if (atual?.status !== 'enviando') { encerrar = true; break }
+        }
+        const env = lote[i]
+        const corpo = montarMensagemTemplate(env.telefone, d.modeloNome, d.idioma, env.parametros as Parametros)
+        proximo = i + 1
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let r: any
+        try {
+          r = await deps.graph.post(`${con.phoneNumberId}/messages`, corpo, con.token)
+        } catch (e) {
+          const err = e as { name?: string; message?: string; codigo?: number | null }
+          if (err?.name === 'ErroGraph') {
+            // A Meta respondeu com erro: não enviou. Só esta pessoa falha (sem reenvio).
+            const codigo = typeof err.codigo === 'number' ? err.codigo : null
+            await deps.repo.marcarFalha(env.id, codigo, String(err.message ?? 'Erro da Meta').slice(0, 300), false)
+            res.falhas++
+            usados++
+            if (codigo !== null && CODIGOS_PARAR_DISPARO.includes(codigo)) {
+              parar = { motivo: MOTIVO_CODIGO[codigo] ?? `A Meta recusou (${codigo}).`, codigo }
+              break
+            }
+            if (codigo === CODIGO_TENTAR_DEPOIS) { encerrar = true; break }
+            continue
+          }
+          // Tempo esgotado ou rede: a Meta pode ter enviado; não reenvia e conta no limite.
+          await deps.repo.marcarFalha(env.id, null, MSG_TIMEOUT_ENVIO, true)
+          res.falhas++
+          restante--
+          encerrar = true
+          break
+        }
+        // POST aceito: gravação fora do try do POST (falha do banco não é falha da Meta).
+        usados++
+        restante--
         const wamid = r?.messages?.[0]?.id
         if (typeof wamid === 'string' && wamid) {
           await deps.repo.marcarEnviado(env.id, wamid, new Date(agoraMs()))
           res.enviados++
-          restante--
         } else {
-          await deps.repo.marcarFalha(env.id, null, 'A Meta respondeu sem o id da mensagem.')
+          await deps.repo.marcarFalha(env.id, null, 'A Meta respondeu sem o id da mensagem.', true)
           res.falhas++
         }
-        usados++
-      } catch (e) {
-        const err = e as { name?: string; message?: string; codigo?: number | null }
-        if (err?.name === 'ErroGraph' && typeof err.codigo === 'number' && CODIGOS_PARAR_DISPARO.includes(err.codigo)) {
-          parar = { motivo: MOTIVO_CODIGO[err.codigo] ?? `A Meta recusou (${err.codigo}).`, codigo: err.codigo }
-          break
-        }
-        if (err?.name === 'ErroGraph' && err.codigo === CODIGO_TENTAR_DEPOIS) { encerrar = true; break }
-        if (err?.name === 'ErroGraph') {
-          await deps.repo.marcarFalha(env.id, err.codigo ?? null, String(err.message ?? 'Erro da Meta').slice(0, 300))
-          res.falhas++
-          usados++
-          continue
-        }
-        // Tempo esgotado ou rede: a Meta pode ter enviado; não reenvia.
-        await deps.repo.marcarFalha(env.id, null, MSG_TIMEOUT_ENVIO)
-        res.falhas++
-        i++
-        encerrar = true
-        break
       }
+    } finally {
+      const sobra = lote.slice(proximo).map((x) => x.id)
+      if (sobra.length) await deps.repo.liberarReserva(sobra)
     }
-    const sobra = lote.slice(i).map((x) => x.id)
-    if (sobra.length) await deps.repo.liberarReserva(sobra)
     await deps.repo.recalcular(d.id)
 
     if (parar) {

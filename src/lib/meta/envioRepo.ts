@@ -2,9 +2,11 @@
  * Banco do envio em massa do WhatsApp Oficial. Só comandos únicos ou `$transaction([...])`
  * em array (o pooler não aceita transação interativa); toda lista com teto e ordem.
  *
- * Reserva da fila: `meta_whatsapp_envios.atualizado_em` no futuro (now() + 2 min) marca um
- * pendente já pego por uma rodada; outra execução simultânea só pega `atualizado_em <= now()`.
- * Se a rodada cair, a reserva vence sozinha em 2 minutos.
+ * Reserva da fila (sem coluna nova): `status = 'pendente'` com `erro_codigo = -1` é um envio
+ * reservado por uma rodada ("em envio"); `atualizado_em` guarda quando. A reserva NÃO vence
+ * sozinha: só `liberarReserva` (chamado antes do POST começar) devolve à fila. Reserva com mais
+ * de 10 min vira `falhou` "não confirmado" na varredura — nunca é reenviada (cobrança dupla).
+ * Pendente livre = `erro_codigo IS NULL`. Telas devem mostrar -1 como "em envio".
  */
 import { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
@@ -14,7 +16,8 @@ import type {
 } from './servicoEnvio'
 
 const LOTE_INSERCAO = 1000
-const RESERVA = Prisma.sql`interval '2 minutes'`
+export const RESERVADO = -1
+export const MSG_NAO_CONFIRMADO = 'Envio não confirmado — não reenviado para evitar cobrança dupla.'
 
 const SELECT_DISPARO = {
   id: true, campoId: true, modeloNome: true, idioma: true, status: true, motivo: true, agendadoPara: true, criadoEm: true,
@@ -181,7 +184,7 @@ export async function cancelar(id: string, de: string[]): Promise<boolean> {
       RETURNING id
     ), e AS (
       UPDATE meta_whatsapp_envios SET status = 'ignorado', atualizado_em = now()
-      WHERE disparo_id IN (SELECT id FROM d) AND status = 'pendente'
+      WHERE disparo_id IN (SELECT id FROM d) AND status = 'pendente' AND erro_codigo IS NULL
       RETURNING 1
     )
     SELECT id::text AS id FROM d`
@@ -216,10 +219,10 @@ export async function enviadosDesde(campoId: string, desde: Date): Promise<numbe
 export async function reservarPendentes(disparoId: string, n: number): Promise<Array<{ id: string; telefone: string; parametros: unknown }>> {
   if (n <= 0) return []
   return prisma.$queryRaw<Array<{ id: string; telefone: string; parametros: unknown }>>`
-    UPDATE meta_whatsapp_envios e SET atualizado_em = now() + ${RESERVA}
+    UPDATE meta_whatsapp_envios e SET erro_codigo = ${RESERVADO}, atualizado_em = now()
     WHERE e.id IN (
       SELECT id FROM meta_whatsapp_envios
-      WHERE disparo_id = ${disparoId}::uuid AND status = 'pendente' AND atualizado_em <= now()
+      WHERE disparo_id = ${disparoId}::uuid AND status = 'pendente' AND erro_codigo IS NULL
       ORDER BY id
       LIMIT ${n}
       FOR UPDATE SKIP LOCKED
@@ -227,23 +230,43 @@ export async function reservarPendentes(disparoId: string, n: number): Promise<A
     RETURNING e.id::text AS id, e.telefone, e.parametros`
 }
 
+/** Só para itens cujo POST não começou. Disparo cancelado ou telefone que pediu SAIR ⇒ ignorado. */
 export async function liberarReserva(ids: string[]): Promise<void> {
   if (!ids.length) return
-  // now() do banco (o mesmo relógio da reserva).
-  await prisma.$executeRaw`UPDATE meta_whatsapp_envios SET atualizado_em = now() WHERE id = ANY(${ids}::uuid[]) AND status = 'pendente'`
+  await prisma.$executeRaw`
+    UPDATE meta_whatsapp_envios e SET
+      erro_codigo = NULL, atualizado_em = now(),
+      status = CASE
+        WHEN d.status = 'cancelado' OR EXISTS (
+          SELECT 1 FROM meta_whatsapp_exclusoes x WHERE x.campo_id = e.campo_id AND x.telefone = e.telefone
+        ) THEN 'ignorado' ELSE 'pendente' END
+    FROM meta_whatsapp_disparos d
+    WHERE d.id = e.disparo_id AND e.id = ANY(${ids}::uuid[]) AND e.status = 'pendente' AND e.erro_codigo = ${RESERVADO}`
 }
 
+export async function varrerReservasVencidas(campoId: string): Promise<string[]> {
+  const r = await prisma.$queryRaw<Array<{ disparo_id: string }>>`
+    UPDATE meta_whatsapp_envios SET
+      status = 'falhou', erro_codigo = NULL, erro = ${MSG_NAO_CONFIRMADO},
+      enviado_em = atualizado_em, atualizado_em = now()
+    WHERE campo_id = ${campoId}::uuid AND status = 'pendente' AND erro_codigo = ${RESERVADO}
+      AND atualizado_em < now() - interval '10 minutes'
+    RETURNING disparo_id::text AS disparo_id`
+  return [...new Set(r.map((x) => x.disparo_id))]
+}
+
+/** Aceita o item reservado mesmo que o disparo tenha sido cancelado no meio (a mensagem saiu). */
 export async function marcarEnviado(id: string, wamid: string, quando: Date): Promise<void> {
   await prisma.metaWhatsappEnvio.updateMany({
     where: { id, status: 'pendente' },
-    data: { status: 'enviado', wamid, enviadoEm: quando, atualizadoEm: new Date() },
+    data: { status: 'enviado', wamid, enviadoEm: quando, erroCodigo: null, atualizadoEm: new Date() },
   })
 }
 
-export async function marcarFalha(id: string, codigo: number | null, erro: string): Promise<void> {
+export async function marcarFalha(id: string, codigo: number | null, erro: string, talvezEnviado: boolean): Promise<void> {
   await prisma.metaWhatsappEnvio.updateMany({
     where: { id, status: 'pendente' },
-    data: { status: 'falhou', erroCodigo: codigo, erro, atualizadoEm: new Date() },
+    data: { status: 'falhou', erroCodigo: codigo, erro, atualizadoEm: new Date(), ...(talvezEnviado ? { enviadoEm: new Date() } : {}) },
   })
 }
 
@@ -270,7 +293,9 @@ export async function inserirExclusao(campoId: string, telefone: string, motivo:
 
 export async function ignorarPendentesDoTelefone(campoId: string, telefone: string): Promise<void> {
   await prisma.metaWhatsappEnvio.updateMany({
-    where: { campoId, telefone, status: 'pendente' },
+    // Só os livres: o que está reservado (em voo) termina como enviado/falhou; o não enviado
+    // volta por liberarReserva, que já o marca como ignorado.
+    where: { campoId, telefone, status: 'pendente', erroCodigo: null },
     data: { status: 'ignorado', atualizadoEm: new Date() },
   })
 }

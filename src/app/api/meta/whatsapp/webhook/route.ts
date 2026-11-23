@@ -25,24 +25,28 @@ function logFalha(e: unknown, n: number) {
 }
 
 // Eventos da Meta: valida a assinatura sobre o corpo bruto; responde 200 na hora e processa
-// depois da resposta (status dos envios e pedidos de SAIR). Erro interno só vira log curto.
+// depois da resposta (status dos envios e pedidos de SAIR). Sem configuração ou erro interno:
+// log curto e 200 (a Meta não deve receber 4xx/5xx por problema nosso). Assinatura inválida: 401.
 export async function POST(req: NextRequest) {
+  let c: Awaited<ReturnType<typeof lerConfigMeta>>
+  let bruto: string
   try {
-    const c = await lerConfigMeta()
-    const bruto = await req.text()
-    if (!assinaturaValida(bruto, req.headers.get('x-hub-signature-256'), c.appSecret)) {
-      return json({ error: 'Assinatura inválida.' }, 401)
-    }
-    after(async () => {
-      try {
-        const r = await processarWebhook(await montarDependenciasEnvio(), JSON.parse(bruto))
-        if (r.erros) logFalha(r.primeiroErro, r.erros)
-      } catch (e) {
-        logFalha(e, 1)
-      }
-    })
-    return json({ ok: true })
+    c = await lerConfigMeta()
+    bruto = await req.text()
   } catch (e) {
-    return respostaDeErro(e)
+    logFalha(e, 1)
+    return json({ ok: true })
   }
+  if (!assinaturaValida(bruto, req.headers.get('x-hub-signature-256'), c.appSecret)) {
+    return json({ error: 'Assinatura inválida.' }, 401)
+  }
+  after(async () => {
+    try {
+      const r = await processarWebhook(await montarDependenciasEnvio(), JSON.parse(bruto))
+      if (r.erros) logFalha(r.primeiroErro, r.erros)
+    } catch (e) {
+      logFalha(e, 1)
+    }
+  })
+  return json({ ok: true })
 }
