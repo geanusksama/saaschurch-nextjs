@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.083Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.109Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 5efc5aecf0f125da
+-- Baseline fa5cd82742e71000
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -3919,6 +3919,54 @@ create table if not exists "public"."meta_whatsapp_conexoes" (
   "conectado_por" uuid,
   "conectado_em" timestamp(6) with time zone default now(),
   "atualizado_em" timestamp(6) with time zone default now() not null
+);
+
+create table if not exists "public"."meta_whatsapp_disparos" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "modelo_id" uuid,
+  "modelo_nome" text not null,
+  "idioma" text not null,
+  "categoria" text not null,
+  "nome" text not null,
+  "filtros" jsonb default '{}'::jsonb not null,
+  "valores" jsonb default '{}'::jsonb not null,
+  "status" text not null,
+  "motivo" text,
+  "agendado_para" timestamp(6) with time zone,
+  "total" integer default 0 not null,
+  "enviados" integer default 0 not null,
+  "entregues" integer default 0 not null,
+  "lidos" integer default 0 not null,
+  "falhos" integer default 0 not null,
+  "criado_por" uuid,
+  "criado_em" timestamp(6) with time zone default now() not null,
+  "atualizado_em" timestamp(6) with time zone default now() not null
+);
+
+create table if not exists "public"."meta_whatsapp_envios" (
+  "id" uuid default gen_random_uuid() not null,
+  "disparo_id" uuid not null,
+  "campo_id" uuid not null,
+  "origem" text not null,
+  "ref_id" text not null,
+  "nome" text not null,
+  "telefone" text not null,
+  "parametros" jsonb default '{}'::jsonb not null,
+  "status" text default 'pendente'::text not null,
+  "wamid" text,
+  "erro_codigo" integer,
+  "erro" text,
+  "enviado_em" timestamp(6) with time zone,
+  "atualizado_em" timestamp(6) with time zone default now() not null
+);
+
+create table if not exists "public"."meta_whatsapp_exclusoes" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "telefone" text not null,
+  "motivo" text not null,
+  "criado_em" timestamp(6) with time zone default now() not null
 );
 
 create table if not exists "public"."meta_whatsapp_modelos" (

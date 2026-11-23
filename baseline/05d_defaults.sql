@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.087Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.124Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 5efc5aecf0f125da
+-- Baseline fa5cd82742e71000
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -1112,6 +1112,22 @@ alter table "public"."meta_whatsapp_conexoes" alter column "id" set default gen_
 alter table "public"."meta_whatsapp_conexoes" alter column "status" set default 'conectado'::text;
 alter table "public"."meta_whatsapp_conexoes" alter column "conectado_em" set default now();
 alter table "public"."meta_whatsapp_conexoes" alter column "atualizado_em" set default now();
+alter table "public"."meta_whatsapp_disparos" alter column "id" set default gen_random_uuid();
+alter table "public"."meta_whatsapp_disparos" alter column "filtros" set default '{}'::jsonb;
+alter table "public"."meta_whatsapp_disparos" alter column "valores" set default '{}'::jsonb;
+alter table "public"."meta_whatsapp_disparos" alter column "total" set default 0;
+alter table "public"."meta_whatsapp_disparos" alter column "enviados" set default 0;
+alter table "public"."meta_whatsapp_disparos" alter column "entregues" set default 0;
+alter table "public"."meta_whatsapp_disparos" alter column "lidos" set default 0;
+alter table "public"."meta_whatsapp_disparos" alter column "falhos" set default 0;
+alter table "public"."meta_whatsapp_disparos" alter column "criado_em" set default now();
+alter table "public"."meta_whatsapp_disparos" alter column "atualizado_em" set default now();
+alter table "public"."meta_whatsapp_envios" alter column "id" set default gen_random_uuid();
+alter table "public"."meta_whatsapp_envios" alter column "parametros" set default '{}'::jsonb;
+alter table "public"."meta_whatsapp_envios" alter column "status" set default 'pendente'::text;
+alter table "public"."meta_whatsapp_envios" alter column "atualizado_em" set default now();
+alter table "public"."meta_whatsapp_exclusoes" alter column "id" set default gen_random_uuid();
+alter table "public"."meta_whatsapp_exclusoes" alter column "criado_em" set default now();
 alter table "public"."meta_whatsapp_modelos" alter column "id" set default gen_random_uuid();
 alter table "public"."meta_whatsapp_modelos" alter column "idioma" set default 'pt_BR'::text;
 alter table "public"."meta_whatsapp_modelos" alter column "componentes" set default '[]'::jsonb;

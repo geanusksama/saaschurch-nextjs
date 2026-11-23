@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.087Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.123Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 5efc5aecf0f125da
+-- Baseline fa5cd82742e71000
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -735,6 +735,21 @@ alter table "public"."meta_whatsapp_conexoes" alter column "waba_id" set not nul
 alter table "public"."meta_whatsapp_conexoes" alter column "phone_number_id" set not null;
 alter table "public"."meta_whatsapp_conexoes" alter column "token_cifrado" set not null;
 alter table "public"."meta_whatsapp_conexoes" alter column "pin_cifrado" set not null;
+alter table "public"."meta_whatsapp_disparos" alter column "campo_id" set not null;
+alter table "public"."meta_whatsapp_disparos" alter column "modelo_nome" set not null;
+alter table "public"."meta_whatsapp_disparos" alter column "idioma" set not null;
+alter table "public"."meta_whatsapp_disparos" alter column "categoria" set not null;
+alter table "public"."meta_whatsapp_disparos" alter column "nome" set not null;
+alter table "public"."meta_whatsapp_disparos" alter column "status" set not null;
+alter table "public"."meta_whatsapp_envios" alter column "disparo_id" set not null;
+alter table "public"."meta_whatsapp_envios" alter column "campo_id" set not null;
+alter table "public"."meta_whatsapp_envios" alter column "origem" set not null;
+alter table "public"."meta_whatsapp_envios" alter column "ref_id" set not null;
+alter table "public"."meta_whatsapp_envios" alter column "nome" set not null;
+alter table "public"."meta_whatsapp_envios" alter column "telefone" set not null;
+alter table "public"."meta_whatsapp_exclusoes" alter column "campo_id" set not null;
+alter table "public"."meta_whatsapp_exclusoes" alter column "telefone" set not null;
+alter table "public"."meta_whatsapp_exclusoes" alter column "motivo" set not null;
 alter table "public"."meta_whatsapp_modelos" alter column "campo_id" set not null;
 alter table "public"."meta_whatsapp_modelos" alter column "waba_id" set not null;
 alter table "public"."meta_whatsapp_modelos" alter column "meta_template_id" set not null;

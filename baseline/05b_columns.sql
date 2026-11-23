@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.084Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.114Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 5efc5aecf0f125da
+-- Baseline fa5cd82742e71000
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -3181,6 +3181,45 @@ alter table "public"."meta_whatsapp_conexoes" add column if not exists "ultimo_e
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "conectado_por" uuid;
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "conectado_em" timestamp(6) with time zone default now();
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "atualizado_em" timestamp(6) with time zone default now() not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "campo_id" uuid;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "modelo_id" uuid;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "modelo_nome" text;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "idioma" text;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "categoria" text;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "nome" text;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "filtros" jsonb default '{}'::jsonb not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "valores" jsonb default '{}'::jsonb not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "status" text;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "motivo" text;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "agendado_para" timestamp(6) with time zone;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "total" integer default 0 not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "enviados" integer default 0 not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "entregues" integer default 0 not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "lidos" integer default 0 not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "falhos" integer default 0 not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "criado_por" uuid;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "criado_em" timestamp(6) with time zone default now() not null;
+alter table "public"."meta_whatsapp_disparos" add column if not exists "atualizado_em" timestamp(6) with time zone default now() not null;
+alter table "public"."meta_whatsapp_envios" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."meta_whatsapp_envios" add column if not exists "disparo_id" uuid;
+alter table "public"."meta_whatsapp_envios" add column if not exists "campo_id" uuid;
+alter table "public"."meta_whatsapp_envios" add column if not exists "origem" text;
+alter table "public"."meta_whatsapp_envios" add column if not exists "ref_id" text;
+alter table "public"."meta_whatsapp_envios" add column if not exists "nome" text;
+alter table "public"."meta_whatsapp_envios" add column if not exists "telefone" text;
+alter table "public"."meta_whatsapp_envios" add column if not exists "parametros" jsonb default '{}'::jsonb not null;
+alter table "public"."meta_whatsapp_envios" add column if not exists "status" text default 'pendente'::text not null;
+alter table "public"."meta_whatsapp_envios" add column if not exists "wamid" text;
+alter table "public"."meta_whatsapp_envios" add column if not exists "erro_codigo" integer;
+alter table "public"."meta_whatsapp_envios" add column if not exists "erro" text;
+alter table "public"."meta_whatsapp_envios" add column if not exists "enviado_em" timestamp(6) with time zone;
+alter table "public"."meta_whatsapp_envios" add column if not exists "atualizado_em" timestamp(6) with time zone default now() not null;
+alter table "public"."meta_whatsapp_exclusoes" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."meta_whatsapp_exclusoes" add column if not exists "campo_id" uuid;
+alter table "public"."meta_whatsapp_exclusoes" add column if not exists "telefone" text;
+alter table "public"."meta_whatsapp_exclusoes" add column if not exists "motivo" text;
+alter table "public"."meta_whatsapp_exclusoes" add column if not exists "criado_em" timestamp(6) with time zone default now() not null;
 alter table "public"."meta_whatsapp_modelos" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."meta_whatsapp_modelos" add column if not exists "campo_id" uuid;
 alter table "public"."meta_whatsapp_modelos" add column if not exists "waba_id" text;

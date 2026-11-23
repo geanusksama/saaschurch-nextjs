@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.090Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.135Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 5efc5aecf0f125da
+-- Baseline fa5cd82742e71000
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -722,6 +722,15 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_conexoes" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_conexoes" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_conexoes" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_disparos" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_disparos" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_disparos" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_envios" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_envios" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_envios" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_exclusoes" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_exclusoes" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_exclusoes" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_modelos" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_modelos" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_modelos" to "service_role";

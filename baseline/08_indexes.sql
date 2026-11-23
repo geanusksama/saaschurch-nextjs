@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.089Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.131Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 5efc5aecf0f125da
+-- Baseline fa5cd82742e71000
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -606,6 +606,12 @@ CREATE INDEX IF NOT EXISTS members_regional_id_idx ON public.members USING btree
 CREATE INDEX IF NOT EXISTS meta_alertas_resolvido_em_criado_em_idx ON public.meta_alertas USING btree (resolvido_em, criado_em);
 CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_conexoes_campo_id_key ON public.meta_whatsapp_conexoes USING btree (campo_id);
 CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_conexoes_phone_number_id_key ON public.meta_whatsapp_conexoes USING btree (phone_number_id);
+CREATE INDEX IF NOT EXISTS meta_whatsapp_disparos_campo_id_criado_em_idx ON public.meta_whatsapp_disparos USING btree (campo_id, criado_em DESC);
+CREATE INDEX IF NOT EXISTS meta_whatsapp_envios_campo_id_enviado_em_idx ON public.meta_whatsapp_envios USING btree (campo_id, enviado_em);
+CREATE INDEX IF NOT EXISTS meta_whatsapp_envios_disparo_id_status_idx ON public.meta_whatsapp_envios USING btree (disparo_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_envios_disparo_id_telefone_key ON public.meta_whatsapp_envios USING btree (disparo_id, telefone);
+CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_envios_wamid_key ON public.meta_whatsapp_envios USING btree (wamid) WHERE (wamid IS NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_exclusoes_campo_id_telefone_key ON public.meta_whatsapp_exclusoes USING btree (campo_id, telefone);
 CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_modelos_campo_id_meta_template_id_key ON public.meta_whatsapp_modelos USING btree (campo_id, meta_template_id);
 CREATE INDEX IF NOT EXISTS meta_whatsapp_modelos_campo_id_nome_idx ON public.meta_whatsapp_modelos USING btree (campo_id, nome);
 CREATE INDEX IF NOT EXISTS ministries_campo_id_idx ON public.ministries USING btree (campo_id);
