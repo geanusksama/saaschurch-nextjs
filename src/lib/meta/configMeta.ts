@@ -1,4 +1,3 @@
-import { mesclarComEnv } from './configCentral'
 /**
  * Configuração da Meta (WhatsApp Oficial): valores do app vêm da configuração central
  * (banco do base ou rota do base), com variáveis de ambiente como reserva.
@@ -25,7 +24,7 @@ export class ErroConfigMeta extends Error {
 export async function lerConfigMeta(): Promise<ConfigMeta> {
   const env = process.env
   // Import tardio: o módulo padrão carrega o Prisma, que os testes unitários não usam.
-  const { configCentral } = await import('./configCentralPadrao')
+  const { configCentral, mesclarComEnv } = await import('./configCentralPadrao')
   const m = mesclarComEnv(await configCentral.lerCentral(), env)
   const dados: Record<string, string> = {
     META_APP_ID: m.appId,

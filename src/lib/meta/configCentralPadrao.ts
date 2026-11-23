@@ -1,5 +1,5 @@
+import { criarConfigCentral, mesclarComEnv } from './configCentral'
 import { decifrar } from './cifra'
-import { criarConfigCentral } from './configCentral'
 import { lerLinha } from './configCentralRepo'
 
 /** Instância de produção (banco/base reais). Carregada só sob demanda. */
@@ -10,3 +10,5 @@ export const configCentral = criarConfigCentral({
   lerLinha,
   decifrar,
 })
+
+export { mesclarComEnv }
