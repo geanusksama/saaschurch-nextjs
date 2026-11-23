@@ -120,3 +120,113 @@ test('token inválido vira ErroGraph.tokenInvalido', async () => {
   await assert.rejects(lerStatusNumero(criarGraph({ versao: 'v27.0', fetch: f }), 'TK', 'P1'), (e) => e instanceof ErroGraph && e.tokenInvalido && e.status === 401 && e.codigo === 190 && e.message === 'expired')
 })
 test('pin tem 6 dígitos', () => { assert.match(gerarPin(), /^\d{6}$/) })
+
+// ---- Serviço de conexão (Task 4) ----
+import { obterStatus, conectar, desconectar, ErroServico } from '../src/lib/meta/servicoConexao.ts'
+
+function fakeDeps(over = {}) {
+  const chamadas = []
+  const reg = { salvos: [], erros: [], desconectados: [] }
+  const config = { appId: 'app', appSecret: 'seg', configId: 'c', verifyToken: 'vt', chaveCifra: CHAVE, graphVersion: 'v27.0' }
+  const deps = {
+    config,
+    graph: {},
+    cifra: { cifrar, decifrar },
+    repo: {
+      conexao: null, porPhone: null,
+      async buscarConexaoDoCampo() { return this.conexao },
+      async buscarPorPhoneNumberId() { return this.porPhone },
+      async salvarConexao(d) { reg.salvos.push(d) },
+      async marcarErro(c, m) { reg.erros.push([c, m]) },
+      async desconectar(c) { reg.desconectados.push(c) },
+    },
+    meta: {
+      async trocarCodigo() { chamadas.push('troca'); return 'TOKEN123' },
+      async registrarNumero() { chamadas.push('registra') },
+      async assinarWebhookDaConta(g, t, w, d) { chamadas.push(['assina', w, d]) },
+      async lerStatusNumero() { chamadas.push('status'); return { numero: '+55 11', nomeExibicao: 'Igreja', qualidade: 'GREEN', status: 'CONNECTED', limiteDiario: 'TIER_250' } },
+      gerarPin: () => '123456',
+    },
+    ...over,
+  }
+  return { deps, chamadas, reg }
+}
+
+test('conectar: duplicado em outro campo ⇒ 409 antes de qualquer chamada à Meta', async () => {
+  const { deps, chamadas } = fakeDeps()
+  deps.repo.porPhone = { campoId: 'outro' }
+  await assert.rejects(conectar(deps, { campoId: 'c1', userId: 'u', code: 'x', wabaId: 'w', phoneNumberId: 'p', origin: 'http://h' }),
+    (e) => e instanceof ErroServico && e.status === 409)
+  assert.deepEqual(chamadas, [])
+})
+
+test('conectar: sucesso grava token+PIN cifrados e assina o webhook com a origin', async () => {
+  const { deps, chamadas, reg } = fakeDeps()
+  const r = await conectar(deps, { campoId: 'c1', userId: 'u', code: 'x', wabaId: 'w', phoneNumberId: 'p', origin: 'https://app.exemplo' })
+  assert.equal(reg.salvos.length, 1)
+  assert.equal(decifrar(reg.salvos[0].tokenCifrado, CHAVE), 'TOKEN123')
+  assert.equal(decifrar(reg.salvos[0].pinCifrado, CHAVE), '123456')
+  const assina = chamadas.find((c) => Array.isArray(c))
+  assert.equal(assina[2].callbackUrl, 'https://app.exemplo/api/meta/whatsapp/webhook')
+  assert.equal(assina[2].verifyToken, 'vt')
+  assert.equal(r.status, 'conectado')
+  assert.ok(!JSON.stringify(r).includes('TOKEN123') && !JSON.stringify(r).includes('123456'))
+})
+
+test('conectar: campos faltando ⇒ 400', async () => {
+  const { deps } = fakeDeps()
+  await assert.rejects(conectar(deps, { campoId: 'c1', userId: 'u', code: '', wabaId: 'w', phoneNumberId: 'p', origin: 'h' }),
+    (e) => e.status === 400)
+})
+
+test('conectar: timeout da Graph ⇒ 504', async () => {
+  const { deps } = fakeDeps()
+  deps.meta.trocarCodigo = async () => { const e = new Error('t'); e.name = 'TimeoutError'; throw e }
+  await assert.rejects(conectar(deps, { campoId: 'c1', userId: 'u', code: 'x', wabaId: 'w', phoneNumberId: 'p', origin: 'h' }),
+    (e) => e instanceof ErroServico && e.status === 504)
+})
+
+test('obterStatus: sem conexão ⇒ conectado false', async () => {
+  const { deps } = fakeDeps()
+  assert.deepEqual(await obterStatus(deps, 'c1'), { conectado: false })
+})
+
+test('obterStatus: tokenCifrado corrompido ⇒ status erro, não lança, sem token', async () => {
+  const { deps, reg } = fakeDeps()
+  deps.repo.conexao = { campoId: 'c1', wabaId: 'w', phoneNumberId: 'p', numero: '1', nomeExibicao: 'n', tokenCifrado: 'lixo', pinCifrado: 'pin-secreto', status: 'conectado', ultimoErro: null }
+  const r = await obterStatus(deps, 'c1')
+  assert.equal(r.status, 'erro')
+  assert.match(r.ultimoErro, /Reconecte/)
+  assert.equal(reg.erros.length, 1)
+  assert.ok(!JSON.stringify(r).includes('lixo') && !JSON.stringify(r).includes('pin-secreto'))
+})
+
+test('obterStatus: token recusado pela Meta ⇒ marcarErro + status erro', async () => {
+  const { deps, reg } = fakeDeps()
+  deps.repo.conexao = { campoId: 'c1', wabaId: 'w', phoneNumberId: 'p', numero: '1', nomeExibicao: 'n', tokenCifrado: cifrar('T', CHAVE), pinCifrado: 'x', status: 'conectado', ultimoErro: null }
+  deps.meta.lerStatusNumero = async () => { throw new ErroGraph('expirou', 401, 190) }
+  const r = await obterStatus(deps, 'c1')
+  assert.equal(r.status, 'erro')
+  assert.equal(r.ultimoErro, 'Token recusado pela Meta. Reconecte o número.')
+  assert.deepEqual(reg.erros, [['c1', 'Token recusado pela Meta. Reconecte o número.']])
+})
+
+test('obterStatus: timeout ⇒ 504', async () => {
+  const { deps } = fakeDeps()
+  deps.repo.conexao = { campoId: 'c1', wabaId: 'w', phoneNumberId: 'p', numero: '1', nomeExibicao: 'n', tokenCifrado: cifrar('T', CHAVE), pinCifrado: 'x', status: 'conectado', ultimoErro: null }
+  deps.meta.lerStatusNumero = async () => { const e = new Error('a'); e.name = 'AbortError'; throw e }
+  await assert.rejects(obterStatus(deps, 'c1'), (e) => e.status === 504)
+})
+
+test('obterStatus: sucesso traz qualidade e limite da Meta', async () => {
+  const { deps } = fakeDeps()
+  deps.repo.conexao = { campoId: 'c1', wabaId: 'w', phoneNumberId: 'p', numero: '1', nomeExibicao: 'n', tokenCifrado: cifrar('T', CHAVE), pinCifrado: 'x', status: 'conectado', ultimoErro: null }
+  const r = await obterStatus(deps, 'c1')
+  assert.equal(r.qualidade, 'GREEN'); assert.equal(r.limiteDiario, 'TIER_250')
+})
+
+test('desconectar chama o repositório', async () => {
+  const { deps, reg } = fakeDeps()
+  assert.deepEqual(await desconectar(deps, 'c1'), { conectado: false })
+  assert.deepEqual(reg.desconectados, ['c1'])
+})
