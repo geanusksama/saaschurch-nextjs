@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { lerConfigMeta } from '@/lib/meta/configMeta'
 import { assinaturaValida, respostaDesafio } from '@/lib/meta/webhookSeguranca'
 import { json, respostaDeErro, SEM_CACHE } from '@/lib/meta/depsConexao'
+import { processarWebhook } from '@/lib/meta/servicoEnvio'
+import { montarDependenciasEnvio } from '@/lib/meta/depsEnvio'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +19,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Eventos da Meta: valida a assinatura sobre o corpo bruto. Nesta etapa não processa.
+function logFalha(e: unknown, n: number) {
+  const code = (e as { code?: string })?.code
+  console.warn(`[meta/webhook] ${n} evento(s) não processado(s):`, code === 'P2021' ? 'tabela ausente' : (e as Error)?.name)
+}
+
+// Eventos da Meta: valida a assinatura sobre o corpo bruto; responde 200 na hora e processa
+// depois da resposta (status dos envios e pedidos de SAIR). Erro interno só vira log curto.
 export async function POST(req: NextRequest) {
   try {
     const c = await lerConfigMeta()
@@ -25,6 +33,14 @@ export async function POST(req: NextRequest) {
     if (!assinaturaValida(bruto, req.headers.get('x-hub-signature-256'), c.appSecret)) {
       return json({ error: 'Assinatura inválida.' }, 401)
     }
+    after(async () => {
+      try {
+        const r = await processarWebhook(await montarDependenciasEnvio(), JSON.parse(bruto))
+        if (r.erros) logFalha(r.primeiroErro, r.erros)
+      } catch (e) {
+        logFalha(e, 1)
+      }
+    })
     return json({ ok: true })
   } catch (e) {
     return respostaDeErro(e)

@@ -7,6 +7,7 @@
 export type TipoAlerta =
   | 'versao_graph' | 'versao_desconhecida' | 'conexao_erro'
   | 'qualidade_baixa' | 'qualidade_media' | 'webhook_falhou' | 'monitor_falhou'
+  | 'envio_pausado'
 
 export type PropostaAtualizarVersao = { tipo: 'atualizar_versao_graph'; de: string; para: string }
 export type Proposta = PropostaAtualizarVersao

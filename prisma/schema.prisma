@@ -90,6 +90,8 @@ model Campo {
   conamadSincronizacoes ConamadSincronizacao[]
   metaWhatsappConexao   MetaWhatsappConexao?
   metaWhatsappModelos   MetaWhatsappModelo[]
+  metaWhatsappDisparos  MetaWhatsappDisparo[]
+  metaWhatsappExclusoes MetaWhatsappExclusao[]
   @@map("campos")
 }
 
@@ -519,6 +521,7 @@ model User {
   gruposUsuariosAdicoes GrupoUsuariosUser[]     @relation("GrupoUsuariosUserCriadoPor")
   metaWhatsappConexoesConectadas MetaWhatsappConexao[] @relation("MetaWhatsappConexaoConectadoPor")
   metaWhatsappModelosCriados     MetaWhatsappModelo[]  @relation("MetaWhatsappModeloCriadoPor")
+  metaWhatsappDisparosCriados    MetaWhatsappDisparo[] @relation("MetaWhatsappDisparoCriadoPor")
 
   @@map("users")
 }
@@ -5953,8 +5956,82 @@ model MetaWhatsappModelo {
 
   campo            Campo @relation(fields: [campoId], references: [id], onDelete: Cascade)
   criadoPorUsuario User? @relation("MetaWhatsappModeloCriadoPor", fields: [criadoPor], references: [id])
+  disparos         MetaWhatsappDisparo[]
 
   @@unique([campoId, metaTemplateId])
   @@index([campoId, nome])
   @@map("meta_whatsapp_modelos")
+}
+
+/// WhatsApp Oficial (Meta): envio em massa (um disparo = um modelo aprovado para um publico filtrado).
+/// status: agendado | enviando | aguardando_limite | pausado | concluido | cancelado. Contadores recalculados pelos envios.
+model MetaWhatsappDisparo {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId      String    @map("campo_id") @db.Uuid
+  modeloId     String?   @map("modelo_id") @db.Uuid
+  modeloNome   String    @map("modelo_nome")
+  idioma       String
+  categoria    String
+  nome         String
+  filtros      Json      @default("{}")
+  valores      Json      @default("{}")
+  status       String
+  motivo       String?
+  agendadoPara DateTime? @map("agendado_para") @db.Timestamptz(6)
+  total        Int       @default(0)
+  enviados     Int       @default(0)
+  entregues    Int       @default(0)
+  lidos        Int       @default(0)
+  falhos       Int       @default(0)
+  criadoPor    String?   @map("criado_por") @db.Uuid
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  campo            Campo               @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  modelo           MetaWhatsappModelo? @relation(fields: [modeloId], references: [id], onDelete: SetNull)
+  criadoPorUsuario User?               @relation("MetaWhatsappDisparoCriadoPor", fields: [criadoPor], references: [id], onDelete: SetNull)
+  envios           MetaWhatsappEnvio[]
+
+  @@index([campoId, criadoEm(sort: Desc)])
+  @@map("meta_whatsapp_disparos")
+}
+
+/// WhatsApp Oficial (Meta): uma linha por pessoa do disparo. status: pendente | enviado | entregue | lido | falhou | ignorado.
+/// wamid tem unique parcial (where wamid is not null) so no SQL da migration.
+model MetaWhatsappEnvio {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  disparoId    String    @map("disparo_id") @db.Uuid
+  campoId      String    @map("campo_id") @db.Uuid
+  origem       String
+  refId        String    @map("ref_id")
+  nome         String
+  telefone     String
+  parametros   Json      @default("{}")
+  status       String    @default("pendente")
+  wamid        String?
+  erroCodigo   Int?      @map("erro_codigo")
+  erro         String?
+  enviadoEm    DateTime? @map("enviado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime  @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  disparo MetaWhatsappDisparo @relation(fields: [disparoId], references: [id], onDelete: Cascade)
+
+  @@unique([disparoId, telefone])
+  @@index([disparoId, status])
+  @@index([campoId, enviadoEm])
+  @@map("meta_whatsapp_envios")
+}
+
+/// WhatsApp Oficial (Meta): telefones que pediram para sair (SAIR, PARAR...) por campo. Nunca entram em disparo.
+model MetaWhatsappExclusao {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId  String   @map("campo_id") @db.Uuid
+  telefone String
+  motivo   String
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  campo Campo @relation(fields: [campoId], references: [id], onDelete: Cascade)
+
+  @@unique([campoId, telefone])
+  @@map("meta_whatsapp_exclusoes")
 }

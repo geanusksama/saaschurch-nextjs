@@ -885,3 +885,369 @@ test('envio: tamanho do lote e códigos de parada', () => {
   assert.equal(tamanhoDoLote(250, 100, 20), 20)
   assert.deepEqual(CODIGOS_PARAR_DISPARO, [131031, 131042, 368, 190])
 })
+
+// ---------- Etapa 3: serviço do envio em massa (deps falsas, sem banco nem rede) ----------
+import {
+  processarFila, criarDisparo, contarPublico, pausar, retomar, cancelar, aplicarStatusWebhook, registrarSair,
+  processarWebhook, extrairEventosWebhook, limiteRestante, limiteDoNivel, podeAvancarStatus, validarEntradaDisparo,
+  validarFiltros, sanearParametro, telefoneDoWaId, montarPublico,
+} from '../src/lib/meta/servicoEnvio.ts'
+
+const AGORA_ENV = new Date('2026-11-23T15:00:00Z')
+
+/** Repositório em memória com a mesma semântica do SQL (reserva, troca condicionada, recálculo). */
+function depsEnvio({ disparos = [], envios = [], enviados24h = 0, limite = 'TIER_250', qualidade = 'GREEN', conexao = 'conectado', postErro = null, modelos = [], contatos = { membros: [], interessados: [] }, excluidos = [], aoEnviar = null } = {}) {
+  const st = { disparos: disparos.map((d) => ({ motivo: null, agendadoPara: null, criadoEm: AGORA_ENV, modeloNome: 'aviso', idioma: 'pt_BR', campoId: 'c1', ...d })), envios: envios.map((e) => ({ wamid: null, erroCodigo: null, erro: null, enviadoEm: null, reservado: false, parametros: { body: ['Ana'] }, campoId: 'c1', ...e })), exclusoes: [], alertas: [], posts: [], marcarErro: [], criados: null, enviados24h }
+  let wam = 0
+  const ativo = (d) => d.status === 'enviando' || d.status === 'aguardando_limite' || (d.status === 'agendado' && d.agendadoPara && d.agendadoPara <= AGORA_ENV)
+  const repo = {
+    contarPublico: async () => ({ membros: 7, interessados: 3 }),
+    listarContatos: async () => contatos,
+    telefonesExcluidos: async (_c, tels) => new Set(tels.filter((t) => excluidos.includes(t))),
+    criarDisparoComEnvios: async (d, e) => { st.criados = { d, e }; st.disparos.push(d) },
+    disparosAtivos: async (campoId) => st.disparos.filter((d) => d.campoId === campoId && ativo(d)).map((d) => ({ ...d })),
+    buscarDisparo: async (campoId, id) => { const d = st.disparos.find((x) => x.id === id && x.campoId === campoId); return d ? { ...d } : null },
+    mudarStatus: async (id, de, para, motivo) => { const d = st.disparos.find((x) => x.id === id); if (!d || !de.includes(d.status)) return false; d.status = para; d.motivo = motivo; return true },
+    cancelar: async (id, de) => { const d = st.disparos.find((x) => x.id === id); if (!d || !de.includes(d.status)) return false; d.status = 'cancelado'; for (const e of st.envios) if (e.disparoId === id && e.status === 'pendente') e.status = 'ignorado'; return true },
+    enviadosDesde: async () => st.enviados24h,
+    reservarPendentes: async (disparoId, n) => { const l = st.envios.filter((e) => e.disparoId === disparoId && e.status === 'pendente' && !e.reservado).slice(0, n); for (const e of l) e.reservado = true; return l.map((e) => ({ id: e.id, telefone: e.telefone, parametros: e.parametros })) },
+    liberarReserva: async (ids) => { for (const e of st.envios) if (ids.includes(e.id)) e.reservado = false },
+    marcarEnviado: async (id, wamid, quando) => { const e = st.envios.find((x) => x.id === id); if (e.status === 'pendente') Object.assign(e, { status: 'enviado', wamid, enviadoEm: quando, reservado: false }); st.enviados24h++ },
+    marcarFalha: async (id, codigo, erro) => { const e = st.envios.find((x) => x.id === id); if (e.status === 'pendente') Object.assign(e, { status: 'falhou', erroCodigo: codigo, erro, reservado: false }) },
+    recalcular: async (disparoId) => {
+      const d = st.disparos.find((x) => x.id === disparoId); const es = st.envios.filter((e) => e.disparoId === disparoId)
+      d.enviados = es.filter((e) => ['enviado', 'entregue', 'lido'].includes(e.status)).length
+      d.entregues = es.filter((e) => ['entregue', 'lido'].includes(e.status)).length
+      d.lidos = es.filter((e) => e.status === 'lido').length
+      d.falhos = es.filter((e) => e.status === 'falhou').length
+      if (d.status === 'enviando' && !es.some((e) => e.status === 'pendente')) d.status = 'concluido'
+    },
+    buscarEnvioPorWamid: async (campoId, wamid) => { const e = st.envios.find((x) => x.wamid === wamid && x.campoId === campoId); return e ? { id: e.id, status: e.status, disparoId: e.disparoId } : null },
+    trocarStatusEnvio: async (id, de, para, erro) => { const e = st.envios.find((x) => x.id === id); if (e.status !== de) return false; e.status = para; if (erro) { e.erroCodigo = erro.codigo; e.erro = erro.mensagem } return true },
+    inserirExclusao: async (campoId, telefone, motivo) => { if (!st.exclusoes.some((x) => x.campoId === campoId && x.telefone === telefone)) st.exclusoes.push({ campoId, telefone, motivo }) },
+    ignorarPendentesDoTelefone: async (campoId, telefone) => { for (const e of st.envios) if (e.campoId === campoId && e.telefone === telefone && e.status === 'pendente') e.status = 'ignorado' },
+  }
+  const deps = {
+    repo,
+    modelos: { buscar: async (campoId, id) => modelos.find((m) => m.id === id && m.campoId === campoId) ?? null },
+    conexoes: {
+      buscarConexaoDoCampo: async () => (conexao ? { campoId: 'c1', phoneNumberId: 'PN1', tokenCifrado: 'cif', status: conexao } : null),
+      buscarPorPhoneNumberId: async (pn) => (pn === 'PN1' ? { campoId: 'c1' } : null),
+      marcarErro: async (c, m) => { st.marcarErro.push([c, m]) },
+    },
+    graph: {
+      get: async () => { throw new Error('não deveria chamar get') },
+      delete: async () => { throw new Error('não deveria chamar delete') },
+      post: async (caminho, corpo, token) => {
+        st.posts.push({ caminho, corpo, token })
+        if (aoEnviar) await aoEnviar(st, corpo)
+        const erro = typeof postErro === 'function' ? postErro(corpo) : postErro
+        if (erro) throw erro
+        return { messages: [{ id: 'wamid.' + (++wam) }] }
+      },
+    },
+    lerStatus: async () => ({ qualidade, limiteDiario: limite }),
+    alertas: { gravar: async (campoId, mensagem) => { st.alertas.push({ campoId, mensagem }) } },
+    chave: 'k', cifra: { decifrar: () => 'TOKEN' },
+    novoId: (() => { let i = 0; return () => 'id-' + (++i) })(),
+  }
+  return { deps, st }
+}
+const pend = (n, disparoId = 'd1', base = 0) => Array.from({ length: n }, (_, i) => ({ id: `${disparoId}-e${base + i}`, disparoId, telefone: '55199' + String(10000000 + base + i), status: 'pendente' }))
+
+test('envio fila: limite de 250 já usado por outro disparo ⇒ novo fica aguardando limite sem enviar', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(5), enviados24h: 250 })
+  const r = await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.posts.length, 0)
+  assert.equal(st.disparos[0].status, 'aguardando_limite')
+  assert.equal(r.enviados, 0)
+  assert.equal(st.envios.every((e) => e.status === 'pendente'), true)
+})
+test('envio fila: envia até o limite restante e o lote de 60, grava wamid e conclui', async () => {
+  const a = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(3), enviados24h: 0 })
+  await processarFila(a.deps, 'c1', AGORA_ENV)
+  assert.equal(a.st.posts.length, 3)
+  assert.equal(a.st.posts[0].caminho, 'PN1/messages')
+  assert.equal(a.st.posts[0].token, 'TOKEN')
+  assert.equal(a.st.posts[0].corpo.template.name, 'aviso')
+  assert.equal(a.st.envios[0].wamid, 'wamid.1')
+  assert.equal(a.st.disparos[0].status, 'concluido')
+  assert.equal(a.st.disparos[0].enviados, 3)
+
+  const b = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(100), enviados24h: 0, limite: 'TIER_2K' })
+  await processarFila(b.deps, 'c1', AGORA_ENV)
+  assert.equal(b.st.posts.length, 60)
+  assert.equal(b.st.disparos[0].status, 'enviando')
+
+  const c = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(10), enviados24h: 246 })
+  await processarFila(c.deps, 'c1', AGORA_ENV)
+  assert.equal(c.st.posts.length, 4)
+  assert.equal(c.st.disparos[0].status, 'aguardando_limite')
+  assert.equal(c.st.envios.filter((e) => e.status === 'pendente' && !e.reservado).length, 6)
+})
+test('envio fila: aguardando limite volta a enviar sozinho quando o limite libera', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'aguardando_limite' }], envios: pend(2), enviados24h: 10 })
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.posts.length, 2)
+  assert.equal(st.disparos[0].status, 'concluido')
+})
+test('envio fila: erro 131042 (pagamento) para o disparo, grava alerta e não marca a pessoa como falha', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }, { id: 'd2', status: 'aguardando_limite' }], envios: [...pend(5), ...pend(2, 'd2')], postErro: erroGraph(131042, 'Business eligibility payment issue') })
+  const r = await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.posts.length, 1)
+  assert.equal(st.disparos[0].status, 'pausado')
+  assert.equal(st.disparos[1].status, 'pausado')
+  assert.match(st.disparos[0].motivo, /131042/)
+  assert.equal(st.alertas.length, 1)
+  assert.equal(st.alertas[0].campoId, 'c1')
+  assert.equal(st.envios.filter((e) => e.status === 'falhou').length, 0)
+  assert.equal(st.envios.filter((e) => e.reservado).length, 0)
+  assert.ok(r.pausado)
+})
+test('envio fila: erro 190 também marca a conexão com erro', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(2), postErro: erroGraph(190) })
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.disparos[0].status, 'pausado')
+  assert.equal(st.marcarErro.length, 1)
+})
+test('envio fila: erro 131026 só falha a pessoa e o disparo segue', async () => {
+  const { deps, st } = depsEnvio({
+    disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(3),
+    postErro: (corpo) => (corpo.to === '5519910000001' ? erroGraph(131026, 'Message undeliverable') : null),
+  })
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.posts.length, 3)
+  const f = st.envios.find((e) => e.telefone === '5519910000001')
+  assert.equal(f.status, 'falhou')
+  assert.equal(f.erroCodigo, 131026)
+  assert.equal(st.envios.filter((e) => e.status === 'enviado').length, 2)
+  assert.equal(st.disparos[0].status, 'concluido')
+  assert.equal(st.disparos[0].falhos, 1)
+  assert.equal(st.alertas.length, 0)
+})
+test('envio fila: qualidade vermelha pausa sem enviar e grava alerta', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(2), qualidade: 'RED' })
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.posts.length, 0)
+  assert.equal(st.disparos[0].status, 'pausado')
+  assert.equal(st.alertas.length, 1)
+})
+test('envio fila: tempo esgotado da Meta falha só aquela pessoa (sem reenviar) e encerra a rodada', async () => {
+  const t = new Error('timeout'); t.name = 'TimeoutError'
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(3), postErro: t })
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.posts.length, 1)
+  assert.equal(st.envios[0].status, 'falhou')
+  assert.equal(st.envios.filter((e) => e.status === 'pendente' && !e.reservado).length, 2)
+  assert.equal(st.disparos[0].status, 'enviando')
+})
+test('envio fila: sem conexão pausa os disparos ativos sem chamar a Meta', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(2), conexao: null })
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.posts.length, 0)
+  assert.equal(st.disparos[0].status, 'pausado')
+})
+test('envio fila: agendado só entra quando chega a hora', async () => {
+  const futuro = depsEnvio({ disparos: [{ id: 'd1', status: 'agendado', agendadoPara: new Date(AGORA_ENV.getTime() + 60_000) }], envios: pend(2) })
+  await processarFila(futuro.deps, 'c1', AGORA_ENV)
+  assert.equal(futuro.st.posts.length, 0)
+  assert.equal(futuro.st.disparos[0].status, 'agendado')
+  const vencido = depsEnvio({ disparos: [{ id: 'd1', status: 'agendado', agendadoPara: new Date(AGORA_ENV.getTime() - 60_000) }], envios: pend(2) })
+  await processarFila(vencido.deps, 'c1', AGORA_ENV)
+  assert.equal(vencido.st.posts.length, 2)
+  assert.equal(vencido.st.disparos[0].status, 'concluido')
+})
+test('envio: cancelar no meio ⇒ nada novo sai no próximo minuto; enviados seguem recebendo status', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(100), limite: 'TIER_2K' })
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.posts.length, 60)
+  await cancelar(deps, 'c1', 'd1')
+  assert.equal(st.disparos[0].status, 'cancelado')
+  assert.equal(st.envios.filter((e) => e.status === 'pendente').length, 0)
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.posts.length, 60)
+  await aplicarStatusWebhook(deps, { phoneNumberId: 'PN1', wamid: 'wamid.1', status: 'delivered' })
+  assert.equal(st.envios[0].status, 'entregue')
+  assert.equal(st.disparos[0].entregues, 1)
+  assert.equal(st.disparos[0].status, 'cancelado')
+})
+test('envio fila: cancelado durante a rodada para em até 10 envios', async () => {
+  const { deps, st } = depsEnvio({
+    disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(60), limite: 'TIER_2K',
+    aoEnviar: (s) => { if (s.posts.length === 3) s.disparos[0].status = 'cancelado' },
+  })
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.ok(st.posts.length <= 10, `enviou ${st.posts.length}`)
+  assert.equal(st.envios.filter((e) => e.reservado).length, 0)
+})
+test('envio webhook: delivered depois de read mantém read; failed não sobrescreve entregue', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'concluido' }], envios: [{ id: 'e1', disparoId: 'd1', telefone: '5519992126683', status: 'enviado', wamid: 'w1' }, { id: 'e2', disparoId: 'd1', telefone: '5519992126684', status: 'entregue', wamid: 'w2' }] })
+  await aplicarStatusWebhook(deps, { phoneNumberId: 'PN1', wamid: 'w1', status: 'read' })
+  await aplicarStatusWebhook(deps, { phoneNumberId: 'PN1', wamid: 'w1', status: 'delivered' })
+  assert.equal(st.envios[0].status, 'lido')
+  await aplicarStatusWebhook(deps, { phoneNumberId: 'PN1', wamid: 'w2', status: 'failed', erroCodigo: 131047, erro: 'x' })
+  assert.equal(st.envios[1].status, 'entregue')
+  assert.equal(st.disparos[0].lidos, 1)
+  assert.equal(st.disparos[0].entregues, 2)
+})
+test('envio webhook: failed sobre enviado grava o erro', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'concluido' }], envios: [{ id: 'e1', disparoId: 'd1', telefone: '5519992126683', status: 'enviado', wamid: 'w1' }] })
+  await aplicarStatusWebhook(deps, { phoneNumberId: 'PN1', wamid: 'w1', status: 'failed', erroCodigo: 131049, erro: 'ecosystem' })
+  assert.equal(st.envios[0].status, 'falhou')
+  assert.equal(st.envios[0].erroCodigo, 131049)
+  assert.equal(st.disparos[0].falhos, 1)
+})
+test('envio webhook: evento de outro phone_number_id é ignorado', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'concluido' }], envios: [{ id: 'e1', disparoId: 'd1', telefone: '5519992126683', status: 'enviado', wamid: 'w1' }] })
+  await aplicarStatusWebhook(deps, { phoneNumberId: 'OUTRO', wamid: 'w1', status: 'read' })
+  assert.equal(st.envios[0].status, 'enviado')
+  await registrarSair(deps, 'OUTRO', '5519992126683')
+  assert.equal(st.exclusoes.length, 0)
+})
+test('envio webhook: SAIR entra na exclusão do campo e ignora pendentes do telefone; frase não entra', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: [{ id: 'e1', disparoId: 'd1', telefone: '5519992126683', status: 'pendente' }] })
+  const payload = (pn, from, body) => ({ entry: [{ changes: [{ value: { metadata: { phone_number_id: pn }, messages: [{ from, type: 'text', text: { body } }] } }] }] })
+  await processarWebhook(deps, payload('PN1', '5519992126683', 'quero sair do grupo'))
+  assert.equal(st.exclusoes.length, 0)
+  await processarWebhook(deps, payload('PN1', '5519992126683', ' SAÍR '))
+  assert.deepEqual(st.exclusoes.map((x) => [x.campoId, x.telefone]), [['c1', '5519992126683']])
+  assert.equal(st.envios[0].status, 'ignorado')
+  await processarWebhook(deps, payload('OUTRO', '5519992126684', 'Sair'))
+  assert.equal(st.exclusoes.length, 1)
+})
+test('envio webhook: wa_id do Brasil sem o 9 vira o celular com 9', () => {
+  assert.equal(telefoneDoWaId('551992126683'), '5519992126683')
+  assert.equal(telefoneDoWaId('5519992126683'), '5519992126683')
+  assert.equal(telefoneDoWaId('551933334444'), null)
+  assert.equal(telefoneDoWaId('14155550100'), null)
+})
+test('envio webhook: extrai statuses e mensagens do payload; payload torto não lança', () => {
+  const ev = extrairEventosWebhook({ entry: [{ changes: [{ value: {
+    metadata: { phone_number_id: 'PN1' },
+    statuses: [{ id: 'w1', status: 'read' }, { id: 'w2', status: 'failed', errors: [{ code: 131026, title: 'Message undeliverable' }] }, { id: 'w3', status: 'deleted' }],
+    messages: [{ from: '5519992126683', type: 'text', text: { body: 'Sair' } }, { from: '5519992126683', type: 'image' }],
+  } }] }] })
+  assert.deepEqual(ev.statuses, [
+    { phoneNumberId: 'PN1', wamid: 'w1', status: 'read', erroCodigo: null, erro: null },
+    { phoneNumberId: 'PN1', wamid: 'w2', status: 'failed', erroCodigo: 131026, erro: 'Message undeliverable' },
+  ])
+  assert.deepEqual(ev.mensagens, [{ phoneNumberId: 'PN1', from: '5519992126683', texto: 'Sair' }])
+  for (const torto of [null, 1, 'x', {}, { entry: 'x' }, { entry: [{ changes: [null] }] }]) {
+    assert.deepEqual(extrairEventosWebhook(torto), { statuses: [], mensagens: [] })
+  }
+})
+test('envio: ordem dos status nunca regride', () => {
+  assert.equal(podeAvancarStatus('enviado', 'lido'), true)
+  assert.equal(podeAvancarStatus('lido', 'entregue'), false)
+  assert.equal(podeAvancarStatus('entregue', 'entregue'), false)
+  assert.equal(podeAvancarStatus('pendente', 'falhou'), true)
+  assert.equal(podeAvancarStatus('enviado', 'falhou'), true)
+  assert.equal(podeAvancarStatus('entregue', 'falhou'), false)
+  assert.equal(podeAvancarStatus('falhou', 'lido'), false)
+  assert.equal(podeAvancarStatus('ignorado', 'enviado'), false)
+})
+test('envio: limite do nível e limite restante', async () => {
+  assert.equal(limiteDoNivel('TIER_250'), 250)
+  assert.equal(limiteDoNivel('TIER_2K'), 2000)
+  assert.equal(limiteDoNivel('TIER_100K'), 100000)
+  assert.equal(limiteDoNivel('TIER_UNLIMITED'), Infinity)
+  assert.equal(limiteDoNivel(null), 250)
+  assert.equal(limiteDoNivel('ESQUISITO'), 250)
+  const { deps } = depsEnvio({ enviados24h: 100 })
+  assert.deepEqual(await limiteRestante(deps, 'c1', AGORA_ENV), { limite: 250, usados: 100, restante: 150, qualidade: 'GREEN' })
+})
+test('envio: pausar, retomar e cancelar respeitam o status atual; outro campo ⇒ 404', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }, { id: 'd9', status: 'enviando', campoId: 'c2' }], envios: pend(2) })
+  await rej(pausar(deps, 'c1', 'd9'), 404)
+  await pausar(deps, 'c1', 'd1')
+  assert.equal(st.disparos[0].status, 'pausado')
+  await rej(pausar(deps, 'c1', 'd1'), 409)
+  await retomar(deps, 'c1', 'd1')
+  assert.equal(st.disparos[0].status, 'enviando')
+  assert.equal(st.disparos[0].motivo, null)
+  await cancelar(deps, 'c1', 'd1')
+  await rej(retomar(deps, 'c1', 'd1'), 409)
+  await rej(cancelar(deps, 'c1', 'd1'), 409)
+})
+test('envio: sanear parâmetro e validar entrada do disparo', () => {
+  assert.equal(sanearParametro('  Culto\nde\tdomingo      às 19h '), 'Culto de domingo às 19h')
+  const filtros = { membros: { igrejaIds: [], situacoes: ['ATIVO'], titulos: [], mesAniversario: null }, interessados: null }
+  const base = { nome: 'Boas-vindas', modeloId: '11111111-1111-4111-8111-111111111111', filtros, valores: {}, agendadoPara: null }
+  assert.equal(validarEntradaDisparo(base, { agora: AGORA_ENV }).ok, true)
+  const vars = [{ posicao: 1, tipo: 'nome', exemplo: 'x' }, { posicao: 2, tipo: 'data', exemplo: 'x' }, { posicao: 3, tipo: 'livre', exemplo: 'x' }]
+  const r = validarEntradaDisparo(base, { variaveis: vars, agora: AGORA_ENV })
+  assert.equal(r.ok, false)
+  assert.equal(r.erros.length, 2)
+  const ok = validarEntradaDisparo({ ...base, valores: { data: '25/12', livre: 'a\nb' } }, { variaveis: vars, agora: AGORA_ENV })
+  assert.equal(ok.ok, true)
+  assert.deepEqual(ok.valor.valores, { data: '25/12', livre: 'a b' })
+  assert.equal(validarEntradaDisparo({ ...base, valores: { data: '1', livre: 'x'.repeat(201) } }, { variaveis: vars, agora: AGORA_ENV }).ok, false)
+  assert.equal(validarEntradaDisparo({ ...base, nome: '' }, { agora: AGORA_ENV }).ok, false)
+  assert.equal(validarEntradaDisparo({ ...base, modeloId: 'x' }, { agora: AGORA_ENV }).ok, false)
+  assert.equal(validarEntradaDisparo({ ...base, agendadoPara: 'ontem' }, { agora: AGORA_ENV }).ok, false)
+  assert.equal(validarEntradaDisparo({ ...base, agendadoPara: '2026-11-22T10:00:00Z' }, { agora: AGORA_ENV }).ok, false)
+  assert.equal(validarEntradaDisparo({ ...base, agendadoPara: '2026-11-24T10:00:00Z' }, { agora: AGORA_ENV }).ok, true)
+  assert.equal(validarEntradaDisparo(null, { agora: AGORA_ENV }).ok, false)
+  assert.equal(validarFiltros({ membros: null, interessados: null }).length, 1)
+  assert.equal(validarFiltros({ membros: { mesAniversario: 13 }, interessados: null }).length, 1)
+  assert.equal(validarFiltros({ membros: null, interessados: { cadastroDe: '2026-13-01' } }).length, 1)
+  assert.equal(validarFiltros({ membros: { igrejaIds: ['nao-uuid'] }, interessados: null }).length, 1)
+  assert.equal(validarFiltros({ membros: {}, interessados: { origens: ['site'], cadastroDe: '2026-01-01', cadastroAte: '2026-02-01' } }).length, 0)
+})
+test('envio: montar público tira sem celular, excluídos e duplicados (membro vence)', () => {
+  const p = montarPublico({
+    membros: [
+      { id: 'm1', fullName: 'Ana Souza', preferredName: 'Aninha', mobile: '(19) 99212-6683', phone: null, igrejaNome: 'Sede' },
+      { id: 'm2', fullName: 'Bia Lima', preferredName: null, mobile: '19 3333-4444', phone: '19 99111-2222', igrejaNome: 'Sede' },
+      { id: 'm3', fullName: 'Caio', preferredName: null, mobile: null, phone: '19 3333-4444', igrejaNome: 'Sede' },
+      { id: 'm4', fullName: 'Duda', preferredName: null, mobile: '19 99000-0001', phone: null, igrejaNome: 'Sede' },
+    ],
+    interessados: [{ id: 'l1', fullName: 'Ana S', phone: '5519992126683', igrejaNome: 'Vila' }],
+  }, new Set(['5519990000001']))
+  assert.deepEqual(p.contatos.map((c) => [c.origem, c.refId, c.nome, c.telefone]), [
+    ['membro', 'm1', 'Aninha', '5519992126683'],
+    ['membro', 'm2', 'Bia Lima', '5519991112222'],
+  ])
+  assert.deepEqual([p.semCelular, p.excluidos, p.duplicados], [1, 1, 1])
+})
+test('envio: criar disparo só com modelo APROVADO do campo, grava envios com parâmetros', async () => {
+  const modelos = [
+    { id: '11111111-1111-4111-8111-111111111111', campoId: 'c1', status: 'APPROVED', nome: 'boas_vindas', idioma: 'pt_BR', categoria: 'MARKETING', variaveis: [{ posicao: 1, tipo: 'nome', exemplo: 'x' }, { posicao: 2, tipo: 'igreja', exemplo: 'x' }] },
+    { id: '22222222-2222-4222-8222-222222222222', campoId: 'c1', status: 'PENDING', nome: 'b', idioma: 'pt_BR', categoria: 'MARKETING', variaveis: [] },
+    { id: '33333333-3333-4333-8333-333333333333', campoId: 'c2', status: 'APPROVED', nome: 'c', idioma: 'pt_BR', categoria: 'MARKETING', variaveis: [] },
+  ]
+  const contatos = { membros: [{ id: 'm1', fullName: 'Ana Souza', preferredName: null, mobile: '19992126683', phone: null, igrejaNome: 'Sede' }], interessados: [] }
+  const entrada = (modeloId, extra = {}) => ({ nome: 'Teste', modeloId, filtros: { membros: {}, interessados: null }, valores: {}, agendadoPara: null, ...extra })
+  const a = depsEnvio({ modelos, contatos })
+  await rej(criarDisparo(a.deps, 'c1', 'u1', entrada(modelos[1].id), AGORA_ENV), 400)
+  await rej(criarDisparo(a.deps, 'c1', 'u1', entrada(modelos[2].id), AGORA_ENV), 404)
+  await rej(criarDisparo(a.deps, 'c1', 'u1', { nome: '' }, AGORA_ENV), 400)
+  const r = await criarDisparo(a.deps, 'c1', 'u1', entrada(modelos[0].id), AGORA_ENV)
+  assert.equal(r.total, 1)
+  assert.equal(a.st.criados.d.status, 'enviando')
+  assert.equal(a.st.criados.d.modeloNome, 'boas_vindas')
+  assert.equal(a.st.criados.d.criadoPor, 'u1')
+  assert.deepEqual(a.st.criados.e[0].parametros, { body: ['Ana', 'Sede'] })
+  assert.equal(a.st.criados.e[0].disparoId, a.st.criados.d.id)
+  const ag = await criarDisparo(a.deps, 'c1', 'u1', entrada(modelos[0].id, { agendadoPara: '2026-11-24T10:00:00Z' }), AGORA_ENV)
+  assert.equal(a.st.criados.d.status, 'agendado')
+  assert.equal(ag.total, 1)
+  const vazio = depsEnvio({ modelos, contatos: { membros: [], interessados: [] } })
+  await rej(criarDisparo(vazio.deps, 'c1', 'u1', entrada(modelos[0].id), AGORA_ENV), 400)
+  const semCon = depsEnvio({ modelos, contatos, conexao: null })
+  await rej(criarDisparo(semCon.deps, 'c1', 'u1', entrada(modelos[0].id), AGORA_ENV), 409)
+})
+test('envio: contar público usa contagem do repositório', async () => {
+  const { deps } = depsEnvio()
+  assert.deepEqual(await contarPublico(deps, 'c1', { membros: {}, interessados: {} }), { membros: 7, interessados: 3, total: 10 })
+  await rej(contarPublico(deps, 'c1', { membros: null, interessados: null }), 400)
+})
+test('envio webhook: erro num evento não impede os outros', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'concluido' }], envios: [{ id: 'e1', disparoId: 'd1', telefone: '5519992126683', status: 'enviado', wamid: 'w1' }] })
+  const original = deps.repo.buscarEnvioPorWamid
+  deps.repo.buscarEnvioPorWamid = async (c, w) => { if (w === 'quebra') throw new Error('banco'); return original(c, w) }
+  const r = await processarWebhook(deps, { entry: [{ changes: [{ value: { metadata: { phone_number_id: 'PN1' }, statuses: [{ id: 'quebra', status: 'read' }, { id: 'w1', status: 'read' }] } }] }] })
+  assert.equal(r.erros, 1)
+  assert.equal(r.status, 1)
+  assert.equal(st.envios[0].status, 'lido')
+})
