@@ -53,6 +53,11 @@ async function semAutenticacao() {
   check('PUT /app-config sem autenticação ⇒ 401', r.status === 401, `status ${r.status}`)
   r = await fetch(`${BASE}/api/meta/app-config`, { headers: { 'x-meta-config-token': 'errado' } })
   check('GET /app-config com token errado ⇒ 401', r.status === 401, `status ${r.status}`)
+  console.log('\nMonitor')
+  r = await fetch(`${BASE}/api/cron/meta-monitor`)
+  check('cron meta-monitor sem segredo ⇒ 401', r.status === 401, `status ${r.status}`)
+  r = await fetch(`${BASE}/api/meta/app-config/alertas`)
+  check('GET /app-config/alertas sem autenticação ⇒ 401', r.status === 401, `status ${r.status}`)
 }
 
 async function autenticado() {

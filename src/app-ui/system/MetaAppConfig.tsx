@@ -4,7 +4,7 @@
  * Contrato HTTP: /api/meta/app-config (PUT) e /api/meta/app-config/admin (GET).
  * A chave secreta nunca é exibida: só dá para trocá-la.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, ExternalLink, Save } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
 import { cabecalhos, lerErro } from '../../lib/meta/clienteHttp';
@@ -18,6 +18,15 @@ type Visao = {
   appSecretDefinido: boolean;
   conexaoLiberada: boolean;
   base: boolean;
+};
+
+type Alerta = {
+  id: string;
+  campoId: string | null;
+  tipo: string;
+  mensagem: string;
+  proposta: unknown;
+  criadoEm: string;
 };
 
 const BASE = `${apiBase}/meta/app-config`;
@@ -35,6 +44,40 @@ export default function MetaAppConfig() {
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [webhook, setWebhook] = useState<'ok' | 'falhou' | 'testando' | null>(null);
+
+  const [alertas, setAlertas] = useState<Alerta[]>([]);
+  const [alertaOcupado, setAlertaOcupado] = useState<string | null>(null);
+
+  const carregarAlertas = useCallback(async () => {
+    try {
+      const r = await fetch(`${BASE}/alertas`, { headers: cabecalhos() });
+      if (!r.ok) return;
+      const j = (await r.json()) as { alertas?: Alerta[] };
+      setAlertas(j.alertas ?? []);
+    } catch {
+      /* lista fica como está */
+    }
+  }, []);
+
+  const tratarAlerta = async (id: string, acao: 'resolver' | 'aprovar') => {
+    setAlertaOcupado(id);
+    setErro(null);
+    setAviso(null);
+    try {
+      const r = await fetch(`${BASE}/alertas/${id}`, { method: 'POST', headers: cabecalhos(true), body: JSON.stringify({ acao }) });
+      if (!r.ok) throw new Error(await lerErro(r));
+      setAviso(acao === 'aprovar' ? 'Proposta aplicada e alerta resolvido.' : 'Alerta resolvido.');
+      await carregarAlertas();
+      if (acao === 'aprovar') {
+        const rv = await fetch(`${BASE}/admin`, { headers: cabecalhos() });
+        if (rv.ok) aplicar((await rv.json()) as Visao);
+      }
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível tratar o alerta.');
+    } finally {
+      setAlertaOcupado(null);
+    }
+  };
 
   const aplicar = (v: Visao) => {
     setVisao(v);
@@ -56,6 +99,14 @@ export default function MetaAppConfig() {
       })
       .finally(() => {
         if (vivo) setCarregando(false);
+      });
+    fetch(`${BASE}/alertas`, { headers: cabecalhos() })
+      .then(async (r) => (r.ok ? ((await r.json()) as { alertas?: Alerta[] }) : null))
+      .then((j) => {
+        if (vivo && j) setAlertas(j.alertas ?? []);
+      })
+      .catch(() => {
+        /* lista fica vazia */
       });
     return () => {
       vivo = false;
@@ -251,6 +302,41 @@ export default function MetaAppConfig() {
                 </a>
               </p>
             </div>
+          </section>
+
+          <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-3 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Alertas</h2>
+            {alertas.length === 0 && <p className="text-sm text-slate-500">Nenhum alerta em aberto.</p>}
+            <ul className="space-y-2">
+              {alertas.map((a) => (
+                <li key={a.id} className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
+                  <p>{a.mensagem}</p>
+                  <p className="text-xs text-slate-500">{new Date(a.criadoEm).toLocaleString('pt-BR')}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {a.proposta != null && (
+                      <Permissao chave="meta_app.config.editar" rotulo="Alterar a configuração do app da Meta" herda="meta_app.view">
+                        <button
+                          onClick={() => void tratarAlerta(a.id, 'aprovar')}
+                          disabled={alertaOcupado === a.id}
+                          className="rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          Aprovar
+                        </button>
+                      </Permissao>
+                    )}
+                    <Permissao chave="meta_app.config.editar" rotulo="Alterar a configuração do app da Meta" herda="meta_app.view">
+                      <button
+                        onClick={() => void tratarAlerta(a.id, 'resolver')}
+                        disabled={alertaOcupado === a.id}
+                        className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-50"
+                      >
+                        Marcar como resolvido
+                      </button>
+                    </Permissao>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </section>
         </>
       )}

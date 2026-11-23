@@ -5914,3 +5914,19 @@ model MetaAppConfig {
 
   @@map("meta_app_config")
 }
+
+/// WhatsApp Oficial (Meta): alertas do monitor diario. Proposta (jsonb) so e aplicada com "Aprovar" do master.
+/// FKs (campos, users) existem so no SQL da migration, sem relacao no Prisma.
+model MetaAlerta {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId      String?   @map("campo_id") @db.Uuid
+  tipo         String
+  mensagem     String
+  proposta     Json?
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  resolvidoEm  DateTime? @map("resolvido_em") @db.Timestamptz(6)
+  resolvidoPor String?   @map("resolvido_por") @db.Uuid
+
+  @@index([resolvidoEm, criadoEm])
+  @@map("meta_alertas")
+}

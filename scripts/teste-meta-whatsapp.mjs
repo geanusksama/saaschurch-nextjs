@@ -367,3 +367,84 @@ test('PUT: erro de campo informa o nome do campo', () => {
   const r = validarAtualizacao({ appId: '   ' })
   assert.equal(r.ok, false); assert.match(r.erro, /ID do app/)
 })
+
+// ── Monitor diário (Task 9) ─────────────────────────────────────────────────
+import { verificarMeta, executarMonitor, atualizacaoDaProposta } from '../src/lib/meta/monitorMeta.ts'
+
+const AGORA = new Date('2026-11-24T12:00:00Z')
+const depsMon = (o = {}) => ({
+  agora: () => AGORA,
+  versaoEmUso: async () => 'v27.0',
+  conexoes: async () => [],
+  ehBase: false,
+  webhookResponde: async () => true,
+  alertasAbertos: async () => [],
+  tabela: [{ versao: 'v27.0', desativaEm: null }],
+  ...o,
+})
+const tipos = (l) => l.map((a) => a.tipo)
+
+test('monitor: versão a 60 dias ou menos gera alerta com proposta', async () => {
+  const r = await verificarMeta(depsMon({
+    tabela: [{ versao: 'v27.0', desativaEm: '2027-01-10T00:00:00Z' }, { versao: 'v28.0', desativaEm: null }],
+  }))
+  assert.deepEqual(tipos(r), ['versao_graph'])
+  assert.deepEqual(r[0].proposta, { tipo: 'atualizar_versao_graph', de: 'v27.0', para: 'v28.0' })
+  assert.deepEqual(atualizacaoDaProposta(r[0].proposta), { graphVersion: 'v28.0' })
+})
+test('monitor: versão a mais de 60 dias ou sem data não alerta', async () => {
+  assert.deepEqual(await verificarMeta(depsMon({ tabela: [{ versao: 'v27.0', desativaEm: '2027-06-01T00:00:00Z' }] })), [])
+  assert.deepEqual(await verificarMeta(depsMon()), [])
+})
+test('monitor: versão fora da tabela gera alerta sem proposta', async () => {
+  const r = await verificarMeta(depsMon({ versaoEmUso: async () => 'v99.0' }))
+  assert.deepEqual(tipos(r), ['versao_desconhecida'])
+  assert.equal(r[0].proposta, null)
+})
+test('monitor: conexão em erro e qualidade RED/YELLOW', async () => {
+  const r = await verificarMeta(depsMon({
+    conexoes: async () => [
+      { campoId: 'c1', status: 'erro', qualidade: null },
+      { campoId: 'c2', status: 'conectado', qualidade: 'RED' },
+      { campoId: 'c3', status: 'conectado', qualidade: 'YELLOW' },
+      { campoId: 'c4', status: 'conectado', qualidade: 'GREEN' },
+    ],
+  }))
+  assert.deepEqual(r.map((a) => `${a.tipo}:${a.campoId}`), ['conexao_erro:c1', 'qualidade_baixa:c2', 'qualidade_media:c3'])
+})
+test('monitor: webhook só é testado no base', async () => {
+  const falha = async () => false
+  assert.deepEqual(tipos(await verificarMeta(depsMon({ webhookResponde: falha }))), [])
+  assert.deepEqual(tipos(await verificarMeta(depsMon({ ehBase: true, webhookResponde: falha }))), ['webhook_falhou'])
+  assert.deepEqual(tipos(await verificarMeta(depsMon({ ehBase: true, webhookResponde: async () => { throw new Error('x') } }))), ['webhook_falhou'])
+})
+test('monitor: não duplica alerta aberto com mesmo tipo e campo', async () => {
+  const r = await verificarMeta(depsMon({
+    conexoes: async () => [{ campoId: 'c1', status: 'erro', qualidade: null }, { campoId: 'c2', status: 'erro', qualidade: null }],
+    alertasAbertos: async () => [{ tipo: 'conexao_erro', campoId: 'c1' }],
+  }))
+  assert.deepEqual(r.map((a) => a.campoId), ['c2'])
+})
+test('cron: avisa por WhatsApp só com alertas novos', async () => {
+  const envios = []; let gravados = 0
+  const base = {
+    gravar: async (a) => { gravados += a.length },
+    numeroAviso: '(19) 99999-0000',
+    enviarWhatsapp: async (n, t) => { envios.push([n, t]); return true },
+  }
+  const sem = await executarMonitor({ ...base, verificar: async () => [] })
+  assert.deepEqual(sem, { novos: 0, avisou: false }); assert.equal(envios.length, 0); assert.equal(gravados, 0)
+  const com = await executarMonitor({ ...base, verificar: async () => [{ campoId: null, tipo: 'webhook_falhou', mensagem: 'm', proposta: null }] })
+  assert.deepEqual(com, { novos: 1, avisou: true }); assert.equal(gravados, 1)
+  assert.equal(envios[0][0], '19999990000')
+  assert.ok(!/token|secret/i.test(envios[0][1]))
+})
+test('cron: sem META_ALERTA_WHATSAPP só grava; sem instância não quebra', async () => {
+  let envios = 0, gravados = 0
+  const novo = [{ campoId: null, tipo: 'webhook_falhou', mensagem: 'm', proposta: null }]
+  const dep = (numeroAviso, enviar) => ({ verificar: async () => novo, gravar: async (a) => { gravados += a.length }, numeroAviso, enviarWhatsapp: enviar })
+  assert.deepEqual(await executarMonitor(dep('', async () => { envios++; return true })), { novos: 1, avisou: false })
+  assert.equal(envios, 0); assert.equal(gravados, 1)
+  assert.deepEqual(await executarMonitor(dep('5519999990000', async () => false)), { novos: 1, avisou: false })
+  assert.deepEqual(await executarMonitor(dep('5519999990000', async () => { throw new Error('z') })), { novos: 1, avisou: false })
+})
