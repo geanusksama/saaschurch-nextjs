@@ -267,3 +267,7 @@ As rotas antigas `system/whatsapp-oficial` e `system/meta-app` abrem a central n
 - Situação atualizada pelo botão "Atualizar" e por cron de hora em hora (só campos conectados).
 - Fora do escopo: cabeçalho com mídia, botões de link/telefone, modelos de autenticação, outros idiomas além de pt_BR.
 - Permissões: `whatsapp_oficial.modelos.view`, `.criar`, `.excluir`.
+
+## Adendo aprovado pelo dono (23/11/2026): Etapa 3 — Envio em massa
+
+Aprovado como proposto: público de membros (filtros igreja, situação, título, aniversariantes do mês) e interessados (`leads`: origem, período); aba Envio com lista, "Novo disparo" em 3 passos (Público → Modelo → Revisão, disparar agora ou agendar) e detalhe com pausar/retomar/cancelar; fila por cron a cada minuto respeitando o limite diário; parada automática por qualidade RED ou bloqueio/pagamento; status por pessoa pelo webhook; lista de exclusão por SAIR/PARAR/STOP/CANCELAR/DESCADASTRAR; 3 tabelas novas. Fora: mídia, públicos salvos, A/B. Regra do dono: **nada pode gerar cobrança no cartão** — testes só com o número de teste da Meta.
