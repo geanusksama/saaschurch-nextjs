@@ -10,7 +10,7 @@ import { LIMITES, QUALIDADES, type Qualidade } from '../WhatsAppOficial';
 
 type Conexao = { conectado: false } | { conectado: true; numero: string | null; qualidade: Qualidade; limiteDiario: string | null };
 type Modelo = { status: string };
-type Pedido<T> = { estado: 'carregando' } | { estado: 'erro' } | { estado: 'ok'; dados: T };
+type Pedido<T> = { estado: 'carregando' } | { estado: 'erro' } | { estado: 'sem-permissao' } | { estado: 'ok'; dados: T };
 
 const BASE = `${apiBase}/meta/whatsapp`;
 const LINK_MANAGER = 'https://business.facebook.com/wa/manage/home/';
@@ -19,6 +19,7 @@ const LINK_PAGAMENTOS = 'https://business.facebook.com/billing_hub/payment_setti
 async function buscar<T>(caminho: string): Promise<Pedido<T>> {
   try {
     const r = await fetch(`${BASE}/${caminho}`, { headers: cabecalhos() });
+    if (r.status === 403) return { estado: 'sem-permissao' };
     if (!r.ok) return { estado: 'erro' };
     return { estado: 'ok', dados: (await r.json()) as T };
   } catch {
@@ -41,7 +42,7 @@ function Carregando() {
   );
 }
 
-export default function VisaoGeral({ irPara }: { irPara: (aba: string) => void }) {
+export default function VisaoGeral({ irPara, podeModelos }: { irPara: (aba: string) => void; podeModelos: boolean }) {
   const [conexao, setConexao] = useState<Pedido<Conexao>>({ estado: 'carregando' });
   const [config, setConfig] = useState<Pedido<{ conexaoLiberada?: boolean }>>({ estado: 'carregando' });
   const [modelos, setModelos] = useState<Pedido<{ modelos: Modelo[]; conectado: boolean }>>({ estado: 'carregando' });
@@ -50,11 +51,11 @@ export default function VisaoGeral({ irPara }: { irPara: (aba: string) => void }
     let vivo = true;
     void buscar<Conexao>('conexao').then((p) => vivo && setConexao(p));
     void buscar<{ conexaoLiberada?: boolean }>('config').then((p) => vivo && setConfig(p));
-    void buscar<{ modelos: Modelo[]; conectado: boolean }>('modelos').then((p) => vivo && setModelos(p));
+    if (podeModelos) void buscar<{ modelos: Modelo[]; conectado: boolean }>('modelos').then((p) => vivo && setModelos(p));
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [podeModelos]);
 
   const conectado = conexao.estado === 'ok' && conexao.dados.conectado;
   const liberada = config.estado === 'ok' && config.dados.conexaoLiberada === true;
@@ -62,16 +63,22 @@ export default function VisaoGeral({ irPara }: { irPara: (aba: string) => void }
   const contar = (s: string) => lista.filter((m) => m.status === s).length;
   const aprovados = contar('APPROVED');
 
+  // 403 em /modelos = sem permissão: some o cartão e os passos de modelos.
+  const verModelos = podeModelos && modelos.estado !== 'sem-permissao';
   const passos: { feito: boolean; texto: string; aba?: string }[] = [
     { feito: liberada, texto: 'Conexão liberada para a igreja' },
     { feito: conectado, texto: 'Conectar o número oficial com a Meta', aba: 'conexao' },
-    { feito: lista.length > 0, texto: 'Criar o primeiro modelo de mensagem', aba: 'modelos' },
-    { feito: aprovados > 0, texto: 'Ter ao menos um modelo aprovado pela Meta', aba: 'modelos' },
+    ...(verModelos
+      ? [
+          { feito: lista.length > 0, texto: 'Criar o primeiro modelo de mensagem', aba: 'modelos' },
+          { feito: aprovados > 0, texto: 'Ter ao menos um modelo aprovado pela Meta', aba: 'modelos' },
+        ]
+      : []),
   ];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 ${verModelos ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
         <section className={cartao}>
           <h2 className={titulo}><Smartphone className="size-4" /> Conexão</h2>
           {conexao.estado === 'carregando' && <Carregando />}
@@ -103,6 +110,7 @@ export default function VisaoGeral({ irPara }: { irPara: (aba: string) => void }
           )}
         </section>
 
+        {verModelos && (
         <section className={cartao}>
           <h2 className={titulo}><FileText className="size-4" /> Modelos</h2>
           {modelos.estado === 'carregando' && <Carregando />}
@@ -127,6 +135,7 @@ export default function VisaoGeral({ irPara }: { irPara: (aba: string) => void }
             </dl>
           )}
         </section>
+        )}
 
         <section className={cartao}>
           <h2 className={titulo}><ShieldCheck className="size-4" /> Liberação</h2>
@@ -154,7 +163,7 @@ export default function VisaoGeral({ irPara }: { irPara: (aba: string) => void }
               )}
               <span className={p.feito ? 'text-slate-500 line-through' : 'text-slate-700 dark:text-slate-200'}>{p.texto}</span>
               {!p.feito && p.aba && (
-                <button onClick={() => irPara(p.aba as string)} className="ml-auto text-xs font-semibold underline text-slate-600 dark:text-slate-300">
+                <button type="button" onClick={() => irPara(p.aba as string)} className="ml-auto rounded text-xs font-semibold underline text-slate-600 dark:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 dark:focus-visible:ring-slate-300">
                   Abrir
                 </button>
               )}

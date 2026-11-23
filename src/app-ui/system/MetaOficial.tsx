@@ -115,7 +115,7 @@ export default function MetaOficial() {
       </div>
 
       <div role="tabpanel" id={`painel-${ativa}`} aria-labelledby={`aba-${ativa}`} tabIndex={0}>
-        {ativa === 'visao-geral' && <VisaoGeral irPara={abrir} />}
+        {ativa === 'visao-geral' && <VisaoGeral irPara={abrir} podeModelos={pode(PERM_MODELOS_VER)} />}
         {ativa === 'conexao' && <WhatsAppOficial embutido />}
         {ativa === 'modelos' && (
           <EmBreve icone={FileText} titulo="Modelos de mensagem" etapa="Etapa 2" descricao="Crie, acompanhe a aprovação e exclua os modelos de mensagem que a Meta exige para iniciar conversas." />
