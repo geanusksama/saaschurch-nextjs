@@ -167,7 +167,7 @@ Situação: código pronto (23/11/2026). A fila só anda em uma igreja depois da
 
 Migration `20261124040000_meta_whatsapp_envio` (`prisma/migrations/`). Está no `baseline/` (`05_tables.sql`, tabelas `meta_whatsapp_disparos`, `meta_whatsapp_envios` e `meta_whatsapp_exclusoes`; manifest `fa5cd82742e71000`), então o `migrate-self` cria as tabelas nas igrejas no deploy.
 
-- `meta_whatsapp_disparos`: um disparo por envio em massa. Guarda modelo (nome, idioma, categoria), `filtros` e `valores` (JSON), `status`, `motivo`, `agendado_para`, `total`, `criado_por`. Em `valores` fica também a chave de idempotência (`valores.chave`, ver 8.6).
+- `meta_whatsapp_disparos`: um disparo por envio em massa. Guarda modelo (nome, idioma, categoria), `filtros` e `valores` (JSON), `status`, `motivo`, `agendado_para`, `total`, `criado_por`. A chave de idempotência do cliente é o próprio `id` do disparo; em `valores.chave` ela fica só como registro (ver 8.6).
 - `meta_whatsapp_envios`: uma linha por pessoa do disparo (`origem` membro ou interessado, `ref_id`, `nome`, `telefone` com 13 dígitos E.164, `parametros` JSON, `wamid`, `status`, `erro_codigo`, `erro`, `enviado_em`).
 - `meta_whatsapp_exclusoes`: lista de exclusão do campo (telefone e motivo).
 
@@ -214,12 +214,14 @@ Antes do envio, ao ler o status do número:
 | Token recusado (código 190 na leitura do status, ou cifra que não abre) | Conexão marcada com erro; disparos ativos pausados; alerta. |
 | Falha ao ler o status (rede, etc.) | A rodada termina sem enviar; tenta no minuto seguinte. |
 
-Durante o envio, pela resposta da Meta (`CODIGOS_PARAR_DISPARO` em `src/lib/meta/envio.ts`):
+Durante o envio, pela resposta da Meta (`CODIGOS_PARAR_DISPARO`, `CODIGOS_PARAR_MODELO`, `CODIGO_LIMITE_SPAM` e `CODIGOS_LIMITE_CHAMADAS` em `src/lib/meta/envio.ts`):
 
 | Código | Efeito |
 |---|---|
 | 131031 (conta bloqueada ou restringida), 131042 (problema de pagamento), 368 (restrição temporária por violação de política), 190 (token) | Recusa explícita: a pessoa volta à fila (nada saiu) e **todos os disparos ativos do campo pausam** com a mensagem do código, com alerta. Com 190 a conexão também é marcada com erro. |
-| 130429 (limite de vazão) | Recusa explícita: a pessoa volta à fila e a **rodada termina**; os disparos não pausam. |
+| 131048 (limite de spam do número) | Recusa explícita: a pessoa volta à fila e **todos os disparos ativos do campo pausam** com motivo, com alerta. |
+| 132015 (modelo pausado pela Meta), 132016 (modelo desativado), 132001 (modelo inexistente nesse idioma), 132000 e 132012 (valores que não batem com o modelo) | Recusa explícita que vale para o disparo inteiro: a pessoa volta à fila e **só aquele disparo pausa** com motivo em português, com alerta. Retomar tenta de novo; se o modelo continuar com problema, pausa outra vez sem queimar ninguém. |
+| 130429 (limite de vazão), 4 e 80007 (limite de chamadas da app ou da conta) | Recusa explícita: a pessoa volta à fila e a **rodada termina**; os disparos não pausam. |
 | Outro código da Meta por pessoa (ex.: 131026) | Só aquela pessoa vira `falhou`, com o código e a mensagem da Meta. A rodada segue. |
 | Tempo esgotado, erro de rede, erro sem código, ou resposta sem id da mensagem | Ambíguo: aquela pessoa vira `falhou` ("A Meta não respondeu a tempo. Não reenviamos para não cobrar duas vezes." ou "A Meta respondeu sem o id da mensagem."), conta no limite do dia e a rodada termina. |
 
@@ -250,7 +252,7 @@ Pasta `src/app/api/meta/whatsapp/envio/`. Todas exigem usuário autenticado e ca
 | `GET /api/meta/whatsapp/envio/[id]` | `whatsapp_oficial.envio.view` | Detalhe do disparo com as pessoas paginadas (`?pagina=` e `?porPagina=`, máximo 100). Telefone mascarado (ex.: `+55 19 9****-6683`). Id fora do formato UUID responde 404. |
 | `PATCH /api/meta/whatsapp/envio/[id]` | `whatsapp_oficial.envio.controlar` | Corpo `{ "acao": "pausar" }`, `"retomar"` ou `"cancelar"`. Outra ação responde 400. |
 
-- **Idempotência do POST**: o corpo pode trazer `chave` (UUID). A chave fica guardada em `valores.chave` do disparo. Repetir a mesma chave no mesmo campo devolve o disparo que já existe (`repetido: true`), sem criar outro. A tela gera a chave ao avançar para a Revisão.
+- **Idempotência do POST**: o corpo pode trazer `chave` (UUID). A chave vira o **id do disparo** (e fica também em `valores.chave`, só como registro). O INSERT do disparo é o primeiro da transação, então um segundo pedido com a mesma chave, mesmo chegando enquanto o primeiro ainda grava, bate na chave primária (P2002) e não grava nada. Repetir a mesma chave no mesmo campo devolve o disparo que já existe (`repetido: true`, com `total`, `enviados`, `entregues`, `lidos` e `falhos` reais), sem criar outro. Chave já usada em outro campo responde 409. A tela gera a chave ao avançar para a Revisão (com reserva via `crypto.getRandomValues` quando a página não está em HTTPS). Resposta 5xx ou erro de rede deixa a tela em "não confirmado": o botão de disparar continua bloqueado, "Tentar de novo" reenvia com a mesma chave e "Ver lista de disparos" mostra o que existe.
 - **Pausar** só vale para disparo em andamento (`enviando`, `aguardando_limite`, `agendado`). **Retomar** só vale para `pausado`. **Cancelar** vale para os em andamento e os pausados: os envios que ainda não saíram viram `ignorado` e o disparo fica `cancelado`. Cancelar não pode ser desfeito.
 - Chaves do catálogo (`src/app-ui/system/MetaOficial.tsx`, `definirPermissao`): `whatsapp_oficial.envio.view` (herda `whatsapp_oficial.view`), `whatsapp_oficial.envio.criar` e `whatsapp_oficial.envio.controlar` (herdam `whatsapp_oficial.envio.view`).
 
@@ -267,8 +269,8 @@ Pasta `src/app/api/meta/whatsapp/envio/`. Todas exigem usuário autenticado e ca
 ### 8.8 Teste
 
 - **Regra do dono: só com o número de teste da Meta** (seção 7.6). Nada de envio para número real nem de cobrança no cartão.
-- Teste de banco real feito em 23/11/2026, com a Graph falsa (simulada): **9 cenários OK**, segundo o registro do dono. O roteiro desse teste não está no repositório; não foi reexecutado para este documento.
-- Testes unitários das regras puras (telefone, SAIR, parâmetros, lote, mascaramento, paginação): `node --test scripts/teste-meta-whatsapp.mjs`.
+- Teste executado em 23/11/2026 pelo desenvolvimento contra o banco de Campinas com Graph falso (sem envio real): **9 cenários OK**, dados apagados no fim. O roteiro desse teste não está no repositório.
+- Testes unitários das regras puras e do serviço com repositório falso (telefone, SAIR, parâmetros, lote, mascaramento, paginação, idempotência com P2002, códigos de parada): `node --test scripts/teste-meta-whatsapp.mjs`.
 
 ## 9. Próximas etapas
 

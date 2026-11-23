@@ -5,6 +5,14 @@ export type Contato = { origem: 'membro' | 'interessado'; refId: string; nome: s
 
 // Erros da Meta que param o disparo inteiro (bloqueio, conta, pagamento, token).
 export const CODIGOS_PARAR_DISPARO = [131031, 131042, 368, 190]
+// Erros que valem para o disparo inteiro e não para uma pessoa: modelo pausado/desativado
+// (132015, 132016), modelo inexistente (132001), parâmetros que não batem (132000, 132012).
+// Recusa explícita (nada saiu) ⇒ o item volta à fila e o disparo é pausado com motivo.
+export const CODIGOS_PARAR_MODELO = [132015, 132016, 132001, 132000, 132012]
+// Limite de spam do número (131048): pausa os disparos do campo, como os de parada.
+export const CODIGO_LIMITE_SPAM = 131048
+// Limite de chamadas da app/conta (4, 80007): nada saiu; o item volta à fila e a rodada termina, sem pausar.
+export const CODIGOS_LIMITE_CHAMADAS = [4, 80007]
 
 // E.164 do Brasil só com dígitos: 55 + DDD + celular de 9 dígitos começando com 9.
 export function normalizarTelefoneBR(bruto: string | null): string | null {

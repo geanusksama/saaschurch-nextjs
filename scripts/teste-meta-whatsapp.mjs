@@ -904,9 +904,13 @@ function depsEnvio({ disparos = [], envios = [], enviados24h = 0, limite = 'TIER
     contarPublico: async () => ({ membros: 7, interessados: 3 }),
     listarContatos: async () => contatos,
     telefonesExcluidos: async (_c, tels) => new Set(tels.filter((t) => excluidos.includes(t))),
-    criarDisparoComEnvios: async (d, e) => { st.criados = { d, e }; st.disparos.push(d) },
+    // Mesma semântica da PK: id repetido ⇒ erro P2002 e nada é gravado.
+    criarDisparoComEnvios: async (d, e) => {
+      if (st.disparos.some((x) => x.id === d.id)) { const err = new Error('Unique constraint failed on the fields: (`id`)'); err.code = 'P2002'; throw err }
+      st.criados = { d, e }; st.disparos.push(d)
+    },
     disparosAtivos: async (campoId) => st.disparos.filter((d) => d.campoId === campoId && ativo(d)).map((d) => ({ ...d })),
-    buscarDisparoPorChave: async (campoId, chave) => { const d = st.disparos.find((x) => x.campoId === campoId && x.valores?.chave === chave); return d ? { id: d.id, total: d.total, status: d.status } : null },
+    resumoDisparo: async (id) => { const d = st.disparos.find((x) => x.id === id); return d ? { id: d.id, campoId: d.campoId, status: d.status, total: d.total, enviados: d.enviados ?? 0, entregues: d.entregues ?? 0, lidos: d.lidos ?? 0, falhos: d.falhos ?? 0 } : null },
     buscarDisparo: async (campoId, id) => { const d = st.disparos.find((x) => x.id === id && x.campoId === campoId); return d ? { ...d } : null },
     mudarStatus: async (id, de, para, motivo) => { const d = st.disparos.find((x) => x.id === id); if (!d || !de.includes(d.status)) return false; d.status = para; d.motivo = motivo; return true },
     cancelar: async (id, de) => { const d = st.disparos.find((x) => x.id === id); if (!d || !de.includes(d.status)) return false; d.status = 'cancelado'; for (const e of st.envios) if (e.disparoId === id && e.status === 'pendente' && !e.reservado) e.status = 'ignorado'; return true },
@@ -1266,13 +1270,79 @@ test('envio: mesma chave de idempotência cria um só disparo (resposta perdida 
   const r2 = await criarDisparo(a.deps, 'c1', 'u1', corpo, AGORA_ENV)
   assert.equal(a.st.disparos.length, 1)
   assert.equal(a.st.criados.d.valores.chave, chave)
+  assert.equal(a.st.criados.d.id, chave) // a chave do cliente é o id do disparo
+  assert.equal(r1.id, chave)
   assert.equal(r2.id, r1.id)
   assert.equal(r2.repetido, true)
-  // outro campo com a mesma chave não vê o disparo do primeiro
+  // outro campo com a mesma chave: 409, sem ver nem criar nada
   const b = depsEnvio({ modelos: [{ ...modelo, campoId: 'c2' }], contatos, disparos: a.st.disparos })
-  const r3 = await criarDisparo(b.deps, 'c2', 'u1', corpo, AGORA_ENV)
-  assert.notEqual(r3.repetido, true)
-  assert.equal(b.st.disparos.length, 2)
+  await rej(criarDisparo(b.deps, 'c2', 'u1', corpo, AGORA_ENV), 409)
+  assert.equal(b.st.disparos.length, 1)
+})
+test('envio: retry enquanto a criação ainda grava ⇒ P2002 na PK devolve o mesmo disparo com contadores reais', async () => {
+  const modelo = { id: '11111111-1111-4111-8111-111111111111', campoId: 'c1', status: 'APPROVED', nome: 'boas_vindas', idioma: 'pt_BR', categoria: 'MARKETING', variaveis: [{ posicao: 1, tipo: 'nome', exemplo: 'x' }] }
+  const contatos = { membros: [{ id: 'm1', fullName: 'Ana Souza', preferredName: null, mobile: '19992126683', phone: null, igrejaNome: 'Sede' }], interessados: [] }
+  const chave = '9f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f'
+  const corpo = { nome: 'Teste', modeloId: modelo.id, filtros: { membros: {}, interessados: null }, valores: {}, agendadoPara: null, chave }
+  // O primeiro pedido ainda não comitou quando o segundo olha (a leitura prévia não acha nada);
+  // quando o segundo chega ao INSERT, o primeiro já comitou ⇒ P2002.
+  const primeiro = { id: chave, campoId: 'c1', status: 'enviando', total: 40, enviados: 12, entregues: 7, lidos: 3, falhos: 1 }
+  const a = depsEnvio({ modelos: [modelo], contatos, disparos: [primeiro] })
+  const resumo = a.deps.repo.resumoDisparo
+  let leituras = 0
+  a.deps.repo.resumoDisparo = async (id) => (++leituras === 1 ? null : resumo(id))
+  const r = await criarDisparo(a.deps, 'c1', 'u1', corpo, AGORA_ENV)
+  assert.equal(leituras, 2)
+  assert.equal(a.st.disparos.length, 1)
+  assert.equal(a.st.criados, null)
+  assert.deepEqual(r, { id: chave, total: 40, status: 'enviando', repetido: true, enviados: 12, entregues: 7, lidos: 3, falhos: 1 })
+  // Mesma corrida com o id já usado em outro campo ⇒ 409
+  const b = depsEnvio({ modelos: [modelo], contatos, disparos: [{ ...primeiro, campoId: 'c9' }] })
+  const resumoB = b.deps.repo.resumoDisparo
+  let lb = 0
+  b.deps.repo.resumoDisparo = async (id) => (++lb === 1 ? null : resumoB(id))
+  await rej(criarDisparo(b.deps, 'c1', 'u1', corpo, AGORA_ENV), 409)
+  // P2002 sem disparo achado (outro unique) ⇒ o erro original sobe
+  const c = depsEnvio({ modelos: [modelo], contatos })
+  c.deps.repo.criarDisparoComEnvios = async () => { const e = new Error('outro unique'); e.code = 'P2002'; throw e }
+  await assert.rejects(criarDisparo(c.deps, 'c1', 'u1', corpo, AGORA_ENV), /outro unique/)
+})
+test('envio fila: erro do modelo (132015/132016/132001/132000/132012) pausa só o disparo, devolve a pessoa e alerta', async () => {
+  for (const codigo of [132015, 132016, 132001, 132000, 132012]) {
+    const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }, { id: 'd2', status: 'enviando' }], envios: [...pend(8), ...pend(2, 'd2')], postErro: (corpo) => (corpo.to.startsWith('55199') ? erroGraph(codigo, 'template') : null) })
+    const r = await processarFila(deps, 'c1', AGORA_ENV)
+    assert.equal(st.disparos[0].status, 'pausado', `${codigo}`)
+    assert.match(st.disparos[0].motivo, new RegExp(String(codigo)))
+    assert.equal(st.disparos[1].status, 'enviando', `${codigo}: outro disparo não pausa`)
+    assert.equal(st.alertas.length, 1)
+    assert.equal(st.envios.filter((e) => e.status === 'falhou').length, 0, `${codigo}: ninguém falha`)
+    assert.equal(st.envios.filter((e) => e.reservado).length, 0)
+    assert.equal(st.envios.filter((e) => e.disparoId === 'd1' && e.status === 'pendente').length, 8)
+    assert.ok(r.pausado)
+  }
+})
+test('envio fila: 131048 (limite de spam) pausa todos os disparos do campo sem falhar ninguém', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }, { id: 'd2', status: 'aguardando_limite' }], envios: [...pend(8), ...pend(2, 'd2')], postErro: erroGraph(131048, 'Spam rate limit hit') })
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(st.disparos[0].status, 'pausado')
+  assert.equal(st.disparos[1].status, 'pausado')
+  assert.match(st.disparos[0].motivo, /131048/)
+  assert.equal(st.alertas.length, 1)
+  assert.equal(st.envios.filter((e) => e.status === 'falhou').length, 0)
+  assert.equal(st.envios.filter((e) => e.reservado).length, 0)
+})
+test('envio fila: 4 e 80007 (limite de chamadas) devolvem à fila e encerram a rodada sem pausar', async () => {
+  for (const codigo of [4, 80007]) {
+    const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(20), postErro: erroGraph(codigo, 'rate') })
+    const r = await processarFila(deps, 'c1', AGORA_ENV)
+    assert.ok(st.posts.length >= 1 && st.posts.length <= 5, `${codigo}: posts ${st.posts.length}`)
+    assert.equal(st.disparos[0].status, 'enviando')
+    assert.equal(st.alertas.length, 0)
+    assert.equal(st.envios.filter((e) => e.status === 'falhou').length, 0)
+    assert.equal(st.envios.filter((e) => e.reservado).length, 0)
+    assert.equal(st.envios.filter((e) => e.status === 'pendente').length, 20)
+    assert.equal(r.pausado, undefined)
+  }
 })
 test('envio: contar público usa contagem do repositório', async () => {
   const { deps } = depsEnvio()

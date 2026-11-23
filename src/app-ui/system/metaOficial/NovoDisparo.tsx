@@ -26,7 +26,8 @@ type Opcoes = {
   conectado: boolean;
   limite: { limite: number | null; usados: number; restante: number | null; qualidade: string } | null;
 };
-type Resultado = { id: string; total: number; semCelular: number; excluidos: number; duplicados: number; status: string };
+// `repetido`: a mesma chave já tinha criado o disparo (os "ficaram de fora" não vêm nesse caso).
+type Resultado = { id: string; total: number; semCelular?: number; excluidos?: number; duplicados?: number; status: string; repetido?: boolean };
 type Comp = { type?: string; text?: string; buttons?: { text?: string }[] };
 
 const BASE = `${apiBase}/meta/whatsapp/envio`;
@@ -37,6 +38,15 @@ const PASSOS = ['Público', 'Modelo', 'Revisão'];
 
 const lerVariaveis = (v: unknown): VariavelModelo[] => (Array.isArray(v) ? (v as VariavelModelo[]) : []);
 const lerComps = (c: unknown): Comp[] => (Array.isArray(c) ? (c as Comp[]) : []);
+/** UUID v4 também fora de HTTPS (crypto.randomUUID só existe em contexto seguro). */
+function novaChave(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
 const alternar = (lista: string[], v: string) => (lista.includes(v) ? lista.filter((x) => x !== v) : [...lista, v]);
 
 function Marcas({ titulo, itens, marcados, onAlt, vazio }: { titulo: string; itens: { v: string; r: string }[]; marcados: string[]; onAlt: (v: string) => void; vazio?: string }) {
@@ -227,6 +237,12 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
     setNaoConfirmado(false);
     try {
       const r = await fetch(BASE, { method: 'POST', headers: cabecalhos(true), body: JSON.stringify({ ...validacao.valor, chave: chaveRef.current }) });
+      if (r.status >= 500) {
+        // Erro do servidor: a criação pode ter terminado ou ainda estar gravando. Não reabre o botão
+        // de disparar; "Tentar de novo" usa a mesma chave (o servidor devolve o mesmo disparo).
+        setNaoConfirmado(true);
+        return;
+      }
       if (!r.ok) {
         setErroEnvio(await lerErro(r));
         travado.current = false;
@@ -258,7 +274,7 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
     setMexeu(true);
     if (passo === 0 && !publicoOk) return;
     if (passo === 1 && errosModelo.length > 0) return;
-    if (passo === 1 && !naoConfirmado) chaveRef.current = crypto.randomUUID();
+    if (passo === 1 && !naoConfirmado) chaveRef.current = novaChave();
     setPasso((p) => Math.min(2, p + 1));
   };
 
@@ -496,9 +512,13 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
               <span className="mb-2 grid size-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"><Check className="size-6" /></span>
               <p className="text-base font-bold">{resultado.status === 'agendado' ? 'Disparo agendado' : 'Disparo iniciado'}</p>
               <p className="text-sm text-slate-600 dark:text-slate-300"><strong>{resultado.total.toLocaleString('pt-BR')}</strong> {resultado.total === 1 ? 'pessoa vai receber' : 'pessoas vão receber'} a mensagem.</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Ficaram de fora: {resultado.semCelular.toLocaleString('pt-BR')} sem celular válido, {resultado.excluidos.toLocaleString('pt-BR')} que pediram para sair e {resultado.duplicados.toLocaleString('pt-BR')} telefones repetidos.
-              </p>
+              {resultado.repetido ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400">Este disparo já tinha sido criado pelo mesmo pedido; nada foi duplicado.</p>
+              ) : (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Ficaram de fora: {(resultado.semCelular ?? 0).toLocaleString('pt-BR')} sem celular válido, {(resultado.excluidos ?? 0).toLocaleString('pt-BR')} que pediram para sair e {(resultado.duplicados ?? 0).toLocaleString('pt-BR')} telefones repetidos.
+                </p>
+              )}
               <button type="button" onClick={onCriado} className={`mt-3 ${botaoPri}`}>Ver o disparo na lista</button>
             </div>
           )}

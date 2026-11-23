@@ -3,7 +3,9 @@
  * em array (o pooler não aceita transação interativa); toda lista com teto e ordem.
  *
  * Reserva da fila (sem coluna nova): `status = 'pendente'` com `erro_codigo = -1` é um envio
- * reservado por uma rodada ("em envio"); `atualizado_em` guarda quando. A reserva NÃO vence
+ * reservado por uma rodada ("em envio"); `atualizado_em` guarda quando a reserva foi feita
+ * (o comentário da coluna na migration 20261124040000 ainda fala em "now() + 2 min": está velho,
+ * a regra vale é esta, sem prazo de 2 min). A reserva NÃO vence
  * sozinha: só `liberarReserva` (chamado antes do POST começar) devolve à fila. Reserva com mais
  * de 10 min vira `falhou` "não confirmado" na varredura — nunca é reenviada (cobrança dupla).
  * Pendente livre = `erro_codigo IS NULL`. Telas devem mostrar -1 como "em envio".
@@ -12,7 +14,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
 import type {
   DisparoLinha, FiltrosMembros, FiltrosInteressados, FiltrosPublico, LinhaInteressado, LinhaMembro,
-  NovoDisparo, NovoEnvio, StatusDisparo, StatusEnvio,
+  NovoDisparo, NovoEnvio, ResumoDisparo, StatusDisparo, StatusEnvio,
 } from './servicoEnvio'
 
 const LOTE_INSERCAO = 1000
@@ -114,7 +116,11 @@ export async function telefonesExcluidos(campoId: string, telefones: string[]): 
 
 // ---------- disparos ----------
 
-/** Disparo + envios numa transação de array (createMany em lotes de 1000). */
+/**
+ * Disparo + envios numa transação de array (createMany em lotes de 1000). O INSERT do disparo vai
+ * PRIMEIRO: um segundo pedido com o mesmo id (chave de idempotência) espera o primeiro e dá P2002
+ * antes de inserir qualquer envio; o serviço trata o P2002 relendo o disparo.
+ */
 export async function criarDisparoComEnvios(d: NovoDisparo, envios: NovoEnvio[]): Promise<void> {
   const ops: Prisma.PrismaPromise<unknown>[] = [
     prisma.metaWhatsappDisparo.create({
@@ -170,11 +176,15 @@ export async function buscarDisparo(campoId: string, id: string): Promise<Dispar
   return prisma.metaWhatsappDisparo.findFirst({ where: { id, campoId }, select: SELECT_DISPARO })
 }
 
-export async function buscarDisparoPorChave(campoId: string, chave: string): Promise<{ id: string; total: number; status: string } | null> {
-  return prisma.metaWhatsappDisparo.findFirst({
-    where: { campoId, valores: { path: ['chave'], equals: chave } },
-    orderBy: [{ criadoEm: 'asc' }, { id: 'asc' }],
-    select: { id: true, total: true, status: true },
+/**
+ * Pelo id (PK), em qualquer campo: o serviço confere o campo. A chave de idempotência do cliente
+ * é o id do disparo, então isto substitui a antiga busca por `valores.chave` (sem índice). A chave
+ * continua gravada em `valores.chave` só como registro.
+ */
+export async function resumoDisparo(id: string): Promise<ResumoDisparo | null> {
+  return prisma.metaWhatsappDisparo.findUnique({
+    where: { id },
+    select: { id: true, campoId: true, status: true, total: true, enviados: true, entregues: true, lidos: true, falhos: true },
   })
 }
 

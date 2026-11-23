@@ -3,20 +3,23 @@
  * (cron a cada minuto) e status pelo webhook. Dependências injetadas (repositório,
  * conexões, Graph, cifra, relógio) para testar sem banco nem rede. Nunca devolve token.
  *
- * Regras de parada: qualidade RED, erros de conta/pagamento/token (CODIGOS_PARAR_DISPARO)
- * ⇒ todos os disparos ativos do campo ficam `pausado` com motivo e um alerta em meta_alertas.
+ * Regras de parada: qualidade RED, erros de conta/pagamento/token (CODIGOS_PARAR_DISPARO) e
+ * limite de spam (131048) ⇒ todos os disparos ativos do campo ficam `pausado` com motivo e um
+ * alerta em meta_alertas. Erro do modelo (CODIGOS_PARAR_MODELO: pausado, desativado, inexistente,
+ * parâmetros) ⇒ só aquele disparo pausa, com motivo e alerta. Limite de chamadas (4, 80007) ou
+ * de vazão (130429) ⇒ a rodada termina sem pausar.
  * Erro por pessoa (ex.: 131026) ⇒ só aquele envio falha. Tempo esgotado ⇒ aquele envio
  * falha (não reenviamos para não cobrar duas vezes) e a rodada termina.
  * Nunca reenvia automaticamente o que pode ter saído: depois que o POST começa, o envio
- * só termina como enviado ou falhou — exceto recusa explícita da Meta com código (130429 ou
- * CODIGOS_PARAR_DISPARO), em que nada saiu e o item volta à fila.
+ * só termina como enviado ou falhou — exceto recusa explícita da Meta com um dos códigos acima
+ * (vazão, chamadas, parada, modelo ou spam), em que nada saiu e o item volta à fila.
  */
 import type { Graph } from './graph.ts'
 import type { VariavelModelo } from './modelos.ts'
 import type { Contato } from './envio.ts'
 import {
   normalizarTelefoneBR, ehPedidoDeSair, deduplicarPorTelefone, montarParametros, montarMensagemTemplate,
-  tamanhoDoLote, CODIGOS_PARAR_DISPARO,
+  tamanhoDoLote, CODIGOS_PARAR_DISPARO, CODIGOS_PARAR_MODELO, CODIGO_LIMITE_SPAM, CODIGOS_LIMITE_CHAMADAS,
 } from './envio.ts'
 import { ErroServico, MSG_TOKEN_RECUSADO } from './servicoConexao.ts'
 
@@ -51,6 +54,17 @@ export type DisparoLinha = {
   motivo: string | null
   agendadoPara: Date | null
   criadoEm: Date
+}
+
+export type ResumoDisparo = {
+  id: string
+  campoId: string
+  status: string
+  total: number
+  enviados: number
+  entregues: number
+  lidos: number
+  falhos: number
 }
 
 export type NovoDisparo = {
@@ -89,12 +103,13 @@ export type DepsEnvio = {
     contarPublico(campoId: string, filtros: FiltrosPublico): Promise<{ membros: number; interessados: number }>
     listarContatos(campoId: string, filtros: FiltrosPublico, limite: number): Promise<{ membros: LinhaMembro[]; interessados: LinhaInteressado[] }>
     telefonesExcluidos(campoId: string, telefones: string[]): Promise<Set<string>>
+    /** O INSERT do disparo vem primeiro: id repetido (mesma chave) ⇒ erro com `code` P2002 e nada é gravado. */
     criarDisparoComEnvios(disparo: NovoDisparo, envios: NovoEnvio[]): Promise<void>
     /** enviando, aguardando_limite e agendado com agendado_para <= agora; mais antigos primeiro. */
     disparosAtivos(campoId: string, agora: Date): Promise<DisparoLinha[]>
     buscarDisparo(campoId: string, id: string): Promise<DisparoLinha | null>
-    /** Disparo já criado com esta chave de idempotência (guardada em valores.chave), ou null. */
-    buscarDisparoPorChave(campoId: string, chave: string): Promise<{ id: string; total: number; status: string } | null>
+    /** Disparo pelo id em qualquer campo (o serviço confere o campo), com os contadores. */
+    resumoDisparo(id: string): Promise<ResumoDisparo | null>
     /** Troca condicionada: só muda se o status atual está em `de`. Devolve se mudou. */
     mudarStatus(id: string, de: string[], para: StatusDisparo, motivo: string | null): Promise<boolean>
     /** Status cancelado + pendentes livres (não reservados) viram ignorado (um comando atômico). */
@@ -154,8 +169,20 @@ const MOTIVO_CODIGO: Record<number, string> = {
   131031: 'A conta do WhatsApp foi bloqueada ou restringida pela Meta (131031).',
   368: 'A Meta restringiu temporariamente o número por violação de política (368).',
   190: `${MSG_TOKEN_RECUSADO} (190)`,
+  131048: 'A Meta limitou os envios deste número por excesso de bloqueios ou denúncias de spam (131048). Envio pausado para proteger o número.',
+  132015: 'A Meta pausou o modelo por baixa qualidade (132015). Retome o disparo quando o modelo voltar a ficar ativo no Gerenciador do WhatsApp.',
+  132016: 'A Meta desativou o modelo (132016). Crie outro modelo na aba Modelos e faça um novo disparo.',
+  132001: 'O modelo não existe na Meta com esse nome e idioma (132001). Atualize a lista na aba Modelos.',
+  132000: 'A quantidade de valores não bate com as variáveis do modelo (132000). Confira o modelo na aba Modelos.',
+  132012: 'Os valores não estão no formato que o modelo espera (132012). Confira o modelo na aba Modelos.',
 }
 const CODIGO_TENTAR_DEPOIS = 130429 // limite de vazão: a Meta recusou, nada saiu; o item volta à fila
+/** Recusa explícita da Meta que vale para todos (nada saiu): o item volta à fila e a rodada termina sem pausar. */
+const CODIGOS_ENCERRAR_RODADA = [CODIGO_TENTAR_DEPOIS, ...CODIGOS_LIMITE_CHAMADAS]
+/** Recusa explícita que pausa todos os disparos do campo (conta, pagamento, token, spam). */
+const CODIGOS_PAUSAR_CAMPO = [...CODIGOS_PARAR_DISPARO, CODIGO_LIMITE_SPAM]
+/** Código Prisma de violação de unique (aqui: id do disparo = chave de idempotência já usada). */
+const P2002 = 'P2002'
 /** POSTs simultâneos por rodada (cada item grava logo após o próprio POST). */
 export const CONCORRENCIA_ENVIO = 5
 
@@ -418,17 +445,35 @@ async function calcularRestante(
   return { limite, usados, restante: Math.max(0, limite - usados), qualidade: s.qualidade }
 }
 
+export const MSG_CHAVE_OUTRO_CAMPO = 'Este pedido de disparo já foi usado. Feche e abra o Novo disparo de novo.'
+
+export type ResultadoCriar =
+  | { id: string; total: number; semCelular: number; excluidos: number; duplicados: number; status: string; repetido?: false }
+  /** Mesma chave: o disparo já existia. Contadores reais do disparo (os "ficaram de fora" não são guardados). */
+  | { id: string; total: number; status: string; repetido: true; enviados: number; entregues: number; lidos: number; falhos: number }
+
+/** Disparo já existente com este id: no mesmo campo ⇒ resposta "repetido"; em outro ⇒ 409. */
+function respostaRepetida(campoId: string, ja: ResumoDisparo): ResultadoCriar {
+  if (ja.campoId !== campoId) throw new ErroServico(409, MSG_CHAVE_OUTRO_CAMPO)
+  return {
+    id: ja.id, total: ja.total, status: ja.status, repetido: true,
+    enviados: ja.enviados, entregues: ja.entregues, lidos: ja.lidos, falhos: ja.falhos,
+  }
+}
+
 export async function criarDisparo(
   deps: DepsEnvio, campoId: string, userId: string | null, entrada: unknown, agora: Date,
-): Promise<{ id: string; total: number; semCelular: number; excluidos: number; duplicados: number; status: string; repetido?: boolean }> {
+): Promise<ResultadoCriar> {
   const pre = validarEntradaDisparo(entrada, { agora })
   if (!pre.ok) throw new ErroServico(400, pre.erros.join(' '))
-  // Idempotência: repetir a mesma chave (resposta perdida, clique duplo) devolve o disparo que já existe.
+  // Idempotência: a chave do cliente (UUID) é o id do disparo. A PK garante um só disparo por
+  // chave mesmo com o primeiro pedido ainda gravando (o segundo INSERT espera e dá P2002).
   const bruta = ehObj(entrada) ? entrada.chave : undefined
   const chave = typeof bruta === 'string' && UUID.test(bruta) ? bruta.toLowerCase() : undefined
   if (chave) {
-    const ja = await deps.repo.buscarDisparoPorChave(campoId, chave)
-    if (ja) return { id: ja.id, total: ja.total, semCelular: 0, excluidos: 0, duplicados: 0, status: ja.status, repetido: true }
+    // Atalho para o caso comum (o primeiro já terminou): evita montar o público de novo.
+    const ja = await deps.repo.resumoDisparo(chave)
+    if (ja) return respostaRepetida(campoId, ja)
   }
   await token(deps, campoId)
   const modelo = await deps.modelos.buscar(campoId, pre.valor.modeloId)
@@ -451,7 +496,7 @@ export async function criarDisparo(
   const p = montarPublico(linhas, excluidos)
   if (!p.contatos.length) throw new ErroServico(400, 'Nenhuma pessoa com celular válido nesse público.')
 
-  const id = deps.novoId()
+  const id = chave ?? deps.novoId()
   const agendadoPara = e.agendadoPara ? new Date(e.agendadoPara) : null
   const status: StatusDisparo = agendadoPara ? 'agendado' : 'enviando'
   const envios: NovoEnvio[] = p.contatos.map((c) => {
@@ -460,10 +505,19 @@ export async function criarDisparo(
     if (par.header) parametros.header = par.header.map(sanearParametro)
     return { disparoId: id, campoId, origem: c.origem, refId: c.refId, nome: c.nome, telefone: c.telefone, parametros }
   })
-  await deps.repo.criarDisparoComEnvios({
-    id, campoId, modeloId: modelo.id, modeloNome: modelo.nome, idioma: modelo.idioma, categoria: modelo.categoria,
-    nome: e.nome, filtros: e.filtros, valores: chave ? { ...e.valores, chave } : e.valores, status, agendadoPara, total: envios.length, criadoPor: userId,
-  }, envios)
+  try {
+    await deps.repo.criarDisparoComEnvios({
+      id, campoId, modeloId: modelo.id, modeloNome: modelo.nome, idioma: modelo.idioma, categoria: modelo.categoria,
+      nome: e.nome, filtros: e.filtros, valores: chave ? { ...e.valores, chave } : e.valores, status, agendadoPara, total: envios.length, criadoPor: userId,
+    }, envios)
+  } catch (err) {
+    // Outro pedido com a mesma chave gravou primeiro: a transação inteira desfez, devolve o que existe.
+    if (chave && (err as { code?: unknown })?.code === P2002) {
+      const ja = await deps.repo.resumoDisparo(id)
+      if (ja) return respostaRepetida(campoId, ja)
+    }
+    throw err
+  }
   return { id, total: envios.length, semCelular: p.semCelular, excluidos: p.excluidos, duplicados: p.duplicados, status }
 }
 
@@ -503,6 +557,10 @@ async function pausarTodos(deps: DepsEnvio, campoId: string, ativos: DisparoLinh
     if (await deps.repo.mudarStatus(d.id, ATIVOS, 'pausado', motivo)) algum = true
   }
   if (algum && alertar) await deps.alertas.gravar(campoId, `Envio em massa pausado: ${motivo}`)
+}
+
+async function pausarUm(deps: DepsEnvio, campoId: string, id: string, motivo: string): Promise<void> {
+  if (await deps.repo.mudarStatus(id, ATIVOS, 'pausado', motivo)) await deps.alertas.gravar(campoId, `Envio em massa pausado: ${motivo}`)
 }
 
 export type ResultadoFila = { enviados: number; falhas: number; pausado?: string; aguardandoLimite?: boolean; erro?: string }
@@ -568,7 +626,8 @@ export async function processarFila(
     let verificadoAte = 0
     let portao: Promise<void> | null = null
     // `as`: o TS não estreita para null (as variáveis mudam dentro dos operários).
-    let parar = null as { motivo: string; codigo: number } | null
+    // `campo`: pausa todos os disparos ativos do campo; `disparo`: só este (erro do modelo).
+    let parar = null as { motivo: string; codigo: number; escopo: 'campo' | 'disparo' } | null
     let encerrar = false as boolean
     let erroInterno = null as unknown
 
@@ -581,11 +640,18 @@ export async function processarFila(
       } catch (e) {
         const err = e as { name?: string; message?: string; codigo?: number | null }
         const codigo = err?.name === 'ErroGraph' && typeof err.codigo === 'number' ? err.codigo : null
-        if (codigo !== null && (codigo === CODIGO_TENTAR_DEPOIS || CODIGOS_PARAR_DISPARO.includes(codigo))) {
-          // Recusa explícita da Meta: nada saiu, o item volta a pendente livre.
+        const ehCampo = codigo !== null && CODIGOS_PAUSAR_CAMPO.includes(codigo)
+        const ehModelo = codigo !== null && CODIGOS_PARAR_MODELO.includes(codigo)
+        if (codigo !== null && (CODIGOS_ENCERRAR_RODADA.includes(codigo) || ehCampo || ehModelo)) {
+          // Recusa explícita da Meta que vale para o disparo inteiro: nada saiu, o item volta a pendente livre.
           await deps.repo.liberarReserva([env.id])
-          if (codigo === CODIGO_TENTAR_DEPOIS) encerrar = true
-          else parar ??= { motivo: MOTIVO_CODIGO[codigo] ?? `A Meta recusou (${codigo}).`, codigo }
+          if (ehCampo || ehModelo) {
+            const novo = { motivo: MOTIVO_CODIGO[codigo] ?? `A Meta recusou (${codigo}).`, codigo, escopo: ehCampo ? 'campo' as const : 'disparo' as const }
+            // A parada do campo prevalece sobre a do disparo (é a mais abrangente).
+            if (!parar || (parar.escopo === 'disparo' && novo.escopo === 'campo')) parar = novo
+          } else {
+            encerrar = true
+          }
           return
         }
         if (err?.name === 'ErroGraph' && codigo !== null) {
@@ -649,7 +715,8 @@ export async function processarFila(
 
     if (parar) {
       if (parar.codigo === 190) await deps.conexoes.marcarErro(campoId, MSG_TOKEN_RECUSADO)
-      await pausarTodos(deps, campoId, ativos, parar.motivo, true)
+      if (parar.escopo === 'campo') await pausarTodos(deps, campoId, ativos, parar.motivo, true)
+      else await pausarUm(deps, campoId, d.id, parar.motivo)
       return { ...res, pausado: parar.motivo }
     }
     if (encerrar) return res
