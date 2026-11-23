@@ -6,6 +6,10 @@
  * 409 de número duplicado, token cifrado corrompido. Opcional MRM_TOKEN_SEM_CAMPO:
  * usuário sem campo ativo (400).
  *
+ * Pré-requisitos: META_TOKEN_ENCRYPTION_KEY no .env.local (cifra o token de teste do DELETE de modelos)
+ * e a tabela meta_whatsapp_modelos aplicada. O script apaga e recria a conexão do campo de teste
+ * (e a do "outro campo"), restaurando as originais no final.
+ *
  * Exige META_* no .env.local e o `next dev` reiniciado depois de editá-lo.
  * Uso: node scripts/e2e-meta-whatsapp.mjs [http://localhost:3000]
  */
@@ -79,8 +83,14 @@ async function autenticado() {
   const campoId = me.campoId ?? me.user?.campoId
   if (!campoId) { check('usuário MRM_TOKEN tem campo ativo', false); return }
   const criados = []
+  const salvas = [] // conexões reais apagadas pelo teste; recriadas iguais no finally
+  const guardar = async (cid) => {
+    const antes = await prisma.metaWhatsappConexao.findUnique({ where: { campoId: cid } })
+    if (antes) salvas.push(antes)
+  }
   const modelosCriados = []
   try {
+    await guardar(campoId)
     await prisma.metaWhatsappConexao.deleteMany({ where: { campoId } })
     let r = await fetch(`${API}/conexao`, { headers: auth(TOKEN) })
     let j = await r.json()
@@ -126,6 +136,7 @@ async function autenticado() {
     const outro = await prisma.campo.findFirst({ where: { id: { not: campoId } }, select: { id: true } })
     if (!outro) check('existe outro campo para o teste de duplicado', false)
     else {
+      await guardar(outro.id)
       await prisma.metaWhatsappConexao.deleteMany({ where: { campoId: outro.id } })
       const dup = await prisma.metaWhatsappConexao.create({ data: {
         campoId: outro.id, wabaId: 'e2e-waba', phoneNumberId: 'e2e-dup', tokenCifrado: 'x', pinCifrado: 'x', status: 'conectado' } })
@@ -136,7 +147,8 @@ async function autenticado() {
       check('POST com phoneNumberId de outro campo ⇒ 409 (antes de chamar a Meta)', r.status === 409, `status ${r.status} ${JSON.stringify(j)}`)
     }
 
-    // Token corrompido
+    // Token corrompido (campoId é único: libera a conexão do bloco do DELETE antes)
+    await prisma.metaWhatsappConexao.deleteMany({ where: { campoId } })
     const lixo = await prisma.metaWhatsappConexao.create({ data: {
       campoId, wabaId: 'e2e-waba', phoneNumberId: 'e2e-lixo', tokenCifrado: 'lixo', pinCifrado: 'lixo', status: 'conectado' } })
     criados.push(lixo.id)
@@ -147,6 +159,10 @@ async function autenticado() {
     check('resposta não contém o token', !texto.includes('lixo'))
   } finally {
     if (criados.length) await prisma.metaWhatsappConexao.deleteMany({ where: { id: { in: criados } } })
+    for (const c of salvas) {
+      await prisma.metaWhatsappConexao.deleteMany({ where: { OR: [{ campoId: c.campoId }, { phoneNumberId: c.phoneNumberId }] } })
+      await prisma.metaWhatsappConexao.create({ data: c })
+    }
     if (modelosCriados.length) await prisma.metaWhatsappModelo.deleteMany({ where: { id: { in: modelosCriados } } })
   }
   if (TOKEN_SEM_CAMPO) {
