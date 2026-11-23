@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:15:59.886Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:51:06.073Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 6d22d970fc5f30cd
+-- Baseline f22b1c58ac003887
 
 -- Row Level Security
 alter table "public"."_prisma_migrations" enable row level security;
@@ -245,6 +245,8 @@ alter table "public"."member_tags" enable row level security;
 alter table "public"."member_title_history" enable row level security;
 alter table "public"."members" enable row level security;
 alter table "public"."messages" enable row level security;
+alter table "public"."meta_alertas" enable row level security;
+alter table "public"."meta_app_config" enable row level security;
 alter table "public"."meta_whatsapp_conexoes" enable row level security;
 alter table "public"."ministries" enable row level security;
 alter table "public"."ministry_members" enable row level security;

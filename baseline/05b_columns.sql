@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:15:59.880Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:51:06.067Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 6d22d970fc5f30cd
+-- Baseline f22b1c58ac003887
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -3151,6 +3151,23 @@ alter table "public"."messages" add column if not exists "failed_at" timestamp(3
 alter table "public"."messages" add column if not exists "error_message" text;
 alter table "public"."messages" add column if not exists "external_id" character varying(255);
 alter table "public"."messages" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."meta_alertas" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."meta_alertas" add column if not exists "campo_id" uuid;
+alter table "public"."meta_alertas" add column if not exists "tipo" text;
+alter table "public"."meta_alertas" add column if not exists "mensagem" text;
+alter table "public"."meta_alertas" add column if not exists "proposta" jsonb;
+alter table "public"."meta_alertas" add column if not exists "criado_em" timestamp(6) with time zone default now() not null;
+alter table "public"."meta_alertas" add column if not exists "resolvido_em" timestamp(6) with time zone;
+alter table "public"."meta_alertas" add column if not exists "resolvido_por" uuid;
+alter table "public"."meta_app_config" add column if not exists "id" integer default 1 not null;
+alter table "public"."meta_app_config" add column if not exists "app_id" text;
+alter table "public"."meta_app_config" add column if not exists "es_config_id" text;
+alter table "public"."meta_app_config" add column if not exists "graph_version" text;
+alter table "public"."meta_app_config" add column if not exists "webhook_verify_token" text;
+alter table "public"."meta_app_config" add column if not exists "app_secret_cifrado" text;
+alter table "public"."meta_app_config" add column if not exists "conexao_liberada" boolean default false not null;
+alter table "public"."meta_app_config" add column if not exists "atualizado_por" uuid;
+alter table "public"."meta_app_config" add column if not exists "atualizado_em" timestamp(6) with time zone default now() not null;
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "campo_id" uuid;
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "waba_id" text;

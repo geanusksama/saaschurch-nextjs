@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:15:59.883Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:51:06.071Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 6d22d970fc5f30cd
+-- Baseline f22b1c58ac003887
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -1103,6 +1103,11 @@ alter table "public"."members" alter column "ecclesiastical_title" set default '
 alter table "public"."members" alter column "member_type" set default 'MEMBRO'::character varying;
 alter table "public"."messages" alter column "status" set default 'pending'::character varying;
 alter table "public"."messages" alter column "created_at" set default CURRENT_TIMESTAMP;
+alter table "public"."meta_alertas" alter column "id" set default gen_random_uuid();
+alter table "public"."meta_alertas" alter column "criado_em" set default now();
+alter table "public"."meta_app_config" alter column "id" set default 1;
+alter table "public"."meta_app_config" alter column "conexao_liberada" set default false;
+alter table "public"."meta_app_config" alter column "atualizado_em" set default now();
 alter table "public"."meta_whatsapp_conexoes" alter column "id" set default gen_random_uuid();
 alter table "public"."meta_whatsapp_conexoes" alter column "status" set default 'conectado'::text;
 alter table "public"."meta_whatsapp_conexoes" alter column "conectado_em" set default now();

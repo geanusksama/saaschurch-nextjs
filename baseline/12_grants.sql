@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:15:59.887Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:51:06.074Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 6d22d970fc5f30cd
+-- Baseline f22b1c58ac003887
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -713,6 +713,12 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."messages" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."messages" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."messages" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_alertas" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_alertas" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_alertas" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_app_config" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_app_config" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_app_config" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_conexoes" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_conexoes" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_conexoes" to "service_role";
