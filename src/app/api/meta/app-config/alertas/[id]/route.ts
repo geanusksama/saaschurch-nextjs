@@ -2,8 +2,7 @@ import { NextRequest } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { exigirPermissao } from '@/lib/permissoes/servidor'
 import { ehBase, validarAtualizacao } from '@/lib/meta/configCentral'
-import { gravarLinha } from '@/lib/meta/configCentralRepo'
-import { buscarAberto, resolverAlerta } from '@/lib/meta/alertasRepo'
+import { buscarAberto, resolverAlerta, aprovarEResolver } from '@/lib/meta/alertasRepo'
 import { atualizacaoDaProposta } from '@/lib/meta/monitorMeta'
 import { json } from '@/lib/meta/depsConexao'
 
@@ -33,7 +32,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         if (!ehBase(process.env)) return json({ error: 'A configuração só pode ser alterada no sistema base.' }, 409)
         const v = validarAtualizacao(atualizacao)
         if (!v.ok) return json({ error: v.erro }, 400)
-        await gravarLinha(v.dados, user.id)
+        await aprovarEResolver(v.dados, id, user.id)
+        return json({ ok: true })
       }
       await resolverAlerta(id, user.id)
       return json({ ok: true })

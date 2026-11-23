@@ -5,7 +5,7 @@ import { ehBase } from './configCentral'
 import { lerConfigMeta } from './configMeta'
 import * as repo from './alertasRepo'
 import type { DepsExecucao, DepsMonitor, ConexaoMonitor } from './monitorMeta'
-import { verificarMeta } from './monitorMeta'
+import { verificarMeta, lerComOrcamento } from './monitorMeta'
 
 async function configOuNull() {
   try { return await lerConfigMeta() } catch { return null }
@@ -20,29 +20,24 @@ export function depsMonitorReais(): DepsMonitor {
     conexoes: async () => {
       const c = await configOuNull()
       const lista = await repo.conexoesParaMonitor()
-      const saida: ConexaoMonitor[] = []
-      for (const l of lista) {
-        let status = l.status
-        let qualidade: string | null = null
-        if (c && l.status !== 'desconectado') {
-          try {
-            const graph = criarGraph({ versao: c.graphVersion })
-            const s = await lerStatusNumero(graph, decifrar(l.tokenCifrado, c.chaveCifra), l.phoneNumberId)
-            qualidade = s.qualidade
-          } catch (e) {
-            if ((e as { tokenInvalido?: boolean })?.tokenInvalido) status = 'erro'
-          }
+      return lerComOrcamento(lista, async (l): Promise<ConexaoMonitor> => {
+        if (!c || l.status === 'desconectado') return { campoId: l.campoId, status: l.status, qualidade: null }
+        try {
+          const graph = criarGraph({ versao: c.graphVersion })
+          const s = await lerStatusNumero(graph, decifrar(l.tokenCifrado, c.chaveCifra), l.phoneNumberId)
+          return { campoId: l.campoId, status: l.status, qualidade: s.qualidade }
+        } catch (e) {
+          if ((e as { tokenInvalido?: boolean })?.tokenInvalido) return { campoId: l.campoId, status: 'erro', qualidade: null }
+          return { campoId: l.campoId, status: l.status, qualidade: null, falhou: true }
         }
-        saida.push({ campoId: l.campoId, status, qualidade })
-      }
-      return saida
+      })
     },
     webhookResponde: async () => {
       const c = await configOuNull()
       if (!c) return false
       const desafio = String(Math.floor(Math.random() * 1e9))
       const qs = new URLSearchParams({ 'hub.mode': 'subscribe', 'hub.verify_token': c.verifyToken, 'hub.challenge': desafio })
-      const r = await fetch(`${c.callbackBaseUrl}/api/meta/whatsapp/webhook?${qs.toString()}`, { signal: AbortSignal.timeout(10000), cache: 'no-store' })
+      const r = await fetch(`${c.callbackBaseUrl}/api/meta/whatsapp/webhook?${qs.toString()}`, { signal: AbortSignal.timeout(5000), cache: 'no-store' })
       return r.ok && (await r.text()) === desafio
     },
     alertasAbertos: repo.abertosParaDedupe,
@@ -55,11 +50,16 @@ export function depsExecucaoReais(): DepsExecucao {
     verificar: () => verificarMeta(depsMonitorReais()),
     gravar: repo.gravarAlertas,
     numeroAviso: process.env.META_ALERTA_WHATSAPP ?? '',
+    // O aviso sai de UMA instância Z-API: a indicada em META_ALERTA_INSTANCIA_ID (id em
+    // whatsapp_instances) ou, sem ela, a conectada mais antiga (created_at, id). Somente leitura.
     enviarWhatsapp: async (numero, texto) => {
-      const { getActiveInstance, sendTextViaZApi, normalizarNumeroBrasil } = await import('../whatsappSendService')
-      const dono = await repo.primeiroMaster()
-      if (!dono) return false
-      const instancia = await getActiveInstance(dono, 'master')
+      const { sendTextViaZApi, normalizarNumeroBrasil } = await import('../whatsappSendService')
+      const { supabaseAdmin } = await import('../supabase-admin')
+      const fixa = (process.env.META_ALERTA_INSTANCIA_ID ?? '').trim()
+      let q = supabaseAdmin.from('whatsapp_instances').select('*').eq('is_active', true).eq('status', 'connected')
+      q = fixa ? q.eq('id', fixa) : q.order('created_at', { ascending: true }).order('id', { ascending: true })
+      const { data } = await q.limit(1)
+      const instancia = data?.[0]
       if (!instancia) return false
       const para = normalizarNumeroBrasil(numero)
       if (!para) return false
@@ -68,4 +68,3 @@ export function depsExecucaoReais(): DepsExecucao {
     },
   }
 }
-

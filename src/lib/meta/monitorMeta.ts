@@ -6,7 +6,7 @@
  */
 export type TipoAlerta =
   | 'versao_graph' | 'versao_desconhecida' | 'conexao_erro'
-  | 'qualidade_baixa' | 'qualidade_media' | 'webhook_falhou'
+  | 'qualidade_baixa' | 'qualidade_media' | 'webhook_falhou' | 'monitor_falhou'
 
 export type PropostaAtualizarVersao = { tipo: 'atualizar_versao_graph'; de: string; para: string }
 export type Proposta = PropostaAtualizarVersao
@@ -30,7 +30,8 @@ export const VERSOES_GRAPH: VersaoGraph[] = [{ versao: 'v27.0', desativaEm: null
 export const DIAS_AVISO_VERSAO = 60
 const DIA_MS = 24 * 60 * 60 * 1000
 
-export type ConexaoMonitor = { campoId: string; status: string; qualidade: string | null }
+/** `falhou`: a leitura na Graph deu erro que não é de token (timeout/5xx); gera 'monitor_falhou'. */
+export type ConexaoMonitor = { campoId: string; status: string; qualidade: string | null; falhou?: boolean }
 
 export type DepsMonitor = {
   agora: () => Date
@@ -92,6 +93,9 @@ export async function verificarMeta(deps: DepsMonitor): Promise<AlertaMeta[]> {
     if (c.status === 'erro') {
       candidatos.push({ campoId: c.campoId, tipo: 'conexao_erro', proposta: null, mensagem: 'A conexão do WhatsApp oficial deste campo está com erro e precisa ser reconectada.' })
     }
+    if (c.falhou) {
+      candidatos.push({ campoId: c.campoId, tipo: 'monitor_falhou', proposta: null, mensagem: 'O monitor não conseguiu consultar a Meta para este campo (erro temporário). Será tentado de novo no próximo ciclo.' })
+    }
     if (c.qualidade === 'RED') {
       candidatos.push({ campoId: c.campoId, tipo: 'qualidade_baixa', proposta: null, mensagem: 'A qualidade do número do WhatsApp oficial deste campo está baixa (vermelha). Há risco de limitação de envio.' })
     } else if (c.qualidade === 'YELLOW') {
@@ -152,4 +156,36 @@ export function atualizacaoDaProposta(p: unknown): { graphVersion: string } | nu
   const o = p as Record<string, unknown>
   if (o.tipo === 'atualizar_versao_graph' && typeof o.para === 'string') return { graphVersion: o.para }
   return null
+}
+
+export const CONCORRENCIA_LEITURA = 5
+export const ORCAMENTO_LEITURA_MS = 45_000
+
+/**
+ * Lê o status de cada conexão com no máximo `concorrencia` chamadas simultâneas e um prazo
+ * global: vencido o prazo, devolve o que já foi lido (as demais ficam para o próximo ciclo).
+ */
+export async function lerComOrcamento<T, R>(
+  itens: T[],
+  lerUma: (item: T) => Promise<R>,
+  opts: { concorrencia?: number; prazoMs?: number; agora?: () => number } = {},
+): Promise<R[]> {
+  const agora = opts.agora ?? Date.now
+  const prazoMs = opts.prazoMs ?? ORCAMENTO_LEITURA_MS
+  const fim = agora() + prazoMs
+  const resultados: R[] = []
+  let proximo = 0
+  const operario = async () => {
+    while (agora() < fim) {
+      const i = proximo++
+      if (i >= itens.length) return
+      try { resultados.push(await lerUma(itens[i])) } catch { /* lerUma deve tratar; ignora */ }
+    }
+  }
+  const trabalho = Promise.all(Array.from({ length: Math.max(1, opts.concorrencia ?? CONCORRENCIA_LEITURA) }, operario))
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const prazo = new Promise<void>((res) => { timer = setTimeout(res, Math.max(0, fim - agora())) })
+  await Promise.race([trabalho.then(() => undefined), prazo])
+  if (timer) clearTimeout(timer)
+  return [...resultados]
 }

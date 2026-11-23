@@ -23,6 +23,7 @@ type Visao = {
 type Alerta = {
   id: string;
   campoId: string | null;
+  campoNome?: string | null;
   tipo: string;
   mensagem: string;
   proposta: unknown;
@@ -310,6 +311,7 @@ export default function MetaAppConfig() {
             <ul className="space-y-2">
               {alertas.map((a) => (
                 <li key={a.id} className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
+                  {a.campoNome && <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{a.campoNome}</p>}
                   <p>{a.mensagem}</p>
                   <p className="text-xs text-slate-500">{new Date(a.criadoEm).toLocaleString('pt-BR')}</p>
                   <div className="mt-2 flex flex-wrap gap-2">

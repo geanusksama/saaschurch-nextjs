@@ -369,7 +369,7 @@ test('PUT: erro de campo informa o nome do campo', () => {
 })
 
 // ── Monitor diário (Task 9) ─────────────────────────────────────────────────
-import { verificarMeta, executarMonitor, atualizacaoDaProposta } from '../src/lib/meta/monitorMeta.ts'
+import { verificarMeta, executarMonitor, atualizacaoDaProposta, lerComOrcamento } from '../src/lib/meta/monitorMeta.ts'
 
 const AGORA = new Date('2026-11-24T12:00:00Z')
 const depsMon = (o = {}) => ({
@@ -447,4 +447,26 @@ test('cron: sem META_ALERTA_WHATSAPP só grava; sem instância não quebra', asy
   assert.equal(envios, 0); assert.equal(gravados, 1)
   assert.deepEqual(await executarMonitor(dep('5519999990000', async () => false)), { novos: 1, avisou: false })
   assert.deepEqual(await executarMonitor(dep('5519999990000', async () => { throw new Error('z') })), { novos: 1, avisou: false })
+})
+test('monitor: leitura com prazo devolve resultado parcial (Graph lenta) e respeita concorrência', async () => {
+  let ativos = 0, maximo = 0
+  const lenta = async (n) => {
+    ativos++; maximo = Math.max(maximo, ativos)
+    await new Promise((r) => setTimeout(r, n === 99 ? 5000 : 30))
+    ativos--
+    return n
+  }
+  const itens = Array.from({ length: 40 }, (_, i) => i)
+  const t0 = Date.now()
+  const r = await lerComOrcamento(itens, lenta, { concorrencia: 5, prazoMs: 100 })
+  assert.ok(Date.now() - t0 < 1000)
+  assert.ok(r.length > 0 && r.length < 40, `parcial: ${r.length}`)
+  assert.ok(maximo <= 5)
+  const travada = await lerComOrcamento([99, 99], lenta, { concorrencia: 2, prazoMs: 80 })
+  assert.deepEqual(travada, [])
+})
+test('monitor: falha de leitura vira monitor_falhou por campo, com dedupe', async () => {
+  const dep = (abertos) => depsMon({ conexoes: async () => [{ campoId: 'c1', status: 'conectado', qualidade: null, falhou: true }], alertasAbertos: async () => abertos })
+  assert.deepEqual((await verificarMeta(dep([]))).map((a) => `${a.tipo}:${a.campoId}`), ['monitor_falhou:c1'])
+  assert.deepEqual(await verificarMeta(dep([{ tipo: 'monitor_falhou', campoId: 'c1' }])), [])
 })

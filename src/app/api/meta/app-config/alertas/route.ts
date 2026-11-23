@@ -14,9 +14,11 @@ export async function GET(req: NextRequest) {
     if (negado) return negado
     try {
       return json({ alertas: await listarAbertos() })
-    } catch {
-      /* tabela ainda não criada */
-      return json({ alertas: [] })
+    } catch (e) {
+      const cod = (e as { code?: string })?.code
+      if (cod === 'P2021' || /does not exist/i.test((e as Error)?.message ?? '')) return json({ alertas: [] }) // tabela ainda não criada
+      console.error('[meta/alertas] erro ao listar:', (e as Error)?.name)
+      return json({ error: 'Não foi possível carregar os alertas.' }, 500)
     }
   })
 }
