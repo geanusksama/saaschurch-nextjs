@@ -27,6 +27,11 @@ export async function GET(req: NextRequest) {
     const r = await executarMonitor(depsExecucaoReais())
     return NextResponse.json({ ok: true, ...r })
   } catch (e) {
+    if ((e as { code?: string })?.code === 'P2021') {
+      // Tabela ainda não existe neste banco (baseline não aplicado): não é erro do cron.
+      console.warn('[cron/meta-monitor] tabela ausente')
+      return NextResponse.json({ ok: false, motivo: 'tabela ausente' })
+    }
     console.error('[cron/meta-monitor] falhou:', (e as Error)?.name)
     return NextResponse.json({ ok: false, error: 'falha ao executar o monitor' }, { status: 500 })
   }

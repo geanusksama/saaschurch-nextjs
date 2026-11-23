@@ -25,7 +25,10 @@ export function json(corpo: unknown, status = 200) {
 }
 
 export function respostaDeErro(e: unknown) {
-  if (e instanceof ErroConfigMeta) return json({ error: e.message }, 503)
+  if (e instanceof ErroConfigMeta) {
+    console.warn('[meta/whatsapp] configuração indisponível:', e.name)
+    return json({ error: 'Conexão do WhatsApp oficial indisponível no momento.' }, 503)
+  }
   if (e instanceof ErroServico) return json({ error: e.message }, e.status)
   console.error('[meta/whatsapp] erro inesperado:', (e as Error)?.name)
   return json({ error: 'Erro interno ao processar a conexão do WhatsApp oficial.' }, 500)

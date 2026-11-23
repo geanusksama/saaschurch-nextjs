@@ -95,7 +95,7 @@ const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 
 export async function obterStatus(deps: Dependencias, campoId: string): Promise<RespostaConexao> {
   const c = await deps.repo.buscarConexaoDoCampo(campoId)
-  if (!c) return { conectado: false }
+  if (!c || c.status === 'desconectado') return { conectado: false }
   const base = {
     conectado: true as const,
     numero: c.numero,
@@ -130,6 +130,20 @@ export async function obterStatus(deps: Dependencias, campoId: string): Promise<
   }
 }
 
+/**
+ * Status para a tela: consulta a linha do campo primeiro. Sem linha (ou desconectada),
+ * responde sem montar dependências — logo, sem exigir a configuração da Meta.
+ */
+export async function obterStatusDoCampo(
+  repo: Pick<Dependencias['repo'], 'buscarConexaoDoCampo'>,
+  montarDeps: () => Promise<Dependencias>,
+  campoId: string,
+): Promise<RespostaConexao> {
+  const c = await repo.buscarConexaoDoCampo(campoId)
+  if (!c || c.status === 'desconectado') return { conectado: false }
+  return obterStatus(await montarDeps(), campoId)
+}
+
 export async function conectar(
   deps: Dependencias,
   d: { campoId: string; userId: string | null; code: unknown; wabaId: unknown; phoneNumberId: unknown },
@@ -149,7 +163,17 @@ export async function conectar(
     const token = await deps.meta.trocarCodigo(deps.graph, {
       appId: deps.config.appId, appSecret: deps.config.appSecret, code,
     })
-    const pin = deps.meta.gerarPin()
+    // Reconexão do mesmo número: reaproveita o PIN já registrado (a Meta o exige igual).
+    let pin: string | null = null
+    const anterior = await deps.repo.buscarConexaoDoCampo(d.campoId)
+    if (anterior && anterior.phoneNumberId === phoneNumberId && anterior.pinCifrado) {
+      try {
+        pin = deps.cifra.decifrar(anterior.pinCifrado, deps.config.chaveCifra) || null
+      } catch {
+        pin = null
+      }
+    }
+    if (!pin) pin = deps.meta.gerarPin()
     await deps.meta.registrarNumero(deps.graph, token, phoneNumberId, pin)
     await deps.meta.assinarWebhookDaConta(deps.graph, token, wabaId, {
       callbackUrl: `${deps.config.callbackBaseUrl}/api/meta/whatsapp/webhook`,
@@ -181,10 +205,10 @@ export async function conectar(
 }
 
 export async function desconectar(deps: Dependencias, campoId: string): Promise<RespostaConexao> {
-  // Melhor esforço: falha na Meta (ou token ilegível) não impede o apagamento local.
+  // Melhor esforço: falha na Meta (ou token ilegível) não impede a desconexão local.
   try {
     const c = await deps.repo.buscarConexaoDoCampo(campoId)
-    if (c) {
+    if (c && c.status !== 'desconectado') {
       const token = deps.cifra.decifrar(c.tokenCifrado, deps.config.chaveCifra)
       await deps.meta.cancelarAssinaturaWebhook(deps.graph, token, c.wabaId)
     }

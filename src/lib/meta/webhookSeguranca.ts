@@ -16,6 +16,10 @@ export function assinaturaValida(corpoBruto: string, cabecalho: string | null, a
 
 export function respostaDesafio(params: URLSearchParams, verifyToken: string): string | null {
   if (params.get('hub.mode') !== 'subscribe') return null
-  if (params.get('hub.verify_token') !== verifyToken) return null
-  return params.get('hub.challenge')
+  const recebido = Buffer.from(params.get('hub.verify_token') ?? '', 'utf8')
+  const esperado = Buffer.from(verifyToken, 'utf8')
+  if (recebido.length !== esperado.length || !crypto.timingSafeEqual(recebido, esperado)) return null
+  const desafio = params.get('hub.challenge')
+  if (desafio !== null && desafio.length > 200) return null
+  return desafio
 }

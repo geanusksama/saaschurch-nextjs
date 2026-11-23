@@ -175,6 +175,7 @@ export default function MetaAppConfig() {
         value={form[chave]}
         onChange={(e) => setForm({ ...form, [chave]: e.target.value })}
         autoComplete="off"
+        disabled={!visao?.base}
       />
       {dica && <span className="text-xs text-slate-500">{dica}</span>}
     </label>
@@ -225,7 +226,7 @@ export default function MetaAppConfig() {
                   aria-checked={visao.conexaoLiberada}
                   aria-label="Liberar conexão para as igrejas"
                   onClick={alternar}
-                  disabled={ocupado}
+                  disabled={ocupado || !visao.base}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${visao.conexaoLiberada ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'}`}
                 >
                   <span className={`inline-block size-5 rounded-full bg-white transition-transform ${visao.conexaoLiberada ? 'translate-x-5' : 'translate-x-0.5'}`} />
@@ -236,6 +237,11 @@ export default function MetaAppConfig() {
 
           <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Configuração do app</h2>
+            {!visao.base && (
+              <p role="note" className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+                Edite no sistema base (Campinas).
+              </p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {campo('ID do app', 'appId')}
               {campo('Configuração do Embedded Signup', 'configId')}
@@ -253,11 +259,13 @@ export default function MetaAppConfig() {
                 type="password"
                 className={campoClasse}
                 value={form.appSecret}
+                disabled={!visao.base}
                 onChange={(e) => setForm({ ...form, appSecret: e.target.value })}
                 placeholder="Nova chave secreta (deixe vazio para manter a atual)"
                 autoComplete="new-password"
               />
             </div>
+            {visao.base && (
             <Permissao chave="meta_app.config.editar" rotulo="Alterar a configuração do app da Meta" herda="meta_app.view">
               <button
                 onClick={salvar}
@@ -268,6 +276,7 @@ export default function MetaAppConfig() {
                 Salvar
               </button>
             </Permissao>
+            )}
           </section>
 
           <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-3 shadow-sm">

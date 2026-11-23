@@ -50,16 +50,23 @@ export default function WhatsAppOficial() {
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [liberada, setLiberada] = useState(false);
+  const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string } | null>(null);
+  const [sdkPronto, setSdkPronto] = useState(false);
 
   useEffect(() => {
     let vivo = true;
     fetch(`${BASE}/config`, { headers: cabecalhos() })
       .then(async (r) => {
         if (!r.ok) throw new Error(await lerErro(r));
-        return (await r.json()) as { conexaoLiberada?: boolean };
+        return (await r.json()) as { conexaoLiberada?: boolean; appId?: string; configId?: string; graphVersion?: string };
       })
-      .then((c) => {
-        if (vivo) setLiberada(c.conexaoLiberada === true);
+      .then(async (c) => {
+        if (!vivo || c.conexaoLiberada !== true || !c.appId || !c.configId || !c.graphVersion) return;
+        setCfg({ appId: c.appId, configId: c.configId, graphVersion: c.graphVersion });
+        setLiberada(true);
+        // SDK carregado ao abrir a tela: o clique precisa chamar FB.login direto (sem await antes).
+        await carregarSdkMeta(c.appId, c.graphVersion);
+        if (vivo) setSdkPronto(true);
       })
       .catch((e) => {
         if (vivo) setErro(e instanceof Error ? e.message : 'Falha ao carregar a configuração.');
@@ -84,13 +91,10 @@ export default function WhatsAppOficial() {
   }, []);
 
   const conectar = async () => {
+    if (!cfg || !sdkPronto) return;
     setOcupado(true);
     setErro(null);
     try {
-      const rc = await fetch(`${BASE}/config`, { headers: cabecalhos() });
-      if (!rc.ok) throw new Error(await lerErro(rc));
-      const cfg = (await rc.json()) as { appId: string; configId: string; graphVersion: string };
-      await carregarSdkMeta(cfg.appId, cfg.graphVersion);
       const res = await abrirEmbeddedSignup(cfg.configId);
       const r = await fetch(`${BASE}/conexao`, {
         method: 'POST',
@@ -130,11 +134,11 @@ export default function WhatsAppOficial() {
     <Permissao chave="whatsapp_oficial.conexao.conectar" rotulo="Conectar com a Meta" herda="whatsapp_oficial.edit">
       <button
         onClick={() => void conectar()}
-        disabled={ocupado}
+        disabled={ocupado || !sdkPronto}
         className="inline-flex items-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
-        {ocupado ? <Loader2 className="size-4 animate-spin" /> : <BadgeCheck className="size-4" />}
-        {rotulo}
+        {ocupado || !sdkPronto ? <Loader2 className="size-4 animate-spin" /> : <BadgeCheck className="size-4" />}
+        {sdkPronto ? rotulo : 'Carregando…'}
       </button>
     </Permissao>
   );

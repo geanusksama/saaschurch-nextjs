@@ -47,5 +47,9 @@ export async function marcarErro(campoId: string, msg: string): Promise<void> {
 }
 
 export async function desconectar(campoId: string): Promise<void> {
-  await prisma.metaWhatsappConexao.deleteMany({ where: { campoId } })
+  // Desconexão suave: guarda número e PIN (a reconexão reaproveita o PIN); só descarta o token.
+  await prisma.metaWhatsappConexao.updateMany({
+    where: { campoId },
+    data: { status: 'desconectado', tokenCifrado: '', ultimoErro: null },
+  })
 }

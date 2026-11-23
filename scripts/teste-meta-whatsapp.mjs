@@ -124,7 +124,7 @@ test('pin tem 6 dígitos', () => { assert.match(gerarPin(), /^\d{6}$/) })
 // ---- Serviço de conexão (Task 4) ----
 import { validarBaseUrl, ErroConfigMeta } from '../src/lib/meta/configMeta.ts'
 import { cancelarAssinaturaWebhook } from '../src/lib/meta/conexaoMeta.ts'
-import { obterStatus, conectar, desconectar, ErroServico } from '../src/lib/meta/servicoConexao.ts'
+import { obterStatus, obterStatusDoCampo, conectar, desconectar, ErroServico } from '../src/lib/meta/servicoConexao.ts'
 
 function fakeDeps(over = {}) {
   const chamadas = []
@@ -469,4 +469,84 @@ test('monitor: falha de leitura vira monitor_falhou por campo, com dedupe', asyn
   const dep = (abertos) => depsMon({ conexoes: async () => [{ campoId: 'c1', status: 'conectado', qualidade: null, falhou: true }], alertasAbertos: async () => abertos })
   assert.deepEqual((await verificarMeta(dep([]))).map((a) => `${a.tipo}:${a.campoId}`), ['monitor_falhou:c1'])
   assert.deepEqual(await verificarMeta(dep([{ tipo: 'monitor_falhou', campoId: 'c1' }])), [])
+})
+
+// ── Correções da revisão final ────────────────────────────────────────────
+test('webhook: verify token com tamanho diferente é recusado e challenge longo também', () => {
+  const mk = (t, c) => new URLSearchParams({ 'hub.mode': 'subscribe', 'hub.verify_token': t, 'hub.challenge': c })
+  assert.equal(respostaDesafio(mk('vt', '1'), 'vt'), '1')
+  assert.equal(respostaDesafio(mk('vt-maior', '1'), 'vt'), null)
+  assert.equal(respostaDesafio(mk('', '1'), 'vt'), null)
+  assert.equal(respostaDesafio(mk('vt', 'x'.repeat(200)), 'vt'), 'x'.repeat(200))
+  assert.equal(respostaDesafio(mk('vt', 'x'.repeat(201)), 'vt'), null)
+})
+
+test('GET sem linha: conectado false sem montar dependências (sem exigir config)', async () => {
+  let montou = false
+  const repo = { async buscarConexaoDoCampo() { return null } }
+  const r = await obterStatusDoCampo(repo, async () => { montou = true; throw new ErroConfigMeta('incompleta') }, 'c1')
+  assert.deepEqual(r, { conectado: false })
+  assert.equal(montou, false)
+})
+
+test('GET com linha desconectada: conectado false sem montar dependências', async () => {
+  let montou = false
+  const repo = { async buscarConexaoDoCampo() { return { ...conexaoSalva(''), status: 'desconectado' } } }
+  assert.deepEqual(await obterStatusDoCampo(repo, async () => { montou = true }, 'c1'), { conectado: false })
+  assert.equal(montou, false)
+  const { deps } = fakeDeps()
+  deps.repo.conexao = { ...conexaoSalva(''), status: 'desconectado' }
+  assert.deepEqual(await obterStatus(deps, 'c1'), { conectado: false })
+})
+
+test('GET com linha ativa monta as dependências e consulta a Meta', async () => {
+  const { deps } = fakeDeps()
+  deps.repo.conexao = conexaoSalva(cifrar('TOK', CHAVE))
+  const r = await obterStatusDoCampo(deps.repo, async () => deps, 'c1')
+  assert.equal(r.conectado, true); assert.equal(r.qualidade, 'GREEN')
+})
+
+test('config incompleta: a rota /config responde 200 conexaoLiberada false, sem nomes de variáveis', async () => {
+  // lerConfigMeta carrega o Prisma por import tardio e não roda sob node:test; confere a rota pelo código.
+  const { readFileSync } = await import('node:fs')
+  const src = readFileSync(new URL('../src/app/api/meta/whatsapp/config/route.ts', import.meta.url), 'utf8')
+  assert.match(src, /e instanceof ErroConfigMeta/)
+  assert.match(src, /json\(\{ conexaoLiberada: false \}\)/)
+  assert.doesNotMatch(src.slice(src.indexOf('ErroConfigMeta)')), /e\.message/)
+  assert.throws(() => validarBaseUrl('lixo'), (e) => e instanceof ErroConfigMeta)
+})
+
+test('conectar reaproveita o PIN do mesmo número já registrado', async () => {
+  const { deps, reg } = fakeDeps()
+  deps.meta.gerarPin = () => { throw new Error('não devia gerar PIN novo') }
+  deps.repo.conexao = { ...conexaoSalva(''), phoneNumberId: 'p1', pinCifrado: cifrar('654321', CHAVE), status: 'desconectado' }
+  await conectar(deps, { campoId: 'c1', userId: 'u', code: 'C', wabaId: 'w', phoneNumberId: 'p1' })
+  assert.equal(decifrar(reg.salvos[0].pinCifrado, CHAVE), '654321')
+})
+
+test('conectar gera PIN novo para número diferente ou PIN ilegível', async () => {
+  const a = fakeDeps()
+  a.deps.repo.conexao = { ...conexaoSalva(''), phoneNumberId: 'outro', pinCifrado: cifrar('654321', CHAVE) }
+  await conectar(a.deps, { campoId: 'c1', userId: 'u', code: 'C', wabaId: 'w', phoneNumberId: 'p1' })
+  assert.equal(decifrar(a.reg.salvos[0].pinCifrado, CHAVE), '123456')
+  const b = fakeDeps()
+  b.deps.repo.conexao = { ...conexaoSalva(''), phoneNumberId: 'p1', pinCifrado: 'lixo' }
+  await conectar(b.deps, { campoId: 'c1', userId: 'u', code: 'C', wabaId: 'w', phoneNumberId: 'p1' })
+  assert.equal(decifrar(b.reg.salvos[0].pinCifrado, CHAVE), '123456')
+})
+
+test('desconectar já desconectado não chama a Meta', async () => {
+  const { deps, chamadas, reg } = fakeDeps()
+  deps.repo.conexao = { ...conexaoSalva(''), status: 'desconectado' }
+  await desconectar(deps, 'c1')
+  assert.deepEqual(chamadas, [])
+  assert.deepEqual(reg.desconectados, ['c1'])
+})
+
+test('conexaoRepo.desconectar mantém pin e número (atualiza, não apaga)', async () => {
+  const { readFileSync } = await import('node:fs')
+  const src = readFileSync(new URL('../src/lib/meta/conexaoRepo.ts', import.meta.url), 'utf8')
+  const corpo = src.slice(src.indexOf('export async function desconectar'))
+  assert.match(corpo, /updateMany/); assert.match(corpo, /status: 'desconectado'/)
+  assert.doesNotMatch(corpo, /deleteMany|pinCifrado|phoneNumberId/)
 })

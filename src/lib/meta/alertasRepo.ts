@@ -9,7 +9,7 @@ export type AlertaLinha = {
 
 export async function listarAbertos(): Promise<Array<AlertaLinha & { campoNome: string | null }>> {
   const alertas: AlertaLinha[] = await prisma.metaAlerta.findMany({
-    where: { resolvidoEm: null }, orderBy: { criadoEm: 'desc' },
+    where: { resolvidoEm: null }, orderBy: { criadoEm: 'desc' }, take: 200,
     select: { id: true, campoId: true, tipo: true, mensagem: true, proposta: true, criadoEm: true },
   })
   const ids = [...new Set(alertas.map((a) => a.campoId).filter((x): x is string => !!x))]
@@ -31,7 +31,7 @@ export async function aprovarEResolver(dados: Atualizacao & { appSecretCifrado?:
 }
 
 export async function abertosParaDedupe(): Promise<Array<{ tipo: string; campoId: string | null }>> {
-  return prisma.metaAlerta.findMany({ where: { resolvidoEm: null }, select: { tipo: true, campoId: true } })
+  return prisma.metaAlerta.findMany({ where: { resolvidoEm: null }, select: { tipo: true, campoId: true }, take: 1000 })
 }
 
 export async function gravarAlertas(alertas: AlertaMeta[]): Promise<void> {
@@ -58,6 +58,7 @@ export async function resolverAlerta(id: string, userId: string | null): Promise
 
 export async function conexoesParaMonitor(): Promise<Array<{ campoId: string; phoneNumberId: string; tokenCifrado: string; status: string }>> {
   return prisma.metaWhatsappConexao.findMany({
+    where: { status: { not: 'desconectado' } },
     select: { campoId: true, phoneNumberId: true, tokenCifrado: true, status: true },
     orderBy: { campoId: 'asc' }, take: 200,
   })

@@ -54,7 +54,7 @@ Observações:
 
 ## 4. Subir uma igreja nova (Coolify)
 
-1. Criar o app e o banco da igreja pelo procedimento normal (ver `docs/infra/MIGRACAO-VILASOLANGE-COOLIFY.md`). As migrations `20261124000000_meta_whatsapp_conexoes`, `..010000_meta_app_config` e `..020000_meta_alertas` vêm no deploy (ver Pendências sobre a aplicação em Campinas).
+1. Criar o app e o banco da igreja pelo procedimento normal (ver `docs/infra/MIGRACAO-VILASOLANGE-COOLIFY.md`). As três tabelas (`meta_whatsapp_conexoes`, `meta_app_config` e `meta_alertas`) já estão no `baseline/` (commits 9f78c53 e 9a19ee3 no painelchurch; conferido com `grep` em `05_tables.sql`), então o `migrate-self` as cria no banco da igreja no deploy. Não rode as migrations do Prisma na igreja nova.
 2. Em **Environment Variables** do app, cadastrar (igreja não-base): `META_TOKEN_ENCRYPTION_KEY` (gerar uma nova), `META_CALLBACK_BASE_URL` (HTTPS do domínio da igreja), `META_CONFIG_URL` (HTTPS do base), `META_CONFIG_SYNC_TOKEN` (mesmo valor do base) e `CRON_SECRET`. **Não** definir `META_CONFIG_BASE`.
 3. **Scheduled Task** do app, nome `cron-meta-monitor`, frequência `0 11 * * *` (diário, 11:00 UTC), comando:
    `curl -fsS -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/meta-monitor`

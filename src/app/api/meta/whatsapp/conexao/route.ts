@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { exigirPermissao } from '@/lib/permissoes/servidor'
-import { conectar, desconectar, obterStatus } from '@/lib/meta/servicoConexao'
+import { conectar, desconectar, obterStatusDoCampo } from '@/lib/meta/servicoConexao'
+import * as repo from '@/lib/meta/conexaoRepo'
 import { json, montarDependencias, MSG_SEM_CAMPO, respostaDeErro } from '@/lib/meta/depsConexao'
 
 export const dynamic = 'force-dynamic'
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
     if (negado) return negado
     if (!user.campoId) return json({ error: MSG_SEM_CAMPO }, 400)
     try {
-      return json(await obterStatus(await montarDependencias(), user.campoId))
+      return json(await obterStatusDoCampo(repo, montarDependencias, user.campoId))
     } catch (e) {
       return respostaDeErro(e)
     }
