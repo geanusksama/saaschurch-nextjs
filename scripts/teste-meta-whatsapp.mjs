@@ -72,14 +72,48 @@ test('registra o número com pin', async () => {
   assert.match(chamadas[0].url, /\/P1\/register$/)
   assert.deepEqual(JSON.parse(chamadas[0].init.body), { messaging_product: 'whatsapp', pin: '123456' })
 })
-test('lê o status do número', async () => {
-  const { f, chamadas } = fetchFalso([{ body: { display_phone_number: '+55 11 9', verified_name: 'Igreja', quality_rating: 'GREEN', status: 'CONNECTED', whatsapp_business_manager_messaging_limit: 'TIER_1K' } }, { body: { display_phone_number: '1', verified_name: 'N', quality_rating: 'XYZ', status: 'PENDING' } }])
+test('lê o status do número (limite em chamada separada)', async () => {
+  const { f, chamadas } = fetchFalso([
+    { body: { display_phone_number: '+55 11 9', verified_name: 'Igreja', quality_rating: 'GREEN', status: 'CONNECTED' } },
+    { body: { whatsapp_business_manager_messaging_limit: 'TIER_250' } },
+    { body: { display_phone_number: '1', verified_name: 'N', quality_rating: 'NA', status: 'PENDING' } },
+    { body: {} },
+  ])
   const g = criarGraph({ versao: 'v27.0', fetch: f })
-  assert.deepEqual(await lerStatusNumero(g, 'TK', 'P1'), { numero: '+55 11 9', nomeExibicao: 'Igreja', qualidade: 'GREEN', status: 'CONNECTED', limiteDiario: 'TIER_1K' })
-  assert.match(chamadas[0].url, /\/P1\?fields=/)
+  assert.deepEqual(await lerStatusNumero(g, 'TK', 'P1'), { numero: '+55 11 9', nomeExibicao: 'Igreja', qualidade: 'GREEN', status: 'CONNECTED', limiteDiario: 'TIER_250' })
+  assert.match(chamadas[0].url, /\/P1\?fields=display_phone_number/)
+  assert.match(chamadas[1].url, /fields=whatsapp_business_manager_messaging_limit$/)
   const s2 = await lerStatusNumero(g, 'TK', 'P1')
   assert.equal(s2.qualidade, 'UNKNOWN')
   assert.equal(s2.limiteDiario, null)
+})
+test('limite rejeitado (código 100) não derruba o status', async () => {
+  const { f } = fetchFalso([
+    { body: { display_phone_number: '1', verified_name: 'N', quality_rating: 'RED', status: 'CONNECTED' } },
+    { status: 400, body: { error: { message: 'bad field', code: 100 } } },
+  ])
+  const s = await lerStatusNumero(criarGraph({ versao: 'v27.0', fetch: f }), 'TK', 'P1')
+  assert.equal(s.qualidade, 'RED'); assert.equal(s.limiteDiario, null)
+})
+test('limite com token inválido (190) propaga', async () => {
+  const { f } = fetchFalso([
+    { body: { display_phone_number: '1', verified_name: 'N', quality_rating: 'RED', status: 'CONNECTED' } },
+    { status: 401, body: { error: { message: 'expired', code: 190 } } },
+  ])
+  await assert.rejects(lerStatusNumero(criarGraph({ versao: 'v27.0', fetch: f }), 'TK', 'P1'), (e) => e instanceof ErroGraph && e.tokenInvalido)
+})
+test('trocarCodigo sem access_token lança', async () => {
+  const { f } = fetchFalso([{ body: { foo: 1 } }])
+  await assert.rejects(trocarCodigo(criarGraph({ versao: 'v27.0', fetch: f }), { appId: '1', appSecret: 's', code: 'C' }), /sem access_token/)
+})
+test('200 com corpo não-JSON vira ErroGraph', async () => {
+  const f = async () => new Response('<html>ops</html>', { status: 200 })
+  await assert.rejects(trocarCodigo(criarGraph({ versao: 'v27.0', fetch: f }), { appId: '1', appSecret: 's', code: 'C' }), (e) => e instanceof ErroGraph && e.status === 200)
+})
+test('fetch recebe signal de timeout', async () => {
+  const { f, chamadas } = fetchFalso([{ body: { success: true } }])
+  await registrarNumero(criarGraph({ versao: 'v27.0', fetch: f }), 'TK', 'P1', '123456')
+  assert.ok(chamadas[0].init.signal instanceof AbortSignal)
 })
 test('token inválido vira ErroGraph.tokenInvalido', async () => {
   const { f } = fetchFalso([{ status: 401, body: { error: { message: 'expired', code: 190 } } }])

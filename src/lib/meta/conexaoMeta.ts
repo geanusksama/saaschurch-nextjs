@@ -22,7 +22,10 @@ export async function trocarCodigo(
     client_secret: dados.appSecret,
     code: dados.code,
   })
-  return String(r.access_token)
+  if (typeof r?.access_token !== 'string' || !r.access_token) {
+    throw new Error('Resposta da Meta sem access_token')
+  }
+  return r.access_token
 }
 
 export async function registrarNumero(graph: Graph, token: string, phoneNumberId: string, pin: string): Promise<void> {
@@ -45,19 +48,27 @@ export async function assinarWebhookDaConta(
 const QUALIDADES = ['GREEN', 'YELLOW', 'RED']
 
 export async function lerStatusNumero(graph: Graph, token: string, phoneNumberId: string): Promise<StatusNumero> {
-  // Não confirmado na doc (sem acesso web): pedimos o limite como campo extra do número; ausente => null.
   const r = await graph.get(
     phoneNumberId,
-    { fields: 'display_phone_number,verified_name,quality_rating,status,whatsapp_business_manager_messaging_limit' },
+    { fields: 'display_phone_number,verified_name,quality_rating,status' },
     token,
   )
-  const limite = r.whatsapp_business_manager_messaging_limit
+  // Doc da Meta (messaging limits): GET /<PHONE_NUMBER_ID>?fields=whatsapp_business_manager_messaging_limit
+  // (ex.: "TIER_250"). Chamada separada: se a Graph rejeitar o campo, o status continua válido.
+  let limiteDiario: string | null = null
+  try {
+    const l = await graph.get(phoneNumberId, { fields: 'whatsapp_business_manager_messaging_limit' }, token)
+    const v = l?.whatsapp_business_manager_messaging_limit
+    limiteDiario = v == null ? null : String(v)
+  } catch (e) {
+    if ((e as { tokenInvalido?: boolean })?.tokenInvalido) throw e
+  }
   return {
     numero: String(r.display_phone_number ?? ''),
     nomeExibicao: String(r.verified_name ?? ''),
     qualidade: QUALIDADES.includes(r.quality_rating) ? r.quality_rating : 'UNKNOWN',
     status: String(r.status ?? ''),
-    limiteDiario: limite == null ? null : String(limite),
+    limiteDiario,
   }
 }
 

@@ -31,7 +31,7 @@ export function criarGraph(opts: { versao: string; fetch?: FetchLike }): Graph {
   async function chamar(url: string, init: RequestInit, token?: string): Promise<any> {
     const headers: Record<string, string> = { ...(init.headers as Record<string, string> | undefined) }
     if (token) headers.Authorization = `Bearer ${token}`
-    const resposta = await executar(url, { ...init, headers })
+    const resposta = await executar(url, { ...init, headers, signal: init.signal ?? AbortSignal.timeout(15000) })
     const texto = await resposta.text()
     let json: any = null
     try { json = texto ? JSON.parse(texto) : null } catch { json = null }
@@ -40,6 +40,7 @@ export function criarGraph(opts: { versao: string; fetch?: FetchLike }): Graph {
       throw new ErroGraph(String(json.error.message ?? 'Erro da Graph API'), resposta.status, codigo)
     }
     if (!resposta.ok) throw new ErroGraph(`Graph API respondeu ${resposta.status}`, resposta.status, null)
+    if (json === null) throw new ErroGraph(`Graph API respondeu ${resposta.status} sem JSON válido`, resposta.status, null)
     return json
   }
 
