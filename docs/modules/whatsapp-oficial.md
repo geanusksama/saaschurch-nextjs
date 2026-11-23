@@ -1,6 +1,6 @@
 # WhatsApp Oficial (Meta Cloud API) — módulo
 
-Situação em 23/11/2026: **Etapa 1 (base) pronta no código**. Ainda não está liberada para as igrejas (ver "Pendências").
+Situação em 23/11/2026: **Etapa 1 (base) e Etapa 2 (modelos) prontas no código**. Ainda não estão liberadas para as igrejas (ver "Pendências").
 Spec: `docs/superpowers/specs/2026-11-23-whatsapp-oficial-meta-design.md` (com o "Adendo aprovado pelo dono").
 Plano: `docs/superpowers/plans/2026-11-23-whatsapp-oficial-etapa1-base.md`.
 
@@ -87,10 +87,82 @@ Só no sistema base, só para master. Permissão de edição: `meta_app.config.e
 - Configuração do app Meta, variáveis na Vercel de Campinas e o teste real com o número de teste (Task 7, passos 1, 2 e 4) são feitos com o dono, fora do código.
 - Menores adiados: tipar o retorno do Graph (alguns `any` em `graph.ts`); aviso do `mesclarComEnv` a cada requisição pode inundar o log; sem `META_ALERTA_INSTANCIA_ID` o aviso pode sair de instância de qualquer campo.
 
-## 7. Próximas etapas
+## 7. Etapa 2: central "Meta Oficial" e modelos de mensagem
 
-1. **Base** (esta): configuração do app, conectar número, tela de status.
-2. **Modelos**: listar modelos da conta com status e categoria; criar modelo e enviar à aprovação da Meta; status atualizado por cron.
+### 7.1 Central "Meta Oficial"
+
+- Entrada: **Configurações → Comunicação → cartão "Meta Oficial"**. No menu lateral é um item único, "Meta Oficial", com a permissão `whatsapp_oficial`.
+- Rota: `/app-ui/system/meta-oficial`, com abas em `?aba=`: `visao-geral`, `conexao`, `modelos`, `envio`, `conversas`, `leads` e `app`.
+- Abas `envio`, `conversas` e `leads` ainda são "Em breve" (Etapas 3, 4 e 5).
+- A aba **App** (configuração central da Meta) só aparece para master.
+- Rotas antigas que redirecionam: `system/whatsapp-oficial` vai para `?aba=conexao` e `system/meta-app` vai para `?aba=app`. A tela de configuração central descrita na seção 5 passou a ser a aba App.
+
+### 7.2 Modelos (tabela `meta_whatsapp_modelos`)
+
+- Migration `20261124030000_meta_whatsapp_modelos` (`prisma/migrations/`). Já está no `baseline/` (`05_tables.sql`, manifest `5efc5aecf0f125da`), então o `migrate-self` cria a tabela nas igrejas no deploy.
+- Uma linha por modelo e por campo: a unicidade é `(campo_id, meta_template_id)`. RLS ligado sem política: só o servidor acessa.
+- Colunas principais:
+  - `campo_id` (dono da linha, com `ON DELETE CASCADE`), `waba_id`, `meta_template_id` (id que a Meta devolve).
+  - `nome`, `idioma` (padrão `pt_BR`), `categoria` (`MARKETING` ou `UTILITY`).
+  - `status` (`APPROVED`, `PENDING`, `REJECTED`, `PAUSED`, `DISABLED`; rótulos em `ROTULO_STATUS`) e `motivo_recusa`.
+  - `componentes` (JSON do template como a Meta recebe: cabeçalho, corpo, rodapé, botões).
+  - `variaveis` (JSON, ver abaixo), `criado_por`, `criado_em`, `atualizado_em`, `sincronizado_em`.
+- Significado de `variaveis`: são as variáveis do corpo, na ordem de `{{1}}`, `{{2}}` etc. Cada item tem `posicao`, `tipo` (`nome`, `igreja`, `data` ou `livre`) e `exemplo`. Se o cabeçalho tem variável, ela entra como **último item com `posicao: 0`** (tipo e exemplo do cabeçalho). Quem lê `variaveis` tem que tratar `posicao: 0` como cabeçalho, não como `{{0}}` do corpo.
+- Regras validadas (`src/lib/meta/modelos.ts`, função `validarRascunho`; forma do corpo em `normalizarRascunho`):
+  - Nome de 1 a 512 caracteres, só minúsculas, números e sublinhado (`nomeDoTitulo` converte um título para esse formato).
+  - Categoria `MARKETING` ou `UTILITY`.
+  - Cabeçalho de no máximo 60 caracteres, com no máximo 1 variável, que tem que ser `{{1}}` e precisa de exemplo.
+  - Corpo de 1 a 1024 caracteres; não pode começar nem terminar com variável; as variáveis são sequenciais a partir de `{{1}}`, sem pular número, e cada uma precisa de exemplo.
+  - Rodapé de no máximo 60 caracteres, sem variável.
+  - Até 3 botões de resposta rápida, cada um de 1 a 25 caracteres.
+  - Limites de forma no servidor: até 20 variáveis; exemplo de até 200 caracteres.
+- **Duplicar em vez de editar.** A tela oferece "Duplicar" (abre o editor com os dados do modelo, para criar um novo). A tela também tem "Atualizar" (sincroniza com a Meta) e "Excluir", com confirmação na própria linha.
+
+### 7.3 Rotas
+
+| Método e rota | Permissão | O que faz |
+|---|---|---|
+| `GET /api/meta/whatsapp/modelos` | `whatsapp_oficial.modelos.view` | Lista os modelos do campo. Devolve `conectado: false` e lista vazia se não há conexão ativa. |
+| `POST /api/meta/whatsapp/modelos` | `whatsapp_oficial.modelos.criar` | Valida o corpo e cria o modelo na Meta (201). |
+| `DELETE /api/meta/whatsapp/modelos/[id]` | `whatsapp_oficial.modelos.excluir` | Exclui o modelo do campo. `id` fora do formato UUID devolve 404. |
+| `POST /api/meta/whatsapp/modelos/sincronizar` | `whatsapp_oficial.modelos.view` | Puxa da Meta a lista de modelos do campo e substitui a linhas locais (mantém `variaveis` e `criado_por` dos que já existiam). |
+
+- As três chaves de permissão `whatsapp_oficial.modelos.view`, `.criar` e `.excluir` estão no catálogo (`src/app-ui/system/permissionCatalog.ts`, grupo "WhatsApp Oficial (Meta)") e na árvore gerada (`src/lib/permissoes/arvore.generated.ts`).
+- O sincronizar usa a chave `.view`, não tem chave própria. Quem pode ver a tela de modelos pode forçar a sincronização.
+
+### 7.4 Cron de status dos modelos
+
+- Rota: `GET /api/cron/meta-modelos`. Agendada em `vercel.json` para `15 * * * *` (todo início de hora, no minuto 15).
+- Sincroniza os modelos de cada campo com conexão ativa: 3 campos por vez, prazo total de 45 s; erro de um campo não para os outros.
+- Proteção: `CRON_SECRET`, em `Authorization: Bearer` ou no cabeçalho `x-cron-secret`. Sem ele, 401.
+- Se a tabela `meta_whatsapp_modelos` não existe (erro Prisma `P2021`), a rota responde **200** com `{ ok: false, motivo: "tabela ausente" }`. Não derruba o cron.
+- **Igrejas no Coolify**: criar a Scheduled Task do app, nome `cron-meta-modelos`, frequência `15 * * * *`, comando:
+  `curl -fsS -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/meta-modelos`
+  Mesmo padrão do `cron-meta-monitor` da seção 4. Cuidado para não rodar em dobro se a mesma igreja estiver nos dois lugares.
+
+### 7.5 Conexão do master (modo de teste)
+
+- O botão "Conectar com a Meta" é liberado pela regra do servidor em `GET /api/meta/whatsapp/config`: o campo `podeConectar` vale `true` se o interruptor "Liberar conexão para as igrejas" está ligado **ou** se o usuário é `profileType === 'master'`.
+- Hoje o interruptor está **desligado**. Só o master conecta; o resto das igrejas vê "Em breve" (`src/app-ui/system/WhatsAppOficial.tsx`). A tela mostra "Modo de teste do master: as igrejas ainda veem 'Em breve'".
+- Quando o interruptor for ligado, todas as igrejas passam a ver o botão de conexão.
+
+### 7.6 Número de teste da Meta
+
+- Número de teste no app ZionByte: **+1 555 164-9830**, phone number id `1507409935782334`, WABA `2262371601355109`.
+- Destinatário de teste cadastrado: o número do dono (não registrado neste documento).
+- Enquanto o app estiver em modo de desenvolvimento, só esse número de teste envia e recebe.
+
+### 7.7 Pendências para ligar de verdade
+
+- **Configuração do Cadastro Incorporado (config id)**: pendente. Confirmar o valor na configuração central (aba App) antes de ligar a conexão.
+- **Domínio `www.adcampinas.com.br`**: precisa estar em **Allowed domains** do Embedded Signup e em **Valid OAuth redirect URIs** no app Meta. Só o dono faz.
+- **Webhook**: pendente conferir o desafio de verificação e a assinatura no domínio de Campinas (o Embedded Signup só funciona em HTTPS no domínio liberado).
+- **Alertas das igrejas para o master**: Etapa seguinte.
+
+## 8. Próximas etapas
+
+1. **Base** (feita): configuração do app, conectar número, tela de status.
+2. **Modelos** (feita no código; ver seção 7): listar modelos da conta com status e categoria; criar modelo e enviar à aprovação da Meta; status atualizado por cron.
 3. **Envio em massa**: fila por cron, em lotes, com modelo aprovado, limite diário, qualidade do número e lista de exclusão ("SAIR"); acompanhamento enviado/entregue/lido/falhou.
 4. **Respostas**: webhook de mensagens recebidas e caixa de conversas própria, com janela de 24 h.
 5. **Leads de anúncio**: conectar Página do Facebook/Instagram e trazer leads dos formulários para o pipeline pastoral, com origem "Anúncio".
