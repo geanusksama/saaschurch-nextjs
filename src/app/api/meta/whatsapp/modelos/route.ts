@@ -4,7 +4,7 @@ import { exigirPermissao } from '@/lib/permissoes/servidor'
 import * as conexaoRepo from '@/lib/meta/conexaoRepo'
 import * as modelosRepo from '@/lib/meta/modelosRepo'
 import { criarModelo } from '@/lib/meta/servicoModelos'
-import { validarRascunho, type RascunhoModelo } from '@/lib/meta/modelos'
+import { normalizarRascunho, validarRascunho, type RascunhoModelo } from '@/lib/meta/modelos'
 import { json, MSG_SEM_CAMPO, respostaDeErro } from '@/lib/meta/depsConexao'
 import { montarDependenciasModelos } from '@/lib/meta/depsModelos'
 
@@ -25,36 +25,12 @@ export async function GET(req: NextRequest) {
   })
 }
 
-const ehTexto = (v: unknown) => v === undefined || v === null || typeof v === 'string'
-
-/** Forma do corpo (tipos); as regras da Meta ficam em validarRascunho. Devolve erros ou o rascunho. */
+/** Forma do corpo (normalizarRascunho) e depois as regras da Meta (validarRascunho). */
 function lerRascunho(b: unknown): { erros: string[] } | { rascunho: RascunhoModelo } {
-  const o = (b && typeof b === 'object' ? b : {}) as Record<string, unknown>
-  const erros: string[] = []
-  if (typeof o.nome !== 'string') erros.push('Informe o nome do modelo.')
-  if (o.categoria !== 'MARKETING' && o.categoria !== 'UTILITY') erros.push('Categoria inválida.')
-  if (typeof o.corpo !== 'string') erros.push('Informe o texto do corpo.')
-  for (const k of ['cabecalho', 'exemploCabecalho', 'tipoCabecalho', 'rodape'] as const) {
-    if (!ehTexto(o[k])) erros.push(`Campo ${k} inválido.`)
-  }
-  const botoes = o.botoes ?? []
-  if (!Array.isArray(botoes) || botoes.some((x) => !x || typeof (x as { texto?: unknown }).texto !== 'string')) {
-    erros.push('Botões inválidos.')
-  }
-  const vars = o.variaveis ?? []
-  if (!Array.isArray(vars) || vars.some((x) => {
-    const v = x as { posicao?: unknown; tipo?: unknown; exemplo?: unknown }
-    return !v || typeof v.posicao !== 'number' || typeof v.tipo !== 'string' || typeof v.exemplo !== 'string'
-  })) erros.push('Variáveis inválidas.')
-  if (erros.length) return { erros }
-  const rascunho = {
-    nome: o.nome, categoria: o.categoria, corpo: o.corpo,
-    cabecalho: o.cabecalho ?? undefined, exemploCabecalho: o.exemploCabecalho ?? undefined,
-    tipoCabecalho: o.tipoCabecalho ?? undefined, rodape: o.rodape ?? undefined,
-    botoes, variaveis: vars,
-  } as RascunhoModelo
-  const regras = validarRascunho(rascunho)
-  return regras.length ? { erros: regras } : { rascunho }
+  const n = normalizarRascunho(b)
+  if ('erros' in n) return n
+  const regras = validarRascunho(n.rascunho)
+  return regras.length ? { erros: regras } : n
 }
 
 export async function POST(req: NextRequest) {

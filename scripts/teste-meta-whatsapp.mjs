@@ -552,7 +552,7 @@ test('conexaoRepo.desconectar mantém pin e número (atualiza, não apaga)', asy
 })
 
 // ---- modelos (regras puras) ----
-import { nomeDoTitulo, validarRascunho, montarCorpoGraph, normalizarDaMeta, ROTULO_STATUS } from '../src/lib/meta/modelos.ts'
+import { nomeDoTitulo, normalizarRascunho, validarRascunho, montarCorpoGraph, normalizarDaMeta, ROTULO_STATUS } from '../src/lib/meta/modelos.ts'
 
 const rascunhoOk = () => ({
   nome: 'culto_de_ceia', categoria: 'UTILITY', corpo: 'Olá {{1}}, hoje tem culto.',
@@ -753,4 +753,29 @@ test('modelos serviço: excluir chama DELETE com hsm_id e name e remove; inexist
 test('modelos serviço: listar devolve o espelho do campo', async () => {
   const { deps } = depsModelos({ noBanco: [{ id: 'a' }] })
   assert.deepEqual(await listarModelos(deps, 'c1'), [{ id: 'a' }])
+})
+
+test('modelos: normalizarRascunho descarta chaves extras e mantém o válido', () => {
+  const r = normalizarRascunho({ nome: 'a', categoria: 'UTILITY', corpo: 'oi', extra: 1, botoes: [{ texto: 'Ok', x: 1 }],
+    variaveis: [{ posicao: 1, tipo: 'nome', exemplo: 'Ana', lixo: true }] })
+  assert.ok('rascunho' in r)
+  assert.deepEqual(r.rascunho.botoes, [{ texto: 'Ok' }])
+  assert.deepEqual(r.rascunho.variaveis, [{ posicao: 1, tipo: 'nome', exemplo: 'Ana' }])
+  assert.equal('extra' in r.rascunho, false)
+})
+
+test('modelos: normalizarRascunho rejeita tipo, limites e formas erradas', () => {
+  const base = { nome: 'a', categoria: 'UTILITY', corpo: 'oi' }
+  const falha = (extra) => 'erros' in normalizarRascunho({ ...base, ...extra })
+  assert.ok(falha({ variaveis: [{ posicao: 1, tipo: 'cpf', exemplo: 'x' }] }))
+  assert.ok(falha({ variaveis: [{ posicao: 1.5, tipo: 'nome', exemplo: 'x' }] }))
+  assert.ok(falha({ variaveis: [{ posicao: -1, tipo: 'nome', exemplo: 'x' }] }))
+  assert.ok(falha({ variaveis: [{ posicao: 1, tipo: 'nome', exemplo: 'x'.repeat(201) }] }))
+  assert.ok(falha({ variaveis: Array.from({ length: 21 }, (_, i) => ({ posicao: i + 1, tipo: 'nome', exemplo: 'x' })) }))
+  assert.ok(falha({ botoes: [{ texto: 'a' }, { texto: 'b' }, { texto: 'c' }, { texto: 'd' }] }))
+  assert.ok(falha({ botoes: [{ texto: 5 }] }))
+  assert.ok(falha({ variaveis: 'x' }))
+  assert.ok('erros' in normalizarRascunho(null))
+  assert.ok('erros' in normalizarRascunho([]))
+  assert.ok('rascunho' in normalizarRascunho(base))
 })

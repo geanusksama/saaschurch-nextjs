@@ -128,3 +128,64 @@ export function normalizarDaMeta(t: any): {
     componentes: Array.isArray(t?.components) ? t.components : [],
   }
 }
+
+const TIPOS_VARIAVEL = ['nome', 'igreja', 'data', 'livre']
+const MAX_VARIAVEIS = 20
+const MAX_BOTOES = 3
+const MAX_EXEMPLO = 200
+
+/**
+ * Forma do corpo vindo do cliente: só as chaves conhecidas, tipos estritos e limites
+ * (20 variáveis, 3 botões, exemplo até 200). O que não casar vira erro. As regras da Meta
+ * ficam em validarRascunho; esta função não as repete.
+ */
+export function normalizarRascunho(b: unknown): { erros: string[] } | { rascunho: RascunhoModelo } {
+  const o = (b && typeof b === 'object' && !Array.isArray(b) ? b : {}) as Record<string, unknown>
+  const erros: string[] = []
+  if (typeof o.nome !== 'string') erros.push('Informe o nome do modelo.')
+  if (o.categoria !== 'MARKETING' && o.categoria !== 'UTILITY') erros.push('Categoria inválida.')
+  if (typeof o.corpo !== 'string') erros.push('Informe o texto do corpo.')
+  const opcional = (k: string) => {
+    const v = o[k]
+    if (v === undefined || v === null) return undefined
+    if (typeof v !== 'string') { erros.push(`Campo ${k} inválido.`); return undefined }
+    return v
+  }
+  const cabecalho = opcional('cabecalho')
+  const exemploCabecalho = opcional('exemploCabecalho')
+  const rodape = opcional('rodape')
+  const tipoCab = opcional('tipoCabecalho')
+  if (tipoCab !== undefined && !TIPOS_VARIAVEL.includes(tipoCab)) erros.push('Tipo da variável do cabeçalho inválido.')
+  if (exemploCabecalho !== undefined && exemploCabecalho.length > MAX_EXEMPLO) erros.push('Exemplo do cabeçalho longo demais.')
+
+  const botoesBrutos = o.botoes ?? []
+  const botoes: BotaoModelo[] = []
+  if (!Array.isArray(botoesBrutos) || botoesBrutos.length > MAX_BOTOES) erros.push('São permitidos no máximo 3 botões.')
+  else for (const x of botoesBrutos) {
+    const t = (x as { texto?: unknown } | null)?.texto
+    if (typeof t !== 'string') { erros.push('Botões inválidos.'); break }
+    botoes.push({ texto: t })
+  }
+
+  const varsBrutas = o.variaveis ?? []
+  const variaveis: VariavelModelo[] = []
+  if (!Array.isArray(varsBrutas) || varsBrutas.length > MAX_VARIAVEIS) erros.push('São permitidas no máximo 20 variáveis.')
+  else for (const x of varsBrutas) {
+    const v = x as { posicao?: unknown; tipo?: unknown; exemplo?: unknown } | null
+    if (!v || typeof v.posicao !== 'number' || !Number.isInteger(v.posicao) || v.posicao < 0
+      || typeof v.tipo !== 'string' || !TIPOS_VARIAVEL.includes(v.tipo)
+      || typeof v.exemplo !== 'string' || v.exemplo.length > MAX_EXEMPLO) {
+      erros.push('Variáveis inválidas.')
+      break
+    }
+    variaveis.push({ posicao: v.posicao, tipo: v.tipo as VariavelModelo['tipo'], exemplo: v.exemplo })
+  }
+  if (erros.length) return { erros }
+  return {
+    rascunho: {
+      nome: o.nome as string, categoria: o.categoria as RascunhoModelo['categoria'], corpo: o.corpo as string,
+      cabecalho, exemploCabecalho, tipoCabecalho: tipoCab as VariavelModelo['tipo'] | undefined,
+      rodape, botoes, variaveis,
+    },
+  }
+}

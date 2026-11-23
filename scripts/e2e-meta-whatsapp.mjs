@@ -13,6 +13,7 @@ import { config as loadEnv } from 'dotenv'
 loadEnv({ path: '.env' })
 loadEnv({ path: '.env.local', override: true })
 import crypto from 'node:crypto'
+import { cifrar } from '../src/lib/meta/cifra.ts'
 import { PrismaClient } from '@prisma/client'
 
 const BASE = process.argv[2] || process.env.MRM_BASE || 'http://localhost:3000'
@@ -78,6 +79,7 @@ async function autenticado() {
   const campoId = me.campoId ?? me.user?.campoId
   if (!campoId) { check('usuário MRM_TOKEN tem campo ativo', false); return }
   const criados = []
+  const modelosCriados = []
   try {
     await prisma.metaWhatsappConexao.deleteMany({ where: { campoId } })
     let r = await fetch(`${API}/conexao`, { headers: auth(TOKEN) })
@@ -95,13 +97,30 @@ async function autenticado() {
     r = await fetch(`${API}/modelos`, { method: 'POST', headers: auth(TOKEN), body: JSON.stringify({ nome: 5 }) })
     j = await r.json()
     check('POST /modelos com forma errada ⇒ 400', r.status === 400 && Array.isArray(j.erros), JSON.stringify(j))
-    const cx = await prisma.metaWhatsappConexao.create({ data: {
-      campoId, wabaId: 'e2e-waba', phoneNumberId: 'e2e-modelos', tokenCifrado: 'lixo', pinCifrado: 'lixo', status: 'conectado' } })
-    criados.push(cx.id)
-    r = await fetch(`${API}/modelos/00000000-0000-4000-8000-000000000000`, { method: 'DELETE', headers: auth(TOKEN) })
-    check('DELETE de uuid inexistente ⇒ 404 (ou 401 se token cifrado ilegível)', r.status === 404 || r.status === 401, `status ${r.status}`)
-    await prisma.metaWhatsappConexao.deleteMany({ where: { id: cx.id } })
-    criados.pop()
+    // DELETE: conexão com token cifrado VÁLIDO (senão o 401 vem antes do 404)
+    const chave = (process.env.META_TOKEN_ENCRYPTION_KEY ?? '').trim()
+    if (!chave) check('META_TOKEN_ENCRYPTION_KEY definida para cifrar o token do teste', false)
+    else {
+      const cx = await prisma.metaWhatsappConexao.create({ data: {
+        campoId, wabaId: 'e2e-waba', phoneNumberId: 'e2e-modelos',
+        tokenCifrado: cifrar('e2e-token', chave), pinCifrado: cifrar('000000', chave), status: 'conectado' } })
+      criados.push(cx.id)
+      r = await fetch(`${API}/modelos/00000000-0000-4000-8000-000000000000`, { method: 'DELETE', headers: auth(TOKEN) })
+      check('DELETE de uuid inexistente ⇒ 404', r.status === 404, `status ${r.status}`)
+      r = await fetch(`${API}/modelos/nao-e-uuid`, { method: 'DELETE', headers: auth(TOKEN) })
+      check('DELETE de id fora do formato ⇒ 404', r.status === 404, `status ${r.status}`)
+      const outroCampo = await prisma.campo.findFirst({ where: { id: { not: campoId } }, select: { id: true } })
+      if (!outroCampo) check('existe outro campo para o teste de isolamento', false)
+      else {
+        const alheio = await prisma.metaWhatsappModelo.create({ data: {
+          campoId: outroCampo.id, wabaId: 'e2e-waba-outro', metaTemplateId: 'e2e-alheio', nome: 'e2e_alheio',
+          categoria: 'UTILITY', status: 'APPROVED' } })
+        modelosCriados.push(alheio.id)
+        r = await fetch(`${API}/modelos/${alheio.id}`, { method: 'DELETE', headers: auth(TOKEN) })
+        check('DELETE de modelo de outro campo ⇒ 404', r.status === 404, `status ${r.status}`)
+        check('modelo de outro campo continua existindo', (await prisma.metaWhatsappModelo.count({ where: { id: alheio.id } })) === 1)
+      }
+    }
 
     // Duplicado em outro campo (mantém a unicidade do campo_id)
     const outro = await prisma.campo.findFirst({ where: { id: { not: campoId } }, select: { id: true } })
@@ -128,6 +147,7 @@ async function autenticado() {
     check('resposta não contém o token', !texto.includes('lixo'))
   } finally {
     if (criados.length) await prisma.metaWhatsappConexao.deleteMany({ where: { id: { in: criados } } })
+    if (modelosCriados.length) await prisma.metaWhatsappModelo.deleteMany({ where: { id: { in: modelosCriados } } })
   }
   if (TOKEN_SEM_CAMPO) {
     console.log('\nUsuário sem campo ativo')
