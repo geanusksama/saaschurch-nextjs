@@ -550,3 +550,82 @@ test('conexaoRepo.desconectar mantém pin e número (atualiza, não apaga)', asy
   assert.match(corpo, /updateMany/); assert.match(corpo, /status: 'desconectado'/)
   assert.doesNotMatch(corpo, /deleteMany|pinCifrado|phoneNumberId/)
 })
+
+// ---- modelos (regras puras) ----
+import { nomeDoTitulo, validarRascunho, montarCorpoGraph, normalizarDaMeta, ROTULO_STATUS } from '../src/lib/meta/modelos.ts'
+
+const rascunhoOk = () => ({
+  nome: 'culto_de_ceia', categoria: 'UTILITY', corpo: 'Olá {{1}}, hoje tem culto.',
+  variaveis: [{ posicao: 1, tipo: 'nome', exemplo: 'Maria' }],
+})
+
+test('modelos: nomeDoTitulo', () => {
+  assert.equal(nomeDoTitulo('Culto de Ceia!'), 'culto_de_ceia')
+  assert.equal(nomeDoTitulo('Ação Jovem'), 'acao_jovem')
+  assert.equal(nomeDoTitulo('a'.repeat(600)).length, 512)
+})
+test('modelos: rascunho válido', () => {
+  assert.deepEqual(validarRascunho(rascunhoOk()), [])
+})
+test('modelos: corpo começando ou terminando com variável', () => {
+  const r = { ...rascunhoOk(), corpo: '{{1}} olá' }
+  assert.ok(validarRascunho(r).some((e) => /começar/.test(e)))
+  const f = { ...rascunhoOk(), corpo: 'olá {{1}}' }
+  assert.ok(validarRascunho(f).some((e) => /terminar/.test(e)))
+})
+test('modelos: sequência das variáveis', () => {
+  const r = { ...rascunhoOk(), corpo: 'olá {{2}} tudo', variaveis: [{ posicao: 2, tipo: 'livre', exemplo: 'x' }] }
+  assert.ok(validarRascunho(r).some((e) => /sequenciais/.test(e)))
+})
+test('modelos: rodapé com variável', () => {
+  assert.ok(validarRascunho({ ...rascunhoOk(), rodape: 'ola {{1}}' }).some((e) => /rodapé/i.test(e)))
+})
+test('modelos: botões', () => {
+  const b = (t) => ({ texto: t })
+  assert.ok(validarRascunho({ ...rascunhoOk(), botoes: [b('a'), b('b'), b('c'), b('d')] }).length > 0)
+  assert.ok(validarRascunho({ ...rascunhoOk(), botoes: [b('x'.repeat(26))] }).length > 0)
+  assert.deepEqual(validarRascunho({ ...rascunhoOk(), botoes: [b('x'.repeat(25))] }), [])
+})
+test('modelos: exemplo vazio, nome e categoria inválidos', () => {
+  const r = { ...rascunhoOk(), variaveis: [{ posicao: 1, tipo: 'nome', exemplo: '  ' }] }
+  assert.ok(validarRascunho(r).some((e) => /exemplo/i.test(e)))
+  assert.ok(validarRascunho({ ...rascunhoOk(), nome: 'Nome Ruim' }).length > 0)
+  assert.ok(validarRascunho({ ...rascunhoOk(), categoria: 'AUTHENTICATION' }).length > 0)
+  assert.ok(validarRascunho({ ...rascunhoOk(), corpo: '' }).length > 0)
+})
+test('modelos: cabeçalho', () => {
+  assert.ok(validarRascunho({ ...rascunhoOk(), cabecalho: 'x'.repeat(61) }).length > 0)
+  assert.ok(validarRascunho({ ...rascunhoOk(), cabecalho: '{{1}} e {{2}}' }).length > 0)
+})
+test('modelos: montarCorpoGraph', () => {
+  const g = montarCorpoGraph(rascunhoOk())
+  assert.equal(g.name, 'culto_de_ceia')
+  assert.equal(g.language, 'pt_BR')
+  assert.equal(g.category, 'UTILITY')
+  assert.equal(g.components.length, 1)
+  assert.deepEqual(g.components[0], { type: 'BODY', text: 'Olá {{1}}, hoje tem culto.', example: { body_text: [['Maria']] } })
+})
+test('modelos: montarCorpoGraph completo', () => {
+  const g = montarCorpoGraph({ ...rascunhoOk(), cabecalho: 'Aviso', rodape: 'Igreja', botoes: [{ texto: 'Ok' }] })
+  assert.deepEqual(g.components.map((c) => c.type), ['HEADER', 'BODY', 'FOOTER', 'BUTTONS'])
+  assert.deepEqual(g.components[0], { type: 'HEADER', format: 'TEXT', text: 'Aviso' })
+  assert.deepEqual(g.components[3].buttons, [{ type: 'QUICK_REPLY', text: 'Ok' }])
+})
+test('modelos: normalizarDaMeta', () => {
+  const n = normalizarDaMeta({ id: '123', name: 'x', language: 'pt_BR', category: 'UTILITY', status: 'APPROVED', rejected_reason: 'NONE', components: [{ type: 'BODY' }] })
+  assert.equal(n.metaTemplateId, '123')
+  assert.equal(n.motivoRecusa, null)
+  assert.equal(n.nome, 'x')
+  const r = normalizarDaMeta({ id: 1, name: 'y', status: 'REJECTED', rejected_reason: 'INVALID_FORMAT' })
+  assert.equal(r.motivoRecusa, 'INVALID_FORMAT')
+  assert.equal(r.metaTemplateId, '1')
+  assert.deepEqual(r.componentes, [])
+})
+test('modelos: ROTULO_STATUS', () => {
+  assert.equal(ROTULO_STATUS.APPROVED, 'Aprovado')
+  assert.equal(ROTULO_STATUS.PENDING, 'Em análise')
+  assert.equal(ROTULO_STATUS.REJECTED, 'Recusado')
+  assert.equal(ROTULO_STATUS.PAUSED, 'Pausado')
+  assert.equal(ROTULO_STATUS.DISABLED, 'Desativado')
+  assert.equal(ROTULO_STATUS.OUTRO ?? 'OUTRO', 'OUTRO')
+})
