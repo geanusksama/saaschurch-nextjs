@@ -36,7 +36,7 @@ function Selo({ m }: { m: Modelo }) {
   return (
     <span
       title={dicaRecusa}
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${COR_STATUS[m.status] ?? COR_NEUTRA}`}
+      className={`inline-flex h-[26px] items-center rounded-full border px-2.5 text-xs font-bold ${COR_STATUS[m.status] ?? COR_NEUTRA}`}
     >
       {ROTULO_STATUS[m.status] ?? m.status}
     </span>
@@ -76,8 +76,9 @@ function rascunhoDe(m: Modelo): RascunhoModelo {
   return r;
 }
 
-const botaoSec =
-  'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50';
+const botaoSec = 'inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';
+const botaoSecG = 'inline-flex min-h-[52px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl border-[1.5px] border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';
+const campoBusca = 'min-h-[52px] w-full rounded-2xl border-[1.5px] border-slate-200 bg-white text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-slate-300';
 
 export default function Modelos({ irPara }: { irPara: (aba: string) => void }) {
   const [estado, setEstado] = useState<'carregando' | 'erro' | 'sem-permissao' | 'ok'>('carregando');
@@ -167,7 +168,7 @@ export default function Modelos({ irPara }: { irPara: (aba: string) => void }) {
 
   if (estado === 'carregando') {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
         <Loader2 className="size-4 animate-spin" /> Carregando…
       </div>
     );
@@ -176,7 +177,7 @@ export default function Modelos({ irPara }: { irPara: (aba: string) => void }) {
   if (estado === 'erro') {
     return (
       <div className="space-y-3">
-        <p role="alert" className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">{erro}</p>
+        <p role="alert" className="rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">{erro}</p>
         <button type="button" className={botaoSec} onClick={repetir}>
           <RefreshCw className="size-3.5" /> Repetir
         </button>
@@ -185,11 +186,11 @@ export default function Modelos({ irPara }: { irPara: (aba: string) => void }) {
   }
   if (!conectado) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
-        <Smartphone className="size-8 text-slate-400" />
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Nenhum número conectado</p>
-        <p className="max-w-sm text-sm text-slate-500">Conecte o número do WhatsApp Oficial para criar e acompanhar os modelos de mensagem.</p>
-        <button type="button" onClick={() => irPara('conexao')} className="inline-flex items-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+      <div className="flex flex-col items-center gap-1.5 rounded-[18px] border border-[#e8ecf1] bg-white px-6 py-14 text-center md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+        <span className="mb-2 grid size-12 place-items-center rounded-2xl bg-[#f1f5f9] text-slate-500 dark:bg-slate-700 dark:text-slate-300"><Smartphone className="size-6" strokeWidth={1.8} /></span>
+        <p className="text-base font-bold">Nenhum número conectado</p>
+        <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">Conecte o número do WhatsApp Oficial para criar e acompanhar os modelos de mensagem.</p>
+        <button type="button" onClick={() => irPara('conexao')} className="mt-3 inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
           <Smartphone className="size-4" /> Conectar o número
         </button>
       </div>
@@ -197,7 +198,7 @@ export default function Modelos({ irPara }: { irPara: (aba: string) => void }) {
   }
 
   const confirmacao = (m: Modelo) => (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs text-red-700 dark:text-red-300">
       <span className="font-semibold">Excluir &quot;{m.nome}&quot; também na Meta?</span>
       <button type="button" disabled={excluindo} onClick={() => setConfirmando(null)} className={botaoSec}>Cancelar</button>
       <Permissao chave="whatsapp_oficial.modelos.excluir" rotulo="Excluir modelo de mensagem" herda="whatsapp_oficial.modelos.view">
@@ -205,7 +206,7 @@ export default function Modelos({ irPara }: { irPara: (aba: string) => void }) {
         type="button"
         disabled={excluindo}
         onClick={() => void excluir(m.id)}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+        className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] bg-red-600 px-3 text-xs font-semibold text-white hover:bg-red-700 disabled:pointer-events-none disabled:opacity-50"
       >
         {excluindo ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} Excluir
       </button>
@@ -221,7 +222,7 @@ export default function Modelos({ irPara }: { irPara: (aba: string) => void }) {
         </button>
       </Permissao>
       <Permissao chave="whatsapp_oficial.modelos.excluir" rotulo="Excluir modelo de mensagem" herda="whatsapp_oficial.modelos.view">
-        <button type="button" className={`${botaoSec} !text-red-600 dark:!text-red-400`} onClick={() => setConfirmando(m.id)}>
+        <button type="button" className={`${botaoSec} !border-red-200 !text-red-600 hover:!bg-red-50 dark:!border-red-900 dark:!text-red-400 dark:hover:!bg-red-950/40`} onClick={() => setConfirmando(m.id)}>
           <Trash2 className="size-3.5" /> Excluir
         </button>
       </Permissao>
@@ -229,83 +230,83 @@ export default function Modelos({ irPara }: { irPara: (aba: string) => void }) {
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-stretch gap-2 md:gap-3">
+        <div className="relative min-w-0 flex-[1_1_300px]">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
           <input
             aria-label="Buscar modelo por nome"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por nome"
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 py-2 pl-9 pr-3 text-sm text-slate-800 dark:text-slate-100"
+            className={`${campoBusca} pl-12 pr-3.5`}
           />
         </div>
         <select
           aria-label="Filtrar por situação"
           value={situacao}
           onChange={(e) => setSituacao(e.target.value)}
-          className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
+          className={`${campoBusca} !w-auto px-3.5`}
         >
           <option value="">Todas as situações</option>
           {Object.entries(ROTULO_STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <button type="button" className={`${botaoSec} justify-center py-2`} onClick={() => void atualizar()} disabled={atualizando}>
-          <RefreshCw className={`size-4 ${atualizando ? 'animate-spin' : ''}`} /> {atualizando ? 'Atualizando…' : 'Atualizar'}
+        <button type="button" className={botaoSecG} onClick={() => void atualizar()} disabled={atualizando}>
+          <RefreshCw className={`h-[19px] w-[19px] ${atualizando ? 'animate-spin' : ''}`} /> {atualizando ? 'Atualizando…' : 'Atualizar'}
         </button>
         <Permissao chave="whatsapp_oficial.modelos.criar" rotulo="Criar modelo de mensagem" herda="whatsapp_oficial.modelos.view">
           <button
             type="button"
             onClick={() => setEditor({ inicial: null })}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+            className="inline-flex min-h-[52px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl bg-slate-900 px-[18px] text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
           >
-            <Plus className="size-4" /> Novo modelo
+            <Plus className="h-[19px] w-[19px]" strokeWidth={2.2} /> Novo modelo
           </button>
         </Permissao>
       </div>
 
-      {aviso && <p role="alert" className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">{aviso}</p>}
+      {aviso && <p role="alert" className="rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">{aviso}</p>}
 
       {filtrados.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
-          <FileText className="size-8 text-slate-400" />
-          <p className="text-sm text-slate-500">
+        <div className="flex flex-col items-center gap-1.5 rounded-[18px] border border-[#e8ecf1] bg-white px-6 py-14 text-center md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+          <span className="mb-2 grid size-12 place-items-center rounded-2xl bg-[#f1f5f9] text-slate-500 dark:bg-slate-700 dark:text-slate-300"><FileText className="size-6" strokeWidth={1.8} /></span>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {modelos.length === 0 ? 'Nenhum modelo ainda. Crie o primeiro ou use Atualizar para trazer os da Meta.' : 'Nenhum modelo com esse filtro.'}
           </p>
         </div>
       ) : (
         <>
-          <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="hidden md:block overflow-x-auto rounded-[22px] border border-[#e8ecf1] bg-white dark:border-slate-700 dark:bg-slate-800">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left">
-                  <th className="px-3 py-2">Nome</th>
-                  <th className="px-3 py-2">Categoria</th>
-                  <th className="px-3 py-2">Situação</th>
-                  <th className="px-3 py-2">Atualizado em</th>
-                  <th className="px-3 py-2"><span className="sr-only">Ações</span></th>
+                <tr className="border-b border-[#eef2f6] bg-slate-50 text-left text-xs font-bold uppercase tracking-[.04em] text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
+                  <th className="px-5 py-3">Nome</th>
+                  <th className="px-5 py-3">Categoria</th>
+                  <th className="px-5 py-3">Situação</th>
+                  <th className="px-5 py-3">Atualizado em</th>
+                  <th className="px-5 py-3"><span className="sr-only">Ações</span></th>
                 </tr>
               </thead>
               <tbody>
                 {filtrados.map((m) => (
-                  <tr key={m.id} className="border-t border-slate-100 dark:border-slate-700 align-top">
-                    <td className="px-3 py-2 font-mono text-xs text-slate-800 dark:text-slate-100 break-all">{m.nome}</td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{ROTULO_CATEGORIA[m.categoria] ?? m.categoria}</td>
-                    <td className="px-3 py-2">
+                  <tr key={m.id} className="border-t border-[#f1f5f9] align-top transition-colors first:border-t-0 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/40">
+                    <td className="px-5 py-3.5 font-mono text-[13px] font-bold text-slate-900 dark:text-slate-100 break-all">{m.nome}</td>
+                    <td className="px-5 py-3.5 text-[13px] text-slate-700 dark:text-slate-300">{ROTULO_CATEGORIA[m.categoria] ?? m.categoria}</td>
+                    <td className="px-5 py-3.5">
                       <Selo m={m} />
                       {m.status === 'REJECTED' && m.motivoRecusa && <p className="mt-1 text-xs text-slate-500">{m.motivoRecusa}</p>}
                     </td>
-                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{dataCurta(m.atualizadoEm)}</td>
-                    <td className="px-3 py-2">{confirmando === m.id ? confirmacao(m) : acoes(m)}</td>
+                    <td className="px-5 py-3.5 text-[13px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{dataCurta(m.atualizadoEm)}</td>
+                    <td className="px-5 py-3.5">{confirmando === m.id ? confirmacao(m) : acoes(m)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <ul className="space-y-3 md:hidden">
+          <ul className="space-y-2 md:hidden">
             {filtrados.map((m) => (
-              <li key={m.id} className="space-y-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+              <li key={m.id} className="space-y-2 rounded-[18px] border border-[#e8ecf1] bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
                 <p className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-100 break-all">{m.nome}</p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                   <Selo m={m} />

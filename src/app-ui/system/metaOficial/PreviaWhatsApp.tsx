@@ -28,7 +28,7 @@ export default function PreviaWhatsApp({ cabecalho, corpo, rodape, botoes, exemp
   const botoesValidos = botoes.filter((b) => b.trim() !== '');
 
   return (
-    <div className="rounded-xl bg-[#e7ded3] dark:bg-slate-900 p-4" aria-label="Prévia da mensagem">
+    <div className="rounded-2xl bg-[#e7ded3] dark:bg-slate-900 p-4" aria-label="Prévia da mensagem">
       <div className="max-w-[18rem] mx-auto space-y-1.5">
         <div className="rounded-lg rounded-tl-none bg-white dark:bg-slate-700 px-3 py-2 shadow-sm space-y-1">
           {vazio && <p className="text-sm text-slate-400">A mensagem aparece aqui enquanto você escreve.</p>}

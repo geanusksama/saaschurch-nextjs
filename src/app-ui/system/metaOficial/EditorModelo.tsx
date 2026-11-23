@@ -23,7 +23,7 @@ const TIPOS: { tipo: Tipo; rotulo: string; icone: LucideIcon; padrao: string }[]
 const padraoDe = (t: Tipo) => TIPOS.find((x) => x.tipo === t)?.padrao ?? '';
 
 const entrada =
-  'w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400';
+  'w-full rounded-xl border-[1.5px] border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-300';
 const rotuloCls = 'block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1';
 const dica = 'text-xs text-slate-500 dark:text-slate-400';
 
@@ -153,22 +153,22 @@ export default function EditorModelo({
         role="dialog"
         aria-modal="true"
         aria-label={inicial ? 'Duplicar modelo' : 'Novo modelo'}
-        className="flex h-full w-full flex-col bg-white dark:bg-slate-900 shadow-xl lg:max-w-5xl"
+        className="flex h-full w-full flex-col bg-[#f4f6f8] dark:bg-slate-900 shadow-xl lg:max-w-5xl"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700 px-4 py-3">
-          <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">{inicial ? 'Duplicar modelo' : 'Novo modelo de mensagem'}</h2>
+        <div className="flex items-center justify-between gap-3 border-b border-[#e8ecf1] bg-white px-4 py-3 md:px-7 dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="text-[17px] font-bold text-slate-900 dark:text-slate-100">{inicial ? 'Duplicar modelo' : 'Novo modelo de mensagem'}</h2>
           <button
             type="button"
             onClick={onFechar}
             disabled={enviando}
             aria-label="Fechar"
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+            className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 disabled:opacity-50"
           >
             <X className="size-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto px-3 py-3 md:px-7 md:py-4">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="space-y-4 min-w-0">
               {!inicial && (
@@ -216,7 +216,7 @@ export default function EditorModelo({
                     type="button"
                     onClick={inserirNoCabecalho}
                     disabled={cabTemVar}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1 text-xs font-semibold text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                    className="inline-flex h-8 items-center gap-1 rounded-[10px] border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     <Plus className="size-3.5" /> Variável no cabeçalho
                   </button>
@@ -253,7 +253,7 @@ export default function EditorModelo({
                         key={t.tipo}
                         type="button"
                         onClick={() => inserirVariavel(t.tipo)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1 text-xs font-semibold text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        className="inline-flex h-8 items-center gap-1 rounded-[10px] border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         <Icone className="size-3.5" /> {t.rotulo}
                       </button>
@@ -312,7 +312,7 @@ export default function EditorModelo({
                         type="button"
                         aria-label={`Remover botão ${i + 1}`}
                         onClick={() => alt(setBotoes)(botoes.filter((_, j) => j !== i))}
-                        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        className="grid h-9 w-9 flex-none place-items-center rounded-[10px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700"
                       >
                         <X className="size-4" />
                       </button>
@@ -324,7 +324,7 @@ export default function EditorModelo({
                   <button
                     type="button"
                     onClick={() => alt(setBotoes)([...botoes, ''])}
-                    className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1 text-xs font-semibold text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className="mt-2 inline-flex h-8 items-center gap-1 rounded-[10px] border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     <Plus className="size-3.5" /> Adicionar botão
                   </button>
@@ -334,7 +334,7 @@ export default function EditorModelo({
             </div>
 
             <div className="min-w-0 space-y-3 lg:sticky lg:top-0 lg:self-start">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Prévia</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Prévia</h3>
               <PreviaWhatsApp
                 cabecalho={rascunho.cabecalho}
                 exemploCabecalho={rascunho.exemploCabecalho}
@@ -350,21 +350,21 @@ export default function EditorModelo({
           </div>
         </div>
 
-        <div className="space-y-2 border-t border-slate-200 dark:border-slate-700 px-4 py-3">
+        <div className="space-y-2 border-t border-[#e8ecf1] bg-white px-4 py-3 md:px-7 dark:border-slate-700 dark:bg-slate-800">
           {mexeu && erros.length > 0 && (
-            <ul role="alert" className="list-disc space-y-0.5 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 py-2 pl-7 pr-3 text-xs text-red-700 dark:text-red-300">
+            <ul role="alert" className="list-disc space-y-0.5 rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 py-2 pl-7 pr-3 text-xs text-red-700 dark:text-red-300">
               {erros.map((e) => <li key={e}>{e}</li>)}
             </ul>
           )}
           {erroEnvio && (
-            <p role="alert" className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">{erroEnvio}</p>
+            <p role="alert" className="rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">{erroEnvio}</p>
           )}
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={onFechar}
               disabled={enviando}
-              className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Cancelar
             </button>
@@ -373,7 +373,7 @@ export default function EditorModelo({
                 type="button"
                 onClick={() => void criar()}
                 disabled={enviando || (mexeu && erros.length > 0)}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
               >
                 {enviando ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
                 {enviando ? 'Enviando…' : 'Enviar para aprovação'}

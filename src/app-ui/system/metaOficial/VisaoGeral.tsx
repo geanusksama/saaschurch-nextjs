@@ -27,8 +27,10 @@ async function buscar<T>(caminho: string): Promise<Pedido<T>> {
   }
 }
 
-const cartao = 'rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-3 shadow-sm';
-const titulo = 'flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200';
+const SEC_S = 'inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';
+const SEC = 'inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';
+const cartao = 'rounded-[18px] border border-[#e8ecf1] bg-white p-5 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 space-y-3';
+const titulo = 'flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100';
 
 function Indisponivel() {
   return <p className="text-sm text-slate-500">Não foi possível carregar agora.</p>;
@@ -77,8 +79,8 @@ export default function VisaoGeral({ irPara, podeModelos }: { irPara: (aba: stri
   ];
 
   return (
-    <div className="space-y-4">
-      <div className={`grid grid-cols-1 ${verModelos ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+    <div className="space-y-3">
+      <div className={`grid grid-cols-1 ${verModelos ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-3`}>
         <section className={cartao}>
           <h2 className={titulo}><Smartphone className="size-4" /> Conexão</h2>
           {conexao.estado === 'carregando' && <Carregando />}
@@ -95,7 +97,7 @@ export default function VisaoGeral({ irPara, podeModelos }: { irPara: (aba: stri
               <div>
                 <dt className="text-slate-500">Qualidade</dt>
                 <dd>
-                  <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${(QUALIDADES[conexao.dados.qualidade] ?? QUALIDADES.UNKNOWN).classe}`}>
+                  <span className={`inline-flex h-[26px] items-center rounded-full border px-2.5 text-xs font-bold ${(QUALIDADES[conexao.dados.qualidade] ?? QUALIDADES.UNKNOWN).classe}`}>
                     {(QUALIDADES[conexao.dados.qualidade] ?? QUALIDADES.UNKNOWN).texto}
                   </span>
                 </dd>
@@ -121,15 +123,15 @@ export default function VisaoGeral({ irPara, podeModelos }: { irPara: (aba: stri
           {modelos.estado === 'ok' && modelos.dados.conectado && (
             <dl className="grid grid-cols-3 gap-2 text-center text-sm">
               <div>
-                <dd className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{aprovados}</dd>
+                <dd className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] text-emerald-700 dark:text-emerald-300">{aprovados}</dd>
                 <dt className="text-xs text-slate-500">Aprovados</dt>
               </div>
               <div>
-                <dd className="text-xl font-bold text-amber-700 dark:text-amber-300">{contar('PENDING')}</dd>
+                <dd className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] text-amber-700 dark:text-amber-300">{contar('PENDING')}</dd>
                 <dt className="text-xs text-slate-500">Em análise</dt>
               </div>
               <div>
-                <dd className="text-xl font-bold text-red-700 dark:text-red-300">{contar('REJECTED')}</dd>
+                <dd className="text-[19px] font-extrabold leading-[1.15] tracking-[-.02em] text-red-700 dark:text-red-300">{contar('REJECTED')}</dd>
                 <dt className="text-xs text-slate-500">Recusados</dt>
               </div>
             </dl>
@@ -163,7 +165,7 @@ export default function VisaoGeral({ irPara, podeModelos }: { irPara: (aba: stri
               )}
               <span className={p.feito ? 'text-slate-500 line-through' : 'text-slate-700 dark:text-slate-200'}>{p.texto}</span>
               {!p.feito && p.aba && (
-                <button type="button" onClick={() => irPara(p.aba as string)} className="ml-auto rounded text-xs font-semibold underline text-slate-600 dark:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 dark:focus-visible:ring-slate-300">
+                <button type="button" onClick={() => irPara(p.aba as string)} className={`ml-auto ${SEC_S}`}>
                   Abrir
                 </button>
               )}
@@ -175,10 +177,10 @@ export default function VisaoGeral({ irPara, podeModelos }: { irPara: (aba: stri
       <section className={cartao}>
         <h2 className={titulo}>Atalhos na Meta</h2>
         <div className="flex flex-wrap gap-3 text-sm">
-          <a className="inline-flex items-center gap-1.5 underline text-slate-700 dark:text-slate-200" href={LINK_MANAGER} target="_blank" rel="noreferrer">
+          <a className={SEC} href={LINK_MANAGER} target="_blank" rel="noreferrer">
             WhatsApp Manager <ExternalLink className="size-3.5" />
           </a>
-          <a className="inline-flex items-center gap-1.5 underline text-slate-700 dark:text-slate-200" href={LINK_PAGAMENTOS} target="_blank" rel="noreferrer">
+          <a className={SEC} href={LINK_PAGAMENTOS} target="_blank" rel="noreferrer">
             Pagamentos da Meta <ExternalLink className="size-3.5" />
           </a>
         </div>

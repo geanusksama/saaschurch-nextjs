@@ -35,7 +35,7 @@ const LINK_EMPRESA = 'https://business.facebook.com/settings/security?business_i
 const LINK_APP = 'https://developers.facebook.com/apps/3371798666355530/';
 
 const campoClasse =
-  'w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100';
+  'w-full rounded-xl border-[1.5px] border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:shadow-[0_0_0_4px_rgba(15,23,42,.08)] dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-300';
 
 /** `embutido`: só esconde o cabeçalho de página (usado dentro da central Meta Oficial). */
 export default function MetaAppConfig({ embutido = false }: { embutido?: boolean } = {}) {
@@ -183,10 +183,10 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
   );
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-4">
+    <div className={`space-y-3 ${embutido ? '' : 'px-3 py-3 md:px-7 md:py-4'}`}>
       {!embutido && (
         <header>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Meta – App oficial</h1>
+          <h1 className="text-[17px] font-bold text-slate-900 dark:text-slate-100">Meta – App oficial</h1>
           <p className="text-sm text-slate-500">
             Configuração central do app da Meta (WhatsApp Cloud API), usada por todas as igrejas.
           </p>
@@ -194,13 +194,13 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
       )}
 
       {erro && (
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+        <div role="alert" className="flex items-start gap-2 rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">
           <AlertTriangle className="size-4 mt-0.5 shrink-0" />
           <span>{erro}</span>
         </div>
       )}
       {aviso && (
-        <div role="status" className="flex items-start gap-2 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+        <div role="status" className="flex items-start gap-2 rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
           <CheckCircle2 className="size-4 mt-0.5 shrink-0" />
           <span>{aviso}</span>
         </div>
@@ -214,8 +214,8 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
 
       {!carregando && visao && (
         <>
-          <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Liberação para as igrejas</h2>
+          <section className="rounded-[18px] border border-[#e8ecf1] bg-white p-5 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 space-y-4">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Liberação para as igrejas</h2>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-slate-600 dark:text-slate-300">
                 Liberar conexão para as igrejas
@@ -238,10 +238,10 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Configuração do app</h2>
+          <section className="rounded-[18px] border border-[#e8ecf1] bg-white p-5 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 space-y-4">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Configuração do app</h2>
             {!visao.base && (
-              <p role="note" className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+              <p role="note" className="rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
                 Edite no sistema base (Campinas).
               </p>
             )}
@@ -273,7 +273,7 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
               <button
                 onClick={salvar}
                 disabled={ocupado}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
               >
                 {ocupado ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                 Salvar
@@ -282,8 +282,8 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
             )}
           </section>
 
-          <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-3 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Status</h2>
+          <section className="rounded-[18px] border border-[#e8ecf1] bg-white p-5 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 space-y-3">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Status</h2>
             <ul className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
               <li>ID do app: {visao.appId ? 'presente' : 'ausente'}</li>
               <li>Configuração do Embedded Signup: {visao.configId ? 'presente' : 'ausente'}</li>
@@ -293,7 +293,7 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
               <button
                 onClick={() => void testarWebhook()}
                 disabled={webhook === 'testando' || !visao.verifyToken}
-                className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 Testar webhook
               </button>
@@ -317,12 +317,12 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-3 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Alertas</h2>
+          <section className="rounded-[18px] border border-[#e8ecf1] bg-white p-5 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 space-y-3">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Alertas</h2>
             {alertas.length === 0 && <p className="text-sm text-slate-500">Nenhum alerta em aberto.</p>}
             <ul className="space-y-2">
               {alertas.map((a) => (
-                <li key={a.id} className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
+                <li key={a.id} className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
                   {a.campoNome && <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{a.campoNome}</p>}
                   <p>{a.mensagem}</p>
                   <p className="text-xs text-slate-500">{new Date(a.criadoEm).toLocaleString('pt-BR')}</p>
@@ -332,7 +332,7 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
                         <button
                           onClick={() => void tratarAlerta(a.id, 'aprovar')}
                           disabled={alertaOcupado === a.id}
-                          className="rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                          className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                         >
                           Aprovar
                         </button>
@@ -342,7 +342,7 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
                       <button
                         onClick={() => void tratarAlerta(a.id, 'resolver')}
                         disabled={alertaOcupado === a.id}
-                        className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-50"
+                        className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         Marcar como resolvido
                       </button>
