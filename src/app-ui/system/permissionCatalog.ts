@@ -241,6 +241,8 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   // Rastreador do site público (src/components/app-ui/system/RastreadorSitePainel.tsx)
   { group: 'Configurações', name: 'Rastreador do site', key: 'site_rastreio', permissions: mkPerms(admin(), none(), none(), none()) },
 
+  { group: 'Comunicação', name: 'WhatsApp Oficial (Meta)', key: 'whatsapp_oficial', permissions: mkPerms(admin(), admin(), admin(), admin()) },
+
   // ── Comunicação — WhatsApp (sub-permissões) ──────────────────────────────
   {
     group: 'Comunicação',

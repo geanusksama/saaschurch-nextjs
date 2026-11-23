@@ -118,6 +118,7 @@ import UserEdit from "../app-ui/system/UserEdit";
 import { PermissionsMatrix } from "../app-ui/system/PermissionsMatrix";
 import UserPermissions from "../app-ui/system/UserPermissions";
 import GruposUsuarios from "../app-ui/system/GruposUsuarios";
+import WhatsAppOficial from "../app-ui/system/WhatsAppOficial";
 import FieldPasswordAdmin from "../app-ui/system/FieldPasswordAdmin";
 import ContabilidadeAgendamentos from "../app-ui/system/ContabilidadeAgendamentos";
 import {
@@ -626,6 +627,7 @@ export const router = createBrowserRouter([
       { path: "system/templates", Component: Templates },
       { path: "system/email", Component: SystemEmailSettings },
       { path: "system/whatsapp", Component: WhatsAppInstances },
+      { path: "system/whatsapp-oficial", Component: WhatsAppOficial },
       { path: "communication/whatsapp-instances", Component: WhatsAppInstances },
       { path: "system/sms", Component: SmsSettings },
       { path: "system/contabilidade-agendamentos", Component: ContabilidadeAgendamentos },

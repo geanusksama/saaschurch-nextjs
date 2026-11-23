@@ -4362,6 +4362,18 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui-screens/communication/RelatoriosAtendimento.tsx"
   },
   {
+    "chave": "whatsapp_oficial.conexao.conectar",
+    "rotulo": "Conectar com a Meta",
+    "herda": "whatsapp_oficial.edit",
+    "arquivo": "src/app-ui/system/WhatsAppOficial.tsx"
+  },
+  {
+    "chave": "whatsapp_oficial.conexao.desconectar",
+    "rotulo": "Desconectar número",
+    "herda": "whatsapp_oficial.delete",
+    "arquivo": "src/app-ui/system/WhatsAppOficial.tsx"
+  },
+  {
     "chave": "word_docs.word_editor.excluir",
     "rotulo": "Excluir — Word Editor",
     "herda": "word_docs.view",
@@ -4663,5 +4675,11 @@ export const ACOES_GENERICAS_EM_USO: Record<string, string[]> = {
   "whatsapp_campaigns.edit": [
     "src/app-ui/pastoral/PastoralSendHistory.tsx",
     "src/components/app-ui-screens/pastoral/PastoralSendHistory.tsx"
+  ],
+  "whatsapp_oficial.delete": [
+    "src/app-ui/system/WhatsAppOficial.tsx"
+  ],
+  "whatsapp_oficial.edit": [
+    "src/app-ui/system/WhatsAppOficial.tsx"
   ]
 };

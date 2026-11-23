@@ -84,7 +84,7 @@ import {
   ListChecks as ListChecksIcon,
   Landmark,
 } from 'lucide-react';
-import { House, HeartHandshake, Boxes, CalendarDays, Settings2, BookOpenText, UsersRound, Activity, Images, ScanFace } from 'lucide-react';
+import { BadgeCheck, House, HeartHandshake, Boxes, CalendarDays, Settings2, BookOpenText, UsersRound, Activity, Images, ScanFace } from 'lucide-react';
 import { PixIcon } from '../icons/PixIcon';
 import { InstagramIcon } from '../icons/InstagramIcon';
 
@@ -236,6 +236,7 @@ function getFriendlyScreenName(path: string): string {
   if (p.startsWith("/app-ui/asset-inventories/") && p.endsWith("/report")) return "Relatório de Inventário";
   if (p === "/app-ui/communication/whatsapp-inbox") return "WhatsApp Caixa de Entrada";
   if (p === "/app-ui/system/whatsapp") return "WhatsApp Instâncias";
+  if (p === "/app-ui/system/whatsapp-oficial") return "WhatsApp Oficial";
   if (p === "/app-ui/events") return "Agenda de Eventos";
   if (p === "/app-ui/daily-bread") return "Pão Diário";
   if (p === "/app-ui/ticket-purchase") return "Venda de Ingressos";
@@ -498,6 +499,7 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Contatos / Leads',      path: '/app-ui/contacts',              icon: Contact,  permKey: 'crm_leads' },
       { name: 'WhatsApp Geral',        path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp_inbox' },
       { name: 'WhatsApp Instâncias',   path: '/app-ui/system/whatsapp',       icon: Smartphone, permKey: 'whatsapp_instances' },
+      { name: 'WhatsApp Oficial', path: '/app-ui/system/whatsapp-oficial', icon: BadgeCheck, permKey: 'whatsapp_oficial' },
       { name: 'Senha dos Campos',      path: '/app-ui/system/campo-senhas', icon: Lock,     permKey: 'campo_passwords' },
       { name: 'Log de Auditoria',      path: '/app-ui/system/audit-log',    icon: FileText, permKey: 'audit_log' },
       { name: 'Integrações',           path: '/app-ui/system/integrations', icon: Plug,     permKey: 'integrations' },
