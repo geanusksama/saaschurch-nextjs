@@ -170,6 +170,14 @@ export async function buscarDisparo(campoId: string, id: string): Promise<Dispar
   return prisma.metaWhatsappDisparo.findFirst({ where: { id, campoId }, select: SELECT_DISPARO })
 }
 
+export async function buscarDisparoPorChave(campoId: string, chave: string): Promise<{ id: string; total: number; status: string } | null> {
+  return prisma.metaWhatsappDisparo.findFirst({
+    where: { campoId, valores: { path: ['chave'], equals: chave } },
+    orderBy: [{ criadoEm: 'asc' }, { id: 'asc' }],
+    select: { id: true, total: true, status: true },
+  })
+}
+
 export async function mudarStatus(id: string, de: string[], para: StatusDisparo, motivo: string | null): Promise<boolean> {
   const r = await prisma.metaWhatsappDisparo.updateMany({ where: { id, status: { in: de } }, data: { status: para, motivo } })
   return r.count > 0

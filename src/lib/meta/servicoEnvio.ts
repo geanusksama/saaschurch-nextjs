@@ -30,7 +30,8 @@ export type FiltrosInteressados = { igrejaIds: string[]; origens: string[]; cada
 /** `null` = essa origem não entra no público. */
 export type FiltrosPublico = { membros: FiltrosMembros | null; interessados: FiltrosInteressados | null }
 
-export type ValoresDisparo = { data?: string; livre?: string }
+/** `chave` = chave de idempotência do cliente (mesma chave no mesmo campo ⇒ mesmo disparo). */
+export type ValoresDisparo = { data?: string; livre?: string; chave?: string }
 export type EntradaDisparo = {
   nome: string
   modeloId: string
@@ -92,6 +93,8 @@ export type DepsEnvio = {
     /** enviando, aguardando_limite e agendado com agendado_para <= agora; mais antigos primeiro. */
     disparosAtivos(campoId: string, agora: Date): Promise<DisparoLinha[]>
     buscarDisparo(campoId: string, id: string): Promise<DisparoLinha | null>
+    /** Disparo já criado com esta chave de idempotência (guardada em valores.chave), ou null. */
+    buscarDisparoPorChave(campoId: string, chave: string): Promise<{ id: string; total: number; status: string } | null>
     /** Troca condicionada: só muda se o status atual está em `de`. Devolve se mudou. */
     mudarStatus(id: string, de: string[], para: StatusDisparo, motivo: string | null): Promise<boolean>
     /** Status cancelado + pendentes livres (não reservados) viram ignorado (um comando atômico). */
@@ -417,9 +420,16 @@ async function calcularRestante(
 
 export async function criarDisparo(
   deps: DepsEnvio, campoId: string, userId: string | null, entrada: unknown, agora: Date,
-): Promise<{ id: string; total: number; semCelular: number; excluidos: number; duplicados: number; status: StatusDisparo }> {
+): Promise<{ id: string; total: number; semCelular: number; excluidos: number; duplicados: number; status: string; repetido?: boolean }> {
   const pre = validarEntradaDisparo(entrada, { agora })
   if (!pre.ok) throw new ErroServico(400, pre.erros.join(' '))
+  // Idempotência: repetir a mesma chave (resposta perdida, clique duplo) devolve o disparo que já existe.
+  const bruta = ehObj(entrada) ? entrada.chave : undefined
+  const chave = typeof bruta === 'string' && UUID.test(bruta) ? bruta.toLowerCase() : undefined
+  if (chave) {
+    const ja = await deps.repo.buscarDisparoPorChave(campoId, chave)
+    if (ja) return { id: ja.id, total: ja.total, semCelular: 0, excluidos: 0, duplicados: 0, status: ja.status, repetido: true }
+  }
   await token(deps, campoId)
   const modelo = await deps.modelos.buscar(campoId, pre.valor.modeloId)
   if (!modelo || modelo.campoId !== campoId) throw new ErroServico(404, 'Modelo não encontrado.')
@@ -452,7 +462,7 @@ export async function criarDisparo(
   })
   await deps.repo.criarDisparoComEnvios({
     id, campoId, modeloId: modelo.id, modeloNome: modelo.nome, idioma: modelo.idioma, categoria: modelo.categoria,
-    nome: e.nome, filtros: e.filtros, valores: e.valores, status, agendadoPara, total: envios.length, criadoPor: userId,
+    nome: e.nome, filtros: e.filtros, valores: chave ? { ...e.valores, chave } : e.valores, status, agendadoPara, total: envios.length, criadoPor: userId,
   }, envios)
   return { id, total: envios.length, semCelular: p.semCelular, excluidos: p.excluidos, duplicados: p.duplicados, status }
 }

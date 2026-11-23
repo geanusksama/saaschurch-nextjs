@@ -906,6 +906,7 @@ function depsEnvio({ disparos = [], envios = [], enviados24h = 0, limite = 'TIER
     telefonesExcluidos: async (_c, tels) => new Set(tels.filter((t) => excluidos.includes(t))),
     criarDisparoComEnvios: async (d, e) => { st.criados = { d, e }; st.disparos.push(d) },
     disparosAtivos: async (campoId) => st.disparos.filter((d) => d.campoId === campoId && ativo(d)).map((d) => ({ ...d })),
+    buscarDisparoPorChave: async (campoId, chave) => { const d = st.disparos.find((x) => x.campoId === campoId && x.valores?.chave === chave); return d ? { id: d.id, total: d.total, status: d.status } : null },
     buscarDisparo: async (campoId, id) => { const d = st.disparos.find((x) => x.id === id && x.campoId === campoId); return d ? { ...d } : null },
     mudarStatus: async (id, de, para, motivo) => { const d = st.disparos.find((x) => x.id === id); if (!d || !de.includes(d.status)) return false; d.status = para; d.motivo = motivo; return true },
     cancelar: async (id, de) => { const d = st.disparos.find((x) => x.id === id); if (!d || !de.includes(d.status)) return false; d.status = 'cancelado'; for (const e of st.envios) if (e.disparoId === id && e.status === 'pendente' && !e.reservado) e.status = 'ignorado'; return true },
@@ -1254,6 +1255,24 @@ test('envio: criar disparo só com modelo APROVADO do campo, grava envios com pa
   await rej(criarDisparo(vazio.deps, 'c1', 'u1', entrada(modelos[0].id), AGORA_ENV), 400)
   const semCon = depsEnvio({ modelos, contatos, conexao: null })
   await rej(criarDisparo(semCon.deps, 'c1', 'u1', entrada(modelos[0].id), AGORA_ENV), 409)
+})
+test('envio: mesma chave de idempotência cria um só disparo (resposta perdida não duplica)', async () => {
+  const modelo = { id: '11111111-1111-4111-8111-111111111111', campoId: 'c1', status: 'APPROVED', nome: 'boas_vindas', idioma: 'pt_BR', categoria: 'MARKETING', variaveis: [{ posicao: 1, tipo: 'nome', exemplo: 'x' }] }
+  const contatos = { membros: [{ id: 'm1', fullName: 'Ana Souza', preferredName: null, mobile: '19992126683', phone: null, igrejaNome: 'Sede' }], interessados: [] }
+  const chave = '9f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f'
+  const corpo = { nome: 'Teste', modeloId: modelo.id, filtros: { membros: {}, interessados: null }, valores: {}, agendadoPara: null, chave }
+  const a = depsEnvio({ modelos: [modelo], contatos })
+  const r1 = await criarDisparo(a.deps, 'c1', 'u1', corpo, AGORA_ENV)
+  const r2 = await criarDisparo(a.deps, 'c1', 'u1', corpo, AGORA_ENV)
+  assert.equal(a.st.disparos.length, 1)
+  assert.equal(a.st.criados.d.valores.chave, chave)
+  assert.equal(r2.id, r1.id)
+  assert.equal(r2.repetido, true)
+  // outro campo com a mesma chave não vê o disparo do primeiro
+  const b = depsEnvio({ modelos: [{ ...modelo, campoId: 'c2' }], contatos, disparos: a.st.disparos })
+  const r3 = await criarDisparo(b.deps, 'c2', 'u1', corpo, AGORA_ENV)
+  assert.notEqual(r3.repetido, true)
+  assert.equal(b.st.disparos.length, 2)
 })
 test('envio: contar público usa contagem do repositório', async () => {
   const { deps } = depsEnvio()

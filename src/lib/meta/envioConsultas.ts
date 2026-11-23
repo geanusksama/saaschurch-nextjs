@@ -35,7 +35,7 @@ export async function detalheDisparo(campoId: string, id: string, pagina: number
 }
 
 export async function opcoesDoCampo(campoId: string) {
-  const [igrejas, titulos, origens, modelos] = await Promise.all([
+  const [igrejas, titulos, origens, modelos, situacoes] = await Promise.all([
     prisma.church.findMany({
       where: { regional: { campoId }, deletedAt: null },
       orderBy: [{ name: 'asc' }, { id: 'asc' }], take: 500, select: { id: true, name: true },
@@ -53,11 +53,16 @@ export async function opcoesDoCampo(campoId: string) {
       orderBy: [{ nome: 'asc' }, { id: 'asc' }], take: 200,
       select: { id: true, nome: true, idioma: true, categoria: true, variaveis: true, componentes: true },
     }),
+    prisma.member.findMany({
+      where: { deletedAt: null, membershipStatus: { not: null }, church: { regional: { campoId }, deletedAt: null } },
+      distinct: ['membershipStatus'], orderBy: { membershipStatus: 'asc' }, take: 50, select: { membershipStatus: true },
+    }),
   ])
   return {
     igrejas,
     titulos: titulos.map((t) => t.ecclesiasticalTitle).filter((t): t is string => !!t && !!t.trim()),
     origens: origens.map((o) => o.source).filter((s): s is string => !!s && !!s.trim()),
     modelos,
+    situacoes: situacoes.map((s) => s.membershipStatus).filter((s): s is string => !!s && !!s.trim()),
   }
 }

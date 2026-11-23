@@ -5,7 +5,7 @@
  * Nada é enviado antes do clique final; o número real vem na resposta da criação.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, CalendarClock, Check, FileText, Info, Loader2, Send, Smartphone, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, List, ArrowRight, CalendarClock, Check, FileText, Info, Loader2, Send, Smartphone, Users, X } from 'lucide-react';
 import { apiBase } from '../../../lib/apiBase';
 import { cabecalhos, lerErro } from '../../../lib/meta/clienteHttp';
 import type { VariavelModelo } from '../../../lib/meta/modelos';
@@ -22,6 +22,7 @@ type Opcoes = {
   titulos: string[];
   origens: string[];
   modelos: ModeloOpcao[];
+  situacoes?: string[];
   conectado: boolean;
   limite: { limite: number | null; usados: number; restante: number | null; qualidade: string } | null;
 };
@@ -29,12 +30,8 @@ type Resultado = { id: string; total: number; semCelular: number; excluidos: num
 type Comp = { type?: string; text?: string; buttons?: { text?: string }[] };
 
 const BASE = `${apiBase}/meta/whatsapp/envio`;
-const SITUACOES: { v: string; r: string }[] = [
-  { v: 'ATIVO', r: 'Ativo' },
-  { v: 'INATIVO', r: 'Inativo' },
-  { v: 'AGUARDANDO ATIVACAO', r: 'Aguardando ativação' },
-  { v: 'DESLIGADO', r: 'Desligado' },
-];
+const ROTULO_SITUACAO: Record<string, string> = { 'AGUARDANDO ATIVACAO': 'Aguardando ativação', EXCLUIDO: 'Excluído' };
+const rotuloSituacao = (v: string) => ROTULO_SITUACAO[v] ?? v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const PASSOS = ['Público', 'Modelo', 'Revisão'];
 
@@ -102,6 +99,9 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
   const [erroEnvio, setErroEnvio] = useState('');
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const travado = useRef(false);
+  // Chave de idempotência: nasce ao abrir a revisão e é reaproveitada se a resposta se perder.
+  const chaveRef = useRef('');
+  const [naoConfirmado, setNaoConfirmado] = useState(false);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -191,7 +191,7 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
       modeloId,
       filtros,
       valores: { ...(vData ? { data: vData } : {}), ...(vLivre ? { livre: vLivre } : {}) },
-      agendadoPara: quando === 'agendar' && agenda ? new Date(agenda).toISOString() : null,
+      agendadoPara: quando === 'agendar' && agenda && !Number.isNaN(new Date(agenda).getTime()) ? new Date(agenda).toISOString() : null,
     }),
     [nome, modeloId, filtros, vData, vLivre, quando, agenda],
   );
@@ -224,8 +224,9 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
     travado.current = true;
     setEnviando(true);
     setErroEnvio('');
+    setNaoConfirmado(false);
     try {
-      const r = await fetch(BASE, { method: 'POST', headers: cabecalhos(true), body: JSON.stringify(validacao.valor) });
+      const r = await fetch(BASE, { method: 'POST', headers: cabecalhos(true), body: JSON.stringify({ ...validacao.valor, chave: chaveRef.current }) });
       if (!r.ok) {
         setErroEnvio(await lerErro(r));
         travado.current = false;
@@ -233,8 +234,8 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
       }
       setResultado((await r.json()) as Resultado);
     } catch {
-      setErroEnvio('Não foi possível falar com o servidor. Confira a lista antes de tentar de novo.');
-      travado.current = false;
+      // O POST pode ter criado o disparo e só a resposta se perdeu: não reabre o botão de disparar.
+      setNaoConfirmado(true);
     } finally {
       setEnviando(false);
     }
@@ -257,6 +258,7 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
     setMexeu(true);
     if (passo === 0 && !publicoOk) return;
     if (passo === 1 && errosModelo.length > 0) return;
+    if (passo === 1 && !naoConfirmado) chaveRef.current = crypto.randomUUID();
     setPasso((p) => Math.min(2, p + 1));
   };
 
@@ -309,7 +311,7 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
                     {usaMembros && (
                       <div className="space-y-3 border-l-2 border-slate-100 pl-3 dark:border-slate-700">
                         <Marcas titulo="Igreja" itens={op.igrejas.map((i) => ({ v: i.id, r: i.name }))} marcados={mIgrejas} onAlt={(v) => setMIgrejas((l) => alternar(l, v))} />
-                        <Marcas titulo="Situação" itens={SITUACOES} marcados={mSituacoes} onAlt={(v) => setMSituacoes((l) => alternar(l, v))} />
+                        <Marcas titulo="Situação" itens={(op.situacoes ?? []).map((s) => ({ v: s, r: rotuloSituacao(s) }))} marcados={mSituacoes} onAlt={(v) => setMSituacoes((l) => alternar(l, v))} />
                         <Marcas titulo="Título eclesiástico" itens={op.titulos.map((t) => ({ v: t, r: t }))} marcados={mTitulos} onAlt={(v) => setMTitulos((l) => alternar(l, v))} />
                         <div>
                           <label htmlFor="env-mes" className={rotuloCls}>Aniversariantes do mês</label>
@@ -472,6 +474,18 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
 
                   {erros.length > 0 && <ul role="alert" className={`${alerta} list-disc space-y-0.5 pl-6`}>{erros.map((e) => <li key={e}>{e}</li>)}</ul>}
                   {erroEnvio && <p role="alert" className={alerta}>{erroEnvio}</p>}
+                  {naoConfirmado && (
+                    <div role="alert" className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+                      <p className="font-semibold">Não foi possível confirmar. Veja a lista de disparos.</p>
+                      <p className="text-xs">O disparo pode ter sido criado e só a resposta se perdeu. Confira a lista antes de tentar de novo; se tentar de novo, o sistema reconhece o mesmo pedido e não duplica.</p>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" className={botaoSecM} onClick={onCriado}><List className="size-4" /> Ver lista de disparos</button>
+                        <Permissao chave="whatsapp_oficial.envio.criar" rotulo="Criar disparo (WhatsApp Oficial)" herda="whatsapp_oficial.envio.view">
+                          <button type="button" className={botaoSecM} disabled={enviando} onClick={() => { travado.current = false; void disparar(); }}>Tentar de novo</button>
+                        </Permissao>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -492,7 +506,7 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
 
         {!bloqueado && !resultado && (
           <div className="flex items-center justify-between gap-2 border-t border-[#e8ecf1] bg-white px-4 py-3 md:px-7 dark:border-slate-700 dark:bg-slate-800">
-            <button type="button" className={botaoSecM} disabled={enviando} onClick={() => (passo === 0 ? onFechar() : setPasso(passo - 1))}>
+            <button type="button" className={botaoSecM} disabled={enviando || (passo === 2 && naoConfirmado)} onClick={() => (passo === 0 ? onFechar() : setPasso(passo - 1))}>
               {passo === 0 ? 'Cancelar' : <><ArrowLeft className="size-4" /> Voltar</>}
             </button>
             {passo < 2 ? (
@@ -501,7 +515,7 @@ export default function NovoDisparo({ onFechar, onCriado, irPara }: { onFechar: 
               </button>
             ) : (
               <Permissao chave="whatsapp_oficial.envio.criar" rotulo="Criar disparo (WhatsApp Oficial)" herda="whatsapp_oficial.envio.view">
-                <button type="button" className={botaoPri} disabled={enviando || !validacao.ok} onClick={() => void disparar()}>
+                <button type="button" className={botaoPri} disabled={enviando || !validacao.ok || naoConfirmado} onClick={() => void disparar()}>
                   {enviando ? <Loader2 className="size-4 animate-spin" /> : quando === 'agendar' ? <CalendarClock className="size-4" /> : <Send className="size-4" />}
                   {enviando ? 'Criando…' : quando === 'agendar' ? 'Agendar' : 'Disparar agora'}
                 </button>

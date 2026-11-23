@@ -1,5 +1,5 @@
 /** Peças compartilhadas da aba Envio (Meta Oficial): classes, selos, barras e tipos. Só apresentação. */
-import { Loader2 } from 'lucide-react';
+import { Ban, CalendarClock, CheckCheck, CheckCircle2, Clock, Eye, Hourglass, Loader2, PauseCircle, Send, XCircle, type LucideIcon } from 'lucide-react';
 
 export type Disparo = {
   id: string;
@@ -47,10 +47,17 @@ const COR_STATUS: Record<string, string> = {
   pendente: NEUTRO, enviado: AZUL, entregue: VERDE, lido: VERDE, falhou: VERMELHO, ignorado: NEUTRO,
 };
 
+const ICONE_STATUS: Record<string, LucideIcon> = {
+  agendado: CalendarClock, enviando: Loader2, aguardando_limite: Hourglass, pausado: PauseCircle, concluido: CheckCircle2, cancelado: Ban,
+  pendente: Clock, enviado: Send, entregue: CheckCheck, lido: Eye, falhou: XCircle, ignorado: Ban,
+};
+
 export function Selo({ status, envio = false }: { status: string; envio?: boolean }) {
   const rotulo = (envio ? ROTULO_ENVIO : ROTULO_DISPARO)[status] ?? status;
+  const Icone = ICONE_STATUS[status];
   return (
-    <span className={`inline-flex h-[26px] items-center whitespace-nowrap rounded-full border px-2.5 text-xs font-bold ${COR_STATUS[status] ?? NEUTRO}`}>
+    <span className={`inline-flex h-[26px] items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-xs font-bold ${COR_STATUS[status] ?? NEUTRO}`}>
+      {Icone && <Icone className={`size-3 ${status === 'enviando' ? 'animate-spin' : ''}`} />}
       {rotulo}
     </span>
   );
