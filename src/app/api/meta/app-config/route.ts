@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
 /** Master: altera os campos enviados. O segredo só é trocado se vier preenchido. */
 export async function PUT(req: NextRequest) {
   return withAuth(req, async (user) => {
+    if (user.profileType !== 'master') return json({ error: 'Apenas o administrador master pode alterar esta configuração.' }, 403)
     const negado = await exigirPermissao(user, 'meta_app.config.editar')
     if (negado) return negado
     if (!ehBase(process.env)) return json({ error: 'A configuração só pode ser alterada no sistema base.' }, 409)

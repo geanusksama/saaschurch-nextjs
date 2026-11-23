@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic'
 /** Visão do master: valores atuais SEM a chave secreta (só se está definida). */
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
+    if (user.profileType !== 'master') return json({ error: 'Apenas o administrador master pode ver esta configuração.' }, 403)
     const negado = await exigirPermissao(user, 'meta_app.view')
     if (negado) return negado
     let linha = null

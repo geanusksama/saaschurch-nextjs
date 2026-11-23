@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, ExternalLink, Save } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
+import { cabecalhos, lerErro } from '../../lib/meta/clienteHttp';
 import { Permissao } from '../../lib/permissoes/Permissao';
 
 type Visao = {
@@ -22,26 +23,6 @@ type Visao = {
 const BASE = `${apiBase}/meta/app-config`;
 const LINK_EMPRESA = 'https://business.facebook.com/settings/security?business_id=2291140898081009';
 const LINK_APP = 'https://developers.facebook.com/apps/3371798666355530/';
-
-function cabecalhos(json = false): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') : null;
-  return {
-    ...(json ? { 'Content-Type': 'application/json' } : {}),
-    Authorization: `Bearer ${token ?? ''}`,
-  };
-}
-
-async function lerErro(r: Response): Promise<string> {
-  try {
-    const j = (await r.json()) as { error?: string };
-    if (j?.error) return j.error;
-  } catch {
-    /* corpo vazio */
-  }
-  if (r.status === 401) return 'Sessão expirada. Entre novamente.';
-  if (r.status === 403) return 'Você não tem permissão para esta ação.';
-  return `Erro ${r.status} ao falar com o servidor.`;
-}
 
 const campoClasse =
   'w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100';
@@ -99,13 +80,17 @@ export default function MetaAppConfig() {
   };
 
   const salvar = () => {
-    const corpo: Record<string, unknown> = {
-      appId: form.appId,
-      configId: form.configId,
-      graphVersion: form.graphVersion,
-      verifyToken: form.verifyToken,
-    };
+    const corpo: Record<string, unknown> = {};
+    const campos = ['appId', 'configId', 'graphVersion', 'verifyToken'] as const;
+    for (const k of campos) {
+      if (form[k].trim() !== (visao?.[k] ?? '')) corpo[k] = form[k];
+    }
     if (form.appSecret.trim()) corpo.appSecret = form.appSecret;
+    if (!Object.keys(corpo).length) {
+      setErro(null);
+      setAviso('Nada foi alterado.');
+      return;
+    }
     void enviar(corpo, 'Configuração salva.');
   };
 

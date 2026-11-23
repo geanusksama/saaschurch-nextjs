@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { BadgeCheck, Loader2, AlertTriangle, CheckCircle2, Unplug } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
+import { cabecalhos, lerErro } from '../../lib/meta/clienteHttp';
 import { Permissao } from '../../lib/permissoes/Permissao';
 import { abrirEmbeddedSignup, carregarSdkMeta } from '../../lib/meta/embeddedSignup';
 
@@ -32,35 +33,15 @@ const LIMITES: Record<string, string> = {
 };
 
 const QUALIDADES: Record<Qualidade, { texto: string; classe: string }> = {
-  GREEN: { texto: 'Alta', classe: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  YELLOW: { texto: 'Média', classe: 'bg-amber-50 text-amber-700 border-amber-200' },
-  RED: { texto: 'Baixa', classe: 'bg-red-50 text-red-700 border-red-200' },
-  UNKNOWN: { texto: 'Ainda sem avaliação', classe: 'bg-slate-100 text-slate-600 border-slate-200' },
+  GREEN: { texto: 'Alta', classe: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900' },
+  YELLOW: { texto: 'Média', classe: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900' },
+  RED: { texto: 'Baixa', classe: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900' },
+  UNKNOWN: { texto: 'Ainda sem avaliação', classe: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600' },
 };
 
 const ROTULOS_STATUS: Record<string, string> = { conectado: 'Conectado', erro: 'Erro', desconectado: 'Desconectado' };
 
 const BASE = `${apiBase}/meta/whatsapp`;
-
-function cabecalhos(json = false): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') : null;
-  return {
-    ...(json ? { 'Content-Type': 'application/json' } : {}),
-    Authorization: `Bearer ${token ?? ''}`,
-  };
-}
-
-async function lerErro(r: Response): Promise<string> {
-  try {
-    const j = (await r.json()) as { error?: string };
-    if (j?.error) return j.error;
-  } catch {
-    /* corpo vazio */
-  }
-  if (r.status === 401) return 'Sessão expirada. Entre novamente.';
-  if (r.status === 403) return 'Você não tem permissão para esta ação.';
-  return `Erro ${r.status} ao falar com o servidor.`;
-}
 
 export default function WhatsAppOficial() {
   const [conexao, setConexao] = useState<Conexao | null>(null);
@@ -68,16 +49,21 @@ export default function WhatsAppOficial() {
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
-  const [liberada, setLiberada] = useState(true);
+  const [liberada, setLiberada] = useState(false);
 
   useEffect(() => {
     let vivo = true;
     fetch(`${BASE}/config`, { headers: cabecalhos() })
-      .then(async (r) => (r.ok ? ((await r.json()) as { conexaoLiberada?: boolean }) : null))
-      .then((c) => {
-        if (vivo && c && c.conexaoLiberada === false) setLiberada(false);
+      .then(async (r) => {
+        if (!r.ok) throw new Error(await lerErro(r));
+        return (await r.json()) as { conexaoLiberada?: boolean };
       })
-      .catch(() => undefined);
+      .then((c) => {
+        if (vivo) setLiberada(c.conexaoLiberada === true);
+      })
+      .catch((e) => {
+        if (vivo) setErro(e instanceof Error ? e.message : 'Falha ao carregar a configuração.');
+      });
     fetch(`${BASE}/conexao`, { headers: cabecalhos() })
       .then(async (r) => {
         if (!r.ok) throw new Error(await lerErro(r));

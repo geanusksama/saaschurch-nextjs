@@ -275,7 +275,7 @@ test('desconectar: token corrompido ainda apaga local', async () => {
 })
 
 // ── Task 8: configuração central ──────────────────────────────────────────
-import { criarConfigCentral, mesclarComEnv, visaoPublica, validarAtualizacao, TTL_CACHE_MS } from '../src/lib/meta/configCentral.ts'
+import { criarConfigCentral, mesclarComEnv, visaoPublica, validarAtualizacao, TTL_CACHE_MS, LIMITE_VENCIDO_MS, PAUSA_APOS_FALHA_MS } from '../src/lib/meta/configCentral.ts'
 import { MSG_NAO_LIBERADA } from '../src/lib/meta/servicoConexao.ts'
 
 const LINHA = { appId: 'APP', esConfigId: 'CFG', graphVersion: 'v25.0', webhookVerifyToken: 'VT', appSecretCifrado: cifrar('SEGREDO', CHAVE), conexaoLiberada: true }
@@ -340,4 +340,30 @@ test('conexaoLiberada=false: conectar recusa com 403 antes de chamar a Meta', as
   await assert.rejects(() => conectar(deps, { campoId: 'c', userId: null, code: 'x', wabaId: 'w', phoneNumberId: 'p' }),
     (e) => e instanceof ErroServico && e.status === 403 && e.message === MSG_NAO_LIBERADA)
   assert.equal(chamouMeta, false)
+})
+
+test('base fora do ar após vencer: valor vencido com conexaoLiberada=false, sem novo fetch por 60 s, e nulo após 1 h', async () => {
+  let cai = false
+  const chamadas = []
+  const { c, avancar } = mkCentral({
+    env: { META_CONFIG_URL: 'https://b.com', META_CONFIG_SYNC_TOKEN: 't' },
+    fetch: async (u, i) => { chamadas.push(u); if (cai) throw new Error('rede'); return new Response(JSON.stringify({ appId: 'A2', configId: 'C2', graphVersion: 'v26.0', verifyToken: 'V2', appSecret: 'S2', conexaoLiberada: true })) },
+  })
+  assert.equal((await c.lerCentral()).conexaoLiberada, true)
+  cai = true
+  avancar(TTL_CACHE_MS + 1)
+  const v = await c.lerCentral()
+  assert.equal(v.appId, 'A2'); assert.equal(v.conexaoLiberada, false)
+  assert.equal(chamadas.length, 2)
+  avancar(PAUSA_APOS_FALHA_MS - 1000); await c.lerCentral(); assert.equal(chamadas.length, 2)
+  avancar(2000); await c.lerCentral(); assert.equal(chamadas.length, 3)
+  avancar(LIMITE_VENCIDO_MS + PAUSA_APOS_FALHA_MS)
+  assert.equal(await c.lerCentral(), null)
+})
+test('sem central, conexaoLiberada é false mesmo que exista variável de ambiente antiga', () => {
+  assert.equal(mesclarComEnv(null, { META_CONEXAO_LIBERADA: '1' }).conexaoLiberada, false)
+})
+test('PUT: erro de campo informa o nome do campo', () => {
+  const r = validarAtualizacao({ appId: '   ' })
+  assert.equal(r.ok, false); assert.match(r.erro, /ID do app/)
 })

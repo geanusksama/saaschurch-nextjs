@@ -33,6 +33,10 @@ export type DepsCentral = {
 }
 
 export const TTL_CACHE_MS = 5 * 60 * 1000
+/** Quanto tempo após vencer o cache ainda vale como reserva (sempre com conexaoLiberada=false). */
+export const LIMITE_VENCIDO_MS = 60 * 60 * 1000
+/** Após uma falha, não tenta de novo por este tempo (evita pagar o timeout a cada requisição). */
+export const PAUSA_APOS_FALHA_MS = 60 * 1000
 const TIMEOUT_MS = 5000
 
 export const ehBase = (env: Record<string, string | undefined>) => (env.META_CONFIG_BASE ?? '').trim() === '1'
@@ -65,6 +69,7 @@ export function urlBaseCentral(valor: string): string | null {
 
 export function criarConfigCentral(deps: DepsCentral) {
   let cache: { valor: ConfigCentral; ate: number } | null = null
+  let pausaAte = 0
 
   async function doBanco(): Promise<ConfigCentral | null> {
     const l = await deps.lerLinha()
@@ -89,17 +94,25 @@ export function criarConfigCentral(deps: DepsCentral) {
     }
   }
 
+  /** Valor vencido só por até 1 h e nunca liberando a conexão. */
+  function vencido(): ConfigCentral | null {
+    if (!cache || deps.agora() > cache.ate + LIMITE_VENCIDO_MS) return null
+    return { ...cache.valor, conexaoLiberada: false }
+  }
+
   /** Valor central ou null se indisponível (o chamador usa o env como reserva). */
   async function lerCentral(): Promise<ConfigCentral | null> {
     try {
       if (ehBase(deps.env)) return await doBanco()
       if (cache && deps.agora() < cache.ate) return cache.valor
+      if (deps.agora() < pausaAte) return vencido()
       const v = await doBase()
       if (v) cache = { valor: v, ate: deps.agora() + TTL_CACHE_MS }
       return v
     } catch (e) {
       console.error('[meta/config-central] indisponível, usando reserva:', (e as Error)?.name)
-      return cache?.valor ?? null
+      pausaAte = deps.agora() + PAUSA_APOS_FALHA_MS
+      return vencido()
     }
   }
 
@@ -109,14 +122,18 @@ export function criarConfigCentral(deps: DepsCentral) {
 /** Mescla: o central vale quando preenchido; o env cobre o resto (reserva). */
 export function mesclarComEnv(central: ConfigCentral | null, env: Record<string, string | undefined>): ConfigCentral {
   const e = (n: string) => vazio(env[n])
-  const pick = (c: string | undefined, nome: string) => vazio(c) || e(nome)
+  const pick = (c: string | undefined, nome: string) => {
+    if (vazio(c)) return vazio(c)
+    if (central && e(nome)) console.warn(`[meta/config-central] campo vazio na central, usando o ambiente: ${nome}`)
+    return e(nome)
+  }
   return {
     appId: pick(central?.appId, 'META_APP_ID'),
     configId: pick(central?.configId, 'META_ES_CONFIG_ID'),
     graphVersion: pick(central?.graphVersion, 'META_GRAPH_VERSION'),
     verifyToken: pick(central?.verifyToken, 'META_WEBHOOK_VERIFY_TOKEN'),
     appSecret: pick(central?.appSecret, 'META_APP_SECRET'),
-    conexaoLiberada: central ? central.conexaoLiberada : e('META_CONEXAO_LIBERADA') === '1',
+    conexaoLiberada: central?.conexaoLiberada === true,
   }
 }
 
@@ -150,7 +167,8 @@ export function validarAtualizacao(corpo: unknown): { ok: true; dados: Atualizac
     if (c[entrada] === undefined) continue
     if (typeof c[entrada] !== 'string') return { ok: false, erro: `${rotulo} inválido.` }
     const v = (c[entrada] as string).trim()
-    if (!v || v.length > 200) return { ok: false, erro: `${rotulo} inválido.` }
+    if (!v) return { ok: false, erro: `${rotulo}: informe um valor.` }
+    if (v.length > 200) return { ok: false, erro: `${rotulo} inválido.` }
     ;(dados as Record<string, unknown>)[saida] = v
   }
   if (dados.graphVersion && !/^v\d+\.\d+$/.test(dados.graphVersion)) {
