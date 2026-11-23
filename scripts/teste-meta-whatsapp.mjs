@@ -1004,19 +1004,18 @@ test('envio fila: aguardando limite volta a enviar sozinho quando o limite liber
   assert.equal(st.posts.length, 2)
   assert.equal(st.disparos[0].status, 'concluido')
 })
-test('envio fila: erro 131042 (pagamento) para o disparo, grava alerta e não marca a pessoa como falha', async () => {
-  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }, { id: 'd2', status: 'aguardando_limite' }], envios: [...pend(5), ...pend(2, 'd2')], postErro: erroGraph(131042, 'Business eligibility payment issue') })
+test('envio fila: erro 131042 (pagamento) para o disparo, grava alerta e devolve a pessoa à fila (nada saiu)', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }, { id: 'd2', status: 'aguardando_limite' }], envios: [...pend(8), ...pend(2, 'd2')], postErro: erroGraph(131042, 'Business eligibility payment issue') })
   const r = await processarFila(deps, 'c1', AGORA_ENV)
-  assert.equal(st.posts.length, 1)
+  assert.ok(st.posts.length >= 1 && st.posts.length <= 5, `posts ${st.posts.length}`)
   assert.equal(st.disparos[0].status, 'pausado')
   assert.equal(st.disparos[1].status, 'pausado')
   assert.match(st.disparos[0].motivo, /131042/)
   assert.equal(st.alertas.length, 1)
   assert.equal(st.alertas[0].campoId, 'c1')
-  // O POST começou: a pessoa recusada vira falhou (nunca volta à fila); as outras voltam.
-  assert.deepEqual(st.envios.filter((e) => e.status === 'falhou').map((e) => e.erroCodigo), [131042])
+  assert.equal(st.envios.filter((e) => e.status === 'falhou').length, 0)
   assert.equal(st.envios.filter((e) => e.reservado).length, 0)
-  assert.equal(st.envios.filter((e) => e.disparoId === 'd1' && e.status === 'pendente').length, 4)
+  assert.equal(st.envios.filter((e) => e.disparoId === 'd1' && e.status === 'pendente').length, 8)
   assert.ok(r.pausado)
 })
 test('envio fila: erro 190 também marca a conexão com erro', async () => {
@@ -1047,14 +1046,18 @@ test('envio fila: qualidade vermelha pausa sem enviar e grava alerta', async () 
   assert.equal(st.disparos[0].status, 'pausado')
   assert.equal(st.alertas.length, 1)
 })
-test('envio fila: tempo esgotado da Meta falha só aquela pessoa (sem reenviar) e encerra a rodada', async () => {
+test('envio fila: tempo esgotado da Meta falha só quem estava em voo (sem reenviar) e encerra a rodada', async () => {
   const t = new Error('timeout'); t.name = 'TimeoutError'
-  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(3), postErro: t })
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(12), postErro: t })
   await processarFila(deps, 'c1', AGORA_ENV)
-  assert.equal(st.posts.length, 1)
-  assert.equal(st.envios[0].status, 'falhou')
-  assert.equal(st.envios.filter((e) => e.status === 'pendente' && !e.reservado).length, 2)
+  assert.equal(st.posts.length, 5)
+  assert.equal(st.envios.filter((e) => e.status === 'falhou').length, 5)
+  assert.equal(st.enviados24h, 5)
+  assert.equal(st.envios.filter((e) => e.status === 'pendente' && !e.reservado).length, 7)
   assert.equal(st.disparos[0].status, 'enviando')
+  const semCodigo = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(1), postErro: new ErroGraph('Graph API respondeu 502', 502, null) })
+  await processarFila(semCodigo.deps, 'c1', AGORA_ENV)
+  assert.equal(semCodigo.st.envios[0].status, 'falhou')
 })
 test('envio fila: sem conexão pausa os disparos ativos sem chamar a Meta', async () => {
   const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(2), conexao: null })
@@ -1297,27 +1300,58 @@ test('envio fila: SAIR durante a rodada ⇒ o não enviado desse telefone não v
   assert.equal(st.envios.filter((e) => e.status === 'pendente' && !e.reservado).length, 12 - st.posts.length - 1)
 })
 test('envio fila: gravação falha depois do POST ⇒ item fica reservado (nunca reenviado) e a varredura o torna falhou', async () => {
-  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(3) })
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(8) })
   st.quebrarGravacao = true
   await assert.rejects(processarFila(deps, 'c1', AGORA_ENV), /pooler/)
-  assert.equal(st.posts.length, 1)
-  assert.equal(st.envios[0].reservado, true)
-  assert.equal(st.envios.filter((e) => e.status === 'pendente' && !e.reservado).length, 2)
-  assert.deepEqual(st.liberados, [st.envios[1].id, st.envios[2].id])
+  assert.equal(st.posts.length, 5)
+  const emVoo = st.envios.slice(0, 5)
+  assert.ok(emVoo.every((e) => e.reservado && e.status === 'pendente'))
+  assert.equal(st.envios.filter((e) => e.status === 'pendente' && !e.reservado).length, 3)
+  assert.deepEqual(st.liberados, st.envios.slice(5).map((e) => e.id))
   st.quebrarGravacao = false
   await processarFila(deps, 'c1', AGORA_ENV)
-  assert.equal(st.posts.filter((p) => p.corpo.to === st.envios[0].telefone).length, 1)
-  assert.equal(st.envios[0].status, 'pendente')
-  st.envios[0].vencida = true
+  assert.equal(st.posts.length, 8)
+  assert.ok(emVoo.every((e) => st.posts.filter((p) => p.corpo.to === e.telefone).length === 1))
+  for (const e of emVoo) e.vencida = true
   await processarFila(deps, 'c1', AGORA_ENV)
-  assert.equal(st.envios[0].status, 'falhou')
-  assert.equal(st.posts.filter((p) => p.corpo.to === st.envios[0].telefone).length, 1)
+  assert.ok(emVoo.every((e) => e.status === 'falhou'))
+  assert.equal(st.posts.length, 8)
   assert.equal(st.disparos[0].status, 'concluido')
 })
-test('envio fila: 130429 falha a pessoa (POST começou) e encerra a rodada', async () => {
-  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(3), postErro: erroGraph(130429) })
+test('envio fila: 130429 (vazão) devolve a pessoa à fila e encerra a rodada', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(12), postErro: erroGraph(130429) })
   await processarFila(deps, 'c1', AGORA_ENV)
-  assert.equal(st.posts.length, 1)
-  assert.equal(st.envios[0].status, 'falhou')
-  assert.equal(st.envios.filter((e) => e.status === 'pendente' && !e.reservado).length, 2)
+  assert.equal(st.posts.length, 5)
+  assert.equal(st.envios.filter((e) => e.status === 'falhou').length, 0)
+  assert.equal(st.envios.filter((e) => e.status === 'pendente' && !e.reservado).length, 12)
+  assert.equal(st.disparos[0].status, 'enviando')
+})
+test('envio fila: no máximo 5 POSTs ao mesmo tempo; cada um grava logo após o próprio POST; prazo não começa POST novo', async () => {
+  let emVoo = 0
+  let pico = 0
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(20), limite: 'TIER_2K' })
+  const marcar = deps.repo.marcarEnviado
+  deps.graph.post = async (caminho, corpo) => {
+    st.posts.push({ caminho, corpo })
+    emVoo++; pico = Math.max(pico, emVoo)
+    await new Promise((r) => setTimeout(r, 5))
+    emVoo--
+    return { messages: [{ id: 'w-' + corpo.to }] }
+  }
+  const gravouAntesDoFim = []
+  deps.repo.marcarEnviado = async (id, w, q) => { gravouAntesDoFim.push(st.posts.length < 20); return marcar(id, w, q) }
+  await processarFila(deps, 'c1', AGORA_ENV)
+  assert.equal(pico, 5)
+  assert.equal(st.posts.length, 20)
+  assert.ok(gravouAntesDoFim.some(Boolean), 'gravou durante a rodada, não só no fim')
+  assert.equal(st.disparos[0].status, 'concluido')
+
+  let relogio = 0
+  const p = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: pend(20), limite: 'TIER_2K' })
+  p.deps.agoraMs = () => relogio
+  p.deps.graph.post = async (caminho, corpo) => { p.st.posts.push({ caminho, corpo }); relogio += 400; return { messages: [{ id: 'w-' + corpo.to }] } }
+  await processarFila(p.deps, 'c1', AGORA_ENV, { prazoMs: 1000 })
+  assert.ok(p.st.posts.length < 20)
+  assert.equal(p.st.envios.filter((e) => e.reservado).length, 0)
+  assert.equal(p.st.envios.filter((e) => e.status === 'pendente').length, 20 - p.st.posts.length)
 })
