@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Building2, ChevronDown, FileText, MapPin, Phone, Save, UserRound, X } from 'lucide-react';
 
 import { apiBase } from '../../lib/apiBase';
+import { lookupCep, type CepStatus } from '../../lib/buscaCep';
 import { Permissao } from '../../lib/permissoes/Permissao';
 import { FONTE_MODELO_FAMILIA, useFonteModelo } from '../../lib/fonteModelo';
 
@@ -109,7 +110,8 @@ export function MemberQuickCreateModal({
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [cepStatus, setCepStatus] = useState<'idle' | 'loading' | 'ok' | 'err'>('idle');
+  const [cepStatus, setCepStatus] = useState<CepStatus>('idle');
+  const cepPedido = useRef('');
   useFonteModelo();
 
   useEffect(() => {
@@ -118,6 +120,7 @@ export function MemberQuickCreateModal({
     setSaving(false);
     setError('');
     setCepStatus('idle');
+    cepPedido.current = '';
   }, [open, type, initialChurchId, availableChurches]);
 
   if (!open || !type) return null;
@@ -195,24 +198,28 @@ export function MemberQuickCreateModal({
     }
   };
 
-  // CEP: com 8 dígitos busca no ViaCEP e completa só o que estiver vazio.
+  // CEP: busca sozinho quando o oitavo dígito entra, como no cadastro. O que
+  // o ViaCEP trouxer substitui o endereço; o que vier vazio fica como estava.
   const buscarCep = async (cep: string) => {
+    // Só vale a resposta do último CEP digitado: uma busca antiga que volta
+    // depois (CEP corrigido, modal reaberto) não sobrescreve o endereço.
+    const alvo = digitsOnly(cep);
+    cepPedido.current = alvo;
     setCepStatus('loading');
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = res.ok ? await res.json() : null;
-      if (!data || data.erro) throw new Error('cep');
-      setForm((current) => ({
-        ...current,
-        addressStreet: current.addressStreet || data.logradouro || '',
-        addressNeighborhood: current.addressNeighborhood || data.bairro || '',
-        addressCity: current.addressCity || data.localidade || '',
-        addressState: current.addressState || data.uf || '',
-      }));
-      setCepStatus('ok');
-    } catch {
+    const result = await lookupCep(cep);
+    if (cepPedido.current !== alvo) return;
+    if (!result) {
       setCepStatus('err');
+      return;
     }
+    setForm((current) => ({
+      ...current,
+      addressStreet: result.street || current.addressStreet,
+      addressNeighborhood: result.neighborhood || current.addressNeighborhood,
+      addressCity: result.city || current.addressCity,
+      addressState: result.state || current.addressState,
+    }));
+    setCepStatus('ok');
   };
 
   const inputClass =
@@ -341,7 +348,10 @@ export function MemberQuickCreateModal({
                     update('addressZipcode', valor);
                     const digitos = digitsOnly(valor);
                     if (digitos.length === 8) void buscarCep(digitos);
-                    else if (cepStatus !== 'idle') setCepStatus('idle');
+                    else {
+                      cepPedido.current = '';
+                      if (cepStatus !== 'idle') setCepStatus('idle');
+                    }
                   }}
                   className={inputClass}
                   placeholder="00000-000"
