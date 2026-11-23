@@ -5,6 +5,7 @@ import { cifrar, decifrar } from '../src/lib/meta/cifra.ts'
 import { assinaturaValida, respostaDesafio } from '../src/lib/meta/webhookSeguranca.ts'
 import { criarGraph, ErroGraph } from '../src/lib/meta/graph.ts'
 import { trocarCodigo, registrarNumero, assinarWebhookDaConta, lerStatusNumero, gerarPin } from '../src/lib/meta/conexaoMeta.ts'
+import { normalizarTelefoneBR, ehPedidoDeSair, primeiroNome, deduplicarPorTelefone, montarParametros, montarMensagemTemplate, tamanhoDoLote, CODIGOS_PARAR_DISPARO } from '../src/lib/meta/envio.ts'
 
 const CHAVE = 'a'.repeat(64)
 
@@ -825,4 +826,62 @@ test('modelos: variaveisParaGravar só grava as do corpo e monta a do cabeçalho
     { posicao: 0, tipo: 'nome', exemplo: 'Ana' },
   ])
   assert.deepEqual(variaveisParaGravar({ ...r, cabecalho: 'Sem variável' }).map((v) => v.posicao), [1, 2])
+})
+
+test('envio: normaliza telefone BR para E.164 só com dígitos', () => {
+  assert.equal(normalizarTelefoneBR('(19) 99212-6683'), '5519992126683')
+  assert.equal(normalizarTelefoneBR('+55 19 99212-6683'), '5519992126683')
+  assert.equal(normalizarTelefoneBR('5519992126683'), '5519992126683')
+  assert.equal(normalizarTelefoneBR('19 3333-4444'), null)
+  assert.equal(normalizarTelefoneBR('551933334444'), null)
+  assert.equal(normalizarTelefoneBR('123'), null)
+  assert.equal(normalizarTelefoneBR(''), null)
+  assert.equal(normalizarTelefoneBR(null), null)
+})
+test('envio: pedido de sair ignora caixa, acento e espaços, só mensagem inteira', () => {
+  for (const t of ['SAIR', ' sair ', 'Parar', 'stop', 'CANCELAR', 'Descadastrar']) assert.equal(ehPedidoDeSair(t), true, t)
+  for (const t of ['quero sair', 'oi', '', 'paraná']) assert.equal(ehPedidoDeSair(t), false, t)
+  assert.equal(ehPedidoDeSair('Sáir'), true)
+})
+test('envio: primeiro nome, nome preferido vence', () => {
+  assert.equal(primeiroNome('Maria da Silva'), 'Maria')
+  assert.equal(primeiroNome('  joão  pedro '), 'joão')
+  assert.equal(primeiroNome('Maria da Silva', 'Mari'), 'Mari')
+  assert.equal(primeiroNome('Maria da Silva', '  '), 'Maria')
+  assert.equal(primeiroNome('Maria da Silva', null), 'Maria')
+})
+const ct = (o, t, n = 'Ana Souza', i = 'Sede') => ({ origem: o, refId: n, nome: n, telefone: t, igrejaNome: i })
+test('envio: deduplica por telefone, membro antes de interessado', () => {
+  const r = deduplicarPorTelefone([ct('interessado', '55a', 'L1'), ct('membro', '55a', 'M1'), ct('interessado', '55b', 'L2'), ct('membro', '55a', 'M2')])
+  assert.deepEqual(r.map((c) => c.refId), ['M1', 'L2'])
+})
+test('envio: monta parâmetros do corpo e do cabeçalho', () => {
+  const vars = [
+    { posicao: 2, tipo: 'igreja', exemplo: 'x' },
+    { posicao: 1, tipo: 'nome', exemplo: 'x' },
+    { posicao: 3, tipo: 'data', exemplo: 'x' },
+    { posicao: 4, tipo: 'livre', exemplo: 'x' },
+    { posicao: 0, tipo: 'nome', exemplo: 'x' },
+  ]
+  const p = montarParametros(vars, ct('membro', '55a'), { data: '25/12', livre: 'Culto' })
+  assert.deepEqual(p, { header: ['Ana'], body: ['Ana', 'Sede', '25/12', 'Culto'] })
+  assert.deepEqual(montarParametros([], ct('membro', '55a'), {}), { body: [] })
+})
+test('envio: corpo do POST /messages só inclui componentes com parâmetros', () => {
+  assert.deepEqual(montarMensagemTemplate('5519992126683', 'aviso', 'pt_BR', { header: ['Ana'], body: ['Ana', 'Sede'] }), {
+    messaging_product: 'whatsapp', to: '5519992126683', type: 'template',
+    template: { name: 'aviso', language: { code: 'pt_BR' }, components: [
+      { type: 'header', parameters: [{ type: 'text', text: 'Ana' }] },
+      { type: 'body', parameters: [{ type: 'text', text: 'Ana' }, { type: 'text', text: 'Sede' }] },
+    ] },
+  })
+  assert.deepEqual(montarMensagemTemplate('55', 'a', 'pt_BR', { body: [] }).template.components, [])
+})
+test('envio: tamanho do lote e códigos de parada', () => {
+  assert.equal(tamanhoDoLote(0, 100), 0)
+  assert.equal(tamanhoDoLote(250, 10), 10)
+  assert.equal(tamanhoDoLote(250, 100), 60)
+  assert.equal(tamanhoDoLote(-5, 100), 0)
+  assert.equal(tamanhoDoLote(250, 100, 20), 20)
+  assert.deepEqual(CODIGOS_PARAR_DISPARO, [131031, 131042, 368, 190])
 })
