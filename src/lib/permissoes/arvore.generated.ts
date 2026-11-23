@@ -1626,6 +1626,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/ecclesiastical/MembershipReviewModal.tsx"
   },
   {
+    "chave": "meta_app.config.editar",
+    "rotulo": "Alterar a configuração do app da Meta",
+    "herda": "meta_app.view",
+    "arquivo": "src/app-ui/system/MetaAppConfig.tsx"
+  },
+  {
     "chave": "ministries.ministries.atualizar_ministerio_criar_ministerio",
     "rotulo": "Atualizar Ministério Criar Ministério — Ministries",
     "herda": "ministries.view",

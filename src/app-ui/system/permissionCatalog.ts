@@ -242,6 +242,8 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Configurações', name: 'Rastreador do site', key: 'site_rastreio', permissions: mkPerms(admin(), none(), none(), none()) },
 
   { group: 'Comunicação', name: 'WhatsApp Oficial (Meta)', key: 'whatsapp_oficial', permissions: mkPerms(admin(), admin(), admin(), admin()) },
+  // Configuração central do app da Meta: só master (tem chave secreta e o interruptor das igrejas).
+  { group: 'Sistema', name: 'Meta – App oficial', key: 'meta_app', permissions: mkPerms(master(), master(), master(), master()) },
 
   // ── Comunicação — WhatsApp (sub-permissões) ──────────────────────────────
   {

@@ -129,7 +129,7 @@ import { obterStatus, conectar, desconectar, ErroServico } from '../src/lib/meta
 function fakeDeps(over = {}) {
   const chamadas = []
   const reg = { salvos: [], erros: [], desconectados: [] }
-  const config = { appId: 'app', appSecret: 'seg', configId: 'c', verifyToken: 'vt', chaveCifra: CHAVE, graphVersion: 'v27.0', callbackBaseUrl: 'https://fixo.exemplo' }
+  const config = { appId: 'app', appSecret: 'seg', configId: 'c', verifyToken: 'vt', chaveCifra: CHAVE, graphVersion: 'v27.0', callbackBaseUrl: 'https://fixo.exemplo', conexaoLiberada: true }
   const deps = {
     config,
     graph: {},
@@ -272,4 +272,72 @@ test('desconectar: token corrompido ainda apaga local', async () => {
   deps.repo.conexao = conexaoSalva('lixo')
   await desconectar(deps, 'c1')
   assert.deepEqual(reg.desconectados, ['c1'])
+})
+
+// ── Task 8: configuração central ──────────────────────────────────────────
+import { criarConfigCentral, mesclarComEnv, visaoPublica, validarAtualizacao, TTL_CACHE_MS } from '../src/lib/meta/configCentral.ts'
+import { MSG_NAO_LIBERADA } from '../src/lib/meta/servicoConexao.ts'
+
+const LINHA = { appId: 'APP', esConfigId: 'CFG', graphVersion: 'v25.0', webhookVerifyToken: 'VT', appSecretCifrado: cifrar('SEGREDO', CHAVE), conexaoLiberada: true }
+const mkCentral = (over = {}) => {
+  let t = 1000
+  const chamadas = []
+  const deps = {
+    env: { META_TOKEN_ENCRYPTION_KEY: CHAVE },
+    fetch: async (url, init) => { chamadas.push({ url, init }); return new Response(JSON.stringify({ appId: 'A2', configId: 'C2', graphVersion: 'v26.0', verifyToken: 'V2', appSecret: 'S2', conexaoLiberada: true })) },
+    agora: () => t,
+    lerLinha: async () => LINHA,
+    decifrar,
+    ...over,
+  }
+  return { c: criarConfigCentral(deps), chamadas, avancar: (ms) => { t += ms } }
+}
+
+test('base lê do repositório e decifra o segredo', async () => {
+  const { c, chamadas } = mkCentral({ env: { META_CONFIG_BASE: '1', META_TOKEN_ENCRYPTION_KEY: CHAVE } })
+  const v = await c.lerCentral()
+  assert.equal(v.appSecret, 'SEGREDO'); assert.equal(v.appId, 'APP'); assert.equal(v.conexaoLiberada, true)
+  assert.equal(chamadas.length, 0)
+})
+test('não-base busca no base com o cabeçalho e cacheia por 5 minutos', async () => {
+  const { c, chamadas, avancar } = mkCentral({ env: { META_CONFIG_URL: 'https://base.exemplo.com', META_CONFIG_SYNC_TOKEN: 'tok' } })
+  assert.equal((await c.lerCentral()).appId, 'A2')
+  assert.equal(chamadas[0].url, 'https://base.exemplo.com/api/meta/app-config')
+  assert.equal(chamadas[0].init.headers['x-meta-config-token'], 'tok')
+  avancar(TTL_CACHE_MS - 1); await c.lerCentral(); assert.equal(chamadas.length, 1)
+  avancar(2); await c.lerCentral(); assert.equal(chamadas.length, 2)
+})
+test('não-base: falha do base cai no env; sem nada, central é null', async () => {
+  const falha = async () => { throw new Error('rede') }
+  const { c } = mkCentral({ fetch: falha, env: { META_CONFIG_URL: 'https://b.com', META_CONFIG_SYNC_TOKEN: 't' } })
+  const central = await c.lerCentral()
+  assert.equal(central, null)
+  const m = mesclarComEnv(central, { META_APP_ID: 'ENVAPP', META_APP_SECRET: 'ENVSEC', META_ES_CONFIG_ID: 'c', META_WEBHOOK_VERIFY_TOKEN: 'v', META_GRAPH_VERSION: 'v25.0' })
+  assert.equal(m.appId, 'ENVAPP'); assert.equal(m.appSecret, 'ENVSEC')
+  const vazio = mesclarComEnv(null, {})
+  assert.equal(vazio.appId, ''); assert.equal(vazio.conexaoLiberada, false)
+})
+test('não-base com URL http (não local) não busca', async () => {
+  const { c, chamadas } = mkCentral({ env: { META_CONFIG_URL: 'http://base.exemplo.com', META_CONFIG_SYNC_TOKEN: 't' } })
+  assert.equal(await c.lerCentral(), null); assert.equal(chamadas.length, 0)
+})
+test('o segredo nunca aparece na visão do GET do master', () => {
+  const v = visaoPublica(LINHA, {})
+  assert.equal(v.appSecretDefinido, true)
+  assert.ok(!JSON.stringify(v).includes('SEGREDO'))
+  assert.ok(!JSON.stringify(v).includes(LINHA.appSecretCifrado))
+  assert.equal(visaoPublica(null, {}).appSecretDefinido, false)
+})
+test('PUT: segredo vazio é ignorado e campos são validados', () => {
+  assert.deepEqual(validarAtualizacao({ appSecret: '  ', conexaoLiberada: true }), { ok: true, dados: { conexaoLiberada: true } })
+  assert.equal(validarAtualizacao({ graphVersion: '25' }).ok, false)
+  assert.equal(validarAtualizacao({ conexaoLiberada: 'sim' }).ok, false)
+  assert.equal(validarAtualizacao({ appSecret: 'novo' }).dados.appSecret, 'novo')
+})
+test('conexaoLiberada=false: conectar recusa com 403 antes de chamar a Meta', async () => {
+  let chamouMeta = false
+  const deps = { config: { conexaoLiberada: false }, repo: { buscarPorPhoneNumberId: async () => { chamouMeta = true; return null } }, meta: { trocarCodigo: async () => { chamouMeta = true } } }
+  await assert.rejects(() => conectar(deps, { campoId: 'c', userId: null, code: 'x', wabaId: 'w', phoneNumberId: 'p' }),
+    (e) => e instanceof ErroServico && e.status === 403 && e.message === MSG_NAO_LIBERADA)
+  assert.equal(chamouMeta, false)
 })

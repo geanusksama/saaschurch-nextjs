@@ -1,6 +1,7 @@
+import { mesclarComEnv } from './configCentral'
 /**
- * Configuração da Meta (WhatsApp Oficial). Nesta etapa vem das variáveis de ambiente;
- * a Task 8 troca a fonte para a configuração central mantendo esta assinatura.
+ * Configuração da Meta (WhatsApp Oficial): valores do app vêm da configuração central
+ * (banco do base ou rota do base), com variáveis de ambiente como reserva.
  */
 export type ConfigMeta = {
   appId: string
@@ -10,6 +11,8 @@ export type ConfigMeta = {
   chaveCifra: string
   graphVersion: string
   callbackBaseUrl: string
+  /** Interruptor do master: false ⇒ igrejas veem "Em breve". */
+  conexaoLiberada: boolean
 }
 
 export class ErroConfigMeta extends Error {
@@ -19,29 +22,32 @@ export class ErroConfigMeta extends Error {
   }
 }
 
-const VARIAVEIS = [
-  'META_APP_ID',
-  'META_APP_SECRET',
-  'META_ES_CONFIG_ID',
-  'META_WEBHOOK_VERIFY_TOKEN',
-  'META_TOKEN_ENCRYPTION_KEY',
-  'META_GRAPH_VERSION',
-  'META_CALLBACK_BASE_URL',
-] as const
-
 export async function lerConfigMeta(): Promise<ConfigMeta> {
-  const faltando = VARIAVEIS.filter((n) => !(process.env[n] ?? '').trim())
+  const env = process.env
+  // Import tardio: o módulo padrão carrega o Prisma, que os testes unitários não usam.
+  const { configCentral } = await import('./configCentralPadrao')
+  const m = mesclarComEnv(await configCentral.lerCentral(), env)
+  const dados: Record<string, string> = {
+    META_APP_ID: m.appId,
+    META_APP_SECRET: m.appSecret,
+    META_ES_CONFIG_ID: m.configId,
+    META_WEBHOOK_VERIFY_TOKEN: m.verifyToken,
+    META_GRAPH_VERSION: m.graphVersion,
+    // Por implantação (cada igreja cifra seus tokens e tem sua URL).
+    META_TOKEN_ENCRYPTION_KEY: (env.META_TOKEN_ENCRYPTION_KEY ?? '').trim(),
+    META_CALLBACK_BASE_URL: (env.META_CALLBACK_BASE_URL ?? '').trim(),
+  }
+  const faltando = Object.keys(dados).filter((n) => !dados[n])
   if (faltando.length) throw new ErroConfigMeta(`Configuração da Meta incompleta: ${faltando.join(', ')}`)
-  const v = (n: (typeof VARIAVEIS)[number]) => (process.env[n] as string).trim()
-  const callbackBaseUrl = validarBaseUrl(v('META_CALLBACK_BASE_URL'))
   return {
-    appId: v('META_APP_ID'),
-    appSecret: v('META_APP_SECRET'),
-    configId: v('META_ES_CONFIG_ID'),
-    verifyToken: v('META_WEBHOOK_VERIFY_TOKEN'),
-    chaveCifra: v('META_TOKEN_ENCRYPTION_KEY'),
-    graphVersion: v('META_GRAPH_VERSION'),
-    callbackBaseUrl,
+    appId: dados.META_APP_ID,
+    appSecret: dados.META_APP_SECRET,
+    configId: dados.META_ES_CONFIG_ID,
+    verifyToken: dados.META_WEBHOOK_VERIFY_TOKEN,
+    chaveCifra: dados.META_TOKEN_ENCRYPTION_KEY,
+    graphVersion: dados.META_GRAPH_VERSION,
+    callbackBaseUrl: validarBaseUrl(dados.META_CALLBACK_BASE_URL),
+    conexaoLiberada: m.conexaoLiberada,
   }
 }
 

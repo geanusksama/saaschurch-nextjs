@@ -38,6 +38,8 @@ const QUALIDADES: Record<Qualidade, { texto: string; classe: string }> = {
   UNKNOWN: { texto: 'Ainda sem avaliação', classe: 'bg-slate-100 text-slate-600 border-slate-200' },
 };
 
+const ROTULOS_STATUS: Record<string, string> = { conectado: 'Conectado', erro: 'Erro', desconectado: 'Desconectado' };
+
 const BASE = `${apiBase}/meta/whatsapp`;
 
 function cabecalhos(json = false): HeadersInit {
@@ -66,9 +68,16 @@ export default function WhatsAppOficial() {
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
+  const [liberada, setLiberada] = useState(true);
 
   useEffect(() => {
     let vivo = true;
+    fetch(`${BASE}/config`, { headers: cabecalhos() })
+      .then(async (r) => (r.ok ? ((await r.json()) as { conexaoLiberada?: boolean }) : null))
+      .then((c) => {
+        if (vivo && c && c.conexaoLiberada === false) setLiberada(false);
+      })
+      .catch(() => undefined);
     fetch(`${BASE}/conexao`, { headers: cabecalhos() })
       .then(async (r) => {
         if (!r.ok) throw new Error(await lerErro(r));
@@ -126,7 +135,12 @@ export default function WhatsAppOficial() {
     }
   };
 
-  const botaoConectar = (rotulo: string) => (
+  const botaoConectar = (rotulo: string) =>
+    !liberada ? (
+      <span className="inline-flex items-center rounded-full border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 px-3 py-1 text-sm font-semibold text-slate-600 dark:text-slate-200">
+        Em breve
+      </span>
+    ) : (
     <Permissao chave="whatsapp_oficial.conexao.conectar" rotulo="Conectar com a Meta" herda="whatsapp_oficial.edit">
       <button
         onClick={() => void conectar()}
@@ -147,7 +161,7 @@ export default function WhatsAppOficial() {
       </header>
 
       {erro && (
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">
           <AlertTriangle className="size-4 mt-0.5 shrink-0" />
           <span>{erro}</span>
         </div>
@@ -180,7 +194,7 @@ export default function WhatsAppOficial() {
       {!carregando && conexao && conexao.conectado && (
         <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-4 shadow-sm">
           {conexao.status === 'erro' && (
-            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 space-y-2">
+            <div role="alert" className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300 space-y-2">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="size-4 mt-0.5 shrink-0" />
                 <span>{conexao.ultimoErro || 'A conexão com a Meta apresentou erro.'}</span>
@@ -202,7 +216,7 @@ export default function WhatsAppOficial() {
               <dt className="text-slate-500">Status</dt>
               <dd className="font-semibold text-slate-800 dark:text-slate-100 inline-flex items-center gap-1.5">
                 {conexao.status !== 'erro' && <CheckCircle2 className="size-4 text-emerald-600" />}
-                {conexao.status}
+                {ROTULOS_STATUS[conexao.status] ?? conexao.status}
               </dd>
             </div>
             <div>

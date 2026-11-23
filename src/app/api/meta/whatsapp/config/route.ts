@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   return withAuth(req, async () => {
     try {
       const c = await lerConfigMeta()
-      return json({ appId: c.appId, configId: c.configId, graphVersion: c.graphVersion })
+      return json({ appId: c.appId, configId: c.configId, graphVersion: c.graphVersion, conexaoLiberada: c.conexaoLiberada })
     } catch (e) {
       return respostaDeErro(e)
     }

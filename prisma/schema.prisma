@@ -5899,3 +5899,18 @@ model MetaWhatsappConexao {
 
   @@map("meta_whatsapp_conexoes")
 }
+
+/// WhatsApp Oficial (Meta): configuracao central do app, linha unica (id = 1). Segredo cifrado.
+model MetaAppConfig {
+  id                 Int      @id @default(1)
+  appId              String?  @map("app_id")
+  esConfigId         String?  @map("es_config_id")
+  graphVersion       String?  @map("graph_version")
+  webhookVerifyToken String?  @map("webhook_verify_token")
+  appSecretCifrado   String?  @map("app_secret_cifrado")
+  conexaoLiberada    Boolean  @default(false) @map("conexao_liberada")
+  atualizadoPor      String?  @map("atualizado_por") @db.Uuid
+  atualizadoEm       DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@map("meta_app_config")
+}

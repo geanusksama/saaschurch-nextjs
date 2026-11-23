@@ -500,6 +500,7 @@ export const appNavigation: NavigationSection[] = [
       { name: 'WhatsApp Geral',        path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp_inbox' },
       { name: 'WhatsApp Instâncias',   path: '/app-ui/system/whatsapp',       icon: Smartphone, permKey: 'whatsapp_instances' },
       { name: 'WhatsApp Oficial', path: '/app-ui/system/whatsapp-oficial', icon: BadgeCheck, permKey: 'whatsapp_oficial' },
+      { name: 'Meta – App oficial', path: '/app-ui/system/meta-app', icon: BadgeCheck, permKey: 'meta_app' },
       { name: 'Senha dos Campos',      path: '/app-ui/system/campo-senhas', icon: Lock,     permKey: 'campo_passwords' },
       { name: 'Log de Auditoria',      path: '/app-ui/system/audit-log',    icon: FileText, permKey: 'audit_log' },
       { name: 'Integrações',           path: '/app-ui/system/integrations', icon: Plug,     permKey: 'integrations' },

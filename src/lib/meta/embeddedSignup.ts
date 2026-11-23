@@ -69,9 +69,11 @@ export function abrirEmbeddedSignup(configId: string): Promise<ResultadoSignup> 
     let ids: { wabaId: string; phoneNumberId: string } | null = null;
     let loginRespondeu = false;
     let terminou = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
     const encerrar = () => {
       terminou = true;
+      timers.forEach(clearTimeout);
       window.removeEventListener('message', onMessage);
     };
     const tentarConcluir = () => {
@@ -86,7 +88,7 @@ export function abrirEmbeddedSignup(configId: string): Promise<ResultadoSignup> 
     };
 
     function onMessage(event: MessageEvent) {
-      if (!event.origin.endsWith('facebook.com')) return;
+      if (!(event.origin === 'https://www.facebook.com' || (event.origin.startsWith('https://') && event.origin.endsWith('.facebook.com')))) return;
       let data: DadosJanela | null = null;
       try {
         data = typeof event.data === 'string' ? (JSON.parse(event.data) as DadosJanela) : (event.data as DadosJanela);
@@ -120,21 +122,21 @@ export function abrirEmbeddedSignup(configId: string): Promise<ResultadoSignup> 
         if (!code) {
           // Sem code: pode ser cancelamento ou fechamento antes do "Concluir".
           // Dá um instante para um FINISH chegar e então avisa.
-          setTimeout(() => {
+          timers.push(setTimeout(() => {
             if (terminou) return;
             encerrar();
             reject(new Error(ids ? MSG_CONCLUA_NA_JANELA : 'Conexão não concluída.'));
-          }, 800);
+          }, 800));
           return;
         }
         tentarConcluir();
         // Code chegou mas o FINISH ainda não: espera um pouco.
         if (!terminou) {
-          setTimeout(() => {
+          timers.push(setTimeout(() => {
             if (terminou) return;
             encerrar();
             reject(new Error('A Meta não informou o número escolhido. Tente novamente.'));
-          }, 30000);
+          }, 30000));
         }
       },
       {

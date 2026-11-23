@@ -80,6 +80,7 @@ export type RespostaConexao =
 export const MSG_TOKEN_RECUSADO = 'Token recusado pela Meta. Reconecte o número.'
 export const MSG_TOKEN_ILEGIVEL = 'Não foi possível ler as credenciais salvas. Reconecte o número.'
 export const MSG_TIMEOUT = 'A Meta demorou para responder. Tente novamente em instantes.'
+export const MSG_NAO_LIBERADA = 'Conexão ainda não liberada pelo administrador.'
 export const MSG_DUPLICADO = 'Este número já está conectado a outro campo.'
 
 function traduzir(e: unknown): never {
@@ -133,6 +134,7 @@ export async function conectar(
   deps: Dependencias,
   d: { campoId: string; userId: string | null; code: unknown; wabaId: unknown; phoneNumberId: unknown },
 ): Promise<RespostaConexao> {
+  if (!deps.config.conexaoLiberada) throw new ErroServico(403, MSG_NAO_LIBERADA)
   const code = texto(d.code)
   const wabaId = texto(d.wabaId)
   const phoneNumberId = texto(d.phoneNumberId)
