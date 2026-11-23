@@ -227,3 +227,23 @@ dias) e o app em modo de desenvolvimento; o App Review é pedido ao fim da 3.
   (`docs/architecture/GUIA-ESTILO-SILAS.md`).
 - Tamanho do lote e intervalo da fila, dentro do limite diário.
 - Como mostrar a estimativa de custo.
+
+## Adendo aprovado pelo dono (23/11/2026): configuração central e monitor
+
+- **Tela "Meta – App oficial"** na área do administrador master do sistema
+  base (Campinas). Mostra e permite mudar: ID do app, configuração do
+  Embedded Signup, versão da Graph API, token do webhook; a chave secreta do
+  app só pode ser trocada, nunca exibida. Mostra o status (verificação da
+  empresa, análise do app, limite de clientes por semana, webhook
+  respondendo) e o interruptor **"Liberar conexão para as igrejas"**:
+  desligado, as igrejas veem "em breve" no lugar de "Conectar com a Meta".
+- **Fonte única da configuração**: fica no banco do sistema base, com a
+  chave secreta cifrada. As outras igrejas leem do sistema base por uma rota
+  servidor-a-servidor protegida por segredo compartilhado, com cache curto;
+  as variáveis de ambiente valem como reserva quando o base não responde.
+  Só a conexão depende do base; o envio e o recebimento do dia a dia não.
+- **Monitor diário ("agente")**: verifica a versão da Graph API em uso
+  contra a data de desativação, tokens recusados, webhook sem resposta e
+  qualidade de número baixa; registra alertas na tela do master e avisa o
+  dono pelo WhatsApp. **Não muda a configuração sozinho**: propõe a mudança
+  e espera o "aprovar" do master na tela.

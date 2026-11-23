@@ -196,7 +196,7 @@ RLS ligada sem políticas (acesso só pelo servidor), como as demais tabelas sen
 ### Task 4: Rotas da API
 
 **Files:**
-- Create: `src/lib/meta/configMeta.ts` — `lerConfigMeta(): ConfigMeta` (lê as 6 variáveis; faltando alguma ⇒ `throw new ErroConfigMeta('Configuração da Meta incompleta: <nomes>')`).
+- Create: `src/lib/meta/configMeta.ts` — `lerConfigMeta(): Promise<ConfigMeta>` (nesta task lê as 6 variáveis de ambiente; faltando ou **vazia** alguma ⇒ `throw new ErroConfigMeta('Configuração da Meta incompleta: <nomes>')`). A Task 8 troca a fonte para a configuração central, mantendo esta assinatura. Timeout/AbortError da Graph ⇒ 504 com mensagem amigável.
 - Create: `src/lib/meta/conexaoRepo.ts` — `buscarConexaoDoCampo(campoId)`, `salvarConexao(dados)`, `marcarErro(campoId, msg)`, `desconectar(campoId)`.
 - Create: `src/app/api/meta/whatsapp/config/route.ts` — `GET` (withAuth): `{ appId, configId, graphVersion }` (nunca o segredo).
 - Create: `src/app/api/meta/whatsapp/conexao/route.ts` — `GET` status; `POST` conectar; `DELETE` desconectar.
@@ -277,3 +277,26 @@ RLS ligada sem políticas (acesso só pelo servidor), como as demais tabelas sen
 - [ ] **Step 3:** Escrever `docs/modules/whatsapp-oficial.md`.
 - [ ] **Step 4:** Teste ponta a ponta no ambiente de Campinas com o número de teste: conectar, ver status, desconectar.
 - [ ] **Step 5: Commit** — `"WhatsApp oficial: documentação e configuração"`. Push só com autorização do dono.
+
+---
+
+### Task 8: Configuração central do app Meta e tela do master (adendo de 23/11)
+
+**Files:**
+- Modify: `prisma/schema.prisma` + migration `meta_app_config` (linha única: app_id, es_config_id, graph_version, webhook_verify_token, app_secret_cifrado, conexao_liberada boolean default false, atualizado_por, atualizado_em) + baseline (Regra nº 1; DDL só com "sim" do dono).
+- Create: `src/lib/meta/configCentral.ts` — no sistema base (env `META_CONFIG_BASE=1`) lê do banco; nas demais igrejas busca `GET <META_CONFIG_URL>/api/meta/app-config` com cabeçalho `x-meta-config-token: <META_CONFIG_SYNC_TOKEN>`, cache de 5 min; se falhar, cai nas variáveis de ambiente.
+- Modify: `src/lib/meta/configMeta.ts` — `lerConfigMeta()` passa a usar `configCentral`.
+- Create: `src/app/api/meta/app-config/route.ts` — `GET` servidor-a-servidor (token compartilhado, `timingSafeEqual`), só no base; `PUT` para o master (withAuth + `exigirPermissao(user, 'meta_app.config.editar')`), segredo só substituído quando enviado.
+- Create: `src/app-ui/system/MetaAppConfig.tsx` + menu (grupo Sistema, `permKey: 'meta_app'`) + rota `system/meta-app` + catálogo (`meta_app`, só master) + `<Permissao>` nos botões + `npm run permissoes:arvore`.
+- Modify: tela da Task 5 — com `conexao_liberada = false` mostra "Em breve" no lugar do botão; a rota `POST /conexao` recusa com 403 "Conexão ainda não liberada pelo administrador".
+- Test: `scripts/teste-meta-whatsapp.mjs` (cache e reserva por env, com fetch falso) e `scripts/e2e-meta-whatsapp.mjs` (GET sem token ⇒ 401; PUT sem permissão ⇒ 403; segredo nunca aparece no GET).
+
+### Task 9: Monitor diário da Meta (adendo de 23/11)
+
+**Files:**
+- Create: `src/lib/meta/monitorMeta.ts` — `verificarMeta(): Promise<AlertaMeta[]>`: versão em uso vs. data de desativação (tabela de versões no código, atualizável pelo master), conexões com `status='erro'`, qualidade `RED`/`YELLOW`, webhook do base respondendo ao desafio.
+- Create: migration `meta_alertas` (id, campo_id null, tipo, mensagem, proposta jsonb null, criado_em, resolvido_em) + baseline (DDL com "sim" do dono).
+- Create: `src/app/api/cron/meta-monitor/route.ts` (CRON_SECRET, mesmo padrão de `src/app/api/cron/pastoral-cronograma/route.ts`) + `vercel.json` (diário) + Scheduled Task do Coolify documentada.
+- Modify: tela da Task 8 — lista de alertas; alerta com `proposta` tem botão "Aprovar" que aplica a mudança na configuração central (ex.: nova versão da Graph API).
+- Aviso por WhatsApp ao dono: usa o envio existente (só leitura/uso de `src/lib/whatsappSendService.ts`, sem alterá-lo), número configurável na tela; sem instância configurada, só registra na tela.
+- Test: `scripts/teste-meta-whatsapp.mjs` com casos de versão perto da desativação, conexão em erro e qualidade baixa.
