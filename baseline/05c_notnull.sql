@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:51:06.070Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.087Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline f22b1c58ac003887
+-- Baseline 5efc5aecf0f125da
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -735,6 +735,12 @@ alter table "public"."meta_whatsapp_conexoes" alter column "waba_id" set not nul
 alter table "public"."meta_whatsapp_conexoes" alter column "phone_number_id" set not null;
 alter table "public"."meta_whatsapp_conexoes" alter column "token_cifrado" set not null;
 alter table "public"."meta_whatsapp_conexoes" alter column "pin_cifrado" set not null;
+alter table "public"."meta_whatsapp_modelos" alter column "campo_id" set not null;
+alter table "public"."meta_whatsapp_modelos" alter column "waba_id" set not null;
+alter table "public"."meta_whatsapp_modelos" alter column "meta_template_id" set not null;
+alter table "public"."meta_whatsapp_modelos" alter column "nome" set not null;
+alter table "public"."meta_whatsapp_modelos" alter column "categoria" set not null;
+alter table "public"."meta_whatsapp_modelos" alter column "status" set not null;
 alter table "public"."ministries" alter column "id" set not null;
 alter table "public"."ministries" alter column "church_id" set not null;
 alter table "public"."ministries" alter column "name" set not null;

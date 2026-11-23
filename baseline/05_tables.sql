@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:51:06.066Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.083Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline f22b1c58ac003887
+-- Baseline 5efc5aecf0f125da
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -3919,6 +3919,24 @@ create table if not exists "public"."meta_whatsapp_conexoes" (
   "conectado_por" uuid,
   "conectado_em" timestamp(6) with time zone default now(),
   "atualizado_em" timestamp(6) with time zone default now() not null
+);
+
+create table if not exists "public"."meta_whatsapp_modelos" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "waba_id" text not null,
+  "meta_template_id" text not null,
+  "nome" text not null,
+  "idioma" text default 'pt_BR'::text not null,
+  "categoria" text not null,
+  "status" text not null,
+  "motivo_recusa" text,
+  "componentes" jsonb default '[]'::jsonb not null,
+  "variaveis" jsonb default '[]'::jsonb not null,
+  "criado_por" uuid,
+  "criado_em" timestamp(6) with time zone default now(),
+  "atualizado_em" timestamp(6) with time zone default now() not null,
+  "sincronizado_em" timestamp(6) with time zone
 );
 
 create table if not exists "public"."ministries" (

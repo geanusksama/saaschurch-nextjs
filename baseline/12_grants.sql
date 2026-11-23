@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:51:06.074Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.090Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline f22b1c58ac003887
+-- Baseline 5efc5aecf0f125da
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -722,6 +722,9 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_conexoes" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_conexoes" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_conexoes" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_modelos" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_modelos" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_whatsapp_modelos" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."ministries" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."ministries" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."ministries" to "service_role";

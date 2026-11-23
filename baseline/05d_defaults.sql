@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:51:06.071Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T19:28:19.087Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline f22b1c58ac003887
+-- Baseline 5efc5aecf0f125da
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -1112,6 +1112,12 @@ alter table "public"."meta_whatsapp_conexoes" alter column "id" set default gen_
 alter table "public"."meta_whatsapp_conexoes" alter column "status" set default 'conectado'::text;
 alter table "public"."meta_whatsapp_conexoes" alter column "conectado_em" set default now();
 alter table "public"."meta_whatsapp_conexoes" alter column "atualizado_em" set default now();
+alter table "public"."meta_whatsapp_modelos" alter column "id" set default gen_random_uuid();
+alter table "public"."meta_whatsapp_modelos" alter column "idioma" set default 'pt_BR'::text;
+alter table "public"."meta_whatsapp_modelos" alter column "componentes" set default '[]'::jsonb;
+alter table "public"."meta_whatsapp_modelos" alter column "variaveis" set default '[]'::jsonb;
+alter table "public"."meta_whatsapp_modelos" alter column "criado_em" set default now();
+alter table "public"."meta_whatsapp_modelos" alter column "atualizado_em" set default now();
 alter table "public"."ministries" alter column "color" set default '#8b5cf6'::character varying;
 alter table "public"."ministries" alter column "is_active" set default true;
 alter table "public"."ministries" alter column "created_at" set default CURRENT_TIMESTAMP;
