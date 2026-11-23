@@ -651,7 +651,7 @@ test('modelos: variável do cabeçalho exige {{1}} e exemplo próprio', () => {
 })
 
 // ---- Etapa 2, Task 2: serviço de modelos ----
-import { listarModelos, sincronizarModelos, criarModelo, excluirModelo, MSG_SEM_CONEXAO } from '../src/lib/meta/servicoModelos.ts'
+import { variaveisParaGravar, listarModelos, sincronizarModelos, criarModelo, excluirModelo, MSG_SEM_CONEXAO } from '../src/lib/meta/servicoModelos.ts'
 import { MSG_TOKEN_RECUSADO as MSG_TOK, MSG_TIMEOUT as MSG_TMO } from '../src/lib/meta/servicoConexao.ts'
 
 function depsModelos({ conexao = 'conectado', noBanco = [], daMeta = [], graphErro = null } = {}) {
@@ -790,4 +790,39 @@ test('modelos: normalizarRascunho rejeita tipo, limites e formas erradas', () =>
   assert.ok('erros' in normalizarRascunho(null))
   assert.ok('erros' in normalizarRascunho([]))
   assert.ok('rascunho' in normalizarRascunho(base))
+})
+
+test('master fora do base com liberação desligada -> 403 (rotas só concedem o desvio no base)', async () => {
+  const { readFileSync } = await import('node:fs')
+  const rota = (p) => readFileSync(new URL(`../src/app/api/meta/whatsapp/${p}/route.ts`, import.meta.url), 'utf8')
+  assert.match(rota('conexao'), /ehMaster: user\.profileType === 'master' && ehBase\(process\.env\)/)
+  assert.match(rota('config'), /user\.profileType === 'master' && ehBase\(process\.env\)/)
+  const { ehBase } = await import('../src/lib/meta/configCentral.ts')
+  assert.equal(ehBase({}), false)
+  const ehMaster = (env) => true && ehBase(env)
+  const { deps } = fakeDeps()
+  deps.config = { ...deps.config, conexaoLiberada: false }
+  await assert.rejects(
+    () => conectar(deps, { campoId: 'c', userId: null, code: 'x', wabaId: 'w', phoneNumberId: 'p', ehMaster: ehMaster({}) }),
+    (e) => e instanceof ErroServico && e.status === 403)
+})
+
+test('modelos: variaveisParaGravar só grava as do corpo e monta a do cabeçalho no servidor', () => {
+  const r = {
+    ...rascunhoOk(), corpo: 'Olá {{1}}, vem {{2}} aqui',
+    cabecalho: 'Oi {{1}}', exemploCabecalho: 'Ana', tipoCabecalho: 'nome',
+    variaveis: [
+      { posicao: 0, tipo: 'livre', exemplo: 'forjada' },
+      { posicao: 1, tipo: 'nome', exemplo: 'M' },
+      { posicao: 1, tipo: 'livre', exemplo: 'repetida' },
+      { posicao: 2, tipo: 'livre', exemplo: 'X' },
+      { posicao: 5, tipo: 'livre', exemplo: 'fora' },
+    ],
+  }
+  assert.deepEqual(variaveisParaGravar(r), [
+    { posicao: 1, tipo: 'nome', exemplo: 'M' },
+    { posicao: 2, tipo: 'livre', exemplo: 'X' },
+    { posicao: 0, tipo: 'nome', exemplo: 'Ana' },
+  ])
+  assert.deepEqual(variaveisParaGravar({ ...r, cabecalho: 'Sem variável' }).map((v) => v.posicao), [1, 2])
 })

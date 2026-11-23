@@ -102,7 +102,7 @@ export async function sincronizarModelos(deps: DepsModelos, campoId: string): Pr
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const lidos: any[] = []
     let params: Record<string, string> = { fields: CAMPOS, limit: '100' }
-    let caminho = `${wabaId}/message_templates`
+    const caminho = `${wabaId}/message_templates`
     for (let p = 0; p < MAX_PAGINAS; p++) {
       const r = await deps.graph.get(caminho, params, token)
       if (Array.isArray(r?.data)) lidos.push(...r.data)
@@ -130,6 +130,22 @@ export async function sincronizarModelos(deps: DepsModelos, campoId: string): Pr
   }
 }
 
+/** Só as variáveis do corpo que aparecem no corpo (posição >= 1, sem repetir) e, se o cabeçalho tem variável, a posição 0 montada aqui. */
+export function variaveisParaGravar(r: RascunhoModelo): VariavelModelo[] {
+  const usadas = new Set([...(r.corpo ?? '').matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1])))
+  const vistas = new Set<number>()
+  const out: VariavelModelo[] = []
+  for (const v of r.variaveis ?? []) {
+    if (!(v.posicao >= 1) || !usadas.has(v.posicao) || vistas.has(v.posicao)) continue
+    vistas.add(v.posicao)
+    out.push(v)
+  }
+  if (/\{\{\d+\}\}/.test(r.cabecalho ?? '') && r.exemploCabecalho) {
+    out.push({ posicao: 0, tipo: r.tipoCabecalho ?? 'livre', exemplo: r.exemploCabecalho })
+  }
+  return out
+}
+
 export async function criarModelo(
   deps: DepsModelos, campoId: string, userId: string | null, rascunho: RascunhoModelo,
 ): Promise<ModeloResumo> {
@@ -139,10 +155,7 @@ export async function criarModelo(
   const corpo = montarCorpoGraph(rascunho)
   try {
     const r = await deps.graph.post(`${wabaId}/message_templates`, corpo, token)
-    const variaveis: VariavelModelo[] = [...rascunho.variaveis]
-    if (rascunho.tipoCabecalho && rascunho.exemploCabecalho) {
-      variaveis.push({ posicao: 0, tipo: rascunho.tipoCabecalho, exemplo: rascunho.exemploCabecalho })
-    }
+    const variaveis = variaveisParaGravar(rascunho)
     return await deps.repo.inserir({
       campoId, wabaId,
       metaTemplateId: String(r?.id ?? ''),

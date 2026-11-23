@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { exigirPermissao } from '@/lib/permissoes/servidor'
 import { conectar, desconectar, obterStatusDoCampo } from '@/lib/meta/servicoConexao'
+import { ehBase } from '@/lib/meta/configCentral'
 import * as repo from '@/lib/meta/conexaoRepo'
 import { json, montarDependencias, MSG_SEM_CAMPO, respostaDeErro } from '@/lib/meta/depsConexao'
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
       const r = await conectar(await montarDependencias(), {
         campoId: user.campoId,
         userId: user.id,
-        ehMaster: user.profileType === 'master',
+        ehMaster: user.profileType === 'master' && ehBase(process.env),
         code: corpo?.code,
         wabaId: corpo?.wabaId,
         phoneNumberId: corpo?.phoneNumberId,

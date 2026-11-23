@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { lerComOrcamento } from '@/lib/meta/monitorMeta'
 import { sincronizarModelos } from '@/lib/meta/servicoModelos'
+import { ErroConfigMeta } from '@/lib/meta/configMeta'
 import { camposConectados, montarDependenciasModelos } from '@/lib/meta/depsModelos'
 
 /**
@@ -21,7 +22,14 @@ export async function GET(req: NextRequest) {
   if (!autorizado) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   try {
     const campos = await camposConectados()
-    const deps = await montarDependenciasModelos()
+    if (!campos.length) return NextResponse.json({ ok: true, total: 0 })
+    let deps: Awaited<ReturnType<typeof montarDependenciasModelos>>
+    try {
+      deps = await montarDependenciasModelos()
+    } catch (e) {
+      if (e instanceof ErroConfigMeta) return NextResponse.json({ ok: false, motivo: 'configuração ausente' })
+      throw e
+    }
     const r = await lerComOrcamento(campos, async (campoId) => {
       try {
         const s = await sincronizarModelos(deps, campoId)
