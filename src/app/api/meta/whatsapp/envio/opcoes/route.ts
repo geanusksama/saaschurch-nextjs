@@ -22,7 +22,8 @@ export async function GET(req: NextRequest) {
       if (conectado) {
         try {
           limite = await limiteRestante(await montarDependenciasEnvio(), user.campoId, new Date())
-        } catch {
+        } catch (e) {
+          console.warn('[meta/whatsapp] limite indisponível:', (e as Error)?.name)
           limite = null
         }
       }

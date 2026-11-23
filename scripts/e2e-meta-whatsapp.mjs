@@ -50,6 +50,7 @@ async function semAutenticacao() {
   r = await fetch(`${API}/webhook`, { method: 'POST', body: corpo, headers: { 'Content-Type': 'application/json', 'x-hub-signature-256': sig } })
   check('POST com assinatura correta ⇒ 200', r.status === 200, `status ${r.status}`)
   console.log('\nSem token')
+  const UUID0 = '00000000-0000-4000-8000-000000000000'
   r = await fetch(`${API}/conexao`)
   check('GET /conexao sem Authorization ⇒ 401', r.status === 401, `status ${r.status}`)
   for (const [m, rota] of [['GET', 'envio'], ['POST', 'envio'], ['POST', 'envio/publico'], ['GET', 'envio/opcoes'],
@@ -64,7 +65,6 @@ async function semAutenticacao() {
   r = await fetch(`${BASE}/api/meta/app-config`, { headers: { 'x-meta-config-token': 'errado' } })
   check('GET /app-config com token errado ⇒ 401', r.status === 401, `status ${r.status}`)
   console.log('\nModelos sem token')
-  const UUID0 = '00000000-0000-4000-8000-000000000000'
   r = await fetch(`${API}/modelos`)
   check('GET /modelos sem Authorization ⇒ 401', r.status === 401, `status ${r.status}`)
   r = await fetch(`${API}/modelos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
