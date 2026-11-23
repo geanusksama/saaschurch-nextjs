@@ -73,6 +73,7 @@ import { printReport } from '../../lib/printReport';
 import { LeaderReportModal } from './churches/LeaderReportModal';
 
 import { apiBase } from '../../lib/apiBase';
+import { CEP_MENSAGEM, type CepStatus } from '../../lib/buscaCep';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { buildAddressLabel, buildRouteEmbedUrl, buildRouteLink, formatKm, hasCoords, haversineKm } from '../../lib/geo';
 import { MultiSelectDropdown } from './shared/MultiSelectDropdown';
@@ -587,6 +588,15 @@ export function Churches() {
   const [obreirosModalOpen, setObreirosModalOpen] = useState(false);
   const [selectedFunctionMemberState, setSelectedFunctionMemberState] = useState<any>(null);
   const [zipcodeLookupLoading, setZipcodeLookupLoading] = useState(false);
+  // Resultado da última busca de CEP. A mensagem só vale enquanto o campo
+  // tiver esse mesmo CEP: trocar de igreja ou mexer no CEP volta ao normal.
+  const [cepBusca, setCepBusca] = useState<{ cep: string; status: CepStatus }>({ cep: '', status: 'idle' });
+  const cepPedido = useRef('');
+  // Abriu outra igreja (ou voltou para a lista): uma busca de CEP ainda em
+  // andamento não vale mais, nem para a caixa de busca do mapa.
+  useEffect(() => {
+    cepPedido.current = '';
+  }, [form.id]);
   const [locationHelperOpen, setLocationHelperOpen] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
   const [locationSearchResults, setLocationSearchResults] = useState<any[]>([]);
@@ -855,25 +865,33 @@ export function Churches() {
     setLocationHelperOpen(false);
   };
 
-  const lookupZipcode = async () => {
-    const zipcode = normalizeZipcode(form.addressZipcode);
+  // CEP: busca sozinho quando o oitavo dígito entra, como no cadastro de
+  // membro; o botão "Buscar CEP" continua buscando na hora. Na busca
+  // automática o erro aparece abaixo do campo, não na faixa vermelha.
+  const lookupZipcode = async (cepDigitado?: string, automatico = false) => {
+    const zipcode = normalizeZipcode(cepDigitado ?? form.addressZipcode);
     if (zipcode.length !== 8) {
-      setDetailError('Informe um CEP válido com 8 dígitos para pesquisar.');
+      if (!automatico) setDetailError('Informe um CEP válido com 8 dígitos para pesquisar.');
       return;
     }
 
+    // Só vale a resposta do último CEP pedido: uma busca antiga que volta
+    // depois (CEP corrigido, outra igreja aberta) não sobrescreve o endereço.
+    cepPedido.current = zipcode;
     try {
       setZipcodeLookupLoading(true);
-      setDetailError('');
+      setCepBusca({ cep: zipcode, status: 'loading' });
+      if (!automatico) setDetailError('');
 
       const response = await fetch(`https://viacep.com.br/ws/${zipcode}/json/`);
       const payload = await response.json().catch(() => ({}));
+      if (cepPedido.current !== zipcode) return;
 
       if (!response.ok || payload?.erro) {
         throw new Error('CEP não encontrado.');
       }
 
-      setForm((current) => ({
+      setForm((current) => (normalizeZipcode(current.addressZipcode) !== zipcode ? current : {
         ...current,
         addressZipcode: formatZipcode(zipcode),
         addressStreet: payload.logradouro || current.addressStreet,
@@ -887,10 +905,15 @@ export function Churches() {
         .filter(Boolean)
         .join(', ');
       setLocationSearch(nextSearch);
+      setCepBusca({ cep: zipcode, status: 'ok' });
     } catch (zipcodeError: any) {
-      setDetailError(zipcodeError.message || 'Falha ao consultar CEP.');
+      if (cepPedido.current !== zipcode) return;
+      setCepBusca({ cep: zipcode, status: 'err' });
+      if (!automatico) setDetailError(zipcodeError.message || 'Falha ao consultar CEP.');
     } finally {
-      setZipcodeLookupLoading(false);
+      // Busca antiga não desliga o "Buscando..." de uma mais nova; se o CEP
+      // foi apagado no meio (nenhuma busca pendente), desliga.
+      if (cepPedido.current === zipcode || !cepPedido.current) setZipcodeLookupLoading(false);
     }
   };
 
@@ -2770,24 +2793,30 @@ export function Churches() {
           <div className="flex gap-2">
             <input
               value={form.addressZipcode}
-              onChange={(event) => setForm((current) => ({ ...current, addressZipcode: formatZipcode(event.target.value) }))}
-              onBlur={() => {
-                if (normalizeZipcode(form.addressZipcode).length === 8) {
-                  lookupZipcode();
-                }
+              inputMode="numeric"
+              onChange={(event) => {
+                const valor = formatZipcode(event.target.value);
+                setForm((current) => ({ ...current, addressZipcode: valor }));
+                if (normalizeZipcode(valor).length === 8) void lookupZipcode(valor, true);
+                else cepPedido.current = '';
               }}
               placeholder="00000-000"
               className={`${fieldClass} flex-1`}
             />
             <button
               type="button"
-              onClick={lookupZipcode}
+              onClick={() => void lookupZipcode()}
               disabled={zipcodeLookupLoading}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
             >
               {zipcodeLookupLoading ? 'Buscando...' : 'Buscar CEP'}
             </button>
           </div>
+          {(() => {
+            const status: CepStatus = cepBusca.cep && cepBusca.cep === normalizeZipcode(form.addressZipcode) ? cepBusca.status : 'idle';
+            const texto = status === 'ok' ? 'Endereço encontrado.' : CEP_MENSAGEM[status].texto;
+            return <span className={`text-xs font-medium ${CEP_MENSAGEM[status].cor}`}>{texto}</span>;
+          })()}
         </label>
         <label className={labelClass}>
           Cidade
@@ -4296,7 +4325,7 @@ export function Churches() {
                   <button type="button" onClick={() => searchLocationCandidates(locationSearch)} disabled={locationSearchLoading} className="flex-1 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
                     {locationSearchLoading ? 'Buscando...' : 'Buscar endereço'}
                   </button>
-                  <button type="button" onClick={lookupZipcode} disabled={zipcodeLookupLoading} className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
+                  <button type="button" onClick={() => void lookupZipcode()} disabled={zipcodeLookupLoading} className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
                     CEP
                   </button>
                 </div>
