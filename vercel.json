@@ -3,6 +3,7 @@
     { "path": "/api/cron/contabilidade", "schedule": "* * * * *" },
     { "path": "/api/cron/whatsapp-ai", "schedule": "* * * * *" },
     { "path": "/api/cron/pastoral-cronograma", "schedule": "* * * * *" },
-    { "path": "/api/cron/meta-monitor", "schedule": "0 11 * * *" }
+    { "path": "/api/cron/meta-monitor", "schedule": "0 11 * * *" },
+    { "path": "/api/cron/meta-modelos", "schedule": "15 * * * *" }
   ]
 }
