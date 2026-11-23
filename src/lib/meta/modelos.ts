@@ -6,6 +6,8 @@ export type RascunhoModelo = {
   nome: string
   categoria: 'MARKETING' | 'UTILITY'
   cabecalho?: string
+  exemploCabecalho?: string
+  tipoCabecalho?: VariavelModelo['tipo']
   corpo: string
   rodape?: string
   botoes?: BotaoModelo[]
@@ -48,7 +50,12 @@ export function validarRascunho(r: RascunhoModelo): string[] {
 
   const cab = r.cabecalho ?? ''
   if (cab.length > 60) erros.push('O cabeçalho deve ter no máximo 60 caracteres.')
-  if (numerosDasVariaveis(cab).length > 1) erros.push('O cabeçalho pode ter no máximo 1 variável.')
+  const nCabecalho = numerosDasVariaveis(cab)
+  if (nCabecalho.length > 1) erros.push('O cabeçalho pode ter no máximo 1 variável.')
+  else if (nCabecalho.length === 1) {
+    if (nCabecalho[0] !== 1) erros.push('A variável do cabeçalho deve ser {{1}}.')
+    if (!r.exemploCabecalho || r.exemploCabecalho.trim() === '') erros.push('A variável do cabeçalho precisa de um exemplo.')
+  }
 
   const corpo = r.corpo ?? ''
   if (corpo.trim().length < 1 || corpo.length > 1024) erros.push('O corpo deve ter de 1 a 1024 caracteres.')
@@ -83,8 +90,7 @@ export function montarCorpoGraph(r: RascunhoModelo): { name: string; language: '
 
   if (r.cabecalho && r.cabecalho.trim() !== '') {
     const c: Record<string, unknown> = { type: 'HEADER', format: 'TEXT', text: r.cabecalho }
-    const nCab = numerosDasVariaveis(r.cabecalho)
-    if (nCab.length > 0) c.example = { header_text: [exemploDe(nCab[0])] }
+    if (numerosDasVariaveis(r.cabecalho).length > 0) c.example = { header_text: [r.exemploCabecalho ?? ''] }
     components.push(c)
   }
 

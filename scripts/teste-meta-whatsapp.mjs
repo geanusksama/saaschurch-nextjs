@@ -629,3 +629,11 @@ test('modelos: ROTULO_STATUS', () => {
   assert.equal(ROTULO_STATUS.DISABLED, 'Desativado')
   assert.equal(ROTULO_STATUS.OUTRO ?? 'OUTRO', 'OUTRO')
 })
+
+test('modelos: variável do cabeçalho exige {{1}} e exemplo próprio', () => {
+  assert.ok(validarRascunho({ ...rascunhoOk(), cabecalho: 'Aviso {{1}}' }).some((e) => /cabeçalho precisa de um exemplo/.test(e)))
+  assert.ok(validarRascunho({ ...rascunhoOk(), cabecalho: 'Aviso {{2}}', exemploCabecalho: 'x' }).some((e) => /deve ser \{\{1\}\}/.test(e)))
+  assert.deepEqual(validarRascunho({ ...rascunhoOk(), cabecalho: 'Aviso {{1}}', exemploCabecalho: 'Maria' }), [])
+  const g = montarCorpoGraph({ ...rascunhoOk(), cabecalho: 'Aviso {{1}}', exemploCabecalho: 'Maria' })
+  assert.deepEqual(g.components[0].example, { header_text: ['Maria'] })
+})
