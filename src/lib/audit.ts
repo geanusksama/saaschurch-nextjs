@@ -19,7 +19,6 @@ export async function logMutationAudit(
 
     // Ignore background polling, presence heartbeats, and audit log creations
     if (
-      path.includes("/api/chat/presence") ||
       path.includes("/api/notifications") ||
       path.includes("/api/auth/me") ||
       path.includes("/api/audit-logs")
@@ -124,10 +123,6 @@ export async function logMutationAudit(
       resourceName = responseData?.name || requestData?.name || "WhatsApp";
       entityId = responseData?.id || requestData?.id || null;
       description = method === "POST" ? "Criação de instância/campanha" : "Atualização de WhatsApp";
-    } else if (path.includes("/api/chat/messages")) {
-      entityType = "Chat";
-      resourceName = "Mensagem de Chat";
-      description = method === "POST" ? "Enviou mensagem no chat" : method === "DELETE" ? "Excluiu mensagem no chat" : "Reagiu a mensagem no chat";
     } else if (path.includes("/api/settings") || path.includes("/api/system-settings")) {
       entityType = "Setting";
       resourceName = responseData?.settingKey || requestData?.settingKey || "Configurações";

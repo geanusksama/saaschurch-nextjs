@@ -35,12 +35,6 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
   { group: 'Principal', name: 'Dashboard',         key: 'dashboard',    permissions: mkPerms(full(), none(), none(), none()) },
   { group: 'Principal', name: 'Notificações',      key: 'notifications', permissions: mkPerms(full(), none(), none(), none()) },
   { group: 'Principal', name: 'Caixa de Entrada',  key: 'inbox',        permissions: mkPerms(full(), none(), none(), none()) },
-  // Chat interno (ChatFAB, o balão flutuante no canto inferior direito).
-  //  view   → exibe o ícone do chat
-  //  create → pode enviar mensagem/arquivo/áudio
-  //  delete → pode excluir mensagem de OUTRA pessoa (a própria sempre pode)
-  // Está em OPT_OUT_PERMISSION_KEYS: ver comentário lá embaixo.
-  { group: 'Principal', name: 'Chat Interno',      key: 'internal_chat', permissions: mkPerms(full(), full(), none(), master()) },
 
   // ── Secretaria ───────────────────────────────────────────────────────────
   { group: 'Secretaria', name: 'Lista de Membros',       key: 'members',           permissions: mkPerms(full(), mngr(), mngr(), admin()) },
@@ -488,7 +482,6 @@ export const DEFAULT_PERMISSION_MODULES: PermissionModule[] = [
  * Bloquear continua possível: basta marcar vermelho na tela do usuário.
  */
 export const OPT_OUT_PERMISSION_KEYS = new Set<string>([
-  'internal_chat',
   // Raízes das telas sem trava no menu: abriam para todos antes de ganharem
   // controle — continuam abrindo para quem não está em grupo.
   ...DEFAULT_PERMISSION_MODULES.filter((m) => m.key.startsWith('tela_')).map((m) => m.key),

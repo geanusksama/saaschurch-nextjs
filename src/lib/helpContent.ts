@@ -791,18 +791,6 @@ Existe um interruptor de quem responde a conversa. Ele evita o pior cenário: hu
 Há também o resumo e a sugestão de resposta por IA, para quem pega uma conversa longa no meio.
 `,
       },
-      {
-        id: 'chat-interno',
-        permKey: 'internal_chat',
-        summary: 'O chat entre usuários do sistema.',
-        title: 'Chat interno',
-        keywords: ['balão', 'conversa entre usuários', 'mensagem interna'],
-        body: `
-O balão no canto inferior direito é o chat entre usuários do sistema. Aceita texto, arquivo e áudio.
-
-Você sempre pode excluir a própria mensagem; excluir a de outra pessoa depende de permissão.
-`,
-      },
     ],
   },
 

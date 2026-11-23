@@ -119,7 +119,6 @@ import { apiBase } from '../../lib/apiBase';
 import { supabase } from '../../lib/supabaseClient';
 import { SantanderIcon } from '../ui/SantanderIcon';
 import { MobileAppOverlay } from '../public/MobileAppPreview';
-import { ChatFAB } from './ChatFAB';
 import { MobileBottomNav, escondeTabBar } from './MobileBottomNav';
 import { logClientAudit } from '../../lib/auditClient';
 import { clearRecentSearches, pushRecentSearch, readRecentSearches } from '../../lib/recentSearches';
@@ -2199,9 +2198,6 @@ export function AppUI() {
                 </button>
               )}
             </div>
-
-            {/* Chat do campo — na barra, não mais flutuando no canto */}
-            {canView('internal_chat') && <ChatFAB naBarra />}
 
             {/* Novo Membro — só para quem pode criar */}
             {podeCriarMembro && (

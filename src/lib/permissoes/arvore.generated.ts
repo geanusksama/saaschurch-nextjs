@@ -1410,12 +1410,6 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/system/Integrations.tsx"
   },
   {
-    "chave": "internal_chat.chat_fab.excluir",
-    "rotulo": "Excluir — Chat FAB",
-    "herda": "internal_chat.delete",
-    "arquivo": "src/components/app-ui/ChatFAB.tsx"
-  },
-  {
     "chave": "members.family_relationships.adicionar_membro",
     "rotulo": "Adicionar Membro — Family Relationships",
     "herda": "members.view",
@@ -4092,30 +4086,6 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui/AppUI.tsx"
   },
   {
-    "chave": "tela_moldura.chat_fab.anexar",
-    "rotulo": "Anexar — Chat FAB",
-    "herda": "tela_moldura.view",
-    "arquivo": "src/components/app-ui/ChatFAB.tsx"
-  },
-  {
-    "chave": "tela_moldura.chat_fab.enviar",
-    "rotulo": "Enviar — Chat FAB",
-    "herda": "tela_moldura.view",
-    "arquivo": "src/components/app-ui/ChatFAB.tsx"
-  },
-  {
-    "chave": "tela_moldura.chat_fab.enviar_localizacao",
-    "rotulo": "Enviar Localização — Chat FAB",
-    "herda": "tela_moldura.view",
-    "arquivo": "src/components/app-ui/ChatFAB.tsx"
-  },
-  {
-    "chave": "tela_moldura.chat_fab.salvar_frase_rapida",
-    "rotulo": "Salvar frase rápida — Chat FAB",
-    "herda": "tela_moldura.view",
-    "arquivo": "src/components/app-ui/ChatFAB.tsx"
-  },
-  {
     "chave": "tela_moldura.global_search_modal.editar_membro",
     "rotulo": "Editar membro — Global Search Modal",
     "herda": "tela_moldura.view",
@@ -4526,12 +4496,6 @@ export const ACOES_GENERICAS_EM_USO: Record<string, string[]> = {
   ],
   "events.edit": [
     "src/components/app-ui/Agenda.tsx"
-  ],
-  "internal_chat.create": [
-    "src/components/app-ui/ChatFAB.tsx"
-  ],
-  "internal_chat.delete": [
-    "src/components/app-ui/ChatFAB.tsx"
   ],
   "members.create": [
     "src/components/app-ui/AppUI.tsx"
