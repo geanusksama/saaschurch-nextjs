@@ -4380,6 +4380,24 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/system/WhatsAppOficial.tsx"
   },
   {
+    "chave": "whatsapp_oficial.envio.controlar",
+    "rotulo": "Pausar, retomar e cancelar disparo",
+    "herda": "whatsapp_oficial.envio.view",
+    "arquivo": "src/app-ui/system/MetaOficial.tsx"
+  },
+  {
+    "chave": "whatsapp_oficial.envio.criar",
+    "rotulo": "Criar disparo (WhatsApp Oficial)",
+    "herda": "whatsapp_oficial.envio.view",
+    "arquivo": "src/app-ui/system/MetaOficial.tsx"
+  },
+  {
+    "chave": "whatsapp_oficial.envio.view",
+    "rotulo": "Envio em massa (WhatsApp Oficial)",
+    "herda": "whatsapp_oficial.view",
+    "arquivo": "src/app-ui/system/MetaOficial.tsx"
+  },
+  {
     "chave": "whatsapp_oficial.modelos.criar",
     "rotulo": "Criar modelo de mensagem",
     "herda": "whatsapp_oficial.modelos.view",

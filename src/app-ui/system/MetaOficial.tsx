@@ -13,11 +13,17 @@ import MetaAppConfig from './MetaAppConfig';
 import VisaoGeral from './metaOficial/VisaoGeral';
 import EmBreve from './metaOficial/EmBreve';
 import Modelos from './metaOficial/Modelos';
+import Envio from './metaOficial/Envio';
 
 // Chaves que as rotas /api/meta/whatsapp/modelos* já exigem (exigirPermissao).
 export const PERM_MODELOS_VER = definirPermissao({ chave: 'whatsapp_oficial.modelos.view', rotulo: 'Modelos de mensagem (WhatsApp Oficial)', herda: 'whatsapp_oficial.view' });
 export const PERM_MODELOS_CRIAR = definirPermissao({ chave: 'whatsapp_oficial.modelos.criar', rotulo: 'Criar modelo de mensagem', herda: 'whatsapp_oficial.modelos.view' });
 export const PERM_MODELOS_EXCLUIR = definirPermissao({ chave: 'whatsapp_oficial.modelos.excluir', rotulo: 'Excluir modelo de mensagem', herda: 'whatsapp_oficial.modelos.view' });
+
+// Chaves que as rotas /api/meta/whatsapp/envio* exigem (exigirPermissao).
+export const PERM_ENVIO_VER = definirPermissao({ chave: 'whatsapp_oficial.envio.view', rotulo: 'Envio em massa (WhatsApp Oficial)', herda: 'whatsapp_oficial.view' });
+export const PERM_ENVIO_CRIAR = definirPermissao({ chave: 'whatsapp_oficial.envio.criar', rotulo: 'Criar disparo (WhatsApp Oficial)', herda: 'whatsapp_oficial.envio.view' });
+export const PERM_ENVIO_CONTROLAR = definirPermissao({ chave: 'whatsapp_oficial.envio.controlar', rotulo: 'Pausar, retomar e cancelar disparo', herda: 'whatsapp_oficial.envio.view' });
 
 type Aba = { id: string; rotulo: string; icone: LucideIcon };
 
@@ -48,6 +54,7 @@ export default function MetaOficial() {
   const visiveis = ABAS.filter((a) => {
     if (a.id === 'app') return master;
     if (a.id === 'modelos') return pode(PERM_MODELOS_VER);
+    if (a.id === 'envio') return pode(PERM_ENVIO_VER);
     return true;
   });
   const pedida = params.get('aba') ?? 'visao-geral';
@@ -122,9 +129,7 @@ export default function MetaOficial() {
         {ativa === 'visao-geral' && <VisaoGeral irPara={abrir} podeModelos={pode(PERM_MODELOS_VER)} />}
         {ativa === 'conexao' && <WhatsAppOficial embutido />}
         {ativa === 'modelos' && <Modelos irPara={abrir} />}
-        {ativa === 'envio' && (
-          <EmBreve icone={Send} titulo="Envio" etapa="Etapa 3" descricao="Dispare modelos aprovados para membros e listas, com as variáveis preenchidas automaticamente." />
-        )}
+        {ativa === 'envio' && <Envio irPara={abrir} />}
         {ativa === 'conversas' && (
           <EmBreve icone={MessagesSquare} titulo="Conversas" etapa="Etapa 4" descricao="Receba e responda as mensagens do número oficial numa caixa de entrada própria." />
         )}

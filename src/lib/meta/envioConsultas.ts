@@ -51,7 +51,7 @@ export async function opcoesDoCampo(campoId: string) {
     prisma.metaWhatsappModelo.findMany({
       where: { campoId, status: 'APPROVED' },
       orderBy: [{ nome: 'asc' }, { id: 'asc' }], take: 200,
-      select: { id: true, nome: true, idioma: true, categoria: true, variaveis: true },
+      select: { id: true, nome: true, idioma: true, categoria: true, variaveis: true, componentes: true },
     }),
   ])
   return {
