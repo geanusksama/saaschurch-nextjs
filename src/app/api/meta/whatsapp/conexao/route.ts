@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       const r = await conectar(await montarDependencias(), {
         campoId: user.campoId,
         userId: user.id,
+        ehMaster: user.profileType === 'master',
         code: corpo?.code,
         wabaId: corpo?.wabaId,
         phoneNumberId: corpo?.phoneNumberId,

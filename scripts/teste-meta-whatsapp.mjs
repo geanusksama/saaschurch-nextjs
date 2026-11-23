@@ -341,6 +341,18 @@ test('conexaoLiberada=false: conectar recusa com 403 antes de chamar a Meta', as
     (e) => e instanceof ErroServico && e.status === 403 && e.message === MSG_NAO_LIBERADA)
   assert.equal(chamouMeta, false)
 })
+test('liberação desligada + não master: 403 MSG_NAO_LIBERADA', async () => {
+  const deps = { config: { conexaoLiberada: false }, repo: { buscarPorPhoneNumberId: async () => null }, meta: {} }
+  await assert.rejects(() => conectar(deps, { campoId: 'c', userId: null, code: 'x', wabaId: 'w', phoneNumberId: 'p', ehMaster: false }),
+    (e) => e instanceof ErroServico && e.status === 403 && e.message === MSG_NAO_LIBERADA)
+})
+test('liberação desligada + master: segue o fluxo (não lança 403)', async () => {
+  let consultou = false
+  const deps = { config: { conexaoLiberada: false }, repo: { buscarPorPhoneNumberId: async () => { consultou = true; return { campoId: 'outro' } } }, meta: {} }
+  await assert.rejects(() => conectar(deps, { campoId: 'c', userId: null, code: 'x', wabaId: 'w', phoneNumberId: 'p', ehMaster: true }),
+    (e) => e instanceof ErroServico && e.status === 409)
+  assert.equal(consultou, true)
+})
 
 test('base fora do ar após vencer: valor vencido com conexaoLiberada=false, sem novo fetch por 60 s, e nulo após 1 h', async () => {
   let cai = false
@@ -511,7 +523,7 @@ test('config incompleta: a rota /config responde 200 conexaoLiberada false, sem 
   const { readFileSync } = await import('node:fs')
   const src = readFileSync(new URL('../src/app/api/meta/whatsapp/config/route.ts', import.meta.url), 'utf8')
   assert.match(src, /e instanceof ErroConfigMeta/)
-  assert.match(src, /json\(\{ conexaoLiberada: false \}\)/)
+  assert.match(src, /json\(\{ conexaoLiberada: false, podeConectar: false \}\)/)
   assert.doesNotMatch(src.slice(src.indexOf('ErroConfigMeta)')), /e\.message/)
   assert.throws(() => validarBaseUrl('lixo'), (e) => e instanceof ErroConfigMeta)
 })

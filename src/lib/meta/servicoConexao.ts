@@ -146,9 +146,10 @@ export async function obterStatusDoCampo(
 
 export async function conectar(
   deps: Dependencias,
-  d: { campoId: string; userId: string | null; code: unknown; wabaId: unknown; phoneNumberId: unknown },
+  d: { campoId: string; userId: string | null; code: unknown; wabaId: unknown; phoneNumberId: unknown; ehMaster: boolean },
 ): Promise<RespostaConexao> {
-  if (!deps.config.conexaoLiberada) throw new ErroServico(403, MSG_NAO_LIBERADA)
+  // O master pode conectar para testar mesmo com a liberação geral desligada.
+  if (!deps.config.conexaoLiberada && !d.ehMaster) throw new ErroServico(403, MSG_NAO_LIBERADA)
   const code = texto(d.code)
   const wabaId = texto(d.wabaId)
   const phoneNumberId = texto(d.phoneNumberId)

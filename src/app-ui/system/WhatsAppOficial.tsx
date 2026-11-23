@@ -4,7 +4,7 @@
  * Contrato HTTP: /api/meta/whatsapp/{config,conexao}.
  */
 import { useEffect, useState } from 'react';
-import { BadgeCheck, Loader2, AlertTriangle, CheckCircle2, Unplug } from 'lucide-react';
+import { BadgeCheck, Loader2, AlertTriangle, CheckCircle2, Unplug, Info } from 'lucide-react';
 import { apiBase } from '../../lib/apiBase';
 import { cabecalhos, lerErro } from '../../lib/meta/clienteHttp';
 import { Permissao } from '../../lib/permissoes/Permissao';
@@ -51,6 +51,7 @@ export default function WhatsAppOficial({ embutido = false }: { embutido?: boole
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [liberada, setLiberada] = useState(false);
+  const [modoTeste, setModoTeste] = useState(false);
   const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string } | null>(null);
   const [sdkPronto, setSdkPronto] = useState(false);
 
@@ -59,12 +60,14 @@ export default function WhatsAppOficial({ embutido = false }: { embutido?: boole
     fetch(`${BASE}/config`, { headers: cabecalhos() })
       .then(async (r) => {
         if (!r.ok) throw new Error(await lerErro(r));
-        return (await r.json()) as { conexaoLiberada?: boolean; appId?: string; configId?: string; graphVersion?: string };
+        return (await r.json()) as { conexaoLiberada?: boolean; podeConectar?: boolean; appId?: string; configId?: string; graphVersion?: string };
       })
       .then(async (c) => {
-        if (!vivo || c.conexaoLiberada !== true || !c.appId || !c.configId || !c.graphVersion) return;
+        const pode = c.podeConectar ?? c.conexaoLiberada;
+        if (!vivo || pode !== true || !c.appId || !c.configId || !c.graphVersion) return;
         setCfg({ appId: c.appId, configId: c.configId, graphVersion: c.graphVersion });
         setLiberada(true);
+        setModoTeste(c.conexaoLiberada !== true);
         // SDK carregado ao abrir a tela: o clique precisa chamar FB.login direto (sem await antes).
         await carregarSdkMeta(c.appId, c.graphVersion);
         if (vivo) setSdkPronto(true);
@@ -157,6 +160,13 @@ export default function WhatsAppOficial({ embutido = false }: { embutido?: boole
         <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">
           <AlertTriangle className="size-4 mt-0.5 shrink-0" />
           <span>{erro}</span>
+        </div>
+      )}
+
+      {modoTeste && (
+        <div className="flex items-start gap-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
+          <Info className="size-4 mt-0.5 shrink-0" />
+          <span>Modo de teste do master: as igrejas ainda veem &quot;Em breve&quot;.</span>
         </div>
       )}
 
