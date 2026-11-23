@@ -9,6 +9,7 @@ export type ConfigMeta = {
   verifyToken: string
   chaveCifra: string
   graphVersion: string
+  callbackBaseUrl: string
 }
 
 export class ErroConfigMeta extends Error {
@@ -25,12 +26,14 @@ const VARIAVEIS = [
   'META_WEBHOOK_VERIFY_TOKEN',
   'META_TOKEN_ENCRYPTION_KEY',
   'META_GRAPH_VERSION',
+  'META_CALLBACK_BASE_URL',
 ] as const
 
 export async function lerConfigMeta(): Promise<ConfigMeta> {
   const faltando = VARIAVEIS.filter((n) => !(process.env[n] ?? '').trim())
   if (faltando.length) throw new ErroConfigMeta(`Configuração da Meta incompleta: ${faltando.join(', ')}`)
   const v = (n: (typeof VARIAVEIS)[number]) => (process.env[n] as string).trim()
+  const callbackBaseUrl = validarBaseUrl(v('META_CALLBACK_BASE_URL'))
   return {
     appId: v('META_APP_ID'),
     appSecret: v('META_APP_SECRET'),
@@ -38,5 +41,21 @@ export async function lerConfigMeta(): Promise<ConfigMeta> {
     verifyToken: v('META_WEBHOOK_VERIFY_TOKEN'),
     chaveCifra: v('META_TOKEN_ENCRYPTION_KEY'),
     graphVersion: v('META_GRAPH_VERSION'),
+    callbackBaseUrl,
   }
+}
+
+/** Base fixa do callback: https obrigatório (exceto localhost/127.0.0.1), sem barra final. */
+export function validarBaseUrl(valor: string): string {
+  let u: URL
+  try {
+    u = new URL(valor)
+  } catch {
+    throw new ErroConfigMeta('Configuração da Meta inválida: META_CALLBACK_BASE_URL não é uma URL')
+  }
+  const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1'
+  if (u.protocol !== 'https:' && !(local && u.protocol === 'http:')) {
+    throw new ErroConfigMeta('Configuração da Meta inválida: META_CALLBACK_BASE_URL deve usar https')
+  }
+  return u.origin
 }

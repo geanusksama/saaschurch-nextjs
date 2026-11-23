@@ -45,6 +45,10 @@ export async function assinarWebhookDaConta(
   )
 }
 
+export async function cancelarAssinaturaWebhook(graph: Graph, token: string, wabaId: string): Promise<void> {
+  await graph.delete(`${wabaId}/subscribed_apps`, token)
+}
+
 const QUALIDADES = ['GREEN', 'YELLOW', 'RED']
 
 export async function lerStatusNumero(graph: Graph, token: string, phoneNumberId: string): Promise<StatusNumero> {

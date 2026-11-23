@@ -122,12 +122,14 @@ test('token inválido vira ErroGraph.tokenInvalido', async () => {
 test('pin tem 6 dígitos', () => { assert.match(gerarPin(), /^\d{6}$/) })
 
 // ---- Serviço de conexão (Task 4) ----
+import { validarBaseUrl, ErroConfigMeta } from '../src/lib/meta/configMeta.ts'
+import { cancelarAssinaturaWebhook } from '../src/lib/meta/conexaoMeta.ts'
 import { obterStatus, conectar, desconectar, ErroServico } from '../src/lib/meta/servicoConexao.ts'
 
 function fakeDeps(over = {}) {
   const chamadas = []
   const reg = { salvos: [], erros: [], desconectados: [] }
-  const config = { appId: 'app', appSecret: 'seg', configId: 'c', verifyToken: 'vt', chaveCifra: CHAVE, graphVersion: 'v27.0' }
+  const config = { appId: 'app', appSecret: 'seg', configId: 'c', verifyToken: 'vt', chaveCifra: CHAVE, graphVersion: 'v27.0', callbackBaseUrl: 'https://fixo.exemplo' }
   const deps = {
     config,
     graph: {},
@@ -145,6 +147,7 @@ function fakeDeps(over = {}) {
       async registrarNumero() { chamadas.push('registra') },
       async assinarWebhookDaConta(g, t, w, d) { chamadas.push(['assina', w, d]) },
       async lerStatusNumero() { chamadas.push('status'); return { numero: '+55 11', nomeExibicao: 'Igreja', qualidade: 'GREEN', status: 'CONNECTED', limiteDiario: 'TIER_250' } },
+      async cancelarAssinaturaWebhook(g, t, w) { chamadas.push(['cancela', t, w]) },
       gerarPin: () => '123456',
     },
     ...over,
@@ -162,12 +165,12 @@ test('conectar: duplicado em outro campo ⇒ 409 antes de qualquer chamada à Me
 
 test('conectar: sucesso grava token+PIN cifrados e assina o webhook com a origin', async () => {
   const { deps, chamadas, reg } = fakeDeps()
-  const r = await conectar(deps, { campoId: 'c1', userId: 'u', code: 'x', wabaId: 'w', phoneNumberId: 'p', origin: 'https://app.exemplo' })
+  const r = await conectar(deps, { campoId: 'c1', userId: 'u', code: 'x', wabaId: 'w', phoneNumberId: 'p', origin: 'https://atacante.exemplo' })
   assert.equal(reg.salvos.length, 1)
   assert.equal(decifrar(reg.salvos[0].tokenCifrado, CHAVE), 'TOKEN123')
   assert.equal(decifrar(reg.salvos[0].pinCifrado, CHAVE), '123456')
   const assina = chamadas.find((c) => Array.isArray(c))
-  assert.equal(assina[2].callbackUrl, 'https://app.exemplo/api/meta/whatsapp/webhook')
+  assert.equal(assina[2].callbackUrl, 'https://fixo.exemplo/api/meta/whatsapp/webhook')
   assert.equal(assina[2].verifyToken, 'vt')
   assert.equal(r.status, 'conectado')
   assert.ok(!JSON.stringify(r).includes('TOKEN123') && !JSON.stringify(r).includes('123456'))
@@ -225,8 +228,48 @@ test('obterStatus: sucesso traz qualidade e limite da Meta', async () => {
   assert.equal(r.qualidade, 'GREEN'); assert.equal(r.limiteDiario, 'TIER_250')
 })
 
-test('desconectar chama o repositório', async () => {
+test('desconectar (antigo)', async () => {
   const { deps, reg } = fakeDeps()
   assert.deepEqual(await desconectar(deps, 'c1'), { conectado: false })
+  assert.deepEqual(reg.desconectados, ['c1'])
+})
+
+test('base do callback: https ok, localhost http ok, http público rejeitado', () => {
+  assert.equal(validarBaseUrl('https://app.igreja.com/'), 'https://app.igreja.com')
+  assert.equal(validarBaseUrl('http://localhost:3000'), 'http://localhost:3000')
+  assert.equal(validarBaseUrl('http://127.0.0.1:3000'), 'http://127.0.0.1:3000')
+  assert.throws(() => validarBaseUrl('http://app.igreja.com'), ErroConfigMeta)
+  assert.throws(() => validarBaseUrl('lixo'), ErroConfigMeta)
+})
+
+test('cancelarAssinaturaWebhook chama DELETE /<waba>/subscribed_apps com o token', async () => {
+  const vistos = []
+  const graph = { delete: async (c, t) => { vistos.push([c, t]); return {} } }
+  await cancelarAssinaturaWebhook(graph, 'TK', 'waba9')
+  assert.deepEqual(vistos, [['waba9/subscribed_apps', 'TK']])
+})
+
+const conexaoSalva = (token) => ({ campoId: 'c1', wabaId: 'wX', phoneNumberId: 'p', numero: '1', nomeExibicao: 'n', tokenCifrado: token, pinCifrado: 'x', status: 'conectado', ultimoErro: null })
+
+test('desconectar cancela a assinatura na Meta e apaga local', async () => {
+  const { deps, chamadas, reg } = fakeDeps()
+  deps.repo.conexao = conexaoSalva(cifrar('TOK', CHAVE))
+  await desconectar(deps, 'c1')
+  assert.deepEqual(chamadas, [['cancela', 'TOK', 'wX']])
+  assert.deepEqual(reg.desconectados, ['c1'])
+})
+
+test('desconectar: falha da Graph ainda apaga local', async () => {
+  const { deps, reg } = fakeDeps()
+  deps.repo.conexao = conexaoSalva(cifrar('TOK', CHAVE))
+  deps.meta.cancelarAssinaturaWebhook = async () => { throw new ErroGraph('x', 500, null) }
+  assert.deepEqual(await desconectar(deps, 'c1'), { conectado: false })
+  assert.deepEqual(reg.desconectados, ['c1'])
+})
+
+test('desconectar: token corrompido ainda apaga local', async () => {
+  const { deps, reg } = fakeDeps()
+  deps.repo.conexao = conexaoSalva('lixo')
+  await desconectar(deps, 'c1')
   assert.deepEqual(reg.desconectados, ['c1'])
 })

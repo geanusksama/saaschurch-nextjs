@@ -60,6 +60,7 @@ export type Dependencias = {
       graph: Graph, token: string, wabaId: string, d: { callbackUrl: string; verifyToken: string },
     ): Promise<void>
     lerStatusNumero(graph: Graph, token: string, phoneNumberId: string): Promise<StatusNumero>
+    cancelarAssinaturaWebhook(graph: Graph, token: string, wabaId: string): Promise<void>
     gerarPin(): string
   }
 }
@@ -93,7 +94,7 @@ const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 
 export async function obterStatus(deps: Dependencias, campoId: string): Promise<RespostaConexao> {
   const c = await deps.repo.buscarConexaoDoCampo(campoId)
-  if (!c || c.status === 'desconectado') return { conectado: false }
+  if (!c) return { conectado: false }
   const base = {
     conectado: true as const,
     numero: c.numero,
@@ -130,7 +131,7 @@ export async function obterStatus(deps: Dependencias, campoId: string): Promise<
 
 export async function conectar(
   deps: Dependencias,
-  d: { campoId: string; userId: string | null; code: unknown; wabaId: unknown; phoneNumberId: unknown; origin: string },
+  d: { campoId: string; userId: string | null; code: unknown; wabaId: unknown; phoneNumberId: unknown },
 ): Promise<RespostaConexao> {
   const code = texto(d.code)
   const wabaId = texto(d.wabaId)
@@ -149,7 +150,7 @@ export async function conectar(
     const pin = deps.meta.gerarPin()
     await deps.meta.registrarNumero(deps.graph, token, phoneNumberId, pin)
     await deps.meta.assinarWebhookDaConta(deps.graph, token, wabaId, {
-      callbackUrl: `${d.origin}/api/meta/whatsapp/webhook`,
+      callbackUrl: `${deps.config.callbackBaseUrl}/api/meta/whatsapp/webhook`,
       verifyToken: deps.config.verifyToken,
     })
     const s = await deps.meta.lerStatusNumero(deps.graph, token, phoneNumberId)
@@ -178,6 +179,16 @@ export async function conectar(
 }
 
 export async function desconectar(deps: Dependencias, campoId: string): Promise<RespostaConexao> {
+  // Melhor esforço: falha na Meta (ou token ilegível) não impede o apagamento local.
+  try {
+    const c = await deps.repo.buscarConexaoDoCampo(campoId)
+    if (c) {
+      const token = deps.cifra.decifrar(c.tokenCifrado, deps.config.chaveCifra)
+      await deps.meta.cancelarAssinaturaWebhook(deps.graph, token, c.wabaId)
+    }
+  } catch (e) {
+    console.error('[meta/whatsapp] cancelar assinatura falhou:', (e as Error)?.name)
+  }
   await deps.repo.desconectar(campoId)
   return { conectado: false }
 }

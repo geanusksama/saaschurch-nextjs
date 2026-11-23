@@ -37,7 +37,6 @@ export async function POST(req: NextRequest) {
         code: corpo?.code,
         wabaId: corpo?.wabaId,
         phoneNumberId: corpo?.phoneNumberId,
-        origin: req.nextUrl.origin,
       })
       return json(r, 201)
     } catch (e) {

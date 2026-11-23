@@ -22,6 +22,7 @@ export class ErroGraph extends Error {
 export type Graph = {
   get: (caminho: string, params?: Record<string, string>, token?: string) => Promise<any>
   post: (caminho: string, corpo: unknown, token?: string) => Promise<any>
+  delete: (caminho: string, token?: string) => Promise<any>
 }
 
 export function criarGraph(opts: { versao: string; fetch?: FetchLike }): Graph {
@@ -48,6 +49,9 @@ export function criarGraph(opts: { versao: string; fetch?: FetchLike }): Graph {
     get(caminho, params, token) {
       const qs = params && Object.keys(params).length ? '?' + new URLSearchParams(params).toString() : ''
       return chamar(base + caminho + qs, { method: 'GET' }, token)
+    },
+    delete(caminho, token) {
+      return chamar(base + caminho, { method: 'DELETE' }, token)
     },
     post(caminho, corpo, token) {
       return chamar(base + caminho, {

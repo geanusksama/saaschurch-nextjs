@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cifrar, decifrar } from './cifra'
 import { criarGraph } from './graph'
-import { trocarCodigo, registrarNumero, assinarWebhookDaConta, lerStatusNumero, gerarPin } from './conexaoMeta'
+import { trocarCodigo, registrarNumero, assinarWebhookDaConta, cancelarAssinaturaWebhook, lerStatusNumero, gerarPin } from './conexaoMeta'
 import { lerConfigMeta, ErroConfigMeta } from './configMeta'
 import { ErroServico, type Dependencias } from './servicoConexao'
 import * as repo from './conexaoRepo'
@@ -13,7 +13,7 @@ export async function montarDependencias(): Promise<Dependencias> {
     graph: criarGraph({ versao: config.graphVersion }),
     config,
     cifra: { cifrar, decifrar },
-    meta: { trocarCodigo, registrarNumero, assinarWebhookDaConta, lerStatusNumero, gerarPin },
+    meta: { trocarCodigo, registrarNumero, assinarWebhookDaConta, cancelarAssinaturaWebhook, lerStatusNumero, gerarPin },
   }
 }
 
