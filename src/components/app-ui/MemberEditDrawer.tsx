@@ -5,6 +5,7 @@ import { apiBase } from '../../lib/apiBase';
 import { useCampoVisible } from '../../lib/campoVisibility';
 import { supabase } from '../../lib/supabaseClient';
 import { LocationPicker } from './shared/LocationPicker';
+import { CEP_MENSAGEM, lookupCep, type CepStatus } from '../../lib/buscaCep';
 import { Permissao } from '../../lib/permissoes/Permissao';
 
 type EcclesiasticalTitleOption = {
@@ -232,6 +233,8 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
   const [error, setError] = useState('');
   const [lookingUpCityField, setLookingUpCityField] = useState<'naturalityCity' | 'addressCity' | null>(null);
   const [cityOptions, setCityOptions] = useState<{ field: 'naturalityCity' | 'addressCity'; options: CityOption[] } | null>(null);
+  const [cepStatus, setCepStatus] = useState<CepStatus>('idle');
+  const cepPedido = useRef('');
 
   const [fields, setFields] = useState<CampoOption[]>([]);
   const [regionais, setRegionais] = useState<RegionalOption[]>([]);
@@ -304,6 +307,8 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
         setPhotoUrl(data.photoUrl || null);
         setPhotoFile(null);
         setPhotoPreview(null);
+        setCepStatus('idle');
+        cepPedido.current = '';
         setForm({
           churchId: data.churchId || '',
           regionalId: data.regionalId || '',
@@ -385,6 +390,29 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // CEP: busca sozinho quando o oitavo dígito entra, como no cadastro.
+  const buscarCep = async (cep: string) => {
+    // Só vale a resposta do último CEP digitado: uma busca antiga que volta
+    // depois (CEP corrigido, outro membro aberto) não sobrescreve o endereço.
+    const alvo = cep.replace(/\D/g, '');
+    cepPedido.current = alvo;
+    setCepStatus('loading');
+    const result = await lookupCep(cep);
+    if (cepPedido.current !== alvo) return;
+    if (!result) {
+      setCepStatus('err');
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      addressStreet: result.street || prev.addressStreet,
+      addressNeighborhood: result.neighborhood || prev.addressNeighborhood,
+      addressCity: result.city || prev.addressCity,
+      addressState: result.state || prev.addressState,
+    }));
+    setCepStatus('ok');
   };
 
   const applyCitySelection = (field: 'naturalityCity' | 'addressCity', option: CityOption) => {
@@ -759,7 +787,23 @@ export function MemberEditDrawer({ memberId, open, onClose, onSaved, titles }: P
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
                   <div className="md:col-span-2">
                     <label className={labelClass}>CEP</label>
-                    <input type="text" inputMode="numeric" value={form.addressZipcode} onChange={(e) => update('addressZipcode', formatZipcode(e.target.value))} placeholder="00000-000" className={inputClass} />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.addressZipcode}
+                      onChange={(e) => {
+                        const v = formatZipcode(e.target.value);
+                        update('addressZipcode', v);
+                        if (v.replace(/\D/g, '').length === 8) void buscarCep(v);
+                        else {
+                          cepPedido.current = '';
+                          if (cepStatus !== 'idle') setCepStatus('idle');
+                        }
+                      }}
+                      placeholder="00000-000"
+                      className={inputClass}
+                    />
+                    <p className={`mt-1 text-xs font-medium ${CEP_MENSAGEM[cepStatus].cor}`}>{CEP_MENSAGEM[cepStatus].texto}</p>
                   </div>
                   <div className="md:col-span-3">
                     <label className={labelClass}>Logradouro</label>

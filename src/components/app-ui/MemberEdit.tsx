@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Save, User, MapPin, Building, X } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,7 +7,10 @@ import { apiBase } from '../../lib/apiBase';
 import { qk } from '../../lib/queryClient';
 import { mascaraCep, mascaraCpf, mascaraRg, mascaraTelefone } from '../../lib/masks';
 import { LocationPicker } from './shared/LocationPicker';
+import { CEP_MENSAGEM, lookupCep, type CepStatus } from '../../lib/buscaCep';
 import { Permissao } from '../../lib/permissoes/Permissao';
+
+const UFS = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
 
 export function MemberEdit() {
   const { id } = useParams();
@@ -36,6 +39,31 @@ export function MemberEdit() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [cepStatus, setCepStatus] = useState<CepStatus>('idle');
+  const cepPedido = useRef('');
+
+  // CEP: busca sozinho quando o oitavo dígito entra, como no cadastro.
+  // Esta tela não tem campo de bairro: preenche rua, cidade e estado.
+  const buscarCep = async (cep: string) => {
+    // Só vale a resposta do último CEP digitado: uma busca antiga que volta
+    // depois (CEP corrigido, outro membro aberto) não sobrescreve o endereço.
+    const alvo = cep.replace(/\D/g, '');
+    cepPedido.current = alvo;
+    setCepStatus('loading');
+    const result = await lookupCep(cep);
+    if (cepPedido.current !== alvo) return;
+    if (!result) {
+      setCepStatus('err');
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      addressStreet: result.street || prev.addressStreet,
+      addressCity: result.city || prev.addressCity,
+      addressState: result.state || prev.addressState,
+    }));
+    setCepStatus('ok');
+  };
 
   useEffect(() => {
     const loadMember = async () => {
@@ -307,9 +335,8 @@ export function MemberEdit() {
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione</option>
-                <option value="SP">SP</option>
-                <option value="RJ">RJ</option>
-                <option value="MG">MG</option>
+                {formData.addressState && !UFS.includes(formData.addressState) ? <option value={formData.addressState}>{formData.addressState}</option> : null}
+                {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
               </select>
             </div>
             
@@ -320,9 +347,18 @@ export function MemberEdit() {
                 inputMode="numeric"
                 value={formData.addressZipcode}
                 placeholder="00000-000"
-                onChange={(e) => setFormData({ ...formData, addressZipcode: mascaraCep(e.target.value) })}
+                onChange={(e) => {
+                  const v = mascaraCep(e.target.value);
+                  setFormData({ ...formData, addressZipcode: v });
+                  if (v.replace(/\D/g, '').length === 8) void buscarCep(v);
+                  else {
+                    cepPedido.current = '';
+                    if (cepStatus !== 'idle') setCepStatus('idle');
+                  }
+                }}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <p className={`mt-1 text-xs font-medium ${CEP_MENSAGEM[cepStatus].cor}`}>{CEP_MENSAGEM[cepStatus].texto}</p>
             </div>
 
             <div className="md:col-span-2">
