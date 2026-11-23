@@ -12,6 +12,7 @@ import WhatsAppOficial from './WhatsAppOficial';
 import MetaAppConfig from './MetaAppConfig';
 import VisaoGeral from './metaOficial/VisaoGeral';
 import EmBreve from './metaOficial/EmBreve';
+import Modelos from './metaOficial/Modelos';
 
 // Chaves que as rotas /api/meta/whatsapp/modelos* já exigem (exigirPermissao).
 export const PERM_MODELOS_VER = definirPermissao({ chave: 'whatsapp_oficial.modelos.view', rotulo: 'Modelos de mensagem (WhatsApp Oficial)', herda: 'whatsapp_oficial.view' });
@@ -117,9 +118,7 @@ export default function MetaOficial() {
       <div role="tabpanel" id={`painel-${ativa}`} aria-labelledby={`aba-${ativa}`} tabIndex={0}>
         {ativa === 'visao-geral' && <VisaoGeral irPara={abrir} podeModelos={pode(PERM_MODELOS_VER)} />}
         {ativa === 'conexao' && <WhatsAppOficial embutido />}
-        {ativa === 'modelos' && (
-          <EmBreve icone={FileText} titulo="Modelos de mensagem" etapa="Etapa 2" descricao="Crie, acompanhe a aprovação e exclua os modelos de mensagem que a Meta exige para iniciar conversas." />
-        )}
+        {ativa === 'modelos' && <Modelos irPara={abrir} />}
         {ativa === 'envio' && (
           <EmBreve icone={Send} titulo="Envio" etapa="Etapa 3" descricao="Dispare modelos aprovados para membros e listas, com as variáveis preenchidas automaticamente." />
         )}
