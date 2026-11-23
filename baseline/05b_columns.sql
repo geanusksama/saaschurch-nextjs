@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-12T20:45:40.880Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:15:59.880Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline d6eb3855ae70e116
+-- Baseline 6d22d970fc5f30cd
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -3151,6 +3151,19 @@ alter table "public"."messages" add column if not exists "failed_at" timestamp(3
 alter table "public"."messages" add column if not exists "error_message" text;
 alter table "public"."messages" add column if not exists "external_id" character varying(255);
 alter table "public"."messages" add column if not exists "created_at" timestamp(3) without time zone default CURRENT_TIMESTAMP not null;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "campo_id" uuid;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "waba_id" text;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "phone_number_id" text;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "numero" text;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "nome_exibicao" text;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "token_cifrado" text;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "pin_cifrado" text;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "status" text default 'conectado'::text not null;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "ultimo_erro" text;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "conectado_por" uuid;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "conectado_em" timestamp(6) with time zone default now();
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "atualizado_em" timestamp(6) with time zone default now() not null;
 alter table "public"."ministries" add column if not exists "id" uuid;
 alter table "public"."ministries" add column if not exists "church_id" uuid;
 alter table "public"."ministries" add column if not exists "parent_ministry_id" uuid;

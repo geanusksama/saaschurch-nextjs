@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-12T20:45:40.887Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T18:15:59.886Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline d6eb3855ae70e116
+-- Baseline 6d22d970fc5f30cd
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -603,6 +603,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS members_matricula_conamad_key ON public.member
 CREATE INDEX IF NOT EXISTS members_member_type_idx ON public.members USING btree (member_type);
 CREATE INDEX IF NOT EXISTS members_membership_status_idx ON public.members USING btree (membership_status);
 CREATE INDEX IF NOT EXISTS members_regional_id_idx ON public.members USING btree (regional_id);
+CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_conexoes_campo_id_key ON public.meta_whatsapp_conexoes USING btree (campo_id);
+CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_conexoes_phone_number_id_key ON public.meta_whatsapp_conexoes USING btree (phone_number_id);
 CREATE INDEX IF NOT EXISTS ministries_campo_id_idx ON public.ministries USING btree (campo_id);
 CREATE UNIQUE INDEX IF NOT EXISTS ministry_members_ministry_id_member_id_is_active_key ON public.ministry_members USING btree (ministry_id, member_id, is_active);
 CREATE UNIQUE INDEX IF NOT EXISTS naturezas_despesa_codigo_key ON public.naturezas_despesa USING btree (codigo);

@@ -88,6 +88,7 @@ model Campo {
   conamadMinistros      ConamadMinistro[]
   conamadAnuidades      ConamadAnuidade[]
   conamadSincronizacoes ConamadSincronizacao[]
+  metaWhatsappConexao   MetaWhatsappConexao?
   @@map("campos")
 }
 
@@ -515,6 +516,7 @@ model User {
   gruposUsuarios        GrupoUsuariosUser[]     @relation("GrupoUsuariosUser")
   gruposUsuariosCriados GrupoUsuarios[]         @relation("GrupoUsuariosCriadoPor")
   gruposUsuariosAdicoes GrupoUsuariosUser[]     @relation("GrupoUsuariosUserCriadoPor")
+  metaWhatsappConexoesConectadas MetaWhatsappConexao[] @relation("MetaWhatsappConexaoConectadoPor")
 
   @@map("users")
 }
@@ -5873,4 +5875,27 @@ model SiteEvento {
   @@index([createdAt])
   @@index([campoId, createdAt])
   @@map("site_eventos")
+}
+
+/// WhatsApp Oficial (Meta Cloud API): uma conexao por campo. Token e PIN cifrados.
+model MetaWhatsappConexao {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId       String    @unique @map("campo_id") @db.Uuid
+  wabaId        String    @map("waba_id")
+  phoneNumberId String    @unique @map("phone_number_id")
+  numero        String?
+  nomeExibicao  String?   @map("nome_exibicao")
+  tokenCifrado  String    @map("token_cifrado")
+  pinCifrado    String    @map("pin_cifrado")
+  /// conectado | erro | desconectado
+  status        String    @default("conectado")
+  ultimoErro    String?   @map("ultimo_erro")
+  conectadoPor  String?   @map("conectado_por") @db.Uuid
+  conectadoEm   DateTime? @default(now()) @map("conectado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  campo               Campo @relation(fields: [campoId], references: [id], onDelete: Cascade)
+  conectadoPorUsuario User? @relation("MetaWhatsappConexaoConectadoPor", fields: [conectadoPor], references: [id])
+
+  @@map("meta_whatsapp_conexoes")
 }
