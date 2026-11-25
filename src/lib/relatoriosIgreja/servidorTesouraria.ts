@@ -13,6 +13,8 @@ const DIZIMO = `lc.plano_de_conta ilike '%DIZIM%'`;
 const RECEITA = `case when lc.tipo = 'RECEITA' then lc.valor else 0 end`;
 const DESPESA = `case when lc.tipo = 'DESPESA' then lc.valor else 0 end`;
 const CONTA = `coalesce(b.nome, nullif(lc.conta_caixa,''), 'Sem conta')`;
+/** Nº do lançamento é texto: ordena pelo número quando ele é numérico. */
+const NUM_LANC = `nullif(regexp_replace(lc.num_lancamento, '\\D', '', 'g'), '')::numeric nulls last, lc.num_lancamento`;
 const FROM_LC = `from livro_caixa lc join churches c on c.id = lc.church_id join regionais r on r.id = c.regional_id
   left join regionais rg on rg.id = c.regional_id left join bancos b on b.id = lc.banco_id left join departamentos d on d.id = lc.departamento_id
   left join members m on m.id = lc.member_id`;
@@ -40,7 +42,7 @@ const COLS_LANC = `lc.data_lancamento as data, lc.num_lancamento as "numLancamen
 
 // ─── 1, 4, 6, 12, 13 - listas de lançamentos ─────────────────────────────────
 const ORDEM_LIVRO: Record<string, string> = {
-  lancamento: 'igreja, conta, lc.num_lancamento, lc.data_lancamento', data: 'igreja, conta, lc.data_lancamento, lc.num_lancamento', documento: 'igreja, conta, lc.num_doc, lc.data_lancamento',
+  lancamento: `igreja, conta, ${NUM_LANC}, lc.data_lancamento`, data: `igreja, conta, lc.data_lancamento, ${NUM_LANC}`, documento: 'igreja, conta, lc.num_doc, lc.data_lancamento',
 };
 const livro: Executor = async (_rel, campoId, f) => {
   const s = new Sql();
@@ -54,7 +56,7 @@ const balanceteAnalitico: Executor = async (_rel, campoId, f) => {
   const s = new Sql();
   const onde = ondeLanc(s, campoId, f);
   if (f.favorecido?.trim()) onde.push(`coalesce(m.full_name, lc.favorecido) ilike ${s.p(`%${f.favorecido.trim()}%`)}`);
-  return consultar(`select ${COLS_LANC} ${FROM_LC} where ${onde.join(' and ')} order by lc.plano_de_conta, lc.data_lancamento, lc.num_lancamento`, s.params);
+  return consultar(`select ${COLS_LANC} ${FROM_LC} where ${onde.join(' and ')} order by lc.plano_de_conta, lc.data_lancamento, ${NUM_LANC}`, s.params);
 };
 const balanceteSintetico: Executor = async (_rel, campoId, f) => {
   const s = new Sql();
@@ -68,7 +70,7 @@ const diario: Executor = async (rel, campoId, f) => {
   const onde = ondeLanc(s, campoId, f);
   if (f.usuario?.trim()) onde.push(`lc.operador ilike ${s.p(`%${f.usuario.trim()}%`)}`);
   const ig = f.agrupar === '1' ? IGREJA_TXT : "'Todas as igrejas'";
-  if (rel === 'analitico') return consultar(`select ${COLS_LANC} ${FROM_LC} where ${onde.join(' and ')} order by igreja, lc.data_lancamento, lc.num_lancamento`, s.params);
+  if (rel === 'analitico') return consultar(`select ${COLS_LANC} ${FROM_LC} where ${onde.join(' and ')} order by igreja, lc.data_lancamento, ${NUM_LANC}`, s.params);
   if (rel === 'diario') return consultar(`select ${ig} as igreja, lc.data_lancamento as data, lc.plano_de_conta as plano, count(*)::int as qtde, sum(${RECEITA}) as receita, sum(${DESPESA}) as despesa
     ${FROM_LC} where ${onde.join(' and ')} group by 1, 2, 3 order by 1, 2, 3`, s.params);
   const ls = await consultar(`select ${ig} as igreja, lc.data_lancamento as data, count(*)::int as qtde, sum(${RECEITA}) as receita, sum(${DESPESA}) as despesa
@@ -76,7 +78,7 @@ const diario: Executor = async (rel, campoId, f) => {
   ls.forEach((l) => { l.saldoDia = Number(l.receita) - Number(l.despesa); });
   return ls;
 };
-const ORDEM_CONSULTA: Record<string, string> = { documento: 'lc.num_doc, lc.data_lancamento', lancamento: 'lc.num_lancamento, lc.data_lancamento', data: 'lc.data_lancamento, lc.num_lancamento', forma: 'lc.forma_pg, lc.data_lancamento' };
+const ORDEM_CONSULTA: Record<string, string> = { documento: 'lc.num_doc, lc.data_lancamento', lancamento: `${NUM_LANC}, lc.data_lancamento`, data: `lc.data_lancamento, ${NUM_LANC}`, forma: 'lc.forma_pg, lc.data_lancamento' };
 const consulta: Executor = async (rel, campoId, f) => {
   const s = new Sql();
   const onde = ondeLanc(s, campoId, f);

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Download, FilterX, Loader2, Lock, Printer, Search } from "lucide-react";
+import { Download, FilterX, ListChecks, Loader2, Lock, Printer, Search, SlidersHorizontal } from "lucide-react";
 import * as XLSX from "xlsx";
 import { apiBase } from "../../lib/apiBase";
 import { authFetch } from "../../lib/secretariaHooks";
@@ -148,6 +148,8 @@ export default function RelatoriosIgreja({ modulo, manter = [] }: { modulo: Modu
   }
   const [listas, setListas] = useState<Listas>({});
   const [fresco, setFresco] = useState<{ qs: string; r: Resultado } | null>(null);
+  // Aba de baixo: Filtros ou Resultado. null = automática (Resultado quando já há resultado).
+  const [abaEscolhida, setAbaEscolhida] = useState<"filtros" | "resultado" | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [erro, setErro] = useState("");
   const pedido = useRef(0);
@@ -167,11 +169,12 @@ export default function RelatoriosIgreja({ modulo, manter = [] }: { modulo: Modu
   const trocarGrupo = (id: string) => {
     const g = grupos.find((x) => x.id === id);
     setValores(g ? padroes(g) : {});
-    setErro("");
+    setErro(""); setAbaEscolhida("filtros");
     setParams(id ? { ...preservados, grupo: id, rel: g?.relatorios[0]?.id ?? "" } : preservados);
   };
-  const trocarRel = (id: string) => { setParams({ ...Object.fromEntries(params), rel: id }); };
+  const trocarRel = (id: string) => { setAbaEscolhida("filtros"); setParams({ ...Object.fromEntries(params), rel: id }); };
   const setValor = (k: string, v: string) => setValores((p) => ({ ...p, [k]: v }));
+  const aba: "filtros" | "resultado" = abaEscolhida !== "filtros" && resultado ? "resultado" : "filtros";
   const filtrosVisiveis = grupo?.filtros.filter((f) => !f.so || f.so.includes(relId)) ?? [];
   const agrupar = Boolean(rel?.agruparPor) && (grupo?.filtros.some((f) => f.id === "agrupar") ? valores.agrupar === "1" : true);
 
@@ -188,6 +191,7 @@ export default function RelatoriosIgreja({ modulo, manter = [] }: { modulo: Modu
       const r = await authFetch<Resultado>(`${apiBase}/relatorios-igreja?${api}`);
       if (n !== pedido.current) return;
       setFresco({ qs: q.toString(), r });
+      setAbaEscolhida("resultado");
       try { sessionStorage.setItem(chaveCache(modulo, q.toString()), JSON.stringify(r)); } catch { /* sessão cheia: segue sem cache */ }
     } catch (e) {
       if (n === pedido.current) setErro(e instanceof Error ? e.message : "Não foi possível gerar o relatório.");
@@ -242,14 +246,12 @@ export default function RelatoriosIgreja({ modulo, manter = [] }: { modulo: Modu
         </div>
       ) : (
         <>
-          <div className="rounded-[18px] border border-[#e8ecf1] bg-white p-4 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
-            <div className="mb-3 text-xs font-bold tracking-[.06em] text-slate-500 dark:text-slate-400">FILTROS</div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              {filtrosVisiveis.map((f) => <CampoFiltro key={f.id} f={f} valor={valores} setValor={setValor} listas={listas} />)}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex gap-1 rounded-[14px] border border-[#e8ecf1] bg-white p-1 dark:border-slate-700 dark:bg-slate-800">
+              <button type="button" data-sem-permissao="troca de aba da tela" onClick={() => setAbaEscolhida("filtros")} className={`flex h-9 items-center gap-2 rounded-[10px] px-3.5 text-sm font-semibold ${aba === "filtros" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"}`}><SlidersHorizontal className="h-4 w-4" />Filtros</button>
+              <button type="button" data-sem-permissao="troca de aba da tela" disabled={!resultado} onClick={() => setAbaEscolhida("resultado")} className={`flex h-9 items-center gap-2 rounded-[10px] px-3.5 text-sm font-semibold disabled:opacity-40 ${aba === "resultado" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"}`}><ListChecks className="h-4 w-4" />Resultado{resultado ? ` (${resultado.linhas.length})` : ""}</button>
             </div>
-            {rel?.nota && <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{rel.nota}</p>}
-            <div className="mt-4 flex flex-wrap justify-end gap-2">
-              <button type="button" className={btn} onClick={() => setValores(padroes(grupo))}><FilterX className="h-4 w-4" />Limpar</button>
+            <div className="flex flex-wrap justify-end gap-2">
               <button type="button" data-sem-permissao="só consulta; a permissão é a do grupo escolhido, conferida na tela e na rota" onClick={() => void buscar()} disabled={buscando} className="flex h-10 items-center gap-2 rounded-[10px] bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60 dark:bg-white dark:text-slate-900">
                 {buscando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}{buscando ? "Gerando..." : "Gerar relatório"}
               </button>
@@ -264,20 +266,32 @@ export default function RelatoriosIgreja({ modulo, manter = [] }: { modulo: Modu
                   <Permissao chave="finance_reports.relatorios_tesouraria.exportar" rotulo="Exportar Excel — Relatórios de Tesouraria" herda="finance_reports.relatorios_tesouraria.aba"><button type="button" className={btn} disabled={!resultado?.linhas.length} onClick={excel}><Download className="h-4 w-4" />Excel</button></Permissao>
                 </>
               )}
+
             </div>
           </div>
 
           {erro && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{erro}</div>}
-          {resultado?.aviso && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">{resultado.aviso}</div>}
-          {resultado && rel && (
+
+          {aba === "filtros" ? (
+            <div className="rounded-[18px] border border-[#e8ecf1] bg-white p-4 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {filtrosVisiveis.map((f) => <CampoFiltro key={f.id} f={f} valor={valores} setValor={setValor} listas={listas} />)}
+              </div>
+              {rel?.nota && <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{rel.nota}</p>}
+              <div className="mt-4 flex justify-end">
+                <button type="button" className={btn} onClick={() => setValores(padroes(grupo))}><FilterX className="h-4 w-4" />Limpar</button>
+              </div>
+            </div>
+          ) : resultado && rel ? (
             <>
+              {resultado.aviso && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">{resultado.aviso}</div>}
               <div className="px-1">
                 <div className="text-[15px] font-extrabold">{resultado.organizacao}</div>
                 <div className="text-sm text-slate-600 dark:text-slate-300">{rel.titulo ?? rel.nome}</div>
               </div>
               <Tabela rel={rel} linhas={resultado.linhas} agrupar={agrupar} />
             </>
-          )}
+          ) : null}
         </>
       )}
     </div>
