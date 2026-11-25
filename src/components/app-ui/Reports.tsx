@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import ReactECharts from 'echarts-for-react';
 import * as XLSX from 'xlsx';
+import RelatoriosIgreja from '../../app-ui/relatoriosIgreja/RelatoriosIgreja';
 import {
   ArrowRightLeft,
   Award,
@@ -82,7 +83,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 
-type ReportsTabKey = 'reports' | 'dashboards';
+type ReportsTabKey = 'reports' | 'dashboards' | 'relatorios_secretaria';
 type ReportLauncherKey =
   | 'members'
   | 'baptism'
@@ -3565,7 +3566,13 @@ export function Reports() {
   const defaultRegionalIds: string[] = storedUser.regionalId ? [storedUser.regionalId] : [];
   const defaultChurchIds: string[] = storedUser.churchId ? [storedUser.churchId] : [];
 
-  const [activeTab, setActiveTab] = useState<ReportsTabKey>('reports');
+  // Voltando de uma ficha com um relatório de Secretaria aberto (grupo na URL), reabre a aba dele.
+  const [activeTab, setActiveTab] = useState<ReportsTabKey>(() => (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('grupo') ? 'relatorios_secretaria' : 'reports'));
+  // Ao sair da aba de Secretaria, o grupo/relatório sai da URL (senão a tela reabriria nela).
+  const trocarAba = (aba: ReportsTabKey) => {
+    if (aba !== 'relatorios_secretaria' && typeof window !== 'undefined' && window.location.search) window.history.replaceState(window.history.state, '', window.location.pathname);
+    setActiveTab(aba);
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fields, setFields] = useState<CampoOption[]>([]);
@@ -8145,14 +8152,22 @@ export function Reports() {
               active={activeTab === 'reports'}
               icon={<Printer className="h-4 w-4" />}
               label="Relatórios"
-              onClick={() => setActiveTab('reports')}
+              onClick={() => trocarAba('reports')}
             />
+            <Permissao chave="reports.relatorios_secretaria.aba" rotulo="Aba Relatórios de Secretaria" herda="reports.view">
+              <ReportsTabButton
+                active={activeTab === 'relatorios_secretaria'}
+                icon={<ClipboardList className="h-4 w-4" />}
+                label="Relatórios de Secretaria"
+                onClick={() => setActiveTab('relatorios_secretaria')}
+              />
+            </Permissao>
             <Permissao chave="reports.dashboards.aba" rotulo="Aba Dashboards" herda="reports.view">
               <ReportsTabButton
                 active={activeTab === 'dashboards'}
                 icon={<BarChart3 className="h-4 w-4" />}
                 label="Dashboards"
-                onClick={() => setActiveTab('dashboards')}
+                onClick={() => trocarAba('dashboards')}
               />
             </Permissao>
           </div>
@@ -8187,6 +8202,8 @@ export function Reports() {
           {error}
         </div>
       ) : null}
+
+      {activeTab === 'relatorios_secretaria' && pode('reports.relatorios_secretaria.aba') ? <RelatoriosIgreja modulo="secretaria" /> : null}
 
       {activeTab === 'reports' ? (
         <div className="space-y-6">

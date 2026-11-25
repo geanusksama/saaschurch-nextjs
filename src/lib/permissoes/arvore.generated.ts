@@ -1362,6 +1362,150 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/finance/Diretoria.tsx"
   },
   {
+    "chave": "finance_reports.relatorios_tesouraria.aba",
+    "rotulo": "Aba Relatórios de Tesouraria",
+    "herda": "finance_reports.view",
+    "arquivo": "src/app-ui/finance/RelatoriosFinanceirosAbas.tsx"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.anuidades",
+    "rotulo": "18 - Posição de Anuidades",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.balancete_analitico",
+    "rotulo": "4 - Balancete Analítico",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.balancete_sintetico",
+    "rotulo": "5 - Balancete Sintético",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.comparativo",
+    "rotulo": "8 - Comparativo de Despesa x Receita",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.conciliacao",
+    "rotulo": "13 - Consulta Conciliação de Recebimentos",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.consulta",
+    "rotulo": "12 - Consulta de Lançamentos",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.contagem_ofertas",
+    "rotulo": "19 - Contagem de Ofertas",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.diario",
+    "rotulo": "6 - Diário de Financeiro",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.dizimistas",
+    "rotulo": "14 - Dizimistas e Contribuintes",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.exportar",
+    "rotulo": "Exportar Excel — Relatórios de Tesouraria",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/app-ui/relatoriosIgreja/RelatoriosIgreja.tsx"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.extrato",
+    "rotulo": "2 - Extrato de Conta Corrente",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.extrato_contribuintes",
+    "rotulo": "16 - Extrato de Contribuintes",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.extrato_repasses",
+    "rotulo": "17 - Extrato de Repasses",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.imprimir",
+    "rotulo": "Imprimir — Relatórios de Tesouraria",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/app-ui/relatoriosIgreja/RelatoriosIgreja.tsx"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.livro",
+    "rotulo": "1 - Livro de Lançamentos Financeiros",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.nao_dizimistas",
+    "rotulo": "15 - Não Dizimistas",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.programacao",
+    "rotulo": "3 - Programação Financeira",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.programacao_anual",
+    "rotulo": "10 - Programação Financeira Anual",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.ranking",
+    "rotulo": "20 - Ranking Financeiro",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.repasse",
+    "rotulo": "7 - Repasse de Congregação",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.resultado_anual",
+    "rotulo": "9 - Resultado Financeiro Anual",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.resumo",
+    "rotulo": "11 - Resumo Financeiro",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "finance_reports.relatorios_tesouraria.trimestral",
+    "rotulo": "21 - Análise Financeira Trimestral",
+    "herda": "finance_reports.relatorios_tesouraria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
     "chave": "inbox.inbox.enviar",
     "rotulo": "Enviar — Inbox",
     "herda": "inbox.view",
@@ -2404,6 +2548,168 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "rotulo": "Relatório de presença",
     "herda": "reports.view",
     "arquivo": "src/components/app-ui/Reports.tsx"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.aba",
+    "rotulo": "Aba Relatórios de Secretaria",
+    "herda": "reports.view",
+    "arquivo": "src/components/app-ui/Reports.tsx"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.agenda_pastoral",
+    "rotulo": "3 - Agenda Pastoral",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.agendamento_ocorrencia",
+    "rotulo": "10 - Agendamento de Ocorrência",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.agendamentos_culto",
+    "rotulo": "2 - Agendamentos do Culto",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.aniversariantes",
+    "rotulo": "4 - Aniversariantes",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.aniversariantes_dia",
+    "rotulo": "5 - Aniversariantes do Dia",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.anual_ocorrencias",
+    "rotulo": "11 - Anual de Ocorrências",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.cadastros_mes",
+    "rotulo": "16 - Qtde Cadastros por Mês",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.crescimento",
+    "rotulo": "24 - Histórico de Crescimento",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.emissao_documentos",
+    "rotulo": "14 - Consulta Emissão de Documentos",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.estatistica_cargos",
+    "rotulo": "15 - Estatística de Títulos",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.exportar",
+    "rotulo": "Exportar Excel — Relatórios de Secretaria",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/app-ui/relatoriosIgreja/RelatoriosIgreja.tsx"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.faixa_etaria",
+    "rotulo": "13 - Faixa Etária",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.familiares",
+    "rotulo": "7 - Familiares",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.funcoes",
+    "rotulo": "12 - Funções Ocupacionais",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.grafico_cargos",
+    "rotulo": "22 - Gráfico - Estatística de Títulos",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.historico_ocorrencia",
+    "rotulo": "9 - Histórico de Ocorrência",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.igrejas",
+    "rotulo": "1 - Igrejas",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.igrejas_estado",
+    "rotulo": "21 - Igrejas por Estado",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.imprimir",
+    "rotulo": "Imprimir — Relatórios de Secretaria",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/app-ui/relatoriosIgreja/RelatoriosIgreja.tsx"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.mala_direta",
+    "rotulo": "8 - Mala Direta - Etiquetas",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.pessoas",
+    "rotulo": "6 - Pessoas",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.pessoas_estado",
+    "rotulo": "20 - Pessoas por Estado",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.ranking_ocorrencia",
+    "rotulo": "23 - Ranking de Ocorrência",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.recebimentos_pendentes",
+    "rotulo": "18 - Recebimentos Pendentes",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.transferencias_pendentes",
+    "rotulo": "17 - Transferências Pendentes",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
+  },
+  {
+    "chave": "reports.relatorios_secretaria.usuarios",
+    "rotulo": "19 - Usuários do Sistema",
+    "herda": "reports.relatorios_secretaria.aba",
+    "arquivo": "src/lib/relatoriosIgreja/catalogo.ts"
   },
   {
     "chave": "reports.reports.excluir_dashboard",

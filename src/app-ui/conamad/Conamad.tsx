@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 import {
   AlertTriangle, Building2, CheckCircle2, ChevronDown, CircleDollarSign, Download, Eye, FileText, FilterX, Landmark, Loader2, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Upload, Users, X,
@@ -77,9 +77,44 @@ function Ministro({ l }: { l: Linha }) {
       </span>
     </>
   );
+  const abrir = useContext(AbrirRegistro);
+  if (abrir) return <button type="button" onClick={() => abrir(l)} title="Ver os dados sem sair da lista" className="group flex min-w-0 flex-1 items-center gap-3 text-left">{miolo}</button>;
   return l.memberId
     ? <Link to={`/app-ui/members/${l.memberId}`} title="Abrir perfil do membro" className="group flex min-w-0 flex-1 items-center gap-3">{miolo}</Link>
     : <span className="flex min-w-0 flex-1 items-center gap-3">{miolo}</span>;
+}
+
+/** Abre o registro num modal por cima da lista (a lista não é desmontada nem buscada de novo). */
+const AbrirRegistro = createContext<((l: Linha) => void) | null>(null);
+
+function ModalRegistro({ linha, colunas, onClose }: { linha: Linha; colunas: Coluna[]; onClose: () => void }) {
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [onClose]);
+  const nome = String(linha.nome ?? linha.igreja ?? "");
+  const detalhe = [linha.rol != null ? `ROL #${linha.rol}` : linha.nome ? "Sem ROL" : "", linha.matricula != null ? `Matrícula ${linha.matricula}` : ""].filter(Boolean).join(" · ");
+  const campos = colunas.filter((c) => c.id !== "nome").map((c) => [c.rotulo, c.texto(linha)] as const).filter(([, v]) => v !== "" && v != null);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-slate-900/45" onClick={onClose} />
+      <div className="relative flex max-h-[90vh] w-[min(620px,100%)] flex-col overflow-hidden rounded-[22px] bg-white shadow-2xl dark:bg-slate-800">
+        <div className="flex items-center gap-3.5 border-b border-[#eef2f6] px-5 py-4 dark:border-slate-700">
+          {linha.nome ? <Avatar nome={nome} foto={linha.fotoUrl as string | null} /> : null}
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5"><span className="truncate text-lg font-extrabold">{nome}</span>{detalhe && <span className="text-[13px] text-slate-500 dark:text-slate-400">{detalhe}</span>}</div>
+          <button type="button" onClick={onClose} aria-label="Fechar" className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"><X className="h-5 w-5" /></button>
+        </div>
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 overflow-y-auto px-5 py-4 text-sm sm:grid-cols-2">
+          {campos.map(([r, v]) => <div key={r} className="flex min-w-0 flex-col gap-0.5"><dt className="text-xs font-bold uppercase tracking-[.04em] text-slate-500 dark:text-slate-400">{r}</dt><dd className="break-words font-semibold">{String(v)}</dd></div>)}
+        </dl>
+        <div className="flex justify-end gap-2 border-t border-[#eef2f6] px-5 py-3.5 dark:border-slate-700">
+          <button type="button" onClick={onClose} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold dark:border-slate-600">Fechar</button>
+          {linha.memberId ? <a href={`/app-ui/members/${String(linha.memberId)}`} target="_blank" rel="noopener noreferrer" className="flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white dark:bg-white dark:text-slate-900"><Eye className="h-4 w-4" />Abrir ficha completa</a> : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const campo = (l: Linha, c: string) => String(l[c] ?? "");
@@ -173,7 +208,7 @@ function TabelaPadrao({ tabela, colunas, carregou, nomeItens, painelBusca }: { t
               ) : itens.map((l, i) => (
                 <div key={`${String(l.id ?? l.matricula ?? l.ano ?? "")}-${i}`} style={grade} className="grid items-center gap-4 border-t border-[#f1f5f9] px-5 py-3 first:border-t-0 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/40">
                   {visiveis.map((c) => <span key={c.id} className="flex min-w-0 items-center">{c.render(l)}</span>)}
-                  <span className="flex justify-end">{l.memberId ? <Link to={`/app-ui/members/${l.memberId}`} title="Ver ficha do membro" className="grid h-9 w-9 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"><Eye className="h-[17px] w-[17px]" strokeWidth={2} /></Link> : null}</span>
+                  <span className="flex justify-end"><BotaoVer l={l} /></span>
                 </div>
               ))}
             </div>
@@ -197,6 +232,12 @@ function TabelaPadrao({ tabela, colunas, carregou, nomeItens, painelBusca }: { t
       )}
     </section>
   );
+}
+
+function BotaoVer({ l }: { l: Linha }) {
+  const abrir = useContext(AbrirRegistro);
+  if (!abrir) return l.memberId ? <Link to={`/app-ui/members/${l.memberId}`} title="Ver ficha do membro" className="grid h-9 w-9 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"><Eye className="h-[17px] w-[17px]" strokeWidth={2} /></Link> : null;
+  return <button type="button" onClick={() => abrir(l)} title="Ver os dados sem sair da lista" className="grid h-9 w-9 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"><Eye className="h-[17px] w-[17px]" strokeWidth={2} /></button>;
 }
 
 interface CartaoDef { rotulo: string; valor: string | number; icone: ElementType; bg: string; fg: string }
@@ -336,6 +377,7 @@ function Consulta({ aba, topo, titulo, secao }: { aba: AbaConsulta; topo?: React
   const [erro, setErro] = useState("");
   const [anos, setAnos] = useState<string[]>([]);
   const ultimoPedido = useRef(0);
+  const [registro, setRegistro] = useState<Linha | null>(null);
 
   const [regionais, setRegionais] = useState<string[]>([]);
   const ehSecretaria = aba.startsWith("sec-");
@@ -439,7 +481,9 @@ function Consulta({ aba, topo, titulo, secao }: { aba: AbaConsulta; topo?: React
   );
 
   return (
+    <AbrirRegistro.Provider value={setRegistro}>
     <Pagina aba={aba} acoes={acoes} titulo={titulo} secao={secao}>
+      {registro && <ModalRegistro linha={registro} colunas={colunas} onClose={() => setRegistro(null)} />}
       {topo}
       <div className="flex flex-wrap items-stretch gap-3">
         <div className="flex min-w-0 flex-[1_1_380px] gap-2">
@@ -506,6 +550,7 @@ function Consulta({ aba, topo, titulo, secao }: { aba: AbaConsulta; topo?: React
         </div>
       )}
     </Pagina>
+    </AbrirRegistro.Provider>
   );
 }
 

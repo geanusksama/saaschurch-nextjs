@@ -1,6 +1,6 @@
 import { Users, Shield, Settings, Building2, Palette, Link2, Webhook, Key, Bell, Mail, MessageSquare, Database, Clock, Archive, Target, DollarSign, Calendar, BookOpen, Award, Heart, CheckSquare, MapPin, Smartphone } from 'lucide-react';
 import { ScreenTemplate } from './AllScreens';
-import FinancialReportsDashboard from '../../app-ui/finance/FinancialReportsDashboard';
+import RelatoriosFinanceirosAbas from '../../app-ui/finance/RelatoriosFinanceirosAbas';
 
 // System & Settings
 export function UserNew() {
@@ -163,5 +163,5 @@ export function BankReconciliation() {
 }
 
 export function FinancialReports() {
-  return <FinancialReportsDashboard />;
+  return <RelatoriosFinanceirosAbas />;
 }
