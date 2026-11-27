@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.129Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-27T23:21:52.980Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fa5cd82742e71000
+-- Baseline b00d9e57c1cd2946
 
 -- Foreign keys (aplicadas depois de todas as tabelas)
 do $$ begin alter table "public"."ai_agent_users" add constraint "ai_agent_users_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;

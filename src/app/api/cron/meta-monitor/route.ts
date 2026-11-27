@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executarMonitor } from '@/lib/meta/monitorMeta'
 import { depsExecucaoReais } from '@/lib/meta/depsMonitor'
+import { encaminharAoBase } from '@/lib/meta/encaminharAlertas'
+import { urlBaseCentral } from '@/lib/meta/configCentral'
+import { abertosLocaisParaEncaminhar, resolverEncaminhados } from '@/lib/meta/alertasRepo'
 
 /**
  * GET /api/cron/meta-monitor
@@ -25,7 +28,12 @@ export async function GET(req: NextRequest) {
   }
   try {
     const r = await executarMonitor(depsExecucaoReais())
-    return NextResponse.json({ ok: true, ...r })
+    // Igreja (não-base): entrega ao master no base os alertas de campo em aberto. Nunca lança.
+    const encaminhamento = await encaminharAoBase(
+      { env: process.env, fetch, abertosLocais: abertosLocaisParaEncaminhar, resolverLocais: resolverEncaminhados },
+      urlBaseCentral,
+    )
+    return NextResponse.json({ ok: true, ...r, encaminhamento })
   } catch (e) {
     if ((e as { code?: string })?.code === 'P2021') {
       // Tabela ainda não existe neste banco (baseline não aplicado): não é erro do cron.

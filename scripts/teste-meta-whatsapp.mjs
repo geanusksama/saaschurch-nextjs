@@ -1465,3 +1465,82 @@ test('ação de controle e paginação do detalhe', () => {
   assert.deepEqual(lerPaginacao('-1', '0'), { pagina: 1, porPagina: 50 })
   assert.deepEqual(lerPaginacao('abc', '1.5'), { pagina: 1, porPagina: 50 })
 })
+
+// ---- Alertas das igrejas chegando ao master (encaminharAlertas) ----
+import { validarRecebimento, receberAlertas, encaminharAoBase, dominioDe, montarOrigem } from '../src/lib/meta/encaminharAlertas.ts'
+import { urlBaseCentral } from '../src/lib/meta/configCentral.ts'
+
+const ENV_IGREJA = { META_CONFIG_URL: 'https://www.adcampinas.com.br', META_CONFIG_SYNC_TOKEN: 'tok', META_CALLBACK_BASE_URL: 'https://ibirite.adcampinas.com.br' }
+
+test('dominioDe aceita https e recusa http', () => {
+  assert.equal(dominioDe('https://Ibirite.adcampinas.com.br/x'), 'ibirite.adcampinas.com.br')
+  assert.equal(dominioDe('http://ibirite.adcampinas.com.br'), null)
+  assert.equal(dominioDe('lixo'), null)
+  assert.equal(montarOrigem('a.com', 'Campo X'), 'a.com · Campo X')
+  assert.equal(montarOrigem('a.com', null), 'a.com')
+})
+
+test('validarRecebimento recusa tipo global, proposta não passa e limita tamanho', () => {
+  assert.equal(validarRecebimento({ dominio: 'a.com', alertas: [{ tipo: 'versao_graph', mensagem: 'x' }] }).ok, false)
+  assert.equal(validarRecebimento({ dominio: 'a b', alertas: [] }).ok, false)
+  assert.equal(validarRecebimento({ dominio: 'a.com', alertas: Array(101).fill({ tipo: 'conexao_erro', mensagem: 'x' }) }).ok, false)
+  const v = validarRecebimento({ dominio: 'A.com', alertas: [{ tipo: 'conexao_erro', mensagem: 'm'.repeat(2000), campoNome: 'C', proposta: { tipo: 'atualizar_versao_graph' } }] })
+  assert.equal(v.ok, true)
+  assert.equal(v.dominio, 'a.com')
+  assert.equal(v.alertas[0].mensagem.length, 1000)
+  assert.equal('proposta' in v.alertas[0], false)
+})
+
+test('receberAlertas não duplica o que já está aberto nem repetido no mesmo envio', async () => {
+  const gravados = []
+  const n = await receberAlertas('a.com', [
+    { tipo: 'conexao_erro', mensagem: 'm1', campoNome: 'C1' },
+    { tipo: 'conexao_erro', mensagem: 'm1 de novo', campoNome: 'C1' },
+    { tipo: 'qualidade_baixa', mensagem: 'm2', campoNome: 'C1' },
+    { tipo: 'conexao_erro', mensagem: 'm3', campoNome: 'C2' },
+  ], {
+    abertosComOrigem: async () => [{ tipo: 'qualidade_baixa', origem: 'a.com · C1' }],
+    gravar: async (l) => { gravados.push(...l) },
+  })
+  assert.equal(n, 2)
+  assert.deepEqual(gravados.map((g) => g.origem), ['a.com · C1', 'a.com · C2'])
+})
+
+test('encaminharAoBase: base não envia; sem configuração não envia', async () => {
+  const deps = (env) => ({ env, fetch: async () => { throw new Error('não deveria chamar') }, abertosLocais: async () => [], resolverLocais: async () => {} })
+  assert.deepEqual(await encaminharAoBase(deps({ ...ENV_IGREJA, META_CONFIG_BASE: '1' }), urlBaseCentral), { encaminhados: 0, motivo: 'base' })
+  assert.deepEqual(await encaminharAoBase(deps({ ...ENV_IGREJA, META_CONFIG_SYNC_TOKEN: '' }), urlBaseCentral), { encaminhados: 0, motivo: 'sem configuracao' })
+})
+
+test('encaminharAoBase: envia só tipos de campo e resolve localmente após o ok', async () => {
+  let chamada = null; let resolvidos = null
+  const r = await encaminharAoBase({
+    env: ENV_IGREJA,
+    fetch: async (url, init) => { chamada = { url, init }; return new Response('{}', { status: 200 }) },
+    abertosLocais: async () => [
+      { id: '1', tipo: 'conexao_erro', mensagem: 'm', campoNome: 'Ibirité' },
+      { id: '2', tipo: 'versao_graph', mensagem: 'global', campoNome: null },
+    ],
+    resolverLocais: async (ids) => { resolvidos = ids },
+  }, urlBaseCentral)
+  assert.deepEqual(r, { encaminhados: 1 })
+  assert.equal(chamada.url, 'https://www.adcampinas.com.br/api/meta/app-config/alertas/receber')
+  assert.equal(chamada.init.headers['x-meta-config-token'], 'tok')
+  const corpo = JSON.parse(chamada.init.body)
+  assert.equal(corpo.dominio, 'ibirite.adcampinas.com.br')
+  assert.deepEqual(corpo.alertas, [{ tipo: 'conexao_erro', mensagem: 'm', campoNome: 'Ibirité' }])
+  assert.deepEqual(resolvidos, ['1'])
+})
+
+test('encaminharAoBase: base recusou ou caiu ⇒ nada é resolvido', async () => {
+  for (const f of [async () => new Response('x', { status: 503 }), async () => { throw new Error('rede') }]) {
+    let resolvidos = null
+    const r = await encaminharAoBase({
+      env: ENV_IGREJA, fetch: f,
+      abertosLocais: async () => [{ id: '1', tipo: 'conexao_erro', mensagem: 'm', campoNome: null }],
+      resolverLocais: async (ids) => { resolvidos = ids },
+    }, urlBaseCentral)
+    assert.deepEqual(r, { encaminhados: 0, motivo: 'falha' })
+    assert.equal(resolvidos, null)
+  }
+})
