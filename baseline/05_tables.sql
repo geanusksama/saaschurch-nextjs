@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-27T23:21:52.975Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.109Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b00d9e57c1cd2946
+-- Baseline fa5cd82742e71000
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -3890,8 +3890,7 @@ create table if not exists "public"."meta_alertas" (
   "proposta" jsonb,
   "criado_em" timestamp(6) with time zone default now() not null,
   "resolvido_em" timestamp(6) with time zone,
-  "resolvido_por" uuid,
-  "origem" text
+  "resolvido_por" uuid
 );
 
 create table if not exists "public"."meta_app_config" (

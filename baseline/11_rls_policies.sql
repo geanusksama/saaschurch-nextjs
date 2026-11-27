@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-27T23:21:52.981Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.133Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline b00d9e57c1cd2946
+-- Baseline fa5cd82742e71000
 
 -- Row Level Security
 alter table "public"."_prisma_migrations" enable row level security;
