@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     // valida instâncias: precisam existir, estar ativas e o usuário ser dono OU
     // autorizado (whatsapp_instance_users) — master usa qualquer
-    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
     const allowedIds = accessible ? instanceIds.filter((id: string) => accessible.has(id)) : instanceIds
     const { data: instances } = allowedIds.length
       ? await supabaseAdmin.from('whatsapp_instances').select('id, name, status').in('id', allowedIds).eq('is_active', true)

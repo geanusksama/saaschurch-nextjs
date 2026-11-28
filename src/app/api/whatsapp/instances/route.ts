@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { filtrarPorCampo } from '@/lib/meta/instanciaCampo'
 
 // GET /api/whatsapp/instances — instâncias próprias + autorizadas (master vê todas)
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
-    const cols = 'id, name, instance_id, status, phone_number, is_active, created_at, updated_at'
+    const cols = 'id, name, instance_id, status, phone_number, is_active, created_at, updated_at, provider, campo_id'
 
-    // Master enxerga todas as instâncias do sistema
+    // O número oficial (provider 'meta') só aparece no campo ativo, master inclusive.
+    const campoAtivo = user.campoId ?? null
+
+    // Master enxerga todas as instâncias Z-API do sistema
     if (user.profileType === 'master') {
       const { data, error } = await supabaseAdmin
         .from('whatsapp_instances')
         .select(cols)
         .order('created_at', { ascending: true })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-      return NextResponse.json(data ?? [])
+      return NextResponse.json(filtrarPorCampo(data ?? [], campoAtivo))
     }
 
     // Demais: instâncias próprias + as que o usuário está autorizado a usar
@@ -42,7 +46,7 @@ export async function GET(req: NextRequest) {
       authorized = extra ?? []
     }
 
-    return NextResponse.json([...(owned ?? []), ...authorized])
+    return NextResponse.json(filtrarPorCampo([...(owned ?? []), ...authorized], campoAtivo))
   })
 }
 

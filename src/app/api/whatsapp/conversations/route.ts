@@ -3,6 +3,7 @@ import { exigirPermissao } from '@/lib/permissoes/servidor'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { instanciasVisiveisNoCampo } from '@/lib/whatsappCampo'
+import { filtrarPorCampo } from '@/lib/meta/instanciaCampo'
 
 // GET /api/whatsapp/conversations?instanceId=&status=open&search=
 export async function GET(req: NextRequest) {
@@ -66,12 +67,13 @@ export async function POST(req: NextRequest) {
 
     const { data: inst } = await supabaseAdmin
       .from('whatsapp_instances')
-      .select('id')
+      .select('id, provider, campo_id')
       .eq('id', instance_id)
       .eq('owner_user_id', user.id)
       .single()
 
-    if (!inst) return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
+    // a instância oficial de outro campo não vale aqui (campo ativo filtra tudo)
+    if (!inst || filtrarPorCampo([inst], user.campoId ?? null).length === 0) return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
 
     const { data, error } = await supabaseAdmin
       .from('whatsapp_conversations')

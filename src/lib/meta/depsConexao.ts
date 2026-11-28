@@ -5,6 +5,7 @@ import { trocarCodigo, registrarNumero, assinarWebhookDaConta, cancelarAssinatur
 import { lerConfigMeta, ErroConfigMeta } from './configMeta'
 import { ErroServico, type Dependencias } from './servicoConexao'
 import * as repo from './conexaoRepo'
+import { sincronizarInstanciaDoCampo } from './instanciaOficial'
 
 export async function montarDependencias(): Promise<Dependencias> {
   const config = await lerConfigMeta()
@@ -12,6 +13,7 @@ export async function montarDependencias(): Promise<Dependencias> {
     repo,
     graph: criarGraph({ versao: config.graphVersion }),
     config,
+    sincronizarInstancia: sincronizarInstanciaDoCampo,
     cifra: { cifrar, decifrar },
     meta: { trocarCodigo, registrarNumero, assinarWebhookDaConta, cancelarAssinaturaWebhook, lerStatusNumero, gerarPin },
   }

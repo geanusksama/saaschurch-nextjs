@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const instanceIds = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const instanceIds = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
 
     const entries: GfContactPdfEntry[] = []
     for (const c of validos) {

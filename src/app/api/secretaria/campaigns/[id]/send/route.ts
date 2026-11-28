@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ error: 'Escolha a instância do WhatsApp que fará o envio.' }, { status: 400 })
     }
 
-    const acessiveis = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const acessiveis = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
     const permitidas = acessiveis ? escolhidas.filter(i => acessiveis.has(i)) : escolhidas
     const { data: instances } = permitidas.length
       ? await supabaseAdmin.from('whatsapp_instances').select('id, name, status').in('id', permitidas).eq('is_active', true)

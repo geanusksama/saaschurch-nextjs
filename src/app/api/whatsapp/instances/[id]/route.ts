@@ -19,6 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .select('*')
       .eq('id', id)
       .eq('owner_user_id', user.id)
+      .eq('provider', 'zapi') // o número oficial é gerido na conexão da Meta, não aqui
       .single()
 
     if (error || !instance) return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
@@ -80,6 +81,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .select('*')
       .eq('id', id)
       .eq('owner_user_id', user.id)
+      .eq('provider', 'zapi') // o número oficial é gerido na conexão da Meta, não aqui
       .single()
 
     if (fetchErr || !instance) return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
@@ -212,6 +214,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       .delete()
       .eq('id', id)
       .eq('owner_user_id', user.id)
+      .eq('provider', 'zapi') // o número oficial é gerido na conexão da Meta, não aqui
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })

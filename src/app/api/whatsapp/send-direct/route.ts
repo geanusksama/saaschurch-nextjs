@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     // instância precisa ser própria, autorizada (whatsapp_instance_users) ou o usuário ser master
-    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
     if (accessible && !accessible.has(instanceId)) {
       return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
     }

@@ -49,6 +49,8 @@ export type Dependencias = {
   }
   graph: Graph
   config: ConfigMeta
+  /** Espelha a conexão do campo em whatsapp_instances (melhor esforço; ausente nos testes antigos). */
+  sincronizarInstancia?: (campoId: string) => Promise<void>
   cifra: {
     cifrar(texto: string, chaveHex: string): string
     decifrar(cifrado: string, chaveHex: string): string
@@ -89,6 +91,16 @@ function traduzir(e: unknown): never {
   if (err?.name === 'AbortError' || err?.name === 'TimeoutError') throw new ErroServico(504, MSG_TIMEOUT)
   if (err?.name === 'ErroGraph') throw new ErroServico(502, `A Meta recusou a operação: ${err.message ?? 'erro desconhecido'}`)
   throw e
+}
+
+async function sincronizar(deps: Dependencias, campoId: string): Promise<void> {
+  if (!deps.sincronizarInstancia) return
+  try {
+    await deps.sincronizarInstancia(campoId)
+  } catch (e) {
+    // A conexão já foi gravada: o espelho se refaz na próxima conexão/backfill.
+    console.error('[meta/whatsapp] espelho da instância falhou:', (e as Error)?.name)
+  }
 }
 
 const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
@@ -191,6 +203,7 @@ export async function conectar(
       pinCifrado: deps.cifra.cifrar(pin, deps.config.chaveCifra),
       conectadoPor: d.userId,
     })
+    await sincronizar(deps, d.campoId)
     return {
       conectado: true,
       status: 'conectado',
@@ -217,5 +230,6 @@ export async function desconectar(deps: Dependencias, campoId: string): Promise<
     console.error('[meta/whatsapp] cancelar assinatura falhou:', (e as Error)?.name)
   }
   await deps.repo.desconectar(campoId)
+  await sincronizar(deps, campoId)
   return { conectado: false }
 }

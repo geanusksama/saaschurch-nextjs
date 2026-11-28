@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     if (!phone) return NextResponse.json({ error: 'phone é obrigatório' }, { status: 400 })
 
     // instâncias que este usuário pode ver (dono ou autorizado; master vê tudo)
-    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
     if (accessible && accessible.size === 0) {
       return NextResponse.json({ conversation: null, messages: [] })
     }

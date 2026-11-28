@@ -14,6 +14,9 @@ export interface WhatsAppInstance {
   phone_number?: string
   is_active: boolean
   owner_user_id: string
+  /** 'zapi' (padrão) ou 'meta' (espelho do número oficial) */
+  provider?: string
+  campo_id?: string | null
   webhook_url?: string
   metadata: Record<string, unknown>
   created_at: string

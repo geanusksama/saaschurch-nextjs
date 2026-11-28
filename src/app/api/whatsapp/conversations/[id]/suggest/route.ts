@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!conv) return NextResponse.json({ error: 'Conversa não encontrada.' }, { status: 404 })
 
     // mesma regra de visibilidade do resto do módulo
-    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
     if (accessible && !accessible.has(conv.instance_id)) {
       return NextResponse.json({ error: 'Sem acesso a esta conversa.' }, { status: 403 })
     }

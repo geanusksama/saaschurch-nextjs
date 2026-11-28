@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     // A conversa só é lida nas instâncias que o usuário enxerga — mesma regra
     // do relatório de contatos, senão daria para ler o atendimento de outra
     // igreja mandando um telefone qualquer.
-    const instanceIds = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const instanceIds = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
 
     try {
       const resumo = await analisarDistribuicao({

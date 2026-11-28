@@ -1544,3 +1544,47 @@ test('encaminharAoBase: base recusou ou caiu ⇒ nada é resolvido', async () =>
     assert.equal(resolvidos, null)
   }
 })
+
+
+// ---- Instância espelho do número oficial e isolamento por campo (Task 3) ----
+import { filtrarPorCampo, campoDaInstancia, linhaDaInstanciaOficial } from '../src/lib/meta/instanciaCampo.ts'
+
+const LISTA_INST = [
+  { id: 'z1' }, { id: 'z2', provider: 'zapi', campo_id: null },
+  { id: 'm1', provider: 'meta', campo_id: 'c1' }, { id: 'm2', provider: 'meta', campo_id: 'c2' },
+]
+test('filtrarPorCampo: mantém todas as Z-API e só a oficial do campo ativo', () => {
+  assert.deepEqual(filtrarPorCampo(LISTA_INST, 'c1').map((i) => i.id), ['z1', 'z2', 'm1'])
+  assert.deepEqual(filtrarPorCampo(LISTA_INST, 'c2').map((i) => i.id), ['z1', 'z2', 'm2'])
+})
+test('filtrarPorCampo: campo ativo nulo => nenhuma oficial', () => {
+  assert.deepEqual(filtrarPorCampo(LISTA_INST, null).map((i) => i.id), ['z1', 'z2'])
+  assert.deepEqual(filtrarPorCampo([{ provider: 'meta', campo_id: null }], null), [])
+})
+test('campoDaInstancia: oficial usa a coluna; Z-API usa o agente', () => {
+  assert.equal(campoDaInstancia({ provider: 'meta', campo_id: 'c1' }, 'cAgente'), 'c1')
+  assert.equal(campoDaInstancia({ provider: 'zapi', campo_id: 'c1' }, 'cAgente'), 'cAgente')
+  assert.equal(campoDaInstancia({}, null), null)
+})
+test('linhaDaInstanciaOficial: nome, chave e status', () => {
+  const l = linhaDaInstanciaOficial({ campoId: 'c1', phoneNumberId: 'p9', numero: '+55 19 9999', nomeExibicao: 'Igreja', status: 'conectado' })
+  assert.deepEqual(l, { provider: 'meta', instance_id: 'meta:p9', campo_id: 'c1', name: 'Oficial Meta – +55 19 9999', phone_number: '+55 19 9999', status: 'connected', is_active: true })
+  const d = linhaDaInstanciaOficial({ campoId: 'c1', phoneNumberId: 'p9', numero: '+55', nomeExibicao: null, status: 'desconectado' })
+  assert.equal(d.status, 'disconnected'); assert.equal(d.is_active, false)
+  assert.equal(linhaDaInstanciaOficial({ campoId: 'c', phoneNumberId: 'p', numero: null, nomeExibicao: null, status: 'erro' }).is_active, false)
+})
+
+test('conectar e desconectar sincronizam a instância espelho (dependência injetada)', async () => {
+  const sync = []
+  const { deps } = fakeDeps({ sincronizarInstancia: async (campoId) => { sync.push(campoId) } })
+  await conectar(deps, { campoId: 'c1', userId: 'u', code: 'C', wabaId: 'w', phoneNumberId: 'p1' })
+  assert.deepEqual(sync, ['c1'])
+  await desconectar(deps, 'c1')
+  assert.deepEqual(sync, ['c1', 'c1'])
+})
+test('falha ao sincronizar a instância não derruba a conexão', async () => {
+  const { deps } = fakeDeps({ sincronizarInstancia: async () => { throw new Error('banco fora') } })
+  const r = await conectar(deps, { campoId: 'c1', userId: 'u', code: 'C', wabaId: 'w', phoneNumberId: 'p1' })
+  assert.equal(r.conectado, true)
+  assert.deepEqual(await desconectar(deps, 'c1'), { conectado: false })
+})

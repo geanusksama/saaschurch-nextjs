@@ -5,6 +5,7 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { filtrarPorCampo } from '@/lib/meta/instanciaCampo'
 import type { SendMessagePayload, SendMessageResult, WhatsAppInstance } from '@/types/whatsapp'
 
 const ZAPI_BASE = 'https://api.z-api.io'
@@ -61,6 +62,8 @@ export async function getActiveInstance(
     .select('*')
     .eq('is_active', true)
     .eq('status', 'connected')
+    // Envio por Z-API: o espelho do número oficial (provider 'meta') não tem token.
+    .neq('provider', 'meta')
     .order('created_at', { ascending: true })
     .limit(1)
 
@@ -74,13 +77,25 @@ export async function getActiveInstance(
 }
 
 // ── Instâncias que um usuário pode usar: dono OU autorizado em whatsapp_instance_users ──
-// master: acesso irrestrito (retorna null, sentinela de "sem filtro").
+// master: acesso irrestrito às Z-API (retorna null, sentinela de "sem filtro") — a menos que
+// exista número oficial (provider 'meta') de OUTRO campo; aí devolve o conjunto sem ele.
+// A instância oficial só vale no campo ativo (`campoAtivo`); sem ele, nenhuma oficial.
 // Mesma regra de acesso usada por GET /api/whatsapp/instances — mantenha sincronizado.
 export async function getAccessibleInstanceIds(
   userId: string,
-  profileType?: string
+  profileType?: string,
+  campoAtivo?: string | null
 ): Promise<Set<string> | null> {
-  if (profileType === 'master') return null
+  if (profileType === 'master') {
+    const { data: oficiais } = await supabaseAdmin
+      .from('whatsapp_instances')
+      .select('id, provider, campo_id')
+      .eq('provider', 'meta')
+    const estranhas = (oficiais ?? []).filter(i => filtrarPorCampo([i], campoAtivo).length === 0)
+    if (!estranhas.length) return null
+    const { data: todas } = await supabaseAdmin.from('whatsapp_instances').select('id, provider, campo_id').limit(5000)
+    return new Set(filtrarPorCampo(todas ?? [], campoAtivo).map(i => i.id as string))
+  }
 
   const [{ data: owned }, { data: links }] = await Promise.all([
     supabaseAdmin.from('whatsapp_instances').select('id').eq('owner_user_id', userId),
@@ -90,6 +105,17 @@ export async function getAccessibleInstanceIds(
   const ids = new Set<string>()
   for (const row of owned ?? []) ids.add(row.id)
   for (const row of links ?? []) ids.add(row.instance_id)
+
+  if (ids.size) {
+    const { data: oficiais } = await supabaseAdmin
+      .from('whatsapp_instances')
+      .select('id, provider, campo_id')
+      .in('id', [...ids])
+      .eq('provider', 'meta')
+    for (const i of oficiais ?? []) {
+      if (filtrarPorCampo([i], campoAtivo).length === 0) ids.delete(i.id as string)
+    }
+  }
   return ids
 }
 
@@ -377,6 +403,7 @@ export async function quickSendWhatsApp(opts: QuickSendOptions): Promise<SendMes
       .from('whatsapp_instances')
       .select('*')
       .eq('id', opts.instanceId)
+      .neq('provider', 'meta') // este caminho envia por Z-API; a oficial não tem token
       .eq('is_active', true)
       .eq('status', 'connected')
       .single()

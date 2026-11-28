@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       departamento: sp.get('departamento') || null,
       filtros: lerFiltros(sp.get('filtros')),
       campoId: user.campoId || null,
-      instancias: await getAccessibleInstanceIds(String(user.id), user.profileType),
+      instancias: await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null),
     })
     return json(rel)
   })
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     if (negado) return negado
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
     const campoId = user.campoId || null
-    const instancias = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const instancias = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
     try {
       if (body.acao === 'resumo') {
         const id = typeof body.conversationId === 'string' ? body.conversationId : ''

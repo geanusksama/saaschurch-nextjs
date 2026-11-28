@@ -69,7 +69,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     // instâncias: precisam ser acessíveis ao usuário, ativas e conectadas
-    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType)
+    const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
     const allowedIds = accessible ? instanceIds.filter(i => accessible.has(i)) : instanceIds
     const { data: instances } = allowedIds.length
       ? await supabaseAdmin
