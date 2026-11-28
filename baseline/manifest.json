@@ -1,6 +1,6 @@
 {
-  "version": "3722a19e8d96f01f",
-  "generatedAt": "2026-11-28T01:24:56.140Z",
+  "version": "696a7ea624163b83",
+  "generatedAt": "2026-11-28T01:40:35.733Z",
   "schemas": [
     "public",
     "app"
@@ -48,7 +48,7 @@
     },
     {
       "file": "08_indexes.sql",
-      "bytes": 81022
+      "bytes": 81814
     },
     {
       "file": "09_views.sql",

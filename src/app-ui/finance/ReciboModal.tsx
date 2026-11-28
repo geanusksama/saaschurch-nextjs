@@ -715,7 +715,8 @@ export function ReciboModal({ row, onClose, onUpdated }: Props) {
           const { data: owned } = await supabase
             .from('whatsapp_instances')
             .select('id, name, instance_id, status, is_active, owner_user_id')
-            .eq('is_active', true);
+            .eq('is_active', true)
+            .neq('provider', 'meta');
 
           // 4. Fetch shared instances
           const { data: shared } = await supabase

@@ -209,3 +209,17 @@ export async function enviarModeloDaCampanha(deps: DepsCampanhaOficial, e: Entra
     return { tipo: 'erro', mensagem: 'A Meta não respondeu a tempo. Não reenviamos para não cobrar duas vezes.' }
   }
 }
+
+export const MSG_OFICIAL_SEM_MODELO = 'Campanha do número oficial sem modelo aprovado.'
+
+/**
+ * Defesa em profundidade: pelo número oficial só sai modelo aprovado. Sem modelo na campanha
+ * nada é enviado (nem texto livre) e o destinatário vira erro.
+ */
+export async function enviarPeloOficialDaCampanha(
+  deps: DepsCampanhaOficial,
+  e: Omit<EntradaEnvioOficial, 'modeloId'> & { modeloId: string | null | undefined },
+): Promise<ResultadoEnvioOficial> {
+  if (!e.modeloId) return { tipo: 'erro', mensagem: MSG_OFICIAL_SEM_MODELO }
+  return enviarModeloDaCampanha(deps, { ...e, modeloId: e.modeloId })
+}

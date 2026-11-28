@@ -2397,3 +2397,13 @@ test('preços centrais: igreja lê do base (cache 5 min), base fora do ar usa o 
   const novo = mkCentral({ env: { META_CONFIG_URL: 'https://base.exemplo.com', META_CONFIG_SYNC_TOKEN: 'tok' }, fetch: async () => { throw new Error('fora') } })
   assert.equal(await novo.c.lerPrecos(), null)
 })
+
+import { enviarPeloOficialDaCampanha, MSG_OFICIAL_SEM_MODELO } from '../src/lib/meta/campanhaOficial.ts'
+test('campanha oficial sem modelo: erro e nada é enviado', async () => {
+  const deps = new Proxy({}, { get() { throw new Error('não deveria tocar em nenhuma dependência') } })
+  const r = await enviarPeloOficialDaCampanha(deps, { campoId: 'c', instanciaId: 'i', modeloId: null, variaveis: {}, destinatario: { name: 'A', phone: '5531999999999', variables: {} }, igrejaNome: '' })
+  assert.deepEqual(r, { tipo: 'erro', mensagem: MSG_OFICIAL_SEM_MODELO })
+  assert.equal(MSG_OFICIAL_SEM_MODELO, 'Campanha do número oficial sem modelo aprovado.')
+  const r2 = await enviarPeloOficialDaCampanha(deps, { campoId: 'c', instanciaId: 'i', modeloId: '', variaveis: {}, destinatario: { name: 'A', phone: '5531999999999', variables: {} }, igrejaNome: '' })
+  assert.equal(r2.tipo, 'erro')
+})

@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendTextViaZApi, persistOutboundMessage, sendImageViaZApi, sendDocumentViaZApi, sendAudioViaZApi } from '@/lib/whatsappSendService'
 import { ehInstanciaMeta, metadataDoEnvio } from '@/lib/meta/envioLivre'
+import { filtrarPorCampo } from '@/lib/meta/instanciaCampo'
 
 const ZAPI_BASE = 'https://api.z-api.io'
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -30,12 +31,16 @@ export async function POST(req: NextRequest) {
 
     const instQuery = supabaseAdmin
       .from('whatsapp_instances')
-      .select('id, provider, instance_id, token, client_token')
+      .select('id, provider, campo_id, instance_id, token, client_token')
       .eq('id', conv.instance_id)
     if (user.profileType !== 'master') instQuery.eq('owner_user_id', user.id)
     const { data: instance } = await instQuery.single()
 
     if (!instance) return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
+    // oficial (Meta): só no campo a que pertence
+    if (filtrarPorCampo([instance], user.campoId ?? null).length === 0) {
+      return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
+    }
 
     const replyMeta = replyToId ? { reply_to_id: replyToId, reply_to_content: replyToContent ?? null, reply_to_sender: replyToSender ?? null } : {}
 

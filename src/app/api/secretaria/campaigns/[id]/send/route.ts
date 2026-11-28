@@ -71,12 +71,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const acessiveis = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
     const permitidas = acessiveis ? escolhidas.filter(i => acessiveis.has(i)) : escolhidas
     const { data: instances } = permitidas.length
-      ? await supabaseAdmin.from('whatsapp_instances').select('id, name, status').in('id', permitidas).eq('is_active', true)
+      ? await supabaseAdmin.from('whatsapp_instances').select('id, name, status').in('id', permitidas).eq('is_active', true).neq('provider', 'meta') // oficial só por Envio em Massa com modelo
       : { data: [] }
     const conectadas = (instances ?? []).filter(i => i.status === 'connected')
     if (!conectadas.length) {
       return NextResponse.json(
-        { error: 'Nenhuma das instâncias escolhidas está conectada. Verifique em WhatsApp Instâncias.' },
+        { error: 'Nenhuma das instâncias escolhidas está conectada. Verifique em WhatsApp Instâncias. Para o número oficial use Envio em Massa com modelo aprovado.' },
         { status: 400 }
       )
     }

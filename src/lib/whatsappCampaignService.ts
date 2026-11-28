@@ -21,7 +21,7 @@ import { createPipelineCardForSend } from '@/lib/whatsappImportService'
 import type { WhatsAppInstance } from '@/types/whatsapp'
 import { ehInstanciaMeta } from '@/lib/meta/envioLivre'
 import { conferirSairZapi, ultimos8, MOTIVO_PEDIU_PARA_SAIR } from '@/lib/meta/exclusoesCampo'
-import { enviarModeloDaCampanha, type DepsCampanhaOficial } from '@/lib/meta/campanhaOficial'
+import { enviarPeloOficialDaCampanha, type DepsCampanhaOficial } from '@/lib/meta/campanhaOficial'
 
 const RATE_LIMIT_MS = 5000 // mínimo absoluto — NUNCA reduzir, risco de ban do número
 
@@ -302,8 +302,9 @@ export async function processCampaignTick(
     return { progress, event: null, waitMs: 300, done: false }
   }
 
-  // Campanha pelo número oficial (Meta): só modelo aprovado, sem texto livre.
-  if (campaign.meta_modelo_id && ehInstanciaMeta(instance)) {
+  // Número oficial (Meta): só modelo aprovado, nunca texto livre. Sem modelo, o envio oficial
+  // marca o destinatário como erro (enviarPeloOficialDaCampanha) em vez de cair na Z-API/texto livre.
+  if (ehInstanciaMeta(instance)) {
     return processarEnvioOficial(campaign, next, instance, opts.depsOficial)
   }
 
@@ -519,13 +520,13 @@ async function processarEnvioOficial(
     igrejaNome = ig?.name ?? ''
   }
 
-  let resultado: Awaited<ReturnType<typeof enviarModeloDaCampanha>>
+  let resultado: Awaited<ReturnType<typeof enviarPeloOficialDaCampanha>>
   try {
     const deps = depsInjetadas ?? (await (await import('@/lib/meta/depsCampanhaOficial')).montarDependenciasCampanhaOficial())
-    resultado = await enviarModeloDaCampanha(deps, {
+    resultado = await enviarPeloOficialDaCampanha(deps, {
       campoId,
       instanciaId: instance.id,
-      modeloId: String(campaign.meta_modelo_id),
+      modeloId: campaign.meta_modelo_id ? String(campaign.meta_modelo_id) : null,
       variaveis: (campaign.meta_variaveis ?? {}) as Record<string, unknown>,
       destinatario: { name: next.name ?? null, phone, variables: next.variables ?? {} },
       igrejaNome,

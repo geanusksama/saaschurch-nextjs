@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:24:56.138Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:40:35.730Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 3722a19e8d96f01f
+-- Baseline 696a7ea624163b83
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -627,6 +627,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS pages_church_id_slug_key ON public.pages USING
 CREATE INDEX IF NOT EXISTS parcelas_church_status_idx ON public.parcelas_contas_pagar USING btree (church_id, status);
 CREATE INDEX IF NOT EXISTS parcelas_church_vencimento_idx ON public.parcelas_contas_pagar USING btree (church_id, data_vencimento);
 CREATE UNIQUE INDEX IF NOT EXISTS parcelas_conta_numero_key ON public.parcelas_contas_pagar USING btree (conta_pagar_id, numero_parcela);
+CREATE INDEX IF NOT EXISTS pastoral_journey_sends_instance_sent_idx ON public.pastoral_journey_sends USING btree (instance_id, sent_at) WHERE (status = 'sent'::text);
 CREATE UNIQUE INDEX IF NOT EXISTS peniel_registrations_check_in_code_key ON public.peniel_registrations USING btree (check_in_code);
 CREATE INDEX IF NOT EXISTS plano_de_contas_ativo_idx ON public.plano_de_contas USING btree (ativo);
 CREATE INDEX IF NOT EXISTS plano_de_contas_church_idx ON public.plano_de_contas USING btree (church_id);
@@ -678,5 +679,8 @@ CREATE INDEX IF NOT EXISTS users_campo_id_idx ON public.users USING btree (campo
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_key ON public.users USING btree (email);
 CREATE INDEX IF NOT EXISTS users_regional_id_idx ON public.users USING btree (regional_id);
 CREATE UNIQUE INDEX IF NOT EXISTS users_system_email_key ON public.users USING btree (system_email);
+CREATE INDEX IF NOT EXISTS wa_campaign_recipients_instance_sent_idx ON public.whatsapp_campaign_recipients USING btree (instance_id, sent_at) WHERE (status = 'sent'::text);
 CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_instances_provider_instance_id_key ON public.whatsapp_instances USING btree (provider, instance_id) WHERE (instance_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS whatsapp_messages_meta_message_id_idx ON public.whatsapp_messages USING btree (((metadata ->> 'meta_message_id'::text))) WHERE ((metadata ->> 'meta_message_id'::text) IS NOT NULL);
+CREATE INDEX IF NOT EXISTS whatsapp_messages_meta_saida_created_idx ON public.whatsapp_messages USING btree (created_at) INCLUDE (conversation_id) WHERE ((direction = 'outbound'::text) AND ((metadata ->> 'meta_message_id'::text) IS NOT NULL));
 CREATE UNIQUE INDEX IF NOT EXISTS zonas_name_unique ON public.zonas USING btree (lower((name)::text)) WHERE (deleted_at IS NULL);

@@ -496,8 +496,10 @@ function RowMenu({
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function WhatsAppInstances() {
-  const { instances, isLoading, createInstance, deleteInstance, getStatus, getQrCode, disconnectInstance, updateInstance, getInstanceDetails } =
+  const { instances: todasInstancias, isLoading, createInstance, deleteInstance, getStatus, getQrCode, disconnectInstance, updateInstance, getInstanceDetails } =
     useWhatsAppInstances()
+  // O número oficial da Meta (linha espelho) é gerenciado em Meta Oficial, não aqui.
+  const instances = todasInstancias.filter(i => (i as { provider?: string }).provider !== 'meta')
 
   const [showForm, setShowForm]   = useState(false)
   const [form, setForm]           = useState({ name: '', instance_id: '', token: '', client_token: '' })

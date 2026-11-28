@@ -77,11 +77,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           .select('id, name, status')
           .in('id', allowedIds)
           .eq('is_active', true)
+          .neq('provider', 'meta') // número oficial só por Envio em Massa com modelo aprovado
       : { data: [] }
     const connected = (instances ?? []).filter(i => i.status === 'connected')
     if (!connected.length) {
       return NextResponse.json(
-        { error: 'Nenhuma das instâncias selecionadas está conectada' },
+        { error: 'Nenhuma das instâncias selecionadas está conectada. Para o número oficial use Envio em Massa com modelo aprovado.' },
         { status: 400 }
       )
     }
