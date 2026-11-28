@@ -2321,8 +2321,10 @@ test('custo: formatarValor pt-BR com US$ e R$', () => {
 
 test('custo: texto fixo da estimativa e texto sem preço', () => {
   const t = textoEstimativa(296, 'UTILITY', PRECOS_8B, 'USD').replace(/ /g, ' ')
-  assert.equal(t, 'Valor estimado: US$ 2,01 (296 mensagens de UTILITY). Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues.')
+  assert.equal(t, 'Valor estimado: US$ 2,01 (296 mensagens de utilidade). Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues.')
   assert.equal(textoEstimativa(5, 'MARKETING', PRECOS_8B, 'USD'), 'Preço desta categoria não configurado — o master pode preencher em Meta Oficial → App.')
+  assert.match(textoEstimativa(3, 'AUTHENTICATION', [{ categoria: 'AUTHENTICATION', moeda: 'USD', preco: 1 }], 'USD'), /3 mensagens de autenticação/)
+  assert.match(textoEstimativa(2, 'MARKETING', [{ categoria: 'MARKETING', moeda: 'USD', preco: 1 }], 'USD'), /2 mensagens de marketing/)
   assert.equal(moedaDosPrecos(PRECOS_8B), 'USD')
   assert.equal(moedaDosPrecos([]), 'USD')
 })

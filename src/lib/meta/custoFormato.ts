@@ -35,10 +35,12 @@ export function moedaDosPrecos(precos: Preco[]): string {
 }
 
 /** Texto fixo mostrado antes do disparo / ao ligar a jornada. */
+const CATEGORIA_PT: Record<string, string> = { MARKETING: 'marketing', UTILITY: 'utilidade', AUTHENTICATION: 'autenticação' }
+
 export function textoEstimativa(qtd: number, categoria: string, precos: Preco[], moeda: string = moedaDosPrecos(precos)): string {
   const r = estimarCusto(qtd, categoria, precos, moeda)
   if ('semPreco' in r) return MSG_SEM_PRECO
-  return `Valor estimado: ${formatarValor(r.valor, r.moeda)} (${qtd} mensagens de ${String(categoria).toUpperCase()}). Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues.`
+  return `Valor estimado: ${formatarValor(r.valor, r.moeda)} (${qtd} mensagens de ${CATEGORIA_PT[String(categoria).toUpperCase()] ?? String(categoria).toLowerCase()}). Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues.`
 }
 
 /** Soma cobradas/previstas por categoria × preço. null se alguma categoria com mensagens não tem preço. */

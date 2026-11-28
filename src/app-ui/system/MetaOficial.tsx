@@ -3,7 +3,7 @@
  * Visão geral, Conexão, Modelos, Envio, Conversas, Leads e App (só master).
  */
 import { useRef, type KeyboardEvent } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { BadgeCheck, LayoutDashboard, Smartphone, FileText, Send, MessagesSquare, Megaphone, ShieldCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { definirPermissao } from '../../lib/permissoes/definir';
@@ -13,7 +13,6 @@ import MetaAppConfig from './MetaAppConfig';
 import VisaoGeral from './metaOficial/VisaoGeral';
 import EmBreve from './metaOficial/EmBreve';
 import Modelos from './metaOficial/Modelos';
-import Envio from './metaOficial/Envio';
 
 // Chaves que as rotas /api/meta/whatsapp/modelos* já exigem (exigirPermissao).
 export const PERM_MODELOS_VER = definirPermissao({ chave: 'whatsapp_oficial.modelos.view', rotulo: 'Modelos de mensagem (WhatsApp Oficial)', herda: 'whatsapp_oficial.view' });
@@ -129,7 +128,17 @@ export default function MetaOficial() {
         {ativa === 'visao-geral' && <VisaoGeral irPara={abrir} podeModelos={pode(PERM_MODELOS_VER)} />}
         {ativa === 'conexao' && <WhatsAppOficial embutido />}
         {ativa === 'modelos' && <Modelos irPara={abrir} />}
-        {ativa === 'envio' && <Envio irPara={abrir} />}
+        {ativa === 'envio' && (
+          <div className="flex flex-col items-start gap-3 rounded-2xl border border-[#e8ecf1] bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-2 text-base font-bold"><Send className="size-4" /> O envio em massa agora fica em Comunicação</div>
+            <p className="max-w-xl text-sm text-slate-600 dark:text-slate-300">
+              O número oficial do campo aparece como uma instância no Envio em Massa, em Comunicação → Gestão. Lá você escolhe o modelo aprovado, vê o valor estimado e dispara. Abra a aba <strong>Envio em Massa</strong>.
+            </p>
+            <Link to="/app-ui/pastoral-kanban" className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+              <Send className="size-4" /> Ir para Comunicação → Gestão
+            </Link>
+          </div>
+        )}
         {ativa === 'conversas' && (
           <EmBreve icone={MessagesSquare} titulo="Conversas" etapa="Etapa 4" descricao="Receba e responda as mensagens do número oficial numa caixa de entrada própria." />
         )}

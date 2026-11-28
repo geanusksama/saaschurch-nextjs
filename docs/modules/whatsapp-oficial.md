@@ -279,3 +279,35 @@ Pasta `src/app/api/meta/whatsapp/envio/`. Todas exigem usuário autenticado e ca
 3. **Envio em massa** (feita no código; ver seção 8): fila por cron, em lotes, com modelo aprovado, limite diário, qualidade do número e lista de exclusão ("SAIR"); acompanhamento enviado/entregue/lido/falhou.
 4. **Respostas**: webhook de mensagens recebidas e caixa de conversas própria, com janela de 24 h.
 5. **Leads de anúncio**: conectar Página do Facebook/Instagram e trazer leads dos formulários para o pipeline pastoral, com origem "Anúncio".
+
+## 10. Comunicação unificada (28/11/2026)
+
+O número oficial da Meta passou a ser usável nas telas que já existiam em Comunicação → Gestão. Migrations: `20261128000000_comunicacao_oficial` e `20261128010000_meta_precos`. Baseline do trabalho: `3722a19e8d96f01f`.
+
+- **Instância por campo**: cada campo com número oficial conectado ganha uma instância espelho (a "instância oficial") ao lado das da Z-API. Ela aparece nos seletores de instância das telas de Comunicação. Quem já tinha conexão antes da migration recebe a instância pelo script `scripts/backfill-instancia-oficial.mjs`, rodado na publicação.
+- **Envio em Massa** (Comunicação → Gestão → Envio em Massa): com a instância oficial escolhida, o envio usa modelo aprovado, mostra o valor estimado (quantidade × preço da categoria) e mantém os destinatários na fila oficial. Ao escolher uma instância Z-API, a tela exige o aceite do risco de bloqueio do número antes de disparar.
+- **Cronograma**: cada passo pode ter seu modelo; a jornada tem teto mensal de mensagens (`whatsapp_oficial.conexao.teto`). Ao ligar a jornada, a estimativa de custo aparece com o texto padrão por categoria (marketing, utilidade, autenticação).
+- **Conversas e agente de IA**: mensagens recebidas no número oficial entram na Caixa e o agente responde pelo número oficial enquanto a janela de 24 h está aberta.
+- **SAIR**: o pedido de SAIR feito no número oficial vale também para a Z-API do mesmo campo (e o inverso fica como já era).
+- **Preços e medidor**: tabela central de preços por categoria e moeda (editada pelo master em Meta Oficial → App; os campos leem dela, com cache de 5 min). O medidor do mês soma as mensagens cobradas (entregues e cobráveis) por categoria × preço. A Meta cobra no cartão do campo; o sistema só estima.
+- **Chaves de permissão**: `whatsapp_oficial.campanha.enviar` (disparar pelo número oficial), `whatsapp_oficial.conexao.teto` (definir o teto mensal), `whatsapp_oficial.modelos.sugerir` (sugerir modelo) e `meta_app.precos.editar` (editar a tabela de preços, master).
+- **Central Meta Oficial**: a aba **Envio** virou um cartão-atalho para Comunicação → Gestão. Não há parâmetro de URL para abrir a aba Envio em Massa direto; o atalho leva à página `/app-ui/pastoral-kanban` e o usuário clica na aba. Modelos, Conexão e App seguem como antes.
+
+### 10.1 Limitações conhecidas
+
+- Avisos aos líderes (repasses) enviados pelo número oficial falham fora da janela de 24 h. Precisa de decisão do dono (modelo aprovado para repasse, ou manter o repasse na Z-API).
+- No número oficial não existem botões, reações nem confirmação de leitura nas conversas.
+- A mídia do WhatsApp fica no bucket público `dados`.
+- O medidor só conta a partir de agora; não há histórico retroativo.
+- A moeda mostrada é a da tabela de preços (USD preferida); não há conversão.
+
+### 10.2 Roteiro do dia da troca (Campinas)
+
+Para o dono, quando for trocar o número de Campinas da Z-API para a Meta:
+
+1. Desligar (desconectar) a Z-API do número de Campinas. Um número não pode estar nos dois ao mesmo tempo.
+2. Em Meta Oficial → Conexão, clicar em **Conectar com a Meta** e concluir o fluxo com esse número.
+3. Conferir se a instância oficial apareceu. Se não apareceu, rodar `node scripts/backfill-instancia-oficial.mjs` (pelo desenvolvimento).
+4. Em Comunicação → Gestão → Envio em Massa, conferir que a instância oficial está na lista.
+5. Enviar um modelo de teste para o próprio número e conferir entrega e o valor estimado.
+6. Mandar uma mensagem de um celular para o número e conferir que ela cai na Caixa e que o agente responde.
