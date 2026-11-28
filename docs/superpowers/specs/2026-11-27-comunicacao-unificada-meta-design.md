@@ -85,6 +85,15 @@ Cada fase vai ao ar sozinha. Pela regra de produção, nenhuma fase muda o compo
 
 Ordem combinada: construir as fases 1 a 4, testar com o número de teste da Meta, e só então o dono desliga a Z-API do número atual de Campinas e o conecta na Meta (o mesmo número; pode ser trocado no futuro pela central).
 
+## Cobrança (decisão do dono, 28/11/2026: caminho A, "sempre bem claro o que vai gastar")
+
+- Cada campo paga direto à Meta, no cartão cadastrado na própria conta da Meta (o sistema nunca toca em dinheiro). Sem crédito pré-pago no sistema (exigiria a ZionByte virar parceira de soluções e assumir a fatura).
+- Fatos da página oficial de preços da Meta (lida em 28/11/2026): cobrança **por mensagem entregue** desde 01/07/2025; Brasil, utilidade e autenticação: **US$ 0,0068** por mensagem (0,68 ¢); marketing: só na planilha oficial (não lida — não usar valor de terceiros sem o master confirmar); 1.000 mensagens de serviço grátis por número por mês; cobrança em BRL disponível desde 01/07/2026 (fatura do Facebook Brasil); o webhook de status traz `pricing` com `billable` e `category` por mensagem.
+- Na tela: antes de cada disparo e ao ligar jornada, **valor estimado** = quantidade × preço da categoria do modelo, na moeda do campo, com o texto "Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues." Se o preço da categoria não estiver preenchido, a tela diz "preço não configurado" em vez de inventar valor.
+- **Medidor do mês** na central: mensagens cobradas no mês (pelo `pricing.billable` do webhook) × preço = gasto estimado, e quanto falta até o teto.
+- **Tabela de preços editável pelo master** (configuração central, por categoria e moeda), com a data de vigência e o link da tabela oficial.
+- Passo a passo na aba Conexão para cadastrar o cartão no Gerenciador de Pagamentos da Meta.
+
 ## Pendências do dono
 
 - Campinas: usar o número que hoje está na Z-API (decisão de 27/11), conectando na Meta só depois das fases 1–4 prontas. Demais campos: número dedicado cada um.

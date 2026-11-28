@@ -193,6 +193,25 @@ Sem isto, todo baseline novo derruba Ibirité (27/11: `must be owner of …`, ap
 - [ ] **Step 2:** FAIL → implementar → PASS.
 - [ ] **Step 3:** Commit.
 
+### Task 8b: Custo claro — tabela de preços, valor estimado e medidor do mês (decisão do dono 28/11)
+
+**Files:**
+- Create: `prisma/migrations/20261128010000_meta_precos/migration.sql` (tabela `meta_precos`: `categoria` text, `moeda` text, `preco` numeric(12,6), `vigencia` date, `atualizado_por`, `atualizado_em`; único (categoria, moeda)) + `meta_whatsapp_cobrancas` (`campo_id`, `meta_message_id` único, `categoria`, `billable` bool, `entregue_em`) — baseline regerado (Ibirité já corrigida)
+- Create: `src/lib/meta/custo.ts` (puro), rota `GET/PUT /api/meta/app-config/precos` (PUT só master no base; igrejas leem do base pela rota servidor-a-servidor existente, como a configuração central)
+- Modify: `processarWebhook` (statuses com `pricing`: grava em `meta_whatsapp_cobrancas`, idempotente por `meta_message_id`), tela do Envio em Massa (Task 5), editor do Cronograma (Task 6), aba Conexão (passo a passo do cartão + medidor), aba App (tabela de preços)
+- Test: `scripts/teste-meta-whatsapp.mjs`
+
+**Interfaces — Produces:**
+- `estimarCusto(qtd: number, categoria: 'MARKETING' | 'UTILITY', precos: Array<{ categoria: string; moeda: string; preco: number }>, moeda: string): { valor: number; moeda: string } | { semPreco: true }`
+- `formatarValor(valor: number, moeda: string): string` (pt-BR, `Intl.NumberFormat`).
+- `gastoDoMes(campoId: string, agora: Date): Promise<{ cobradas: number; porCategoria: Record<string, number>; valor: number | null; moeda: string }>`.
+
+- [ ] **Step 1:** Testes: `estimarCusto(296, 'UTILITY', [{UTILITY, USD, 0.0068}], 'USD')` = 2.0128; sem preço ⇒ `semPreco`; `formatarValor(2.0128,'USD')` = "US$ 2,01"; BRL "R$ …"; status com `pricing.billable=false` não conta no gasto; mesmo `meta_message_id` duas vezes conta uma vez.
+- [ ] **Step 2:** FAIL → implementar → PASS.
+- [ ] **Step 3:** Migration + baseline (como na Task 2), semente: UTILITY e AUTHENTICATION em USD = 0.0068, vigência 2026-10-01 (página oficial lida em 28/11/2026); MARKETING sem valor até o master preencher.
+- [ ] **Step 4:** Telas (gravação única por `.tsx`): texto fixo antes do disparo "Valor estimado: <valor> (<qtd> mensagens de <categoria>). Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues."; sem preço: "Preço desta categoria não configurado — o master pode preencher em Meta Oficial → App."; medidor do mês na aba Conexão; tabela de preços na aba App (`<Permissao chave="meta_app.precos.editar" …>`, rota com `exigirPermissao`).
+- [ ] **Step 5:** Commit.
+
 ### Task 9: Fechamento — central, documentação e publicação
 
 **Files:**
