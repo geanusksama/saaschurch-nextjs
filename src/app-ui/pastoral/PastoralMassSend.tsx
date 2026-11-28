@@ -47,6 +47,8 @@ import ImportCsvModal, { downloadTemplate } from './ImportCsvModal';
 import ConversationModal from './ConversationModal';
 import { toast } from 'sonner';
 import { Permissao } from '../../lib/permissoes/Permissao';
+import { usePrecosMeta } from '../../lib/meta/usePrecosMeta';
+import { textoEstimativa } from '../../lib/meta/custoFormato';
 
 function currentProfileType(): string {
   try {
@@ -137,6 +139,7 @@ interface ModeloOficial {
   id: string;
   nome: string;
   status: string;
+  categoria?: string;
   componentes: unknown;
   variaveis: unknown;
 }
@@ -582,6 +585,8 @@ export default function PastoralMassSend() {
       const f = fontes[String(v.posicao)];
       return [String(v.posicao), f.tipo === 'fixo' ? { fixo: f.fixo.trim() } : f.tipo];
     }));
+  const { precos: precosMeta } = usePrecosMeta(isOficial);
+  const textoValorEstimado = modeloEscolhido?.categoria ? textoEstimativa(selected.size, modeloEscolhido.categoria, precosMeta) : null;
   const avisoOficial = `Serão enviadas ${selected.size} mensagens pelo WhatsApp oficial; cada mensagem é cobrada pela Meta no cartão do campo.`;
 
   const escolherModelo = (id: string) => {
@@ -1200,6 +1205,9 @@ export default function PastoralMassSend() {
                 )}
                 {isOficial && !misturado && selected.size > 0 && (
                   <div className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">{avisoOficial}</div>
+                )}
+                {isOficial && !misturado && selected.size > 0 && textoValorEstimado && (
+                  <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-2.5">{textoValorEstimado}</div>
                 )}
               </div>
             )}

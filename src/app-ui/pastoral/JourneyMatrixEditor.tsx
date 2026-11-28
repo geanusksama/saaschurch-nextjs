@@ -44,6 +44,8 @@ import { getCurrentChurchId } from '../../lib/pastoralKanbanService';
 import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
 import { Permissao, usePode } from '../../lib/permissoes/Permissao';
+import { usePrecosMeta } from '../../lib/meta/usePrecosMeta';
+import { formatarValor, valorDeCategorias } from '../../lib/meta/custoFormato';
 
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') ?? '' : '';
@@ -123,6 +125,7 @@ export default function JourneyMatrixEditor() {
   const pode = usePode();
   const [modelosOficiais, setModelosOficiais] = useState<ModeloAprovado[]>([]);
   const [previsaoMes, setPrevisaoMes] = useState<number | null>(null);
+  const [previsaoCategorias, setPrevisaoCategorias] = useState<Record<string, number> | null>(null);
 
   const [journeys, setJourneys] = useState<JourneySummary[]>([]);
   const [journeyId, setJourneyId] = useState('');
@@ -187,6 +190,7 @@ export default function JourneyMatrixEditor() {
       setSteps(data.steps ?? []);
       setInstanceIds(data.instanceIds ?? []);
       setPrevisaoMes(typeof data.previsaoMensal === 'number' ? data.previsaoMensal : null);
+      setPrevisaoCategorias(data.previsaoPorCategoria && typeof data.previsaoPorCategoria === 'object' ? data.previsaoPorCategoria : null);
     } catch {
       setSteps([]);
     } finally {
@@ -250,6 +254,8 @@ export default function JourneyMatrixEditor() {
 
   // cronograma do número oficial: cada etapa escolhe um modelo aprovado
   const usaOficial = instanceIds.some(ehOficial);
+  const { precos: precosMeta, moeda: moedaMeta } = usePrecosMeta(usaOficial);
+  const valorPrevisto = previsaoCategorias ? valorDeCategorias(previsaoCategorias, precosMeta, moedaMeta) : null;
 
   useEffect(() => {
     if (!usaOficial) return;
@@ -738,6 +744,11 @@ export default function JourneyMatrixEditor() {
               e a IA, imagens e links da matriz não são usados.
               {previsaoMes !== null && (
                 <> Previsão até o fim do mês: <b>{previsaoMes}</b> mensagem(ns) já na fila.</>
+              )}
+              {previsaoMes !== null && previsaoCategorias && Object.keys(previsaoCategorias).length > 0 && (
+                valorPrevisto !== null
+                  ? <> Valor estimado: <b>{formatarValor(valorPrevisto, moedaMeta)}</b> (estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues).</>
+                  : <> Preço desta categoria não configurado — o master pode preencher em Meta Oficial → App.</>
               )}
             </p>
           )}

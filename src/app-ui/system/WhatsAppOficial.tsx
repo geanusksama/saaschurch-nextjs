@@ -8,6 +8,7 @@ import { BadgeCheck, Loader2, AlertTriangle, CheckCircle2, Unplug, Info } from '
 import { apiBase } from '../../lib/apiBase';
 import { cabecalhos, lerErro } from '../../lib/meta/clienteHttp';
 import { Permissao } from '../../lib/permissoes/Permissao';
+import { formatarValor } from '../../lib/meta/custoFormato';
 import { abrirEmbeddedSignup, carregarSdkMeta } from '../../lib/meta/embeddedSignup';
 
 export type Qualidade = 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN';
@@ -24,6 +25,7 @@ type Conexao =
       ultimoErro: string | null;
       tetoMensal?: number | null;
       enviadosNoMes?: number;
+      gasto?: { cobradas: number; porCategoria: Record<string, number>; valor: number | null; moeda: string } | null;
     };
 
 export const LIMITES: Record<string, string> = {
@@ -264,6 +266,37 @@ export default function WhatsAppOficial({ embutido = false }: { embutido?: boole
               </dd>
             </div>
           </dl>
+
+          {conexao.gasto && (
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1" aria-label="Gasto do mês">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Gasto do mês</p>
+              <p className="text-sm text-slate-700 dark:text-slate-200">
+                Mensagens cobradas: <b>{conexao.gasto.cobradas}</b>
+                {' · '}
+                Gasto estimado:{' '}
+                <b>{conexao.gasto.valor !== null ? formatarValor(conexao.gasto.valor, conexao.gasto.moeda) : 'preço não configurado'}</b>
+                {conexao.tetoMensal ? (
+                  <>
+                    {' · '}Faltam <b>{Math.max(0, conexao.tetoMensal - (conexao.enviadosNoMes ?? 0))}</b> mensagens até o teto
+                  </>
+                ) : null}
+              </p>
+              <p className="text-xs text-slate-500">
+                Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues. Valores em {conexao.gasto.moeda === 'USD' ? 'US$' : conexao.gasto.moeda}, sem conversão.
+              </p>
+            </div>
+          )}
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Cartão para pagar a Meta</p>
+            <p className="text-xs text-slate-500">A Meta cobra direto no cartão cadastrado na conta do campo; o sistema nunca cobra nem toca em dinheiro.</p>
+            <ol className="list-decimal pl-5 text-xs text-slate-600 dark:text-slate-300 space-y-0.5">
+              <li>Abra o <a className="underline" href="https://business.facebook.com/latest/billing_hub/" target="_blank" rel="noreferrer">Gerenciador de Pagamentos da Meta</a>.</li>
+              <li>Escolha a conta do WhatsApp Business deste campo.</li>
+              <li>Clique em Adicionar forma de pagamento e cadastre o cartão.</li>
+              <li>Volte aqui: o gasto do mês aparece acima conforme as mensagens são entregues.</li>
+            </ol>
+          </div>
 
           <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
             <label htmlFor="teto-mensal" className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Teto mensal de mensagens</label>

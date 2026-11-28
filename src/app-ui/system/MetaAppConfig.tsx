@@ -30,6 +30,11 @@ type Alerta = {
   criadoEm: string;
 };
 
+type LinhaPreco = { categoria: string; moeda: string; preco: string; vigencia: string };
+const CATEGORIAS_PRECO = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
+const ROTULO_CATEGORIA: Record<string, string> = { MARKETING: 'Marketing', UTILITY: 'Utilidade', AUTHENTICATION: 'Autenticação' };
+const LINK_TABELA_OFICIAL = 'https://business.whatsapp.com/products/platform-pricing#rates';
+
 const BASE = `${apiBase}/meta/app-config`;
 const LINK_EMPRESA = 'https://business.facebook.com/settings/security?business_id=2291140898081009';
 const LINK_APP = 'https://developers.facebook.com/apps/3371798666355530/';
@@ -46,6 +51,44 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [webhook, setWebhook] = useState<'ok' | 'falhou' | 'testando' | null>(null);
+
+  const [precos, setPrecos] = useState<LinhaPreco[]>([]);
+  const [precosOcupado, setPrecosOcupado] = useState(false);
+  const [precosMsg, setPrecosMsg] = useState<string | null>(null);
+
+  // linhas da tabela: as que já existem + as 3 categorias na moeda delas (ou USD), para o master preencher
+  const montarLinhas = (lista: Array<{ categoria: string; moeda: string; preco: number; vigencia: string | null }>): LinhaPreco[] => {
+    const moeda = lista[0]?.moeda ?? 'USD';
+    const linhas: LinhaPreco[] = lista.map((x) => ({ categoria: x.categoria, moeda: x.moeda, preco: String(x.preco), vigencia: x.vigencia ?? '' }));
+    for (const c of CATEGORIAS_PRECO) {
+      if (!linhas.some((l) => l.categoria === c)) linhas.push({ categoria: c, moeda, preco: '', vigencia: '' });
+    }
+    return linhas.sort((a, b) => CATEGORIAS_PRECO.indexOf(a.categoria) - CATEGORIAS_PRECO.indexOf(b.categoria));
+  };
+
+  const salvarPrecos = async () => {
+    const preenchidas = precos.filter((l) => l.preco.trim() !== '');
+    if (!preenchidas.length) {
+      setErro('Preencha ao menos um preço.');
+      return;
+    }
+    setPrecosOcupado(true);
+    setErro(null);
+    setAviso(null);
+    setPrecosMsg(null);
+    try {
+      const corpo = { precos: preenchidas.map((l) => ({ categoria: l.categoria, moeda: l.moeda, preco: l.preco, vigencia: l.vigencia || null })) };
+      const r = await fetch(`${BASE}/precos`, { method: 'PUT', headers: cabecalhos(true), body: JSON.stringify(corpo) });
+      if (!r.ok) throw new Error(await lerErro(r));
+      const j = (await r.json()) as { precos?: Array<{ categoria: string; moeda: string; preco: number; vigencia: string | null }> };
+      setPrecos(montarLinhas(j.precos ?? []));
+      setPrecosMsg('Tabela de preços salva.');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível salvar a tabela de preços.');
+    } finally {
+      setPrecosOcupado(false);
+    }
+  };
 
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [alertaOcupado, setAlertaOcupado] = useState<string | null>(null);
@@ -101,6 +144,14 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
       })
       .finally(() => {
         if (vivo) setCarregando(false);
+      });
+    fetch(`${BASE}/precos`, { headers: cabecalhos(), cache: 'no-store' })
+      .then(async (r) => (r.ok ? ((await r.json()) as { precos?: Array<{ categoria: string; moeda: string; preco: number; vigencia: string | null }> }) : null))
+      .then((j) => {
+        if (vivo && j) setPrecos(montarLinhas(j.precos ?? []));
+      })
+      .catch(() => {
+        /* a tabela fica com as linhas vazias */
       });
     fetch(`${BASE}/alertas`, { headers: cabecalhos() })
       .then(async (r) => (r.ok ? ((await r.json()) as { alertas?: Alerta[] }) : null))
@@ -279,6 +330,60 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
                 Salvar
               </button>
             </Permissao>
+            )}
+          </section>
+
+          <section className="rounded-[18px] border border-[#e8ecf1] bg-white p-5 md:rounded-[22px] dark:border-slate-700 dark:bg-slate-800 space-y-3">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Tabela de preços da Meta</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Usada para mostrar o valor estimado antes de cada envio e o gasto do mês em todas as igrejas. A Meta cobra por mensagem entregue,
+              direto no cartão de cada campo; o sistema só estima. Sem preço preenchido, a tela diz “preço não configurado”.
+            </p>
+            {!visao.base && (
+              <p role="note" className="rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+                Edite no sistema base (Campinas).
+              </p>
+            )}
+            <div className="space-y-2">
+              {precos.map((l, i) => (
+                <div key={`${l.categoria}-${l.moeda}`} className="grid grid-cols-2 sm:grid-cols-[1fr_90px_140px_160px] gap-2 items-end">
+                  <p className="col-span-2 sm:col-span-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{ROTULO_CATEGORIA[l.categoria] ?? l.categoria}</p>
+                  <label className="block text-xs text-slate-500">
+                    Moeda
+                    <input className={campoClasse} value={l.moeda} maxLength={3} disabled={!visao.base}
+                      onChange={(e) => setPrecos(precos.map((x, j) => (j === i ? { ...x, moeda: e.target.value.toUpperCase() } : x)))} />
+                  </label>
+                  <label className="block text-xs text-slate-500">
+                    Preço por mensagem
+                    <input className={campoClasse} inputMode="decimal" placeholder="0,0068" value={l.preco} disabled={!visao.base}
+                      onChange={(e) => setPrecos(precos.map((x, j) => (j === i ? { ...x, preco: e.target.value } : x)))} />
+                  </label>
+                  <label className="block text-xs text-slate-500">
+                    Vigência (a partir de)
+                    <input type="date" className={campoClasse} value={l.vigencia} disabled={!visao.base}
+                      onChange={(e) => setPrecos(precos.map((x, j) => (j === i ? { ...x, vigencia: e.target.value } : x)))} />
+                  </label>
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Tabela oficial da Meta:{' '}
+              <a className="inline-flex items-center gap-1 underline" href={LINK_TABELA_OFICIAL} target="_blank" rel="noreferrer">
+                Ver preços por país <ExternalLink className="size-3" />
+              </a>
+            </p>
+            {precosMsg && <p role="status" className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">{precosMsg}</p>}
+            {visao.base && (
+              <Permissao chave="meta_app.precos.editar" rotulo="Editar tabela de preços da Meta" herda="meta_app.config.editar">
+                <button
+                  onClick={() => void salvarPrecos()}
+                  disabled={precosOcupado}
+                  className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-slate-900 px-3.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                >
+                  {precosOcupado ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                  Salvar preços
+                </button>
+              </Permissao>
             )}
           </section>
 

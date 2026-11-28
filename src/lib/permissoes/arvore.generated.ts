@@ -1776,6 +1776,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/system/MetaAppConfig.tsx"
   },
   {
+    "chave": "meta_app.precos.editar",
+    "rotulo": "Editar tabela de preços da Meta",
+    "herda": "meta_app.config.editar",
+    "arquivo": "src/app-ui/system/MetaAppConfig.tsx"
+  },
+  {
     "chave": "ministries.ministries.atualizar_ministerio_criar_ministerio",
     "rotulo": "Atualizar Ministério Criar Ministério — Ministries",
     "herda": "ministries.view",
