@@ -1657,3 +1657,103 @@ test('variantesTelefoneBR: com e sem o 9; fora do padrão fica igual', () => {
 test('dentroDaJanela: data futura (relógio fora de hora) conta como dentro', () => {
   assert.equal(dentroDaJanela(new Date(AGORA_LIVRE.getTime() + 60000), AGORA_LIVRE), true)
 })
+
+// ---------- Envio em Massa com modelo (campanha pelo número oficial) ----------
+import { validarCampanhaOficial, parametrosDoDestinatario, parametrosDaMensagem, textoDoModelo, enviarModeloDaCampanha, restanteDoDia } from '../src/lib/meta/campanhaOficial.ts'
+
+const CAMPO_A = 'campo-a'
+const modeloOk = { status: 'APPROVED', campoId: CAMPO_A, variaveis: [{ posicao: 1 }, { posicao: 2 }] }
+const entradaOk = (o = {}) => ({
+  instancias: [{ provider: 'meta', campo_id: CAMPO_A }], campoAtivo: CAMPO_A, modelo: modeloOk,
+  variaveis: { 1: 'nome', 2: 'igreja' }, ...o,
+})
+test('validarCampanhaOficial: caso válido e só Z-API (sem exigência de modelo)', () => {
+  assert.deepEqual(validarCampanhaOficial(entradaOk()), { ok: true })
+  assert.deepEqual(validarCampanhaOficial({ instancias: [{ provider: 'zapi', campo_id: null }], campoAtivo: CAMPO_A, modelo: null, variaveis: {} }), { ok: true })
+})
+test('validarCampanhaOficial: mistura de providers', () => {
+  const r = validarCampanhaOficial(entradaOk({ instancias: [{ provider: 'meta', campo_id: CAMPO_A }, { provider: 'zapi', campo_id: null }] }))
+  assert.equal(r.ok, false); assert.match(r.erro, /misturar/)
+})
+test('validarCampanhaOficial: modelo ausente, não aprovado, de outro campo', () => {
+  assert.match(validarCampanhaOficial(entradaOk({ modelo: null })).erro, /Escolha um modelo/)
+  assert.match(validarCampanhaOficial(entradaOk({ modelo: { ...modeloOk, status: 'PENDING' } })).erro, /não foi aprovado/)
+  assert.match(validarCampanhaOficial(entradaOk({ modelo: { ...modeloOk, campoId: 'outro' } })).erro, /outro campo/)
+})
+test('validarCampanhaOficial: número oficial de outro campo', () => {
+  assert.match(validarCampanhaOficial(entradaOk({ instancias: [{ provider: 'meta', campo_id: 'outro' }] })).erro, /outro campo/)
+})
+test('validarCampanhaOficial: variável faltando ou inválida', () => {
+  assert.match(validarCampanhaOficial(entradaOk({ variaveis: { 1: 'nome' } })).erro, /variável \{\{2\}\}/)
+  assert.match(validarCampanhaOficial(entradaOk({ variaveis: { 1: 'nome', 2: { fixo: '  ' } } })).erro, /variável \{\{2\}\}/)
+  assert.match(validarCampanhaOficial(entradaOk({ variaveis: { 1: 'nome', 2: 'cpf' } })).erro, /variável \{\{2\}\}/)
+  assert.deepEqual(validarCampanhaOficial(entradaOk({ variaveis: { 1: 'nome', 2: { fixo: 'Culto domingo' } } })), { ok: true })
+})
+test('parametrosDoDestinatario: nome, igreja e texto fixo em ordem de posição', () => {
+  const v = { 3: { fixo: 'domingo' }, 1: 'nome', 2: 'igreja' }
+  assert.deepEqual(parametrosDoDestinatario(v, { name: 'Maria da Silva', variables: {} }, 'AD Campinas'), ['Maria', 'AD Campinas', 'domingo'])
+  assert.deepEqual(parametrosDoDestinatario({ 1: 'nome' }, { name: null, variables: {} }, 'X'), [''])
+  assert.deepEqual(parametrosDaMensagem({ 0: 'igreja', 1: 'nome' }, { name: 'Ana', variables: {} }, 'AD'), { header: ['AD'], body: ['Ana'] })
+})
+test('textoDoModelo: troca {{n}} do corpo pelos valores', () => {
+  const comp = [{ type: 'HEADER', format: 'TEXT', text: 'Oi' }, { type: 'BODY', text: 'Paz, {{1}}! Culto na {{2}}.' }]
+  assert.equal(textoDoModelo(comp, { body: ['Ana', 'AD'] }), 'Paz, Ana! Culto na AD.')
+})
+test('restanteDoDia: nível menos usados, nunca negativo', () => {
+  assert.equal(restanteDoDia('TIER_250', 100), 150)
+  assert.equal(restanteDoDia('TIER_250', 999), 0)
+  assert.equal(restanteDoDia(null, 0), 250)
+})
+
+function depsCamp(o = {}) {
+  const posts = []
+  const d = {
+    conexao: async () => ({ phoneNumberId: 'PN1', token: 'tok' }),
+    lerStatus: async () => ({ qualidade: 'GREEN', limiteDiario: 'TIER_250' }),
+    excluido: async () => false,
+    modelo: async () => ({ nome: 'aviso', idioma: 'pt_BR', status: 'APPROVED', componentes: [{ type: 'BODY', text: 'Paz, {{1}}!' }] }),
+    usadosEm24h: async () => 0,
+    graph: { post: async (c, corpo, t) => { posts.push({ c, corpo, t }); return { messages: [{ id: 'wamid.X' }] } } },
+    ...o,
+  }
+  return { d, posts }
+}
+const entCamp = (o = {}) => ({ campoId: CAMPO_A, instanciaId: 'inst', modeloId: 'm1', variaveis: { 1: 'nome' }, destinatario: { name: 'Maria Souza', phone: '5519999990000', variables: {} }, igrejaNome: 'AD', ...o })
+
+test('enviarModeloDaCampanha: envia o modelo com os parâmetros e devolve o wamid e o texto', async () => {
+  const { d, posts } = depsCamp()
+  const r = await enviarModeloDaCampanha(d, entCamp())
+  assert.deepEqual(r, { tipo: 'enviado', wamid: 'wamid.X', texto: 'Paz, Maria!' })
+  assert.equal(posts[0].c, 'PN1/messages')
+  assert.equal(posts[0].corpo.template.name, 'aviso')
+  assert.deepEqual(posts[0].corpo.template.components[0].parameters, [{ type: 'text', text: 'Maria' }])
+})
+test('enviarModeloDaCampanha: excluído é pulado sem chamar a Meta', async () => {
+  const { d, posts } = depsCamp({ excluido: async () => true })
+  assert.deepEqual(await enviarModeloDaCampanha(d, entCamp()), { tipo: 'pulado', motivo: 'excluido' })
+  assert.equal(posts.length, 0)
+})
+test('enviarModeloDaCampanha: limite diário esgotado aguarda, sem enviar', async () => {
+  const { d, posts } = depsCamp({ usadosEm24h: async () => 250 })
+  assert.equal((await enviarModeloDaCampanha(d, entCamp())).tipo, 'pausar')
+  assert.equal(posts.length, 0)
+})
+test('enviarModeloDaCampanha: parâmetro vazio e telefone inválido são erro da pessoa', async () => {
+  const { d, posts } = depsCamp()
+  assert.equal((await enviarModeloDaCampanha(d, entCamp({ destinatario: { name: null, phone: '5519999990000', variables: {} } }))).tipo, 'erro')
+  assert.equal((await enviarModeloDaCampanha(d, entCamp({ destinatario: { name: 'A', phone: '123', variables: {} } }))).tipo, 'erro')
+  assert.equal(posts.length, 0)
+})
+test('enviarModeloDaCampanha: erro do modelo/conta pausa; limite de chamadas devolve à fila; erro por pessoa só falha', async () => {
+  const erro = (codigo) => depsCamp({ graph: { post: async () => { throw new ErroGraph('x', 400, codigo) } } }).d
+  const pausa = await enviarModeloDaCampanha(erro(131042), entCamp())
+  assert.equal(pausa.tipo, 'pausar'); assert.equal(pausa.codigo, 131042)
+  assert.equal((await enviarModeloDaCampanha(erro(132016), entCamp())).tipo, 'pausar')
+  assert.equal((await enviarModeloDaCampanha(erro(130429), entCamp())).tipo, 'tentar_depois')
+  assert.equal((await enviarModeloDaCampanha(erro(131026), entCamp())).tipo, 'erro')
+})
+test('enviarModeloDaCampanha: modelo não aprovado ou sem conexão pausa; qualidade RED pausa', async () => {
+  assert.equal((await enviarModeloDaCampanha(depsCamp({ modelo: async () => ({ nome: 'a', idioma: 'pt_BR', status: 'PAUSED', componentes: [] }) }).d, entCamp())).tipo, 'pausar')
+  assert.equal((await enviarModeloDaCampanha(depsCamp({ conexao: async () => { throw new Error('sem') } }).d, entCamp())).tipo, 'pausar')
+  assert.equal((await enviarModeloDaCampanha(depsCamp({ lerStatus: async () => ({ qualidade: 'RED', limiteDiario: 'TIER_250' }) }).d, entCamp())).tipo, 'pausar')
+})

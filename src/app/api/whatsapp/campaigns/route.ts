@@ -3,6 +3,9 @@ import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assignAgentsRoundRobin, type CampaignRecipientInput } from '@/lib/whatsappCampaignService'
 import { getAccessibleInstanceIds, normalizarNumeroBrasil } from '@/lib/whatsappSendService'
+import { exigirPermissao } from '@/lib/permissoes/servidor'
+import { validarCampanhaOficial } from '@/lib/meta/campanhaOficial'
+import { buscar as buscarModelo } from '@/lib/meta/modelosRepo'
 
 // GET /api/whatsapp/campaigns — lista campanhas do usuário (master vê todas)
 export async function GET(req: NextRequest) {
@@ -38,6 +41,8 @@ export async function POST(req: NextRequest) {
       autoStart = true,
       imageUrl,
       linkUrl,
+      metaModeloId,
+      metaVariaveis,
     } = body as {
       name?: string
       messageTemplate?: string
@@ -48,9 +53,13 @@ export async function POST(req: NextRequest) {
       autoStart?: boolean
       imageUrl?: string
       linkUrl?: string
+      /** Número oficial (Meta): modelo aprovado do campo e de onde vem cada variável. */
+      metaModeloId?: string
+      metaVariaveis?: Record<string, unknown>
     }
 
-    if (!messageTemplate?.trim()) {
+    const querOficial = typeof metaModeloId === 'string' && metaModeloId.length > 0
+    if (!querOficial && !messageTemplate?.trim()) {
       return NextResponse.json({ error: 'Mensagem é obrigatória' }, { status: 400 })
     }
     if (!Array.isArray(instanceIds) || !instanceIds.length) {
@@ -63,10 +72,18 @@ export async function POST(req: NextRequest) {
 
     // valida instâncias: precisam existir, estar ativas e o usuário ser dono OU
     // autorizado (whatsapp_instance_users) — master usa qualquer
+    let oficial: { modeloId: string; modeloNome: string; variaveis: Record<string, unknown> } | null = null
     const accessible = await getAccessibleInstanceIds(String(user.id), user.profileType, user.campoId ?? null)
     const allowedIds = accessible ? instanceIds.filter((id: string) => accessible.has(id)) : instanceIds
+    // Número oficial de outro campo nunca é revelado nem usado: 404.
+    const { data: pedidas } = instanceIds.length
+      ? await supabaseAdmin.from('whatsapp_instances').select('id, provider, campo_id').in('id', instanceIds)
+      : { data: [] }
+    if ((pedidas ?? []).some(i => i.provider === 'meta' && (!user.campoId || i.campo_id !== user.campoId))) {
+      return NextResponse.json({ error: 'Instância não encontrada' }, { status: 404 })
+    }
     const { data: instances } = allowedIds.length
-      ? await supabaseAdmin.from('whatsapp_instances').select('id, name, status').in('id', allowedIds).eq('is_active', true)
+      ? await supabaseAdmin.from('whatsapp_instances').select('id, name, status, provider, campo_id').in('id', allowedIds).eq('is_active', true)
       : { data: [] }
     const connected = (instances ?? []).filter(i => i.status === 'connected')
     if (!connected.length) {
@@ -76,6 +93,32 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Campanha pelo número oficial: só modelo aprovado do campo, e só com a permissão própria.
+    const temOficial = connected.some(i => i.provider === 'meta')
+    if (!temOficial && querOficial) {
+      return NextResponse.json({ error: 'O modelo só vale para o número oficial do WhatsApp.' }, { status: 400 })
+    }
+    if (temOficial) {
+      const negado = await exigirPermissao(user, 'whatsapp_oficial.campanha.enviar')
+      if (negado) return negado
+      const modelo = querOficial && user.campoId ? await buscarModelo(user.campoId, metaModeloId as string) : null
+      const variaveis = metaVariaveis && typeof metaVariaveis === 'object' && !Array.isArray(metaVariaveis) ? metaVariaveis : {}
+      const validacao = validarCampanhaOficial({
+        instancias: connected.map(i => ({ provider: i.provider ?? 'zapi', campo_id: i.campo_id ?? null })),
+        campoAtivo: user.campoId ?? '',
+        modelo: modelo
+          ? {
+              status: modelo.status,
+              campoId: modelo.campoId,
+              variaveis: Array.isArray(modelo.variaveis) ? (modelo.variaveis as Array<{ posicao: number }>) : [],
+            }
+          : null,
+        variaveis,
+      })
+      if (!validacao.ok) return NextResponse.json({ error: validacao.erro }, { status: 400 })
+      oficial = { modeloId: modelo!.id, modeloNome: modelo!.nome, variaveis }
+    }
+
     const now = new Date()
     const { data: campaign, error: campErr } = await supabaseAdmin
       .from('whatsapp_campaigns')
@@ -83,7 +126,7 @@ export async function POST(req: NextRequest) {
         church_id: user.churchId ?? null,
         owner_user_id: String(user.id),
         name: name?.trim() || `Campanha ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
-        message_template: messageTemplate,
+        message_template: oficial ? `Modelo oficial: ${oficial.modeloNome}` : messageTemplate,
         status: autoStart ? 'running' : 'draft',
         // 5 s é o mínimo por instância (risco de ban) — configurável para mais
         interval_seconds: Math.max(5, Number(intervalSeconds) || 5),
@@ -92,6 +135,7 @@ export async function POST(req: NextRequest) {
         image_url: imageUrl?.trim() || null,
         link_url: linkUrl?.trim() || null,
         started_at: autoStart ? now.toISOString() : null,
+        ...(oficial ? { meta_modelo_id: oficial.modeloId, meta_variaveis: oficial.variaveis } : {}),
       })
       .select('*')
       .single()

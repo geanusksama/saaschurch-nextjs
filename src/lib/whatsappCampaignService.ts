@@ -19,6 +19,8 @@ import {
 } from '@/lib/whatsappSendService'
 import { createPipelineCardForSend } from '@/lib/whatsappImportService'
 import type { WhatsAppInstance } from '@/types/whatsapp'
+import { ehInstanciaMeta } from '@/lib/meta/envioLivre'
+import { enviarModeloDaCampanha, type DepsCampanhaOficial } from '@/lib/meta/campanhaOficial'
 
 const RATE_LIMIT_MS = 5000 // mínimo absoluto — NUNCA reduzir, risco de ban do número
 
@@ -30,7 +32,7 @@ function campaignCooldownMs(intervalSeconds: number | null | undefined): number 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 export type CampaignStatus = 'draft' | 'running' | 'paused' | 'completed' | 'cancelled'
-export type RecipientStatus = 'pending' | 'sending' | 'sent' | 'error' | 'cancelled'
+export type RecipientStatus = 'pending' | 'sending' | 'sent' | 'error' | 'cancelled' | 'skipped'
 
 export interface CampaignRecipientInput {
   /** import = linha de uma lista CSV/Excel (whatsapp_import_rows) */
@@ -71,7 +73,7 @@ export interface TickResult {
     recipientId: string
     name: string | null
     phone: string
-    status: 'sent' | 'error'
+    status: 'sent' | 'error' | 'skipped'
     error?: string
     instanceName: string
     at: string
@@ -226,7 +228,11 @@ function pickInstance(
 
 // ── Tick de envio ─────────────────────────────────────────────────────────────
 
-export async function processCampaignTick(campaignId: string): Promise<TickResult> {
+export async function processCampaignTick(
+  campaignId: string,
+  /** Só para teste: dependências do envio oficial (Graph falso). Sem isso, as reais. */
+  opts: { depsOficial?: DepsCampanhaOficial } = {}
+): Promise<TickResult> {
   const { data: campaign } = await supabaseAdmin
     .from('whatsapp_campaigns')
     .select('*')
@@ -280,6 +286,11 @@ export async function processCampaignTick(campaignId: string): Promise<TickResul
     // outro tick pegou este destinatário — tenta de novo em seguida
     const progress = await getCampaignProgress(campaignId)
     return { progress, event: null, waitMs: 300, done: false }
+  }
+
+  // Campanha pelo número oficial (Meta): só modelo aprovado, sem texto livre.
+  if (campaign.meta_modelo_id && ehInstanciaMeta(instance)) {
+    return processarEnvioOficial(campaign, next, instance, opts.depsOficial)
   }
 
   // A Z-API exige DDI. Sem o 55 ela ainda devolve um messageId e a mensagem
@@ -425,4 +436,143 @@ export function assignAgentsRoundRobin<T extends { agent_user_id?: string | null
     ...r,
     agent_user_id: agentUserIds[i % agentUserIds.length],
   }))
+}
+
+// ── Tick do número oficial (Meta) ─────────────────────────────────────────────
+
+async function processarEnvioOficial(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  campaign: Record<string, any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  next: Record<string, any>,
+  instance: WhatsAppInstance,
+  depsInjetadas?: DepsCampanhaOficial
+): Promise<TickResult> {
+  const campaignId = campaign.id as string
+  const campoId = instance.campo_id as string
+  const phone = normalizarNumeroBrasil(String(next.phone)) || String(next.phone)
+  const now = () => new Date().toISOString()
+
+  let igrejaNome = String((next.variables ?? {}).igreja ?? '')
+  if (!igrejaNome && campaign.church_id) {
+    const { data: ig } = await supabaseAdmin.from('churches').select('name').eq('id', campaign.church_id).maybeSingle()
+    igrejaNome = ig?.name ?? ''
+  }
+
+  let resultado: Awaited<ReturnType<typeof enviarModeloDaCampanha>>
+  try {
+    const deps = depsInjetadas ?? (await (await import('@/lib/meta/depsCampanhaOficial')).montarDependenciasCampanhaOficial())
+    resultado = await enviarModeloDaCampanha(deps, {
+      campoId,
+      instanciaId: instance.id,
+      modeloId: String(campaign.meta_modelo_id),
+      variaveis: (campaign.meta_variaveis ?? {}) as Record<string, unknown>,
+      destinatario: { name: next.name ?? null, phone, variables: next.variables ?? {} },
+      igrejaNome,
+    })
+  } catch (err) {
+    resultado = { tipo: 'erro', mensagem: err instanceof Error ? err.message : 'falha no envio' }
+  }
+
+  // Nada saiu: o destinatário volta à fila.
+  if (resultado.tipo === 'pausar' || resultado.tipo === 'tentar_depois') {
+    await supabaseAdmin
+      .from('whatsapp_campaign_recipients')
+      .update({ status: 'pending', instance_id: null })
+      .eq('id', next.id)
+    if (resultado.tipo === 'pausar') {
+      await supabaseAdmin
+        .from('whatsapp_campaigns')
+        .update({ status: 'paused' })
+        .eq('id', campaignId)
+        .eq('status', 'running')
+      try {
+        const { alertarCampanhaPausada } = await import('@/lib/meta/depsCampanhaOficial')
+        await alertarCampanhaPausada(campoId, `Campanha "${campaign.name}" pausada: ${resultado.motivo}`)
+      } catch (err) {
+        console.error('[campanha-oficial] alerta', err)
+      }
+    }
+    const progress = await getCampaignProgress(campaignId)
+    return {
+      progress,
+      event: null,
+      waitMs: resultado.tipo === 'pausar' ? 0 : 30_000,
+      done: resultado.tipo === 'pausar',
+    }
+  }
+
+  let status: 'sent' | 'error' | 'skipped' = 'sent'
+  let erro: string | undefined
+  let attendanceId: string | null = null
+  if (resultado.tipo === 'pulado') {
+    status = 'skipped'
+    erro = 'Pediu para sair: número na lista de exclusão.'
+  } else if (resultado.tipo === 'erro') {
+    status = 'error'
+    erro = resultado.mensagem
+  } else {
+    // A Meta aceitou: falha ao gravar o histórico não desfaz o envio.
+    try {
+      const conversationId = await ensureConversation(instance.id, campaign.owner_user_id, phone, next.name ?? undefined)
+      await persistOutboundMessage(conversationId, resultado.texto, undefined, { metaMessageId: resultado.wamid })
+      if (next.agent_user_id) {
+        await supabaseAdmin.from('whatsapp_conversations').update({ assigned_to: next.agent_user_id }).eq('id', conversationId)
+      }
+      const cardChurchId = campaign.pipeline_church_id ?? campaign.church_id
+      if (campaign.create_pipeline_cards && cardChurchId) {
+        attendanceId = await createPipelineCardForSend({
+          churchId: cardChurchId,
+          name: next.name ?? phone,
+          phone,
+          email: (next.variables ?? {}).email || null,
+          attendanceType: (next.variables ?? {}).tipo || campaign.attendance_type || 'followup',
+          message: resultado.texto,
+          campaignName: campaign.name,
+          instanceName: instance.name,
+          ownerUserId: campaign.owner_user_id,
+        })
+      }
+    } catch (err) {
+      console.error('[campanha-oficial] histórico', err)
+    }
+  }
+
+  const at = now()
+  await supabaseAdmin
+    .from('whatsapp_campaign_recipients')
+    .update({
+      status,
+      error_message: erro ?? null,
+      sent_at: status === 'sent' ? at : null,
+      attendance_id: attendanceId,
+    })
+    .eq('id', next.id)
+
+  if (next.import_row_id) {
+    await supabaseAdmin
+      .from('whatsapp_import_rows')
+      .update({ created_attendance_id: attendanceId, skip_reason: status === 'sent' ? null : (erro ?? 'Falha no envio') })
+      .eq('id', next.import_row_id)
+  }
+
+  const progress = await getCampaignProgress(campaignId)
+  const updates: Record<string, unknown> = { sent_count: progress.sent, error_count: progress.errors }
+  if (progress.pending === 0) {
+    updates.status = 'completed'
+    updates.finished_at = at
+    progress.status = 'completed'
+    if (campaign.import_batch_id) {
+      await supabaseAdmin.from('whatsapp_import_batches').update({ status: 'sent' }).eq('id', campaign.import_batch_id)
+    }
+  }
+  await supabaseAdmin.from('whatsapp_campaigns').update(updates).eq('id', campaignId)
+
+  return {
+    progress,
+    event: { recipientId: next.id, name: next.name, phone, status, error: erro, instanceName: instance.name, at },
+    // a Meta controla a vazão pelo limite do número; sem cooldown de Z-API
+    waitMs: progress.pending > 0 ? 300 : 0,
+    done: progress.pending === 0,
+  }
 }

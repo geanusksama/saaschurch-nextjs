@@ -259,15 +259,22 @@ export function normalizarNumeroBrasil(bruto: string): string {
 export async function persistOutboundMessage(
   conversationId: string,
   content: string,
-  zapiMessageId?: string
+  zapiMessageId?: string,
+  /** Número oficial (Meta): guarda o wamid em metadata.meta_message_id. Z-API não usa. */
+  opts?: { metaMessageId?: string }
 ): Promise<void> {
+  const metaMessageId = opts?.metaMessageId
   await supabaseAdmin.from('whatsapp_messages').insert({
     conversation_id: conversationId,
     content,
     type: 'text',
     direction: 'outbound',
-    status: zapiMessageId ? 'sent' : 'failed',
-    metadata: zapiMessageId ? { zapi_message_id: zapiMessageId } : {},
+    status: zapiMessageId || metaMessageId ? 'sent' : 'failed',
+    metadata: zapiMessageId
+      ? { zapi_message_id: zapiMessageId }
+      : metaMessageId
+        ? { meta_message_id: metaMessageId }
+        : {},
   })
 
   await supabaseAdmin

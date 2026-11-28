@@ -164,7 +164,7 @@ export const MSG_QUALIDADE_RED = 'A qualidade do número ficou vermelha. Envio p
 export const MSG_PAUSADO_MANUAL = 'Pausado por um usuário.'
 const MSG_TIMEOUT_ENVIO = 'A Meta não respondeu a tempo. Não reenviamos para não cobrar duas vezes.'
 
-const MOTIVO_CODIGO: Record<number, string> = {
+export const MOTIVO_CODIGO: Record<number, string> = {
   131042: 'A Meta recusou por problema de pagamento da conta (131042). Confira a forma de pagamento no Gerenciador do WhatsApp.',
   131031: 'A conta do WhatsApp foi bloqueada ou restringida pela Meta (131031).',
   368: 'A Meta restringiu temporariamente o número por violação de política (368).',
