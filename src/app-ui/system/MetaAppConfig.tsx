@@ -9,6 +9,7 @@ import { Loader2, AlertTriangle, CheckCircle2, ExternalLink, Save } from 'lucide
 import { apiBase } from '../../lib/apiBase';
 import { cabecalhos, lerErro } from '../../lib/meta/clienteHttp';
 import { Permissao } from '../../lib/permissoes/Permissao';
+import { LINK_TABELA_OFICIAL } from '../../lib/meta/custoFormato';
 
 type Visao = {
   appId: string;
@@ -33,7 +34,6 @@ type Alerta = {
 type LinhaPreco = { categoria: string; moeda: string; preco: string; vigencia: string };
 const CATEGORIAS_PRECO = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
 const ROTULO_CATEGORIA: Record<string, string> = { MARKETING: 'Marketing', UTILITY: 'Utilidade', AUTHENTICATION: 'Autenticação' };
-const LINK_TABELA_OFICIAL = 'https://business.whatsapp.com/products/platform-pricing#rates';
 
 const BASE = `${apiBase}/meta/app-config`;
 const LINK_EMPRESA = 'https://business.facebook.com/settings/security?business_id=2291140898081009';
