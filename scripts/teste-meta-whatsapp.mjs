@@ -2180,3 +2180,52 @@ test('saída: id da mensagem enviada vai em meta_message_id na oficial e zapi_me
   assert.deepEqual(metadataDoEnvio({}, 'Z1'), { zapi_message_id: 'Z1' })
   assert.deepEqual(metadataDoEnvio({ provider: 'meta' }, ''), {})
 })
+
+// ---------- Task 7, fix 1: SAIR sem agente; repetição com mídia não baixa de novo ----------
+import { registrarRecebidaMetaCom } from '../src/lib/meta/entradaMeta.ts'
+
+/** Ligação falsa: instância, conversa (núcleo real com repositório falso) e downloads contados. */
+function depsMeta(opcoes = {}) {
+  const r = depsRecebida(opcoes)
+  const downloads = []
+  const deps = {
+    instancia: async (pn) => (pn === 'PN1' ? { id: 'inst1', owner_user_id: 'u1', metadata: opcoes.metadata ?? {} } : null),
+    jaGravada: async (inst, tel, id) => {
+      const c = r.st.conversas.find((x) => x.instance_id === inst && x.phone === tel)
+      return !!c && r.st.mensagens.some((m) => m.conversation_id === c.id && m.metadata?.meta_message_id === id)
+    },
+    baixarMidia: async (pn, mid) => { downloads.push(mid); return { url: `https://storage/${mid}`, mime: 'image/jpeg' } },
+    registrar: (entrada) => registrarMensagemRecebidaCom(r.deps, entrada),
+  }
+  return { deps, st: r.st, downloads }
+}
+const convComIa = [{ id: 'c1', instance_id: 'inst1', phone: '5519992126683', unread_count: 0, ai_enabled: true, ai_agent_id: 'ag1' }]
+
+test('Meta SAIR: grava na conversa, mas não enfileira o agente nem entrega à recepção', async () => {
+  const { deps, st } = depsMeta({ conversas: convComIa, metadata: { recepcao: { ativo: true, agentId: 'agR', palavraChave: 'sair', todasNovas: true } } })
+  assert.equal(await registrarRecebidaMetaCom(deps, 'PN1', { from: '5519992126683', id: 'wS', type: 'text', text: { body: ' SAÍR ' } }, []), true)
+  assert.equal(st.mensagens.length, 1)
+  assert.equal(st.mensagens[0].content, ' SAÍR ')
+  assert.equal(st.conversas[0].unread_count, 1)
+  assert.equal(st.fila.length, 0)
+  assert.equal(st.drenos.length, 0)
+  assert.equal(st.conversas[0].ai_agent_id, 'ag1') // recepção não trocou o agente
+})
+test('Meta texto normal: enfileira o agente como antes; outra instância não grava', async () => {
+  const { deps, st } = depsMeta({ conversas: convComIa })
+  await registrarRecebidaMetaCom(deps, 'PN1', { from: '5519992126683', id: 'wT', type: 'text', text: { body: 'quero sair do grupo' } }, [])
+  assert.deepEqual(st.fila, [{ conversationId: 'c1', instanceId: 'inst1', phone: '5519992126683', messageId: 'wT' }])
+  assert.deepEqual(st.drenos, ['c1'])
+  assert.equal(await registrarRecebidaMetaCom(deps, 'OUTRO', { from: '5519992126683', id: 'wX', type: 'text', text: { body: 'oi' } }, []), false)
+  assert.equal(st.mensagens.length, 1)
+})
+test('Meta repetição de mensagem com mídia: não baixa de novo nem grava outra linha', async () => {
+  const { deps, st, downloads } = depsMeta({ conversas: convComIa })
+  const foto = { from: '5519992126683', id: 'wF', type: 'image', image: { id: 'MIDF', mime_type: 'image/jpeg' } }
+  assert.equal(await registrarRecebidaMetaCom(deps, 'PN1', foto, []), true)
+  assert.equal(await registrarRecebidaMetaCom(deps, 'PN1', foto, []), false)
+  assert.deepEqual(downloads, ['MIDF'])
+  assert.equal(st.mensagens.length, 1)
+  assert.equal(st.mensagens[0].media_url, 'https://storage/MIDF')
+  assert.equal(st.mensagens[0].metadata.meta_media_id, 'MIDF')
+})

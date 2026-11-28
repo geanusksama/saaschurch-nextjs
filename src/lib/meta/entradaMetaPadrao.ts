@@ -11,7 +11,7 @@ import { criarGraph } from './graph'
 import { decifrar } from './cifra'
 import { lerConfigMeta } from './configMeta'
 import { variantesTelefoneBR } from './envioLivre'
-import { baixarMidiaMeta, converterMensagemMeta, statusConversaAvanca, type StatusConversa } from './entradaMeta'
+import { baixarMidiaMeta, registrarRecebidaMetaCom, statusConversaAvanca, type StatusConversa } from './entradaMeta'
 
 const ROTULO = '[meta/webhook]'
 
@@ -60,31 +60,28 @@ async function baixarMidia(phoneNumberId: string, mediaId: string, dica: { mime?
 }
 
 /** Mensagem recebida pelo número oficial ⇒ conversa da instância espelho. false = nada gravado. */
-export async function registrarRecebidaMeta(phoneNumberId: string, msg: unknown, contatos: unknown): Promise<boolean> {
-  const conv = converterMensagemMeta(msg, contatos)
-  if (!conv) return false
-  const instancia = await instanciaOficial(phoneNumberId)
-  if (!instancia) return false
-
-  const m = conv.mensagem
-  const mediaId = typeof m.extra.meta_media_id === 'string' ? m.extra.meta_media_id : null
-  if (mediaId) {
-    // falha no download: grava sem a mídia (o meta_media_id fica no metadata)
-    const midia = await baixarMidia(phoneNumberId, mediaId, { mime: m.mediaMime, nomeArquivo: (m.extra.fileName as string) ?? null })
-    if (midia) {
-      m.mediaUrl = midia.url
-      m.mediaMime = midia.mime
-    }
-  }
-
-  return registrarMensagemRecebida({
-    instancia,
-    telefone: conv.telefone,
-    nomeRemetente: conv.nomeRemetente,
-    mensagem: m,
-    idExterno: conv.idExterno,
-    chaveId: 'meta_message_id',
-  }, ROTULO)
+export function registrarRecebidaMeta(phoneNumberId: string, msg: unknown, contatos: unknown): Promise<boolean> {
+  return registrarRecebidaMetaCom({
+    instancia: instanciaOficial,
+    async jaGravada(instanciaId, telefone, idExterno) {
+      const { data: convs } = await supabaseAdmin
+        .from('whatsapp_conversations')
+        .select('id')
+        .eq('instance_id', instanciaId)
+        .eq('phone', telefone)
+        .limit(2)
+      if (!convs?.length) return false
+      const { data } = await supabaseAdmin
+        .from('whatsapp_messages')
+        .select('id')
+        .in('conversation_id', convs.map((c) => c.id))
+        .eq('metadata->>meta_message_id', idExterno)
+        .limit(1)
+      return !!data?.length
+    },
+    baixarMidia,
+    registrar: (entrada) => registrarMensagemRecebida(entrada, ROTULO),
+  }, phoneNumberId, msg, contatos)
 }
 
 /** Status de mensagem livre enviada pelo número oficial ⇒ whatsapp_messages.status (sem regredir). */

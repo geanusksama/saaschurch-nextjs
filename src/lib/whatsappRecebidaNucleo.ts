@@ -30,6 +30,11 @@ export type EntradaRecebida = {
   /** id da mensagem no provedor; 'synthetic_...' quando o provedor não mandou */
   idExterno: string
   chaveId: 'zapi_message_id' | 'meta_message_id'
+  /**
+   * true = só grava (conversa, mensagem, prévia, não lida): sem recepção por QR e sem
+   * resposta do agente. Usado no pedido de SAIR pela Meta. Padrão false (Z-API igual).
+   */
+  semAgente?: boolean
 }
 
 export type DepsRecebida = {
@@ -122,6 +127,8 @@ export async function registrarMensagemRecebidaCom(deps: DepsRecebida, e: Entrad
   //
   // Com "todasNovas" ligado, a PRIMEIRA mensagem de uma conversa nova também
   // entrega ao agente, mesmo sem a palavra-chave (quem lê o QR e manda "oi").
+  if (e.semAgente) return true
+
   if (ehFala(msgType)) {
     try {
       const recepcao = lerRecepcao(instancia.metadata)

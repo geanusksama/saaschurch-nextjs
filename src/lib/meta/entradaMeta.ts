@@ -16,6 +16,7 @@
  */
 import type { Graph } from './graph.ts'
 import { normalizarNumeroBrasil } from '../numeroBrasil.ts'
+import { ehPedidoDeSair } from './envio.ts'
 
 export type MensagemConvertida = {
   type: string
@@ -330,4 +331,64 @@ export async function baixarMidiaMeta(
     console.warn('[meta/midia] falha ao baixar a mídia', (e as Error)?.name, (e as Error)?.message?.slice(0, 120))
     return null
   }
+}
+
+// ---------- orquestração da mensagem recebida ----------
+
+export type InstanciaOficial = { id: string; owner_user_id: string; metadata: unknown }
+
+export type EntradaParaRegistrar = {
+  instancia: InstanciaOficial
+  telefone: string
+  nomeRemetente: string | null
+  mensagem: MensagemConvertida
+  idExterno: string
+  chaveId: 'meta_message_id'
+  semAgente: boolean
+}
+
+export type DepsRecebidaMeta = {
+  instancia(phoneNumberId: string): Promise<InstanciaOficial | null>
+  /** A mensagem (wamid) já está gravada na conversa desse telefone? */
+  jaGravada(instanciaId: string, telefone: string, idExterno: string): Promise<boolean>
+  baixarMidia(phoneNumberId: string, mediaId: string, dica: { mime?: string | null; nomeArquivo?: string | null }): Promise<{ url: string; mime: string } | null>
+  registrar(entrada: EntradaParaRegistrar): Promise<boolean>
+}
+
+/**
+ * Mensagem recebida pelo número oficial ⇒ conversa da instância espelho. false = nada gravado.
+ * Repetição da Meta com mídia: confere antes de baixar (não deixa arquivo órfão no storage).
+ * Pedido de SAIR: grava na conversa, mas sem recepção por QR e sem resposta do agente.
+ */
+export async function registrarRecebidaMetaCom(
+  deps: DepsRecebidaMeta, phoneNumberId: string, msg: unknown, contatos: unknown,
+): Promise<boolean> {
+  const conv = converterMensagemMeta(msg, contatos)
+  if (!conv) return false
+  const instancia = await deps.instancia(phoneNumberId)
+  if (!instancia) return false
+
+  const m = conv.mensagem
+  const mediaId = typeof m.extra.meta_media_id === 'string' ? m.extra.meta_media_id : null
+  if (mediaId) {
+    if (await deps.jaGravada(instancia.id, conv.telefone, conv.idExterno)) return false
+    // falha no download: grava sem a mídia (o meta_media_id fica no metadata)
+    const midia = await deps.baixarMidia(phoneNumberId, mediaId, {
+      mime: m.mediaMime, nomeArquivo: typeof m.extra.fileName === 'string' ? m.extra.fileName : null,
+    })
+    if (midia) {
+      m.mediaUrl = midia.url
+      m.mediaMime = midia.mime
+    }
+  }
+
+  return deps.registrar({
+    instancia,
+    telefone: conv.telefone,
+    nomeRemetente: conv.nomeRemetente,
+    mensagem: m,
+    idExterno: conv.idExterno,
+    chaveId: 'meta_message_id',
+    semAgente: m.type === 'text' && !!m.content && ehPedidoDeSair(m.content),
+  })
 }
