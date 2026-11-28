@@ -22,6 +22,7 @@ import {
   tamanhoDoLote, CODIGOS_PARAR_DISPARO, CODIGOS_PARAR_MODELO, CODIGO_LIMITE_SPAM, CODIGOS_LIMITE_CHAMADAS,
 } from './envio.ts'
 import { ErroServico, MSG_TOKEN_RECUSADO } from './servicoConexao.ts'
+import { extrairRecebidasMeta, extrairStatusesConversa, type StatusConversa } from './entradaMeta.ts'
 
 // ---------- tipos ----------
 
@@ -148,6 +149,15 @@ export type DepsEnvio = {
   novoId: () => string
   /** Relógio para o prazo da rodada (padrão Date.now). */
   agoraMs?: () => number
+  /**
+   * Caixa de Entrada pelo número oficial: mensagem recebida ⇒ whatsapp_conversations/messages
+   * (mesma função da Z-API, agente de IA incluso); status ⇒ whatsapp_messages por
+   * metadata->>meta_message_id. Ausente = só envio em massa e SAIR (comportamento de antes).
+   */
+  conversas?: {
+    registrar(phoneNumberId: string, msg: unknown, contatos: unknown): Promise<boolean>
+    atualizarStatus(ev: StatusConversa): Promise<boolean>
+  }
 }
 
 // ---------- constantes e mensagens ----------
@@ -760,14 +770,14 @@ export async function registrarSair(deps: DepsEnvio, phoneNumberId: string, waId
 }
 
 /**
- * Processa o payload inteiro do webhook (status e pedidos de SAIR). Cada evento é independente:
+ * Processa o payload inteiro do webhook (status, pedidos de SAIR e, com deps.conversas, a Caixa de Entrada). Cada evento é independente:
  * o erro de um não impede os outros; o primeiro erro volta em `primeiroErro` para o log.
  */
 export async function processarWebhook(
   deps: DepsEnvio, payload: unknown,
-): Promise<{ status: number; sair: number; erros: number; primeiroErro?: unknown }> {
+): Promise<{ status: number; sair: number; conversas: number; erros: number; primeiroErro?: unknown }> {
   const ev = extrairEventosWebhook(payload)
-  const r: { status: number; sair: number; erros: number; primeiroErro?: unknown } = { status: 0, sair: 0, erros: 0 }
+  const r: { status: number; sair: number; conversas: number; erros: number; primeiroErro?: unknown } = { status: 0, sair: 0, conversas: 0, erros: 0 }
   const falhou = (e: unknown) => { r.erros++; if (r.erros === 1) r.primeiroErro = e }
   for (const s of ev.statuses) {
     try { if (await aplicarStatusWebhook(deps, s)) r.status++ } catch (e) { falhou(e) }
@@ -775,6 +785,15 @@ export async function processarWebhook(
   for (const m of ev.mensagens) {
     if (!ehPedidoDeSair(m.texto)) continue
     try { if (await registrarSair(deps, m.phoneNumberId, m.from)) r.sair++ } catch (e) { falhou(e) }
+  }
+  if (deps.conversas) {
+    // toda mensagem recebida entra na conversa (inclusive o SAIR, já tratado acima)
+    for (const m of extrairRecebidasMeta(payload)) {
+      try { if (await deps.conversas.registrar(m.phoneNumberId, m.msg, m.contatos)) r.conversas++ } catch (e) { falhou(e) }
+    }
+    for (const s of extrairStatusesConversa(payload)) {
+      try { await deps.conversas.atualizarStatus(s) } catch (e) { falhou(e) }
+    }
   }
   return r
 }

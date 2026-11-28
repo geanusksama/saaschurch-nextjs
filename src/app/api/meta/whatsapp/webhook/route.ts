@@ -4,8 +4,11 @@ import { assinaturaValida, respostaDesafio } from '@/lib/meta/webhookSeguranca'
 import { json, respostaDeErro, SEM_CACHE } from '@/lib/meta/depsConexao'
 import { processarWebhook } from '@/lib/meta/servicoEnvio'
 import { montarDependenciasEnvio } from '@/lib/meta/depsEnvio'
+import { depsConversasMeta } from '@/lib/meta/entradaMetaPadrao'
 
 export const dynamic = 'force-dynamic'
+// mídia recebida e a resposta do agente de IA rodam em after(): tempo além do 200
+export const maxDuration = 60
 
 // Verificação do webhook pela Meta (sem autenticação de usuário).
 export async function GET(req: NextRequest) {
@@ -25,7 +28,7 @@ function logFalha(e: unknown, n: number) {
 }
 
 // Eventos da Meta: valida a assinatura sobre o corpo bruto; responde 200 na hora e processa
-// depois da resposta (status dos envios e pedidos de SAIR). Sem configuração ou erro interno:
+// depois da resposta (status dos envios, pedidos de SAIR e mensagens da Caixa de Entrada). Sem configuração ou erro interno:
 // log curto e 200 (a Meta não deve receber 4xx/5xx por problema nosso). Assinatura inválida: 401.
 export async function POST(req: NextRequest) {
   let c: Awaited<ReturnType<typeof lerConfigMeta>>
@@ -42,7 +45,8 @@ export async function POST(req: NextRequest) {
   }
   after(async () => {
     try {
-      const r = await processarWebhook(await montarDependenciasEnvio(), JSON.parse(bruto))
+      const deps = { ...(await montarDependenciasEnvio()), conversas: depsConversasMeta() }
+      const r = await processarWebhook(deps, JSON.parse(bruto))
       if (r.erros) logFalha(r.primeiroErro, r.erros)
     } catch (e) {
       logFalha(e, 1)

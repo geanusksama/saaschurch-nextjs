@@ -2067,3 +2067,109 @@ test('recebida Meta: mesmo idExterno duas vezes ⇒ uma linha, uma não lida', a
   assert.deepEqual(st.mensagens[0].metadata, { meta_message_id: 'wamid.A' })
   assert.equal(st.conversas[0].unread_count, 1)
 })
+
+// ---------- Task 7: entrada pela Meta ----------
+import { converterMensagemMeta, extrairRecebidasMeta, extrairStatusesConversa, statusConversaAvanca, baixarMidiaMeta, extensaoDaMidia, PREVIEW_NAO_SUPORTADA } from '../src/lib/meta/entradaMeta.ts'
+
+const contatosMeta = [{ profile: { name: 'João' }, wa_id: '551992126683' }]
+test('Meta → conversa: texto com telefone normalizado (ganha o 9) e nome do contato', () => {
+  const r = converterMensagemMeta({ from: '551992126683', id: 'wamid.T', type: 'text', text: { body: 'Bom dia' } }, contatosMeta)
+  assert.deepEqual(r, {
+    telefone: '5519992126683', nomeRemetente: 'João', idExterno: 'wamid.T',
+    mensagem: { type: 'text', content: 'Bom dia', preview: 'Bom dia', mediaUrl: null, mediaMime: null, extra: {} },
+  })
+})
+test('Meta → conversa: resposta rápida de modelo e botão/lista interativos', () => {
+  const b = converterMensagemMeta({ from: '5519992126683', id: 'w1', type: 'button', button: { text: 'Quero participar', payload: 'P1' } }, [])
+  assert.equal(b.mensagem.type, 'button_reply')
+  assert.equal(b.mensagem.content, 'Quero participar')
+  assert.equal(b.mensagem.preview, '🔘 Quero participar')
+  assert.deepEqual(b.mensagem.extra, { buttonId: 'P1', buttonLabel: 'Quero participar' })
+  const i = converterMensagemMeta({ from: '5519992126683', id: 'w2', type: 'interactive', interactive: { type: 'button_reply', button_reply: { id: '1', title: 'Sim' } } }, [])
+  assert.equal(i.mensagem.type, 'button_reply'); assert.equal(i.mensagem.content, 'Sim')
+  const l = converterMensagemMeta({ from: '5519992126683', id: 'w3', type: 'interactive', interactive: { type: 'list_reply', list_reply: { id: '2', title: 'EBD', description: 'domingo' } } }, [])
+  assert.equal(l.mensagem.type, 'list_reply'); assert.deepEqual(l.mensagem.extra, { title: 'EBD', selectedRowId: '2' })
+  assert.equal(i.nomeRemetente, null)
+})
+test('Meta → conversa: imagem e áudio viram id para buscar depois', () => {
+  const img = converterMensagemMeta({ from: '5519992126683', id: 'w4', type: 'image', image: { id: 'MID1', mime_type: 'image/png', caption: 'culto' }, context: { id: 'wamid.X', forwarded: true } }, [])
+  assert.deepEqual(img.mensagem, {
+    type: 'image', content: 'culto', preview: '📷 culto', mediaUrl: null, mediaMime: 'image/png',
+    extra: { referenceMessageId: 'wamid.X', forwarded: true, meta_media_id: 'MID1' },
+  })
+  const aud = converterMensagemMeta({ from: '5519992126683', id: 'w5', type: 'audio', audio: { id: 'MID2', mime_type: 'audio/ogg; codecs=opus', voice: true } }, [])
+  assert.equal(aud.mensagem.type, 'audio'); assert.equal(aud.mensagem.preview, '🎤 Mensagem de voz')
+  assert.deepEqual(aud.mensagem.extra, { meta_media_id: 'MID2', ptt: true })
+  const doc = converterMensagemMeta({ from: '5519992126683', id: 'w6', type: 'document', document: { id: 'MID3', filename: 'ficha.pdf', mime_type: 'application/pdf' } }, [])
+  assert.equal(doc.mensagem.content, 'ficha.pdf'); assert.equal(doc.mensagem.preview, '📄 ficha.pdf')
+})
+test('Meta → conversa: reação; reação removida é ignorada; tipo desconhecido ⇒ [mensagem não suportada]', () => {
+  const r = converterMensagemMeta({ from: '5519992126683', id: 'w7', type: 'reaction', reaction: { message_id: 'wamid.O', emoji: '🙏' } }, [])
+  assert.equal(r.mensagem.type, 'reaction'); assert.equal(r.mensagem.preview, 'Reagiu com 🙏')
+  assert.equal(r.mensagem.extra.referencedMessageId, 'wamid.O')
+  assert.equal(converterMensagemMeta({ from: '5519992126683', id: 'w8', type: 'reaction', reaction: { message_id: 'x', emoji: '' } }, []), null)
+  const u = converterMensagemMeta({ from: '5519992126683', id: 'w9', type: 'order', order: {} }, [])
+  assert.equal(u.mensagem.type, 'unsupported'); assert.equal(u.mensagem.preview, PREVIEW_NAO_SUPORTADA); assert.equal(PREVIEW_NAO_SUPORTADA, '[mensagem não suportada]')
+  assert.equal(u.mensagem.content, null)
+  for (const torto of [null, 'x', {}, { id: 'a', type: 'text' }]) assert.equal(converterMensagemMeta(torto, []), null)
+})
+test('Meta → conversa: extrai mensagens e status (com telefone do destinatário) do payload', () => {
+  const p = { entry: [{ changes: [{ value: {
+    metadata: { phone_number_id: 'PN1' }, contacts: contatosMeta,
+    messages: [{ from: '551992126683', id: 'w1', type: 'text', text: { body: 'oi' } }],
+    statuses: [{ id: 'wamid.S', status: 'read', recipient_id: '551992126683' }, { id: 'x', status: 'deleted', recipient_id: '1' }],
+  } }] }] }
+  assert.deepEqual(extrairRecebidasMeta(p).map((x) => [x.phoneNumberId, x.msg.id, x.contatos]), [['PN1', 'w1', contatosMeta]])
+  assert.deepEqual(extrairStatusesConversa(p), [{ phoneNumberId: 'PN1', wamid: 'wamid.S', status: 'read', telefone: '5519992126683' }])
+  for (const torto of [null, 1, {}, { entry: [{ changes: [null] }] }]) { assert.deepEqual(extrairRecebidasMeta(torto), []); assert.deepEqual(extrairStatusesConversa(torto), []) }
+})
+test('Meta → conversa: status só avança (read antes de delivered não regride)', () => {
+  assert.equal(statusConversaAvanca('sent', 'delivered'), true)
+  assert.equal(statusConversaAvanca('read', 'delivered'), false)
+  assert.equal(statusConversaAvanca('delivered', 'failed'), false)
+  assert.equal(statusConversaAvanca('sent', 'failed'), true)
+  assert.equal(statusConversaAvanca('failed', 'sent'), false)
+  assert.equal(statusConversaAvanca('failed', 'read'), true)
+  assert.equal(statusConversaAvanca('pending', 'sent'), true)
+})
+test('Meta mídia: busca a URL com o token, baixa com o token e guarda no storage', async () => {
+  const chamadas = []
+  const deps = {
+    graph: { get: async (c, p, t) => { chamadas.push(['get', c, t]); return { url: 'https://lookaside.fbsbx.com/m?x=1', mime_type: 'audio/ogg; codecs=opus', file_size: 10 } } },
+    baixar: async (u, t) => { chamadas.push(['baixar', u, t]); return { ok: true, status: 200, bytes: new Uint8Array([1, 2, 3]), tipo: 'audio/ogg' } },
+    guardar: async (c, b, m) => { chamadas.push(['guardar', c, b.length, m]); return `https://storage/${c}` },
+    agora: () => 1000, aleatorio: () => 'abc',
+  }
+  const r = await baixarMidiaMeta(deps, 'MID2', 'TOKEN')
+  assert.deepEqual(r, { url: 'https://storage/whatsapp/recebidas/1000-abc.ogg', mime: 'audio/ogg; codecs=opus' })
+  assert.deepEqual(chamadas, [['get', 'MID2', 'TOKEN'], ['baixar', 'https://lookaside.fbsbx.com/m?x=1', 'TOKEN'], ['guardar', 'whatsapp/recebidas/1000-abc.ogg', 3, 'audio/ogg; codecs=opus']])
+  // acima do limite, URL não https, download recusado ou Graph lançando ⇒ null, sem lançar
+  assert.equal(await baixarMidiaMeta({ ...deps, limiteBytes: 5, graph: { get: async () => ({ url: 'https://a', file_size: 6 }) } }, 'M', 'T'), null)
+  assert.equal(await baixarMidiaMeta({ ...deps, graph: { get: async () => ({ url: 'http://a' }) } }, 'M', 'T'), null)
+  assert.equal(await baixarMidiaMeta({ ...deps, baixar: async () => ({ ok: false, status: 401, bytes: new Uint8Array(), tipo: null }) }, 'M', 'T'), null)
+  assert.equal(await baixarMidiaMeta({ ...deps, graph: { get: async () => { throw new Error('190') } } }, 'M', 'T'), null)
+  assert.equal(extensaoDaMidia('application/x-foo', 'planilha.XLSX'), 'xlsx')
+  assert.equal(extensaoDaMidia(null, null), 'bin')
+})
+test('Meta webhook: mensagens vão para a conversa e status para whatsapp_messages; SAIR continua e também entra na conversa', async () => {
+  const { deps, st } = depsEnvio({ disparos: [{ id: 'd1', status: 'enviando' }], envios: [] })
+  const registradas = []; const statusConv = []
+  deps.conversas = {
+    registrar: async (pn, msg, contatos) => { registradas.push([pn, msg.id, contatos]); return true },
+    atualizarStatus: async (ev) => { statusConv.push(ev); return true },
+  }
+  const r = await processarWebhook(deps, { entry: [{ changes: [{ value: {
+    metadata: { phone_number_id: 'PN1' }, contacts: contatosMeta,
+    messages: [{ from: '5519992126683', id: 'wS', type: 'text', text: { body: 'Sair' } }],
+    statuses: [{ id: 'wamid.Z', status: 'delivered', recipient_id: '5519992126683' }],
+  } }] }] })
+  assert.deepEqual(st.exclusoes.map((x) => x.telefone), ['5519992126683'])
+  assert.deepEqual(registradas, [['PN1', 'wS', contatosMeta]])
+  assert.deepEqual(statusConv, [{ phoneNumberId: 'PN1', wamid: 'wamid.Z', status: 'delivered', telefone: '5519992126683' }])
+  assert.equal(r.conversas, 1)
+  assert.equal(r.erros, 0)
+  // falha na conversa não derruba o resto
+  deps.conversas.registrar = async () => { throw new Error('banco') }
+  const r2 = await processarWebhook(deps, { entry: [{ changes: [{ value: { metadata: { phone_number_id: 'PN1' }, messages: [{ from: '5519992126683', id: 'w2', type: 'text', text: { body: 'oi' } }] } }] }] })
+  assert.equal(r2.erros, 1)
+})
