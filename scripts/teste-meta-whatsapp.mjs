@@ -2173,3 +2173,10 @@ test('Meta webhook: mensagens vão para a conversa e status para whatsapp_messag
   const r2 = await processarWebhook(deps, { entry: [{ changes: [{ value: { metadata: { phone_number_id: 'PN1' }, messages: [{ from: '5519992126683', id: 'w2', type: 'text', text: { body: 'oi' } }] } }] }] })
   assert.equal(r2.erros, 1)
 })
+import { metadataDoEnvio } from '../src/lib/meta/envioLivre.ts'
+test('saída: id da mensagem enviada vai em meta_message_id na oficial e zapi_message_id na Z-API', () => {
+  assert.deepEqual(metadataDoEnvio({ provider: 'meta' }, 'wamid.1'), { meta_message_id: 'wamid.1' })
+  assert.deepEqual(metadataDoEnvio({ provider: 'zapi' }, 'Z1'), { zapi_message_id: 'Z1' })
+  assert.deepEqual(metadataDoEnvio({}, 'Z1'), { zapi_message_id: 'Z1' })
+  assert.deepEqual(metadataDoEnvio({ provider: 'meta' }, ''), {})
+})

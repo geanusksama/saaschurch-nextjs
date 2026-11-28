@@ -90,13 +90,16 @@ async function parse(res: Response): Promise<SendMessageResult> {
  * texto (com as opções listadas) — nunca deixa a pessoa sem a pergunta.
  */
 export async function enviarComOpcoes(
-  instance: { instance_id: string; token: string; client_token: string },
+  instance: { provider?: string; instance_id: string; token: string; client_token: string },
   phone: string,
   texto: string,
   o: OpcoesMensagem,
   delayTyping?: number,
 ): Promise<SendMessageResult> {
   const message = texto.trim() || 'Escolha uma opção:'
+  // número oficial (Meta): botões/lista da Z-API não existem lá — vai o texto com as opções
+  // listadas (o mesmo fallback de quando a Z-API recusa), pela Meta, dentro da janela de 24 h
+  if (instance.provider === 'meta') return sendTextViaZApi(instance, phone, textoComOpcoes(message, o), { delayTyping })
   const base = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}`
   const headers = { 'Content-Type': 'application/json', 'Client-Token': instance.client_token }
   const body = usaBotoes(o)

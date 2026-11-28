@@ -25,7 +25,7 @@ import { encaminharParaGf } from '@/lib/encaminharGf'
 import { enviarReacao } from '@/lib/reacaoAgente'
 import { enviarComOpcoes, textoComOpcoes } from '@/lib/opcoesAgente'
 import { enviarRespostaEmAudio } from '@/lib/respostaEmAudio'
-import { markMessageAsRead, persistOutboundMessage, sendTextViaZApi } from '@/lib/whatsappSendService'
+import { markMessageAsRead, persistirEnvio, sendTextViaZApi } from '@/lib/whatsappSendService'
 import {
   MAX_WAIT_MS,
   TYPING_POSTPONE_MS,
@@ -340,7 +340,8 @@ async function replyToConversation(row: QueueRow): Promise<void> {
           delayTyping: typingSecondsForAgent(reply),
         })
     if (result.status === 'sent') {
-      await persistOutboundMessage(
+      await persistirEnvio(
+        instance,
         row.conversation_id,
         turn.opcoes ? textoComOpcoes(reply, turn.opcoes) : reply,
         result.messageId || undefined,
@@ -426,7 +427,7 @@ export function kickQueue(delayMs = 5_000): void {
 // ── "Quero ser Membro" pelo agente ────────────────────────────────────────────
 
 async function registrarPedidoDaConversa(
-  instance: { id: string; instance_id: string; token: string; client_token: string; status: string },
+  instance: { id: string; provider?: string; instance_id: string; token: string; client_token: string; status: string },
   row: QueueRow,
   turn: NonNullable<Awaited<ReturnType<typeof generateAgentTurn>>>,
 ): Promise<void> {
@@ -484,7 +485,7 @@ async function registrarPedidoDaConversa(
       delayTyping: typingSecondsFor(aviso),
       delayMessage: preTypingSeconds(),
     })
-    if (res.status === 'sent') await persistOutboundMessage(row.conversation_id, aviso, res.messageId || undefined)
+    if (res.status === 'sent') await persistirEnvio(instance, row.conversation_id, aviso, res.messageId || undefined)
   }
 }
 

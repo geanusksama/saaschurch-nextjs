@@ -23,10 +23,11 @@ import {
   sintetizarFala,
   textoParaFala,
 } from '@/lib/elevenlabs'
-import { persistOutboundMessage, sendAudioViaZApi, sendTextViaZApi } from '@/lib/whatsappSendService'
+import { persistirEnvio, sendAudioViaZApi, sendTextViaZApi } from '@/lib/whatsappSendService'
+import { metadataDoEnvio } from '@/lib/meta/envioLivre'
 import { enviarComOpcoes, textoComOpcoes, type OpcoesMensagem } from '@/lib/opcoesAgente'
 
-type Instancia = { id: string; instance_id: string; token: string; client_token: string }
+type Instancia = { id: string; provider?: string; instance_id: string; token: string; client_token: string }
 
 export async function enviarRespostaEmAudio(p: {
   instance: Instancia
@@ -92,7 +93,8 @@ export async function enviarRespostaEmAudio(p: {
       status: 'sent',
       media_url: audioUrl,
       media_mime_type: 'audio/mpeg',
-      metadata: { zapi_message_id: audioMessageId, ptt: true, texto_falado: p.texto, voz: p.sexo === 'M' ? 'masculina' : 'feminina' },
+      // oficial: meta_message_id (Z-API: zapi_message_id, como antes)
+      metadata: { ...(audioMessageId ? metadataDoEnvio(p.instance, audioMessageId) : { zapi_message_id: audioMessageId }), ptt: true, texto_falado: p.texto, voz: p.sexo === 'M' ? 'masculina' : 'feminina' },
     })
     await supabaseAdmin
       .from('whatsapp_conversations')
@@ -106,10 +108,10 @@ export async function enviarRespostaEmAudio(p: {
     // link, questionário ou opções: vai também por escrito, em seguida
     if (p.opcoes) {
       const t = await enviarComOpcoes(p.instance, p.phone, p.texto, p.opcoes, 2)
-      if (t.status === 'sent') await persistOutboundMessage(p.conversationId, textoComOpcoes(p.texto, p.opcoes), t.messageId || undefined)
+      if (t.status === 'sent') await persistirEnvio(p.instance, p.conversationId, textoComOpcoes(p.texto, p.opcoes), t.messageId || undefined)
     } else if (precisaTextoEscrito(p.texto)) {
       const t = await sendTextViaZApi(p.instance, p.phone, p.texto, { delayTyping: 2, delayMessage: 2 })
-      if (t.status === 'sent') await persistOutboundMessage(p.conversationId, p.texto, t.messageId || undefined)
+      if (t.status === 'sent') await persistirEnvio(p.instance, p.conversationId, p.texto, t.messageId || undefined)
     }
   } catch (err) {
     console.error('[respostaEmAudio] áudio enviado; o texto complementar falhou', err)

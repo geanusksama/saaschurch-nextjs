@@ -104,3 +104,9 @@ export function variantesTelefoneBR(digitos: string): string[] {
   if (d.length === 12 && d.startsWith('55') && /^[6-9]/.test(d.slice(4))) return [d, d.slice(0, 4) + '9' + d.slice(4)]
   return [d]
 }
+
+/** Onde vai o id da mensagem enviada em whatsapp_messages.metadata: meta_message_id (oficial) ou zapi_message_id. */
+export function metadataDoEnvio(i: { provider?: string | null }, messageId: string | null | undefined): Record<string, string> {
+  if (!messageId) return {}
+  return ehInstanciaMeta(i) ? { meta_message_id: messageId } : { zapi_message_id: messageId }
+}

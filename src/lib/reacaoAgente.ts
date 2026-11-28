@@ -34,11 +34,13 @@ export function semEmoji(texto: string): string {
 }
 
 export async function enviarReacao(
-  instance: { instance_id: string; token: string; client_token: string },
+  instance: { provider?: string; instance_id: string; token: string; client_token: string },
   phone: string,
   messageId: string,
   reacao: string,
 ): Promise<boolean> {
+  // número oficial (Meta): sem token da Z-API — a reação não sai (a resposta em texto segue)
+  if (instance.provider === 'meta') return false
   try {
     const res = await fetch(`${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}/send-reaction`, {
       method: 'POST',

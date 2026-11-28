@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { sendTextViaZApi, persistOutboundMessage } from '@/lib/whatsappSendService'
+import { sendTextViaZApi, persistOutboundMessage, sendImageViaZApi, sendDocumentViaZApi, sendAudioViaZApi } from '@/lib/whatsappSendService'
+import { ehInstanciaMeta, metadataDoEnvio } from '@/lib/meta/envioLivre'
 
 const ZAPI_BASE = 'https://api.z-api.io'
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -53,12 +54,26 @@ export async function POST(req: NextRequest) {
       .select('id')
       .single()
 
-    // Rate limit obrigatório de 5s
-    await sleep(5000)
+    // Número oficial (Meta): envio livre dentro da janela de 24 h, pelas funções de envio
+    // (que desviam pelo provider). Z-API: o caminho de sempre, abaixo.
+    const oficial = ehInstanciaMeta(instance)
+
+    // Rate limit obrigatório de 5s (Z-API)
+    if (!oficial) await sleep(5000)
 
     let zapiResult: { messageId: string; ok: boolean } = { messageId: '', ok: false }
+    let erroOficial: string | undefined
 
-    try {
+    if (oficial) {
+      const r =
+        type === 'text' ? await sendTextViaZApi(instance, conv.phone, content)
+        : type === 'image' && mediaUrl ? await sendImageViaZApi(instance, conv.phone, mediaUrl, caption ?? '')
+        : type === 'document' && mediaUrl ? await sendDocumentViaZApi(instance, conv.phone, mediaUrl, caption ?? '', fileName ?? 'arquivo')
+        : type === 'audio' && mediaUrl ? await sendAudioViaZApi(instance, conv.phone, mediaUrl)
+        : { messageId: '', status: 'error' as const, error: 'formato_nao_suportado_meta' }
+      zapiResult = { messageId: r.status === 'sent' ? r.messageId : '', ok: r.status === 'sent' }
+      erroOficial = r.status === 'sent' ? undefined : r.error
+    } else try {
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'Client-Token': instance.client_token,
@@ -118,7 +133,8 @@ export async function POST(req: NextRequest) {
       .from('whatsapp_messages')
       .update({
         status: finalStatus,
-        metadata: zapiResult.messageId ? { zapi_message_id: zapiResult.messageId } : {},
+        // id do provedor: zapi_message_id (Z-API, como antes) ou meta_message_id (oficial)
+        metadata: zapiResult.messageId ? metadataDoEnvio(instance, zapiResult.messageId) : {},
       })
       .eq('id', pendingMsg?.id)
 
@@ -137,6 +153,7 @@ export async function POST(req: NextRequest) {
       messageId: pendingMsg?.id,
       zapiMessageId: zapiResult.messageId,
       status: finalStatus,
+      ...(erroOficial ? { error: erroOficial } : {}),
     })
   })
 }

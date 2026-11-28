@@ -250,6 +250,22 @@ export async function persistOutboundMessage(
     .eq('id', conversationId)
 }
 
+/**
+ * persistOutboundMessage pelo provedor da instância: na oficial (Meta) o wamid vai em
+ * metadata.meta_message_id (é por ele que o webhook da Meta atualiza o status); na Z-API,
+ * exatamente a chamada de antes.
+ */
+export function persistirEnvio(
+  instance: { provider?: string | null },
+  conversationId: string,
+  content: string,
+  messageId?: string,
+): Promise<void> {
+  return ehInstanciaMeta(instance)
+    ? persistOutboundMessage(conversationId, content, undefined, { metaMessageId: messageId })
+    : persistOutboundMessage(conversationId, content, messageId)
+}
+
 // ── Garante que existe conversa para um phone+instância ───────────────────────
 export async function ensureConversation(
   instanceDbId: string,
