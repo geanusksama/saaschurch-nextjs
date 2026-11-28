@@ -4692,6 +4692,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/system/WhatsAppOficial.tsx"
   },
   {
+    "chave": "whatsapp_oficial.conexao.teto",
+    "rotulo": "Definir teto mensal de mensagens",
+    "herda": "whatsapp_oficial.edit",
+    "arquivo": "src/app-ui/system/WhatsAppOficial.tsx"
+  },
+  {
     "chave": "whatsapp_oficial.envio.controlar",
     "rotulo": "Pausar, retomar e cancelar disparo",
     "herda": "whatsapp_oficial.envio.view",

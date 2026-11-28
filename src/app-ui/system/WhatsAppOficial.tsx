@@ -22,6 +22,8 @@ type Conexao =
       qualidade: Qualidade;
       limiteDiario: string | null;
       ultimoErro: string | null;
+      tetoMensal?: number | null;
+      enviadosNoMes?: number;
     };
 
 export const LIMITES: Record<string, string> = {
@@ -54,6 +56,9 @@ export default function WhatsAppOficial({ embutido = false }: { embutido?: boole
   const [modoTeste, setModoTeste] = useState(false);
   const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string } | null>(null);
   const [sdkPronto, setSdkPronto] = useState(false);
+  const [tetoTexto, setTetoTexto] = useState('');
+  const [salvandoTeto, setSalvandoTeto] = useState(false);
+  const [msgTeto, setMsgTeto] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -81,7 +86,9 @@ export default function WhatsAppOficial({ embutido = false }: { embutido?: boole
         return (await r.json()) as Conexao;
       })
       .then((c) => {
-        if (vivo) setConexao(c);
+        if (!vivo) return;
+        setConexao(c);
+        if (c.conectado) setTetoTexto(c.tetoMensal ? String(c.tetoMensal) : '');
       })
       .catch((e) => {
         if (vivo) setErro(e instanceof Error ? e.message : 'Falha ao carregar a conexão.');
@@ -126,6 +133,26 @@ export default function WhatsAppOficial({ embutido = false }: { embutido?: boole
       setErro(e instanceof Error ? e.message : 'Não foi possível desconectar.');
     } finally {
       setOcupado(false);
+    }
+  };
+
+  const salvarTeto = async () => {
+    setSalvandoTeto(true);
+    setMsgTeto(null);
+    try {
+      const r = await fetch(`${BASE}/conexao`, {
+        method: 'PATCH',
+        headers: cabecalhos(true),
+        body: JSON.stringify({ tetoMensal: tetoTexto.trim() === '' ? null : Number(tetoTexto) }),
+      });
+      if (!r.ok) throw new Error(await lerErro(r));
+      const { tetoMensal } = (await r.json()) as { tetoMensal: number | null };
+      setConexao((c) => (c && c.conectado ? { ...c, tetoMensal } : c));
+      setMsgTeto(tetoMensal ? 'Teto salvo.' : 'Teto removido: sem limite mensal.');
+    } catch (e) {
+      setMsgTeto(e instanceof Error ? e.message : 'Não foi possível salvar o teto.');
+    } finally {
+      setSalvandoTeto(false);
     }
   };
 
@@ -237,6 +264,36 @@ export default function WhatsAppOficial({ embutido = false }: { embutido?: boole
               </dd>
             </div>
           </dl>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
+            <label htmlFor="teto-mensal" className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Teto mensal de mensagens</label>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                id="teto-mensal"
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={tetoTexto}
+                onChange={(e) => setTetoTexto(e.target.value)}
+                placeholder="Sem teto"
+                className="h-10 w-40 rounded-[10px] border border-slate-200 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <Permissao chave="whatsapp_oficial.conexao.teto" rotulo="Definir teto mensal de mensagens" herda="whatsapp_oficial.edit">
+                <button
+                  onClick={() => void salvarTeto()}
+                  disabled={salvandoTeto}
+                  className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-blue-600 px-3.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {salvandoTeto && <Loader2 className="size-4 animate-spin" />} Salvar teto
+                </button>
+              </Permissao>
+              {typeof conexao.enviadosNoMes === 'number' && (
+                <span className="text-xs text-slate-500">Enviadas neste mês: {conexao.enviadosNoMes}</span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">Ao atingir o teto, os cronogramas param de enviar pelo número oficial até o mês seguinte (e avisamos na central). Deixe vazio para não ter limite.</p>
+            {msgTeto && <p role="status" className="text-xs text-slate-600 dark:text-slate-300">{msgTeto}</p>}
+          </div>
 
           <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
             {confirmando ? (

@@ -117,7 +117,7 @@ export type DepsCampanhaOficial = {
   conexao(campoId: string): Promise<{ phoneNumberId: string; token: string }>
   lerStatus(token: string, phoneNumberId: string): Promise<{ qualidade: string; limiteDiario: string | null }>
   excluido(campoId: string, telefone: string): Promise<boolean>
-  modelo(campoId: string, id: string): Promise<{ nome: string; idioma: string; status: string; componentes: unknown } | null>
+  modelo(campoId: string, id: string): Promise<{ nome: string; idioma: string; status: string; componentes: unknown; variaveis?: unknown } | null>
   /** Mensagens do número nas últimas 24 h (disparos + campanhas). */
   usadosEm24h(campoId: string, instanciaId: string): Promise<number>
   graph: { post(caminho: string, corpo: unknown, token?: string): Promise<unknown> }

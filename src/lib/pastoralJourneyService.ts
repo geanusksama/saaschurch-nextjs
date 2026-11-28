@@ -33,6 +33,8 @@ import { adjustDayReference } from '@/lib/pastoralJourneyDayRef'
 import { generateAiText } from '@/lib/aiReplyService'
 import { prisma } from '@/lib/prisma'
 import type { WhatsAppInstance } from '@/types/whatsapp'
+import { enviarEtapaDaJornada, type ResultadoEtapa } from '@/lib/meta/jornadaOficial'
+import { podeEnviarNoMes, contarEnviadosNoMes, lerTetoDoCampo, chaveDoMes } from '@/lib/meta/tetoMensal'
 
 const RATE_LIMIT_MS = 5000 // mínimo absoluto por instância — NUNCA reduzir
 
@@ -645,6 +647,9 @@ export async function finishEnrollment(params: {
     .update({ certificate_issued_at: now })
     .eq('id', params.enrollmentId)
 
+  // número oficial: só modelo aprovado — o certificado fica disponível pelo link, sem texto livre
+  if (params.instance.provider === 'meta') return { certificateUrl, cardMoved }
+
   try {
     const phone = String(enrollment.phone).replace(/\D/g, '')
     const result = DRY_RUN
@@ -860,6 +865,12 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
   const rateLimits = new Map<string, number>()
   let rateLimitsLoaded = false
 
+  // número oficial: modelo de cada etapa, campo/igreja da jornada e consumo do mês (cache do tick)
+  const modeloDaEtapa = new Map<string, string | null>()
+  const igrejaDaJornada = new Map<string, { campoId: string | null; nome: string }>()
+  const consumoDoCampo = new Map<string, { teto: number | null; enviados: number }>()
+  let depsOficial: Awaited<ReturnType<typeof import('@/lib/meta/depsJornada').montarDependenciasJornadaOficial>> | null = null
+
   // jornadas cujo horário atual está fora da janela — pulam este tick inteiro
   const blockedJourneys = new Set<string>()
   // inscrições pausadas: continuam pendentes no banco, mas saem da fila do tick
@@ -984,6 +995,40 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
       const instance = pickInstance(instances, rateLimits, cooldownMs, sentToday, journey.daily_limit_per_instance)
       if (!instance) continue // nenhuma livre agora — tenta o próximo da fila
 
+      const oficial = instance.provider === 'meta'
+
+      // ── teto mensal do número oficial: atingido ⇒ não envia, o envio fica pendente
+      // (sai quando o mês virar) e o campo é avisado uma vez por mês ──
+      if (oficial && instance.campo_id) {
+        const agoraTeto = new Date()
+        let consumo = consumoDoCampo.get(instance.campo_id)
+        if (!consumo) {
+          consumo = {
+            teto: await lerTetoDoCampo(instance.campo_id),
+            enviados: await contarEnviadosNoMes(instance.campo_id, agoraTeto),
+          }
+          consumoDoCampo.set(instance.campo_id, consumo)
+        }
+        if (!podeEnviarNoMes(consumo.teto, consumo.enviados)) {
+          try {
+            const { alertarEnvioPausadoUmaVez } = await import('@/lib/meta/depsJornada')
+            const mes = chaveDoMes(agoraTeto)
+            await alertarEnvioPausadoUmaVez(
+              instance.campo_id,
+              `[teto ${mes}]`,
+              `Teto mensal de ${consumo.teto} mensagens do WhatsApp oficial atingido [teto ${mes}]. Os envios dos cronogramas continuam na fila e saem no mês seguinte, ou aumente o teto na aba Conexão.`,
+              true
+            )
+          } catch (err) {
+            console.error('[journey] alerta de teto', err)
+          }
+          // sai do pool neste tick; se sobrar só o oficial, a jornada fica parada até o próximo
+          instancesByJourney.set(journey.id, instances.filter(i => i.id !== instance.id))
+          summary.deferred++
+          continue
+        }
+      }
+
       // ── claim: só processa quem conseguir virar pending → sending ──
       const { data: claimed } = await supabaseAdmin
         .from('pastoral_journey_sends')
@@ -1030,7 +1075,7 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
       let aiPolished = false
       const mergedIds: string[] = []
 
-      if (journey.ai_polish && !send.ai_polished) {
+      if (journey.ai_polish && !send.ai_polished && !oficial) {
         const { data: stepRow } = await supabaseAdmin
           .from('pastoral_journey_steps')
           .select('moment_label')
@@ -1069,32 +1114,128 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
       let conversationId: string | null = null
       let waMessageId: string | null = null
 
+      let etapa: ResultadoEtapa | null = null
       try {
-        const result = DRY_RUN
-          ? { status: 'sent' as const, messageId: `dryrun_${send.id}` }
-          : send.image_url
-            ? await sendImageViaZApi(instance, phone, send.image_url, message)
-            : await sendTextViaZApi(instance, phone, message, {
-                // ritmo humano: "digitando..." antes de a mensagem sair
-                delayTyping: 3 + Math.floor(Math.random() * 3),
-              })
-
-        if (result.status === 'error') {
-          status = 'error'
-          errorMessage = result.error || 'erro desconhecido'
-        } else {
-          waMessageId = result.messageId || null
-          conversationId = await ensureConversation(
-            instance.id,
-            journey.owner_user_id ?? instance.owner_user_id,
-            phone,
-            send.name ?? undefined
+        if (oficial && !DRY_RUN) {
+          // número oficial: só modelo aprovado da etapa (nunca texto livre)
+          if (!modeloDaEtapa.has(send.step_id)) {
+            const { data: stepModelo } = await supabaseAdmin
+              .from('pastoral_journey_steps')
+              .select('meta_modelo_id')
+              .eq('id', send.step_id)
+              .maybeSingle()
+            modeloDaEtapa.set(send.step_id, stepModelo?.meta_modelo_id ?? null)
+          }
+          let ig = igrejaDaJornada.get(journey.id)
+          if (!ig) {
+            ig = await (await import('@/lib/meta/depsJornada')).campoEIgreja(journey.church_id)
+            igrejaDaJornada.set(journey.id, ig)
+          }
+          if (!depsOficial) {
+            depsOficial = await (await import('@/lib/meta/depsJornada')).montarDependenciasJornadaOficial()
+          }
+          etapa = await enviarEtapaDaJornada(
+            { enviarZapi: async () => ({ status: 'error', error: 'Z-API indisponível para o número oficial' }), oficial: depsOficial },
+            {
+              instancia: instance,
+              phone,
+              name: send.name ?? null,
+              message,
+              imageUrl: send.image_url ?? null,
+              delayTyping: 0,
+              modeloId: modeloDaEtapa.get(send.step_id) ?? null,
+              campoDaJornada: ig.campoId,
+              igrejaNome: ig.nome,
+              agora: new Date(),
+            }
           )
-          await persistOutboundMessage(conversationId, message, result.messageId || undefined)
+        } else {
+          const result = DRY_RUN
+            ? { status: 'sent' as const, messageId: `dryrun_${send.id}` }
+            : send.image_url
+              ? await sendImageViaZApi(instance, phone, send.image_url, message)
+              : await sendTextViaZApi(instance, phone, message, {
+                  // ritmo humano: "digitando..." antes de a mensagem sair
+                  delayTyping: 3 + Math.floor(Math.random() * 3),
+                })
+          etapa = { tipo: 'zapi', result }
+        }
+
+        if (etapa.tipo === 'zapi') {
+          const result = etapa.result
+          if (result.status === 'error') {
+            status = 'error'
+            errorMessage = result.error || 'erro desconhecido'
+          } else {
+            waMessageId = result.messageId || null
+            conversationId = await ensureConversation(
+              instance.id,
+              journey.owner_user_id ?? instance.owner_user_id,
+              phone,
+              send.name ?? undefined
+            )
+            await persistOutboundMessage(conversationId, message, result.messageId || undefined)
+          }
+        } else if (etapa.tipo === 'enviado') {
+          waMessageId = etapa.wamid
+          // a Meta aceitou: falha ao gravar o histórico não desfaz o envio
+          try {
+            conversationId = await ensureConversation(
+              instance.id,
+              journey.owner_user_id ?? instance.owner_user_id,
+              phone,
+              send.name ?? undefined
+            )
+            await persistOutboundMessage(conversationId, etapa.texto, undefined, { metaMessageId: etapa.wamid })
+          } catch (err) {
+            console.error('[journey] histórico do envio oficial', send.id, err)
+          }
+          const consumo = instance.campo_id ? consumoDoCampo.get(instance.campo_id) : undefined
+          if (consumo) consumo.enviados++
+        } else if (etapa.tipo === 'erro') {
+          status = 'error'
+          errorMessage = etapa.mensagem
         }
       } catch (err) {
         status = 'error'
         errorMessage = err instanceof Error ? err.message : 'falha no envio'
+      }
+
+      // número oficial: nada saiu ⇒ volta à fila (pausa/limite) ou sai dela (pediu para sair)
+      if (etapa && (etapa.tipo === 'pausar' || etapa.tipo === 'tentar_depois')) {
+        await supabaseAdmin
+          .from('pastoral_journey_sends')
+          .update({ status: 'pending', instance_id: null, updated_at: new Date().toISOString() })
+          .eq('id', send.id)
+        sentToday.set(instance.id, Math.max(0, (sentToday.get(instance.id) ?? 1) - 1))
+        blockedJourneys.add(journey.id)
+        summary.deferred++
+        if (etapa.tipo === 'pausar' && instance.campo_id) {
+          try {
+            const { alertarEnvioPausadoUmaVez } = await import('@/lib/meta/depsJornada')
+            await alertarEnvioPausadoUmaVez(
+              instance.campo_id,
+              `Cronograma "${journey.name}" pausado`,
+              `Cronograma "${journey.name}" pausado: ${etapa.motivo}`,
+              false
+            )
+          } catch (err) {
+            console.error('[journey] alerta', err)
+          }
+        }
+        continue
+      }
+      if (etapa && etapa.tipo === 'pulado') {
+        await supabaseAdmin
+          .from('pastoral_journey_sends')
+          .update({
+            status: 'cancelled',
+            error_message: 'Pediu para sair: número na lista de exclusão.',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', send.id)
+        summary.skipped++
+        continue
       }
 
       const now = new Date().toISOString()

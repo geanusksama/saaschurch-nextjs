@@ -43,7 +43,7 @@ import {
 import { getCurrentChurchId } from '../../lib/pastoralKanbanService';
 import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
 import { ConfirmDialog } from '../../components/app-ui/shared/ConfirmDialog';
-import { Permissao } from '../../lib/permissoes/Permissao';
+import { Permissao, usePode } from '../../lib/permissoes/Permissao';
 
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('mrm_token') ?? '' : '';
@@ -95,8 +95,17 @@ interface Step {
   min_offset_days: number;
   send_time: string;
   is_active: boolean;
+  /** modelo aprovado do número oficial (só usado quando o cronograma é do número oficial) */
+  meta_modelo_id?: string | null;
   messages: StepMessage[];
 }
+
+interface ModeloAprovado {
+  id: string;
+  nome: string;
+}
+
+const PERM_OFICIAL = 'whatsapp_oficial.campanha.enviar';
 
 /** Descreve em português quando a etapa dispara, para conferência rápida. */
 function scheduleSummary(step: Step): string {
@@ -111,6 +120,9 @@ function scheduleSummary(step: Step): string {
 export default function JourneyMatrixEditor() {
   const churchId = getCurrentChurchId();
   const { instances } = useWhatsAppInstances();
+  const pode = usePode();
+  const [modelosOficiais, setModelosOficiais] = useState<ModeloAprovado[]>([]);
+  const [previsaoMes, setPrevisaoMes] = useState<number | null>(null);
 
   const [journeys, setJourneys] = useState<JourneySummary[]>([]);
   const [journeyId, setJourneyId] = useState('');
@@ -174,6 +186,7 @@ export default function JourneyMatrixEditor() {
       const data = await res.json();
       setSteps(data.steps ?? []);
       setInstanceIds(data.instanceIds ?? []);
+      setPrevisaoMes(typeof data.previsaoMensal === 'number' ? data.previsaoMensal : null);
     } catch {
       setSteps([]);
     } finally {
@@ -225,9 +238,41 @@ export default function JourneyMatrixEditor() {
     }
   };
 
+  const ehOficial = (id: string) => instances.find(i => i.id === id)?.provider === 'meta';
+
+  // o número oficial não se mistura com Z-API no mesmo cronograma
   const toggleInstance = (id: string) => {
-    setInstanceIds(prev => (prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]));
+    setInstanceIds(prev => {
+      if (prev.includes(id)) return prev.filter(i => i !== id);
+      return ehOficial(id) ? [id] : [...prev.filter(i => !ehOficial(i)), id];
+    });
   };
+
+  // cronograma do número oficial: cada etapa escolhe um modelo aprovado
+  const usaOficial = instanceIds.some(ehOficial);
+
+  useEffect(() => {
+    if (!usaOficial) return;
+    let vivo = true;
+    fetch('/api/meta/whatsapp/modelos', { headers: authHeaders(), cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : { modelos: [] }))
+      .then((d: { modelos?: Array<{ id: string; nome: string; status: string; variaveis?: Array<{ tipo?: string }> }> }) => {
+        if (!vivo) return;
+        setModelosOficiais(
+          (d.modelos ?? [])
+            .filter(m => m.status === 'APPROVED')
+            // só modelos cujas variáveis o cronograma preenche sozinho: nome, igreja ou data
+            .filter(m => (m.variaveis ?? []).every(v => v.tipo === 'nome' || v.tipo === 'igreja' || v.tipo === 'data'))
+            .map(m => ({ id: m.id, nome: m.nome }))
+        );
+      })
+      .catch(() => {
+        if (vivo) setModelosOficiais([]);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [usaOficial]);
 
   // ── etapas ──────────────────────────────────────────────────────────────────
 
@@ -282,6 +327,7 @@ export default function JourneyMatrixEditor() {
           minOffsetDays: step.min_offset_days,
           sendTime: step.send_time,
           isActive: step.is_active,
+          ...(usaOficial ? { metaModeloId: step.meta_modelo_id ?? null } : {}),
           messages: Object.fromEntries(
             JOURNEY_PROFILES.map(p => {
               const m = step.messages.find(x => x.profile === p);
@@ -450,7 +496,7 @@ export default function JourneyMatrixEditor() {
                 {connected.length > 0 && (
                   <>
                     <button
-                      onClick={() => setInstanceIds(connected.map(i => i.id))}
+                      onClick={() => setInstanceIds(connected.filter(i => i.provider !== 'meta').map(i => i.id))}
                       className="text-[10px] font-semibold text-violet-600 hover:underline ml-1"
                     >
                       todas
@@ -474,11 +520,17 @@ export default function JourneyMatrixEditor() {
                 )}
                 {connected.map(i => {
                   const on = instanceIds.includes(i.id);
+                  const semPermissao = i.provider === 'meta' && !pode(PERM_OFICIAL);
                   return (
                     <button
                       key={i.id}
                       onClick={() => toggleInstance(i.id)}
-                      title={on ? 'Marcada — clique para desmarcar' : 'Clique para marcar'}
+                      disabled={semPermissao}
+                      title={
+                        semPermissao
+                          ? 'Sem permissão para usar o WhatsApp oficial'
+                          : on ? 'Marcada — clique para desmarcar' : 'Clique para marcar'
+                      }
                       className={`h-9 px-2.5 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 transition-colors ${
                         on
                           ? 'bg-violet-600 border-violet-600 text-white hover:bg-violet-700'
@@ -486,7 +538,7 @@ export default function JourneyMatrixEditor() {
                       }`}
                     >
                       {on ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
-                      {i.name}
+                      {i.name}{i.provider === 'meta' ? ' (oficial)' : ''}
                     </button>
                   );
                 })}
@@ -679,6 +731,17 @@ export default function JourneyMatrixEditor() {
             </select>
           </div>
 
+          {usaOficial && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+              Cronograma pelo <b>WhatsApp oficial</b>: cada etapa precisa de um modelo aprovado pela Meta (escolha no editor da
+              etapa), preenchido sozinho com o primeiro nome da pessoa e o nome da igreja. As mensagens são cobradas pela Meta
+              e a IA, imagens e links da matriz não são usados.
+              {previsaoMes !== null && (
+                <> Previsão até o fim do mês: <b>{previsaoMes}</b> mensagem(ns) já na fila.</>
+              )}
+            </p>
+          )}
+
           <p className="text-[11px] text-slate-400">
             O envio alterna entre as instâncias marcadas, respeitando o cooldown de cada número —
             marcar mais é o que permite dar conta de milhares de pessoas sem passar o dia enviando
@@ -838,6 +901,21 @@ export default function JourneyMatrixEditor() {
                           />
                           Ativa
                         </label>
+                        {usaOficial && (
+                          <div className="flex flex-col gap-1 min-w-[180px]">
+                            <label className="text-xs font-medium text-slate-500">Modelo aprovado (oficial)</label>
+                            <select
+                              value={step.meta_modelo_id ?? ''}
+                              onChange={e => patchLocalStep(step.id, { meta_modelo_id: e.target.value || null })}
+                              className="w-full h-9 px-1.5 rounded-lg border border-slate-200 text-sm bg-white"
+                            >
+                              <option value="">Escolha um modelo</option>
+                              {modelosOficiais.map(m => (
+                                <option key={m.id} value={m.id}>{m.nome}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         <Permissao chave="pastoral_visits.journey_matrix_editor.excluir_etapa" rotulo="Excluir etapa — Journey Matrix Editor" herda="pastoral_visits.view">
                           <button
                             onClick={() => setConfirmDeleteStep(step)}

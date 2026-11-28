@@ -3,6 +3,34 @@ import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { computeScheduledAt } from '@/lib/pastoralJourneyService'
 import { JOURNEY_PROFILES } from '@/lib/pastoralJourneyDefault'
+import { exigirPermissao } from '@/lib/permissoes/servidor'
+import { campoEIgreja } from '@/lib/meta/depsJornada'
+import { buscar as buscarModelo } from '@/lib/meta/modelosRepo'
+import { modeloServeParaJornada } from '@/lib/meta/jornadaOficial'
+import type { AuthUser } from '@/lib/auth'
+
+/**
+ * Modelo aprovado de uma etapa (número oficial). undefined = campo não veio (não mexe);
+ * null = limpa; string = valida (mesmo campo da jornada e do usuário, aprovado, sem variável livre).
+ */
+async function lerModeloDaEtapa(
+  body: Record<string, unknown>, journeyId: string, user: AuthUser,
+): Promise<{ valor?: string | null } | NextResponse> {
+  if (body.metaModeloId === undefined) return {}
+  if (body.metaModeloId === null || body.metaModeloId === '') return { valor: null }
+  const negado = await exigirPermissao(user, 'whatsapp_oficial.campanha.enviar')
+  if (negado) return negado
+  const { data: j } = await supabaseAdmin.from('pastoral_journeys').select('church_id').eq('id', journeyId).maybeSingle()
+  const { campoId } = j ? await campoEIgreja(j.church_id) : { campoId: null }
+  if (!campoId || !user.campoId || campoId !== user.campoId) return NextResponse.json({ error: 'Modelo não encontrado' }, { status: 404 })
+  const modelo = await buscarModelo(campoId, String(body.metaModeloId))
+  if (!modelo) return NextResponse.json({ error: 'Modelo não encontrado' }, { status: 404 })
+  if (modelo.status !== 'APPROVED') return NextResponse.json({ error: 'Este modelo ainda não foi aprovado pela Meta.' }, { status: 400 })
+  if (!modeloServeParaJornada(modelo.variaveis)) {
+    return NextResponse.json({ error: 'Este modelo tem variável de texto livre e não serve para o cronograma. Escolha um modelo só com nome, igreja ou data.' }, { status: 400 })
+  }
+  return { valor: modelo.id }
+}
 
 /**
  * Etapas da matriz.
@@ -15,9 +43,11 @@ import { JOURNEY_PROFILES } from '@/lib/pastoralJourneyDefault'
  */
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  return withAuth(req, async () => {
+  return withAuth(req, async (user) => {
     const { id: journeyId } = await ctx.params
     const body = await req.json().catch(() => ({}))
+    const modelo = await lerModeloDaEtapa(body, journeyId, user)
+    if (modelo instanceof NextResponse) return modelo
 
     const { count } = await supabaseAdmin
       .from('pastoral_journey_steps')
@@ -38,6 +68,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         min_offset_days: Math.max(0, Number(body.minOffsetDays) || 0),
         send_time: body.sendTime || '09:00',
         is_active: body.isActive !== false,
+        ...(modelo.valor !== undefined ? { meta_modelo_id: modelo.valor } : {}),
       })
       .select('*')
       .single()
@@ -60,11 +91,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  return withAuth(req, async () => {
+  return withAuth(req, async (user) => {
     const { id: journeyId } = await ctx.params
     const body = await req.json().catch(() => ({}))
     const stepId = body.stepId
     if (!stepId) return NextResponse.json({ error: 'stepId obrigatório' }, { status: 400 })
+    const modelo = await lerModeloDaEtapa(body, journeyId, user)
+    if (modelo instanceof NextResponse) return modelo
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (body.position !== undefined) patch.position = Number(body.position)
@@ -79,6 +112,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (body.minOffsetDays !== undefined) patch.min_offset_days = Math.max(0, Number(body.minOffsetDays) || 0)
     if (body.sendTime !== undefined) patch.send_time = body.sendTime
     if (body.isActive !== undefined) patch.is_active = !!body.isActive
+    if (modelo.valor !== undefined) patch.meta_modelo_id = modelo.valor
 
     const { data: step, error } = await supabaseAdmin
       .from('pastoral_journey_steps')
@@ -154,7 +188,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
           update.scheduled_at = computeScheduledAt(enrolledAt, step).toISOString()
         }
         // etapa desligada (ou mensagem vazia) deixa de ser enviada
-        if (!step.is_active || !String(msg?.message ?? '').trim()) {
+        if (!step.is_active || (!String(msg?.message ?? '').trim() && !step.meta_modelo_id)) {
           update.status = 'cancelled'
           update.error_message = 'Etapa desativada na matriz'
         }
