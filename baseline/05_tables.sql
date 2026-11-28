@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.109Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T00:06:23.384Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fa5cd82742e71000
+-- Baseline 32aeeaa948f71d98
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -3890,7 +3890,8 @@ create table if not exists "public"."meta_alertas" (
   "proposta" jsonb,
   "criado_em" timestamp(6) with time zone default now() not null,
   "resolvido_em" timestamp(6) with time zone,
-  "resolvido_por" uuid
+  "resolvido_por" uuid,
+  "origem" text
 );
 
 create table if not exists "public"."meta_app_config" (
@@ -3918,7 +3919,9 @@ create table if not exists "public"."meta_whatsapp_conexoes" (
   "ultimo_erro" text,
   "conectado_por" uuid,
   "conectado_em" timestamp(6) with time zone default now(),
-  "atualizado_em" timestamp(6) with time zone default now() not null
+  "atualizado_em" timestamp(6) with time zone default now() not null,
+  "instancia_id" uuid,
+  "teto_mensal" integer
 );
 
 create table if not exists "public"."meta_whatsapp_disparos" (
@@ -4474,7 +4477,8 @@ create table if not exists "public"."pastoral_journey_steps" (
   "send_time" time without time zone default '09:00:00'::time without time zone not null,
   "is_active" boolean default true not null,
   "created_at" timestamp with time zone default now() not null,
-  "updated_at" timestamp with time zone default now() not null
+  "updated_at" timestamp with time zone default now() not null,
+  "meta_modelo_id" uuid
 );
 
 create table if not exists "public"."pastoral_journeys" (
@@ -5451,7 +5455,9 @@ create table if not exists "public"."whatsapp_campaigns" (
   "import_batch_id" uuid,
   "create_pipeline_cards" boolean default false not null,
   "attendance_type" text,
-  "pipeline_church_id" uuid
+  "pipeline_church_id" uuid,
+  "meta_modelo_id" uuid,
+  "meta_variaveis" jsonb
 );
 
 create table if not exists "public"."whatsapp_conversations" (
@@ -5549,7 +5555,9 @@ create table if not exists "public"."whatsapp_instances" (
   "is_active" boolean default true,
   "metadata" jsonb default '{}'::jsonb,
   "created_at" timestamp with time zone default now(),
-  "updated_at" timestamp with time zone default now()
+  "updated_at" timestamp with time zone default now(),
+  "provider" text default 'zapi'::text not null,
+  "campo_id" uuid
 );
 
 create table if not exists "public"."whatsapp_messages" (

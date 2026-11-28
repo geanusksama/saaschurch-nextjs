@@ -5898,6 +5898,9 @@ model MetaWhatsappConexao {
   conectadoPor  String?   @map("conectado_por") @db.Uuid
   conectadoEm   DateTime? @default(now()) @map("conectado_em") @db.Timestamptz(6)
   atualizadoEm  DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  /// whatsapp_instances.id (FK so no SQL, sem relacao no Prisma)
+  instanciaId   String?   @map("instancia_id") @db.Uuid
+  tetoMensal    Int?      @map("teto_mensal")
 
   campo               Campo @relation(fields: [campoId], references: [id], onDelete: Cascade)
   conectadoPorUsuario User? @relation("MetaWhatsappConexaoConectadoPor", fields: [conectadoPor], references: [id])

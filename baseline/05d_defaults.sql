@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.124Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T00:06:23.388Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fa5cd82742e71000
+-- Baseline 32aeeaa948f71d98
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -1580,6 +1580,7 @@ alter table "public"."whatsapp_instances" alter column "is_active" set default t
 alter table "public"."whatsapp_instances" alter column "metadata" set default '{}'::jsonb;
 alter table "public"."whatsapp_instances" alter column "created_at" set default now();
 alter table "public"."whatsapp_instances" alter column "updated_at" set default now();
+alter table "public"."whatsapp_instances" alter column "provider" set default 'zapi'::text;
 alter table "public"."whatsapp_messages" alter column "id" set default gen_random_uuid();
 alter table "public"."whatsapp_messages" alter column "type" set default 'text'::text;
 alter table "public"."whatsapp_messages" alter column "status" set default 'pending'::text;

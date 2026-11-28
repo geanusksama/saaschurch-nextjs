@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.114Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T00:06:23.385Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fa5cd82742e71000
+-- Baseline 32aeeaa948f71d98
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -3159,6 +3159,7 @@ alter table "public"."meta_alertas" add column if not exists "proposta" jsonb;
 alter table "public"."meta_alertas" add column if not exists "criado_em" timestamp(6) with time zone default now() not null;
 alter table "public"."meta_alertas" add column if not exists "resolvido_em" timestamp(6) with time zone;
 alter table "public"."meta_alertas" add column if not exists "resolvido_por" uuid;
+alter table "public"."meta_alertas" add column if not exists "origem" text;
 alter table "public"."meta_app_config" add column if not exists "id" integer default 1 not null;
 alter table "public"."meta_app_config" add column if not exists "app_id" text;
 alter table "public"."meta_app_config" add column if not exists "es_config_id" text;
@@ -3181,6 +3182,8 @@ alter table "public"."meta_whatsapp_conexoes" add column if not exists "ultimo_e
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "conectado_por" uuid;
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "conectado_em" timestamp(6) with time zone default now();
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "atualizado_em" timestamp(6) with time zone default now() not null;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "instancia_id" uuid;
+alter table "public"."meta_whatsapp_conexoes" add column if not exists "teto_mensal" integer;
 alter table "public"."meta_whatsapp_disparos" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."meta_whatsapp_disparos" add column if not exists "campo_id" uuid;
 alter table "public"."meta_whatsapp_disparos" add column if not exists "modelo_id" uuid;
@@ -3638,6 +3641,7 @@ alter table "public"."pastoral_journey_steps" add column if not exists "send_tim
 alter table "public"."pastoral_journey_steps" add column if not exists "is_active" boolean default true not null;
 alter table "public"."pastoral_journey_steps" add column if not exists "created_at" timestamp with time zone default now() not null;
 alter table "public"."pastoral_journey_steps" add column if not exists "updated_at" timestamp with time zone default now() not null;
+alter table "public"."pastoral_journey_steps" add column if not exists "meta_modelo_id" uuid;
 alter table "public"."pastoral_journeys" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."pastoral_journeys" add column if not exists "church_id" uuid;
 alter table "public"."pastoral_journeys" add column if not exists "name" text;
@@ -4452,6 +4456,8 @@ alter table "public"."whatsapp_campaigns" add column if not exists "import_batch
 alter table "public"."whatsapp_campaigns" add column if not exists "create_pipeline_cards" boolean default false not null;
 alter table "public"."whatsapp_campaigns" add column if not exists "attendance_type" text;
 alter table "public"."whatsapp_campaigns" add column if not exists "pipeline_church_id" uuid;
+alter table "public"."whatsapp_campaigns" add column if not exists "meta_modelo_id" uuid;
+alter table "public"."whatsapp_campaigns" add column if not exists "meta_variaveis" jsonb;
 alter table "public"."whatsapp_conversations" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."whatsapp_conversations" add column if not exists "instance_id" uuid;
 alter table "public"."whatsapp_conversations" add column if not exists "phone" text;
@@ -4532,6 +4538,8 @@ alter table "public"."whatsapp_instances" add column if not exists "is_active" b
 alter table "public"."whatsapp_instances" add column if not exists "metadata" jsonb default '{}'::jsonb;
 alter table "public"."whatsapp_instances" add column if not exists "created_at" timestamp with time zone default now();
 alter table "public"."whatsapp_instances" add column if not exists "updated_at" timestamp with time zone default now();
+alter table "public"."whatsapp_instances" add column if not exists "provider" text default 'zapi'::text not null;
+alter table "public"."whatsapp_instances" add column if not exists "campo_id" uuid;
 alter table "public"."whatsapp_messages" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."whatsapp_messages" add column if not exists "conversation_id" uuid;
 alter table "public"."whatsapp_messages" add column if not exists "content" text;

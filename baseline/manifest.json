@@ -1,6 +1,6 @@
 {
-  "version": "fa5cd82742e71000",
-  "generatedAt": "2026-11-23T20:44:25.138Z",
+  "version": "32aeeaa948f71d98",
+  "generatedAt": "2026-11-28T00:06:23.392Z",
   "schemas": [
     "public",
     "app"
@@ -24,11 +24,11 @@
     },
     {
       "file": "05_tables.sql",
-      "bytes": 203974
+      "bytes": 204183
     },
     {
       "file": "05b_columns.sql",
-      "bytes": 461424
+      "bytes": 462159
     },
     {
       "file": "05c_notnull.sql",
@@ -36,7 +36,7 @@
     },
     {
       "file": "05d_defaults.sql",
-      "bytes": 143909
+      "bytes": 144001
     },
     {
       "file": "06_constraints.sql",
@@ -44,11 +44,11 @@
     },
     {
       "file": "07_foreign_keys.sql",
-      "bytes": 204943
+      "bytes": 205505
     },
     {
       "file": "08_indexes.sql",
-      "bytes": 80556
+      "bytes": 80732
     },
     {
       "file": "09_views.sql",

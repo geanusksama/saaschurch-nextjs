@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-23T20:44:25.131Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T00:06:23.390Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline fa5cd82742e71000
+-- Baseline 32aeeaa948f71d98
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -676,4 +676,5 @@ CREATE INDEX IF NOT EXISTS users_campo_id_idx ON public.users USING btree (campo
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_key ON public.users USING btree (email);
 CREATE INDEX IF NOT EXISTS users_regional_id_idx ON public.users USING btree (regional_id);
 CREATE UNIQUE INDEX IF NOT EXISTS users_system_email_key ON public.users USING btree (system_email);
+CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_instances_provider_instance_id_key ON public.whatsapp_instances USING btree (provider, instance_id) WHERE (instance_id IS NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS zonas_name_unique ON public.zonas USING btree (lower((name)::text)) WHERE (deleted_at IS NULL);
