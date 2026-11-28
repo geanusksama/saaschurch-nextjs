@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-28T00:06:23.390Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:24:56.138Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 32aeeaa948f71d98
+-- Baseline 3722a19e8d96f01f
 
 -- Indexes (exceto os criados por constraints)
 CREATE INDEX IF NOT EXISTS app_events_campo_id_status_idx ON public.app_events USING btree (campo_id, status);
@@ -604,6 +604,8 @@ CREATE INDEX IF NOT EXISTS members_member_type_idx ON public.members USING btree
 CREATE INDEX IF NOT EXISTS members_membership_status_idx ON public.members USING btree (membership_status);
 CREATE INDEX IF NOT EXISTS members_regional_id_idx ON public.members USING btree (regional_id);
 CREATE INDEX IF NOT EXISTS meta_alertas_resolvido_em_criado_em_idx ON public.meta_alertas USING btree (resolvido_em, criado_em);
+CREATE INDEX IF NOT EXISTS meta_whatsapp_cobrancas_campo_id_entregue_em_idx ON public.meta_whatsapp_cobrancas USING btree (campo_id, entregue_em);
+CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_cobrancas_meta_message_id_key ON public.meta_whatsapp_cobrancas USING btree (meta_message_id);
 CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_conexoes_campo_id_key ON public.meta_whatsapp_conexoes USING btree (campo_id);
 CREATE UNIQUE INDEX IF NOT EXISTS meta_whatsapp_conexoes_phone_number_id_key ON public.meta_whatsapp_conexoes USING btree (phone_number_id);
 CREATE INDEX IF NOT EXISTS meta_whatsapp_disparos_campo_id_criado_em_idx ON public.meta_whatsapp_disparos USING btree (campo_id, criado_em DESC);

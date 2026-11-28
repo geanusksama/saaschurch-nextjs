@@ -1,6 +1,7 @@
 import { criarConfigCentral, mesclarComEnv } from './configCentral'
 import { decifrar } from './cifra'
 import { lerLinha } from './configCentralRepo'
+import { lerPrecosDoBanco } from './custoRepo'
 
 /** Instância de produção (banco/base reais). Carregada só sob demanda. */
 export const configCentral = criarConfigCentral({
@@ -9,6 +10,7 @@ export const configCentral = criarConfigCentral({
   agora: () => Date.now(),
   lerLinha,
   decifrar,
+  lerPrecos: () => lerPrecosDoBanco(),
 })
 
 export { mesclarComEnv }

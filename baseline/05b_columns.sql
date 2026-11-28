@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-28T00:06:23.385Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:24:56.132Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 32aeeaa948f71d98
+-- Baseline 3722a19e8d96f01f
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -3169,6 +3169,19 @@ alter table "public"."meta_app_config" add column if not exists "app_secret_cifr
 alter table "public"."meta_app_config" add column if not exists "conexao_liberada" boolean default false not null;
 alter table "public"."meta_app_config" add column if not exists "atualizado_por" uuid;
 alter table "public"."meta_app_config" add column if not exists "atualizado_em" timestamp(6) with time zone default now() not null;
+alter table "public"."meta_precos" add column if not exists "categoria" text;
+alter table "public"."meta_precos" add column if not exists "moeda" text;
+alter table "public"."meta_precos" add column if not exists "preco" numeric(12,6);
+alter table "public"."meta_precos" add column if not exists "vigencia" date;
+alter table "public"."meta_precos" add column if not exists "atualizado_por" uuid;
+alter table "public"."meta_precos" add column if not exists "atualizado_em" timestamp(6) with time zone default now() not null;
+alter table "public"."meta_whatsapp_cobrancas" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."meta_whatsapp_cobrancas" add column if not exists "campo_id" uuid;
+alter table "public"."meta_whatsapp_cobrancas" add column if not exists "meta_message_id" text;
+alter table "public"."meta_whatsapp_cobrancas" add column if not exists "categoria" text;
+alter table "public"."meta_whatsapp_cobrancas" add column if not exists "billable" boolean;
+alter table "public"."meta_whatsapp_cobrancas" add column if not exists "entregue_em" timestamp(6) with time zone;
+alter table "public"."meta_whatsapp_cobrancas" add column if not exists "criado_em" timestamp(6) with time zone default now() not null;
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "id" uuid default gen_random_uuid() not null;
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "campo_id" uuid;
 alter table "public"."meta_whatsapp_conexoes" add column if not exists "waba_id" text;

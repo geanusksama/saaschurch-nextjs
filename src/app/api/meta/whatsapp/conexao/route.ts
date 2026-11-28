@@ -5,6 +5,7 @@ import { conectar, desconectar, obterStatusDoCampo } from '@/lib/meta/servicoCon
 import { ehBase } from '@/lib/meta/configCentral'
 import * as repo from '@/lib/meta/conexaoRepo'
 import { lerTeto, lerTetoDoCampo, contarEnviadosNoMes, gravarTetoDoCampo } from '@/lib/meta/tetoMensal'
+import { gastoDoMes } from '@/lib/meta/custo'
 import { json, montarDependencias, MSG_SEM_CAMPO, respostaDeErro } from '@/lib/meta/depsConexao'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,9 @@ export async function GET(req: NextRequest) {
         lerTetoDoCampo(user.campoId),
         contarEnviadosNoMes(user.campoId, new Date()),
       ])
-      return json({ ...status, tetoMensal, enviadosNoMes })
+      // o gasto é um extra: se a tabela/cálculo falhar, a tela segue sem o medidor
+      const gasto = await gastoDoMes(user.campoId, new Date()).catch(() => null)
+      return json({ ...status, tetoMensal, enviadosNoMes, gasto })
     } catch (e) {
       return respostaDeErro(e)
     }

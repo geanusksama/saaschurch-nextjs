@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-28T00:06:23.384Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:24:56.130Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 32aeeaa948f71d98
+-- Baseline 3722a19e8d96f01f
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -3904,6 +3904,25 @@ create table if not exists "public"."meta_app_config" (
   "conexao_liberada" boolean default false not null,
   "atualizado_por" uuid,
   "atualizado_em" timestamp(6) with time zone default now() not null
+);
+
+create table if not exists "public"."meta_precos" (
+  "categoria" text not null,
+  "moeda" text not null,
+  "preco" numeric(12,6) not null,
+  "vigencia" date,
+  "atualizado_por" uuid,
+  "atualizado_em" timestamp(6) with time zone default now() not null
+);
+
+create table if not exists "public"."meta_whatsapp_cobrancas" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "meta_message_id" text not null,
+  "categoria" text not null,
+  "billable" boolean not null,
+  "entregue_em" timestamp(6) with time zone not null,
+  "criado_em" timestamp(6) with time zone default now() not null
 );
 
 create table if not exists "public"."meta_whatsapp_conexoes" (

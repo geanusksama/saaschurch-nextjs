@@ -5,7 +5,7 @@ import { seedJourneySteps } from '@/lib/pastoralJourneyService'
 import { exigirPermissao } from '@/lib/permissoes/servidor'
 import { campoEIgreja } from '@/lib/meta/depsJornada'
 import { etapasAtivasSemModelo, MSG_ETAPAS_SEM_MODELO } from '@/lib/meta/jornadaOficial'
-import { previsaoMensal } from '@/lib/meta/tetoMensal'
+import { previsaoMensal, previsaoPorCategoria } from '@/lib/meta/tetoMensal'
 
 const PERM_OFICIAL = 'whatsapp_oficial.campanha.enviar'
 
@@ -50,13 +50,19 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     // estimativa do mês quando o cronograma usa o número oficial (cobrado pela Meta)
     const idsInst = (instanceLinks ?? []).map(l => l.instance_id)
     let previsao: number | null = null
+    let previsaoCategorias: Record<string, number> | null = null
     if (idsInst.length) {
       const { data: oficiais } = await supabaseAdmin.from('whatsapp_instances').select('id').in('id', idsInst).eq('provider', 'meta')
-      if (oficiais?.length) previsao = await previsaoMensal({ id })
+      if (oficiais?.length) {
+        previsao = await previsaoMensal({ id })
+        // o valor estimado é um extra: se falhar, a previsão em mensagens segue como antes
+        previsaoCategorias = await previsaoPorCategoria({ id }).catch(() => null)
+      }
     }
 
     return NextResponse.json({
       previsaoMensal: previsao,
+      previsaoPorCategoria: previsaoCategorias,
       journey,
       steps: (steps ?? []).map(step => ({
         ...step,

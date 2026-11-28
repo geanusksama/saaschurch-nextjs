@@ -93,6 +93,31 @@ export async function previsaoMensal(jornada: { id: string }, agora: Date = new 
   return count ?? 0
 }
 
+/**
+ * Mesma previsão, separada pela categoria do modelo de cada etapa (para estimar o valor).
+ * Etapa sem modelo não entra (o cronograma oficial nem a liga sem modelo).
+ */
+export async function previsaoPorCategoria(jornada: { id: string }, agora: Date = new Date()): Promise<Record<string, number>> {
+  const { supabaseAdmin } = await import('../supabase-admin')
+  const { prisma } = await import('../prisma')
+  const { data: etapas } = await supabaseAdmin
+    .from('pastoral_journey_steps').select('id, meta_modelo_id').eq('journey_id', jornada.id).not('meta_modelo_id', 'is', null).limit(200)
+  const ids = [...new Set((etapas ?? []).map((e: { meta_modelo_id: string }) => e.meta_modelo_id))]
+  if (!ids.length) return {}
+  const modelos = await prisma.metaWhatsappModelo.findMany({ where: { id: { in: ids } }, select: { id: true, categoria: true }, take: 200 })
+  const categoria = new Map(modelos.map((m) => [m.id, m.categoria.toUpperCase()]))
+  const fim = inicioDoProximoMes(agora).toISOString()
+  const saida: Record<string, number> = {}
+  const contagens = await Promise.all((etapas ?? []).map(async (e: { id: string; meta_modelo_id: string }) => {
+    const { count } = await supabaseAdmin
+      .from('pastoral_journey_sends').select('id', { count: 'exact', head: true })
+      .eq('journey_id', jornada.id).eq('step_id', e.id).eq('status', 'pending').lt('scheduled_at', fim)
+    return [categoria.get(e.meta_modelo_id), count ?? 0] as const
+  }))
+  for (const [cat, n] of contagens) if (cat && n) saida[cat] = (saida[cat] ?? 0) + n
+  return saida
+}
+
 /** Grava o teto na conexão do campo. false = o campo não tem conexão. */
 export async function gravarTetoDoCampo(campoId: string, teto: number | null): Promise<boolean> {
   const { prisma } = await import('../prisma')

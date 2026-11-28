@@ -9,6 +9,7 @@ import { normalizarTelefoneBR, ehPedidoDeSair, primeiroNome, deduplicarPorTelefo
 
 import { sugerirModelo } from '../src/lib/meta/sugestaoModelo.ts'
 import { podeEnviarNoMes, inicioDoMes, inicioDoProximoMes, chaveDoMes, lerTeto } from '../src/lib/meta/tetoMensal.ts'
+import { estimarCusto, formatarValor, gastoDoMes, moedaDosPrecos, textoEstimativa } from '../src/lib/meta/custo.ts'
 import { enviarEtapaDaJornada, separarTravados, etapasAtivasSemModelo, validarEtapaDoCronogramaOficial, MSG_LIMITE_JORNADA, MSG_NAO_CONFIRMADO_JORNADA, modeloServeParaJornada, variaveisDaJornada, dataBrasilia, MSG_ETAPA_SEM_MODELO } from '../src/lib/meta/jornadaOficial.ts'
 
 const CHAVE = 'a'.repeat(64)
@@ -2298,4 +2299,99 @@ test('SAIR: outro erro ⇒ aguardar (não envia) e alerta envio_pausado do campo
   assert.match(d.alertas[0][1], /^\[lista-sair \d{4}-\d{2}-\d{2}\]$/)
   assert.match(d.alertas[0][2], /Não foi possível conferir a lista de quem pediu para sair; os envios da Z-API deste campo estão aguardando\./)
   assert.equal(ehErroDeTabelaAusente(new Error('x')), false)
+})
+
+// ---------- Task 8b: custo claro (tabela de preços, valor estimado, medidor do mês) ----------
+const PRECOS_8B = [{ categoria: 'UTILITY', moeda: 'USD', preco: 0.0068 }, { categoria: 'AUTHENTICATION', moeda: 'USD', preco: 0.0068 }]
+
+test('custo: 296 × 0,0068 = 2,0128; sem preço ⇒ semPreco; moeda sem linha ⇒ semPreco', () => {
+  const r = estimarCusto(296, 'UTILITY', PRECOS_8B, 'USD')
+  assert.ok('valor' in r)
+  assert.ok(Math.abs(r.valor - 2.0128) < 1e-9)
+  assert.equal(r.moeda, 'USD')
+  assert.deepEqual(estimarCusto(10, 'MARKETING', PRECOS_8B, 'USD'), { semPreco: true })
+  assert.deepEqual(estimarCusto(10, 'UTILITY', PRECOS_8B, 'BRL'), { semPreco: true })
+  assert.deepEqual(estimarCusto(10, 'UTILITY', [], 'USD'), { semPreco: true })
+})
+
+test('custo: formatarValor pt-BR com US$ e R$', () => {
+  assert.equal(formatarValor(2.0128, 'USD').replace(/ /g, ' '), 'US$ 2,01')
+  assert.equal(formatarValor(2.0128, 'BRL').replace(/ /g, ' '), 'R$ 2,01')
+})
+
+test('custo: texto fixo da estimativa e texto sem preço', () => {
+  const t = textoEstimativa(296, 'UTILITY', PRECOS_8B, 'USD').replace(/ /g, ' ')
+  assert.equal(t, 'Valor estimado: US$ 2,01 (296 mensagens de UTILITY). Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues.')
+  assert.equal(textoEstimativa(5, 'MARKETING', PRECOS_8B, 'USD'), 'Preço desta categoria não configurado — o master pode preencher em Meta Oficial → App.')
+  assert.equal(moedaDosPrecos(PRECOS_8B), 'USD')
+  assert.equal(moedaDosPrecos([]), 'USD')
+})
+
+function depsCobranca() {
+  const cobradas = new Map() // wamid -> linha (único, como o índice do banco)
+  const deps = {
+    conexoes: { buscarPorPhoneNumberId: async (pn) => (pn === 'PN1' ? { campoId: 'c1' } : null) },
+    repo: { buscarEnvioPorWamid: async () => null },
+    cobrancas: {
+      registrar: async (l) => { if (cobradas.has(l.wamid)) return false; cobradas.set(l.wamid, l); return true },
+    },
+  }
+  const gasto = (campo, agora) => gastoDoMes(campo, agora, {
+    contarCobradas: async (c) => {
+      const o = {}
+      for (const l of cobradas.values()) if (l.campoId === c && l.billable) o[l.categoria] = (o[l.categoria] ?? 0) + 1
+      return o
+    },
+    lerPrecos: async () => PRECOS_8B,
+  })
+  return { deps, cobradas, gasto }
+}
+const statusCob = (id, billable, categoria = 'utility', status = 'delivered') => ({
+  entry: [{ changes: [{ value: { metadata: { phone_number_id: 'PN1' }, statuses: [{ id, status, timestamp: '1795000000', pricing: { billable, category: categoria, pricing_model: 'PMP', type: 'regular' } }] } }] }],
+})
+
+test('cobrança: billable=false não conta; só delivered grava; duplicado conta uma vez; sem pricing não grava', async () => {
+  const { deps, cobradas, gasto } = depsCobranca()
+  await processarWebhook(deps, statusCob('w1', true))
+  await processarWebhook(deps, statusCob('w1', true))
+  await processarWebhook(deps, statusCob('w2', false, 'service'))
+  await processarWebhook(deps, statusCob('w3', true, 'utility', 'sent'))
+  await processarWebhook(deps, { entry: [{ changes: [{ value: { metadata: { phone_number_id: 'PN1' }, statuses: [{ id: 'w4', status: 'delivered' }] } }] }] })
+  await processarWebhook(deps, { entry: [{ changes: [{ value: { metadata: { phone_number_id: 'OUTRO' }, statuses: [{ id: 'w5', status: 'delivered', pricing: { billable: true, category: 'utility' } }] } }] }] })
+  assert.deepEqual([...cobradas.keys()].sort(), ['w1', 'w2'])
+  assert.equal(cobradas.get('w1').categoria, 'UTILITY')
+  const g = await gasto('c1', new Date('2026-11-28T12:00:00Z'))
+  assert.equal(g.cobradas, 1)
+  assert.deepEqual(g.porCategoria, { UTILITY: 1 })
+  assert.ok(Math.abs(g.valor - 0.0068) < 1e-9)
+  assert.equal(g.moeda, 'USD')
+})
+
+test('cobrança: erro ao gravar não derruba o webhook (conta em erros) e categoria sem preço ⇒ valor null', async () => {
+  const { deps, gasto, cobradas } = depsCobranca()
+  deps.cobrancas.registrar = async () => { throw new Error('banco') }
+  const r = await processarWebhook(deps, statusCob('w1', true))
+  assert.equal(r.erros, 1)
+  cobradas.set('x', { campoId: 'c1', wamid: 'x', categoria: 'MARKETING', billable: true })
+  const g = await gasto('c1', new Date('2026-11-28T12:00:00Z'))
+  assert.equal(g.cobradas, 1)
+  assert.equal(g.valor, null)
+})
+
+test('preços centrais: igreja lê do base (cache 5 min), base fora do ar usa o último valor, nunca lido ⇒ null', async () => {
+  let cai = false
+  const corpo = { precos: [{ categoria: 'UTILITY', moeda: 'USD', preco: 0.0068, vigencia: '2026-10-01' }, { categoria: 'X', moeda: 'USD', preco: -1 }] }
+  const { c, chamadas, avancar } = mkCentral({
+    env: { META_CONFIG_URL: 'https://base.exemplo.com', META_CONFIG_SYNC_TOKEN: 'tok' },
+    fetch: async (url, init) => { chamadas.push({ url, init }); if (cai) throw new Error('fora'); return new Response(JSON.stringify(corpo)) },
+  })
+  const p = await c.lerPrecos()
+  assert.deepEqual(p, [{ categoria: 'UTILITY', moeda: 'USD', preco: 0.0068, vigencia: '2026-10-01' }])
+  await c.lerPrecos()
+  assert.equal(chamadas.length, 1)
+  cai = true
+  avancar(TTL_CACHE_MS + 1)
+  assert.equal((await c.lerPrecos())[0].preco, 0.0068)
+  const novo = mkCentral({ env: { META_CONFIG_URL: 'https://base.exemplo.com', META_CONFIG_SYNC_TOKEN: 'tok' }, fetch: async () => { throw new Error('fora') } })
+  assert.equal(await novo.c.lerPrecos(), null)
 })

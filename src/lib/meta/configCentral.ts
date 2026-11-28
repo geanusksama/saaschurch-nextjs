@@ -24,12 +24,31 @@ export type LinhaConfigCentral = {
   conexaoLiberada: boolean
 }
 
+/** Linha da tabela de preços central (a vigência vai como AAAA-MM-DD). */
+export type PrecoCentral = { categoria: string; moeda: string; preco: number; vigencia: string | null }
+
+export function lerPrecosDoPayload(j: unknown): PrecoCentral[] | null {
+  const l = j && typeof j === 'object' ? (j as { precos?: unknown }).precos : null
+  if (!Array.isArray(l)) return null
+  const out: PrecoCentral[] = []
+  for (const x of l.slice(0, 100)) {
+    if (!x || typeof x !== 'object') continue
+    const o = x as Record<string, unknown>
+    const preco = Number(o.preco)
+    if (typeof o.categoria !== 'string' || typeof o.moeda !== 'string' || !Number.isFinite(preco) || preco <= 0) continue
+    out.push({ categoria: o.categoria, moeda: o.moeda, preco, vigencia: typeof o.vigencia === 'string' ? o.vigencia : null })
+  }
+  return out
+}
+
 export type DepsCentral = {
   env: Record<string, string | undefined>
   fetch: typeof fetch
   agora: () => number
   lerLinha: () => Promise<LinhaConfigCentral | null>
   decifrar: (cifrado: string, chaveHex: string) => string
+  /** Tabela de preços do banco (só no base). */
+  lerPrecos?: () => Promise<PrecoCentral[]>
 }
 
 export const TTL_CACHE_MS = 5 * 60 * 1000
@@ -116,7 +135,36 @@ export function criarConfigCentral(deps: DepsCentral) {
     }
   }
 
-  return { lerCentral, limparCache: () => { cache = null } }
+  let cachePrecos: { valor: PrecoCentral[]; ate: number } | null = null
+  let pausaPrecosAte = 0
+
+  /**
+   * Tabela de preços. Base: banco. Demais: do base (mesma rota da configuração), cache de 5 min;
+   * base fora do ar ⇒ último valor lido (qualquer idade), senão null ("preço não configurado").
+   */
+  async function lerPrecos(): Promise<PrecoCentral[] | null> {
+    try {
+      if (ehBase(deps.env)) return deps.lerPrecos ? await deps.lerPrecos() : null
+      if (cachePrecos && deps.agora() < cachePrecos.ate) return cachePrecos.valor
+      if (deps.agora() < pausaPrecosAte) return cachePrecos?.valor ?? null
+      const base = urlBaseCentral(vazio(deps.env.META_CONFIG_URL))
+      const token = vazio(deps.env.META_CONFIG_SYNC_TOKEN)
+      if (!base || !token) return cachePrecos?.valor ?? null
+      const r = await deps.fetch(`${base}/api/meta/app-config`, {
+        headers: { 'x-meta-config-token': token }, signal: AbortSignal.timeout(TIMEOUT_MS), cache: 'no-store',
+      })
+      if (!r.ok) throw new Error(`base respondeu ${r.status}`)
+      const v = lerPrecosDoPayload(await r.json())
+      if (v) cachePrecos = { valor: v, ate: deps.agora() + TTL_CACHE_MS }
+      return v ?? cachePrecos?.valor ?? null
+    } catch (e) {
+      console.error('[meta/config-central] preços indisponíveis, usando o último valor:', (e as Error)?.name)
+      pausaPrecosAte = deps.agora() + PAUSA_APOS_FALHA_MS
+      return cachePrecos?.valor ?? null
+    }
+  }
+
+  return { lerCentral, lerPrecos, limparCache: () => { cache = null; cachePrecos = null } }
 }
 
 /** Mescla: o central vale quando preenchido; o env cobre o resto (reserva). */

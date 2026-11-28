@@ -7,6 +7,7 @@ import { ehBase, mesclarComEnv, validarAtualizacao, visaoPublica } from '@/lib/m
 import { lerLinha, gravarLinha } from '@/lib/meta/configCentralRepo'
 import { configCentral } from '@/lib/meta/configCentralPadrao'
 import { json } from '@/lib/meta/depsConexao'
+import { lerPrecosDoBanco } from '@/lib/meta/custoRepo'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,9 @@ export async function GET(req: NextRequest) {
   if (!ehBase(process.env)) return json({ error: 'Este sistema não é o base da configuração.' }, 404)
   try {
     const c = mesclarComEnv(await configCentral.lerCentral(), process.env)
+    const precos = await lerPrecosDoBanco().catch(() => [])
     return json({
+      precos,
       appId: c.appId, configId: c.configId, graphVersion: c.graphVersion,
       verifyToken: c.verifyToken, appSecret: c.appSecret, conexaoLiberada: c.conexaoLiberada,
     })

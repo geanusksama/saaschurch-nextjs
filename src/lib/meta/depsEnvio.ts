@@ -7,6 +7,7 @@ import * as repo from './envioRepo'
 import * as conexoes from './conexaoRepo'
 import * as modelosRepo from './modelosRepo'
 import { gravarAlertas } from './alertasRepo'
+import { registrarCobranca } from './custoRepo'
 import type { DepsEnvio } from './servicoEnvio'
 
 export { camposComDisparoAtivo } from './envioRepo'
@@ -27,5 +28,6 @@ export async function montarDependenciasEnvio(): Promise<DepsEnvio> {
     chave: config.chaveCifra,
     cifra: { decifrar },
     novoId: () => crypto.randomUUID(),
+    cobrancas: { registrar: registrarCobranca },
   }
 }

@@ -97,7 +97,12 @@ export type NovoEnvio = {
 export type LinhaMembro = { id: string; fullName: string; preferredName: string | null; mobile: string | null; phone: string | null; igrejaNome: string }
 export type LinhaInteressado = { id: string; fullName: string; phone: string | null; igrejaNome: string }
 
-export type EventoStatus = { phoneNumberId: string; wamid: string; status: string; erroCodigo?: number | null; erro?: string | null }
+/** `pricing` do webhook da Meta (só vem em algumas mudanças de status). `entregueEm` = timestamp (s) do evento. */
+export type PricingWebhook = { billable: boolean; categoria: string }
+export type EventoStatus = {
+  phoneNumberId: string; wamid: string; status: string; erroCodigo?: number | null; erro?: string | null
+  pricing?: PricingWebhook | null; timestamp?: number | null
+}
 
 export type DepsEnvio = {
   repo: {
@@ -154,6 +159,13 @@ export type DepsEnvio = {
    * (mesma função da Z-API, agente de IA incluso); status ⇒ whatsapp_messages por
    * metadata->>meta_message_id. Ausente = só envio em massa e SAIR (comportamento de antes).
    */
+  /**
+   * Cobrança por mensagem entregue (pricing do webhook). Idempotente por wamid (ON CONFLICT DO NOTHING);
+   * devolve se gravou. Ausente = não registra (comportamento de antes).
+   */
+  cobrancas?: {
+    registrar(l: { campoId: string; wamid: string; categoria: string; billable: boolean; entregueEm: Date }): Promise<boolean>
+  }
   conversas?: {
     registrar(phoneNumberId: string, msg: unknown, contatos: unknown): Promise<boolean>
     atualizarStatus(ev: StatusConversa): Promise<boolean>
@@ -374,6 +386,10 @@ export function extrairEventosWebhook(payload: unknown): EventosWebhook {
           phoneNumberId: pn, wamid: s.id, status: s.status,
           erroCodigo: e0 && typeof e0.code === 'number' ? e0.code : null,
           erro: e0 ? String(e0.title ?? e0.message ?? '').slice(0, 300) || null : null,
+          // só entram quando vêm no payload (o formato dos demais eventos não muda)
+          ...(ehObj(s.pricing) && typeof s.pricing.billable === 'boolean' && typeof s.pricing.category === 'string' && s.pricing.category
+            ? { pricing: { billable: s.pricing.billable, categoria: s.pricing.category.toUpperCase().slice(0, 40) } } : {}),
+          ...(s.timestamp !== undefined && Number.isFinite(Number(s.timestamp)) ? { timestamp: Number(s.timestamp) } : {}),
         })
       }
       for (const m of Array.isArray(v.messages) ? v.messages : []) {
@@ -758,6 +774,15 @@ export async function aplicarStatusWebhook(deps: DepsEnvio, ev: EventoStatus): P
   return false
 }
 
+/** Mensagem entregue com `pricing`: registra a cobrança do campo (a Meta cobra só as entregues). */
+export async function registrarCobrancaWebhook(deps: DepsEnvio, ev: EventoStatus): Promise<boolean> {
+  if (!deps.cobrancas || ev.status !== 'delivered' || !ev.pricing || !ev.wamid) return false
+  const dono = await deps.conexoes.buscarPorPhoneNumberId(ev.phoneNumberId)
+  if (!dono) return false
+  const quando = ev.timestamp ? new Date(ev.timestamp * 1000) : new Date(deps.agoraMs ? deps.agoraMs() : Date.now())
+  return deps.cobrancas.registrar({ campoId: dono.campoId, wamid: ev.wamid, categoria: ev.pricing.categoria, billable: ev.pricing.billable, entregueEm: quando })
+}
+
 /** Pedido de SAIR: entra na lista de exclusão do campo e os pendentes desse telefone viram ignorados. */
 export async function registrarSair(deps: DepsEnvio, phoneNumberId: string, waId: string): Promise<boolean> {
   const tel = telefoneDoWaId(waId)
@@ -781,6 +806,7 @@ export async function processarWebhook(
   const falhou = (e: unknown) => { r.erros++; if (r.erros === 1) r.primeiroErro = e }
   for (const s of ev.statuses) {
     try { if (await aplicarStatusWebhook(deps, s)) r.status++ } catch (e) { falhou(e) }
+    try { await registrarCobrancaWebhook(deps, s) } catch (e) { falhou(e) }
   }
   for (const m of ev.mensagens) {
     if (!ehPedidoDeSair(m.texto)) continue
