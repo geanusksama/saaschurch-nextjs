@@ -2,12 +2,12 @@
  * Meta Oficial → Modelos. Lista (tabela no computador, cartões no celular), busca, filtro por situação,
  * atualizar (sincroniza com a Meta), criar, duplicar e excluir com confirmação na própria linha.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, FileText, Loader2, Plus, RefreshCw, Search, Smartphone, Trash2 } from 'lucide-react';
 import { apiBase } from '../../../lib/apiBase';
 import { cabecalhos, lerErro } from '../../../lib/meta/clienteHttp';
 import { ROTULO_STATUS, type RascunhoModelo, type VariavelModelo } from '../../../lib/meta/modelos';
-import { Permissao } from '../../../lib/permissoes/Permissao';
+import { Permissao, usePode } from '../../../lib/permissoes/Permissao';
 import EditorModelo from './EditorModelo';
 
 type Modelo = {
@@ -95,6 +95,23 @@ export default function Modelos({ irPara }: { irPara: (aba: string) => void }) {
 
   const [recarga, setRecarga] = useState(0);
   const carregar = useCallback(() => setRecarga((n) => n + 1), []);
+
+  // Link do Envio em Massa (?aba=modelos&novo=1): abre o editor de modelo já pronto para criar.
+  const pode = usePode();
+  const abriuNovo = useRef(false);
+  useEffect(() => {
+    if (abriuNovo.current || estado !== 'ok' || !conectado) return;
+    let pedido = false;
+    try {
+      pedido = new URLSearchParams(window.location.search).get('novo') === '1';
+    } catch {
+      /* sem URL: não abre sozinho */
+    }
+    if (!pedido) return;
+    abriuNovo.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- abre uma vez, a partir do link
+    if (pode('whatsapp_oficial.modelos.criar')) setEditor({ inicial: null });
+  }, [estado, conectado, pode]);
 
   useEffect(() => {
     let vivo = true;

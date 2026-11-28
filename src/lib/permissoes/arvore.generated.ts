@@ -4674,6 +4674,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/components/app-ui-screens/communication/RelatoriosAtendimento.tsx"
   },
   {
+    "chave": "whatsapp_oficial.campanha.enviar",
+    "rotulo": "Enviar pelo WhatsApp oficial",
+    "herda": "whatsapp_campaigns.create",
+    "arquivo": "src/app-ui/pastoral/PastoralMassSend.tsx"
+  },
+  {
     "chave": "whatsapp_oficial.conexao.conectar",
     "rotulo": "Conectar com a Meta",
     "herda": "whatsapp_oficial.edit",
@@ -4707,7 +4713,7 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "chave": "whatsapp_oficial.modelos.criar",
     "rotulo": "Criar modelo de mensagem",
     "herda": "whatsapp_oficial.modelos.view",
-    "arquivo": "src/app-ui/system/MetaOficial.tsx"
+    "arquivo": "src/app-ui/pastoral/PastoralMassSend.tsx"
   },
   {
     "chave": "whatsapp_oficial.modelos.excluir",

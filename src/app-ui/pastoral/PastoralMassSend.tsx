@@ -35,6 +35,8 @@ import {
   FileSpreadsheet,
   FileText,
   Upload,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { ATTENDANCE_TYPE_LABELS, type AttendanceType } from '../../lib/pastoralKanbanService';
 import { useWhatsAppInstances } from '../../hooks/useWhatsAppInstances';
@@ -104,7 +106,7 @@ interface RecipientRow {
   id: string;
   name: string | null;
   phone: string;
-  status: 'pending' | 'sending' | 'sent' | 'error' | 'cancelled';
+  status: 'pending' | 'sending' | 'sent' | 'error' | 'cancelled' | 'skipped';
   error_message: string | null;
   sent_at: string | null;
 }
@@ -128,6 +130,21 @@ interface CampaignProgress {
     connected: boolean;
     cooldownMs: number;
   }>;
+}
+
+/** Modelo de mensagem do número oficial (Meta); só os aprovados entram na lista. */
+interface ModeloOficial {
+  id: string;
+  nome: string;
+  status: string;
+  componentes: unknown;
+  variaveis: unknown;
+}
+
+/** De onde vem cada variável do modelo: nome da pessoa, nome da igreja ou texto fixo. */
+interface FonteVariavel {
+  tipo: 'nome' | 'igreja' | 'fixo';
+  fixo: string;
 }
 
 const TEMPLATE_VARS = [
@@ -169,6 +186,25 @@ function fmtDuration(totalSeconds: number): string {
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
   if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`;
   return `${s}s`;
+}
+
+function posicoesDoModelo(m: ModeloOficial | undefined): Array<{ posicao: number; tipo: string; exemplo: string }> {
+  if (!m || !Array.isArray(m.variaveis)) return [];
+  return (m.variaveis as Array<{ posicao: number; tipo: string; exemplo: string }>)
+    .filter(v => v && Number.isInteger(v.posicao))
+    .sort((a, b) => a.posicao - b.posicao);
+}
+
+/** Corpo do modelo com {{n}} trocado pelos valores da prévia (posição 0 é o cabeçalho). */
+function textoDoModeloOficial(m: ModeloOficial | undefined, valores: Record<string, string>): string {
+  const lista = Array.isArray(m?.componentes) ? (m?.componentes as Array<{ type?: string; text?: string }>) : [];
+  const texto = (tipo: string) => lista.find(c => c?.type === tipo)?.text ?? '';
+  const trocar = (t: string, corpo: boolean) =>
+    t.replace(/\{\{\s*(\d+)\s*\}\}/g, (_, n: string) => valores[corpo ? n : '0'] ?? '');
+  const cab = texto('HEADER');
+  const corpo = trocar(texto('BODY'), true);
+  const rod = texto('FOOTER');
+  return [cab ? trocar(cab, false) : '', corpo, rod].filter(Boolean).join('\n\n');
 }
 
 function renderPreview(template: string, vars: Record<string, string>): string {
@@ -263,6 +299,19 @@ export default function PastoralMassSend() {
   const { canCreate } = usePermissions(currentProfileType());
   const canSendCampaign = canCreate('whatsapp_campaigns');
   const [selectedInstances, setSelectedInstances] = useState<Set<string>>(new Set());
+
+  // número oficial (Meta): o envio é sempre por modelo aprovado
+  const selectedInstanceList = instances.filter(i => selectedInstances.has(i.id));
+  const isOficial = selectedInstanceList.some(i => i.provider === 'meta');
+  const hasZapi = selectedInstanceList.some(i => i.provider !== 'meta');
+  const misturado = isOficial && hasZapi;
+  const [modelosOficiais, setModelosOficiais] = useState<ModeloOficial[]>([]);
+  const [modelosEstado, setModelosEstado] = useState<'carregando' | 'ok' | 'erro'>('carregando');
+  const [modelosRecarga, setModelosRecarga] = useState(0);
+  const [modeloId, setModeloId] = useState('');
+  const [fontes, setFontes] = useState<Record<string, FonteVariavel>>({});
+  // aceite do risco de banimento ao enviar em massa pela Z-API (só na tela)
+  const [riscoZapiAceito, setRiscoZapiAceito] = useState(false);
 
   // campanha ativa
   const [campaignId, setCampaignId] = useState<string | null>(null);
@@ -503,19 +552,66 @@ export default function PastoralMassSend() {
     await refreshCampaign(id);
   }, [refreshCampaign]);
 
+  useEffect(() => {
+    if (!isOficial) return;
+    let vivo = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/meta/whatsapp/modelos', { headers: authHeaders(), cache: 'no-store' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (!vivo) return;
+        setModelosOficiais(((data.modelos ?? []) as ModeloOficial[]).filter(m => m.status === 'APPROVED'));
+        setModelosEstado('ok');
+      } catch {
+        if (vivo) setModelosEstado('erro');
+      }
+    })();
+    return () => { vivo = false; };
+  }, [isOficial, modelosRecarga]);
+
+  const modeloEscolhido = modelosOficiais.find(m => m.id === modeloId);
+  const variaveisDoModelo = posicoesDoModelo(modeloEscolhido);
+  const variaveisOk = variaveisDoModelo.every(v => {
+    const f = fontes[String(v.posicao)];
+    return !!f && (f.tipo !== 'fixo' || f.fixo.trim().length > 0);
+  });
+  const modeloPronto = !!modeloEscolhido && variaveisOk;
+  const metaVariaveis = (): Record<string, unknown> =>
+    Object.fromEntries(variaveisDoModelo.map(v => {
+      const f = fontes[String(v.posicao)];
+      return [String(v.posicao), f.tipo === 'fixo' ? { fixo: f.fixo.trim() } : f.tipo];
+    }));
+  const avisoOficial = `Serão enviadas ${selected.size} mensagens pelo WhatsApp oficial; cada mensagem é cobrada pela Meta no cartão do campo.`;
+
+  const escolherModelo = (id: string) => {
+    setModeloId(id);
+    const m = modelosOficiais.find(x => x.id === id);
+    setFontes(Object.fromEntries(posicoesDoModelo(m).map(v => [
+      String(v.posicao),
+      { tipo: v.tipo === 'nome' ? 'nome' : v.tipo === 'igreja' ? 'igreja' : 'fixo', fixo: '' } as FonteVariavel,
+    ])));
+  };
+
   const startCampaign = async () => {
-    if (!selectedContacts.length || !message.trim() || !selectedInstances.size || starting) return;
+    if (misturado || starting) return;
+    if (isOficial ? !modeloPronto : !message.trim()) return;
+    if (!selectedContacts.length || !selectedInstances.size) return;
+    if (hasZapi && !riscoZapiAceito) return;
+    if (isOficial && !window.confirm(avisoOficial)) return;
     setStarting(true);
     try {
       const res = await fetch('/api/whatsapp/campaigns', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
-          messageTemplate: message,
+          messageTemplate: isOficial ? undefined : message,
+          metaModeloId: isOficial ? modeloId : undefined,
+          metaVariaveis: isOficial ? metaVariaveis() : undefined,
           intervalSeconds: Math.max(5, intervalSec),
           instanceIds: Array.from(selectedInstances),
-          imageUrl: imageUrl.trim() || undefined,
-          linkUrl: linkUrl.trim() || undefined,
+          imageUrl: isOficial ? undefined : imageUrl.trim() || undefined,
+          linkUrl: isOficial ? undefined : linkUrl.trim() || undefined,
           recipients: selectedContacts.map(c => ({
             source: c.source,
             sourceId: c.sourceId,
@@ -613,9 +709,11 @@ export default function PastoralMassSend() {
     if (status === 'sent') return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
     if (status === 'error') return <span title={error ?? undefined}><XCircle className="w-4 h-4 text-red-500" /></span>;
     if (status === 'sending') return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
+    if (status === 'skipped') return <span title={error ?? 'Pediu para sair'}><XCircle className="w-4 h-4 text-amber-500" /></span>;
     if (status === 'cancelled') return <Square className="w-4 h-4 text-slate-400" />;
     return <Clock className="w-4 h-4 text-slate-400" />;
   };
+
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -966,6 +1064,7 @@ export default function PastoralMassSend() {
           {/* Mensagem */}
           <div className="bg-white rounded-xl border border-slate-200 p-3 flex flex-col gap-2">
             <div className="text-sm font-semibold text-slate-700">Mensagem</div>
+            {!isOficial && (<>
             <textarea
               ref={messageRef}
               value={message}
@@ -1020,6 +1119,105 @@ export default function PastoralMassSend() {
               </div>
             )}
 
+            </>)}
+
+            {isOficial && (
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-slate-600 bg-emerald-50 border border-emerald-100 rounded-lg p-3 leading-relaxed flex gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Pelo WhatsApp oficial, toda mensagem enviada pela igreja segue um modelo aprovado pela Meta. Esse padrão é exigido pela Meta. Escolha um modelo aprovado abaixo ou crie um novo — ele passa pela aprovação da Meta antes de poder ser usado.</span>
+                </div>
+                <div className="flex items-end gap-2">
+                  <div className="flex flex-col gap-1 flex-1 min-w-0">
+                    <label className="text-xs font-medium text-slate-500">Modelo aprovado</label>
+                    <select value={modeloId} onChange={e => escolherModelo(e.target.value)}
+                      className="h-9 px-2 rounded-lg border border-slate-200 text-sm bg-white">
+                      <option value="">{modelosEstado === 'carregando' ? 'Carregando modelos…' : 'Escolha um modelo'}</option>
+                      {modelosOficiais.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                    </select>
+                  </div>
+                  <Permissao chave="whatsapp_oficial.modelos.criar" rotulo="Criar modelo de mensagem" herda="whatsapp_oficial.modelos.view">
+                    <button type="button"
+                      onClick={() => window.open('/app-ui/system/meta-oficial?aba=modelos&novo=1', '_blank', 'noopener,noreferrer')}
+                      className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 inline-flex items-center hover:bg-slate-50 whitespace-nowrap">
+                      Criar modelo
+                    </button>
+                  </Permissao>
+                  <button onClick={() => { setModelosEstado('carregando'); setModelosRecarga(n => n + 1); }} title="Atualizar a lista de modelos"
+                    className="h-9 w-9 rounded-lg border border-slate-200 bg-white inline-flex items-center justify-center hover:bg-slate-50">
+                    <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                </div>
+                {modelosEstado === 'erro' && (
+                  <div className="text-xs text-red-600">Não foi possível carregar os modelos. Confira se o número oficial está conectado e tente atualizar.</div>
+                )}
+                {modelosEstado === 'ok' && !modelosOficiais.length && (
+                  <div className="text-xs text-slate-500">Nenhum modelo aprovado ainda. Crie um modelo e aguarde a aprovação da Meta.</div>
+                )}
+                {modeloEscolhido && variaveisDoModelo.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="text-xs font-medium text-slate-500">Valores das variáveis</div>
+                    {variaveisDoModelo.map(v => {
+                      const f = fontes[String(v.posicao)] ?? { tipo: 'fixo', fixo: '' };
+                      return (
+                        <div key={v.posicao} className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono text-slate-500 w-10 flex-shrink-0">{`{{${v.posicao}}}`}</span>
+                          <select value={f.tipo}
+                            onChange={e => setFontes(prev => ({ ...prev, [String(v.posicao)]: { ...f, tipo: e.target.value as FonteVariavel['tipo'] } }))}
+                            className="h-9 px-2 rounded-lg border border-slate-200 text-sm bg-white">
+                            <option value="nome">Nome da pessoa</option>
+                            <option value="igreja">Nome da igreja</option>
+                            <option value="fixo">Texto fixo</option>
+                          </select>
+                          {f.tipo === 'fixo' && (
+                            <input value={f.fixo} maxLength={200} placeholder={v.exemplo || 'Texto'}
+                              onChange={e => setFontes(prev => ({ ...prev, [String(v.posicao)]: { ...f, fixo: e.target.value } }))}
+                              className="flex-1 min-w-0 h-9 px-2.5 rounded-lg border border-slate-200 text-sm" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {modeloEscolhido && (
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-100 rounded-tl-none p-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
+                    <span className="font-semibold text-slate-400 text-xs block mb-0.5">
+                      Prévia{previewContact ? ` · ${previewContact.name}` : ''}
+                    </span>
+                    {textoDoModeloOficial(modeloEscolhido, Object.fromEntries(variaveisDoModelo.map(v => {
+                      const f = fontes[String(v.posicao)];
+                      const valor = !f ? '' : f.tipo === 'nome'
+                        ? (previewContact?.name ?? '').trim().split(/\s+/)[0] ?? ''
+                        : f.tipo === 'igreja'
+                          ? (previewContact?.variables?.igreja ?? previewContact?.church ?? '')
+                          : f.fixo;
+                      return [String(v.posicao), valor || `⟦${v.posicao}?⟧`];
+                    })))}
+                  </div>
+                )}
+                {misturado && (
+                  <div className="text-xs text-red-600">Não misture o número oficial com instâncias Z-API na mesma campanha. Desmarque uma delas.</div>
+                )}
+                {isOficial && !misturado && selected.size > 0 && (
+                  <div className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">{avisoOficial}</div>
+                )}
+              </div>
+            )}
+
+            {hasZapi && !misturado && (
+              <div className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg p-3 leading-relaxed flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <span>Envio em massa pela Z-API não é oficial: enviar muitas mensagens, ou mensagens parecidas em sequência, pode fazer o WhatsApp banir este número. Ao continuar, a igreja assume esse risco.</span>
+                </div>
+                <label className="flex items-center gap-2 font-semibold cursor-pointer">
+                  <input type="checkbox" checked={riscoZapiAceito} onChange={e => setRiscoZapiAceito(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300" />
+                  Estou ciente e assumo o risco
+                </label>
+              </div>
+            )}
+
             {/* intervalo de orquestração (mín. 5 s por instância) */}
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Timer className="w-4 h-4 text-slate-400" />
@@ -1033,15 +1231,25 @@ export default function PastoralMassSend() {
 
             {/* botão único de envio em massa */}
             <div className="flex gap-2">
-              {!isRunning && progress?.status !== 'paused' && (
-                <button onClick={startCampaign}
-                  disabled={starting || !selected.size || !message.trim() || !connectedSelected.length || !canSendCampaign}
-                  title={!canSendCampaign ? 'Sem permissão para enviar campanhas de WhatsApp' : undefined}
-                  className="flex-1 h-9 rounded-lg bg-emerald-600 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-emerald-500 disabled:opacity-50">
-                  {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Iniciar envio em massa ({selected.size})
-                </button>
-              )}
+              {!isRunning && progress?.status !== 'paused' && (isOficial ? (
+                <Permissao chave="whatsapp_oficial.campanha.enviar" rotulo="Enviar pelo WhatsApp oficial" herda="whatsapp_campaigns.create">
+                  <button onClick={startCampaign}
+      disabled={starting || !selected.size || !(isOficial ? modeloPronto : message.trim()) || !connectedSelected.length || !canSendCampaign || misturado || (hasZapi && !riscoZapiAceito)}
+      title={!canSendCampaign ? 'Sem permissão para enviar campanhas de WhatsApp' : undefined}
+      className="flex-1 h-9 rounded-lg bg-emerald-600 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-emerald-500 disabled:opacity-50">
+      {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+      Iniciar envio em massa ({selected.size})
+    </button>
+                </Permissao>
+              ) : (
+                  <button onClick={startCampaign}
+      disabled={starting || !selected.size || !(isOficial ? modeloPronto : message.trim()) || !connectedSelected.length || !canSendCampaign || misturado || (hasZapi && !riscoZapiAceito)}
+      title={!canSendCampaign ? 'Sem permissão para enviar campanhas de WhatsApp' : undefined}
+      className="flex-1 h-9 rounded-lg bg-emerald-600 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-emerald-500 disabled:opacity-50">
+      {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+      Iniciar envio em massa ({selected.size})
+    </button>
+              ))}
               {isRunning && (
                 <button onClick={() => patchCampaign('pause')}
                   className="flex-1 h-9 rounded-lg bg-amber-500 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-amber-400">
@@ -1083,14 +1291,17 @@ export default function PastoralMassSend() {
                     ${connected ? 'border-slate-200 cursor-pointer hover:bg-slate-50' : 'border-slate-100 opacity-50'}`}>
                   <input type="checkbox" disabled={!connected}
                     checked={selectedInstances.has(inst.id)}
-                    onChange={() => setSelectedInstances(prev => {
+                    onChange={() => { setRiscoZapiAceito(false); setSelectedInstances(prev => {
                       const next = new Set(prev);
                       if (next.has(inst.id)) next.delete(inst.id); else next.add(inst.id);
                       return next;
-                    })}
+                    }); }}
                     className="w-4 h-4 rounded border-slate-300" />
                   <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-red-400'}`} />
                   <span className="font-medium text-slate-700 truncate">{inst.name}</span>
+                  {inst.provider === 'meta' && (
+                    <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">Oficial</span>
+                  )}
                   <span className="ml-auto text-[11px] text-slate-400">
                     {inst.phone_number ?? (connected ? 'conectada' : 'offline')}
                   </span>
