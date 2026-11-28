@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     // Get first active connected WhatsApp instance (instancia zero)
     const { data: instance } = await supabaseAdmin
       .from("whatsapp_instances")
-      .select("instance_id, token, client_token")
+      .select("id, provider, instance_id, token, client_token")
       .eq("is_active", true)
       .eq("status", "connected")
       .neq("provider", "meta")

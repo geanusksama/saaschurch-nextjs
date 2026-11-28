@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     const instQuery = supabaseAdmin
       .from('whatsapp_instances')
-      .select('instance_id, token, client_token')
+      .select('id, provider, instance_id, token, client_token')
       .eq('id', conv.instance_id)
     if (user.profileType !== 'master') instQuery.eq('owner_user_id', user.id)
     const { data: instance } = await instQuery.single()

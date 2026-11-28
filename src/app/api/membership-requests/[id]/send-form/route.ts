@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const { data: instance } = await supabaseAdmin
       .from('whatsapp_instances')
-      .select('id, name, instance_id, token, client_token, owner_user_id')
+      .select('id, provider, name, instance_id, token, client_token, owner_user_id')
       .eq('is_active', true)
       .eq('status', 'connected')
     .neq('provider', 'meta') // o espelho do número oficial não tem token Z-API

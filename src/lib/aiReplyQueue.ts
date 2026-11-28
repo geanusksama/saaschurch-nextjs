@@ -257,7 +257,7 @@ export async function processDueReplies(): Promise<number> {
 async function replyToConversation(row: QueueRow): Promise<void> {
   const { data: instance } = await supabaseAdmin
     .from('whatsapp_instances')
-    .select('id, instance_id, token, client_token, status')
+    .select('id, provider, instance_id, token, client_token, status')
     .eq('id', row.instance_id)
     .single()
 

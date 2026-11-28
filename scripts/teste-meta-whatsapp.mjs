@@ -1589,7 +1589,7 @@ test('falha ao sincronizar a instância não derruba a conexão', async () => {
   assert.deepEqual(await desconectar(deps, 'c1'), { conectado: false })
 })
 
-import { dentroDaJanela, enviarLivreMeta, ehInstanciaMeta } from '../src/lib/meta/envioLivre.ts'
+import { dentroDaJanela, enviarLivreMeta, ehInstanciaMeta, variantesTelefoneBR } from '../src/lib/meta/envioLivre.ts'
 
 const H_LIVRE = 3600 * 1000
 const AGORA_LIVRE = new Date('2026-11-27T12:00:00Z')
@@ -1646,4 +1646,14 @@ test('regressão: instância zapi (ou sem provider) não é desviada para a Meta
   assert.equal(ehInstanciaMeta({}), false)
   assert.equal(ehInstanciaMeta({ provider: null }), false)
   assert.equal(ehInstanciaMeta({ provider: 'meta' }), true)
+})
+test('variantesTelefoneBR: com e sem o 9; fora do padrão fica igual', () => {
+  assert.deepEqual(variantesTelefoneBR('5519999990000'), ['5519999990000', '551999990000'])
+  assert.deepEqual(variantesTelefoneBR('551999990000'), ['551999990000', '5519999990000'])
+  assert.deepEqual(variantesTelefoneBR('551932221111'), ['551932221111'])
+  assert.deepEqual(variantesTelefoneBR('14155552671'), ['14155552671'])
+  assert.deepEqual(variantesTelefoneBR('+55 19 99999-0000'), ['5519999990000', '551999990000'])
+})
+test('dentroDaJanela: data futura (relógio fora de hora) conta como dentro', () => {
+  assert.equal(dentroDaJanela(new Date(AGORA_LIVRE.getTime() + 60000), AGORA_LIVRE), true)
 })

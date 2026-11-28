@@ -138,7 +138,7 @@ export async function encaminharParaLideres(params: {
 }): Promise<{ enviados: number; semLider: string[] }> {
   const { data: inst } = await supabaseAdmin
     .from('whatsapp_instances')
-    .select('id, instance_id, token, client_token, owner_user_id, metadata')
+    .select('id, provider, instance_id, token, client_token, owner_user_id, metadata')
     .eq('id', params.instanceId)
     .single()
   if (!inst) return { enviados: 0, semLider: params.dados.interesses }

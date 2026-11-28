@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   // Instancia WhatsApp ativa (mesma regra usada no login do membro)
   const { data: instance } = await supabaseAdmin
     .from('whatsapp_instances')
-    .select('instance_id, token, client_token')
+    .select('id, provider, instance_id, token, client_token')
     .eq('is_active', true)
     .eq('status', 'connected')
     .neq('provider', 'meta') // o espelho do número oficial não tem token Z-API

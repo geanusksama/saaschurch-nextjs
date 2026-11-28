@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   // Get first active WhatsApp instance (system-wide)
   const { data: instance } = await supabaseAdmin
     .from('whatsapp_instances')
-    .select('instance_id, token, client_token')
+    .select('id, provider, instance_id, token, client_token')
     .eq('is_active', true)
     .eq('status', 'connected')
     .neq('provider', 'meta') // o espelho do número oficial não tem token Z-API

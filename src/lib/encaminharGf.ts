@@ -146,7 +146,7 @@ export async function encaminharParaGf(params: {
 }): Promise<{ enviados: number; gf: string | null }> {
   try {
     const [{ data: inst }, { data: conv }, gfs] = await Promise.all([
-      supabaseAdmin.from('whatsapp_instances').select('id, instance_id, token, client_token, owner_user_id').eq('id', params.instanceId).single(),
+      supabaseAdmin.from('whatsapp_instances').select('id, provider, instance_id, token, client_token, owner_user_id').eq('id', params.instanceId).single(),
       supabaseAdmin.from('whatsapp_conversations').select('contact_name, metadata').eq('id', params.conversationId).single(),
       gfsDoCampo(params.campoId),
     ])

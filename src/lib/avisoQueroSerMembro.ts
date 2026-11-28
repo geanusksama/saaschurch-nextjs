@@ -60,7 +60,7 @@ export async function processarAvisosQueroSerMembro(): Promise<number> {
   try {
     const { data: instancias } = await supabaseAdmin
       .from('whatsapp_instances')
-      .select('id, instance_id, token, client_token, owner_user_id, status, metadata')
+      .select('id, provider, instance_id, token, client_token, owner_user_id, status, metadata')
       .eq('is_active', true)
       .eq('status', 'connected')
 

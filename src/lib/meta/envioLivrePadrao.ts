@@ -7,7 +7,7 @@ import { supabaseAdmin } from '../supabase-admin'
 import { criarGraph } from './graph'
 import { decifrar } from './cifra'
 import { lerConfigMeta } from './configMeta'
-import { enviarLivreMeta, type ConteudoLivre, type ResultadoEnvioLivre } from './envioLivre'
+import { enviarLivreMeta, variantesTelefoneBR, type ConteudoLivre, type ResultadoEnvioLivre } from './envioLivre'
 
 /** Resolve o uuid da instância espelho a partir do instance_id ('meta:<phone_number_id>'). */
 async function idDaInstancia(instanceId: string): Promise<string | null> {
@@ -35,10 +35,10 @@ export async function enviarLivreMetaPadrao(
         return { phoneNumberId: c.phoneNumberId, token: decifrar(c.tokenCifrado, cfg.chaveCifra) }
       },
       ultimaRecebidaEm: async (instId, telefone) => {
-        const { data: conv } = await supabaseAdmin.from('whatsapp_conversations').select('id').eq('instance_id', instId).eq('phone', telefone).maybeSingle()
-        if (!conv) return null
+        const { data: convs } = await supabaseAdmin.from('whatsapp_conversations').select('id').eq('instance_id', instId).in('phone', variantesTelefoneBR(telefone))
+        if (!convs?.length) return null
         const { data: msg } = await supabaseAdmin.from('whatsapp_messages').select('created_at')
-          .eq('conversation_id', conv.id).eq('direction', 'inbound').order('created_at', { ascending: false }).limit(1).maybeSingle()
+          .in('conversation_id', convs.map((c) => c.id)).eq('direction', 'inbound').order('created_at', { ascending: false }).limit(1).maybeSingle()
         return msg?.created_at ? new Date(msg.created_at as string) : null
       },
     }, { id }, para, conteudo)

@@ -30,6 +30,7 @@ export const JANELA_MS = 24 * 60 * 60 * 1000
 export function dentroDaJanela(ultimaRecebidaEm: Date | null, agora: Date): boolean {
   if (!ultimaRecebidaEm) return false
   const diff = agora.getTime() - ultimaRecebidaEm.getTime()
+  // Data futura (relógio fora de hora entre servidores): conta como dentro da janela.
   return diff >= 0 ? diff <= JANELA_MS : true
 }
 
@@ -90,4 +91,16 @@ export async function enviarLivreMeta(
 /** Só o espelho do número oficial vai pela Meta; qualquer outra (inclusive sem `provider`) segue Z-API. */
 export function ehInstanciaMeta(i: { provider?: string | null }): boolean {
   return i.provider === 'meta'
+}
+
+/**
+ * Variantes do telefone brasileiro com e sem o 9 de celular após o DDD (a Meta pode entregar
+ * o número sem ele). 55+DDD+9+8 dígitos (13) => [13, 12]; 55+DDD+8 dígitos (12) => [12, 13].
+ * Qualquer outro formato volta como está.
+ */
+export function variantesTelefoneBR(digitos: string): string[] {
+  const d = (digitos || '').replace(/\D/g, '')
+  if (d.length === 13 && d.startsWith('55') && d[4] === '9') return [d, d.slice(0, 4) + d.slice(5)]
+  if (d.length === 12 && d.startsWith('55') && /^[6-9]/.test(d.slice(4))) return [d, d.slice(0, 4) + '9' + d.slice(4)]
+  return [d]
 }
