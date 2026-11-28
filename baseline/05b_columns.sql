@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:40:35.726Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T02:44:22.296Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 696a7ea624163b83
+-- Baseline 7e2902d083a13a9f
 
 -- Colunas: acrescenta o que faltar em tabelas ja existentes
 
@@ -3169,6 +3169,43 @@ alter table "public"."meta_app_config" add column if not exists "app_secret_cifr
 alter table "public"."meta_app_config" add column if not exists "conexao_liberada" boolean default false not null;
 alter table "public"."meta_app_config" add column if not exists "atualizado_por" uuid;
 alter table "public"."meta_app_config" add column if not exists "atualizado_em" timestamp(6) with time zone default now() not null;
+alter table "public"."meta_app_config" add column if not exists "leads_config_id" text;
+alter table "public"."meta_formularios" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."meta_formularios" add column if not exists "campo_id" uuid;
+alter table "public"."meta_formularios" add column if not exists "page_id" text;
+alter table "public"."meta_formularios" add column if not exists "form_id" text;
+alter table "public"."meta_formularios" add column if not exists "nome" text;
+alter table "public"."meta_formularios" add column if not exists "status_meta" text;
+alter table "public"."meta_formularios" add column if not exists "church_id" uuid;
+alter table "public"."meta_formularios" add column if not exists "ativo" boolean default true not null;
+alter table "public"."meta_formularios" add column if not exists "ultimo_cadastro_em" timestamp(6) with time zone;
+alter table "public"."meta_formularios" add column if not exists "atualizado_em" timestamp(6) with time zone default now();
+alter table "public"."meta_paginas" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."meta_paginas" add column if not exists "campo_id" uuid;
+alter table "public"."meta_paginas" add column if not exists "page_id" text;
+alter table "public"."meta_paginas" add column if not exists "page_nome" text;
+alter table "public"."meta_paginas" add column if not exists "token_cifrado" text;
+alter table "public"."meta_paginas" add column if not exists "token_expira_em" timestamp(6) with time zone;
+alter table "public"."meta_paginas" add column if not exists "status" text default 'ativa'::text not null;
+alter table "public"."meta_paginas" add column if not exists "erro_mensagem" text;
+alter table "public"."meta_paginas" add column if not exists "conectado_por" uuid;
+alter table "public"."meta_paginas" add column if not exists "conectado_em" timestamp(6) with time zone default now();
+alter table "public"."meta_paginas" add column if not exists "ultima_leitura_em" timestamp(6) with time zone;
+alter table "public"."meta_potenciais_membros" add column if not exists "id" uuid default gen_random_uuid() not null;
+alter table "public"."meta_potenciais_membros" add column if not exists "campo_id" uuid;
+alter table "public"."meta_potenciais_membros" add column if not exists "lead_id" text;
+alter table "public"."meta_potenciais_membros" add column if not exists "form_id" text;
+alter table "public"."meta_potenciais_membros" add column if not exists "page_id" text;
+alter table "public"."meta_potenciais_membros" add column if not exists "ad_id" text;
+alter table "public"."meta_potenciais_membros" add column if not exists "church_id" uuid;
+alter table "public"."meta_potenciais_membros" add column if not exists "nome" text;
+alter table "public"."meta_potenciais_membros" add column if not exists "telefone" text;
+alter table "public"."meta_potenciais_membros" add column if not exists "email" text;
+alter table "public"."meta_potenciais_membros" add column if not exists "respostas" jsonb;
+alter table "public"."meta_potenciais_membros" add column if not exists "criado_meta_em" timestamp(6) with time zone;
+alter table "public"."meta_potenciais_membros" add column if not exists "recebido_em" timestamp(6) with time zone default now();
+alter table "public"."meta_potenciais_membros" add column if not exists "attendance_id" uuid;
+alter table "public"."meta_potenciais_membros" add column if not exists "situacao" text;
 alter table "public"."meta_precos" add column if not exists "categoria" text;
 alter table "public"."meta_precos" add column if not exists "moeda" text;
 alter table "public"."meta_precos" add column if not exists "preco" numeric(12,6);

@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:40:35.729Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T02:44:22.298Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 696a7ea624163b83
+-- Baseline 7e2902d083a13a9f
 
 -- NOT NULL das colunas sem default.
 -- Falha esperada quando a tabela ja tem linhas com valor nulo:
@@ -730,6 +730,11 @@ alter table "public"."messages" alter column "church_id" set not null;
 alter table "public"."messages" alter column "message_type" set not null;
 alter table "public"."meta_alertas" alter column "tipo" set not null;
 alter table "public"."meta_alertas" alter column "mensagem" set not null;
+alter table "public"."meta_formularios" alter column "campo_id" set not null;
+alter table "public"."meta_paginas" alter column "campo_id" set not null;
+alter table "public"."meta_paginas" alter column "token_cifrado" set not null;
+alter table "public"."meta_potenciais_membros" alter column "campo_id" set not null;
+alter table "public"."meta_potenciais_membros" alter column "situacao" set not null;
 alter table "public"."meta_precos" alter column "categoria" set not null;
 alter table "public"."meta_precos" alter column "moeda" set not null;
 alter table "public"."meta_precos" alter column "preco" set not null;

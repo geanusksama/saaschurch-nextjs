@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:40:35.732Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T02:44:22.302Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 696a7ea624163b83
+-- Baseline 7e2902d083a13a9f
 
 -- Grants para os roles do Supabase
 grant usage on schema "public" to "anon";
@@ -719,6 +719,15 @@ grant delete, insert, references, select, trigger, truncate, update on table "pu
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_app_config" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_app_config" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_app_config" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_formularios" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_formularios" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_formularios" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_paginas" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_paginas" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_paginas" to "service_role";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_potenciais_membros" to "anon";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_potenciais_membros" to "authenticated";
+grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_potenciais_membros" to "service_role";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_precos" to "anon";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_precos" to "authenticated";
 grant delete, insert, references, select, trigger, truncate, update on table "public"."meta_precos" to "service_role";

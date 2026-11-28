@@ -5913,6 +5913,7 @@ model MetaAppConfig {
   id                 Int      @id @default(1)
   appId              String?  @map("app_id")
   esConfigId         String?  @map("es_config_id")
+  leadsConfigId      String?  @map("leads_config_id")
   graphVersion       String?  @map("graph_version")
   webhookVerifyToken String?  @map("webhook_verify_token")
   appSecretCifrado   String?  @map("app_secret_cifrado")
@@ -6053,6 +6054,64 @@ model MetaWhatsappEnvio {
   @@index([disparoId, status])
   @@index([campoId, enviadoEm])
   @@map("meta_whatsapp_envios")
+}
+
+/// Fase 5 (Meta): Pagina do Facebook conectada por campo (token cifrado).
+model MetaPagina {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId         String    @map("campo_id") @db.Uuid
+  pageId          String?   @map("page_id")
+  pageNome        String?   @map("page_nome")
+  tokenCifrado    String    @map("token_cifrado")
+  tokenExpiraEm   DateTime? @map("token_expira_em") @db.Timestamptz(6)
+  status          String    @default("ativa")
+  erroMensagem    String?   @map("erro_mensagem")
+  conectadoPor    String?   @map("conectado_por") @db.Uuid
+  conectadoEm     DateTime? @default(now()) @map("conectado_em") @db.Timestamptz(6)
+  ultimaLeituraEm DateTime? @map("ultima_leitura_em") @db.Timestamptz(6)
+
+  @@unique([campoId, pageId])
+  @@map("meta_paginas")
+}
+
+/// Fase 5 (Meta): formularios de anuncio da Pagina e a igreja de destino.
+model MetaFormulario {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId          String    @map("campo_id") @db.Uuid
+  pageId           String?   @map("page_id")
+  formId           String?   @map("form_id")
+  nome             String?
+  statusMeta       String?   @map("status_meta")
+  churchId         String?   @map("church_id") @db.Uuid
+  ativo            Boolean   @default(true)
+  ultimoCadastroEm DateTime? @map("ultimo_cadastro_em") @db.Timestamptz(6)
+  atualizadoEm     DateTime? @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  @@unique([campoId, formId])
+  @@map("meta_formularios")
+}
+
+/// Fase 5 (Meta): potenciais membros recebidos dos anuncios (situacao: novo|duplicado|sem_telefone).
+model MetaPotencialMembro {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campoId       String    @map("campo_id") @db.Uuid
+  leadId        String?   @map("lead_id")
+  formId        String?   @map("form_id")
+  pageId        String?   @map("page_id")
+  adId          String?   @map("ad_id")
+  churchId      String?   @map("church_id") @db.Uuid
+  nome          String?
+  telefone      String?
+  email         String?
+  respostas     Json?
+  criadoMetaEm  DateTime? @map("criado_meta_em") @db.Timestamptz(6)
+  recebidoEm    DateTime? @default(now()) @map("recebido_em") @db.Timestamptz(6)
+  attendanceId  String?   @map("attendance_id") @db.Uuid
+  situacao      String
+
+  @@unique([campoId, leadId])
+  @@index([campoId, recebidoEm(sort: Desc)])
+  @@map("meta_potenciais_membros")
 }
 
 /// WhatsApp Oficial (Meta): telefones que pediram para sair (SAIR, PARAR...) por campo. Nunca entram em disparo.

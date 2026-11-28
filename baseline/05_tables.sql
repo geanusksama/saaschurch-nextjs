@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:40:35.725Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T02:44:22.294Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 696a7ea624163b83
+-- Baseline 7e2902d083a13a9f
 
 -- Tabelas (colunas, defaults, not null, identity, generated)
 
@@ -3903,7 +3903,53 @@ create table if not exists "public"."meta_app_config" (
   "app_secret_cifrado" text,
   "conexao_liberada" boolean default false not null,
   "atualizado_por" uuid,
-  "atualizado_em" timestamp(6) with time zone default now() not null
+  "atualizado_em" timestamp(6) with time zone default now() not null,
+  "leads_config_id" text
+);
+
+create table if not exists "public"."meta_formularios" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "page_id" text,
+  "form_id" text,
+  "nome" text,
+  "status_meta" text,
+  "church_id" uuid,
+  "ativo" boolean default true not null,
+  "ultimo_cadastro_em" timestamp(6) with time zone,
+  "atualizado_em" timestamp(6) with time zone default now()
+);
+
+create table if not exists "public"."meta_paginas" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "page_id" text,
+  "page_nome" text,
+  "token_cifrado" text not null,
+  "token_expira_em" timestamp(6) with time zone,
+  "status" text default 'ativa'::text not null,
+  "erro_mensagem" text,
+  "conectado_por" uuid,
+  "conectado_em" timestamp(6) with time zone default now(),
+  "ultima_leitura_em" timestamp(6) with time zone
+);
+
+create table if not exists "public"."meta_potenciais_membros" (
+  "id" uuid default gen_random_uuid() not null,
+  "campo_id" uuid not null,
+  "lead_id" text,
+  "form_id" text,
+  "page_id" text,
+  "ad_id" text,
+  "church_id" uuid,
+  "nome" text,
+  "telefone" text,
+  "email" text,
+  "respostas" jsonb,
+  "criado_meta_em" timestamp(6) with time zone,
+  "recebido_em" timestamp(6) with time zone default now(),
+  "attendance_id" uuid,
+  "situacao" text not null
 );
 
 create table if not exists "public"."meta_precos" (

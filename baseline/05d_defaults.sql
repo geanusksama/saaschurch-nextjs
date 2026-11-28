@@ -1,6 +1,6 @@
--- Gerado por scripts/dump-baseline.mjs em 2026-11-28T01:40:35.729Z
+-- Gerado por scripts/dump-baseline.mjs em 2026-11-28T02:44:22.299Z
 -- Origem: saaschurch (estrutura apenas, sem dados de igreja)
--- Baseline 696a7ea624163b83
+-- Baseline 7e2902d083a13a9f
 
 -- DEFAULT das colunas em tabelas que ja existem.
 -- Reafirma o default de todas elas: e idempotente e cobre o caso de um
@@ -1108,6 +1108,14 @@ alter table "public"."meta_alertas" alter column "criado_em" set default now();
 alter table "public"."meta_app_config" alter column "id" set default 1;
 alter table "public"."meta_app_config" alter column "conexao_liberada" set default false;
 alter table "public"."meta_app_config" alter column "atualizado_em" set default now();
+alter table "public"."meta_formularios" alter column "id" set default gen_random_uuid();
+alter table "public"."meta_formularios" alter column "ativo" set default true;
+alter table "public"."meta_formularios" alter column "atualizado_em" set default now();
+alter table "public"."meta_paginas" alter column "id" set default gen_random_uuid();
+alter table "public"."meta_paginas" alter column "status" set default 'ativa'::text;
+alter table "public"."meta_paginas" alter column "conectado_em" set default now();
+alter table "public"."meta_potenciais_membros" alter column "id" set default gen_random_uuid();
+alter table "public"."meta_potenciais_membros" alter column "recebido_em" set default now();
 alter table "public"."meta_precos" alter column "atualizado_em" set default now();
 alter table "public"."meta_whatsapp_cobrancas" alter column "id" set default gen_random_uuid();
 alter table "public"."meta_whatsapp_cobrancas" alter column "criado_em" set default now();
