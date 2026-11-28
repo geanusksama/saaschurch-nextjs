@@ -15,18 +15,26 @@ export function montarDependenciasJornadaOficial(): Promise<DepsCampanhaOficial>
 export async function alertarEnvioPausadoUmaVez(
   campoId: string, chave: string, mensagem: string, incluirResolvidos: boolean,
 ): Promise<boolean> {
-  // Trava de aviso por (campo, chave) até o fim da transação: dois ticks simultâneos não gravam duas vezes
-  // (sem mudar o schema). Poucas instruções, cabe no limite da transação interativa.
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${campoId + '|' + chave}))`
-    const jaTem = await tx.metaAlerta.findFirst({
-      where: { campoId, tipo: 'envio_pausado', mensagem: { contains: chave }, ...(incluirResolvidos ? {} : { resolvidoEm: null }) },
-      select: { id: true },
-    })
-    if (jaTem) return false
-    await tx.metaAlerta.create({ data: { campoId, tipo: 'envio_pausado', mensagem } })
-    return true
-  })
+  // UMA instrução SQL (sem transação interativa: o pooler leva ~700 ms por ida e volta).
+  if (incluirResolvidos) {
+    // Uma vez por período (inclui resolvidos): o id é derivado de campo|chave, então a chave primária
+    // garante a unicidade de forma atômica, mesmo com dois ticks ao mesmo tempo (sem mudar o schema).
+    const n = await prisma.$executeRaw`
+      INSERT INTO meta_alertas (id, campo_id, tipo, mensagem)
+      VALUES (md5(${campoId + '|' + chave})::uuid, ${campoId}::uuid, 'envio_pausado', ${mensagem})
+      ON CONFLICT (id) DO NOTHING`
+    return n > 0
+  }
+  // Só enquanto houver outro aberto com a mesma chave. Sem trava: numa corrida o pior caso é um aviso
+  // repetido (a instrução é uma só e o tick é um único processo do cron).
+  const n = await prisma.$executeRaw`
+    INSERT INTO meta_alertas (campo_id, tipo, mensagem)
+    SELECT ${campoId}::uuid, 'envio_pausado', ${mensagem}
+    WHERE NOT EXISTS (
+      SELECT 1 FROM meta_alertas
+      WHERE campo_id = ${campoId}::uuid AND tipo = 'envio_pausado' AND resolvido_em IS NULL
+        AND position(${chave} in mensagem) > 0)`
+  return n > 0
 }
 
 /** O cronograma está ligado e usa o número oficial? (estado atual no banco) */
