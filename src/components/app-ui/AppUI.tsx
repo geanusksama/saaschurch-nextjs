@@ -29,7 +29,6 @@ import {
   Crown,
   UserCheck,
   Droplets,
-  GraduationCap,
   HandHeart,
   Cake,
   Building,
@@ -386,8 +385,8 @@ export const appNavigation: NavigationSection[] = [
     section: 'Comunicação',
     items: [
       { name: 'Gestão',               path: '/app-ui/pastoral-kanban',        icon: LayoutGrid,    permKey: 'pastoral_visits' },
-      { name: 'Discipulado',          path: '/app-ui/discipleship-tracking',  icon: GraduationCap,  permKey: 'discipleship' },
-      { name: 'Relatórios Pastorais', path: '/app-ui/pastoral-reports',       icon: BarChart3,     permKey: 'pastoral_reports' },
+      { name: 'WhatsApp Geral',       path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp_inbox' },
+      { name: 'Meta Oficial',         path: '/app-ui/system/meta-oficial',    icon: BadgeCheck,    permKey: 'whatsapp_oficial' },
     ]
   },
   {
@@ -497,9 +496,7 @@ export const appNavigation: NavigationSection[] = [
       { name: 'Configurar Pipelines',  path: '/app-ui/secretariat/pipelines', icon: GitBranch, permKey: 'pipeline_config' },
       { name: 'Importação de Membros', path: '/app-ui/members/import',        icon: UserPlus, permKey: 'member_import' },
       { name: 'Contatos / Leads',      path: '/app-ui/contacts',              icon: Contact,  permKey: 'crm_leads' },
-      { name: 'WhatsApp Geral',        path: '/app-ui/communication/whatsapp-inbox', icon: MessageCircle, permKey: 'whatsapp_inbox' },
       { name: 'WhatsApp Instâncias',   path: '/app-ui/system/whatsapp',       icon: Smartphone, permKey: 'whatsapp_instances' },
-      { name: 'Meta Oficial', path: '/app-ui/system/meta-oficial', icon: BadgeCheck, permKey: 'whatsapp_oficial' },
       { name: 'Senha dos Campos',      path: '/app-ui/system/campo-senhas', icon: Lock,     permKey: 'campo_passwords' },
       { name: 'Log de Auditoria',      path: '/app-ui/system/audit-log',    icon: FileText, permKey: 'audit_log' },
       { name: 'Integrações',           path: '/app-ui/system/integrations', icon: Plug,     permKey: 'integrations' },
