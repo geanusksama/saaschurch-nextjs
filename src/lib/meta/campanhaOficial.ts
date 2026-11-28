@@ -47,6 +47,31 @@ export function validarCampanhaOficial(entrada: {
   return { ok: true }
 }
 
+/** Só as posições do próprio modelo: chaves extras vindas do cliente não vão para o banco. */
+export function variaveisDoModelo(
+  variaveis: Record<string, unknown>, posicoes: Array<{ posicao: number }>,
+): Record<string, unknown> {
+  const saida: Record<string, unknown> = {}
+  for (const { posicao } of posicoes) {
+    const f = variaveis[String(posicao)]
+    saida[String(posicao)] = ehObj(f) ? { fixo: String(f.fixo).trim() } : f
+  }
+  return saida
+}
+
+/**
+ * A campanha pode ser vista/controlada neste campo? Campanha Z-API (sem meta_modelo_id) não muda;
+ * a oficial só vale no campo do seu número oficial (outro campo ⇒ tratar como 404).
+ */
+export function campanhaVisivelNoCampo(
+  campanha: { meta_modelo_id?: string | null },
+  campoDaInstancia: string | null,
+  campoAtivo: string | null | undefined,
+): boolean {
+  if (!campanha.meta_modelo_id) return true
+  return !!campoAtivo && !!campoDaInstancia && campoDaInstancia === campoAtivo
+}
+
 type Destinatario = { name: string | null; variables: Record<string, string> }
 
 /** Parâmetros do cabeçalho (posição 0) e do corpo (posições >= 1, em ordem), reaproveitando montarParametros. */

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getCampaignProgress } from '@/lib/whatsappCampaignService'
+import { barrarCampanhaOficial } from '@/lib/meta/campanhaOficialAcesso'
 
 async function loadCampaign(id: string, user: { id: string | null; profileType: string }) {
   let query = supabaseAdmin.from('whatsapp_campaigns').select('*').eq('id', id)
@@ -16,6 +17,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const { id } = await ctx.params
     const campaign = await loadCampaign(id, user)
     if (!campaign) return NextResponse.json({ error: 'Campanha não encontrada' }, { status: 404 })
+    const barrada = await barrarCampanhaOficial(user, campaign)
+    if (barrada) return barrada
 
     const [progress, recipientsRes] = await Promise.all([
       getCampaignProgress(id),
@@ -37,6 +40,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     const { id } = await ctx.params
     const campaign = await loadCampaign(id, user)
     if (!campaign) return NextResponse.json({ error: 'Campanha não encontrada' }, { status: 404 })
+    const barrada = await barrarCampanhaOficial(user, campaign, { exigirEnvio: (await req.clone().json().catch(() => ({})))?.action === 'resume' })
+    if (barrada) return barrada
 
     const { action } = await req.json().catch(() => ({}))
 
@@ -77,6 +82,8 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
     const { id } = await ctx.params
     const campaign = await loadCampaign(id, user)
     if (!campaign) return NextResponse.json({ error: 'Campanha não encontrada' }, { status: 404 })
+    const barrada = await barrarCampanhaOficial(user, campaign)
+    if (barrada) return barrada
     if (campaign.status === 'running') {
       return NextResponse.json({ error: 'Cancele a campanha antes de excluir' }, { status: 400 })
     }

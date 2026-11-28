@@ -1659,7 +1659,7 @@ test('dentroDaJanela: data futura (relógio fora de hora) conta como dentro', ()
 })
 
 // ---------- Envio em Massa com modelo (campanha pelo número oficial) ----------
-import { validarCampanhaOficial, parametrosDoDestinatario, parametrosDaMensagem, textoDoModelo, enviarModeloDaCampanha, restanteDoDia } from '../src/lib/meta/campanhaOficial.ts'
+import { validarCampanhaOficial, parametrosDoDestinatario, parametrosDaMensagem, textoDoModelo, enviarModeloDaCampanha, restanteDoDia, campanhaVisivelNoCampo, variaveisDoModelo } from '../src/lib/meta/campanhaOficial.ts'
 
 const CAMPO_A = 'campo-a'
 const modeloOk = { status: 'APPROVED', campoId: CAMPO_A, variaveis: [{ posicao: 1 }, { posicao: 2 }] }
@@ -1756,4 +1756,17 @@ test('enviarModeloDaCampanha: modelo não aprovado ou sem conexão pausa; qualid
   assert.equal((await enviarModeloDaCampanha(depsCamp({ modelo: async () => ({ nome: 'a', idioma: 'pt_BR', status: 'PAUSED', componentes: [] }) }).d, entCamp())).tipo, 'pausar')
   assert.equal((await enviarModeloDaCampanha(depsCamp({ conexao: async () => { throw new Error('sem') } }).d, entCamp())).tipo, 'pausar')
   assert.equal((await enviarModeloDaCampanha(depsCamp({ lerStatus: async () => ({ qualidade: 'RED', limiteDiario: 'TIER_250' }) }).d, entCamp())).tipo, 'pausar')
+})
+
+test('campanhaVisivelNoCampo: oficial só no campo do número; Z-API não muda', () => {
+  assert.equal(campanhaVisivelNoCampo({ meta_modelo_id: 'm' }, CAMPO_A, CAMPO_A), true)
+  assert.equal(campanhaVisivelNoCampo({ meta_modelo_id: 'm' }, 'outro', CAMPO_A), false)
+  assert.equal(campanhaVisivelNoCampo({ meta_modelo_id: 'm' }, null, CAMPO_A), false)
+  assert.equal(campanhaVisivelNoCampo({ meta_modelo_id: 'm' }, CAMPO_A, null), false)
+  assert.equal(campanhaVisivelNoCampo({ meta_modelo_id: null }, 'outro', CAMPO_A), true)
+  assert.equal(campanhaVisivelNoCampo({}, null, undefined), true)
+})
+test('variaveisDoModelo: só as posições do modelo, texto fixo aparado', () => {
+  const r = variaveisDoModelo({ 1: 'nome', 2: { fixo: ' domingo ', lixo: 1 }, 9: 'igreja', x: 'nome' }, [{ posicao: 1 }, { posicao: 2 }])
+  assert.deepEqual(r, { 1: 'nome', 2: { fixo: 'domingo' } })
 })

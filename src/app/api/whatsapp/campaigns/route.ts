@@ -4,7 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assignAgentsRoundRobin, type CampaignRecipientInput } from '@/lib/whatsappCampaignService'
 import { getAccessibleInstanceIds, normalizarNumeroBrasil } from '@/lib/whatsappSendService'
 import { exigirPermissao } from '@/lib/permissoes/servidor'
-import { validarCampanhaOficial } from '@/lib/meta/campanhaOficial'
+import { validarCampanhaOficial, variaveisDoModelo } from '@/lib/meta/campanhaOficial'
+import { camposDasCampanhas } from '@/lib/meta/campanhaOficialAcesso'
+import { campanhaVisivelNoCampo } from '@/lib/meta/campanhaOficial'
 import { buscar as buscarModelo } from '@/lib/meta/modelosRepo'
 
 // GET /api/whatsapp/campaigns — lista campanhas do usuário (master vê todas)
@@ -22,7 +24,11 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ campaigns: data ?? [] })
+    // Campanha pelo número oficial só aparece no campo do número.
+    const lista = data ?? []
+    const campos = await camposDasCampanhas(lista.filter(c => c.meta_modelo_id).map(c => c.id as string))
+    const visiveis = lista.filter(c => campanhaVisivelNoCampo(c, campos.get(c.id as string) ?? null, user.campoId))
+    return NextResponse.json({ campaigns: visiveis })
   })
 }
 
@@ -116,7 +122,8 @@ export async function POST(req: NextRequest) {
         variaveis,
       })
       if (!validacao.ok) return NextResponse.json({ error: validacao.erro }, { status: 400 })
-      oficial = { modeloId: modelo!.id, modeloNome: modelo!.nome, variaveis }
+      const posicoes = Array.isArray(modelo!.variaveis) ? (modelo!.variaveis as Array<{ posicao: number }>) : []
+      oficial = { modeloId: modelo!.id, modeloNome: modelo!.nome, variaveis: variaveisDoModelo(variaveis, posicoes) }
     }
 
     const now = new Date()
