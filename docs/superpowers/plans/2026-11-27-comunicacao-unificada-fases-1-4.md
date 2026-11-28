@@ -120,9 +120,27 @@ Sem isto, todo baseline novo derruba Ibirité (27/11: `must be owner of …`, ap
 - [ ] **Step 2:** FAIL → implementar → PASS.
 - [ ] **Step 3:** Rota de criação: com instância oficial, `exigirPermissao(user, 'whatsapp_oficial.enviar')`, valida, grava `meta_modelo_id`/`meta_variaveis`; campanha cuja instância é de outro campo ⇒ 404.
 - [ ] **Step 4:** Tela (gravação única do `.tsx`): ao escolher instância oficial, a caixa de mensagem vira seletor de modelo aprovado (GET `/api/meta/whatsapp/modelos`), prévia no balão, mapeamento das variáveis (Nome da pessoa / Nome da igreja / Texto fixo), aviso "Serão enviadas N mensagens pelo WhatsApp oficial; cada mensagem é cobrada pela Meta no cartão do campo." antes de disparar; botão de disparo dentro de `<Permissao chave="whatsapp_oficial.enviar" rotulo="Enviar pelo WhatsApp oficial" herda="whatsapp.campaigns">` (conferir no catálogo a chave que hoje decide o botão e usar como `herda`).
+- [ ] **Step 4b (pedido do dono, 27/11):** na mesma gravação da tela:
+  - Instância **Z-API** escolhida: aviso fixo "Envio em massa pela Z-API não é oficial: enviar muitas mensagens, ou mensagens parecidas em sequência, pode fazer o WhatsApp banir este número. Ao continuar, a igreja assume esse risco." + caixa obrigatória "Estou ciente e assumo o risco" (sem marcar, o botão de disparo fica desabilitado; o aceite é gravado em `whatsapp_campaigns.metadata.risco_zapi_aceito_por/em` se a coluna `metadata` existir — conferir; senão, só exigir na tela).
+  - Instância **oficial** escolhida: texto fixo "Pelo WhatsApp oficial, toda mensagem enviada pela igreja segue um modelo aprovado pela Meta. Esse padrão é exigido pela Meta. Escolha um modelo aprovado abaixo ou crie um novo — ele passa pela aprovação da Meta antes de poder ser usado." + lista só de modelos `APPROVED` + botão **Criar modelo** que abre o editor existente (aba Modelos da central, `?aba=modelos&novo=1`) em nova guia, dentro de `<Permissao chave="whatsapp_oficial.modelos.criar" …>`.
 - [ ] **Step 5:** `npm run permissoes:arvore`; `npm run permissoes:check` passa.
 - [ ] **Step 6:** E2E `scripts/e2e-campanha-oficial.mjs`: cria campanha oficial com 2 destinatários (um em exclusão), roda 2 ticks com Graph falso, confere 1 `sent` + 1 `skipped`, conversa e mensagem gravadas; limpa tudo.
 - [ ] **Step 7:** Commit.
+
+### Task 5b: Sugerir modelo com IA (pedido do dono, 27/11)
+
+**Files:**
+- Create: `src/lib/meta/sugestaoModelo.ts`, `src/app/api/meta/whatsapp/modelos/sugerir/route.ts`
+- Modify: editor de modelos da central (localizar o componente da aba Modelos em `src/app-ui/system/metaOficial/` — ler antes), `permissionCatalog.ts` + árvore
+- Test: `scripts/teste-meta-whatsapp.mjs`
+
+**Interfaces — Consumes:** `generateAiText` e `getAiConfig(campoId)` de `src/lib/aiConfig.ts` (ler a assinatura); `validarRascunho`/`normalizarRascunho` de `src/lib/meta/modelos.ts`.
+**Produces:** `sugerirModelo(pedido: { descricao: string; categoria: 'MARKETING' | 'UTILITY'; igrejaNome: string }, gerar: (prompt: string) => Promise<string>): Promise<{ ok: true; rascunho: Rascunho } | { ok: false; erro: string }>` — o texto da IA é pedido em JSON (título, corpo com `{{1}}`… e exemplos, rodapé opcional, até 3 botões), passa por `normalizarRascunho` + `validarRascunho`; inválido ⇒ uma nova tentativa com o erro no prompt, depois `ok: false`.
+
+- [ ] **Step 1:** Testes com `gerar` falso: JSON válido vira rascunho válido; corpo começando com variável é recusado e refeito; resposta que não é JSON ⇒ `ok: false` com mensagem clara.
+- [ ] **Step 2:** FAIL → implementar → PASS.
+- [ ] **Step 3:** Rota `POST …/modelos/sugerir` (`exigirPermissao(user, 'whatsapp_oficial.modelos.criar')`, campo ativo, só devolve o rascunho — **não** cria na Meta). No editor, botão **Sugerir com IA** (campo "O que a mensagem deve dizer?") preenche o formulário para a pessoa revisar e enviar para aprovação como hoje. Chave `whatsapp_oficial.modelos.sugerir` com `herda="whatsapp_oficial.modelos.criar"`.
+- [ ] **Step 4:** Commit.
 
 ### Task 6: Cronograma/jornadas com modelo e teto mensal
 
