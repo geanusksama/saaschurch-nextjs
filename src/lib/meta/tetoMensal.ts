@@ -58,7 +58,16 @@ export async function contarEnviadosNoMes(campoId: string, agora: Date): Promise
     .not('metadata->>meta_message_id', 'is', null)
     .gte('created_at', inicioDoMes(agora).toISOString())
     .in('whatsapp_conversations.instance_id', ids)
-  return count ?? 0
+  // Envio de jornada aceito pela Meta cujo histórico falhou (sem conversa gravada): conta do mesmo jeito.
+  const { count: semHistorico } = await supabaseAdmin
+    .from('pastoral_journey_sends')
+    .select('id', { count: 'exact', head: true })
+    .in('instance_id', ids)
+    .eq('status', 'sent')
+    .not('wa_message_id', 'is', null)
+    .is('conversation_id', null)
+    .gte('sent_at', inicioDoMes(agora).toISOString())
+  return (count ?? 0) + (semHistorico ?? 0)
 }
 
 /** Teto mensal gravado na conexão do campo (null = sem teto). */

@@ -9,7 +9,7 @@ import { normalizarTelefoneBR, ehPedidoDeSair, primeiroNome, deduplicarPorTelefo
 
 import { sugerirModelo } from '../src/lib/meta/sugestaoModelo.ts'
 import { podeEnviarNoMes, inicioDoMes, inicioDoProximoMes, chaveDoMes, lerTeto } from '../src/lib/meta/tetoMensal.ts'
-import { enviarEtapaDaJornada, modeloServeParaJornada, variaveisDaJornada, dataBrasilia, MSG_ETAPA_SEM_MODELO } from '../src/lib/meta/jornadaOficial.ts'
+import { enviarEtapaDaJornada, separarTravados, etapasAtivasSemModelo, validarEtapaDoCronogramaOficial, MSG_LIMITE_JORNADA, MSG_NAO_CONFIRMADO_JORNADA, modeloServeParaJornada, variaveisDaJornada, dataBrasilia, MSG_ETAPA_SEM_MODELO } from '../src/lib/meta/jornadaOficial.ts'
 
 const CHAVE = 'a'.repeat(64)
 
@@ -1663,7 +1663,7 @@ test('dentroDaJanela: data futura (relógio fora de hora) conta como dentro', ()
 })
 
 // ---------- Envio em Massa com modelo (campanha pelo número oficial) ----------
-import { validarCampanhaOficial, parametrosDoDestinatario, parametrosDaMensagem, textoDoModelo, enviarModeloDaCampanha, restanteDoDia, campanhaVisivelNoCampo, variaveisDoModelo } from '../src/lib/meta/campanhaOficial.ts'
+import { validarCampanhaOficial, parametrosDoDestinatario, parametrosDaMensagem, textoDoModelo, enviarModeloDaCampanha, restanteDoDia, criarUsadosEm24h, campanhaVisivelNoCampo, variaveisDoModelo } from '../src/lib/meta/campanhaOficial.ts'
 
 const CAMPO_A = 'campo-a'
 const modeloOk = { status: 'APPROVED', campoId: CAMPO_A, variaveis: [{ posicao: 1 }, { posicao: 2 }] }
@@ -1913,4 +1913,42 @@ test('jornada Z-API: regressão — o remetente recebe os mesmos argumentos e a 
   // instância sem provider (legado) também é Z-API
   const r2 = await enviarEtapaDaJornada(deps, entEtapa({ instancia: { id: 'z2' }, modeloId: null }))
   assert.equal(r2.tipo, 'zapi')
+})
+
+// ---------- Task 6, rodada de correção 1 ----------
+test('usadosEm24h: disparos + campanhas + jornadas somam no mesmo limite do número', async () => {
+  const visto = []
+  const usados = criarUsadosEm24h({
+    disparos: async (c, d) => { visto.push(['d', c, d.getTime()]); return 10 },
+    campanhas: async (i, d) => { visto.push(['c', i, d.getTime()]); return 20 },
+    jornadas: async (i, d) => { visto.push(['j', i, d.getTime()]); return 5 },
+  }, () => 1_000_000_000_000)
+  assert.equal(await usados('campo', 'inst'), 35)
+  assert.deepEqual(visto.map((v) => v[0]).sort(), ['c', 'd', 'j'])
+  assert.ok(visto.every((v) => v[2] === 1_000_000_000_000 - 86_400_000))
+})
+test('jornada no limite diário: motivo fala de jornada, não de campanha', async () => {
+  const e = depsEtapa()
+  e.deps.oficial.usadosEm24h = async () => 250 // vindo de campanhas + jornadas
+  const r = await enviarEtapaDaJornada(e.deps, entEtapa())
+  assert.equal(r.tipo, 'pausar')
+  assert.equal(r.motivo, MSG_LIMITE_JORNADA)
+  assert.doesNotMatch(r.motivo, /campanha/i)
+  assert.equal(e.posts.length, 0)
+})
+test('travados em sending: oficial vira erro (nunca reenvia), Z-API volta para a fila', () => {
+  const prov = new Map([['zi', 'zapi'], ['mi', 'meta'], ['li', null]])
+  const r = separarTravados([
+    { id: '1', instance_id: 'zi' }, { id: '2', instance_id: 'mi' }, { id: '3', instance_id: null }, { id: '4', instance_id: 'li' }, { id: '5', instance_id: 'sumiu' },
+  ], prov)
+  assert.deepEqual(r, { reenfileirar: ['1', '3', '4', '5'], descartar: ['2'] })
+  assert.match(MSG_NAO_CONFIRMADO_JORNADA, /não reenviamos para evitar cobrança em dobro/)
+})
+test('etapas sem modelo e validação do estado resultante do cronograma oficial', () => {
+  assert.equal(etapasAtivasSemModelo([{ is_active: true, meta_modelo_id: null }, { is_active: false, meta_modelo_id: null }, { is_active: true, meta_modelo_id: 'm' }]), 1)
+  const v = (o) => validarEtapaDoCronogramaOficial({ cronogramaOficialAtivo: true, etapaAtiva: true, metaModeloId: null, ...o })
+  assert.match(v({}), /precisa de um modelo aprovado/)          // ativa sem modelo: bloqueia (criar ou limpar)
+  assert.equal(v({ metaModeloId: 'm1' }), null)                  // com modelo: ok
+  assert.equal(v({ etapaAtiva: false }), null)                   // etapa desligada: ok
+  assert.equal(v({ cronogramaOficialAtivo: false }), null)       // Z-API ou desligado: nada muda
 })

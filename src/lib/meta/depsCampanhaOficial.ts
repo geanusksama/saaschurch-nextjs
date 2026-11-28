@@ -8,9 +8,7 @@ import { enviadosDesde, telefonesExcluidos } from './envioRepo'
 import { gravarAlertas } from './alertasRepo'
 import { supabaseAdmin } from '../supabase-admin'
 import { MSG_SEM_CONEXAO_ENVIO } from './servicoEnvio'
-import type { DepsCampanhaOficial } from './campanhaOficial'
-
-const DIA_MS = 24 * 60 * 60 * 1000
+import { criarUsadosEm24h, type DepsCampanhaOficial } from './campanhaOficial'
 
 /** Dependências reais do envio de campanha pelo número oficial. */
 export async function montarDependenciasCampanhaOficial(): Promise<DepsCampanhaOficial> {
@@ -26,19 +24,27 @@ export async function montarDependenciasCampanhaOficial(): Promise<DepsCampanhaO
     lerStatus: (token, phoneNumberId) => lerStatusNumero(graph, token, phoneNumberId),
     excluido: async (campoId, telefone) => (await telefonesExcluidos(campoId, [telefone])).size > 0,
     modelo: async (campoId, id) => modelosRepo.buscar(campoId, id),
-    usadosEm24h: async (campoId, instanciaId) => {
-      const desde = new Date(Date.now() - DIA_MS)
-      const [disparos, campanhas] = await Promise.all([
-        enviadosDesde(campoId, desde),
-        supabaseAdmin
+    usadosEm24h: criarUsadosEm24h({
+      disparos: (campoId, desde) => enviadosDesde(campoId, desde),
+      campanhas: async (instanciaId, desde) => {
+        const r = await supabaseAdmin
           .from('whatsapp_campaign_recipients')
           .select('id', { count: 'exact', head: true })
           .eq('instance_id', instanciaId)
           .eq('status', 'sent')
-          .gte('sent_at', desde.toISOString()),
-      ])
-      return disparos + (campanhas.count ?? 0)
-    },
+          .gte('sent_at', desde.toISOString())
+        return r.count ?? 0
+      },
+      jornadas: async (instanciaId, desde) => {
+        const r = await supabaseAdmin
+          .from('pastoral_journey_sends')
+          .select('id', { count: 'exact', head: true })
+          .eq('instance_id', instanciaId)
+          .eq('status', 'sent')
+          .gte('sent_at', desde.toISOString())
+        return r.count ?? 0
+      },
+    }),
   }
 }
 

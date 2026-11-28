@@ -4,9 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { computeScheduledAt } from '@/lib/pastoralJourneyService'
 import { JOURNEY_PROFILES } from '@/lib/pastoralJourneyDefault'
 import { exigirPermissao } from '@/lib/permissoes/servidor'
-import { campoEIgreja } from '@/lib/meta/depsJornada'
+import { campoEIgreja, cronogramaOficialAtivo } from '@/lib/meta/depsJornada'
 import { buscar as buscarModelo } from '@/lib/meta/modelosRepo'
-import { modeloServeParaJornada } from '@/lib/meta/jornadaOficial'
+import { modeloServeParaJornada, validarEtapaDoCronogramaOficial } from '@/lib/meta/jornadaOficial'
 import type { AuthUser } from '@/lib/auth'
 
 /**
@@ -17,9 +17,10 @@ async function lerModeloDaEtapa(
   body: Record<string, unknown>, journeyId: string, user: AuthUser,
 ): Promise<{ valor?: string | null } | NextResponse> {
   if (body.metaModeloId === undefined) return {}
-  if (body.metaModeloId === null || body.metaModeloId === '') return { valor: null }
+  // limpar o modelo também é configuração do número oficial: mesma permissão
   const negado = await exigirPermissao(user, 'whatsapp_oficial.campanha.enviar')
   if (negado) return negado
+  if (body.metaModeloId === null || body.metaModeloId === '') return { valor: null }
   const { data: j } = await supabaseAdmin.from('pastoral_journeys').select('church_id').eq('id', journeyId).maybeSingle()
   const { campoId } = j ? await campoEIgreja(j.church_id) : { campoId: null }
   if (!campoId || !user.campoId || campoId !== user.campoId) return NextResponse.json({ error: 'Modelo não encontrado' }, { status: 404 })
@@ -48,6 +49,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const body = await req.json().catch(() => ({}))
     const modelo = await lerModeloDaEtapa(body, journeyId, user)
     if (modelo instanceof NextResponse) return modelo
+
+    // cronograma oficial ligado: etapa nova e ativa já nasce com modelo
+    const erroModelo = validarEtapaDoCronogramaOficial({
+      cronogramaOficialAtivo: await cronogramaOficialAtivo(journeyId),
+      etapaAtiva: body.isActive !== false,
+      metaModeloId: modelo.valor ?? null,
+    })
+    if (erroModelo) return NextResponse.json({ error: erroModelo }, { status: 400 })
 
     const { count } = await supabaseAdmin
       .from('pastoral_journey_steps')
@@ -98,6 +107,20 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (!stepId) return NextResponse.json({ error: 'stepId obrigatório' }, { status: 400 })
     const modelo = await lerModeloDaEtapa(body, journeyId, user)
     if (modelo instanceof NextResponse) return modelo
+
+    // estado resultante da etapa num cronograma oficial ligado: ativa exige modelo
+    if (await cronogramaOficialAtivo(journeyId)) {
+      const { data: atual } = await supabaseAdmin
+        .from('pastoral_journey_steps').select('is_active, meta_modelo_id').eq('id', stepId).eq('journey_id', journeyId).maybeSingle()
+      if (atual) {
+        const erroModelo = validarEtapaDoCronogramaOficial({
+          cronogramaOficialAtivo: true,
+          etapaAtiva: body.isActive !== undefined ? !!body.isActive : !!atual.is_active,
+          metaModeloId: modelo.valor !== undefined ? modelo.valor : atual.meta_modelo_id ?? null,
+        })
+        if (erroModelo) return NextResponse.json({ error: erroModelo }, { status: 400 })
+      }
+    }
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (body.position !== undefined) patch.position = Number(body.position)

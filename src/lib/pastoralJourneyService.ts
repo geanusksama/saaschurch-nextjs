@@ -33,7 +33,7 @@ import { adjustDayReference } from '@/lib/pastoralJourneyDayRef'
 import { generateAiText } from '@/lib/aiReplyService'
 import { prisma } from '@/lib/prisma'
 import type { WhatsAppInstance } from '@/types/whatsapp'
-import { enviarEtapaDaJornada, type ResultadoEtapa } from '@/lib/meta/jornadaOficial'
+import { enviarEtapaDaJornada, separarTravados, MSG_NAO_CONFIRMADO_JORNADA, type ResultadoEtapa } from '@/lib/meta/jornadaOficial'
 import { podeEnviarNoMes, contarEnviadosNoMes, lerTetoDoCampo, chaveDoMes } from '@/lib/meta/tetoMensal'
 
 const RATE_LIMIT_MS = 5000 // mínimo absoluto por instância — NUNCA reduzir
@@ -1188,6 +1188,8 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
             )
             await persistOutboundMessage(conversationId, etapa.texto, undefined, { metaMessageId: etapa.wamid })
           } catch (err) {
+            // sem conversa gravada: o envio continua contado no teto do mês (pastoral_journey_sends)
+            conversationId = null
             console.error('[journey] histórico do envio oficial', send.id, err)
           }
           const consumo = instance.campo_id ? consumoDoCampo.get(instance.campo_id) : undefined
@@ -1350,11 +1352,39 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
  */
 export async function requeueStaleSends(): Promise<number> {
   const cutoff = new Date(Date.now() - 5 * 60_000).toISOString()
-  const { data } = await supabaseAdmin
+  const { data: travados } = await supabaseAdmin
     .from('pastoral_journey_sends')
-    .update({ status: 'pending', updated_at: new Date().toISOString() })
+    .select('id, instance_id')
     .eq('status', 'sending')
     .lt('updated_at', cutoff)
-    .select('id')
-  return data?.length ?? 0
+  if (!travados?.length) return 0
+
+  // número oficial: a Meta pode ter enviado — não reenvia (cobraria em dobro)
+  const instIds = [...new Set(travados.map(t => t.instance_id).filter((x): x is string => !!x))]
+  const providers = new Map<string, string | null | undefined>()
+  if (instIds.length) {
+    const { data: insts } = await supabaseAdmin.from('whatsapp_instances').select('id, provider').in('id', instIds)
+    for (const i of insts ?? []) providers.set(i.id, i.provider)
+  }
+  const { reenfileirar, descartar } = separarTravados(travados, providers)
+  const agora = new Date().toISOString()
+
+  if (descartar.length) {
+    await supabaseAdmin
+      .from('pastoral_journey_sends')
+      .update({ status: 'error', error_message: MSG_NAO_CONFIRMADO_JORNADA, updated_at: agora })
+      .in('id', descartar)
+      .eq('status', 'sending')
+  }
+  let voltaram = 0
+  if (reenfileirar.length) {
+    const { data } = await supabaseAdmin
+      .from('pastoral_journey_sends')
+      .update({ status: 'pending', updated_at: agora })
+      .in('id', reenfileirar)
+      .eq('status', 'sending')
+      .select('id')
+    voltaram = data?.length ?? 0
+  }
+  return voltaram
 }

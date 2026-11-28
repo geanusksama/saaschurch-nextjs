@@ -7,7 +7,7 @@
  * pessoa, igreja => nome da igreja, data => data do envio (DD/MM/AAAA, Brasília). Modelo com variável
  * "livre" não serve para jornada (não há de onde tirar o texto).
  */
-import { enviarModeloDaCampanha, type DepsCampanhaOficial, type MapaVariaveis, type ResultadoEnvioOficial } from './campanhaOficial.ts'
+import { enviarModeloDaCampanha, MSG_LIMITE_CAMPANHA, type DepsCampanhaOficial, type MapaVariaveis, type ResultadoEnvioOficial } from './campanhaOficial.ts'
 
 type VariavelBruta = { posicao?: unknown; tipo?: unknown }
 
@@ -80,7 +80,7 @@ export async function enviarEtapaDaJornada(deps: DepsEtapa, e: EntradaEtapa): Pr
   if (!modeloServeParaJornada(modelo.variaveis)) {
     return { tipo: 'erro', mensagem: 'modelo com variável de texto livre não serve para jornada' }
   }
-  return enviarModeloDaCampanha(deps.oficial, {
+  const r = await enviarModeloDaCampanha(deps.oficial, {
     campoId,
     instanciaId: e.instancia.id,
     modeloId: e.modeloId,
@@ -88,4 +88,45 @@ export async function enviarEtapaDaJornada(deps: DepsEtapa, e: EntradaEtapa): Pr
     destinatario: { name: e.name, phone: e.phone, variables: {} },
     igrejaNome: e.igrejaNome,
   })
+  // O limite diário é do número, somando campanhas e jornadas: a mensagem fala de jornada.
+  if (r.tipo === 'pausar' && r.motivo === MSG_LIMITE_CAMPANHA) return { ...r, motivo: MSG_LIMITE_JORNADA }
+  return r
+}
+
+export const MSG_LIMITE_JORNADA = 'O número oficial atingiu o limite diário da Meta; os envios da jornada continuam amanhã.'
+export const MSG_NAO_CONFIRMADO_JORNADA = 'envio não confirmado — não reenviamos para evitar cobrança em dobro'
+
+/**
+ * Envios presos em "sending": Z-API volta para a fila (como sempre); número oficial pode já ter saído,
+ * então vira erro em vez de reenviar (cobrança em dobro).
+ */
+export function separarTravados(
+  linhas: Array<{ id: string; instance_id: string | null }>,
+  providerPorInstancia: Map<string, string | null | undefined>,
+): { reenfileirar: string[]; descartar: string[] } {
+  const reenfileirar: string[] = []
+  const descartar: string[] = []
+  for (const l of linhas) {
+    ;(l.instance_id && providerPorInstancia.get(l.instance_id) === 'meta' ? descartar : reenfileirar).push(l.id)
+  }
+  return { reenfileirar, descartar }
+}
+
+export const MSG_ETAPAS_SEM_MODELO = (n: number) =>
+  `Há ${n} etapa(s) ativa(s) sem modelo aprovado. Escolha o modelo de cada etapa antes de usar o número oficial no cronograma.`
+
+/** Quantas etapas ativas ainda não têm modelo. */
+export function etapasAtivasSemModelo(etapas: Array<{ is_active: boolean; meta_modelo_id: string | null }>): number {
+  return etapas.filter((x) => x.is_active && !x.meta_modelo_id).length
+}
+
+/**
+ * Cronograma oficial ligado: a etapa que ficaria ativa precisa de modelo.
+ * Devolve a mensagem de erro, ou null se pode gravar.
+ */
+export function validarEtapaDoCronogramaOficial(e: {
+  cronogramaOficialAtivo: boolean; etapaAtiva: boolean; metaModeloId: string | null
+}): string | null {
+  if (!e.cronogramaOficialAtivo || !e.etapaAtiva || e.metaModeloId) return null
+  return 'Este cronograma está ligado no número oficial: a etapa ativa precisa de um modelo aprovado. Escolha o modelo ou desative a etapa.'
 }

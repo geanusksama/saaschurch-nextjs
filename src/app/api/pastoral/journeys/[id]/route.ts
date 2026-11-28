@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { seedJourneySteps } from '@/lib/pastoralJourneyService'
 import { exigirPermissao } from '@/lib/permissoes/servidor'
 import { campoEIgreja } from '@/lib/meta/depsJornada'
+import { etapasAtivasSemModelo, MSG_ETAPAS_SEM_MODELO } from '@/lib/meta/jornadaOficial'
 import { previsaoMensal } from '@/lib/meta/tetoMensal'
 
 const PERM_OFICIAL = 'whatsapp_oficial.campanha.enviar'
@@ -72,10 +73,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     const body = await req.json().catch(() => ({}))
 
     // ── número oficial (Meta): só do próprio campo, sem misturar com Z-API, e só com a permissão ──
-    const { data: jornada } = await supabaseAdmin.from('pastoral_journeys').select('church_id').eq('id', id).maybeSingle()
+    const { data: jornada } = await supabaseAdmin.from('pastoral_journeys').select('church_id, is_active').eq('id', id).maybeSingle()
     if (!jornada) return NextResponse.json({ error: 'Cronograma não encontrado' }, { status: 404 })
     let idsDaJornada: string[] | null = Array.isArray(body.instanceIds) ? body.instanceIds : null
-    if (!idsDaJornada && body.isActive === true) {
+    if (!idsDaJornada && body.isActive !== undefined) {
       const { data: links } = await supabaseAdmin.from('pastoral_journey_instances').select('instance_id').eq('journey_id', id)
       idsDaJornada = (links ?? []).map(l => l.instance_id)
     }
@@ -92,16 +93,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         }
         const negado = await exigirPermissao(user, PERM_OFICIAL)
         if (negado) return negado
-        if (body.isActive === true) {
-          const { count: semModelo } = await supabaseAdmin
-            .from('pastoral_journey_steps')
-            .select('id', { count: 'exact', head: true })
-            .eq('journey_id', id)
-            .eq('is_active', true)
-            .is('meta_modelo_id', null)
-          if ((semModelo ?? 0) > 0) {
-            return NextResponse.json({ error: `Há ${semModelo} etapa(s) ativa(s) sem modelo aprovado. Escolha o modelo de cada etapa antes de ligar o cronograma no número oficial.` }, { status: 400 })
-          }
+        // estado RESULTANTE: ligado (no pedido ou já estava) + número oficial ⇒ toda etapa ativa tem modelo
+        if (body.isActive !== undefined ? !!body.isActive : !!jornada.is_active) {
+          const { data: etapas } = await supabaseAdmin
+            .from('pastoral_journey_steps').select('is_active, meta_modelo_id').eq('journey_id', id)
+          const semModelo = etapasAtivasSemModelo(etapas ?? [])
+          if (semModelo > 0) return NextResponse.json({ error: MSG_ETAPAS_SEM_MODELO(semModelo) }, { status: 400 })
         }
       }
     }

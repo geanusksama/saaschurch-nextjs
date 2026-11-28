@@ -141,6 +141,21 @@ export type ResultadoEnvioOficial =
   | { tipo: 'tentar_depois' }
   | { tipo: 'erro'; mensagem: string }
 
+/** Fontes de consumo do número nas últimas 24 h: disparos, campanhas e jornadas somam no mesmo limite da Meta. */
+export type ContadoresUso24h = {
+  disparos(campoId: string, desde: Date): Promise<number>
+  campanhas(instanciaId: string, desde: Date): Promise<number>
+  jornadas(instanciaId: string, desde: Date): Promise<number>
+}
+
+export function criarUsadosEm24h(c: ContadoresUso24h, agora: () => number = Date.now) {
+  return async (campoId: string, instanciaId: string): Promise<number> => {
+    const desde = new Date(agora() - 24 * 60 * 60 * 1000)
+    const [a, b, j] = await Promise.all([c.disparos(campoId, desde), c.campanhas(instanciaId, desde), c.jornadas(instanciaId, desde)])
+    return a + b + j
+  }
+}
+
 export const MSG_LIMITE_CAMPANHA = 'Limite diário do número atingido. Retome a campanha quando o limite liberar.'
 
 export async function enviarModeloDaCampanha(deps: DepsCampanhaOficial, e: EntradaEnvioOficial): Promise<ResultadoEnvioOficial> {
