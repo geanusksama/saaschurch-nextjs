@@ -218,34 +218,36 @@ export default function EditorModelo({
         <div className="flex-1 overflow-y-auto px-3 py-3 md:px-7 md:py-4">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="space-y-4 min-w-0">
-              <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
-                <label htmlFor="mod-ia" className={rotuloCls}>O que a mensagem deve dizer?</label>
-                <textarea
-                  id="mod-ia"
-                  rows={3}
-                  maxLength={500}
-                  className={entrada}
-                  value={pedidoIa}
-                  onChange={(e) => setPedidoIa(e.target.value)}
-                  placeholder="Ex.: convidar a pessoa para o culto de domingo às 18h"
-                />
-                <div className="flex items-center justify-between gap-2">
-                  <p className={dica}>A IA escreve já seguindo as regras da Meta. Você revisa antes de enviar.</p>
-                  <Permissao chave="whatsapp_oficial.modelos.sugerir" rotulo="Sugerir modelo com IA" herda="whatsapp_oficial.modelos.criar">
-                  <button
-                    type="button"
-                    onClick={() => void sugerir()}
-                    disabled={sugerindo || enviando || pedidoIa.trim() === ''}
-                    className="inline-flex h-9 flex-none items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                  >
-                    {sugerindo ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                    {sugerindo ? 'Gerando…' : 'Sugerir com IA'}
-                  </button>
-                  </Permissao>
+              {!inicial && (
+                <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                  <label htmlFor="mod-ia" className={rotuloCls}>O que a mensagem deve dizer?</label>
+                  <textarea
+                    id="mod-ia"
+                    rows={3}
+                    maxLength={500}
+                    className={entrada}
+                    value={pedidoIa}
+                    onChange={(e) => setPedidoIa(e.target.value)}
+                    placeholder="Ex.: convidar a pessoa para o culto de domingo às 18h"
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={dica}>A IA escreve já seguindo as regras da Meta. Você revisa antes de enviar.</p>
+                    <Permissao chave="whatsapp_oficial.modelos.sugerir" rotulo="Sugerir modelo com IA" herda="whatsapp_oficial.modelos.criar">
+                    <button
+                      type="button"
+                      onClick={() => void sugerir()}
+                      disabled={sugerindo || enviando || pedidoIa.trim() === ''}
+                      className="inline-flex h-9 flex-none items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                      {sugerindo ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                      {sugerindo ? 'Gerando…' : 'Sugerir com IA'}
+                    </button>
+                    </Permissao>
+                  </div>
+                  {erroIa && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{erroIa}</p>}
+                  {avisoIa && <p role="status" className="text-xs text-emerald-700 dark:text-emerald-300">{avisoIa}</p>}
                 </div>
-                {erroIa && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{erroIa}</p>}
-                {avisoIa && <p role="status" className="text-xs text-emerald-700 dark:text-emerald-300">{avisoIa}</p>}
-                </div>
+              )}
               {!inicial && (
                 <div>
                   <label htmlFor="mod-titulo" className={rotuloCls}>Título</label>
