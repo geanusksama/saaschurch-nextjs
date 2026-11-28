@@ -2230,42 +2230,72 @@ test('Meta repetição de mensagem com mídia: não baixa de novo nem grava outr
   assert.equal(st.mensagens[0].metadata.meta_media_id, 'MIDF')
 })
 
-import { excluidosDaInstanciaZapi, telefonesExcluidos, ultimos8 } from '../src/lib/meta/exclusoesCampo.ts'
+import { conferirSairZapi, telefonesExcluidosPorFinal8, ehErroDeTabelaAusente, ultimos8 } from '../src/lib/meta/exclusoesCampo.ts'
 
-function depsSair({ campo, gravados }) {
+function depsSair({ campo, gravados, erro }) {
   const consultas = []
+  const alertas = []
   return {
-    consultas,
+    consultas, alertas,
     deps: {
       campoDaInstancia: async () => campo,
-      lerExclusoes: async (campoId, tails) => { consultas.push([campoId, tails]); return (gravados[campoId] ?? []) },
+      lerExclusoes: async (campoId, tails) => { consultas.push([campoId, tails]); if (erro) throw erro; return (gravados?.[campoId] ?? []) },
+      alertar: async (c, chave, msg) => { alertas.push([c, chave, msg]) },
+      avisarSemTabela: () => { alertas.push('semTabela') },
     },
   }
 }
+const excl = async (d, tels, conhecido) => { const r = await conferirSairZapi('inst', tels, d.deps, conhecido); return r }
 
 test('SAIR no oficial: telefone excluído no campo é pulado na Z-API do mesmo campo (últimos 8 dígitos)', async () => {
-  const { deps, consultas } = depsSair({ campo: 'A', gravados: { A: ['5531987654321'] } })
-  const s = await excluidosDaInstanciaZapi('inst', ['(31) 8765-4321', '31911112222'], deps)
-  assert.equal(s.has(ultimos8('+55 31 98765-4321')), true) // com 55 e 9 na frente casa pelos 8 finais
-  assert.equal(s.has(ultimos8('31911112222')), false)
-  assert.equal(consultas.length, 1) // uma consulta só para o lote
+  const d = depsSair({ campo: 'A', gravados: { A: ['5531987654321'] } })
+  const r = await excl(d, ['(31) 8765-4321', '31911112222'])
+  assert.equal(r.tipo, 'ok')
+  assert.equal(r.excluidos.has(ultimos8('+55 31 98765-4321')), true)
+  assert.equal(r.excluidos.has(ultimos8('31911112222')), false)
+  assert.equal(d.consultas.length, 1)
 })
 
 test('SAIR no oficial: exclusão de outro campo não afeta', async () => {
-  const { deps } = depsSair({ campo: 'A', gravados: { B: ['5531987654321'] } })
-  const s = await excluidosDaInstanciaZapi('inst', ['31987654321'], deps)
-  assert.equal(s.size, 0)
+  const d = depsSair({ campo: 'A', gravados: { B: ['5531987654321'] } })
+  assert.equal((await excl(d, ['31987654321'])).excluidos.size, 0)
 })
 
 test('SAIR: instância Z-API sem campo não consulta exclusões', async () => {
-  const { deps, consultas } = depsSair({ campo: null, gravados: { A: ['5531987654321'] } })
-  const s = await excluidosDaInstanciaZapi('inst', ['31987654321'], deps)
-  assert.equal(s.size, 0)
-  assert.equal(consultas.length, 0)
+  const d = depsSair({ campo: null, gravados: { A: ['5531987654321'] } })
+  assert.equal((await excl(d, ['31987654321'])).excluidos.size, 0)
+  assert.equal(d.consultas.length, 0)
 })
 
-test('telefonesExcluidos: sem telefones válidos não consulta', async () => {
+test('SAIR: campo já conhecido na instância não busca o campo de novo', async () => {
+  const d = depsSair({ campo: 'X', gravados: { A: ['5531987654321'] } })
+  d.deps.campoDaInstancia = async () => { throw new Error('não devia buscar') }
+  assert.equal((await excl(d, ['31987654321'], 'A')).excluidos.size, 1)
+})
+
+test('telefonesExcluidosPorFinal8: sem telefones válidos não consulta', async () => {
   let n = 0
-  assert.equal((await telefonesExcluidos('A', ['123', ''], async () => { n++; return [] })).size, 0)
+  assert.equal((await telefonesExcluidosPorFinal8('A', ['123', ''], async () => { n++; return [] })).size, 0)
   assert.equal(n, 0)
+})
+
+test('SAIR: tabela/coluna ausente (P2021, P2022, 42P01, 42703, aninhado em meta) ⇒ sem exclusões, sem alerta', async () => {
+  for (const erro of [{ code: 'P2021' }, { code: 'P2022' }, { code: '42P01' }, { code: 'P2010', meta: { code: '42703' } }]) {
+    assert.equal(ehErroDeTabelaAusente(erro), true)
+    const d = depsSair({ campo: 'A', erro })
+    const r = await excl(d, ['31987654321'])
+    assert.equal(r.tipo, 'ok'); assert.equal(r.excluidos.size, 0)
+    assert.deepEqual(d.alertas, ['semTabela'])
+  }
+})
+
+test('SAIR: outro erro ⇒ aguardar (não envia) e alerta envio_pausado do campo com a mensagem clara', async () => {
+  const d = depsSair({ campo: 'A', erro: new Error('timeout') })
+  const r = await excl(d, ['31987654321'])
+  assert.equal(r.tipo, 'aguardar')
+  assert.equal(d.alertas.length, 1)
+  assert.equal(d.alertas[0][0], 'A')
+  assert.match(d.alertas[0][1], /^\[lista-sair \d{4}-\d{2}-\d{2}\]$/)
+  assert.match(d.alertas[0][2], /Não foi possível conferir a lista de quem pediu para sair; os envios da Z-API deste campo estão aguardando\./)
+  assert.equal(ehErroDeTabelaAusente(new Error('x')), false)
 })

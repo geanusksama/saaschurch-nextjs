@@ -20,7 +20,7 @@ import {
 import { createPipelineCardForSend } from '@/lib/whatsappImportService'
 import type { WhatsAppInstance } from '@/types/whatsapp'
 import { ehInstanciaMeta } from '@/lib/meta/envioLivre'
-import { excluidosDaInstanciaZapi, ultimos8, MOTIVO_PEDIU_PARA_SAIR } from '@/lib/meta/exclusoesCampo'
+import { conferirSairZapi, ultimos8, MOTIVO_PEDIU_PARA_SAIR } from '@/lib/meta/exclusoesCampo'
 import { enviarModeloDaCampanha, type DepsCampanhaOficial } from '@/lib/meta/campanhaOficial'
 
 const RATE_LIMIT_MS = 5000 // mínimo absoluto — NUNCA reduzir, risco de ban do número
@@ -279,15 +279,13 @@ export async function processCampaignTick(
   // SAIR vale para os dois caminhos do campo: quem pediu para sair pelo número oficial
   // não recebe campanha pela Z-API do mesmo campo (instância sem campo: não consulta).
   if (!ehInstanciaMeta(instance)) {
-    let pediuSair = false
-    try {
-      pediuSair = (await excluidosDaInstanciaZapi(instance.id, [String(next.phone)])).has(ultimos8(String(next.phone)))
-    } catch (err) {
-      // sem saber, não envia: tenta de novo daqui a pouco
-      console.error('[campanha] consulta de exclusões', err)
+    const conf = await conferirSairZapi(instance.id, [String(next.phone)], undefined, instance.campo_id)
+    if (conf.tipo === 'aguardar') {
+      // sem saber, não envia: tenta de novo daqui a pouco (o campo é avisado uma vez por dia)
       const progress = await getCampaignProgress(campaignId)
       return { progress, event: null, waitMs: 30_000, done: false }
     }
+    const pediuSair = conf.excluidos.has(ultimos8(String(next.phone)))
     if (pediuSair) return concluirPuladoPorSair(campaign, next, instance)
   }
 

@@ -15,7 +15,7 @@
  * Matriz padrão: src/lib/pastoralJourneyDefault.ts
  */
 
-import { excluidosDaInstanciaZapi, ultimos8, MOTIVO_PEDIU_PARA_SAIR } from '@/lib/meta/exclusoesCampo'
+import { conferirSairZapi, ultimos8, MOTIVO_PEDIU_PARA_SAIR } from '@/lib/meta/exclusoesCampo'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
   sendTextViaZApi,
@@ -895,7 +895,7 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
     let progressed = false
     // SAIR: quem pediu para sair pelo número oficial do campo (últimos 8 dígitos), por instância Z-API,
     // uma consulta por instância a cada leitura da fila (não por envio)
-    const sairPorInstancia = new Map<string, Set<string>>()
+    const sairPorInstancia = new Map<string, Set<string> | 'erro'>()
 
     for (const send of queue) {
       if (Date.now() - startedAt >= maxMs) break
@@ -1037,15 +1037,14 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
       if (!oficial) {
         let excluidos = sairPorInstancia.get(instance.id)
         if (!excluidos) {
-          try {
-            excluidos = await excluidosDaInstanciaZapi(instance.id, queue.map(q => String(q.phone)))
-          } catch (err) {
-            // sem saber, não envia: o envio continua pendente para o próximo tick
-            console.error('[journey] consulta de exclusões', err)
-            summary.deferred++
-            continue
-          }
+          const conf = await conferirSairZapi(instance.id, queue.map(q => String(q.phone)), undefined, instance.campo_id)
+          excluidos = conf.tipo === 'ok' ? conf.excluidos : 'erro'
           sairPorInstancia.set(instance.id, excluidos)
+        }
+        if (excluidos === 'erro') {
+          // sem saber, não envia: continua pendente (o erro vale para a instância nesta leitura da fila)
+          summary.deferred++
+          continue
         }
         if (excluidos.has(ultimos8(String(send.phone)))) {
           // pastoral_journey_sends não tem 'skipped': 'cancelled' é o terminal já usado para "pediu para sair"
