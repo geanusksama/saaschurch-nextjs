@@ -1,11 +1,8 @@
-import { NextRequest, NextResponse, after } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { enqueueReply, drenarQuandoVencer } from '@/lib/aiReplyQueue'
 import type { ZApiWebhookPayload } from '@/types/whatsapp'
 import { parseInbound } from '@/lib/zapiInbound'
-import { prisma } from '@/lib/prisma'
-import { elevenLabsPronta, getElevenLabsConfig } from '@/lib/elevenlabs'
-import { lerRecepcao, mensagemEhDaRecepcao, RECEPCAO_JANELA_HORAS } from '@/lib/recepcaoWhatsapp'
+import { registrarMensagemRecebida } from '@/lib/whatsappRecebida'
 
 // a resposta do agente roda em after(): precisa de tempo além do 200
 export const maxDuration = 60
@@ -63,175 +60,20 @@ export async function POST(req: NextRequest) {
     const phone = (payload.phone ?? '').replace('@s.whatsapp.net', '').replace(/\D/g, '')
     if (!phone) return NextResponse.json({ ok: true })
 
-    // Busca ou cria conversa
-    const { data: existingConv } = await supabaseAdmin
-      .from('whatsapp_conversations')
-      .select('id, unread_count')
-      .eq('instance_id', instance.id)
-      .eq('phone', phone)
-      .single()
-
-    let conversationId: string
-    let currentUnread = 0
-    const conversaNova = !existingConv
-
-    if (existingConv) {
-      conversationId = existingConv.id
-      currentUnread = existingConv.unread_count ?? 0
-    } else {
-      const { data: created } = await supabaseAdmin
-        .from('whatsapp_conversations')
-        .insert({
-          instance_id: instance.id,
-          phone,
-          contact_name: payload.senderName ?? null,
-          owner_user_id: instance.owner_user_id,
-          status: 'open',
-        })
-        .select('id')
-        .single()
-
-      conversationId = created!.id
-    }
-
     // Tipo e conteúdo da mensagem — texto, mídia, localização, contato,
     // resposta de botão/lista, reação, enquete. Ver src/lib/zapiInbound.ts.
     const parsed = parseInbound(payload)
-    const msgType = parsed.type
 
-    const messageId = payload.messageId ?? `synthetic_${Date.now()}_${crypto.randomUUID()}`
-    const preview = parsed.preview
-
-    // Salva mensagem inbound
-    const { data: msgSalva } = await supabaseAdmin.from('whatsapp_messages').insert({
-      conversation_id: conversationId,
-      content: parsed.content,
-      type: msgType,
-      direction: 'inbound',
-      status: 'delivered',
-      sender_name: payload.senderName ?? null,
-      media_url: parsed.mediaUrl,
-      media_mime_type: parsed.mediaMime,
-      metadata: { zapi_message_id: messageId, ...parsed.extra },
-    }).select('created_at').single()
-
-    // Atualiza conversa
-    await supabaseAdmin
-      .from('whatsapp_conversations')
-      .update({
-        last_message: preview,
-        last_message_at: new Date().toISOString(),
-        unread_count: currentUnread + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', conversationId)
-
-    // ── Recepção por QR code ─────────────────────────────────────────────────
-    // O QR da recepção abre o WhatsApp com uma mensagem pronta. Quando ela
-    // chega, a conversa passa para o agente configurado na instância
-    // (metadata.recepcao) — e o bloco abaixo enfileira a resposta normalmente.
-    // Ver src/lib/recepcaoWhatsapp.ts.
-    //
-    // Nunca passa por cima de atendimento em curso: conversa que já tem agente
-    // (Envios, outro fluxo) fica com ele; conversa sem agente só é entregue se
-    // é nova ou se ficou RECEPCAO_JANELA_HORAS sem mensagem — senão é alguém
-    // que a equipe "Assumiu" e que repetiu a frase do QR.
-    //
-    // Com "todasNovas" ligado, a PRIMEIRA mensagem de uma conversa nova também
-    // entrega ao agente, mesmo sem a palavra-chave (quem lê o QR e manda "oi").
-    if (msgType === 'text' || msgType === 'button_reply' || msgType === 'list_reply') {
-      try {
-        const recepcao = lerRecepcao(instance.metadata)
-        const novaSemChave =
-          conversaNova && recepcao.ativo && !!recepcao.agentId && recepcao.todasNovas
-        if (novaSemChave || mensagemEhDaRecepcao(recepcao, parsed.content)) {
-          let entregar = conversaNova
-          const { data: conv } = await supabaseAdmin
-            .from('whatsapp_conversations')
-            .select('ai_agent_id, metadata')
-            .eq('id', conversationId)
-            .single()
-          if (!entregar) {
-            if (!conv?.ai_agent_id) {
-              const desde = new Date(Date.now() - RECEPCAO_JANELA_HORAS * 3_600_000).toISOString()
-              const { count } = await supabaseAdmin
-                .from('whatsapp_messages')
-                .select('id', { count: 'exact', head: true })
-                .eq('conversation_id', conversationId)
-                .gte('created_at', desde)
-              // a própria mensagem que acabou de entrar conta 1
-              entregar = (count ?? 0) <= 1
-            }
-          }
-          if (entregar) {
-            // origem marcada: o agente sabe de onde veio a conversa, e a memória
-            // de um atendimento anterior não vaza para a visita nova
-            const meta: Record<string, unknown> = { ...((conv?.metadata ?? {}) as Record<string, unknown>), origem: 'recepcao_qr' }
-            delete meta.recepcao_estado
-            delete meta.quero_ser_membro
-            // atendimento novo: o agente e o resumo automático leem só daqui
-            // em diante (mensagens de visitas/testes anteriores não entram)
-            meta.recepcao_inicio = msgSalva?.created_at ?? new Date().toISOString()
-            delete meta.resumo_auto_em
-            delete meta.encaminhados
-            await supabaseAdmin
-              .from('whatsapp_conversations')
-              .update({ ai_enabled: true, ai_agent_id: recepcao.agentId, metadata: meta })
-              .eq('id', conversationId)
-          }
-        }
-      } catch (recErr) {
-        console.error('[whatsapp/webhook] recepção por QR falhou', recErr)
-      }
-    }
-
-    // ── Agente de IA: responde automaticamente conversas marcadas ────────────
-    // (ai_enabled + ai_agent_id — atribuídos na aba Envios do módulo em massa)
-    //
-    // A resposta NÃO sai daqui. Entra numa fila com 10-15 s de espera, que é
-    // empurrada a cada mensagem nova e a cada "digitando..." do contato — assim
-    // três mensagens seguidas viram UMA resposta, e nunca respondemos por cima
-    // de quem ainda está escrevendo.
-    // Resposta de botão e de lista também são a pessoa falando: a IA responde
-    // igual, e é o que faz um fluxo com botões continuar sozinho.
-    // Mensagem de voz também: o agente entende pela transcrição (ElevenLabs,
-    // feita na fila) e responde com áudio — ver src/lib/respostaEmAudio.ts.
-    const pedeResposta =
-      ((msgType === 'text' || msgType === 'button_reply' || msgType === 'list_reply') && !!parsed.content) ||
-      (msgType === 'audio' && !!parsed.mediaUrl)
-
-    if (pedeResposta) {
-      try {
-        const { data: conv } = await supabaseAdmin
-          .from('whatsapp_conversations')
-          .select('ai_enabled, ai_agent_id')
-          .eq('id', conversationId)
-          .single()
-
-        // áudio só chama a IA onde a ElevenLabs está ligada para o campo do
-        // agente — sem ela, o comportamento de antes (áudio não responde)
-        let podeResponder = !!(conv?.ai_enabled && conv.ai_agent_id)
-        if (podeResponder && msgType === 'audio') {
-          const agente = await prisma.aiAgent.findFirst({ where: { id: conv!.ai_agent_id! }, select: { campoId: true } })
-          podeResponder = elevenLabsPronta(await getElevenLabsConfig(agente?.campoId ?? null))
-        }
-
-        if (podeResponder) {
-          await enqueueReply({
-            conversationId,
-            instanceId: instance.id,
-            phone,
-            messageId: payload.messageId ?? null,
-          })
-          // responde no tempo certo (10–15 s após a última mensagem) sem
-          // depender do cron: after() segura a função viva depois do 200
-          after(() => drenarQuandoVencer(conversationId))
-        }
-      } catch (aiErr) {
-        // nunca deixar a IA derrubar o webhook (precisa sempre responder 200)
-        console.error('[whatsapp/webhook] enfileiramento da IA falhou', aiErr)
-      }
-    }
+    // Conversa, mensagem, prévia, não lidas, recepção por QR e fila do agente:
+    // função comum com o número oficial (src/lib/whatsappRecebidaNucleo.ts).
+    await registrarMensagemRecebida({
+      instancia: instance,
+      telefone: phone,
+      nomeRemetente: payload.senderName ?? null,
+      mensagem: parsed,
+      idExterno: payload.messageId ?? `synthetic_${Date.now()}_${crypto.randomUUID()}`,
+      chaveId: 'zapi_message_id',
+    })
 
   } catch (err) {
     console.error('[whatsapp/webhook] erro interno', err)

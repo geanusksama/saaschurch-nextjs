@@ -1952,3 +1952,118 @@ test('etapas sem modelo e validação do estado resultante do cronograma oficial
   assert.equal(v({ etapaAtiva: false }), null)                   // etapa desligada: ok
   assert.equal(v({ cronogramaOficialAtivo: false }), null)       // Z-API ou desligado: nada muda
 })
+
+// ---------- Task 7: mensagem recebida (função comum Z-API + oficial) ----------
+import { registrarMensagemRecebidaCom } from '../src/lib/whatsappRecebidaNucleo.ts'
+import { parseInbound } from '../src/lib/zapiInbound.ts'
+
+/** Repositório falso que registra cada gravação, na ordem, como o webhook antigo fazia no Supabase. */
+function depsRecebida({ conversas = [], mensagens = [], aiEnabled = false, agentId = null, audioOk = false, contarDesde = 1 } = {}) {
+  const st = { conversas: conversas.map((c) => ({ ...c })), mensagens: mensagens.map((m) => ({ ...m })), escritas: [], fila: [], drenos: [] }
+  const deps = {
+    agora: () => new Date('2026-11-27T12:00:00.000Z'),
+    async buscarConversa(inst, tel) {
+      const achadas = st.conversas.filter((c) => c.instance_id === inst && c.phone === tel)
+      return achadas.length === 1 ? { id: achadas[0].id, unread_count: achadas[0].unread_count ?? null } : null
+    },
+    async criarConversa(linha) {
+      const id = `conv${st.conversas.length + 1}`
+      st.conversas.push({ id, ...linha, ai_enabled: aiEnabled, ai_agent_id: agentId, metadata: {} })
+      st.escritas.push(['insert whatsapp_conversations', linha])
+      return id
+    },
+    async mensagemExiste(cid, chave, id) {
+      return st.mensagens.some((m) => m.conversation_id === cid && m.metadata?.[chave] === id)
+    },
+    async inserirMensagem(linha) {
+      st.mensagens.push(linha)
+      st.escritas.push(['insert whatsapp_messages', linha])
+      return { created_at: '2026-11-27T12:00:00.500Z' }
+    },
+    async atualizarConversa(id, patch) {
+      Object.assign(st.conversas.find((c) => c.id === id), patch)
+      st.escritas.push(['update whatsapp_conversations', id, patch])
+    },
+    async lerConversaRecepcao(id) { const c = st.conversas.find((x) => x.id === id); return c ? { ai_agent_id: c.ai_agent_id ?? null, metadata: c.metadata ?? {} } : null },
+    async contarMensagensDesde() { return contarDesde },
+    async lerConversaIa(id) { const c = st.conversas.find((x) => x.id === id); return c ? { ai_enabled: c.ai_enabled ?? null, ai_agent_id: c.ai_agent_id ?? null } : null },
+    async audioPodeResponder() { return audioOk },
+    async enfileirarResposta(p) { st.fila.push(p) },
+    drenarDepois(id) { st.drenos.push(id) },
+  }
+  return { deps, st }
+}
+const INST = { id: 'inst1', owner_user_id: 'u1', metadata: {} }
+const zapiTexto = { instanceId: 'Z1', phone: '5519992126683', senderName: 'Maria', messageId: '3EB0ABC', text: { message: 'Olá, paz!' } }
+const entradaZapi = (payload) => ({
+  instancia: INST, telefone: payload.phone, nomeRemetente: payload.senderName ?? null,
+  mensagem: parseInbound(payload), idExterno: payload.messageId ?? 'synthetic_1_x', chaveId: 'zapi_message_id',
+})
+
+test('recebida Z-API (regressão): texto em conversa nova grava exatamente o que o webhook antigo gravava', async () => {
+  const { deps, st } = depsRecebida({ aiEnabled: true, agentId: 'ag1' })
+  assert.equal(await registrarMensagemRecebidaCom(deps, entradaZapi(zapiTexto)), true)
+  // linhas copiadas do webhook antigo (route.ts antes da extração, 4a7f7ef:82-127)
+  assert.deepEqual(st.escritas, [
+    ['insert whatsapp_conversations', { instance_id: 'inst1', phone: '5519992126683', contact_name: 'Maria', owner_user_id: 'u1', status: 'open' }],
+    ['insert whatsapp_messages', {
+      conversation_id: 'conv1', content: 'Olá, paz!', type: 'text', direction: 'inbound', status: 'delivered',
+      sender_name: 'Maria', media_url: null, media_mime_type: null, metadata: { zapi_message_id: '3EB0ABC' },
+    }],
+    ['update whatsapp_conversations', 'conv1', {
+      last_message: 'Olá, paz!', last_message_at: '2026-11-27T12:00:00.000Z', unread_count: 1, updated_at: '2026-11-27T12:00:00.000Z',
+    }],
+  ])
+  assert.deepEqual(st.fila, [{ conversationId: 'conv1', instanceId: 'inst1', phone: '5519992126683', messageId: '3EB0ABC' }])
+  assert.deepEqual(st.drenos, ['conv1'])
+})
+test('recebida Z-API (regressão): conversa existente soma não lida; sem messageId a fila recebe null; sem IA não enfileira', async () => {
+  const { deps, st } = depsRecebida({ conversas: [{ id: 'c9', instance_id: 'inst1', phone: '5519992126683', unread_count: 4 }] })
+  const semId = { ...zapiTexto, messageId: undefined }
+  await registrarMensagemRecebidaCom(deps, entradaZapi(semId))
+  assert.equal(st.escritas[0][1].metadata.zapi_message_id, 'synthetic_1_x')
+  assert.equal(st.escritas[1][2].unread_count, 5)
+  assert.equal(st.fila.length, 0)
+  st.conversas[0].ai_enabled = true; st.conversas[0].ai_agent_id = 'ag1'
+  await registrarMensagemRecebidaCom(deps, entradaZapi(semId))
+  assert.equal(st.fila[0].messageId, null)
+})
+test('recebida Z-API (regressão): mesmo id duas vezes grava duas vezes (como antes — sem checagem na Z-API)', async () => {
+  const { deps, st } = depsRecebida({ conversas: [{ id: 'c9', instance_id: 'inst1', phone: '5519992126683', unread_count: 0 }] })
+  await registrarMensagemRecebidaCom(deps, entradaZapi(zapiTexto))
+  await registrarMensagemRecebidaCom(deps, entradaZapi(zapiTexto))
+  assert.equal(st.mensagens.length, 2)
+})
+test('recebida: áudio só enfileira com ElevenLabs pronta; imagem nunca', async () => {
+  const audio = { ...zapiTexto, text: undefined, audio: { audioUrl: 'https://z/a.ogg', ptt: true } }
+  const conv = [{ id: 'c9', instance_id: 'inst1', phone: '5519992126683', unread_count: 0, ai_enabled: true, ai_agent_id: 'ag1' }]
+  let r = depsRecebida({ conversas: conv })
+  await registrarMensagemRecebidaCom(r.deps, entradaZapi(audio))
+  assert.equal(r.st.fila.length, 0)
+  r = depsRecebida({ conversas: conv, audioOk: true })
+  await registrarMensagemRecebidaCom(r.deps, entradaZapi(audio))
+  assert.equal(r.st.fila.length, 1)
+  r = depsRecebida({ conversas: conv, audioOk: true })
+  await registrarMensagemRecebidaCom(r.deps, entradaZapi({ ...zapiTexto, text: undefined, image: { imageUrl: 'https://z/i.jpg' } }))
+  assert.equal(r.st.fila.length, 0)
+})
+test('recebida: recepção por QR entrega a conversa nova ao agente e marca a origem', async () => {
+  const inst = { ...INST, metadata: { recepcao: { ativo: true, agentId: 'agR', palavraChave: 'quero conhecer', todasNovas: false } } }
+  const { deps, st } = depsRecebida()
+  await registrarMensagemRecebidaCom(deps, { ...entradaZapi({ ...zapiTexto, text: { message: 'Quero conhecer a igreja' } }), instancia: inst })
+  const upd = st.escritas.find((w) => w[0] === 'update whatsapp_conversations' && w[2].ai_agent_id)
+  assert.ok(upd, 'entregou ao agente')
+  assert.equal(upd[2].ai_enabled, true)
+  assert.equal(upd[2].metadata.origem, 'recepcao_qr')
+  assert.equal(upd[2].metadata.recepcao_inicio, '2026-11-27T12:00:00.500Z')
+  assert.equal(st.fila.length, 1)
+})
+test('recebida Meta: mesmo idExterno duas vezes ⇒ uma linha, uma não lida', async () => {
+  const { deps, st } = depsRecebida()
+  const e = { ...entradaZapi(zapiTexto), idExterno: 'wamid.A', chaveId: 'meta_message_id' }
+  assert.equal(await registrarMensagemRecebidaCom(deps, e), true)
+  assert.equal(await registrarMensagemRecebidaCom(deps, e), false)
+  assert.equal(st.mensagens.length, 1)
+  assert.deepEqual(st.mensagens[0].metadata, { meta_message_id: 'wamid.A' })
+  assert.equal(st.conversas[0].unread_count, 1)
+})
