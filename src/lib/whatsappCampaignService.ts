@@ -20,6 +20,7 @@ import {
 import { createPipelineCardForSend } from '@/lib/whatsappImportService'
 import type { WhatsAppInstance } from '@/types/whatsapp'
 import { ehInstanciaMeta } from '@/lib/meta/envioLivre'
+import { excluidosDaInstanciaZapi, ultimos8, MOTIVO_PEDIU_PARA_SAIR } from '@/lib/meta/exclusoesCampo'
 import { enviarModeloDaCampanha, type DepsCampanhaOficial } from '@/lib/meta/campanhaOficial'
 
 const RATE_LIMIT_MS = 5000 // mínimo absoluto — NUNCA reduzir, risco de ban do número
@@ -275,6 +276,21 @@ export async function processCampaignTick(
     return { progress, event: null, waitMs: 0, done: true }
   }
 
+  // SAIR vale para os dois caminhos do campo: quem pediu para sair pelo número oficial
+  // não recebe campanha pela Z-API do mesmo campo (instância sem campo: não consulta).
+  if (!ehInstanciaMeta(instance)) {
+    let pediuSair = false
+    try {
+      pediuSair = (await excluidosDaInstanciaZapi(instance.id, [String(next.phone)])).has(ultimos8(String(next.phone)))
+    } catch (err) {
+      // sem saber, não envia: tenta de novo daqui a pouco
+      console.error('[campanha] consulta de exclusões', err)
+      const progress = await getCampaignProgress(campaignId)
+      return { progress, event: null, waitMs: 30_000, done: false }
+    }
+    if (pediuSair) return concluirPuladoPorSair(campaign, next, instance)
+  }
+
   const { data: claimed } = await supabaseAdmin
     .from('whatsapp_campaign_recipients')
     .update({ status: 'sending', instance_id: instance.id })
@@ -436,6 +452,52 @@ export function assignAgentsRoundRobin<T extends { agent_user_id?: string | null
     ...r,
     agent_user_id: agentUserIds[i % agentUserIds.length],
   }))
+}
+
+/** Destinatário que pediu para sair: não envia, marca 'skipped' e segue a fila. */
+async function concluirPuladoPorSair(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  campaign: Record<string, any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  next: Record<string, any>,
+  instance: WhatsAppInstance
+): Promise<TickResult> {
+  const campaignId = campaign.id as string
+  const at = new Date().toISOString()
+  const { data: marcado } = await supabaseAdmin
+    .from('whatsapp_campaign_recipients')
+    .update({ status: 'skipped', error_message: MOTIVO_PEDIU_PARA_SAIR })
+    .eq('id', next.id)
+    .eq('status', 'pending')
+    .select('id')
+  if (!marcado?.length) {
+    const progress = await getCampaignProgress(campaignId)
+    return { progress, event: null, waitMs: 300, done: false }
+  }
+  if (next.import_row_id) {
+    await supabaseAdmin
+      .from('whatsapp_import_rows')
+      .update({ skip_reason: MOTIVO_PEDIU_PARA_SAIR })
+      .eq('id', next.import_row_id)
+  }
+  const progress = await getCampaignProgress(campaignId)
+  const updates: Record<string, unknown> = { sent_count: progress.sent, error_count: progress.errors }
+  if (progress.pending === 0) {
+    updates.status = 'completed'
+    updates.finished_at = at
+    progress.status = 'completed'
+    if (campaign.import_batch_id) {
+      await supabaseAdmin.from('whatsapp_import_batches').update({ status: 'sent' }).eq('id', campaign.import_batch_id)
+    }
+  }
+  await supabaseAdmin.from('whatsapp_campaigns').update(updates).eq('id', campaignId)
+  return {
+    progress,
+    event: { recipientId: next.id, name: next.name, phone: String(next.phone), status: 'skipped', error: MOTIVO_PEDIU_PARA_SAIR, instanceName: instance.name, at },
+    // nada saiu: não há cooldown a respeitar
+    waitMs: progress.pending > 0 ? 300 : 0,
+    done: progress.pending === 0,
+  }
 }
 
 // ── Tick do número oficial (Meta) ─────────────────────────────────────────────

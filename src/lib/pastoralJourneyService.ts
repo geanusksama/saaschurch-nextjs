@@ -15,6 +15,7 @@
  * Matriz padrão: src/lib/pastoralJourneyDefault.ts
  */
 
+import { excluidosDaInstanciaZapi, ultimos8, MOTIVO_PEDIU_PARA_SAIR } from '@/lib/meta/exclusoesCampo'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
   sendTextViaZApi,
@@ -892,6 +893,9 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
     if (!queue.length) break
 
     let progressed = false
+    // SAIR: quem pediu para sair pelo número oficial do campo (últimos 8 dígitos), por instância Z-API,
+    // uma consulta por instância a cada leitura da fila (não por envio)
+    const sairPorInstancia = new Map<string, Set<string>>()
 
     for (const send of queue) {
       if (Date.now() - startedAt >= maxMs) break
@@ -1025,6 +1029,33 @@ export async function processJourneyTick(options?: { maxMs?: number; maxMessages
           // sai do pool neste tick; se sobrar só o oficial, a jornada fica parada até o próximo
           instancesByJourney.set(journey.id, instances.filter(i => i.id !== instance.id))
           summary.deferred++
+          continue
+        }
+      }
+
+      // ── SAIR vale para os dois caminhos do campo (instância sem campo: não consulta) ──
+      if (!oficial) {
+        let excluidos = sairPorInstancia.get(instance.id)
+        if (!excluidos) {
+          try {
+            excluidos = await excluidosDaInstanciaZapi(instance.id, queue.map(q => String(q.phone)))
+          } catch (err) {
+            // sem saber, não envia: o envio continua pendente para o próximo tick
+            console.error('[journey] consulta de exclusões', err)
+            summary.deferred++
+            continue
+          }
+          sairPorInstancia.set(instance.id, excluidos)
+        }
+        if (excluidos.has(ultimos8(String(send.phone)))) {
+          // pastoral_journey_sends não tem 'skipped': 'cancelled' é o terminal já usado para "pediu para sair"
+          await supabaseAdmin
+            .from('pastoral_journey_sends')
+            .update({ status: 'cancelled', error_message: MOTIVO_PEDIU_PARA_SAIR, updated_at: new Date().toISOString() })
+            .eq('id', send.id)
+            .eq('status', 'pending')
+          progressed = true
+          summary.skipped++
           continue
         }
       }

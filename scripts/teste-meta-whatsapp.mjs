@@ -2229,3 +2229,43 @@ test('Meta repetição de mensagem com mídia: não baixa de novo nem grava outr
   assert.equal(st.mensagens[0].media_url, 'https://storage/MIDF')
   assert.equal(st.mensagens[0].metadata.meta_media_id, 'MIDF')
 })
+
+import { excluidosDaInstanciaZapi, telefonesExcluidos, ultimos8 } from '../src/lib/meta/exclusoesCampo.ts'
+
+function depsSair({ campo, gravados }) {
+  const consultas = []
+  return {
+    consultas,
+    deps: {
+      campoDaInstancia: async () => campo,
+      lerExclusoes: async (campoId, tails) => { consultas.push([campoId, tails]); return (gravados[campoId] ?? []) },
+    },
+  }
+}
+
+test('SAIR no oficial: telefone excluído no campo é pulado na Z-API do mesmo campo (últimos 8 dígitos)', async () => {
+  const { deps, consultas } = depsSair({ campo: 'A', gravados: { A: ['5531987654321'] } })
+  const s = await excluidosDaInstanciaZapi('inst', ['(31) 8765-4321', '31911112222'], deps)
+  assert.equal(s.has(ultimos8('+55 31 98765-4321')), true) // com 55 e 9 na frente casa pelos 8 finais
+  assert.equal(s.has(ultimos8('31911112222')), false)
+  assert.equal(consultas.length, 1) // uma consulta só para o lote
+})
+
+test('SAIR no oficial: exclusão de outro campo não afeta', async () => {
+  const { deps } = depsSair({ campo: 'A', gravados: { B: ['5531987654321'] } })
+  const s = await excluidosDaInstanciaZapi('inst', ['31987654321'], deps)
+  assert.equal(s.size, 0)
+})
+
+test('SAIR: instância Z-API sem campo não consulta exclusões', async () => {
+  const { deps, consultas } = depsSair({ campo: null, gravados: { A: ['5531987654321'] } })
+  const s = await excluidosDaInstanciaZapi('inst', ['31987654321'], deps)
+  assert.equal(s.size, 0)
+  assert.equal(consultas.length, 0)
+})
+
+test('telefonesExcluidos: sem telefones válidos não consulta', async () => {
+  let n = 0
+  assert.equal((await telefonesExcluidos('A', ['123', ''], async () => { n++; return [] })).size, 0)
+  assert.equal(n, 0)
+})
