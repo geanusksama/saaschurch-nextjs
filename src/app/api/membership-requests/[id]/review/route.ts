@@ -83,6 +83,7 @@ async function notifyWhatsApp(phone: string, message: string, contactName?: stri
     .select('id, name, instance_id, token, client_token, owner_user_id')
     .eq('is_active', true)
     .eq('status', 'connected')
+    .neq('provider', 'meta') // o espelho do número oficial não tem token Z-API
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()

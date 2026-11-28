@@ -687,8 +687,9 @@ async function loadJourneyInstances(journeyId: string): Promise<WhatsAppInstance
   const ids = (links ?? []).map(l => l.instance_id)
 
   // sem instância escolhida na matriz, usa todas as conectadas
+  // (só Z-API: o espelho do número oficial não entra no pool nem atravessa campos)
   const query = supabaseAdmin.from('whatsapp_instances').select('*').eq('is_active', true)
-  const { data } = ids.length ? await query.in('id', ids) : await query
+  const { data } = ids.length ? await query.in('id', ids) : await query.eq('provider', 'zapi')
 
   return ((data ?? []) as WhatsAppInstance[]).filter(i => i.status === 'connected')
 }

@@ -56,7 +56,7 @@ export function depsExecucaoReais(): DepsExecucao {
       const { sendTextViaZApi, normalizarNumeroBrasil } = await import('../whatsappSendService')
       const { supabaseAdmin } = await import('../supabase-admin')
       const fixa = (process.env.META_ALERTA_INSTANCIA_ID ?? '').trim()
-      let q = supabaseAdmin.from('whatsapp_instances').select('*').eq('is_active', true).eq('status', 'connected')
+      let q = supabaseAdmin.from('whatsapp_instances').select('*').eq('is_active', true).eq('status', 'connected').neq('provider', 'meta')
       q = fixa ? q.eq('id', fixa) : q.order('created_at', { ascending: true }).order('id', { ascending: true })
       const { data } = await q.limit(1)
       const instancia = data?.[0]

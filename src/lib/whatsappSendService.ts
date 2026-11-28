@@ -91,6 +91,7 @@ export async function getAccessibleInstanceIds(
       .from('whatsapp_instances')
       .select('id, provider, campo_id')
       .eq('provider', 'meta')
+      .limit(200)
     const estranhas = (oficiais ?? []).filter(i => filtrarPorCampo([i], campoAtivo).length === 0)
     if (!estranhas.length) return null
     const { data: todas } = await supabaseAdmin.from('whatsapp_instances').select('id, provider, campo_id').limit(5000)

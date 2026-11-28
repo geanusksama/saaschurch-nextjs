@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
         .select("instance_id, token, client_token")
         .eq("is_active", true)
         .eq("status", "connected")
+      .neq("provider", "meta")
         .order("created_at", { ascending: true })
         .limit(1)
         .single();
