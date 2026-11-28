@@ -4722,6 +4722,12 @@ export const COMPONENTES_PERMISSAO: DefPermissao[] = [
     "arquivo": "src/app-ui/system/MetaOficial.tsx"
   },
   {
+    "chave": "whatsapp_oficial.modelos.sugerir",
+    "rotulo": "Sugerir modelo com IA",
+    "herda": "whatsapp_oficial.modelos.criar",
+    "arquivo": "src/app-ui/system/metaOficial/EditorModelo.tsx"
+  },
+  {
     "chave": "whatsapp_oficial.modelos.view",
     "rotulo": "Modelos de mensagem (WhatsApp Oficial)",
     "herda": "whatsapp_oficial.view",

@@ -7,6 +7,8 @@ import { criarGraph, ErroGraph } from '../src/lib/meta/graph.ts'
 import { trocarCodigo, registrarNumero, assinarWebhookDaConta, lerStatusNumero, gerarPin } from '../src/lib/meta/conexaoMeta.ts'
 import { normalizarTelefoneBR, ehPedidoDeSair, primeiroNome, deduplicarPorTelefone, montarParametros, montarMensagemTemplate, tamanhoDoLote, CODIGOS_PARAR_DISPARO, mascararTelefone, statusDoEnvio, lerAcaoControle, lerPaginacao } from '../src/lib/meta/envio.ts'
 
+import { sugerirModelo } from '../src/lib/meta/sugestaoModelo.ts'
+
 const CHAVE = 'a'.repeat(64)
 
 test('cifra e decifra o token', () => {
@@ -1769,4 +1771,49 @@ test('campanhaVisivelNoCampo: oficial só no campo do número; Z-API não muda',
 test('variaveisDoModelo: só as posições do modelo, texto fixo aparado', () => {
   const r = variaveisDoModelo({ 1: 'nome', 2: { fixo: ' domingo ', lixo: 1 }, 9: 'igreja', x: 'nome' }, [{ posicao: 1 }, { posicao: 2 }])
   assert.deepEqual(r, { 1: 'nome', 2: { fixo: 'domingo' } })
+})
+
+// --- Sugerir modelo com IA ---
+const PEDIDO_SUG = { descricao: 'convite para o culto de domingo', categoria: 'MARKETING', igrejaNome: 'Igreja Central' }
+const JSON_OK = JSON.stringify({
+  titulo: 'Convite culto de domingo',
+  cabecalho: 'Culto de domingo',
+  corpo: 'Olá {{1}}, esperamos você no culto de domingo às 18h. Que a paz esteja com você!',
+  rodape: 'Responda SAIR para não receber',
+  botoes: ['Vou participar', 'Não poderei ir'],
+  variaveis: [{ posicao: 1, tipo: 'nome', exemplo: 'Maria' }],
+})
+
+test('sugerirModelo: JSON válido vira rascunho válido', async () => {
+  const r = await sugerirModelo(PEDIDO_SUG, async () => '```json\n' + JSON_OK + '\n```')
+  assert.equal(r.ok, true)
+  assert.equal(r.rascunho.nome, 'convite_culto_de_domingo')
+  assert.equal(r.rascunho.categoria, 'MARKETING')
+  assert.equal(r.rascunho.botoes.length, 2)
+  assert.equal(r.rascunho.variaveis[0].exemplo, 'Maria')
+})
+test('sugerirModelo: corpo começando com variável é recusado e refeito com o erro no prompt', async () => {
+  const prompts = []
+  const ruim = JSON.stringify({ ...JSON.parse(JSON_OK), corpo: '{{1}}, venha ao culto de domingo hoje.' })
+  const r = await sugerirModelo(PEDIDO_SUG, async (p) => { prompts.push(p); return prompts.length === 1 ? ruim : JSON_OK })
+  assert.equal(r.ok, true)
+  assert.equal(prompts.length, 2)
+  assert.match(prompts[1], /não pode começar com uma variável/)
+})
+test('sugerirModelo: duas respostas inválidas dão ok:false', async () => {
+  let n = 0
+  const ruim = JSON.stringify({ ...JSON.parse(JSON_OK), corpo: '{{1}}, venha.' })
+  const r = await sugerirModelo(PEDIDO_SUG, async () => { n++; return ruim })
+  assert.equal(r.ok, false)
+  assert.equal(n, 2)
+})
+test('sugerirModelo: resposta que não é JSON dá ok:false com mensagem clara', async () => {
+  const r = await sugerirModelo(PEDIDO_SUG, async () => 'Claro! Aqui vai o modelo.')
+  assert.equal(r.ok, false)
+  assert.match(r.erro, /não conseguiu/i)
+})
+test('sugerirModelo: falha da IA dá ok:false', async () => {
+  const r = await sugerirModelo(PEDIDO_SUG, async () => { throw new Error('IA desabilitada nas configurações') })
+  assert.equal(r.ok, false)
+  assert.match(r.erro, /IA desabilitada/)
 })
