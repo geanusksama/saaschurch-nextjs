@@ -58,7 +58,7 @@ export default function MetaAppConfig({ embutido = false }: { embutido?: boolean
 
   // linhas da tabela: as que já existem + as 3 categorias na moeda delas (ou USD), para o master preencher
   const montarLinhas = (lista: Array<{ categoria: string; moeda: string; preco: number; vigencia: string | null }>): LinhaPreco[] => {
-    const moeda = lista[0]?.moeda ?? 'USD';
+    const moeda = lista[0]?.moeda ?? 'BRL';
     const linhas: LinhaPreco[] = lista.map((x) => ({ categoria: x.categoria, moeda: x.moeda, preco: String(x.preco), vigencia: x.vigencia ?? '' }));
     for (const c of CATEGORIAS_PRECO) {
       if (!linhas.some((l) => l.categoria === c)) linhas.push({ categoria: c, moeda, preco: '', vigencia: '' });

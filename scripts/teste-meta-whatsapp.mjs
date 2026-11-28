@@ -2326,7 +2326,7 @@ test('custo: texto fixo da estimativa e texto sem preço', () => {
   assert.match(textoEstimativa(3, 'AUTHENTICATION', [{ categoria: 'AUTHENTICATION', moeda: 'USD', preco: 1 }], 'USD'), /3 mensagens de autenticação/)
   assert.match(textoEstimativa(2, 'MARKETING', [{ categoria: 'MARKETING', moeda: 'USD', preco: 1 }], 'USD'), /2 mensagens de marketing/)
   assert.equal(moedaDosPrecos(PRECOS_8B), 'USD')
-  assert.equal(moedaDosPrecos([]), 'USD')
+  assert.equal(moedaDosPrecos([]), 'BRL')
 })
 
 function depsCobranca() {

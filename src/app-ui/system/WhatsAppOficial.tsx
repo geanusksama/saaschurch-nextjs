@@ -282,7 +282,7 @@ export default function WhatsAppOficial({ embutido = false }: { embutido?: boole
                 ) : null}
               </p>
               <p className="text-xs text-slate-500">
-                Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues. Valores em {conexao.gasto.moeda === 'USD' ? 'US$' : conexao.gasto.moeda}, sem conversão.
+                Valor estimado com a tabela da Meta; a Meta cobra no cartão do campo só as mensagens entregues. Valores em {conexao.gasto.moeda === 'USD' ? 'US$' : conexao.gasto.moeda === 'BRL' ? 'R$' : conexao.gasto.moeda}, sem conversão.
               </p>
             </div>
           )}

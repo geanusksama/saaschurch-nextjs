@@ -7,7 +7,7 @@
 export type Preco = { categoria: string; moeda: string; preco: number }
 export type CategoriaEstimavel = 'MARKETING' | 'UTILITY'
 
-export const MOEDA_PADRAO = 'USD'
+export const MOEDA_PADRAO = 'BRL'
 export const LINK_TABELA_OFICIAL = 'https://business.whatsapp.com/products/platform-pricing#rates'
 export const LINK_GERENCIADOR_PAGAMENTOS = 'https://business.facebook.com/latest/billing_hub/'
 export const MSG_SEM_PRECO = 'Preço desta categoria não configurado — o master pode preencher em Meta Oficial → App.'
