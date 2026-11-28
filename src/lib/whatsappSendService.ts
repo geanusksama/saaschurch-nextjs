@@ -6,6 +6,8 @@
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { filtrarPorCampo } from '@/lib/meta/instanciaCampo'
+import { ehInstanciaMeta } from '@/lib/meta/envioLivre'
+import type { ConteudoLivre } from '@/lib/meta/envioLivre'
 import type { SendMessagePayload, SendMessageResult, WhatsAppInstance } from '@/types/whatsapp'
 
 const ZAPI_BASE = 'https://api.z-api.io'
@@ -19,6 +21,15 @@ const MIME_BY_EXT: Record<string, string> = {
   jpeg: 'image/jpeg',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+}
+
+/** Instância aceita pelos envios: Z-API (token) ou espelho do número oficial (provider 'meta', sem token). */
+type InstanciaEnvio = Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'> & Partial<Pick<WhatsAppInstance, 'id' | 'provider'>>
+
+/** Envio livre pelo número oficial da Meta (janela de 24 h). Import tardio: carrega Prisma só quando preciso. */
+async function enviarPelaMeta(instance: InstanciaEnvio, to: string, conteudo: ConteudoLivre): Promise<SendMessageResult> {
+  const { enviarLivreMetaPadrao } = await import('@/lib/meta/envioLivrePadrao')
+  return enviarLivreMetaPadrao(instance, to, conteudo)
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -142,7 +153,7 @@ export async function enforceRateLimit(instanceId: string): Promise<void> {
 
 // ── Chama Z-API para enviar texto ─────────────────────────────────────────────
 export async function sendTextViaZApi(
-  instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
+  instance: InstanciaEnvio,
   to: string,
   message: string,
   /**
@@ -153,6 +164,7 @@ export async function sendTextViaZApi(
    */
   options?: { delayTyping?: number; delayMessage?: number }
 ): Promise<SendMessageResult> {
+  if (ehInstanciaMeta(instance)) return enviarPelaMeta(instance, to, { tipo: 'texto', texto: message })
   await enforceRateLimit(instance.instance_id)
 
   const clamp = (v?: number) =>
@@ -183,10 +195,12 @@ export async function sendTextViaZApi(
  * "não lida". Nunca lança: falhar aqui não pode impedir a resposta.
  */
 export async function markMessageAsRead(
-  instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
+  instance: InstanciaEnvio,
   phone: string,
   messageId: string
 ): Promise<boolean> {
+  // Meta: marcar como lido exige o id (wamid) da mensagem recebida; por ora não faz nada (nunca lança).
+  if (ehInstanciaMeta(instance)) return false
   try {
     const url = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}/read-message`
     const res = await fetch(url, {
@@ -297,12 +311,13 @@ export async function ensureConversation(
 
 // ── Chama Z-API para enviar documento ──────────────────────────────────────────
 export async function sendDocumentViaZApi(
-  instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
+  instance: InstanciaEnvio,
   to: string,
   documentUrl: string,
   caption: string,
   fileName: string
 ): Promise<SendMessageResult> {
+  if (ehInstanciaMeta(instance)) return enviarPelaMeta(instance, to, { tipo: 'documento', url: documentUrl, texto: caption, nomeArquivo: fileName })
   await enforceRateLimit(instance.instance_id)
 
   const ext = fileName.split('.').pop() || 'pdf'
@@ -330,11 +345,12 @@ export async function sendDocumentViaZApi(
 
 // ── Chama Z-API para enviar imagem ─────────────────────────────────────────────
 export async function sendImageViaZApi(
-  instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
+  instance: InstanciaEnvio,
   to: string,
   imageUrl: string,
   caption: string
 ): Promise<SendMessageResult> {
+  if (ehInstanciaMeta(instance)) return enviarPelaMeta(instance, to, { tipo: 'imagem', url: imageUrl, texto: caption })
   await enforceRateLimit(instance.instance_id)
 
   const url = `${ZAPI_BASE}/instances/${instance.instance_id}/token/${instance.token}/send-image`
@@ -357,11 +373,13 @@ export async function sendImageViaZApi(
  * "Gravando áudio..." antes de enviar; `waveform` manda com a onda sonora.
  */
 export async function sendAudioViaZApi(
-  instance: Pick<WhatsAppInstance, 'instance_id' | 'token' | 'client_token'>,
+  instance: InstanciaEnvio,
   to: string,
   audio: string,
   options?: { gravandoSegundos?: number }
 ): Promise<SendMessageResult> {
+  // Meta: só link público (base64 devolve formato_nao_suportado_meta; sem upload de mídia ainda).
+  if (ehInstanciaMeta(instance)) return enviarPelaMeta(instance, to, { tipo: 'audio', url: audio })
   await enforceRateLimit(instance.instance_id)
 
   const gravando = options?.gravandoSegundos

@@ -1588,3 +1588,62 @@ test('falha ao sincronizar a instância não derruba a conexão', async () => {
   assert.equal(r.conectado, true)
   assert.deepEqual(await desconectar(deps, 'c1'), { conectado: false })
 })
+
+import { dentroDaJanela, enviarLivreMeta, ehInstanciaMeta } from '../src/lib/meta/envioLivre.ts'
+
+const H_LIVRE = 3600 * 1000
+const AGORA_LIVRE = new Date('2026-11-27T12:00:00Z')
+test('dentroDaJanela: 23h59 true, 24h exatas true, 24h01 false, null false', () => {
+  assert.equal(dentroDaJanela(new Date(AGORA_LIVRE - (24 * H_LIVRE - 60000)), AGORA_LIVRE), true)
+  assert.equal(dentroDaJanela(new Date(AGORA_LIVRE - 24 * H_LIVRE), AGORA_LIVRE), true)
+  assert.equal(dentroDaJanela(new Date(AGORA_LIVRE - (24 * H_LIVRE + 60000)), AGORA_LIVRE), false)
+  assert.equal(dentroDaJanela(null, AGORA_LIVRE), false)
+})
+function depsLivre(ultima, chamadas = []) {
+  return {
+    agora: () => AGORA_LIVRE,
+    obterConexao: async () => ({ phoneNumberId: 'P1', token: 'tok' }),
+    ultimaRecebidaEm: async () => ultima,
+    graph: { post: async (caminho, corpo, token) => { chamadas.push({ caminho, corpo, token }); return { messages: [{ id: 'wamid.X' }] } } },
+  }
+}
+test('enviarLivreMeta dentro da janela: POST /{phone_number_id}/messages type text', async () => {
+  const ch = []
+  const r = await enviarLivreMeta(depsLivre(new Date(AGORA_LIVRE - H_LIVRE), ch), { id: 'i1' }, '+55 (19) 99999-0000', { tipo: 'texto', texto: 'Oi' })
+  assert.deepEqual(r, { messageId: 'wamid.X', status: 'sent' })
+  assert.equal(ch.length, 1)
+  assert.equal(ch[0].caminho, 'P1/messages')
+  assert.equal(ch[0].corpo.type, 'text'); assert.equal(ch[0].corpo.to, '5519999990000'); assert.equal(ch[0].corpo.text.body, 'Oi')
+  assert.equal(ch[0].token, 'tok')
+})
+test('enviarLivreMeta fora da janela ou sem inbound: não chama a Graph', async () => {
+  const ch = []
+  for (const u of [new Date(AGORA_LIVRE - 25 * H_LIVRE), null]) {
+    const r = await enviarLivreMeta(depsLivre(u, ch), { id: 'i1' }, '5519999990000', { tipo: 'texto', texto: 'Oi' })
+    assert.deepEqual(r, { messageId: '', status: 'error', error: 'fora_da_janela_24h' })
+  }
+  assert.equal(ch.length, 0)
+})
+test('enviarLivreMeta: imagem/áudio/documento por link; base64 recusado; erro da Graph vira error', async () => {
+  const ch = []
+  const d = depsLivre(new Date(AGORA_LIVRE - H_LIVRE), ch)
+  await enviarLivreMeta(d, { id: 'i' }, '5519999990000', { tipo: 'imagem', url: 'https://x/a.png', texto: 'leg' })
+  await enviarLivreMeta(d, { id: 'i' }, '5519999990000', { tipo: 'audio', url: 'https://x/a.ogg' })
+  await enviarLivreMeta(d, { id: 'i' }, '5519999990000', { tipo: 'documento', url: 'https://x/a.pdf', nomeArquivo: 'a.pdf' })
+  assert.deepEqual(ch.map((c) => c.corpo.type), ['image', 'audio', 'document'])
+  assert.deepEqual(ch[0].corpo.image, { link: 'https://x/a.png', caption: 'leg' })
+  assert.deepEqual(ch[1].corpo.audio, { link: 'https://x/a.ogg' })
+  assert.deepEqual(ch[2].corpo.document, { link: 'https://x/a.pdf', filename: 'a.pdf' })
+  const r = await enviarLivreMeta(d, { id: 'i' }, '5519999990000', { tipo: 'audio', url: 'data:audio/ogg;base64,AAA' })
+  assert.deepEqual(r, { messageId: '', status: 'error', error: 'formato_nao_suportado_meta' })
+  assert.equal(ch.length, 3)
+  d.graph.post = async () => { throw new ErroGraph('token ruim', 400, 190) }
+  const e = await enviarLivreMeta(d, { id: 'i' }, '5519999990000', { tipo: 'texto', texto: 'x' })
+  assert.deepEqual(e, { messageId: '', status: 'error', error: 'token ruim' })
+})
+test('regressão: instância zapi (ou sem provider) não é desviada para a Meta', () => {
+  assert.equal(ehInstanciaMeta({ provider: 'zapi' }), false)
+  assert.equal(ehInstanciaMeta({}), false)
+  assert.equal(ehInstanciaMeta({ provider: null }), false)
+  assert.equal(ehInstanciaMeta({ provider: 'meta' }), true)
+})
